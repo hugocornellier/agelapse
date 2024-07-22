@@ -13,11 +13,14 @@
 
 ### Steps
 
-1. **Download from the App Store or Google Play**:
-   - [App Store](https://apps.apple.com/app/idXXXXXXXXX)
-   - [Google Play](https://play.google.com/store/apps/details?id=com.yourcompany.agelapse)
-
-2. **Clone the Repository (for Development)**:
+1. **Clone the Repository (for Development)**:
    ```sh
    git clone https://github.com/yourusername/agelapse.git
    cd agelapse
+   ```
+
+2. **Install Dependencies**:
+   ```flutter pub get```
+
+3. **Run app**:
+   ```flutter run```
