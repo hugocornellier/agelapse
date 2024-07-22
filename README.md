@@ -8,16 +8,20 @@ This is the Flutter build of AgeLapse.
 
 ## Installation
 
-### TestFlight
+### iOS (TestFlight)
 
 AgeLapse is currently in beta on iOS. You can download the app here: [https://testflight.apple.com/join/TDIZ4BYH](https://testflight.apple.com/join/TDIZ4BYH)
+
+### Android
+
+Coming soon.
+
+## Development Installation
 
 ### Prerequisites
 
 - iOS 13.0+ or Android 5.0+
 - Flutter SDK (for development)
-
-### Steps
 
 1. **Clone the repository**:
    ```sh
@@ -30,3 +34,13 @@ AgeLapse is currently in beta on iOS. You can download the app here: [https://te
 
 3. **Run app**:
    ```flutter run```
+
+## Features
+
+| Feature                      | Status         |
+|------------------------------|----------------|
+| Auto-stabilization           | ✔️             |
+| Import/export photos         | ✔️             |
+| Compile and export videos    | ✔️             |
+| Customizable output settings | ✔️             |
+| Automatic backups            | ⏳ Coming Soon |
