@@ -13,7 +13,7 @@
 
 ### Steps
 
-1. **Clone the Repository (for Development)**:
+1. **Clone the repository**:
    ```sh
    git clone https://github.com/yourusername/agelapse.git
    cd agelapse
