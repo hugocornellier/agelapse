@@ -40,6 +40,7 @@ Coming soon.
 | Feature                      | Status         |
 |------------------------------|----------------|
 | Auto-stabilization           | ✔️             |
+| Ghost mode (and other guide tools)       | ✔️             |
 | Import/export photos         | ✔️             |
 | Compile and export videos    | ✔️             |
 | Customizable output settings | ✔️             |
