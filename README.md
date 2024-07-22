@@ -8,6 +8,10 @@ This is the Flutter build of AgeLapse.
 
 ## Installation
 
+### TestFlight
+
+AgeLapse is currently in beta on iOS. You can download the app here: [https://testflight.apple.com/join/TDIZ4BYH](https://testflight.apple.com/join/TDIZ4BYH)
+
 ### Prerequisites
 
 - iOS 13.0+ or Android 5.0+
