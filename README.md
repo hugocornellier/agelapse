@@ -1,8 +1,10 @@
 # AgeLapse
 
-![AgeLapse Logo]([https://your-logo-url.com/logo.png](https://i.imgur.com/SlEeAHK.png))
+![AgeLapse Logo](https://i.imgur.com/SlEeAHK.png)
 
-**AgeLapse** is an innovative app designed to capture the changes in your facial features over time. Whether you're documenting your personal journey or creating a time-lapse project, AgeLapse provides a seamless and intuitive experience.
+**AgeLapse** is a comprehensive tool for creating, stabilizing and exporting aging timelapses, i.e. "selfie a day" projects.  
+
+This is the Flutter build of AgeLapse.
 
 ## Installation
 
