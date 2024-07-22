@@ -44,6 +44,4 @@ Coming soon.
 | Camera guide tools (Ghost, grid)     | ✔️             |
 | Compile and export videos    | ✔️             |
 | Customizable output settings | ✔️             |
-| 100% free & open source | ✔️             |
-| No data collected | ✔️             |
 | Automatic backups            | ⏳ Coming Soon |
