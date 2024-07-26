@@ -8,7 +8,7 @@ This is the Flutter build of AgeLapse.
 
 ## Installation
 
-### iOS (TestFlight)
+### iOS
 
 App Store download: [https://apps.apple.com/ca/app/agelapse/id6503668205](https://apps.apple.com/ca/app/agelapse/id6503668205)
 
