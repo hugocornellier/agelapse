@@ -1,6 +1,7 @@
 import 'package:agelapse/services/settings_cache.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:provider/provider.dart';
@@ -13,12 +14,18 @@ import '../theme/theme.dart';
 void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
-
   await _initializeApp();
-
   FlutterNativeSplash.remove();
 
+  // Remove Flutter "debug" flag from top bar
   debugPaintSizeEnabled = false;
+
+  // Sets Android navigation bar to dark
+  SystemUiOverlayStyle style = const SystemUiOverlayStyle(
+    systemNavigationBarColor: Colors.black, // navigation bar color
+    systemNavigationBarIconBrightness: Brightness.light, // navigation bar icons' color
+  );
+  SystemChrome.setSystemUIOverlayStyle(style);
 
   runApp(AgeLapse(homePage: await _getHomePage()));
 }

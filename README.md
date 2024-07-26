@@ -1,4 +1,4 @@
-# AgeLapse
+# AgeLapse v1.2.1
 
 ![AgeLapse Logo](https://i.imgur.com/SlEeAHK.png)
 
@@ -10,11 +10,14 @@ This is the Flutter build of AgeLapse.
 
 ### iOS (TestFlight)
 
-AgeLapse is currently in beta on iOS. You can download the app here: [https://testflight.apple.com/join/TDIZ4BYH](https://testflight.apple.com/join/TDIZ4BYH)
+App Store download: [https://apps.apple.com/ca/app/agelapse/id6503668205](https://apps.apple.com/ca/app/agelapse/id6503668205)
 
 ### Android
 
-Coming soon.
+.apk download: [https://drive.google.com/file/d/1-6d97xErgkEE4hRnRSw6crcI35XJG18_/view](https://drive.google.com/file/d/1-6d97xErgkEE4hRnRSw6crcI35XJG18_/view)
+
+AgeLapse is currently in beta test on the Play Store, and we are working to fulfill their requirements to have 
+20 beta testers. If you would like to help, get in touch at agelapse@gmail.com. 
 
 ## Features
 
