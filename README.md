@@ -1,6 +1,6 @@
 # AgeLapse v1.2.1
 
-![AgeLapse Logo](https://i.imgur.com/SlEeAHK.png)
+![AgeLapse Logo](https://i.imgur.com/lfC2Y4y.png)
 
 **AgeLapse** is a comprehensive tool for creating, stabilizing and exporting aging timelapses, i.e. "selfie a day" projects.  
 
