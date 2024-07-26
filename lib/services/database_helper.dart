@@ -357,7 +357,7 @@ class DB {
      │                      │
      └──────────────────────┘ */
 
-  Future<void> addPhoto(String timestamp, int projectID, String fileExtension, int imageLength, String originalFilename) async {
+  Future<void> addPhoto(String timestamp, int projectID, String fileExtension, int imageLength, String originalFilename, String orientation) async {
     final db = await database;
     try {
       await db.insert(photoTable, {
@@ -366,6 +366,7 @@ class DB {
         'fileExtension': fileExtension,
         'imageLength': imageLength,
         'originalFilename': originalFilename,
+        'originalOrientation' : orientation,
         'stabilizedPortrait': 0,
         'stabilizedLandscape': 0,
         'stabFailed': 0,
@@ -419,6 +420,46 @@ class DB {
     return await db.query(photoTable);
   }
 
+  Future<String?> checkAllPhotoOrientations() async {
+    final db = await database;
+
+    // Fetch all entries in the photo table
+    final List<Map<String, dynamic>> photos = await db.query(photoTable, columns: ['originalOrientation']);
+
+    // Check if there are no photos
+    if (photos.isEmpty) {
+      return null; // No entries to check
+    }
+
+    // Initialize flags
+    bool allPortrait = true;
+    bool allLandscape = true;
+
+    // Iterate over all photos and check their orientation
+    for (var photo in photos) {
+      final String? orientation = photo['originalOrientation'] as String?;
+
+      if (orientation == null) {
+        continue;
+      }
+
+      if (orientation != 'portrait') {
+        allPortrait = false;
+      }
+      if (orientation != 'landscape') {
+        allLandscape = false;
+      }
+    }
+
+    // Determine the result based on the flags
+    if (allPortrait) {
+      return 'portrait';
+    } else if (allLandscape) {
+      return 'landscape';
+    } else {
+      return null;
+    }
+  }
 
 
   String getStabilizedColumn(String projectOrientation) {

@@ -80,6 +80,7 @@ class _CameraViewState extends State<CameraView> {
   final GlobalKey _widgetKey = GlobalKey();
   GridMode _gridMode = GridMode.none;
   Completer<void>? _pictureTakingCompleter;
+  bool _isInfoWidgetVisible = true;
 
   @override
   void initState() {
@@ -319,7 +320,8 @@ class _CameraViewState extends State<CameraView> {
             if (modifyGridMode) gridModifierOverlay(),
             if (!modifyGridMode) _switchLiveCameraToggle(),
             if (!modifyGridMode) _cameraControl(),
-            if (modifyGridMode) ...[
+            if (modifyGridMode && _isInfoWidgetVisible) ...[
+
               Positioned(
                 bottom: 32,
                 child: Container(
@@ -329,26 +331,31 @@ class _CameraViewState extends State<CameraView> {
                     color: Colors.blue.withOpacity(0.7),
                     borderRadius: BorderRadius.circular(16), // More rounded corners
                   ),
-                  child: const Column(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.lightbulb_outline,
-                        color: Colors.yellow,
-                        size: 24,
-                      ),
-                      SizedBox(height: 8),
-                      Text(
+                      const Text(
                         "Drag guide lines to optimal position. Tap\n"
-                        "checkmark to save changes. Note: Camera guide\n"
-                        "lines don't affect output guide lines.",
+                            "checkmark to save changes. Note: Camera guide\n"
+                            "lines don't affect output guide lines.",
                         style: TextStyle(color: Colors.white, fontSize: 12),
                         textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () => setState(() => _isInfoWidgetVisible = false),
+                        child: const Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 24,
+                        ),
                       ),
                     ],
                   ),
                 ),
               )
+
+
             ],
             if (modifyGridMode)
               saveGridButton(),

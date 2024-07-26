@@ -44,6 +44,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
   double _widgetHeight = 0.0;
 
   late OutputImageLoader outputImageLoader; // Declare the helper class
+  bool _isInfoWidgetVisible = true; // Add this line
 
   @override
   void initState() {
@@ -147,14 +148,8 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      onPopInvoked: (bool shouldPop) async {
-        if (!shouldPop) return;
-        final bool result = await _onWillPop();
-        if (result) {
-          Navigator.of(context).maybePop();
-        }
-      },
+    return WillPopScope(
+      onWillPop: _onWillPop,
       child: Scaffold(
         appBar: AppBar(
           title: const Text("Output Position"),
@@ -175,15 +170,48 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
               ),
           ],
         ),
-        body: Builder(
-          builder: (BuildContext context) {
-            return Column(
+        body: Stack(
+          children: [
+            Column(
               children: [
                 _buildImageLayer(context),
                 const SizedBox(height: 20.0),
               ],
-            );
-          },
+            ),
+            if (_isInfoWidgetVisible)
+              Positioned(
+                bottom: 64,
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.9),
+                    borderRadius: BorderRadius.circular(16), // More rounded corners
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        "Drag guide lines to optimal position. Tap\n"
+                            "checkmark to save changes. Note: Camera guide\n"
+                            "lines don't affect output guide lines.",
+                        style: TextStyle(color: Colors.white, fontSize: 12),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () => setState(() => _isInfoWidgetVisible = false),
+                        child: const Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -269,7 +297,15 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                         _isDraggingHorizontal = false;
                       },
                       child: CustomPaint(
-                        painter: GridPainterSE(_offsetX, _offsetY, outputImageLoader.ghostImageOffsetX, outputImageLoader.ghostImageOffsetY, outputImageLoader.guideImage, outputImageLoader.aspectRatio!, outputImageLoader.projectOrientation!),
+                        painter: GridPainterSE(
+                          _offsetX,
+                          _offsetY,
+                          outputImageLoader.ghostImageOffsetX,
+                          outputImageLoader.ghostImageOffsetY,
+                          outputImageLoader.guideImage,
+                          outputImageLoader.aspectRatio!,
+                          outputImageLoader.projectOrientation!,
+                        ),
                         child: Container(
                           width: adjustedWidth,
                           height: height,

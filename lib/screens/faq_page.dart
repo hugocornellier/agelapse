@@ -14,13 +14,13 @@ class FAQPage extends StatelessWidget {
           children: const [
             FAQItem(
               question: "Does AgeLapse store or collect my data?",
-              answer: "AgeLapse does not collect or store your data. As AgeLapse runs locally on"
+              answer: "AgeLapse does not collect or store any data. As AgeLapse runs locally on"
                   " your device, your data is never transmitted over a network. ",
             ),
             FAQItem(
               question: "Is AgeLapse open-source?",
               answer: "Yes! We are proud to be 100% open-source and free, forever. The "
-                  "source code can be viewed at [github url].\n\nA note to developers: We"
+                  "source code can be viewed at: github.com/hugocornellier/agelapse-flutter\n\nA note to developers: We"
                   " welcome PRs, bug reports or feature suggestions. Get in touch! ",
             ),
             FAQItem(

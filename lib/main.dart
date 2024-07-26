@@ -1,5 +1,6 @@
 import 'package:agelapse/services/settings_cache.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:provider/provider.dart';
@@ -16,6 +17,8 @@ void main() async {
   await _initializeApp();
 
   FlutterNativeSplash.remove();
+
+  debugPaintSizeEnabled = false;
 
   runApp(AgeLapse(homePage: await _getHomePage()));
 }
@@ -72,7 +75,7 @@ Future<Widget> _getHomePage() async {
 class AgeLapse extends StatelessWidget {
   final Widget homePage;
 
-  const AgeLapse({Key? key, required this.homePage}) : super(key: key);
+  const AgeLapse({super.key, required this.homePage});
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +85,10 @@ class AgeLapse extends StatelessWidget {
         if (themeSnapshot.connectionState == ConnectionState.done) {
           return _buildApp(context, homePage, themeSnapshot.data!);
         } else {
-          return const MaterialApp(home: Scaffold(body: Center(child: CircularProgressIndicator())));
+          return const MaterialApp(
+            home: Scaffold(body: Center(child: CircularProgressIndicator())),
+            debugShowCheckedModeBanner: false
+          );
         }
       },
     );
@@ -102,6 +108,7 @@ class AgeLapse extends StatelessWidget {
           title: 'AgeLapse',
           theme: themeProvider.themeData,
           home: homePage,
+          debugShowCheckedModeBanner: false
         ),
       ),
     );

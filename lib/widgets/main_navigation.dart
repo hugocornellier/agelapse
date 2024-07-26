@@ -185,6 +185,11 @@ class MainNavigationState extends State<MainNavigation> {
       _isImporting = true;
     });
 
+    final List<String> allPhotosBefore = await DB.instance.getAllPhotoPathsByProjectID(widget.projectId);
+    bool allPhotosBeforeIsEmpty = allPhotosBefore.isEmpty;
+    print(allPhotosBeforeIsEmpty);
+    final int photoCountBeforeImport = allPhotosBefore.length;
+
     final List<File> files = pickedFiles.paths.map((path) => File(path!)).toList();
     int fileCount = files.length;
     int i = 0;
@@ -202,6 +207,16 @@ class MainNavigationState extends State<MainNavigation> {
         print("Error caught123: $e");
       } finally {
         i++;
+      }
+    }
+
+    // Automatically set project orientation based on imported photos.
+    // eg: If all imported photos were landscape, set project to landscape
+    if (photoCountBeforeImport == 0) {
+      String? importedPhotosOrientation = await DB.instance.checkAllPhotoOrientations();
+      if (importedPhotosOrientation == 'landscape') {
+        DB.instance.setSettingByTitle("project_orientation", 'landscape', projectIdStr);
+        DB.instance.setSettingByTitle("aspect_ratio", "4:3", projectIdStr);
       }
     }
 
@@ -361,6 +376,7 @@ class MainNavigationState extends State<MainNavigation> {
   }
 
   Future<bool> _createTimelapse(FaceStabilizer faceStabilizer) async {
+  print("Creating timelapse...");
     try {
       final newestVideo = await DB.instance.getNewestVideoByProjectId(widget.projectId);
       final bool videoIsNull = newestVideo == null;

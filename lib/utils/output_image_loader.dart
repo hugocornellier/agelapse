@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui' as ui;
+import 'package:agelapse/utils/stabilizer_utils/stabilizer_utils.dart';
 import 'package:flutter/cupertino.dart';
 
 import '../services/database_helper.dart';
@@ -52,8 +54,17 @@ class OutputImageLoader {
         ghostImageOffsetX = offsetXData;
         ghostImageOffsetY = offsetYData;
 
-        guideImage = await ProjectUtils.loadImageData(guideImagePath);
+        try {
+          print("Here1");
+          guideImage = await StabUtils.loadImageFromFile(File(guideImagePath));
+        } catch(e) {
+          print("Error caught here1 $e, setting ghostImage to persongrey");
+          guideImage = await ProjectUtils.loadImage('assets/images/person-grey.png');
+          ghostImageOffsetX = 0.105;
+          ghostImageOffsetY = 0.241;
+        }
       } else {
+        print("Here3");
         guideImage = await ProjectUtils.loadImage('assets/images/person-grey.png');
         ghostImageOffsetX = 0.105;
         ghostImageOffsetY = 0.241;

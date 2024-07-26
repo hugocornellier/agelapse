@@ -202,6 +202,8 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
       widthFactor: 1.0,
       child: ElevatedButton(
         onPressed: () async {
+          print("Create project was pressed");
+
           final projectName = _nameController.text.trim();
           if (projectName.isEmpty) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -211,7 +213,7 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
           }
 
           // Determine the project type based on the selected image
-          String projectType;
+          String projectType = 'face';
           switch (_selectedImage) {
             case 'assets/images/face.png':
               projectType = 'face';
@@ -233,28 +235,38 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
             DateTime.now().millisecondsSinceEpoch
           );
 
-          final String defaultProject = await DB.instance.getSettingValueByTitle('default_project');
-          if (defaultProject == "none") {
-            await DB.instance.setSettingByTitle('default_project', projectId.toString());
+          print("Project was created... new projectID is $projectId");
+
+          try {
+            final String defaultProject = await DB.instance.getSettingValueByTitle('default_project');
+            if (defaultProject == "none") {
+              await DB.instance.setSettingByTitle('default_project', projectId.toString());
+            }
+          } catch(e) {
+            print("Error while setting new default project: $e");
           }
 
           // Initialize notifications
-          DateTime fivePMLocalTime = NotificationUtil.getFivePMLocalTime();
-          final String dailyNotificationTime = "${fivePMLocalTime.millisecondsSinceEpoch}";
+          try {
+            DateTime fivePMLocalTime = NotificationUtil.getFivePMLocalTime();
+            final String dailyNotificationTime = "${fivePMLocalTime.millisecondsSinceEpoch}";
 
-          await DB.instance.setSettingByTitle('daily_notification_time', dailyNotificationTime, projectId.toString());
-          await NotificationUtil.initializeNotifications();
-          await NotificationUtil.scheduleDailyNotification(projectId, dailyNotificationTime);
+            await DB.instance.setSettingByTitle('daily_notification_time', dailyNotificationTime, projectId.toString());
+            await NotificationUtil.initializeNotifications();
+            await NotificationUtil.scheduleDailyNotification(projectId, dailyNotificationTime);
+          } catch(e) {
+            print("Error while setting up notifications: $e");
+          }
 
-          Navigator.of(context).pushAndRemoveUntil(
-            _createRoute(MainNavigation(
-              projectId: projectId,
-              projectName: projectName,
-              showFlashingCircle: false,
-              newProject: true,
-              initialSettingsCache: _defaultSettingsCache, // Pass the default settings cache
-            )),
-                (Route<dynamic> route) => false,
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MainNavigation(
+                projectId: projectId,
+                projectName: projectName,
+                showFlashingCircle: false,
+              ),
+            ),
           );
         }
         ,

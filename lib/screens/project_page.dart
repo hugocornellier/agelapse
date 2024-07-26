@@ -376,15 +376,15 @@ class ProjectPageState extends State<ProjectPage> {
           painter: outputImageLoader.guideImage == null
               ? null
               : GridPainterSE(
-              outputImageLoader.offsetX,
-              outputImageLoader.offsetY,
-              outputImageLoader.ghostImageOffsetX,
-              outputImageLoader.ghostImageOffsetY,
-              outputImageLoader.guideImage,
-              outputImageLoader.aspectRatio!,
-              outputImageLoader.projectOrientation!,
-              hideToolTip: true
-          ),
+                  outputImageLoader.offsetX,
+                  outputImageLoader.offsetY,
+                  outputImageLoader.ghostImageOffsetX,
+                  outputImageLoader.ghostImageOffsetY,
+                  outputImageLoader.guideImage,
+                  outputImageLoader.aspectRatio!,
+                  outputImageLoader.projectOrientation!,
+                  hideToolTip: true
+                ),
         ),
         const SizedBox(height: 12.0),
         Row(

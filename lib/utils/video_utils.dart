@@ -22,24 +22,24 @@ class VideoUtils {
     Function(int currentFrame)? setCurrentFrame
   ) async {
     String projectOrientation = await SettingsUtil.loadProjectOrientation(projectId.toString());
-    final String inputPattern = path.join(
-        await DirUtils.getStabilizedDirPath(projectId),
-        projectOrientation,
-        '*.png'
-    );
-    final String videoOutputPath = await DirUtils.getVideoOutputPath(
-        projectId,
-        projectOrientation
-    );
+    final String stabilizedDirPath = await DirUtils.getStabilizedDirPath(projectId);
+    final String videoOutputPath = await DirUtils.getVideoOutputPath(projectId, projectOrientation);
     await DirUtils.createDirectoryIfNotExists(videoOutputPath);
+
+    // List and sort .png files
+    final Directory dir = Directory(path.join(stabilizedDirPath, projectOrientation));
+    final List<String> pngFiles = dir
+      .listSync()
+      .where((file) => file.path.endsWith('.png'))
+      .map((file) => file.path)
+      .toList()
+      ..sort();
+    final String inputFiles = pngFiles.join('|');
 
     // If watermark enabled & valid image file exists, configure watermarkConfig
     final bool watermarkEnabled = await SettingsUtil.loadWatermarkSetting(projectId.toString());
-    final String watermarkPos = (await DB.instance
-        .getSettingValueByTitle('watermark_position'))
-        .toLowerCase();
-    final String watermarkFilePath = await DirUtils
-        .getWatermarkFilePath(projectId);
+    final String watermarkPos = (await DB.instance.getSettingValueByTitle('watermark_position')).toLowerCase();
+    final String watermarkFilePath = await DirUtils.getWatermarkFilePath(projectId);
     String watermarkConfig = "";
 
     if (watermarkEnabled && Utils.isImage(watermarkFilePath) && await File(watermarkFilePath).exists()) {
@@ -52,23 +52,20 @@ class VideoUtils {
     final bool framerateIsDefault = await SettingsUtil.loadFramerateIsDefault(projectId.toString());
     if (framerateIsDefault) {
       framerate = await getOptimalFramerateFromStabPhotoCount(projectId);
-      DB.instance.setSettingByTitle(
-        'framerate',
-        framerate.toString(),
-        projectId.toString()
-      );
+      DB.instance.setSettingByTitle('framerate', framerate.toString(), projectId.toString());
     }
 
     // Final ffmpeg command
     String ffmpegCommand = "-y "
         "-framerate $framerate "
-        "-pattern_type glob "
-        "-i '$inputPattern' "
+        "-i 'concat:$inputFiles' "
         "-r 30 "
         "$watermarkConfig "
         "-c:v mpeg4 -q:v 1 "
         "-pix_fmt yuv420p "
         "$videoOutputPath";
+
+    print(ffmpegCommand);
 
     try {
       FFmpegKitConfig.enableLogCallback((Log log) {
@@ -81,24 +78,16 @@ class VideoUtils {
 
       if (ReturnCode.isSuccess(await session.getReturnCode())) {
         final String resolution = await SettingsUtil.loadVideoResolution(projectId.toString());
-        await DB.instance.addVideo(
-          projectId,
-          resolution,
-          watermarkEnabled.toString(),
-          watermarkPos,
-          totalPhotoCount,
-          framerate!
-        );
+        await DB.instance.addVideo(projectId, resolution, watermarkEnabled.toString(), watermarkPos, totalPhotoCount, framerate!);
         return true;
       } else {
-        //print('FFmpeg command failed with return code: ${await session.getReturnCode()}');
         return false;
       }
     } catch (e) {
-      //print('An error occurred: $e');
       return false;
     }
   }
+
 
   static Future<bool> createTimelapseFromProjectId(
     int projectId,

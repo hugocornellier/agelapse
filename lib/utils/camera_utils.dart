@@ -170,27 +170,6 @@ class CameraUtils {
         );
       }
 
-      await DB.instance.addPhoto(
-        timestamp,
-        projectId,
-        extension,
-        newPhotoLength,
-        path.basename(imgPath)
-      );
-
-      if (refreshSettings != null) {
-        refreshSettings();
-      }
-
-      await CameraUtils.saveImageToFileSystem(XFile(imgPath), timestamp, projectId);
-
-      // Create thumbnail and save
-      final String thumbnailPath = path.join(
-        await DirUtils.getThumbnailDirPath(projectId),
-        "$timestamp.jpg"
-      );
-      await DirUtils.createDirectoryIfNotExists(thumbnailPath);
-
       bytes = await CameraUtils.readBytesInIsolate(imgPath);
       if (bytes == null) {
         return false;
@@ -210,8 +189,30 @@ class CameraUtils {
       String orientation = importedImageHeight > importedImageWidth
           ? "portrait"
           : importedImageHeight < importedImageWidth
-              ? "landscape"
-              : "square";
+          ? "landscape"
+          : "square";
+
+      await DB.instance.addPhoto(
+        timestamp,
+        projectId,
+        extension,
+        newPhotoLength,
+        path.basename(imgPath),
+        orientation
+      );
+
+      if (refreshSettings != null) {
+        refreshSettings();
+      }
+
+      await CameraUtils.saveImageToFileSystem(XFile(imgPath), timestamp, projectId);
+
+      // Create thumbnail and save
+      final String thumbnailPath = path.join(
+        await DirUtils.getThumbnailDirPath(projectId),
+        "$timestamp.jpg"
+      );
+      await DirUtils.createDirectoryIfNotExists(thumbnailPath);
 
       bool result = await _createThumbnailForNewImage(extension, bytes, imgPath, thumbnailPath, rawImage);
       if (!result) return false;

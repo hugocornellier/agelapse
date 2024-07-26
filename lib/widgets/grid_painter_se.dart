@@ -13,15 +13,15 @@ class GridPainterSE extends CustomPainter {
   final bool hideToolTip;
 
   GridPainterSE(
-      this.offsetX,
-      this.offsetY,
-      this.ghostImageOffsetX,
-      this.ghostImageOffsetY,
-      this.guideImage,
-      this.aspectRatio,
-      this.projectOrientation,
-      {this.hideToolTip = false}
-      );
+    this.offsetX,
+    this.offsetY,
+    this.ghostImageOffsetX,
+    this.ghostImageOffsetY,
+    this.guideImage,
+    this.aspectRatio,
+    this.projectOrientation,
+    {this.hideToolTip = false}
+  );
 
   @override
   void paint(Canvas canvas, Size size) {
