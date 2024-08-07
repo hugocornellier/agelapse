@@ -1,4 +1,4 @@
-![AgeLapse Logo](https://i.imgur.com/lfC2Y4y.png)
+![AgeLapse Logo](https://i.imgur.com/CmsixvW.png)
 
 # Overview
 
