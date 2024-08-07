@@ -24,11 +24,11 @@ AgeLapse runs natively on desktop (Windows and MacOS) and on mobile (Android and
 
 ### MacOS
 
-.app direct download: [https://archive.org/download/agelapse-mac-0.1.0/agelapse-mac-0.1.0.zip](agelapse-mac-0.1.0.zip)
+.app direct download: [agelapse-mac-0.1.0.zip](https://archive.org/download/agelapse-mac-0.1.0/agelapse-mac-0.1.0.zip)
 
 ### Android
 
-.apk direct download: [https://archive.org/download/agelapse-apk/agelapse-apk.zip](agelapse.apk)
+.apk direct download: [agelapse.apk](https://archive.org/download/agelapse-apk/agelapse-apk.zip)
 
 ### iOS
 
