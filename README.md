@@ -2,50 +2,38 @@
 
 # Overview
 
-**AgeLapse** is a comprehensive tool for creating, stabilizing and exporting aging timelapses, i.e. "selfie a day" projects.  
+**AgeLapse** is a cross-platform, native application for creating, stabilizing and exporting aging timelapses, i.e. "photo a day" projects.  
 
-This is the Flutter build of AgeLapse.
+AgeLapse runs natively on desktop (Windows and MacOS) and on mobile (Android and iOS).
 
-## Installation
+## Platforms Supported
+
+| Platforms                      | Status         |
+|------------------------------|----------------|
+| Windows           | ✔️             |
+| MacOS        | ✔️             |
+| Android     | ✔️             |
+| iOS   | ✔️             |
+| Linux            | ⏳ Coming Soon |
+
+## Releases / Installation 
+
+### Windows
+
+.exe direct download: to do...
+
+### MacOS
+
+.app direct download: [https://archive.org/download/agelapse-mac-0.1.0/agelapse-mac-0.1.0.zip](agelapse-mac-0.1.0.zip)
+
+### Android
+
+.apk direct download: [https://archive.org/download/agelapse-apk/agelapse-apk.zip](agelapse.apk)
 
 ### iOS
 
 App Store download: [https://apps.apple.com/ca/app/agelapse/id6503668205](https://apps.apple.com/ca/app/agelapse/id6503668205)
 
-### Android
+# Demo
 
-.apk download: [https://drive.google.com/file/d/1-6d97xErgkEE4hRnRSw6crcI35XJG18_/view](https://drive.google.com/file/d/1-6d97xErgkEE4hRnRSw6crcI35XJG18_/view)
-
-AgeLapse is currently in beta test on the Play Store, and we are working to fulfill their requirements to have 
-20 beta testers. If you would like to help, get in touch at agelapse@gmail.com. 
-
-## Features
-
-| Feature                      | Status         |
-|------------------------------|----------------|
-| Auto-stabilization           | ✔️             |
-| Import/export photos         | ✔️             |
-| Camera guide tools (Ghost, grid)     | ✔️             |
-| Compile and export videos    | ✔️             |
-| Customizable output settings | ✔️             |
-| Automatic backups            | ⏳ Coming Soon |
-
-
-## Development Installation
-
-### Prerequisites
-
-- iOS 13.0+ or Android 5.0+
-- Flutter SDK (for development)
-
-1. **Clone the repository**:
-   ```sh
-   git clone https://github.com/hugocornellier/agelapse.git
-   cd agelapse
-   ```
-
-2. **Install Dependencies**:
-   ```flutter pub get```
-
-3. **Run app**:
-   ```flutter run```
+[NEED TO ADD VIDEO]
