@@ -20,7 +20,7 @@ AgeLapse runs natively on desktop (Windows and MacOS) and on mobile (Android and
 
 ### Windows
 
-.exe direct download: [agelapse-win-0.1.2.exe](https://archive.org/download/agelapse-windows-0.1.2/AgeLapse-0.1.2.exe) 
+.exe direct download: [agelapse-win-0.1.2.exe](https://archive.org/download/agelapse-win-0.1.2/agelapse-0.1.2.exe)
 
 ### MacOS
 
