@@ -6,7 +6,7 @@
 
 AgeLapse uses pre-trained TensorFlow models to perform landmark recognition, then uses the detected positions to stabilize the image sequence.
 
-This is the Mobile (Flutter) build of AgeLapse. Google MLKit is used for landmark detection, while all alignment is done using built-in libraries and the Canvas object.
+This is the mobile build (Flutter) of AgeLapse. Google MLKit is used for landmark detection, while all alignment is done using built-in libraries and the Canvas object.
 
 ## Installation
 
