@@ -2,7 +2,7 @@
 
 # Overview
 
-**AgeLapse** is a cross-platform, native application for creating, stabilizing and exporting aging timelapses, i.e. "photo a day" projects.  
+**AgeLapse** is a cross-platform, native application for automatically tabilizing and compiling aging timelapses, i.e. "photo a day" projects.  
 
 AgeLapse runs natively on desktop (Windows and MacOS) and on mobile (Android and iOS).
 
