@@ -24,8 +24,8 @@ Download AgeLapse here: [http://agelapse.com/download.html](http://agelapse.com/
 
 ## Mobile
 
-View a demo video + screenshots for AgeLapse Mobile [https://github.com/hugocornellier/agelapse/tree/main/agelapse-mobile](here).
+View a demo video + screenshots for AgeLapse Mobile [here](https://github.com/hugocornellier/agelapse/tree/main/agelapse-mobile).
 
 ## Desktop
 
-View a demo video + screenshots for AgeLapse Desktop [https://github.com/hugocornellier/agelapse/tree/main/agelapse-desktop](here).
+View a demo video + screenshots for AgeLapse Desktop [here](https://github.com/hugocornellier/agelapse/tree/main/agelapse-desktop).
