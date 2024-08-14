@@ -22,4 +22,4 @@ Download AgeLapse here: [https://agelapse.com](https://agelapse.com)
 
 # Demo Video 
 
-View the demo view for both Mobile and Desktop here: [https://www.youtube.com/watch?v=vMOWSAHdwhA](https://www.youtube.com/watch?v=vMOWSAHdwhA)
+View demo video for both Mobile and Desktop here: [https://www.youtube.com/watch?v=vMOWSAHdwhA](https://www.youtube.com/watch?v=vMOWSAHdwhA)
