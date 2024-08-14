@@ -20,12 +20,6 @@ AgeLapse runs natively on desktop (Windows and MacOS) and on mobile (Android and
 
 Download AgeLapse here: [https://agelapse.com](https://agelapse.com)
 
-# Demo Video & Screenshots
+# Demo Video 
 
-## Mobile
-
-View a demo video + screenshots for AgeLapse Mobile [here](https://github.com/hugocornellier/agelapse/tree/main/agelapse-mobile).
-
-## Desktop
-
-View a demo video + screenshots for AgeLapse Desktop [here](https://github.com/hugocornellier/agelapse/tree/main/agelapse-desktop).
+View the demo view for both Mobile and Desktop here: [https://www.youtube.com/watch?v=vMOWSAHdwhA](https://www.youtube.com/watch?v=vMOWSAHdwhA)
