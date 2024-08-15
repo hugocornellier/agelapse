@@ -1,6 +1,6 @@
 face_detection_tflite==0.6.0
 ffmpeg_python==0.2.0
-numpy==2.0.1
+numpy==1.26.4
 opencv_python==4.10.0.84
 Pillow==10.4.0
 pillow_heif==0.18.0

@@ -4,12 +4,13 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[], 
-    datas=[ 
-        ('C:\\Users\\hugo\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\fdlite\\data\\face_detection_back.tflite', 'fdlite/data/'),
-        ('C:\\Users\\hugo\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\fdlite\\data\\face_landmark.tflite', 'fdlite/data/'),
-        ('C:\\Users\\hugo\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\fdlite\\data\\iris_landmark.tflite', 'fdlite/data/'),
+    datas = [
+        ('C:\\Users\\hugo\\PycharmProjects\\agelapse-python-private\\venv\\Lib\\site-packages\\fdlite\\data\\face_detection_back.tflite', 'fdlite/data/'),
+        ('C:\\Users\\hugo\\PycharmProjects\\agelapse-python-private\\venv\\Lib\\site-packages\\fdlite\\data\\face_landmark.tflite', 'fdlite/data/'),
+        ('C:\\Users\\hugo\\PycharmProjects\\agelapse-python-private\\venv\\Lib\\site-packages\\fdlite\\data\\iris_landmark.tflite', 'fdlite/data/'),
         ('assets/ffmpeg_win/ffmpeg.exe', 'assets/ffmpeg_win/'),
         ('assets/images/agelapse.png', 'assets/images/'),
+        ('assets/256x256.ico', 'assets/'),
     ],
     hiddenimports=[],
     hookspath=[],
