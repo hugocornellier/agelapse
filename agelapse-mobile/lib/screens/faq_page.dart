@@ -8,7 +8,7 @@ class FAQPage extends StatelessWidget {
         title: const Text('F.A.Q.'),
       ),
       body: Container(
-        color: Colors.black54, // Set the desired darker color here
+        color: Colors.black54,
         child: ListView(
           padding: const EdgeInsets.all(16.0),
           children: const [

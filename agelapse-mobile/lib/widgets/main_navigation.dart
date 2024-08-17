@@ -5,7 +5,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:animated_bottom_navigation_bar/animated_bottom_navigation_bar.dart';
 import 'package:flutter/services.dart';
-import '../main.dart';
 import '../screens/create_page.dart';
 import '../screens/gallery_page/gallery_page.dart';
 import '../screens/project_page.dart';
@@ -196,7 +195,6 @@ class MainNavigationState extends State<MainNavigation> {
     for (File file in files) {
       await processFileCallback(file);
 
-      // Update the progress periodically instead of after every file.
       try {
         if (i % (fileCount ~/ 10) == 0 || i == fileCount - 1) {
           setState(() {
@@ -596,7 +594,7 @@ class MainNavigationState extends State<MainNavigation> {
         decoration: BoxDecoration(
           border: Border(
             top: BorderSide(
-              color: Colors.grey.shade800, // Light grey border color
+              color: Colors.grey.shade800,
               width: 0.7,
             ),
           ),

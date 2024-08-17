@@ -6,7 +6,7 @@ import '../../services/database_helper.dart';
 import '../../utils/dir_utils.dart';
 import '../utils/utils.dart';
 import '../widgets/grid_painter_se.dart';
-import '../utils/output_image_loader.dart'; // Import the new helper class
+import '../utils/output_image_loader.dart';
 
 class SetEyePositionPage extends StatefulWidget {
   final int projectId;
@@ -42,9 +42,8 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
   bool _isDraggingHorizontal = false;
   final GlobalKey _widgetKey = GlobalKey();
   double _widgetHeight = 0.0;
-
-  late OutputImageLoader outputImageLoader; // Declare the helper class
-  bool _isInfoWidgetVisible = true; // Add this line
+  late OutputImageLoader outputImageLoader;
+  bool _isInfoWidgetVisible = true;
 
   @override
   void initState() {
@@ -231,7 +230,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
           final double width = constraints.maxWidth;
           final double height = width * aspectRatioValue;
 
-          // Adjust the width if the height is too constrained
+          // Adjust width if height is too constrained
           double adjustedWidth = width;
           if (height > constraints.maxHeight) {
             adjustedWidth = constraints.maxHeight / aspectRatioValue;

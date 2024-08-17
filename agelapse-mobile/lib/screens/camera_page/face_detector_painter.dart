@@ -97,11 +97,6 @@ class FaceDetectorPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final Paint paint1 = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0
-      ..color = Colors.red;
-
     (int? x, int? y) getLandmarkPosition(Face face, FaceLandmarkType landmarkType) =>
         (face.landmarks[landmarkType]?.position.x, face.landmarks[landmarkType]?.position.y);
 
@@ -125,7 +120,6 @@ class FaceDetectorPainter extends CustomPainter {
 
     double rightEarToEyeDistance = calculateDistance(rightEarXPos, rightEyeXPos, rightEarYPos, rightEyeYPos);
     double leftEarToEyeDistance = calculateDistance(leftEarXPos, leftEyeXPos, leftEarYPos, leftEyeYPos);
-    double leftEyeToRightEyeDistance = calculateDistance(leftEyeXPos, rightEyeXPos, leftEyeYPos, rightEyeYPos);
 
     final int verticalDistance = (rightEyeYPos - leftEyeYPos).abs();
     final int horizontalDistance = (rightEyeXPos - leftEyeXPos).abs();

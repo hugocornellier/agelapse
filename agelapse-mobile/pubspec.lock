@@ -177,6 +177,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.10"
+  desktop_drop:
+    dependency: "direct main"
+    description:
+      name: desktop_drop
+      sha256: d55a010fe46c8e8fcff4ea4b451a9ff84a162217bdb3b2a0aa1479776205e15d
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.4.4"
   device_info_plus:
     dependency: transitive
     description:
@@ -286,6 +294,30 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.0.3"
+  flutter_dropzone:
+    dependency: "direct main"
+    description:
+      name: flutter_dropzone
+      sha256: "4619cb3e189b6d9fbfe03625bdf43e6f16e6e4ca154167f4c4fbfb5f4bf7ac57"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.0.1"
+  flutter_dropzone_platform_interface:
+    dependency: transitive
+    description:
+      name: flutter_dropzone_platform_interface
+      sha256: b4e2df75364bab2f4c3ca32b87193267d786b6e158c3f345c3a1daeb911d82b9
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.6"
+  flutter_dropzone_web:
+    dependency: transitive
+    description:
+      name: flutter_dropzone_web
+      sha256: "62211c1e8dd9b55f872206d6b27bb71e20bf0db1f1ab481a963fcbaa7240ff23"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.0.0"
   flutter_email_sender:
     dependency: "direct main"
     description:

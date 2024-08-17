@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../styles/styles.dart';
-
 class SettingListTile extends StatelessWidget {
   final String title;
   final String? infoContent;

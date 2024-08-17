@@ -47,7 +47,7 @@ class DirUtils {
   static Future<String> getStabilizedWIPDirPath() async =>
       join(await getTemporaryDirPath(), stabilizedWIPDirname);
 
-  static Future<String> getPngPathFromRawPhotoPath(String rawPhotoPath) async =>   // Store .png temporarily to prevent bloating
+  static Future<String> getPngPathFromRawPhotoPath(String rawPhotoPath) async =>
       join(await getRawPhotoPngDirPath(), '${path.basenameWithoutExtension(rawPhotoPath)}.png');
 
   static Future<String> getStabilizedWIPPathFromRawPhotoPath(String rawPhotoPath) async =>
@@ -197,7 +197,7 @@ class DirUtils {
         stabilizedDirPath,
         projectOrientation,
         DirUtils.thumbnailDirname,
-        "whatever.jpg"
+        "thumbnail.jpg"
     );
 
     print("Looking for $thumbnailDir");

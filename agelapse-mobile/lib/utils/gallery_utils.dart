@@ -280,10 +280,8 @@ class GalleryUtils {
       increasePhotosImported(entries.length);
 
       for (int i = 0; i < entries.length; i += 2) {
-        // Take the next two entries to process concurrently
+        // Process 2 entries concurrently
         final entriesToProcess = entries.sublist(i, (i + 2) > entries.length ? entries.length : (i + 2));
-
-        // Process the entries concurrently
         await Future.wait(entriesToProcess.map((entry) async {
           final int currentIndex = entries.indexOf(entry);
           setProgressInMain(((currentIndex / entries.length) * 100).toInt());
@@ -304,7 +302,7 @@ class GalleryUtils {
               increaseSuccessfulImportCount: increaseSuccessfulImportCount,
             );
           } catch (_) {
-            // Handle the error if needed
+            //
           } finally {
             if (await tempFile.exists()) {
               await tempFile.delete();
@@ -522,8 +520,7 @@ class GalleryUtils {
         }
       }
 
-
-      return 'error';  // In case the loop exits without receiving 'success' or 'error'
+      return 'error';
     } catch (e) {
       return 'error';
     }
@@ -536,7 +533,6 @@ class GalleryUtils {
 
       Map<String, dynamic>? photo = await DB.instance.getPhotoByTimestamp(timestamp, projectId);
       if (photo != null) {
-        print(photo);
         try {
           if (photo['noFacesFound'] == 1) {
             return "no_faces_found";

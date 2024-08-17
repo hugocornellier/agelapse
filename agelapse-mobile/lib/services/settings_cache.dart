@@ -12,8 +12,8 @@ class SettingsCache {
   bool hasViewedFirstVideo;
   bool hasOpenedNotifications;
   bool hasTakenMoreThanOnePhoto;
-  bool hasSeenGuideModeTut; // New value
-  bool hasTakenFirstPhoto;  // New value
+  bool hasSeenGuideModeTut;
+  bool hasTakenFirstPhoto;
   int streak;
   int photoCount;
   String firstPhotoDate;
@@ -34,8 +34,8 @@ class SettingsCache {
     required this.hasViewedFirstVideo,
     required this.hasOpenedNotifications,
     required this.hasTakenMoreThanOnePhoto,
-    required this.hasSeenGuideModeTut, // New value
-    required this.hasTakenFirstPhoto,  // New value
+    required this.hasSeenGuideModeTut,
+    required this.hasTakenFirstPhoto,
     required this.streak,
     required this.photoCount,
     required this.firstPhotoDate,
@@ -67,8 +67,8 @@ class SettingsCache {
       ProjectUtils.loadImage('assets/images/person-grey.png'),
       SettingsUtil.loadOffsetXCurrentOrientation(projectId.toString()),
       SettingsUtil.loadOffsetYCurrentOrientation(projectId.toString()),
-      SettingsUtil.hasSeenGuideModeTut(projectId.toString()),  // New value
-      SettingsUtil.hasTakenFirstPhoto(projectId.toString()),   // New value
+      SettingsUtil.hasSeenGuideModeTut(projectId.toString()),
+      SettingsUtil.hasTakenFirstPhoto(projectId.toString()),
     ]);
 
     final List<Map<String, dynamic>> allPhotos = settings[2] as List<Map<String, dynamic>>;
@@ -83,8 +83,8 @@ class SettingsCache {
       hasViewedFirstVideo: settings[3] as bool? ?? false,
       hasOpenedNotifications: settings[4] as bool? ?? false,
       hasTakenMoreThanOnePhoto: allPhotos.length > 1,
-      hasSeenGuideModeTut: settings[15] as bool? ?? false,  // New value
-      hasTakenFirstPhoto: settings[16] as bool? ?? false,   // New value
+      hasSeenGuideModeTut: settings[15] as bool? ?? false,
+      hasTakenFirstPhoto: settings[16] as bool? ?? false,
       streak: streak ?? 0,
       photoCount: allPhotos.length,
       firstPhotoDate: firstPhotoTimestamp != null ? Utils.formatUnixTimestamp(firstPhotoTimestamp) : '',

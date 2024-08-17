@@ -1,4 +1,3 @@
-import 'package:agelapse/widgets/main_navigation.dart';
 import 'package:flutter/material.dart';
 import '../styles/styles.dart';
 
@@ -98,10 +97,10 @@ class CreateFirstVideoPageState extends State<CreateFirstVideoPage> {
         onPressed: () => navigateToCameraPage(),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.darkerLightBlue,
-          minimumSize: const Size(double.infinity, 50), // Button height
-          padding: const EdgeInsets.symmetric(vertical: 18.0), // Increase vertical padding
+          minimumSize: const Size(double.infinity, 50),
+          padding: const EdgeInsets.symmetric(vertical: 18.0),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6.0), // Rectangular border
+            borderRadius: BorderRadius.circular(6.0),
           ),
         ),
         child: Text(

@@ -33,9 +33,7 @@ class DropdownWithCustomTextFieldState extends State<DropdownWithCustomTextField
     currentValue = widget.initialValue;
     isCustom = !defaultValues.contains(currentValue);
     if (isCustom) {
-      print("Here-test1");
       _controller = TextEditingController(text: currentValue.toString());
-      print("Here-test2");
     }
   }
 
@@ -56,8 +54,6 @@ class DropdownWithCustomTextFieldState extends State<DropdownWithCustomTextField
   }
 
   void _handleCustomInputChanged(String value) {
-    print("Handling input change");
-
     final intValue = int.tryParse(value);
     if (intValue != null && intValue >= 1 && intValue <= 120) {
       _updateSetting(intValue);
@@ -76,12 +72,10 @@ class DropdownWithCustomTextFieldState extends State<DropdownWithCustomTextField
   }
 
   void _enableCustomMode() {
-    print("Enabling custom mode...");
     setState(() {
       isCustom = true;
       _controller = TextEditingController(text: "");
       _focusNode.requestFocus();
-      print("Done");
     });
   }
 

@@ -5,8 +5,8 @@ class BoolSettingSwitch extends StatefulWidget {
   final String title;
   final bool initialValue;
   final ValueChanged<bool> onChanged;
-  final bool? showInfo; // Optional parameter to control info icon visibility
-  final String? infoContent; // Optional parameter for info content
+  final bool? showInfo;
+  final String? infoContent;
 
   const BoolSettingSwitch({
     super.key,
@@ -44,7 +44,7 @@ class BoolSettingSwitchState extends State<BoolSettingSwitch> {
       infoContent: widget.infoContent,
       title: widget.title,
       contentWidget: Transform.scale(
-        scale: 0.8, // Adjust the scale factor to your desired size
+        scale: 0.8,
         child: Switch(
           value: currentValue,
           onChanged: _handleChanged,

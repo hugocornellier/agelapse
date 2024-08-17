@@ -88,7 +88,7 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
     );
     _opacityAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(_animationController);
 
-    WidgetsBinding.instance.addObserver(this);  // Add this line
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
@@ -97,14 +97,13 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
     _chewieController?.dispose();
     _animationController.dispose();
 
-    WidgetsBinding.instance.removeObserver(this);  // Add this line
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
   @override
   void didChangeMetrics() {
     super.didChangeMetrics();
-    final Orientation orientation = MediaQuery.of(context).orientation;
   }
 
   waitForMain() async {
@@ -442,7 +441,7 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
 
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,  // This allows the modal to be taller
+      isScrollControlled: true,
       builder: (context) {
         return SettingsSheet(
           projectId: widget.projectId,
@@ -522,7 +521,7 @@ class FadeInOutIconState extends State<FadeInOutIcon> with SingleTickerProviderS
           opacity: _animation.value,
           child: const Icon(
             Icons.video_stable,
-            size: 100.0, // Adjust the size as needed
+            size: 100.0,
           ),
         );
       },

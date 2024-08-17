@@ -5,27 +5,44 @@ import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:provider/provider.dart';
+import 'dart:io' show Platform;
 import '../screens/projects_page.dart';
 import '../services/database_helper.dart';
 import '../services/theme_provider.dart';
 import '../widgets/main_navigation.dart';
 import '../theme/theme.dart';
+import '../screens/desktop_home_page.dart';
 
 void main() async {
-  WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
-  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
-  await _initializeApp();
-  FlutterNativeSplash.remove();
+  if (!Platform.isWindows && !Platform.isLinux && !Platform.isMacOS) {
+    WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+    FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
-  // Remove Flutter "debug" flag from top bar
-  debugPaintSizeEnabled = false;
+    await _initializeApp();
 
-  // Sets Android navigation bar to dark
-  SystemUiOverlayStyle style = const SystemUiOverlayStyle(
-    systemNavigationBarColor: Colors.black, // navigation bar color
-    systemNavigationBarIconBrightness: Brightness.light, // navigation bar icons' color
-  );
-  SystemChrome.setSystemUIOverlayStyle(style);
+    FlutterNativeSplash.remove();
+
+    debugPaintSizeEnabled = false;
+
+    SystemUiOverlayStyle style = const SystemUiOverlayStyle(
+      systemNavigationBarColor: Colors.black,
+      systemNavigationBarIconBrightness: Brightness.light,
+    );
+    SystemChrome.setSystemUIOverlayStyle(style);
+  } else {
+    WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+
+    await DB.instance.createTablesIfNotExist();
+
+    Map<String, dynamic>? project = await DB.instance.getProject(1);
+    if (project == null) {
+      final int projectId = await DB.instance.addProject(
+        "Untitled",
+        "face",
+        DateTime.now().millisecondsSinceEpoch
+      );
+    }
+  }
 
   runApp(AgeLapse(homePage: await _getHomePage()));
 }
@@ -43,7 +60,7 @@ Future<void> initializeNotifications() async {
   const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
   final DarwinInitializationSettings initializationSettingsDarwin = DarwinInitializationSettings(
     onDidReceiveLocalNotification: (int id, String? title, String? body, String? payload) async {
-      // handle notification tapped logic here
+      // In the future, need to handle notification tapped logic here
     },
   );
   final InitializationSettings initializationSettings = InitializationSettings(
@@ -55,13 +72,18 @@ Future<void> initializeNotifications() async {
     initializationSettings,
     onDidReceiveNotificationResponse: (NotificationResponse notificationResponse) async {
       if (notificationResponse.payload != null) {
-        // handle notification tapped logic here
+        // In the future, need to handle notification tapped logic here
       }
     },
   );
 }
 
 Future<Widget> _getHomePage() async {
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    print("GETTING DESKTOP HOMEPAGE");
+    return DesktopHomePage();
+  }
+
   final String defaultProject = await DB.instance.getSettingValueByTitle('default_project');
 
   if (defaultProject != "none") {
@@ -75,7 +97,8 @@ Future<Widget> _getHomePage() async {
     );
   }
 
-  // If default is not set or not found, show projects page.
+  // If default is not set or not found, show projects page so the user can
+  // either select or create a new project.
   return const ProjectsPage();
 }
 
@@ -93,8 +116,8 @@ class AgeLapse extends StatelessWidget {
           return _buildApp(context, homePage, themeSnapshot.data!);
         } else {
           return const MaterialApp(
-            home: Scaffold(body: Center(child: CircularProgressIndicator())),
-            debugShowCheckedModeBanner: false
+              home: Scaffold(body: Center(child: CircularProgressIndicator())),
+              debugShowCheckedModeBanner: false
           );
         }
       },
@@ -103,19 +126,19 @@ class AgeLapse extends StatelessWidget {
 
   Future<String> _fetchTheme() async {
     var data = await DB.instance.getSettingByTitle('theme');
-    return data?['value'] ?? 'system'; // Default to 'system' if nothing is found
+    return data?['value'] ?? 'system';
   }
 
   Widget _buildApp(BuildContext context, Widget homePage, String theme) {
-    MaterialTheme materialTheme = const MaterialTheme(TextTheme()); // Initialize your MaterialTheme
+    MaterialTheme materialTheme = const MaterialTheme(TextTheme()); 
     return ChangeNotifierProvider(
       create: (_) => ThemeProvider(theme, materialTheme),
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) => MaterialApp(
-          title: 'AgeLapse',
-          theme: themeProvider.themeData,
-          home: homePage,
-          debugShowCheckedModeBanner: false
+            title: 'AgeLapse',
+            theme: themeProvider.themeData,
+            home: homePage,
+            debugShowCheckedModeBanner: false
         ),
       ),
     );

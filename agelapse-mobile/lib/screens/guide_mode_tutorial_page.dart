@@ -132,7 +132,7 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
             ),
             const SizedBox(height: 32),
             ClipRRect(
-              borderRadius: BorderRadius.circular(16.0), // Adjust the radius as needed
+              borderRadius: BorderRadius.circular(16.0),
               child: Container(
                 color: const Color(0xff212121),
                 child: Padding(
@@ -157,7 +157,7 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
                       const SizedBox(height: 16),
                       SmoothPageIndicator(
                         controller: _pageController,
-                        count: 3, // Updated page count
+                        count: 3,
                         effect: const WormEffect(
                           dotHeight: 6,
                           dotWidth: 6,

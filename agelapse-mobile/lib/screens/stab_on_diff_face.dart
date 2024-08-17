@@ -113,11 +113,6 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
     }
   }
 
-  void _clearImageFromCache(String path) {
-    final FileImage imageProvider = FileImage(File(path));
-    imageProvider.evict();
-  }
-
   Future<bool?> _showConfirmationDialog() async {
     return showDialog<bool>(
       context: context,

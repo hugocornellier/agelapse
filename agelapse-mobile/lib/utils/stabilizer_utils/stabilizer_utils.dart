@@ -37,7 +37,8 @@ class StabUtils {
 
   static Future<List<Face>?> getFacesFromFilepath(
     String imagePath,
-    FaceDetector faceDetector, {
+    FaceDetector faceDetector,
+    {
       bool filterByFaceSize = true,
       int? imageWidth,
     }
@@ -56,7 +57,8 @@ class StabUtils {
       if (!filterByFaceSize || faces.isEmpty) return faces;
 
       return await _filterFacesBySize(faces, imageWidth, imagePath);
-    } catch(_) {
+    } catch(e) {
+      print("Error caught while fetching faces: $e");
       return [];
     }
   }
@@ -84,8 +86,6 @@ class StabUtils {
     }
   }
 
-
-  // Delete me
   static Future<(int, int)> getImageDimensions(String imagePath) async {
     final bytes = await CameraUtils.readBytesInIsolate(imagePath);
     final imglib.Image? image = await compute(imglib.decodeImage, bytes!);

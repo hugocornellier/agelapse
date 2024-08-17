@@ -16,8 +16,8 @@ class GridPainter extends CustomPainter {
     drawVerticalLine(canvas, cellWidth + offset, size.height, paint, 1);
     drawVerticalLine(canvas, (cellWidth * 2) - offset, size.height, paint, 1);
 
-    // Draw horizontal line lower
-    final dy = cellHeight + cellHeight * 0.3; // Adjust this value to position the line lower
+    // Draw horizontal line
+    final dy = cellHeight + cellHeight * 0.3;
     canvas.drawLine(Offset(0, dy), Offset(size.width, dy), paint);
   }
 

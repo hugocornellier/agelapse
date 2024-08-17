@@ -1,6 +1,5 @@
 import 'package:agelapse/widgets/main_navigation.dart';
 import 'package:flutter/material.dart';
-import '../services/database_helper.dart';
 import '../services/settings_cache.dart';
 import '../styles/styles.dart';
 import '../utils/project_utils.dart';
@@ -32,7 +31,7 @@ class SetUpNotificationsPage extends StatefulWidget {
 }
 
 class SetUpNotificationsPageState extends State<SetUpNotificationsPage> {
-  final Color appBarColor = const Color(0xff151517); // Match the appBarColor from TipsPage
+  final Color appBarColor = const Color(0xff151517);
 
   @override
   Widget build(BuildContext context) {
@@ -111,10 +110,10 @@ class SetUpNotificationsPageState extends State<SetUpNotificationsPage> {
         onPressed: () => index == 1 ? navigateToSettings() : close(),
         style: ElevatedButton.styleFrom(
           backgroundColor: text == "Later" ? Colors.grey.shade800 : AppColors.darkerLightBlue,
-          minimumSize: const Size(double.infinity, 50), // Button height
-          padding: const EdgeInsets.symmetric(vertical: 18.0), // Increase vertical padding
+          minimumSize: const Size(double.infinity, 50),
+          padding: const EdgeInsets.symmetric(vertical: 18.0),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6.0), // Rectangular border
+            borderRadius: BorderRadius.circular(6.0),
           ),
         ),
         child: Text(

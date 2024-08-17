@@ -42,13 +42,13 @@ class GalleryPage extends StatefulWidget {
   final List<String> imageFilesStr;
   final List<String> stabilizedImageFilesStr;
   final void Function(
-      List<String> imageFiles,
-      List<String> stabilizedImageFiles
-      ) setRawAndStabPhotoStates;
+    List<String> imageFiles,
+    List<String> stabilizedImageFiles
+  ) setRawAndStabPhotoStates;
   final Future<void> Function(
-      FilePickerResult? pickedFiles,
-      Future<void> Function(dynamic file) processFileCallback
-      ) processPickedFiles;
+    FilePickerResult? pickedFiles,
+    Future<void> Function(dynamic file) processFileCallback
+  ) processPickedFiles;
   final void Function() refreshSettings;
   final String minutesRemaining;
 
@@ -555,10 +555,10 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
       BuildContext context, String title, List<Widget> content) {
     return Container(
       padding: const EdgeInsets.all(16.0),
-      height: MediaQuery.of(context).size.height * 0.6, // Reduced height
+      height: MediaQuery.of(context).size.height * 0.6,
       width: MediaQuery.of(context).size.width,
       constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.6, // Reduced height constraint
+        maxHeight: MediaQuery.of(context).size.height * 0.6,
       ),
       decoration: const BoxDecoration(
         color: Color(0xff121212),
@@ -753,10 +753,10 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.darkerLightBlue,
-                        minimumSize: const Size(double.infinity, 50), // Button height
-                        padding: const EdgeInsets.symmetric(vertical: 18.0), // Increase vertical padding
+                        minimumSize: const Size(double.infinity, 50),
+                        padding: const EdgeInsets.symmetric(vertical: 18.0),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6.0), // Rectangular border
+                          borderRadius: BorderRadius.circular(6.0),
                         ),
                       ),
                       child: Text(

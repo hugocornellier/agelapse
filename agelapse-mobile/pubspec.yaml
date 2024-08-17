@@ -2,7 +2,7 @@ name: agelapse
 description: A powerful tool for creating stabilized aging timelapses.
 publish_to: 'none'
 
-version: 1.1.6+15
+version: 1.2.1+16
 
 environment:
   sdk: ">=3.1.0 <4.0.0"
@@ -31,11 +31,13 @@ dependencies:
   camera: ^0.11.0+1
   smooth_page_indicator: ^1.2.0
   chewie: ^1.8.1
+  flutter_dropzone: ^4.0.1
   vibration: ^1.9.0
   video_player: ^2.9.1
   path_provider: ^2.1.3
   saver_gallery: ^3.0.5
   file_picker: ^8.0.6
+  desktop_drop: ^0.4.4
   wechat_assets_picker: ^9.1.0
   exif: ^3.3.0
   intl: ^0.19.0
@@ -59,6 +61,7 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/models/
     - assets/ghost-custom.svg
     - assets/relax.svg
 

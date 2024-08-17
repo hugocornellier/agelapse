@@ -45,7 +45,6 @@ class ImageProcessor {
         //onImagesLoaded!();
       }
 
-      // Clean up temporary files if any were created
       if (extension == ".avif") {
         final tempFile = File(imagePath!);
         if (await tempFile.exists()) {
@@ -62,7 +61,6 @@ class ImageProcessor {
   }
 
   void dispose() {
-    // Clean up resources if needed
     imagePath = null;
     projectId = null;
     activeProcessingDateNotifier = null;

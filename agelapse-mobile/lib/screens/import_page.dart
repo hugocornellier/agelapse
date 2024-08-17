@@ -18,14 +18,14 @@ class ImportPage extends StatefulWidget {
 }
 
 class ImportPageState extends State<ImportPage> {
-  final Color backgroundColor = const Color(0xff151517); // Using the same color as FirstPhotoPage
+  final Color backgroundColor = const Color(0xff151517);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text(""),
-        backgroundColor: backgroundColor, // Updated color
+        backgroundColor: backgroundColor,
         actions: [
           IconButton(
             icon: const Icon(Icons.close, size: 30),
@@ -34,7 +34,7 @@ class ImportPageState extends State<ImportPage> {
         ],
       ),
       body: Container(
-        color: backgroundColor, // Updated color
+        color: backgroundColor,
         child: _buildImportPage(),
       ),
     );
@@ -122,16 +122,16 @@ class ImportPageState extends State<ImportPage> {
       child: ElevatedButton(
         onPressed: () => navigateToIndex(index),
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.darkerLightBlue, // Updated color
-          minimumSize: const Size(double.infinity, 50), // Button height
-          padding: const EdgeInsets.symmetric(vertical: 16.0), // Increase vertical padding
+          backgroundColor: AppColors.darkerLightBlue,
+          minimumSize: const Size(double.infinity, 50),
+          padding: const EdgeInsets.symmetric(vertical: 16.0),
         ),
         child: Text(
-          text.toUpperCase(), // To match style with FirstPhotoPage
+          text.toUpperCase(),
           style: const TextStyle(
               fontSize: 16,
               color: Colors.white,
-              fontWeight: FontWeight.bold // Updated to match FirstPhotoPage
+              fontWeight: FontWeight.bold
           ),
         ),
       ),

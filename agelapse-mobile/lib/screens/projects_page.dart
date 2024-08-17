@@ -1,6 +1,5 @@
 import 'package:agelapse/welcome_page_part_two.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../services/database_helper.dart';
 import '../styles/styles.dart';
 import '../widgets/main_navigation.dart';
@@ -71,10 +70,10 @@ class ProjectsPageState extends State<ProjectsPage> {
         onPressed: () => openWelcomePagePartTwo(),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.darkerLightBlue,
-          minimumSize: const Size(double.infinity, 50), // Button height
-          padding: const EdgeInsets.symmetric(vertical: 18.0), // Increase vertical padding
+          minimumSize: const Size(double.infinity, 50),
+          padding: const EdgeInsets.symmetric(vertical: 18.0),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6.0), // Rectangular border
+            borderRadius: BorderRadius.circular(6.0),
           ),
         ),
         child: Text(

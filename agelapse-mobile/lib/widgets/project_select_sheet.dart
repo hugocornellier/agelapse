@@ -3,7 +3,6 @@ import 'package:agelapse/screens/create_project_page.dart';
 import 'package:agelapse/screens/project_page.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
-import '../main.dart';
 import '../services/database_helper.dart';
 import '../styles/styles.dart';
 import '../utils/dir_utils.dart';
@@ -79,7 +78,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
       try {
         final pngFiles = directory.listSync().where((item) => item.path.endsWith('.png') && item is File).toList();
         if (pngFiles.isNotEmpty) {
-          return pngFiles.first.path;  // Return the path of the first .png file if available
+          return pngFiles.first.path;
         }
       } catch (e) {
         return null;
@@ -313,8 +312,8 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 0.0),
                 child: Container(
-                  width: double.infinity, // Make sure the container fills the available width
-                  padding: const EdgeInsets.all(8.0), // Optional padding inside the container
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(8.0),
                   child: Row(
                     children: [
                       CircleAvatar(
@@ -338,14 +337,14 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                           Row(
                             children: [
                               Container(
-                                width: 5.0, // Circle width
-                                height: 5.0, // Circle height
+                                width: 5.0,
+                                height: 5.0,
                                 decoration: BoxDecoration(
                                   color: takenToday ? Colors.greenAccent : Colors.orange,
                                   shape: BoxShape.circle,
                                 ),
                               ),
-                              const SizedBox(width: 8.0), // Space between the circle and text
+                              const SizedBox(width: 8.0),
                               Text(
                                 takenToday ? 'Photo taken today' : 'Photo not taken',
                                 style: TextStyle(color: Colors.grey[600]),

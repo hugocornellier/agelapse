@@ -7,12 +7,12 @@ class FancyButton {
       required IconData icon,
       required Color color,
       required VoidCallback onPressed,
-      Color? backgroundColor, // Add the optional parameter
+      Color? backgroundColor,
     }
   ) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
-        backgroundColor: backgroundColor ?? const Color(0xff212121), // Use the provided background color or default
+        backgroundColor: backgroundColor ?? const Color(0xff212121),
         padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 12.0),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(32.0),

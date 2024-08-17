@@ -1,22 +1,23 @@
-![AgeLapse Logo](https://i.imgur.com/CmsixvW.png)
+# AgeLapse v1.2.1
 
-# Overview
+![AgeLapse Logo](https://i.imgur.com/lfC2Y4y.png)
 
-**AgeLapse** is a cross-platform, native application for automatically stabilizing & compiling aging timelapses, i.e. "photo a day" projects.  
+**AgeLapse** is a comprehensive tool for creating, stabilizing and exporting aging timelapses, i.e. "selfie a day" projects.  
 
-AgeLapse uses pre-trained TensorFlow models to perform landmark recognition, then uses the detected positions to stabilize the image sequence.
-
-This is the mobile build (Flutter) of AgeLapse. Google MLKit is used for landmark detection, while all alignment is done using built-in libraries and the Canvas object.
+This is the Flutter build of AgeLapse.
 
 ## Installation
 
-### iOS
+### iOS (TestFlight)
 
 App Store download: [https://apps.apple.com/ca/app/agelapse/id6503668205](https://apps.apple.com/ca/app/agelapse/id6503668205)
 
 ### Android
 
-.apk download: [https://archive.org/download/agelapse-apk/agelapse-apk.zip](https://archive.org/download/agelapse-apk/agelapse-apk.zip)
+.apk download: [https://drive.google.com/file/d/1-6d97xErgkEE4hRnRSw6crcI35XJG18_/view](https://drive.google.com/file/d/1-6d97xErgkEE4hRnRSw6crcI35XJG18_/view)
+
+AgeLapse is currently in beta test on the Play Store, and we are working to fulfill their requirements to have 
+20 beta testers. If you would like to help, get in touch at agelapse@gmail.com. 
 
 ## Features
 

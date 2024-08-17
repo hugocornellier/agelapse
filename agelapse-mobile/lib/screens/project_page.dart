@@ -1,10 +1,8 @@
 import 'dart:async';
-import 'dart:ui' as ui;
 import 'package:agelapse/screens/tips_page.dart';
 import 'package:flutter/material.dart';
 import '../services/settings_cache.dart';
 import '../styles/styles.dart';
-import '../utils/dir_utils.dart';
 import '../utils/project_utils.dart';
 import '../utils/settings_utils.dart';
 import '../utils/utils.dart';
@@ -13,7 +11,7 @@ import '../widgets/grid_painter_se.dart';
 import '../widgets/settings_sheet.dart';
 import '../utils/output_image_loader.dart';
 import 'create_first_video_page.dart';
-import 'guide_mode_tutorial_page.dart'; // Import the new helper class
+import 'guide_mode_tutorial_page.dart';
 
 class ProjectPage extends StatefulWidget {
   final int projectId;
@@ -50,7 +48,7 @@ class ProjectPage extends StatefulWidget {
 class ProjectPageState extends State<ProjectPage> {
   bool _loading = true;
   late int framerate;
-  late OutputImageLoader outputImageLoader; // Declare the helper class
+  late OutputImageLoader outputImageLoader;
 
   @override
   void initState() {
@@ -279,12 +277,12 @@ class ProjectPageState extends State<ProjectPage> {
 
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,  // This allows the modal to be taller
+      isScrollControlled: true,
       builder: (context) {
         return SettingsSheet(
           projectId: widget.projectId,
           isDefaultProject: isDefaultProject,
-          onlyShowVideoSettings: true,  // This indicates only video settings are shown
+          onlyShowVideoSettings: true,
           cancelStabCallback: widget.cancelStabCallback,
           stabCallback: widget.stabCallback,
           refreshSettings: widget.refreshSettings,

@@ -1,8 +1,5 @@
-import 'package:agelapse/screens/camera_page/camera_page.dart';
-import 'package:agelapse/widgets/main_navigation.dart';
 import 'package:flutter/material.dart';
 import '../styles/styles.dart';
-import '../utils/utils.dart';
 
 class TookFirstPhotoPage extends StatefulWidget {
   final int projectId;
@@ -27,7 +24,7 @@ class TookFirstPhotoPageState extends State<TookFirstPhotoPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false, // Prevent automatic back arrow
+        automaticallyImplyLeading: false,
         title: const Text(""),
         backgroundColor: appBarColor,
         actions: [
@@ -108,10 +105,10 @@ class TookFirstPhotoPageState extends State<TookFirstPhotoPage> {
         onPressed: () => navigateToIndex(takingGuidePhoto: takingGuidePhoto),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.darkerLightBlue,
-          minimumSize: const Size(double.infinity, 50), // Button height
-          padding: const EdgeInsets.symmetric(vertical: 18.0), // Increase vertical padding
+          minimumSize: const Size(double.infinity, 50),
+          padding: const EdgeInsets.symmetric(vertical: 18.0),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6.0), // Rectangular border
+            borderRadius: BorderRadius.circular(6.0),
           ),
         ),
         child: Text(

@@ -13,7 +13,7 @@ class NotificationUtil {
     const initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
     final initializationSettingsDarwin = DarwinInitializationSettings(
       onDidReceiveLocalNotification: (id, title, body, payload) async {
-        // Handle notification tapped logic here
+        //
       },
     );
 
@@ -25,7 +25,7 @@ class NotificationUtil {
     await _flutterLocalNotificationsPlugin.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: (notificationResponse) async {
-        // Handle notification tapped logic here
+        //
       },
     );
 

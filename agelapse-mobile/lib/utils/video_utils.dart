@@ -26,7 +26,7 @@ class VideoUtils {
     final String videoOutputPath = await DirUtils.getVideoOutputPath(projectId, projectOrientation);
     await DirUtils.createDirectoryIfNotExists(videoOutputPath);
 
-    // List and sort .png files
+    // List and sort valid stabilized image files
     final Directory dir = Directory(path.join(stabilizedDirPath, projectOrientation));
     final List<String> pngFiles = dir
       .listSync()
@@ -65,8 +65,6 @@ class VideoUtils {
         "-pix_fmt yuv420p "
         "$videoOutputPath";
 
-    print(ffmpegCommand);
-
     try {
       FFmpegKitConfig.enableLogCallback((Log log) {
         final String output = log.getMessage();
@@ -77,10 +75,12 @@ class VideoUtils {
       FFmpegSession session = await FFmpegKit.execute(ffmpegCommand);
 
       if (ReturnCode.isSuccess(await session.getReturnCode())) {
+        print("Success");
         final String resolution = await SettingsUtil.loadVideoResolution(projectId.toString());
         await DB.instance.addVideo(projectId, resolution, watermarkEnabled.toString(), watermarkPos, totalPhotoCount, framerate!);
         return true;
       } else {
+        print("Failure");
         return false;
       }
     } catch (e) {

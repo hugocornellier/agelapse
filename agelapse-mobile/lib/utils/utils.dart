@@ -115,13 +115,13 @@ class Utils {
             TextButton(
               child: const Text('Cancel'),
               onPressed: () {
-                Navigator.of(context).pop(false); // User chose to cancel
+                Navigator.of(context).pop(false);
               },
             ),
             TextButton(
               child: const Text('Proceed'),
               onPressed: () {
-                Navigator.of(context).pop(true); // User chose to proceed
+                Navigator.of(context).pop(true);
               },
             ),
           ],

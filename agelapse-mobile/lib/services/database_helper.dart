@@ -34,7 +34,6 @@ class DB {
     return await openDatabase(dbPath, version: _version);
   }
 
-  // Ensure all tables exist in the database
   Future<void> createTablesIfNotExist() async {
     final db = await database;
     List<String> existingTables = (await db.query('sqlite_master',
@@ -159,10 +158,10 @@ class DB {
     final db = await database;
     final results = await db.query(
         projectTable,
-        columns: ['type'], // We only need the 'type' column
+        columns: ['type'],
         where: 'id = ?',
         whereArgs: [projectId],
-        limit: 1 // We expect at most one result since 'id' should be unique
+        limit: 1
     );
 
     if (results.isNotEmpty) {
@@ -216,6 +215,7 @@ class DB {
      │                      │
      └──────────────────────┘ */
 
+  // Default setting values
   static const String globalSettingFlag = 'global';
   static const defaultValues = {
     'theme'                   : 'dark',
@@ -422,20 +422,14 @@ class DB {
 
   Future<String?> checkAllPhotoOrientations() async {
     final db = await database;
-
-    // Fetch all entries in the photo table
     final List<Map<String, dynamic>> photos = await db.query(photoTable, columns: ['originalOrientation']);
 
-    // Check if there are no photos
-    if (photos.isEmpty) {
-      return null; // No entries to check
-    }
+    if (photos.isEmpty) return null;
 
     // Initialize flags
     bool allPortrait = true;
     bool allLandscape = true;
 
-    // Iterate over all photos and check their orientation
     for (var photo in photos) {
       final String? orientation = photo['originalOrientation'] as String?;
 
@@ -451,7 +445,6 @@ class DB {
       }
     }
 
-    // Determine the result based on the flags
     if (allPortrait) {
       return 'portrait';
     } else if (allLandscape) {
@@ -556,7 +549,7 @@ class DB {
     if (results.isNotEmpty) {
       return results.first[columnName];
     } else {
-      return null; // Return null if no result is found
+      return null;
     }
   }
 
@@ -651,9 +644,6 @@ class DB {
     return rawImagePaths;
   }
 
-  /// Retrieves all stabilized photos associated with a specific project ID.
-  /// @param projectId The unique identifier for the project.
-  /// @returns A list of maps where each map represents a stabilized photo.
   Future<List<Map<String, dynamic>>> getStabilizedPhotosByProjectID(int projectId, String projectOrientation) async {
     final db = await database;
     final String stabilizedColumn = getStabilizedColumn(projectOrientation);

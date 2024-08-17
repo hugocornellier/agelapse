@@ -65,12 +65,13 @@ class StabilizedThumbnailState extends State<StabilizedThumbnail> {
   }
 
   Future<String> _loadThumbnail() async {
+    // Return the cached result if available
+    // Otherwise, compute the future and cache the result
+
     if (_cachedResult != null) {
-      // Return the cached result if available
       return _cachedResult!;
     }
 
-    // Otherwise, compute the future and cache the result
     final result = await GalleryUtils.waitForThumbnail(widget.thumbnailPath, widget.projectId);
     _cachedResult = result;
     return result;
@@ -111,12 +112,9 @@ class StabilizedThumbnailState extends State<StabilizedThumbnail> {
               );
             } catch (e) {
               print("Error loading image: $e");
-              // Do not display anything in case of an error
               return Container();
             }
           } else {
-            // File doesn't exist, log the error and do not display anything
-            print("Thumbnail path not found: ${widget.thumbnailPath}");
             return Container();
           }
         }

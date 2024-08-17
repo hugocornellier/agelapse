@@ -9,12 +9,12 @@ import '../utils/notification_util.dart';
 
 class CreateProjectSheet extends StatefulWidget {
   final bool isDefaultProject;
-  final bool showCloseButton; // Added optional variable
+  final bool showCloseButton;
 
   const CreateProjectSheet({
     super.key,
     required this.isDefaultProject,
-    this.showCloseButton = true, // Default value is true
+    this.showCloseButton = true,
   });
 
   @override
@@ -42,7 +42,7 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
       try {
         final pngFiles = directory.listSync().where((item) => item.path.endsWith('.png') && item is File).toList();
         if (pngFiles.isNotEmpty) {
-          return pngFiles.first.path;  // Return the path of the first .png file if available
+          return pngFiles.first.path;
         }
       } catch (e) {
         return null;
@@ -107,7 +107,7 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
                           Text('Create New Project', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
                         ],
                       ),
-                      if (widget.showCloseButton) // Conditional display of the close button
+                      if (widget.showCloseButton)
                         IconButton(
                           icon: const Icon(Icons.close, color: Colors.white),
                           onPressed: () {
@@ -272,10 +272,10 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
         ,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.darkerLightBlue,
-          minimumSize: const Size(double.infinity, 50), // Button height
-          padding: const EdgeInsets.symmetric(vertical: 18.0), // Increase vertical padding
+          minimumSize: const Size(double.infinity, 50),
+          padding: const EdgeInsets.symmetric(vertical: 18.0),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6.0), // Rectangular border
+            borderRadius: BorderRadius.circular(6.0),
           ),
         ),
         child: const Text(

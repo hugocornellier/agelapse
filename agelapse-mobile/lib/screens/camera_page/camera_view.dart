@@ -181,7 +181,6 @@ class _CameraViewState extends State<CameraView> {
   }
 
   Future<void> _takePicture() async {
-    // Initialize the Completer
     _pictureTakingCompleter = Completer<void>();
 
     setState(() => _showFlash = true);
@@ -227,8 +226,6 @@ class _CameraViewState extends State<CameraView> {
   }
 
   void _saveGridOffsets() async {
-    print("Saving grid values...");
-
     final String projectOrientation = await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
 
     final String guideOffSetXColName = projectOrientation == 'landscape' ? "guideOffsetXLandscape" : "guideOffsetXPortrait";
@@ -354,8 +351,6 @@ class _CameraViewState extends State<CameraView> {
                   ),
                 ),
               )
-
-
             ],
             if (modifyGridMode)
               saveGridButton(),
@@ -371,7 +366,7 @@ class _CameraViewState extends State<CameraView> {
     bottom: 21,
     left: 16,
     child: _buildButton(
-          () => toggleFlash(),
+      () => toggleFlash(),
       Icon(flashEnabled ? Icons.flash_auto : Icons.flash_off, size: 24, color: Colors.white),
     ),
   );
@@ -503,10 +498,8 @@ class _CameraViewState extends State<CameraView> {
               if (_isDraggingVertical) {
                 setState(() {
                   if (_draggingRight) {
-                    // Dragging the right vertical line
                     offsetX += details.delta.dx / MediaQuery.of(context).size.width;
                   } else {
-                    // Dragging the left vertical line
                     offsetX -= details.delta.dx / MediaQuery.of(context).size.width;
                   }
                   offsetX = offsetX.clamp(0.0, 1.0);
@@ -664,49 +657,6 @@ class _CameraViewState extends State<CameraView> {
   Future<void> _processCameraImage(CameraImage image) async {
 
   }
-
-  final _orientations = {
-    DeviceOrientation.portraitUp: 0,
-    DeviceOrientation.landscapeLeft: 90,
-    DeviceOrientation.portraitDown: 180,
-    DeviceOrientation.landscapeRight: 270,
-  };
-
-  InputImage? _inputImageFromCameraImage(CameraImage image) {
-    if (_controller == null) return null;
-
-    final camera = _cameras[_cameraIndex];
-    final sensorOrientation = camera.sensorOrientation;
-    InputImageRotation? rotation;
-    if (Platform.isIOS) {
-      rotation = InputImageRotationValue.fromRawValue(sensorOrientation);
-    } else if (Platform.isAndroid) {
-      var rotationCompensation = _orientations[_controller!.value.deviceOrientation];
-      if (rotationCompensation == null) return null;
-      if (camera.lensDirection == CameraLensDirection.front) {
-        rotationCompensation = (sensorOrientation + rotationCompensation) % 360;
-      } else {
-        rotationCompensation = (sensorOrientation - rotationCompensation + 360) % 360;
-      }
-      rotation = InputImageRotationValue.fromRawValue(rotationCompensation);
-    }
-    if (rotation == null) return null;
-
-    final format = InputImageFormatValue.fromRawValue(image.format.raw);
-    if (format == null || (Platform.isAndroid && format != InputImageFormat.nv21) || (Platform.isIOS && format != InputImageFormat.bgra8888)) return null;
-    if (image.planes.length != 1) return null;
-    final plane = image.planes.first;
-
-    return InputImage.fromBytes(
-      bytes: plane.bytes,
-      metadata: InputImageMetadata(
-        size: Size(image.width.toDouble(), image.height.toDouble()),
-        rotation: rotation,
-        format: format,
-        bytesPerRow: plane.bytesPerRow,
-      ),
-    );
-  }
 }
 
 class _GridPainter extends CustomPainter {
@@ -746,10 +696,10 @@ class CameraGridOverlay extends StatefulWidget {
   const CameraGridOverlay(this.projectId, this.gridMode, this.offsetX, this.offsetY, {super.key});
 
   @override
-  _CameraGridOverlayState createState() => _CameraGridOverlayState();
+  CameraGridOverlayState createState() => CameraGridOverlayState();
 }
 
-class _CameraGridOverlayState extends State<CameraGridOverlay> {
+class CameraGridOverlayState extends State<CameraGridOverlay> {
   double? ghostImageOffsetX;
   double? ghostImageOffsetY;
   String? stabPhotoPath;

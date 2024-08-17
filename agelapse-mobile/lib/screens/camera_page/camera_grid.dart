@@ -15,10 +15,10 @@ class CameraGridOverlay extends StatefulWidget {
   const CameraGridOverlay(this.projectId, this.gridMode, this.offsetX, this.offsetY, {super.key});
 
   @override
-  _CameraGridOverlayState createState() => _CameraGridOverlayState();
+  CameraGridOverlayState createState() => CameraGridOverlayState();
 }
 
-class _CameraGridOverlayState extends State<CameraGridOverlay> {
+class CameraGridOverlayState extends State<CameraGridOverlay> {
   double? ghostImageOffsetX;
   double? ghostImageOffsetY;
   String? stabPhotoPath;

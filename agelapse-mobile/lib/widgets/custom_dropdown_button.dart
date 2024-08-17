@@ -21,7 +21,7 @@ class CustomDropdownButton<T> extends StatelessWidget {
           value: item.value,
           child: Text(
             item.child is Text ? (item.child as Text).data ?? '' : '',
-            style: const TextStyle(fontSize: 14.0), // Set the desired font size here
+            style: const TextStyle(fontSize: 14.0),
           ),
         );
       }).toList(),

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../styles/styles.dart';
-import '../utils/utils.dart';
-import '../widgets/main_navigation.dart';
 
 class TipsPage extends StatefulWidget {
   final int projectId;
@@ -21,13 +19,13 @@ class TipsPage extends StatefulWidget {
 }
 
 class TipsPageState extends State<TipsPage> {
-  final Color appBarColor = const Color(0xff151517); // Define your AppBar color here
+  final Color appBarColor = const Color(0xff151517);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false, // Prevent automatic back arrow
+        automaticallyImplyLeading: false,
         backgroundColor: appBarColor,
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -104,18 +102,16 @@ class TipsPageState extends State<TipsPage> {
   }
 
   Widget _buildActionButton(String text, int index) {
-    bool? takingGuidePhoto = text == "Take Guide Photo";
-
     return FractionallySizedBox(
       widthFactor: 1.0,
       child: ElevatedButton(
         onPressed: () => openCamera(),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.darkerLightBlue,
-          minimumSize: const Size(double.infinity, 50), // Button height
-          padding: const EdgeInsets.symmetric(vertical: 18.0), // Increase vertical padding
+          minimumSize: const Size(double.infinity, 50),
+          padding: const EdgeInsets.symmetric(vertical: 18.0),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6.0), // Rectangular border
+            borderRadius: BorderRadius.circular(6.0),
           ),
         ),
         child: Text(
@@ -159,11 +155,11 @@ class CustomWidget extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(23.0),
       decoration: BoxDecoration(
-        color: const Color(0xff212121), // Darker grey background color
+        color: const Color(0xff212121),
         borderRadius: BorderRadius.circular(16.0),
         border: Border.all(
-          color: Colors.grey.shade800, // Light grey border color
-          width: 0.7, // Border width
+          color: Colors.grey.shade800,
+          width: 0.7,
         ),
       ),
       child: Column(
@@ -179,14 +175,14 @@ class CustomWidget extends StatelessWidget {
                 )
               else if (svgIcon != null)
                 svgIcon!,
-              const SizedBox(width: 8.0), // Spacing between icon and title
+              const SizedBox(width: 8.0),
               Expanded(
                 child: Text(
                   title,
                   style: const TextStyle(
                     fontSize: 18.0,
                     fontWeight: FontWeight.bold,
-                    height: 1.0, // Adjust line height for title
+                    height: 1.0,
                     color: Colors.white,
                   ),
                   softWrap: true,
@@ -195,12 +191,12 @@ class CustomWidget extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14.0), // Spacing between title and description
+          const SizedBox(height: 14.0),
           Text(
             description,
             style: const TextStyle(
               fontSize: 13.7,
-              height: 1.6, // Adjust line height for description
+              height: 1.6,
               color: Colors.white,
             ),
           ),

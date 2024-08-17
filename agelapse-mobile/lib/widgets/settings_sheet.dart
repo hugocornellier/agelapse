@@ -90,12 +90,12 @@ class SettingsSheetState extends State<SettingsSheet> {
         SettingsUtil.loadSaveToCameraRoll(),
         SettingsUtil.loadNotificationSetting(),
         SettingsUtil.loadDailyNotificationTime(widget.projectId.toString()),
-        SettingsUtil.loadGridModeIndex(widget.projectId.toString()), // Add this line
+        SettingsUtil.loadGridModeIndex(widget.projectId.toString()),
       ]);
 
       notificationsEnabled = results[2] as bool;
       dailyNotificationTime = results[3] as String;
-      _gridModeIndex = results[4] as int; // Add this line
+      _gridModeIndex = results[4] as int;
 
       tz.initializeTimeZones();
 
@@ -123,7 +123,7 @@ class SettingsSheetState extends State<SettingsSheet> {
     const initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
     final initializationSettingsDarwin = DarwinInitializationSettings(
       onDidReceiveLocalNotification: (id, title, body, payload) async {
-        // Handle notification tapped logic here
+        //
       },
     );
 
@@ -135,7 +135,7 @@ class SettingsSheetState extends State<SettingsSheet> {
     await _flutterLocalNotificationsPlugin.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: (notificationResponse) async {
-        // Handle notification tapped logic here
+        //
       },
     );
 
@@ -263,10 +263,10 @@ class SettingsSheetState extends State<SettingsSheet> {
       child: Container(
         padding: const EdgeInsets.all(16.0),
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.85, // Adjust the max height
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
         ),
         decoration: const BoxDecoration(
-          color: Color(0xff121212), // Background color to match the dark theme
+          color: Color(0xff121212),
           borderRadius: BorderRadius.only(
             topLeft: Radius.circular(16.0),
             topRight: Radius.circular(16.0),
@@ -275,7 +275,7 @@ class SettingsSheetState extends State<SettingsSheet> {
         child: Stack(
           children: [
             Padding(
-              padding: const EdgeInsets.only(top: 70.0), // Adjust padding to place content below header
+              padding: const EdgeInsets.only(top: 70.0),
               child: SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -321,7 +321,7 @@ class SettingsSheetState extends State<SettingsSheet> {
               left: 0,
               right: 0,
               child: Container(
-                color: const Color(0xff121212), // Match background color
+                color: const Color(0xff121212),
                 child: Column(
                   children: [
                     Row(

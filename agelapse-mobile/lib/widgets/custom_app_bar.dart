@@ -4,7 +4,6 @@ import 'package:agelapse/widgets/progress_widget.dart';
 import 'package:flutter/material.dart';
 import '../services/database_helper.dart';
 import '../services/face_stabilizer.dart';
-import '../widgets/in_progress_widget.dart';
 import '../widgets/project_select_sheet.dart';
 import '../widgets/settings_sheet.dart';
 import 'package:path/path.dart' as path;
@@ -179,7 +178,7 @@ class _CustomAppBarState extends State<CustomAppBar> {
                       widget.cancelStabCallback,
                       widget.refreshSettings,
                       widget.clearRawAndStabPhotos,
-                      widget.settingsCache, // Pass the settingsCache to the SettingsSheet
+                      widget.settingsCache,
                     ),
                   ),
                 ],

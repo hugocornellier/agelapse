@@ -1,7 +1,6 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
-import 'face_detector_painter.dart';
 
 import 'camera_view.dart';
 
@@ -36,15 +35,12 @@ class _CameraPageState extends State<CameraPage> {
       enableLandmarks: true,
     ),
   );
-  bool _canProcess = true;
-  bool _isBusy = false;
   CustomPaint? _customPaint;
   String? _text;
   var _cameraLensDirection = CameraLensDirection.front;
 
   @override
   void dispose() {
-    _canProcess = false;
     _faceDetector.close();
     super.dispose();
   }

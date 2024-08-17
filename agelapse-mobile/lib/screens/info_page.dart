@@ -46,7 +46,6 @@ class InfoPageState extends State<InfoPage> with SingleTickerProviderStateMixin 
     try {
       await FlutterEmailSender.send(emailToSend);
     } catch (error) {
-      // Handle the error, show a message to the user, etc.
       print('Error sending email: $error');
     }
   }

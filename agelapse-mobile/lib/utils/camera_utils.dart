@@ -252,15 +252,6 @@ class CameraUtils {
     return true;
   }
 
-  static bool _copyImageToThumbnail(String extension, String imgPath, String thumbnailPath) {
-    if ((extension == ".jpg" || extension == ".jpeg") && File(imgPath).existsSync()) {
-      XFile(imgPath).saveTo(thumbnailPath);
-      return true;
-    } else {
-      return false;
-    }
-  }
-
   static Uint8List? encodeJpg(imglib.Image thumbnail) {
     try {
       var data = imglib.encodeJpg(thumbnail);
