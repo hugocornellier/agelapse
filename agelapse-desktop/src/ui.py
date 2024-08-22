@@ -3,8 +3,12 @@ import os
 import platform
 import subprocess
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from PIL import Image
+from PIL.ExifTags import TAGS
+import exifread
 
 import pillow_heif
 from PyQt5 import QtGui
@@ -546,6 +550,28 @@ class MainWindow(QMainWindow):
 
     return gallery_container
 
+  def get_image_creation_date(self, image_path):
+    with open(image_path, 'rb') as f:
+      tags = exifread.process_file(f)
+
+    print(tags)
+
+    for tag in tags.keys():
+        print(f"{tag}: {tags[tag]}")
+
+    # EXIF DateTimeOriginal tag is usually what stores the creation date
+    date_tag = tags.get('EXIF DateTimeOriginal')
+
+    if date_tag:
+      return str(date_tag)
+    else:
+      modification_time = os.path.getmtime(image_path)
+      formatted_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(modification_time))
+
+      print(f"Last modified time: {formatted_time}")
+
+      return None
+
   def toggle_image_list_visibility(self):
     if self.image_list_widget.isVisible():
       self.image_list_widget.setVisible(False)
@@ -587,6 +613,10 @@ class MainWindow(QMainWindow):
         for image in valid_images:
           item = QListWidgetItem(image)
           self.image_list_widget.addItem(item)
+
+          ##full_path = os.path.join(self.input_dir, image)
+          ##date = self.get_image_creation_date(full_path)
+          ##print(date)
 
         self.image_count_label.setVisible(True)  # Show image count label
 

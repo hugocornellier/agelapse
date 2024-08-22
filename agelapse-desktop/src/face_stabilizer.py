@@ -6,7 +6,6 @@ import cv2
 import numpy as np
 import pillow_heif
 from PIL import Image, UnidentifiedImageError
-from fdlite.types import Detection
 
 from src.face_detector import FaceDetector
 from src.point import Point
@@ -108,35 +107,40 @@ def stabilize_images(
 
     images_with_errors, images_with_no_face = [], []
 
+    images.sort()
     for index, img_path in enumerate(images):
         try:
             with Image.open(img_path) as img:
                 img.load()
 
-                faces: list[Detection] | None = face_detector.detect_faces(img)
+                faces = face_detector.detect_faces(img)
                 if faces is None:
                     log_no_faces(img_path, images_with_no_face)
                     continue
 
                 eyes: list[list[Point]] = face_detector.get_eyes_from_faces(faces, img)
+
                 if not eyes:
                     log_no_faces(img_path, images_with_no_face)
                     continue
 
+
                 curr_eyes = get_closest_eyes_to_center(eyes, img.size[0])
+
                 transformation_matrix = get_transformation_matrix(curr_eyes, eyes_to_stabilize_on)
                 stabilized_img = apply_transformation(img, transformation_matrix, output_size)
 
                 # Save stabilized image immediately
                 save_stabilized_image(img_path, stabilized_img, output_dir)
 
-                percent_complete = update_progress(index, total_images, loading_symbols)
+                percent_complete = update_progress(img_path, index, total_images, loading_symbols)
                 if progress_callback:
                     progress_callback(int(percent_complete))
 
         except (FileNotFoundError, UnidentifiedImageError) as e:
             print(f"Error with image {img_path}: {e}")
-        except Exception:
+        except Exception as e:
+            print(f"[ERROR] Image ({img_path}) being skipped due to error: {e}")
             images_with_errors.append(img_path)
 
     print_results(images_with_errors, images_with_no_face)
@@ -154,7 +158,7 @@ def log_no_faces(img_path: str, images_with_no_face: list[str]) -> None:
     images_with_no_face.append(img_path)
 
 
-def update_progress(index: int, total_images: int, loading_symbols: list[str]) -> float:
+def update_progress(img_path: str, index: int, total_images: int, loading_symbols: list[str]) -> float:
     """
     Update and print progress of the stabilization process.
 
@@ -162,13 +166,14 @@ def update_progress(index: int, total_images: int, loading_symbols: list[str]) -
         index (int): Current index in the list of images.
         total_images (int): Total number of images to process.
         loading_symbols (list[str]): List of symbols to show progress.
+        img_path (str): Image path
 
     Returns:
         float: Percentage of progress completed.
     """
     percent_complete = (index + 1) / total_images * 100
     symbol_index = index % len(loading_symbols)
-    print(f"\r[LOG] Stabilizing {loading_symbols[symbol_index]} ......... {percent_complete:.2f}% complete", end='')
+    print(f"\r[LOG] Stabilizing {img_path} {loading_symbols[symbol_index]} ......... {percent_complete:.2f}% complete", end='')
     return percent_complete
 
 
@@ -181,11 +186,16 @@ def print_results(images_with_errors: list[str], images_with_no_face: list[str])
         images_with_no_face (list[str]): List of images with no detected faces.
     """
     skipped_due_to_errors_len = len(images_with_errors)
+    if skipped_due_to_errors_len > 0:
+        print(f"{skipped_due_to_errors_len} images were skipped due to error. See affected images below:")
+        print(images_with_errors)
+
     images_with_no_face_len = len(images_with_no_face)
-    result = f"{skipped_due_to_errors_len} skipped due to error"
     if images_with_no_face_len > 0:
-        result = f"{result}, {images_with_no_face_len} had no faces found"
-    print(f"\n[LOG] Stabilization complete. {result}")
+        print(f"{images_with_no_face_len} images had no faces found. See affected images below:")
+        print(images_with_no_face)
+
+    print(f"\n[LOG] Stabilization complete!")
 
 
 def stabilize_image_directory(

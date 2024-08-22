@@ -107,12 +107,6 @@ class FaceDetector:
     def detect_landmarks(self, image: Image.Image, face_roi):
         return self.face_landmarks(image, face_roi)
 
-    def detect_iris(self, image: Image.Image, eyes_roi):
-        left_eye_roi, right_eye_roi = eyes_roi
-        left_eye_results = self.iris_landmarks(image, left_eye_roi)
-        right_eye_results = self.iris_landmarks(image, right_eye_roi, is_right_eye=True)
-        return left_eye_results, right_eye_results
-
     def getXY(self, image: Image.Image, iris_results: IrisResults):
         iris_location, _ = _get_iris_location(iris_results, image.size)
         x = (iris_location[0] + iris_location[2]) / 2
@@ -122,18 +116,27 @@ class FaceDetector:
 
     def get_left_and_right_results(self, img: Image.Image, face):
         roi = face_detection_to_roi(face, img.size)
-        return self.get_left_and_right_results_from_roi(img, roi)
-
-    def get_left_and_right_results_from_roi(self, img: Image.Image, roi):
         landmarks = self.detect_landmarks(img, roi)
-        eyes_roi = iris_roi_from_face_landmarks(landmarks, img.size)
-        return self.detect_iris(img, eyes_roi)
+
+        try:
+            left_eye_roi, right_eye_roi = iris_roi_from_face_landmarks(landmarks, img.size)
+        except Exception as e:
+            return None, None
+
+        left_eye_results = self.iris_landmarks(img, left_eye_roi)
+        right_eye_results = self.iris_landmarks(img, right_eye_roi, is_right_eye=True)
+
+        return left_eye_results, right_eye_results
 
     def get_eyes_from_faces(self, faces, img):
         eyes = []
+
         for face in faces:
             both_eyes = []
             left_eye_results, right_eye_results = self.get_left_and_right_results(img, face)
+
+            if not left_eye_results or not right_eye_results:
+                continue  # Skip this face if eyes are not detected
 
             x, y = self.getXY(img, left_eye_results)
             point = Point(x, y)
