@@ -11,7 +11,6 @@ import '../services/database_helper.dart';
 import '../services/theme_provider.dart';
 import '../widgets/main_navigation.dart';
 import '../theme/theme.dart';
-import '../screens/desktop_home_page.dart';
 
 void main() async {
   if (!Platform.isWindows && !Platform.isLinux && !Platform.isMacOS) {
