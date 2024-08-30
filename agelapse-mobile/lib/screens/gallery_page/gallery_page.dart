@@ -4,9 +4,11 @@ import 'dart:typed_data';
 
 import 'package:agelapse/screens/stab_on_diff_face.dart';
 import 'package:agelapse/widgets/yellow_tip_bar.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
+import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:wechat_assets_picker/wechat_assets_picker.dart';
 
@@ -203,8 +205,30 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
     super.dispose();
   }
 
+  Future<bool> requestPermission() async {
+    PermissionStatus status = await Permission.mediaLibrary.request();
+
+    if (status.isGranted) {
+      return true;
+    } else if (status.isDenied) {
+      status = await Permission.storage.request();
+
+      return false;
+    } else if (status.isPermanentlyDenied) {
+      openAppSettings(); // Prompt user to open settings
+      return false;
+    }
+
+    return false;
+  }
+
+
   Future<void> _pickFromGallery() async {
     try {
+      // Request permissions
+      bool status = await requestPermission();
+      if (!status) return;
+
       final List<AssetEntity>? result = await AssetPicker.pickAssets(
         context,
         pickerConfig: const AssetPickerConfig(

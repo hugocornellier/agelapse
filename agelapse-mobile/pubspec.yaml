@@ -23,9 +23,11 @@ dependencies:
   wakelock_plus: ^1.2.5
   archive: ^3.6.1
   flutter_archive: ^6.0.3
+  permission_handler: ^11.3.1
   async_zip: ^0.1.0
   sqflite: ^2.3.3+1
   provider: ^6.1.2
+  device_info_plus: ^10.1.2
   heif_converter: ^1.0.0
   flutter_email_sender: ^6.0.3
   camera: ^0.11.0+1
@@ -61,7 +63,6 @@ flutter:
 
   assets:
     - assets/images/
-    - assets/models/
     - assets/ghost-custom.svg
     - assets/relax.svg
 

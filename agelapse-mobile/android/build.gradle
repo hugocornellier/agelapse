@@ -1,12 +1,12 @@
 buildscript {
-    ext.kotlin_version = '1.8.21' // Updated Kotlin version
+    ext.kotlin_version = '1.9.10' // Updated Kotlin version
     repositories {
         google()
         mavenCentral()
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:7.4.2' // Ensure this is compatible with Gradle version
+        classpath 'com.android.tools.build:gradle:8.0.2' // Updated Gradle plugin version
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
 }
@@ -20,7 +20,7 @@ allprojects {
     configurations.all {
         resolutionStrategy.eachDependency { DependencyResolveDetails details ->
             if (details.requested.group == 'org.jetbrains.kotlin' && details.requested.name == 'kotlin-gradle-plugin') {
-                details.useVersion '1.8.21'
+                details.useVersion '1.9.10' // Updated to match the Kotlin version
             }
         }
     }
