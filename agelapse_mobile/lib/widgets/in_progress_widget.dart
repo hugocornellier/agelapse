@@ -19,13 +19,19 @@ class InProgress extends StatelessWidget {
       } : null,
       child: Container(
         width: double.infinity,
-        color: AppColors.evenDarkerLightBlue,
+        color: message == "No storage space on device."
+            ? Colors.red
+            : AppColors.evenDarkerLightBlue,
         constraints: const BoxConstraints(maxHeight: 32.0),
         alignment: Alignment.center,
         child: Text(
           message,
           textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w500),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 11.5,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ),
     );

@@ -10,6 +10,7 @@ class StabDiffFacePage extends StatefulWidget {
   final String imageTimestamp;
   final Future<void> Function() reloadImagesInGallery;
   final VoidCallback stabCallback;
+  final VoidCallback userRanOutOfSpaceCallback;
 
   const StabDiffFacePage({
     super.key,
@@ -17,6 +18,7 @@ class StabDiffFacePage extends StatefulWidget {
     required this.imageTimestamp,
     required this.reloadImagesInGallery,
     required this.stabCallback,
+    required this.userRanOutOfSpaceCallback,
   });
 
   @override
@@ -45,7 +47,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
     });
 
     rawImagePath = await _getRawPhotoPath();
-    faceStabilizer = FaceStabilizer(widget.projectId);
+    faceStabilizer = FaceStabilizer(widget.projectId, widget.userRanOutOfSpaceCallback);
 
     final image = await decodeImageFromList(File(rawImagePath).readAsBytesSync());
     setState(() {
@@ -80,7 +82,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
     );
   }
 
-  void _handleContourTapped(Face tappedFace) async {
+  void _handleContourTapped(Face tappedFace, VoidCallback userRanOutOfSpaceCallback) async {
     final bool? userConfirmed = await _showConfirmationDialog();
     if (userConfirmed!) {
       setState(() {
@@ -91,6 +93,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
       final bool successful = await faceStabilizer.stabilize(
         rawImagePath,
         false,
+        userRanOutOfSpaceCallback,
         targetFace: tappedFace,
       );
 
@@ -150,7 +153,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
             ? !isLoading
                 ? LayoutBuilder(
                     builder: (context, constraints) {
-                      return _buildImageWithContours(constraints);
+                      return _buildImageWithContours(constraints, widget.userRanOutOfSpaceCallback);
                     },
                   )
                 : Column(
@@ -182,7 +185,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
     );
   }
 
-  Widget _buildImageWithContours(BoxConstraints constraints) {
+  Widget _buildImageWithContours(BoxConstraints constraints, VoidCallback userRanOutOfSpaceCallback) {
     final displaySize = _calculateDisplaySize(constraints);
     final contourRects = FaceContourPainter.calculateContours(faces, originalImageSize, displaySize);
 
@@ -206,7 +209,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
             painter: FaceContourPainter(faces, originalImageSize, displaySize),
             size: displaySize,
           ),
-          ...faceContours.map((entry) => _buildContourRect(entry.value, entry.key)),
+          ...faceContours.map((entry) => _buildContourRect(entry.value, entry.key, userRanOutOfSpaceCallback)),
         ],
       ),
     );
@@ -223,14 +226,14 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
     }
   }
 
-  Widget _buildContourRect(Rect rect, Face face) {
+  Widget _buildContourRect(Rect rect, Face face, VoidCallback userRanOutOfSpaceCallback) {
     return Positioned(
       left: rect.left,
       top: rect.top,
       width: rect.width,
       height: rect.height,
       child: GestureDetector(
-        onTap: () => _handleContourTapped(face),
+        onTap: () => _handleContourTapped(face, userRanOutOfSpaceCallback),
         child: Container(
           color: Colors.blue.withOpacity(0.3),
         ),

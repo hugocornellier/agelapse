@@ -70,6 +70,7 @@ class MainNavigationState extends State<MainNavigation> {
   SettingsCache? _settingsCache;
   bool _photoTakenToday = false;
   String minutesRemaining = "";
+  bool _userRanOutOfSpace = false;
 
   @override
   void initState() {
@@ -138,6 +139,15 @@ class MainNavigationState extends State<MainNavigation> {
       _imageFiles.clear();
       _stabilizedImageFiles.clear();
     });
+  }
+
+  void userRanOutOfSpaceCallback() {
+    print("I'm in the user ran out of space call back..");
+
+    setState(() {
+      _userRanOutOfSpace = true;
+    });
+    _cancelStabilizationProcess();
   }
 
   Future<void> _refreshSettingsCache() async {
@@ -236,7 +246,7 @@ class MainNavigationState extends State<MainNavigation> {
 
     WakelockPlus.enable();
 
-    final FaceStabilizer faceStabilizer = FaceStabilizer(widget.projectId);
+    final FaceStabilizer faceStabilizer = FaceStabilizer(widget.projectId, userRanOutOfSpaceCallback);
     final List<Map<String, dynamic>> unstabilizedPhotos = await StabUtils.getUnstabilizedPhotos(widget.projectId);
 
     // Wait for previous stabilization cycle to cancel
@@ -313,7 +323,11 @@ class MainNavigationState extends State<MainNavigation> {
   Future<bool> _stabilizePhoto(FaceStabilizer faceStabilizer, Map<String, dynamic> photo) async {
     try {
       final String rawPhotoPath = await _getRawPhotoPathFromTimestamp(photo['timestamp']);
-      final bool result = await faceStabilizer.stabilize(rawPhotoPath, _cancelStabilization);
+      final bool result = await faceStabilizer.stabilize(
+          rawPhotoPath,
+          _cancelStabilization,
+          userRanOutOfSpaceCallback
+      );
 
       if (result) setState(() => _successfullyStabilizedPhotos++);
 
@@ -361,7 +375,7 @@ class MainNavigationState extends State<MainNavigation> {
         await DirUtils.getRawPhotoDirPath(widget.projectId),
         "${photo['timestamp']}${photo['fileExtension']}",
       );
-      await faceStabilizer.stabilize(rawPhotoPath, _cancelStabilization);
+      await faceStabilizer.stabilize(rawPhotoPath, _cancelStabilization, userRanOutOfSpaceCallback);
       setState(() => _successfullyStabilizedPhotos++);
     } catch (e) {
       // Handle error if needed
@@ -465,6 +479,7 @@ class MainNavigationState extends State<MainNavigation> {
       projectId: widget.projectId,
       projectName: widget.projectName,
       stabCallback: _startStabilization,
+      userRanOutOfSpaceCallback: userRanOutOfSpaceCallback,
       cancelStabCallback: _cancelStabilizationProcess,
       processPickedFiles: processPickedFiles,
       stabilizingRunningInMain: _stabilizingActive,
@@ -482,7 +497,8 @@ class MainNavigationState extends State<MainNavigation> {
       stabilizedImageFilesStr: _stabilizedImageFiles,
       setRawAndStabPhotoStates: setRawAndStabPhotoStates,
       settingsCache: _settingsCache,
-      refreshSettings: refreshSettings
+      refreshSettings: refreshSettings,
+      userRanOutOfSpace: _userRanOutOfSpace,
     ),
     CameraPage(
       projectId: widget.projectId,
@@ -571,7 +587,8 @@ class MainNavigationState extends State<MainNavigation> {
           settingsCache: _settingsCache,
           refreshSettings: refreshSettings,
           clearRawAndStabPhotos: clearRawAndStabPhotos,
-          minutesRemaining: minutesRemaining
+          minutesRemaining: minutesRemaining,
+          userRanOutOfSpace: _userRanOutOfSpace,
       );
     }
 

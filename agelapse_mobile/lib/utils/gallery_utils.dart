@@ -338,14 +338,14 @@ class GalleryUtils {
   }
 
   static Future<bool> importXFile(
-      XFile file,
-      int projectId,
-      ValueNotifier<String> activeProcessingDateNotifier,
-      {
-        int? timestamp,
-        VoidCallback? increaseSuccessfulImportCount
-      }
-      ) async {
+    XFile file,
+    int projectId,
+    ValueNotifier<String> activeProcessingDateNotifier,
+    {
+      int? timestamp,
+      VoidCallback? increaseSuccessfulImportCount
+    }
+  ) async {
     Uint8List? bytes;
     try {
       int? imageTimestampFromExif;

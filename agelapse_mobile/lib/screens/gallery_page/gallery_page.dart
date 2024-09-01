@@ -4,7 +4,6 @@ import 'dart:typed_data';
 
 import 'package:agelapse/screens/stab_on_diff_face.dart';
 import 'package:agelapse/widgets/yellow_tip_bar.dart';
-import 'package:device_info_plus/device_info_plus.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
@@ -29,6 +28,7 @@ class GalleryPage extends StatefulWidget {
   final int projectId;
   final String projectName;
   final VoidCallback stabCallback;
+  final VoidCallback userRanOutOfSpaceCallback;
   final Future<void> Function() cancelStabCallback;
   final VoidCallback hideFlashingCircle;
   final bool showFlashingCircle;
@@ -53,12 +53,15 @@ class GalleryPage extends StatefulWidget {
   ) processPickedFiles;
   final void Function() refreshSettings;
   final String minutesRemaining;
+  final bool userRanOutOfSpace;
 
   const GalleryPage({
     super.key,
     required this.projectId,
     required this.projectName,
+    required this.userRanOutOfSpace,
     required this.stabCallback,
+    required this.userRanOutOfSpaceCallback,
     required this.cancelStabCallback,
     required this.showFlashingCircle,
     required this.hideFlashingCircle,
@@ -383,7 +386,8 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
             goToPage: widget.goToPage,
             importRunningInMain: widget.importRunningInMain,
             selectedIndex: -1,
-            minutesRemaining: widget.minutesRemaining
+            minutesRemaining: widget.minutesRemaining,
+            userRanOutOfSpace: widget.userRanOutOfSpace,
         ),
         _buildTabBarContainer(),
       ],
@@ -1123,7 +1127,8 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
                       projectId: projectId,
                       imageTimestamp: timestamp,
                       reloadImagesInGallery: _loadImages,
-                      stabCallback: widget.stabCallback
+                      stabCallback: widget.stabCallback,
+                      userRanOutOfSpaceCallback: widget.userRanOutOfSpaceCallback
                   );
                   Utils.navigateToScreenReplace(context, stabNewFaceScreen);
                 },

@@ -23,6 +23,7 @@ class CustomAppBar extends StatefulWidget {
   final void Function() clearRawAndStabPhotos;
   final SettingsCache? settingsCache;
   final String minutesRemaining;
+  final bool userRanOutOfSpace;
 
   const CustomAppBar({
     super.key,
@@ -39,6 +40,7 @@ class CustomAppBar extends StatefulWidget {
     required this.clearRawAndStabPhotos,
     required this.settingsCache,
     required this.minutesRemaining,
+    required this.userRanOutOfSpace,
   });
 
   @override
@@ -144,7 +146,8 @@ class _CustomAppBarState extends State<CustomAppBar> {
                 progressPercent: widget.progressPercent,
                 goToPage: widget.goToPage,
                 selectedIndex: widget.selectedIndex,
-                minutesRemaining: widget.minutesRemaining
+                minutesRemaining: widget.minutesRemaining,
+                userRanOutOfSpace: widget.userRanOutOfSpace,
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.start,

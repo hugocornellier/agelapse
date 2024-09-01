@@ -9,6 +9,7 @@ class ProgressWidget extends StatelessWidget {
   final Function(int) goToPage;
   final int selectedIndex;
   final String? minutesRemaining;
+  final bool userRanOutOfSpace;
 
   const ProgressWidget({
     super.key,
@@ -19,17 +20,25 @@ class ProgressWidget extends StatelessWidget {
     required this.goToPage,
     this.selectedIndex = -1,
     this.minutesRemaining,
+    required this.userRanOutOfSpace,
   });
 
   @override
   Widget build(BuildContext context) {
     String progressPercentAsStr = "${progressPercent > 100 ? 100 : progressPercent}%";
 
-    String minutesRemainingDisplay = (minutesRemaining != null && minutesRemaining!.isNotEmpty) ? " ($minutesRemaining)" : "";
+    String minutesRemainingDisplay = (minutesRemaining != null && minutesRemaining!.isNotEmpty)
+        ? " ($minutesRemaining)"
+        : "";
 
     return Column(
       children: [
-        if (importRunningInMain && selectedIndex != 3) ...[
+        if (userRanOutOfSpace && selectedIndex != 3) ...[
+          InProgress(
+            message: "No storage space on device.",
+            goToPage: goToPage,
+          ),
+        ] else if (importRunningInMain && selectedIndex != 3) ...[
           InProgress(
             message: "Importing... $progressPercentAsStr",
             goToPage: goToPage,

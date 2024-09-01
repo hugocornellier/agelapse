@@ -47,8 +47,9 @@ class FaceStabilizer {
   late PoseDetector? _poseDetector;
   late double eyeOffsetX;
   late double eyeOffsetY;
+  final VoidCallback userRanOutOfSpaceCallbackIn;
 
-  FaceStabilizer(this.projectId) {
+  FaceStabilizer(this.projectId, this.userRanOutOfSpaceCallbackIn) {
     init();
   }
 
@@ -110,11 +111,18 @@ class FaceStabilizer {
     muscRightHipYGoal = (canvasHeight * 0.8).toInt();
   }
 
-  Future<bool> stabilize(String rawPhotoPath, bool cancelStabilization, {Face? targetFace}) async {
+  Future<bool> stabilize(
+    String rawPhotoPath,
+    bool cancelStabilization,
+    void Function() userRanOutOfSpaceCallback,
+    {
+      Face? targetFace
+    }
+  ) async {
     try {
       rawPhotoPath = await _convertHeicToJpgIfNeeded(rawPhotoPath);
       if (rawPhotoPath.contains("_flipped_flipped")) {
-        return await tryRotation(rawPhotoPath);
+        return await tryRotation(rawPhotoPath, userRanOutOfSpaceCallback);
       }
 
       double? rotationDegrees, scaleFactor, translateX, translateY;
@@ -122,7 +130,7 @@ class FaceStabilizer {
       final ui.Image? img = await StabUtils.loadImageFromFile(File(rawPhotoPath));
       if (img == null) return false;
 
-      (scaleFactor, rotationDegrees) = await _calculateRotationAndScale(rawPhotoPath, img, targetFace);
+      (scaleFactor, rotationDegrees) = await _calculateRotationAndScale(rawPhotoPath, img, targetFace, userRanOutOfSpaceCallback);
       if (rotationDegrees == null || scaleFactor == null || cancelStabilization) return false;
 
       (translateX, translateY) = _calculateTranslateData(scaleFactor, rotationDegrees, img);
@@ -152,11 +160,7 @@ class FaceStabilizer {
 
   Future<bool> _finalizeStabilization(String rawPhotoPath, String stabilizedJpgPhotoPath, ui.Image? img, double translateX, double translateY, double rotationDegrees, double scaleFactor, Uint8List imageBytesStabilized) async {
     if (projectType != "face") {
-      Future.wait([
-        saveBytesToPngFileInIsolate(imageBytesStabilized, stabilizedJpgPhotoPath.replaceAll('.jpg', '.png')),
-        setPhotoStabilized(rawPhotoPath)
-      ]);
-      return true;
+      return await _saveStabilizedImage(imageBytesStabilized, rawPhotoPath, stabilizedJpgPhotoPath, 0.0);
     }
 
     rawPhotoPath = _cleanUpPhotoPath(rawPhotoPath);
@@ -257,8 +261,19 @@ class FaceStabilizer {
   }
 
   Future<bool> _saveStabilizedImage(Uint8List imageBytes, String rawPhotoPath, String stabilizedPhotoPath, double score) async {
-    await saveBytesToPngFileInIsolate(imageBytes, stabilizedPhotoPath.replaceAll('.jpg', '.png'));
+    final String result = await saveBytesToPngFileInIsolate(
+        imageBytes,
+        stabilizedPhotoPath.replaceAll('.jpg', '.png')
+    );
+
+    if (result == "NoSpaceLeftError") {
+      print("User is out of space...");
+      userRanOutOfSpaceCallbackIn();
+      return false;
+    }
+
     await setPhotoStabilized(rawPhotoPath);
+
     print("SUCCESS! STAB SCORE: $score (closer to 0 is better)");
     return true;
   }
@@ -293,17 +308,17 @@ class FaceStabilizer {
     return rawPhotoPath;
   }
 
-  Future<bool> tryRotation(String rawPhotoPath) async {
+  Future<bool> tryRotation(String rawPhotoPath, void Function() userRanOutOfSpaceCallback) async {
     print("Tried mirroring, but faces were still not found. Trying rotation.");
     final String timestamp = path.basenameWithoutExtension(rawPhotoPath.replaceAll("_flipped_flipped", ""));
     rawPhotoPath = await DirUtils.getRawPhotoPathFromTimestampAndProjectId(timestamp, projectId);
     rawPhotoPath = await _convertHeicToJpgIfNeeded(rawPhotoPath);
 
     final File rotatedCounterClockwiseImage = await StabUtils.rotateImageCounterClockwise(rawPhotoPath);
-    if (await stabilize(rotatedCounterClockwiseImage.path, false)) return true;
+    if (await stabilize(rotatedCounterClockwiseImage.path, false, userRanOutOfSpaceCallback)) return true;
 
     final File rotatedClockwiseImage = await StabUtils.rotateImageClockwise(rawPhotoPath);
-    if (await stabilize(rotatedClockwiseImage.path, false)) return true;
+    if (await stabilize(rotatedClockwiseImage.path, false, userRanOutOfSpaceCallback)) return true;
 
     await DB.instance.setPhotoNoFacesFound(timestamp);
     return false;
@@ -320,10 +335,10 @@ class FaceStabilizer {
     await File(stabThumbnailPath).writeAsBytes(thumbnailBytes);
   }
 
-  Future<(double?, double?)> _calculateRotationAndScale(String rawPhotoPath, ui.Image? img, Face? targetFace) async {
+  Future<(double?, double?)> _calculateRotationAndScale(String rawPhotoPath, ui.Image? img, Face? targetFace, userRanOutOfSpaceCallback) async {
     try {
       if (projectType == "face") {
-        return await _calculateRotationAngleAndScaleFace(rawPhotoPath, img, targetFace);
+        return await _calculateRotationAngleAndScaleFace(rawPhotoPath, img, targetFace, userRanOutOfSpaceCallback);
       } else if (projectType == "pregnancy") {
         return await _calculateRotationAngleAndScalePregnancy(rawPhotoPath);
       } else if (projectType == "musc") {
@@ -337,7 +352,7 @@ class FaceStabilizer {
     }
   }
 
-  Future<(double?, double?)> _calculateRotationAngleAndScaleFace(String rawPhotoPath, ui.Image? img, Face? targetFace) async {
+  Future<(double?, double?)> _calculateRotationAngleAndScaleFace(String rawPhotoPath, ui.Image? img, Face? targetFace, userRanOutOfSpaceCallback) async {
     List<Point<int>?> eyes;
     if (targetFace != null) {
       eyes = getEyesFromFaces([targetFace]);
@@ -349,7 +364,7 @@ class FaceStabilizer {
 
       if (faces.isEmpty) {
         print("No faces found. Attempting to flip...");
-        await flipAndTryAgain(rawPhotoPath);
+        await flipAndTryAgain(rawPhotoPath, userRanOutOfSpaceCallback);
         return (null, null);
       }
 
@@ -430,7 +445,7 @@ class FaceStabilizer {
     return (scaleFactor, rotationDegrees);
   }
 
-  Future<void> flipAndTryAgain(String rawPhotoPath) async {
+  Future<void> flipAndTryAgain(String rawPhotoPath, userRanOutOfSpaceCallback) async {
     final String newPath;
     if (rawPhotoPath.contains("rotated")) return;
 
@@ -441,7 +456,7 @@ class FaceStabilizer {
       newPath = flippedImgFile.path;
     }
 
-    await stabilize(newPath, false);
+    await stabilize(newPath, false, userRanOutOfSpaceCallback);
   }
 
   static String getStabThumbnailPath(String stabilizedPhotoPath) {
@@ -494,8 +509,14 @@ class FaceStabilizer {
         await File(saveToPath).writeAsBytes(bytes);
         sendPort.send("success");
       } catch (e) {
-        print("Error caught => $e");
-        sendPort.send("Error");
+        if (e is FileSystemException && e.osError?.errorCode == 28) {
+          // If user runs out of space...
+          print("No space left on device error caught => $e");
+          sendPort.send("NoSpaceLeftError");
+        } else {
+          print("Error caught => $e");
+          sendPort.send("Error");
+        }
       }
     }
 
