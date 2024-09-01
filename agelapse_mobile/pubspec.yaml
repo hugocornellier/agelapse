@@ -17,12 +17,9 @@ dependencies:
   font_awesome_flutter: ^10.7.0
   flutter_svg: ^2.0.10+1
   cupertino_icons: ^1.0.8
-  url_launcher: ^6.3.0
-  flutter_image_compress: ^2.3.0
   animated_bottom_navigation_bar: ^1.3.3
   wakelock_plus: ^1.2.5
   archive: ^3.6.1
-  flutter_archive: ^6.0.3
   permission_handler: ^11.3.1
   async_zip: ^0.1.0
   sqflite: ^2.3.3+1
@@ -33,7 +30,6 @@ dependencies:
   camera: ^0.11.0+1
   smooth_page_indicator: ^1.2.0
   chewie: ^1.8.1
-  flutter_dropzone: ^4.0.1
   vibration: ^1.9.0
   video_player: ^2.9.1
   path_provider: ^2.1.3
