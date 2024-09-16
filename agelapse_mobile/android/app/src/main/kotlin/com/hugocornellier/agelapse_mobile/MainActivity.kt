@@ -1,4 +1,4 @@
-package com.hugocornellier.AgeLapse
+package com.hugocornellier.agelapse_mobile
 
 import io.flutter.embedding.android.FlutterActivity
 
