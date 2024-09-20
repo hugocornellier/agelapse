@@ -55,14 +55,14 @@ PODS:
     - Flutter
   - flutter_timezone (0.0.1):
     - Flutter
-  - google_mlkit_commons (0.7.1):
+  - google_mlkit_commons (0.8.1):
     - Flutter
     - MLKitVision
-  - google_mlkit_face_detection (0.11.0):
+  - google_mlkit_face_detection (0.11.1):
     - Flutter
     - google_mlkit_commons
     - GoogleMLKit/FaceDetection (~> 6.0.0)
-  - google_mlkit_pose_detection (0.12.0):
+  - google_mlkit_pose_detection (0.12.1):
     - Flutter
     - google_mlkit_commons
     - GoogleMLKit/PoseDetection (~> 6.0.0)
@@ -282,9 +282,9 @@ SPEC CHECKSUMS:
   flutter_local_notifications: 4cde75091f6327eb8517fa068a0a5950212d2086
   flutter_native_splash: edf599c81f74d093a4daf8e17bd7a018854bc778
   flutter_timezone: ffb07bdad3c6276af8dada0f11978d8a1f8a20bb
-  google_mlkit_commons: 96aaca445520311b84a2da013dedf3427fe4cc69
-  google_mlkit_face_detection: b760d6035222630f347352b3b13f4a23ea9fb994
-  google_mlkit_pose_detection: 47f28fa7b4f849b3a73cb0091c2891eff84b7361
+  google_mlkit_commons: 242b715c38863e1ca5e732c909a1545ba52f1375
+  google_mlkit_face_detection: 5bdb0ae6886d84ca5f2a237f2e46be2d634c5355
+  google_mlkit_pose_detection: 38c7cbfc8ceec86ed9b6c7d589330e965ab5698d
   GoogleDataTransport: 6c09b596d841063d76d4288cc2d2f42cc36e1e2a
   GoogleMLKit: 97ac7af399057e99182ee8edfa8249e3226a4065
   GoogleToolboxForMac: d1a2cbf009c453f4d6ded37c105e2f67a32206d8

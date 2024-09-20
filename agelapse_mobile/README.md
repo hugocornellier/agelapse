@@ -22,21 +22,26 @@ Download links can be found at https://agelapse.com
 | Automatic backups            | ⏳ Coming Soon |
 
 
-## Development Installation
+## Development Installation (AgeLapse Mobile)
 
 ### Prerequisites
 
 - iOS 13.0+ or Android 5.0+
-- Flutter SDK (for development)
+- Flutter SDK
 
 1. **Clone the repository**:
    ```sh
-   git clone https://github.com/hugocornellier/agelapse.git
-   cd agelapse
+   git clone https://github.com/hugocornellier/agelapse
    ```
 
-2. **Install Dependencies**:
+2. **Set working directory to agelapse_mobile**:
+
+   ```cd agelapse/agelapse_mobile```
+
+3. **Install Dependencies**:
+
    ```flutter pub get```
 
-3. **Run app**:
+4. **Run app**:
+
    ```flutter run```
