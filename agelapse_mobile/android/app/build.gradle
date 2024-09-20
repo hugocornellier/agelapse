@@ -5,6 +5,12 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "com.hugocornellier.agelapse_mobile"
     compileSdk = flutter.compileSdkVersion
@@ -30,24 +36,23 @@ android {
         versionName = flutter.versionName
     }
 
-    android {
-        signingConfigs {
-            release {
-                def keystorePropertiesFile = rootProject.file("key.properties")
-                def keystoreProperties = new Properties()
-                keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 
-                storeFile = file(keystoreProperties["storeFile"] ?: "")
-                storePassword = keystoreProperties["storePassword"] ?: ""
-                keyAlias = keystoreProperties["keyAlias"] ?: ""
-                keyPassword = keystoreProperties["keyPassword"] ?: ""
-            }
+    signingConfigs {
+        release {
+            keyAlias keystoreProperties['keyAlias']
+            keyPassword keystoreProperties['keyPassword']
+            storeFile file(keystoreProperties['storeFile'])
+            storePassword keystoreProperties['storePassword']
         }
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.release
+            // Enable signing with the release key.
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            shrinkResources false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }
