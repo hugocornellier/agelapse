@@ -422,7 +422,7 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
   Widget _buildNoPhotosMessage() {
     return const Center(
       child: YellowTipBar(
-        message: "A minimum of 2 photos is required before creating a video.",
+        message: "You need at least 2 photos in your gallery to create a video.",
       ),
     );
   }
