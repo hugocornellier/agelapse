@@ -184,12 +184,21 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
     }
 
     while (true) {
+      print("Waiting 2s");
+
       int waitTimeInSeconds = 2;
 
       int stabCount = await DB.instance.getStabilizedPhotoCountByProjectID(projectId, projectOrientation!);
+
+      print("stabCount: ${stabCount}");
+      print("_stabCount: ${_stabCount}");
+      print("projectId: ${projectId}");
+      print("projectOrientation: ${projectOrientation}");
+
       if (stabCount != _stabCount) {
         _stabCount = stabCount;
         if (_isMounted) {
+          print("Refreshing gallery");
           await _loadImages();
         }
       }
@@ -504,6 +513,11 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
     }
 
     await widget.processPickedFiles(pickedFiles, processPickedFile);
+
+    final String projectOrientationRaw = await SettingsUtil.loadProjectOrientation(projectIdStr);
+    setState(() {
+      projectOrientation = projectOrientationRaw;
+    });
 
     widget.refreshSettings();
     widget.stabCallback();

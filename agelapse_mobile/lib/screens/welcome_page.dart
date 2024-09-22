@@ -1,6 +1,6 @@
 import 'package:agelapse/screens/create_project_page.dart';
 import 'package:flutter/material.dart';
-import '../styles/styles.dart';
+import '../../styles/styles.dart';
 
 class WelcomePagePartTwo extends StatefulWidget {
   const WelcomePagePartTwo({super.key});
@@ -10,7 +10,7 @@ class WelcomePagePartTwo extends StatefulWidget {
 }
 
 class WelcomePagePartTwoState extends State<WelcomePagePartTwo> {
-  final Color backgroundColor = const Color(0xff151517); // Define your AppBar color here
+  final Color backgroundColor = const Color(0xff151517);
 
   @override
   Widget build(BuildContext context) {

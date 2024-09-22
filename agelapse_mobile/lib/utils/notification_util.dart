@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
@@ -10,10 +12,31 @@ class NotificationUtil {
   static Future<void> initializeNotifications() async {
     tz.initializeTimeZones();
 
-    const initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      var notificationStatus = await Permission.notification.status;
+      if (!notificationStatus.isGranted) {
+        notificationStatus = await Permission.notification.request();
+        if (!notificationStatus.isGranted) {
+          print('Notification permission denied');
+          return;
+        }
+      }
+
+      var exactAlarmStatus = await Permission.scheduleExactAlarm.status;
+      if (!exactAlarmStatus.isGranted) {
+        exactAlarmStatus = await Permission.scheduleExactAlarm.request();
+        if (!exactAlarmStatus.isGranted) {
+          print('Exact alarms permission denied');
+          return;
+        }
+      }
+    }
+
+    const initializationSettingsAndroid =
+    AndroidInitializationSettings('@mipmap/ic_launcher');
     final initializationSettingsDarwin = DarwinInitializationSettings(
       onDidReceiveLocalNotification: (id, title, body, payload) async {
-        //
+        // Handle iOS local notification received
       },
     );
 
@@ -25,10 +48,11 @@ class NotificationUtil {
     await _flutterLocalNotificationsPlugin.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: (notificationResponse) async {
-        //
+        // Handle notification response
       },
     );
 
+    // Set the local time zone
     final timeZoneName = await FlutterTimezone.getLocalTimezone();
     tz.setLocalLocation(tz.getLocation(timeZoneName));
   }

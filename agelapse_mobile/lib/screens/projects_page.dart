@@ -1,4 +1,4 @@
-import 'package:agelapse/welcome_page_part_two.dart';
+import 'package:agelapse/screens/welcome_page.dart';
 import 'package:flutter/material.dart';
 import '../services/database_helper.dart';
 import '../styles/styles.dart';

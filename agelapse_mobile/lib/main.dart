@@ -79,7 +79,6 @@ Future<void> initializeNotifications() async {
 
 Future<Widget> _getHomePage() async {
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-    print("GETTING DESKTOP HOMEPAGE");
     //return DesktopHomePage();
   }
 
