@@ -1,4 +1,4 @@
-# AgeLapse v1.2.1
+# AgeLapse 
 
 ![AgeLapse Logo](https://i.imgur.com/lfC2Y4y.png)
 

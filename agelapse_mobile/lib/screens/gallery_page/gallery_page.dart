@@ -10,6 +10,7 @@ import 'package:path/path.dart' as path;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:wechat_assets_picker/wechat_assets_picker.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 
 import '../../services/database_helper.dart';
 import '../../services/face_stabilizer.dart';
@@ -1203,6 +1204,46 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
     );
   }
 
+  Future<void> checkAndRequestPermissions() async {
+    if (Platform.isAndroid) {
+      final DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+      final AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+      final int sdkInt = androidInfo.version.sdkInt;
+
+      try {
+        if (sdkInt >= 33) {
+          // For Android 13 and above, request new media permissions
+          PermissionStatus imagesStatus = await Permission.photos.request();
+          PermissionStatus videosStatus = await Permission.videos.request();
+          PermissionStatus audioStatus = await Permission.audio.request();
+
+          print("imagesStatus: $imagesStatus");
+          print("videosStatus: $videosStatus");
+          print("audioStatus: $audioStatus");
+
+          if (imagesStatus.isGranted && videosStatus.isGranted && audioStatus.isGranted) return;
+
+          if (imagesStatus.isPermanentlyDenied || videosStatus.isPermanentlyDenied || audioStatus.isPermanentlyDenied) {
+            await openAppSettings();
+          }
+        } else {
+          // For Android 12 and below, request storage permission
+          PermissionStatus storageStatus = await Permission.storage.request();
+
+          print("storageStatus: $storageStatus");
+
+          if (storageStatus.isGranted) return;
+
+          if (storageStatus.isPermanentlyDenied) {
+            await openAppSettings();
+          }
+        }
+      } catch (e) {
+        print('Error checking permissions: $e');
+      }
+    }
+  }
+
   Widget _buildDownloadButton() {
     return StatefulBuilder(
       builder: (BuildContext context, StateSetter setState) {
@@ -1215,6 +1256,8 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
               : const Icon(Icons.download, color: Colors.white)),
           onPressed: () async {
             try {
+              await checkAndRequestPermissions();
+
               setState(() => gallerySaveIsLoading = true);
 
               final XFile image = XFile(activeImagePreviewPath!);

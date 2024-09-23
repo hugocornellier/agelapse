@@ -100,37 +100,17 @@ class CameraUtils {
 
   static Future<void> saveImageToGallery(String filePath) async {
     try {
-      PermissionStatus storageStatus = await Permission.storage.request();
-      PermissionStatus photosStatus = await Permission.photos.request();
-
-      if (!storageStatus.isGranted) {
-        print('Storage permission not granted');
-        return;
-      }
-
-      if (!photosStatus.isGranted) {
-        print('Photos permission not granted');
-        return;
-      }
-
-      print("Both permissions granted");
-    } catch (e) {
-      print('Error checking permissions: $e');
-    }
-
-    try {
       String name = path.basename(filePath).isEmpty
           ? "image"
           : path.basename(filePath);
 
-      print("here... name: ");
-      print(name);
       final SaveResult result = await SaverGallery.saveFile(
           file: filePath,
           name: name,
+          androidRelativePath: "Pictures/AgeLapse Exports",
           androidExistNotSave: false
       );
-      print("here2");
+
       if (result.isSuccess) {
         print('Image saved to gallery: $result');
       } else {

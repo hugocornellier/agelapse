@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:agelapse/screens/project_page.dart';
 import 'package:agelapse/widgets/main_navigation.dart';
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../services/database_helper.dart';
 import '../services/settings_cache.dart';
 import '../styles/styles.dart';

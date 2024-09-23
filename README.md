@@ -6,6 +6,10 @@
 
 AgeLapse runs natively on desktop (Windows and MacOS) and on mobile (Android and iOS).
 
+## Releases
+
+Download AgeLapse here: [https://agelapse.com](https://agelapse.com)
+
 ## Platforms Supported
 
 | Platforms            | Status         |
@@ -16,15 +20,11 @@ AgeLapse runs natively on desktop (Windows and MacOS) and on mobile (Android and
 | iOS                  | ✔️             |
 | Linux                | ⏳ Coming Soon |
 
-# Releases
-
-Download AgeLapse here: [https://agelapse.com](https://agelapse.com)
-
-# Demo Video 
+## Demo Video 
 
 View demo video for both Mobile and Desktop here: [https://www.youtube.com/watch?v=vMOWSAHdwhA](https://www.youtube.com/watch?v=vMOWSAHdwhA)
 
-## Contribution
+## Contributions
 
 Contributions to AgeLapse are welcome! If you would like to contribute to the project, please follow these steps:
 
