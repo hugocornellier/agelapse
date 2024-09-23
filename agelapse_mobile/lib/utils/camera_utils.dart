@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:heif_converter/heif_converter.dart';
 import 'package:path/path.dart' as path;
 import 'package:image/image.dart' as imglib;
+import 'package:permission_handler/permission_handler.dart';
 import 'package:saver_gallery/saver_gallery.dart';
 import 'package:vibration/vibration.dart';
 
@@ -97,13 +98,39 @@ class CameraUtils {
     await saveImageToGallery(image.path);
   }
 
-  static Future<void> saveImageToGallery(String path) async {
+  static Future<void> saveImageToGallery(String filePath) async {
     try {
+      PermissionStatus storageStatus = await Permission.storage.request();
+      PermissionStatus photosStatus = await Permission.photos.request();
+
+      if (!storageStatus.isGranted) {
+        print('Storage permission not granted');
+        return;
+      }
+
+      if (!photosStatus.isGranted) {
+        print('Photos permission not granted');
+        return;
+      }
+
+      print("Both permissions granted");
+    } catch (e) {
+      print('Error checking permissions: $e');
+    }
+
+    try {
+      String name = path.basename(filePath).isEmpty
+          ? "image"
+          : path.basename(filePath);
+
+      print("here... name: ");
+      print(name);
       final SaveResult result = await SaverGallery.saveFile(
-          file: path,
-          name: '',
+          file: filePath,
+          name: name,
           androidExistNotSave: false
       );
+      print("here2");
       if (result.isSuccess) {
         print('Image saved to gallery: $result');
       } else {

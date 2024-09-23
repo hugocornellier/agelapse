@@ -1214,19 +1214,24 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
               ? const Icon(Icons.check, color: Colors.greenAccent)
               : const Icon(Icons.download, color: Colors.white)),
           onPressed: () async {
-            setState(() => gallerySaveIsLoading = true);
+            try {
+              setState(() => gallerySaveIsLoading = true);
 
-            final XFile image = XFile(activeImagePreviewPath!);
-            await CameraUtils.saveToGallery(image);
+              final XFile image = XFile(activeImagePreviewPath!);
+              await CameraUtils.saveToGallery(image);
 
-            setState(() {
-              gallerySaveIsLoading = false;
-              gallerySaveSuccessful = true;
-            });
+              setState(() {
+                gallerySaveIsLoading = false;
+                gallerySaveSuccessful = true;
+              });
 
-            await Future.delayed(const Duration(seconds: 1));
+              await Future.delayed(const Duration(seconds: 1));
 
-            setState(() => gallerySaveSuccessful = false);
+              setState(() => gallerySaveSuccessful = false);
+            } catch(e) {
+              print("ERROR CAUGHT5123");
+              print(e);
+            }
           },
         );
       },
