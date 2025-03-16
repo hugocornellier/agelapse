@@ -1231,6 +1231,9 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
     }
 
     Widget buildMoreOptionsButton(BuildContext context) {
+      const double popupFontSize = 12.0;
+      const double popupIconSize = 18.0;
+
       return IconButton(
         icon: const Icon(Icons.more_vert, color: Colors.white),
         iconSize: iconSize,
@@ -1244,7 +1247,20 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
             items: <PopupMenuEntry<String>>[
               PopupMenuItem<String>(
                 value: 'stabilize',
-                child: const Text('Stabilize on Other Face'),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.video_stable,
+                      color: Colors.white.withAlpha(150), // Equivalent to opacity 0.3
+                      size: popupIconSize,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Stabilize on Other Faces',
+                      style: TextStyle(fontSize: popupFontSize),
+                    ),
+                  ],
+                ),
                 onTap: () {
                   StabDiffFacePage stabNewFaceScreen = StabDiffFacePage(
                       projectId: projectId,
@@ -1258,21 +1274,47 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
               ),
               const PopupMenuDivider(),
               PopupMenuItem<String>(
-                value: 'delete',
-                child: const Text('Delete Image'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showDeleteDialog(imageFile);
-                },
-              ),
-              const PopupMenuDivider(),
-              PopupMenuItem<String>(
                 value: 'changeDate',
-                child: const Text('Change Date'),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.calendar_today,
+                      color: Colors.white.withAlpha(204), // Equivalent to opacity 0.8
+                      size: popupIconSize,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Change Date',
+                      style: TextStyle(fontSize: popupFontSize),
+                    ),
+                  ],
+                ),
                 onTap: () {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     _showChangeDateDialog(timestamp);
                   });
+                },
+              ),
+              const PopupMenuDivider(),
+              PopupMenuItem<String>(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.delete,
+                      color: Colors.red.withAlpha(204), // Equivalent to opacity 0.8
+                      size: popupIconSize,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Delete Image',
+                      style: TextStyle(fontSize: popupFontSize),
+                    ),
+                  ],
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showDeleteDialog(imageFile);
                 },
               ),
             ],
