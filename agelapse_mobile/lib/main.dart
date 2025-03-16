@@ -1,4 +1,4 @@
-import 'package:agelapse/services/settings_cache.dart';
+import 'package:AgeLapse/services/settings_cache.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';

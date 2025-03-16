@@ -1,9 +1,10 @@
-import 'package:agelapse/widgets/main_navigation.dart';
+
 import 'package:flutter/material.dart';
 import '../services/settings_cache.dart';
 import '../styles/styles.dart';
 import '../utils/project_utils.dart';
 import '../utils/settings_utils.dart';
+import '../widgets/main_navigation.dart';
 import '../widgets/settings_sheet.dart';
 
 class SetUpNotificationsPage extends StatefulWidget {

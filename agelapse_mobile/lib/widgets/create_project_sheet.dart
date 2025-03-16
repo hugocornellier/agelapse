@@ -1,12 +1,11 @@
 import 'dart:io';
-import 'package:agelapse/screens/project_page.dart';
-import 'package:agelapse/widgets/main_navigation.dart';
+import 'package:AgeLapse/screens/project_page.dart';
 import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../services/database_helper.dart';
 import '../services/settings_cache.dart';
 import '../styles/styles.dart';
 import '../utils/notification_util.dart';
+import 'main_navigation.dart';
 
 class CreateProjectSheet extends StatefulWidget {
   final bool isDefaultProject;
@@ -288,16 +287,6 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
           ),
         ),
       ),
-    );
-  }
-
-
-  Route _createRoute(Widget page) {
-    return PageRouteBuilder(
-      pageBuilder: (context, animation, secondaryAnimation) => page,
-      transitionsBuilder: (context, animation, secondaryAnimation, child) => child,
-      transitionDuration: Duration.zero,
-      reverseTransitionDuration: Duration.zero,
     );
   }
 

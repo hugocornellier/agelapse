@@ -1,13 +1,13 @@
 import 'dart:io';
-import 'package:agelapse/utils/dir_utils.dart';
-import 'package:agelapse/widgets/progress_widget.dart';
 import 'package:flutter/material.dart';
 import '../services/database_helper.dart';
 import '../services/face_stabilizer.dart';
+import '../utils/dir_utils.dart';
 import '../widgets/project_select_sheet.dart';
 import '../widgets/settings_sheet.dart';
 import 'package:path/path.dart' as path;
 import '../services/settings_cache.dart';
+import 'progress_widget.dart';
 
 class CustomAppBar extends StatefulWidget {
   final int projectId;

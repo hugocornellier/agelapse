@@ -1,7 +1,4 @@
 import 'dart:io';
-import 'package:agelapse/widgets/custom_dropdown_button.dart';
-import 'package:agelapse/widgets/main_navigation.dart';
-import 'package:agelapse/widgets/setting_list_tile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -18,7 +15,10 @@ import '../utils/settings_utils.dart';
 import '../utils/stabilizer_utils/stabilizer_utils.dart';
 import '../utils/utils.dart';
 import 'bool_setting_switch.dart';
+import 'custom_dropdown_button.dart';
 import 'dropdown_with_custom_textfield.dart';
+import 'main_navigation.dart';
+import 'setting_list_tile.dart';
 
 class SettingsSheet extends StatefulWidget {
   final int projectId;

@@ -1,6 +1,7 @@
-import 'package:agelapse/screens/create_project_page.dart';
+
 import 'package:flutter/material.dart';
 import '../../styles/styles.dart';
+import 'create_project_page.dart';
 
 class WelcomePagePartTwo extends StatefulWidget {
   const WelcomePagePartTwo({super.key});

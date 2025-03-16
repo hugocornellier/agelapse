@@ -1,8 +1,8 @@
 import 'dart:io';
-import 'package:agelapse/screens/create_project_page.dart';
-import 'package:agelapse/screens/project_page.dart';
+import 'package:AgeLapse/screens/project_page.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
+import '../screens/create_project_page.dart';
 import '../services/database_helper.dart';
 import '../styles/styles.dart';
 import '../utils/dir_utils.dart';

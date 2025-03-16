@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
-import 'package:agelapse/utils/stabilizer_utils/stabilizer_utils.dart';
 import 'package:flutter/cupertino.dart';
 
 import '../services/database_helper.dart';
 import '../utils/dir_utils.dart';
 import '../utils/project_utils.dart';
 import '../utils/settings_utils.dart';
+import 'stabilizer_utils/stabilizer_utils.dart';
 
 class OutputImageLoader {
   final int projectId;

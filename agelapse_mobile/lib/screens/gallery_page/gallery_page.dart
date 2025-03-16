@@ -2,8 +2,6 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:agelapse/screens/stab_on_diff_face.dart';
-import 'package:agelapse/widgets/yellow_tip_bar.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
@@ -23,6 +21,8 @@ import '../../utils/gallery_utils.dart';
 import '../../utils/settings_utils.dart';
 import '../../utils/utils.dart';
 import '../../widgets/progress_widget.dart';
+import '../../widgets/yellow_tip_bar.dart';
+import '../stab_on_diff_face.dart';
 import 'gallery_widgets.dart';
 
 class GalleryPage extends StatefulWidget {

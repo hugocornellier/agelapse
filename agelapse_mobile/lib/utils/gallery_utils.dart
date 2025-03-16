@@ -2,8 +2,6 @@ import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
 
-import 'package:agelapse/utils/settings_utils.dart';
-import 'package:agelapse/utils/utils.dart';
 import 'package:archive/archive_io.dart';
 import 'package:async_zip/async_zip.dart';
 import 'package:camera/camera.dart';
@@ -17,6 +15,8 @@ import '../services/database_helper.dart';
 import '../services/image_processor.dart';
 import 'camera_utils.dart';
 import 'dir_utils.dart';
+import 'settings_utils.dart';
+import 'utils.dart';
 
 class GalleryUtils {
   static var fileList = [];

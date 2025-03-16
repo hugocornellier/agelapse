@@ -1,10 +1,11 @@
-import 'package:agelapse/widgets/main_navigation.dart';
+
 import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import '../services/database_helper.dart';
 import '../styles/styles.dart';
 import '../utils/settings_utils.dart';
 import '../utils/utils.dart';
+import '../widgets/main_navigation.dart';
 
 class GuideModeTutorialPage extends StatefulWidget {
   final int projectId;

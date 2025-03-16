@@ -34,7 +34,7 @@ dependencies:
   path_provider: ^2.1.4
   saver_gallery: ^3.0.6
   file_picker: ^8.1.2
-  wechat_assets_picker: ^9.2.2
+  wechat_assets_picker: ^9.5.0
   exif: ^3.3.0
   intl: ^0.19.0
   ffmpeg_kit_flutter_video: 6.0.3-LTS

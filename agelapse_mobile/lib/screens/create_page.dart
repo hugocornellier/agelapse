@@ -1,6 +1,5 @@
 import 'dart:io';
-import 'package:agelapse/utils/project_utils.dart';
-import 'package:agelapse/widgets/yellow_tip_bar.dart';
+
 import 'package:flutter/material.dart';
 import 'package:chewie/chewie.dart';
 import 'package:flutter/services.dart';
@@ -11,9 +10,11 @@ import '../services/database_helper.dart';
 import '../services/settings_cache.dart';
 import '../styles/styles.dart';
 import '../utils/dir_utils.dart';
+import '../utils/project_utils.dart';
 import '../utils/settings_utils.dart';
 import '../utils/video_utils.dart';
 import '../widgets/settings_sheet.dart';
+import '../widgets/yellow_tip_bar.dart';
 
 class CreatePage extends StatefulWidget {
   final int projectId;

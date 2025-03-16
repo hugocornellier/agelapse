@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:agelapse/screens/tips_page.dart';
+
 import 'package:flutter/material.dart';
 import '../services/settings_cache.dart';
 import '../styles/styles.dart';
@@ -12,6 +12,7 @@ import '../widgets/settings_sheet.dart';
 import '../utils/output_image_loader.dart';
 import 'create_first_video_page.dart';
 import 'guide_mode_tutorial_page.dart';
+import 'tips_page.dart';
 
 class ProjectPage extends StatefulWidget {
   final int projectId;

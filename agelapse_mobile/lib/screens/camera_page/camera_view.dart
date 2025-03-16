@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:agelapse/screens/took_first_photo_page.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -13,6 +12,7 @@ import '../../utils/dir_utils.dart';
 import '../../utils/utils.dart';
 import '../../utils/settings_utils.dart';
 import '../guide_mode_tutorial_page.dart';
+import '../took_first_photo_page.dart';
 import 'grid_mode.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:ui' as ui;
