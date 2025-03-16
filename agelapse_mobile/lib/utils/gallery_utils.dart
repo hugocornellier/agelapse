@@ -374,8 +374,6 @@ class GalleryUtils {
         bytes = await CameraUtils.readBytesInIsolate(file.path);
       }
 
-      print("Here1");
-
       final bool result = await CameraUtils.savePhoto(
         file,
         projectId,
@@ -385,8 +383,6 @@ class GalleryUtils {
         bytes: bytes,
         increaseSuccessfulImportCount: increaseSuccessfulImportCount,
       );
-
-      print("savePhoto complete. Returning $result");
 
       return result;
     } catch (e) {
@@ -420,7 +416,6 @@ class GalleryUtils {
 
     if (testForm == null) return null;
 
-    print("Date parsed as string: $testForm");
     activeProcessingDateNotifier.value = testForm;
 
     try {

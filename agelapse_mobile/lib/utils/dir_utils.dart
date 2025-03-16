@@ -153,7 +153,6 @@ class DirUtils {
     try {
       final file = File(filepath);
       final bool fileExists = await file.exists();
-      print("$fileExists");
       return fileExists ? file : null;
     } catch (e) {
       debugPrint("Failed to load image: $e");
@@ -200,12 +199,9 @@ class DirUtils {
         "thumbnail.jpg"
     );
 
-    print("Looking for $thumbnailDir");
-
     final bool isValidDirectory = await _isValidDirectory(thumbnailDir);
     if (isValidDirectory) {
       await deleteDirectory(thumbnailDir);
-      print('Directory deleted.');
     } else {
       print('Directory does not exist or is not a valid directory.');
     }

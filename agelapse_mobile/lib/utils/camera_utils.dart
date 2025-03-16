@@ -6,7 +6,6 @@ import 'package:flutter/foundation.dart';
 import 'package:heif_converter/heif_converter.dart';
 import 'package:path/path.dart' as path;
 import 'package:image/image.dart' as imglib;
-import 'package:permission_handler/permission_handler.dart';
 import 'package:saver_gallery/saver_gallery.dart';
 import 'package:vibration/vibration.dart';
 
@@ -105,10 +104,10 @@ class CameraUtils {
           : path.basename(filePath);
 
       final SaveResult result = await SaverGallery.saveFile(
-          file: filePath,
-          name: name,
-          androidRelativePath: "Pictures/AgeLapse Exports",
-          androidExistNotSave: false
+        fileName: path.basename(filePath),
+        filePath: filePath,
+        skipIfExists: false,
+        androidRelativePath: "Pictures/AgeLapse Exports",
       );
 
       if (result.isSuccess) {

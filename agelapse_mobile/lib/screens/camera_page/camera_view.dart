@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../services/database_helper.dart';
 import '../../styles/styles.dart';
@@ -97,7 +96,6 @@ class _CameraViewState extends State<CameraView> {
       setState(() {
         _widgetHeight = renderBox.size.height;
       });
-      print("Widget Height: $_widgetHeight");
     }
   }
 
@@ -133,8 +131,6 @@ class _CameraViewState extends State<CameraView> {
     }
 
     takingGuidePhoto = (widget.takingGuidePhoto != null && widget.takingGuidePhoto == true);
-
-    print("Building camera view... takingGuidePhoto = $takingGuidePhoto");
 
     final String flashSetting = await DB.instance.getSettingValueByTitle('camera_flash');
     if (flashSetting == 'off') flashEnabled = false;
@@ -325,7 +321,7 @@ class _CameraViewState extends State<CameraView> {
                   padding: const EdgeInsets.all(12),
                   margin: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.7),
+                    color: Colors.blue.withAlpha(179), // Equivalent to opacity 0.7
                     borderRadius: BorderRadius.circular(16), // More rounded corners
                   ),
                   child: Row(
@@ -427,10 +423,10 @@ class _CameraViewState extends State<CameraView> {
       );
     } else {
       return SvgPicture.asset(
-        color: Colors.white,
         'assets/ghost-custom.svg',
         width: 24,
         height: 24,
+        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
       );
     }
   }
@@ -475,23 +471,15 @@ class _CameraViewState extends State<CameraView> {
               final rightX = centerX + offsetX * MediaQuery.of(context).size.width;
               final centerY = _widgetHeight * offsetY;
 
-              print(_widgetHeight);
-
               final distanceToLeftX = (dx - leftX).abs();
               final distanceToRightX = (dx - rightX).abs();
               final distanceToCenterY = (dy - centerY).abs();
 
-              print("distanceToLeftX: $distanceToLeftX");
-              print("distanceToRightX: $distanceToRightX");
-              print("distanceToCenterY: $distanceToCenterY");
-
               if (distanceToLeftX < 20 || distanceToRightX < 20) {
                 _isDraggingVertical = true;
                 _draggingRight = distanceToRightX < 20;
-                print("Dragging vertical...");
               } else if (distanceToCenterY < 20) {
                 _isDraggingHorizontal = true;
-                print("Dragging horizontal...");
               }
             },
             onPanUpdate: (details) {
@@ -780,7 +768,7 @@ class _CameraGridPainter extends CustomPainter {
     if (gridMode == GridMode.none) return;
 
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.6)
+      ..color = Colors.white.withAlpha(153) // Equivalent to opacity 0.6
       ..strokeWidth = 1;
 
     if (gridMode == GridMode.gridOnly || gridMode == GridMode.doubleGhostGrid) {
@@ -810,7 +798,7 @@ class _CameraGridPainter extends CustomPainter {
 
   void _drawGuideImage(Canvas canvas, Size size) {
     if (guideImage != null && ghostImageOffsetX != null && ghostImageOffsetY != null) {
-      final imagePaint = Paint()..color = Colors.white.withOpacity(0.3);
+      final imagePaint = Paint()..color = Colors.white.withAlpha(77); // Equivalent to opacity 0.3
       final imageWidth = guideImage!.width.toDouble();
       final imageHeight = guideImage!.height.toDouble();
       final scale = _calculateImageScale(size.width, imageWidth, imageHeight);

@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../services/database_helper.dart';
 import '../../utils/dir_utils.dart';
 import '../utils/utils.dart';
@@ -97,47 +96,6 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
     });
   }
 
-  Future<bool> _onWillPop() async {
-    if (_hasUnsavedChanges) {
-      bool? saveChanges = await showDialog<bool>(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text('Unsaved Changes'),
-            content: const Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text('You have unsaved changes. Do you want to save them before leaving?'),
-                SizedBox(height: 16.0),
-                Text(
-                  '⚠️ WARNING: ',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                Text('All photos will need to be re-stabilized.'),
-              ],
-            ),
-            actions: <Widget>[
-              TextButton(
-                child: const Text('Cancel'),
-                onPressed: () => Navigator.of(context).pop(false),
-              ),
-              TextButton(
-                child: const Text('Save'),
-                onPressed: () => Navigator.of(context).pop(true),
-              ),
-            ],
-          );
-        },
-      );
-
-      if (saveChanges == true) {
-        await _saveChanges();
-      }
-    }
-    return true;
-  }
-
   void _getWidgetHeight() {
     final RenderBox renderBox = _widgetKey.currentContext!.findRenderObject() as RenderBox;
     setState(() {
@@ -147,8 +105,56 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: _onWillPop,
+    return PopScope(
+      canPop: !_hasUnsavedChanges,
+        onPopInvokedWithResult: (didPop, result) async {
+          if (didPop) return;
+
+          if (_hasUnsavedChanges) {
+            bool? saveChanges = await showDialog<bool>(
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  title: const Text('Unsaved Changes'),
+                  content: const Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text('You have unsaved changes. Do you want to save them before leaving?'),
+                      SizedBox(height: 16.0),
+                      Text(
+                        '⚠️ WARNING: ',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text('All photos will need to be re-stabilized.'),
+                    ],
+                  ),
+                  actions: <Widget>[
+                    TextButton(
+                      child: const Text('Cancel'),
+                      onPressed: () => Navigator.of(context).pop(false),
+                    ),
+                    TextButton(
+                      child: const Text('Save'),
+                      onPressed: () => Navigator.of(context).pop(true),
+                    ),
+                  ],
+                );
+              },
+            );
+
+            if (saveChanges == true) {
+              await _saveChanges();
+              if (context.mounted) {
+                Navigator.of(context).pop();
+              }
+            } else if (saveChanges == false) {
+              if (context.mounted) {
+                Navigator.of(context).pop();
+              }
+            }
+          }
+        },
       child: Scaffold(
         appBar: AppBar(
           title: const Text("Output Position"),
@@ -184,7 +190,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                   padding: const EdgeInsets.all(12),
                   margin: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.9),
+                    color: Colors.black.withAlpha(230), // Equivalent to opacity 0.9
                     borderRadius: BorderRadius.circular(16), // More rounded corners
                   ),
                   child: Row(

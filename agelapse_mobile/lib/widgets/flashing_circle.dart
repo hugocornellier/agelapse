@@ -45,7 +45,7 @@ class FlashingCircleState extends State<FlashingCircle> with SingleTickerProvide
             height: widget.diameter,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.blue.withOpacity(0.5 + 0.5 * _controller.value),
+              color: Colors.blue.withAlpha(128 + (128 * _controller.value).round()), // Equivalent to opacity 0.5-1.0 range
             ),
           ),
         );

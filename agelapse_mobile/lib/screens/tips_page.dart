@@ -86,10 +86,10 @@ class TipsPageState extends State<TipsPage> {
               title: "Let Us Handle the Heavy Lifting",
               description: "No need to be perfect: sit back as your photos are auto-stabilized.",
               svgIcon: SvgPicture.asset(
-                color: Colors.white,
                 'assets/relax.svg',
                 width: 24,
                 height: 24,
+                colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
               ),
             ),
             Expanded(child: Container()),

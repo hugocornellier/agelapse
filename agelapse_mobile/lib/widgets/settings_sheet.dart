@@ -121,11 +121,7 @@ class SettingsSheetState extends State<SettingsSheet> {
     tz.initializeTimeZones();
 
     const initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
-    final initializationSettingsDarwin = DarwinInitializationSettings(
-      onDidReceiveLocalNotification: (id, title, body, payload) async {
-        //
-      },
-    );
+    final initializationSettingsDarwin = DarwinInitializationSettings();
 
     final initializationSettings = InitializationSettings(
       android: initializationSettingsAndroid,
@@ -237,7 +233,6 @@ class SettingsSheetState extends State<SettingsSheet> {
       platformDetails,
       payload: 'Daily Notification Payload',
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.time,
     );
   }

@@ -61,7 +61,6 @@ class _CustomAppBarState extends State<CustomAppBar> {
 
     if (path.dirname(imagePath).contains(DirUtils.stabilizedDirname)) {
       imagePath = FaceStabilizer.getStabThumbnailPath(imagePath);
-      print("Image is stabilized. Fetching stab thumbnail. Try this: $imagePath");
     }
 
     setState(() {

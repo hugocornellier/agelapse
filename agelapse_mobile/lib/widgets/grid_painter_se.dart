@@ -1,5 +1,4 @@
 import 'dart:ui' as ui;
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class GridPainterSE extends CustomPainter {
@@ -26,7 +25,7 @@ class GridPainterSE extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (guideImage != null && ghostImageOffsetX != null && ghostImageOffsetY != null) {
-      final imagePaint = Paint()..color = Colors.white.withOpacity(0.95);
+      final imagePaint = Paint()..color = Colors.white.withAlpha(242); // Equivalent to opacity 0.95
       final imageWidth = guideImage!.width.toDouble();
       final imageHeight = guideImage!.height.toDouble();
       final scale = _calculateImageScale(size.width, imageWidth, imageHeight);
@@ -47,7 +46,7 @@ class GridPainterSE extends CustomPainter {
     }
 
     final paint = Paint()
-      ..color = Colors.lightBlueAccent.withOpacity(0.5)
+      ..color = Colors.lightBlueAccent.withAlpha(128) // Equivalent to opacity 0.5
       ..strokeWidth = 2;
 
     final offsetXInPixels = size.width * offsetX;
@@ -82,7 +81,7 @@ class GridPainterSE extends CustomPainter {
     if (!hideToolTip) {
       // Draw text background rectangle
       final textBackgroundPaint = Paint()
-        ..color = Colors.black.withOpacity(0.9)
+        ..color = Colors.black.withAlpha(230) // Equivalent to opacity 0.9
         ..style = PaintingStyle.fill;
 
       const textPadding = 8.0;

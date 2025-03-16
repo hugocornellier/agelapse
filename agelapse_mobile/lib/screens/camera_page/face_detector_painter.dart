@@ -49,7 +49,7 @@ class FaceDetectorPainter extends CustomPainter {
 
   void drawTranslucentBox(Canvas canvas, Size size, IconData iconData, String text) {
     final Paint boxPaint = Paint()
-      ..color = Colors.black.withOpacity(0.7)
+      ..color = Colors.black.withAlpha(179) // Equivalent to opacity 0.7
       ..style = PaintingStyle.fill;
 
     const double iconSize = 16;

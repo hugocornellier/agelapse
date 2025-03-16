@@ -55,16 +55,14 @@ class OutputImageLoader {
         ghostImageOffsetY = offsetYData;
 
         try {
-          print("Here1");
           guideImage = await StabUtils.loadImageFromFile(File(guideImagePath));
         } catch(e) {
-          print("Error caught here1 $e, setting ghostImage to persongrey");
+          print("Error caught $e, setting ghostImage to persongrey");
           guideImage = await ProjectUtils.loadImage('assets/images/person-grey.png');
           ghostImageOffsetX = 0.105;
           ghostImageOffsetY = 0.241;
         }
       } else {
-        print("Here3");
         guideImage = await ProjectUtils.loadImage('assets/images/person-grey.png');
         ghostImageOffsetX = 0.105;
         ghostImageOffsetY = 0.241;

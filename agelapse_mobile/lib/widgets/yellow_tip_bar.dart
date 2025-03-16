@@ -21,7 +21,7 @@ class YellowTipBar extends StatelessWidget {
         children: [
           Icon(
             Icons.lightbulb_outline,
-            color: Colors.yellow.withOpacity(0.8),
+            color: Colors.yellow.withAlpha(204), // Equivalent to opacity 0.8
             size: 30,
           ),
           const SizedBox(width: 16),

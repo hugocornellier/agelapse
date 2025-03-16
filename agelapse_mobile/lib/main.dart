@@ -57,11 +57,7 @@ Future<void> initializeNotifications() async {
   FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
   const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
-  final DarwinInitializationSettings initializationSettingsDarwin = DarwinInitializationSettings(
-    onDidReceiveLocalNotification: (int id, String? title, String? body, String? payload) async {
-      // In the future, need to handle notification tapped logic here
-    },
-  );
+  final DarwinInitializationSettings initializationSettingsDarwin = DarwinInitializationSettings();
   final InitializationSettings initializationSettings = InitializationSettings(
     android: initializationSettingsAndroid,
     iOS: initializationSettingsDarwin,

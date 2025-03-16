@@ -329,7 +329,20 @@ class FaceStabilizer {
     await DirUtils.createDirectoryIfNotExists(stabThumbnailPath);
     final bytes = await CameraUtils.readBytesInIsolate(stabilizedPhotoPath);
     final imglib.Image? rawImage = await compute(imglib.decodeImage, bytes!);
-    final imglib.Image thumbnail = imglib.copyResize(rawImage!, width: 500);
+
+    // Use .jpgs to store thumbnails to save space, but we also need to
+    // composite the transparency with a black background to ensure the thumbnails
+    // have a dark background in gallery
+    final imglib.Image blackBackground = imglib.Image(
+      width: rawImage!.width,
+      height: rawImage.height,
+      numChannels: 4,
+    );
+
+    imglib.fill(blackBackground, color: imglib.ColorRgb8(0, 0, 0));
+    imglib.compositeImage(blackBackground, rawImage);
+
+    final imglib.Image thumbnail = imglib.copyResize(blackBackground, width: 500);
     final thumbnailBytes = imglib.encodeJpg(thumbnail);
 
     await File(stabThumbnailPath).writeAsBytes(thumbnailBytes);

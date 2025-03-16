@@ -195,8 +195,6 @@ class MainNavigationState extends State<MainNavigation> {
     });
 
     final List<String> allPhotosBefore = await DB.instance.getAllPhotoPathsByProjectID(widget.projectId);
-    bool allPhotosBeforeIsEmpty = allPhotosBefore.isEmpty;
-    print(allPhotosBeforeIsEmpty);
     final int photoCountBeforeImport = allPhotosBefore.length;
 
     final List<File> files = pickedFiles.paths.map((path) => File(path!)).toList();
@@ -212,7 +210,7 @@ class MainNavigationState extends State<MainNavigation> {
           });
         }
       } catch(e) {
-        print("Error caught123: $e");
+        print("[processPickedFiles] Error caught: $e");
       } finally {
         i++;
       }
@@ -278,8 +276,7 @@ class MainNavigationState extends State<MainNavigation> {
         Stopwatch loopStopwatch = Stopwatch();
         loopStopwatch.start();
 
-        print("");
-        print("Stabilizing new photo...:");
+        print("\nStabilizing new photo...:");
 
         await _stabilizePhoto(faceStabilizer, photo);
 
@@ -388,7 +385,6 @@ class MainNavigationState extends State<MainNavigation> {
   }
 
   Future<bool> _createTimelapse(FaceStabilizer faceStabilizer) async {
-  print("Creating timelapse...");
     try {
       final newestVideo = await DB.instance.getNewestVideoByProjectId(widget.projectId);
       final bool videoIsNull = newestVideo == null;

@@ -235,7 +235,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
       child: GestureDetector(
         onTap: () => _handleContourTapped(face, userRanOutOfSpaceCallback),
         child: Container(
-          color: Colors.blue.withOpacity(0.3),
+          color: Colors.blue.withAlpha(77), // Equivalent to opacity 0.3
         ),
       ),
     );

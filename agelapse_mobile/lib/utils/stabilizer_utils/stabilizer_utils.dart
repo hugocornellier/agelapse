@@ -3,7 +3,6 @@ import 'dart:io';
 import 'dart:isolate';
 import 'dart:math';
 import 'dart:ui' as ui;
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:heif_converter/heif_converter.dart';
@@ -45,7 +44,6 @@ class StabUtils {
   ) async {
     final bool fileExists = File(imagePath).existsSync();
     if (!fileExists) {
-      print("File no longer exists. Returning empty list.");
       return null;
     }
 

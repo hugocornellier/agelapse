@@ -99,7 +99,7 @@ class _GridPainter extends CustomPainter {
     if (gridMode == GridMode.none) return;
 
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.6)
+      ..color = Colors.white.withAlpha(153) // Equivalent to opacity 0.6
       ..strokeWidth = 1;
 
     if (gridMode == GridMode.gridOnly || gridMode == GridMode.doubleGhostGrid) {
@@ -129,7 +129,7 @@ class _GridPainter extends CustomPainter {
 
   void _drawGuideImage(Canvas canvas, Size size) {
     if (guideImage != null && ghostImageOffsetX != null && ghostImageOffsetY != null) {
-      final imagePaint = Paint()..color = Colors.white.withOpacity(0.5);
+      final imagePaint = Paint()..color = Colors.white.withAlpha(128); // Equivalent to opacity 0.5
       final imageWidth = guideImage!.width.toDouble();
       final imageHeight = guideImage!.height.toDouble();
       final scale = _calculateImageScale(size.width, imageWidth, imageHeight);

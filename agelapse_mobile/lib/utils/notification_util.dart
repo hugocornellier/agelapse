@@ -34,11 +34,7 @@ class NotificationUtil {
 
     const initializationSettingsAndroid =
     AndroidInitializationSettings('@mipmap/ic_launcher');
-    final initializationSettingsDarwin = DarwinInitializationSettings(
-      onDidReceiveLocalNotification: (id, title, body, payload) async {
-        // Handle iOS local notification received
-      },
-    );
+    final initializationSettingsDarwin = DarwinInitializationSettings();
 
     final initializationSettings = InitializationSettings(
       android: initializationSettingsAndroid,
@@ -88,7 +84,6 @@ class NotificationUtil {
       platformDetails,
       payload: 'Daily Notification Payload',
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.time,
     );
   }

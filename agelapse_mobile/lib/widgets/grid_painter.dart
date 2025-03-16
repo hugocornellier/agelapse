@@ -7,7 +7,7 @@ class GridPainter extends CustomPainter {
     final double cellHeight = size.height / 3;
 
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.5)
+      ..color = Colors.white.withAlpha(128) // Equivalent to opacity 0.5
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
 

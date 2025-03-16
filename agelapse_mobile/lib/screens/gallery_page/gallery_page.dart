@@ -146,7 +146,6 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
 
   Future<void> _initializeFromCache() async {
     while (widget.settingsCache == null) {
-      print("Waiting for cache...");
       await Future.delayed(const Duration(seconds: 1));
     }
 
@@ -305,16 +304,8 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
     }
 
     while (true) {
-      print("Waiting 2s");
-
       int waitTimeInSeconds = 2;
-
       int stabCount = await DB.instance.getStabilizedPhotoCountByProjectID(projectId, projectOrientation!);
-
-      print("stabCount: ${stabCount}");
-      print("_stabCount: ${_stabCount}");
-      print("projectId: ${projectId}");
-      print("projectOrientation: ${projectOrientation}");
 
       if (stabCount != _stabCount) {
         _stabCount = stabCount;
@@ -644,9 +635,6 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
     widget.stabCallback();
     setState(() => isImporting = false);
     _loadImages();
-
-    print("photosImported now: $photosImported");
-    print("successfullyImported now: $successfullyImported");
 
     _showImportCompleteDialog(successfullyImported, photosImported - successfullyImported);
   }
@@ -1347,10 +1335,6 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
           PermissionStatus videosStatus = await Permission.videos.request();
           PermissionStatus audioStatus = await Permission.audio.request();
 
-          print("imagesStatus: $imagesStatus");
-          print("videosStatus: $videosStatus");
-          print("audioStatus: $audioStatus");
-
           if (imagesStatus.isGranted && videosStatus.isGranted && audioStatus.isGranted) return;
 
           if (imagesStatus.isPermanentlyDenied || videosStatus.isPermanentlyDenied || audioStatus.isPermanentlyDenied) {
@@ -1359,8 +1343,6 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
         } else {
           // For Android 12 and below, request storage permission
           PermissionStatus storageStatus = await Permission.storage.request();
-
-          print("storageStatus: $storageStatus");
 
           if (storageStatus.isGranted) return;
 

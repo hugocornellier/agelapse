@@ -376,7 +376,7 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
                               width: 80,
                               height: 80,
                               decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.5),
+                                color: Colors.black.withAlpha(128), // Equivalent to opacity 0.5
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
