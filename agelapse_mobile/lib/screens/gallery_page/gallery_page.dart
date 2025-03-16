@@ -330,7 +330,9 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
   }
 
   Future<bool> requestPermission() async {
-    PermissionStatus status = await Permission.mediaLibrary.request();
+    print("here1");
+    PermissionStatus status = await Permission.photos.request();
+    print("status: ${status}");
 
     if (status.isGranted) {
       return true;
@@ -349,14 +351,12 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
 
   Future<void> _pickFromGallery() async {
     try {
-      // Request permissions
-      bool status = await requestPermission();
-      if (!status) return;
+      await checkAndRequestPermissions();
 
       final List<AssetEntity>? result = await AssetPicker.pickAssets(
         context,
         pickerConfig: const AssetPickerConfig(
-          maxAssets: 9,
+          maxAssets: 100,
           requestType: RequestType.image,
         ),
       );
