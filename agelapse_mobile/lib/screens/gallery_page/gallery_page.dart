@@ -157,6 +157,126 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
     }
   }
 
+  Future<void> _showChangeDateDialog(String currentTimestamp) async {
+    Navigator.of(context).pop();
+
+    DateTime initialDate = DateTime.fromMillisecondsSinceEpoch(int.parse(currentTimestamp));
+    DateTime? newDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
+    );
+
+    if (newDate == null) return;
+
+    TimeOfDay initialTime = TimeOfDay.fromDateTime(initialDate);
+    TimeOfDay? newTime = await showTimePicker(
+      context: context,
+      initialTime: initialTime,
+    );
+
+    if (newTime == null) return;
+
+    DateTime newDateTime = DateTime(
+      newDate.year,
+      newDate.month,
+      newDate.day,
+      newTime.hour,
+      newTime.minute,
+    );
+
+    String newTimestamp = newDateTime.millisecondsSinceEpoch.toString();
+
+    await _changePhotoDate(currentTimestamp, newTimestamp);
+  }
+
+  Future<void> _changePhotoDate(String oldTimestamp, String newTimestamp) async {
+    try {
+      setState(() {
+        isImporting = true;
+      });
+
+      String oldRawPhotoPath = await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
+          oldTimestamp, projectId);
+      File oldRawFile = File(oldRawPhotoPath);
+
+      if (!await oldRawFile.exists()) {
+        throw Exception('Original file not found');
+      }
+
+      String fileExtension = path.extension(oldRawPhotoPath);
+
+      String newRawPhotoPath = path.join(
+          path.dirname(oldRawPhotoPath),
+          '$newTimestamp$fileExtension'
+      );
+
+      await oldRawFile.rename(newRawPhotoPath);
+
+      String oldRawThumbPath = oldRawPhotoPath.replaceAll(
+          DirUtils.photosRawDirname,
+          DirUtils.thumbnailDirname
+      );
+      oldRawThumbPath = path.join(
+          path.dirname(oldRawThumbPath),
+          "${path.basenameWithoutExtension(oldRawPhotoPath)}.jpg"
+      );
+
+      File oldRawThumbFile = File(oldRawThumbPath);
+      if (await oldRawThumbFile.exists()) {
+        String newRawThumbPath = path.join(
+            path.dirname(oldRawThumbPath),
+            "$newTimestamp.jpg"
+        );
+        await oldRawThumbFile.rename(newRawThumbPath);
+      }
+
+      List<String> orientations = ['portrait', 'landscape'];
+      for (String orientation in orientations) {
+        try {
+          String oldStabPath = await DirUtils.getStabilizedImagePathFromRawPathAndProjectOrientation(
+              projectId, oldRawPhotoPath, orientation);
+          File oldStabFile = File(oldStabPath);
+
+          if (await oldStabFile.exists()) {
+            String newStabPath = path.join(
+                path.dirname(oldStabPath),
+                '$newTimestamp.png'
+            );
+
+            await oldStabFile.rename(newStabPath);
+
+            String oldStabThumbPath = FaceStabilizer.getStabThumbnailPath(oldStabPath);
+            File oldStabThumbFile = File(oldStabThumbPath);
+
+            if (await oldStabThumbFile.exists()) {
+              String newStabThumbPath = FaceStabilizer.getStabThumbnailPath(newStabPath);
+              await DirUtils.createDirectoryIfNotExists(newStabThumbPath);
+              await oldStabThumbFile.rename(newStabThumbPath);
+            }
+          }
+        } catch (e) {
+          print('No stabilized file found for $orientation: $e');
+        }
+      }
+
+      await DB.instance.updatePhotoTimestamp(oldTimestamp, newTimestamp, projectId);
+      await _loadImages();
+      await DB.instance.setNewVideoNeeded(projectId);
+
+    } catch (e) {
+      print('Error changing photo date: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to change photo date: $e'))
+      );
+    } finally {
+      setState(() {
+        isImporting = false;
+      });
+    }
+  }
+
   Future<void> _loadImages() async {
     await GalleryUtils.loadImages(
       projectId: projectId,
@@ -1155,6 +1275,16 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
                 onTap: () {
                   Navigator.pop(context);
                   _showDeleteDialog(imageFile);
+                },
+              ),
+              const PopupMenuDivider(),
+              PopupMenuItem<String>(
+                value: 'changeDate',
+                child: const Text('Change Date'),
+                onTap: () {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    _showChangeDateDialog(timestamp);
+                  });
                 },
               ),
             ],

@@ -395,6 +395,25 @@ class DB {
     }
   }
 
+  Future<void> updatePhotoTimestamp(String oldTimestamp, String newTimestamp, int projectId) async {
+    final db = await database;
+
+    final photoData = await getPhotoByTimestamp(oldTimestamp, projectId);
+    if (photoData == null) return;
+
+    final Map<String, dynamic> updatedPhotoData = Map.from(photoData);
+    updatedPhotoData['timestamp'] = newTimestamp;
+
+    await db.transaction((txn) async {
+      await txn.insert(photoTable, updatedPhotoData,
+          conflictAlgorithm: ConflictAlgorithm.replace);
+
+      await txn.delete(photoTable,
+          where: 'timestamp = ? AND projectID = ?',
+          whereArgs: [oldTimestamp, projectId]);
+    });
+  }
+
   Future<void> setPhotoAsFavorite(String timestamp) async {
     final db = await database;
     await db.update(

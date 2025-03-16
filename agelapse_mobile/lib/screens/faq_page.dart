@@ -20,7 +20,7 @@ class FAQPage extends StatelessWidget {
             FAQItem(
               question: "Is AgeLapse open-source?",
               answer: "Yes! We are proud to be 100% open-source and free, forever. The "
-                  "source code can be viewed at: github.com/hugocornellier/agelapse-flutter\n\nA note to developers: We"
+                  "source code can be viewed at: github.com/hugocornellier/agelapse \n\nA note to developers: We"
                   " welcome PRs, bug reports or feature suggestions. Get in touch! ",
             ),
             FAQItem(
