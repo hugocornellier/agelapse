@@ -137,7 +137,8 @@ class CameraUtils {
     {
       Uint8List? bytes,
       VoidCallback? increaseSuccessfulImportCount,
-      VoidCallback? refreshSettings
+      VoidCallback? refreshSettings,
+      bool applyMirroring = false
     }
   ) async {
     String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
@@ -181,9 +182,14 @@ class CameraUtils {
         return false;
       }
 
-      final imglib.Image? rawImage = await compute(imglib.decodeImage, bytes);
+      imglib.Image? rawImage = await compute(imglib.decodeImage, bytes);
       if (rawImage == null) {
         return false;
+      }
+
+      // Apply mirroring if needed
+      if (applyMirroring) {
+        rawImage = imglib.flipHorizontal(rawImage);
       }
 
       int? importedImageWidth = rawImage.width;

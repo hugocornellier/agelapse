@@ -222,6 +222,7 @@ class DB {
     'framerate'               : '14',
     'enable_grid'             : 'true',
     'save_to_camera_roll'     : 'false',
+    'camera_mirror'           : 'true',
     'default_project'         : 'none',
     'enable_notifications'    : 'true',
     'framerate_is_default'    : 'true',

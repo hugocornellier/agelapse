@@ -80,6 +80,7 @@ class _CameraViewState extends State<CameraView> {
   GridMode _gridMode = GridMode.none;
   Completer<void>? _pictureTakingCompleter;
   bool _isInfoWidgetVisible = true;
+  bool isMirrored = true;
 
   @override
   void initState() {
@@ -102,6 +103,11 @@ class _CameraViewState extends State<CameraView> {
   void _initialize() async {
     final bool hasSeenGuideModeTut = await SettingsUtil.hasSeenGuideModeTut(widget.projectId.toString());
     final bool hasTakenFirstPhoto = await SettingsUtil.hasTakenFirstPhoto(widget.projectId.toString());
+
+    final String mirrorSetting = await DB.instance.getSettingValueByTitle('camera_mirror');
+    if (mirrorSetting.isNotEmpty) {
+      setState(() => isMirrored = mirrorSetting == 'true');
+    }
 
     if (hasTakenFirstPhoto && !hasSeenGuideModeTut) {
       Utils.navigateToScreenNoAnim(
@@ -192,7 +198,8 @@ class _CameraViewState extends State<CameraView> {
           false,
           null,
           false,
-          refreshSettings: widget.refreshSettings
+          refreshSettings: widget.refreshSettings,
+          applyMirroring: isMirrored
         );
 
         final bool hasTakenFirstPhoto = await SettingsUtil.hasTakenFirstPhoto(widget.projectId.toString());
@@ -233,6 +240,28 @@ class _CameraViewState extends State<CameraView> {
     setState(() {
       modifyGridMode = false;
     });
+  }
+
+  Widget mirrorButton() => Positioned(
+    bottom: 21,
+    left: 112,
+    child: _buildButton(
+          () => toggleMirror(),
+      Icon(isMirrored ? Icons.flip : Icons.flip_outlined, size: 24, color: Colors.white),
+    ),
+  );
+
+  void toggleMirror() {
+    setState(() {
+      isMirrored = !isMirrored;
+    });
+    _restartCameraWithCurrentSettings();
+    DB.instance.setSettingByTitle('camera_mirror', isMirrored.toString());
+  }
+
+  Future<void> _restartCameraWithCurrentSettings() async {
+    await _stopLiveFeed();
+    await _startLiveFeed();
   }
 
   void _toggleGrid() {
@@ -290,17 +319,22 @@ class _CameraViewState extends State<CameraView> {
               child: _changingCameraLens
                   ? const Center(child: CircularProgressIndicator())
                   : Transform.scale(
-                scale: scale,
-                child: Center(
-                  child: CameraPreview(
-                    _controller!,
-                    child: null,
-                  ),
-                ),
-              ),
+                      scale: scale,
+                      child: Center(
+                        child: Transform(
+                          alignment: Alignment.center,
+                          transform: Matrix4.identity()..scale(isMirrored ? -1.0 : 1.0, 1.0, 1.0),
+                          child: CameraPreview(
+                            _controller!,
+                            child: null,
+                          ),
+                        ),
+                      ),
+                    ),
             ),
             if (_gridMode != GridMode.none) CameraGridOverlay(widget.projectId, _gridMode, offsetX, offsetY),
             if (!modifyGridMode) flashButton(),
+            mirrorButton(),
             if (!takingGuidePhoto && !modifyGridMode) gridButton(),
             if (_newWidget != null) _newWidget!,
             if (_showFlash) ...[

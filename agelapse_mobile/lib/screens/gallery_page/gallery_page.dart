@@ -282,6 +282,7 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
       projectIdStr: projectIdStr,
       onImagesLoaded: (rawImages, stabImageFiles) async {
         widget.setRawAndStabPhotoStates(rawImages, stabImageFiles);
+        _retryingPhotoTimestamps.clear();
       },
       onShowInfoDialog: () => showInfoDialog(context),
       stabilizedScrollController: _stabilizedScrollController,
@@ -326,6 +327,7 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
     _stabilizedScrollController.dispose();
     _rawScrollController.dispose();
     _isMounted = false;
+    _retryingPhotoTimestamps.clear();
     super.dispose();
   }
 
@@ -1029,17 +1031,20 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
     }
   }
 
+  Set<String> _retryingPhotoTimestamps = {};
 
   Widget _buildStabilizedThumbnail(String filepath) {
+    final String timestamp = path.basenameWithoutExtension(filepath);
+    if (_retryingPhotoTimestamps.contains(timestamp)) {
+      return const FlashingBox();
+    }
     final String thumbnailPath = FaceStabilizer.getStabThumbnailPath(filepath);
-
     return GestureDetector(
       onTap: () => _showImagePreviewDialog(File(filepath), isStabilized: true),
       onLongPress: () => _showDeleteDialog(File(filepath)),
-      child: StabilizedThumbnail(thumbnailPath: thumbnailPath, projectId: widget.projectId,),
+      child: StabilizedThumbnail(thumbnailPath: thumbnailPath, projectId: widget.projectId),
     );
   }
-
 
   Future<void> _showDialog(BuildContext context, Widget dialog) async {
     showDialog(
@@ -1218,6 +1223,30 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
       }
     }
 
+    Future<void> _retryStabilization() async {
+      if (activeImagePreviewPath == null) return;
+      final String timestamp = path.basenameWithoutExtension(activeImagePreviewPath!);
+      _retryingPhotoTimestamps.add(timestamp);
+      final String rawPhotoPath = await DirUtils.getRawPhotoPathFromTimestampAndProjectId(timestamp, widget.projectId);
+      final String projectOrientation = await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
+      final String stabilizedImagePath = await DirUtils.getStabilizedImagePathFromRawPathAndProjectOrientation(widget.projectId, rawPhotoPath, projectOrientation);
+      final String stabThumbPath = FaceStabilizer.getStabThumbnailPath(stabilizedImagePath);
+      final File stabImageFile = File(stabilizedImagePath);
+      final File stabThumbFile = File(stabThumbPath);
+      if (await stabImageFile.exists()) {
+        await stabImageFile.delete();
+      }
+      if (await stabThumbFile.exists()) {
+        await stabThumbFile.delete();
+      }
+      await DB.instance.resetStabilizedColumnByTimestamp(projectOrientation, timestamp);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Retrying stabilization...')));
+      widget.stabCallback();
+      Navigator.of(context).pop();
+    }
+
+
+
     Future<void> updateImagePreviewPath(StateSetter dialogSetState, Future<String> Function() getPathFunction, String buttonType) async {
       String newPath = await getPathFunction();
       dialogSetState(() {
@@ -1245,6 +1274,29 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
             context: context,
             position: RelativeRect.fromLTRB(offset.dx - 10, offset.dy - 70, overlay.size.width - offset.dx, 0),
             items: <PopupMenuEntry<String>>[
+              PopupMenuItem<String>(
+                value: 'changeDate',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.calendar_today,
+                      color: Colors.white.withAlpha(204), // Equivalent to opacity 0.8
+                      size: popupIconSize,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Change Date',
+                      style: TextStyle(fontSize: popupFontSize),
+                    ),
+                  ],
+                ),
+                onTap: () {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    _showChangeDateDialog(timestamp);
+                  });
+                },
+              ),
+              const PopupMenuDivider(),
               PopupMenuItem<String>(
                 value: 'stabilize',
                 child: Row(
@@ -1274,24 +1326,17 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
               ),
               const PopupMenuDivider(),
               PopupMenuItem<String>(
-                value: 'changeDate',
+                value: 'retry',
                 child: Row(
                   children: [
-                    Icon(
-                      Icons.calendar_today,
-                      color: Colors.white.withAlpha(204), // Equivalent to opacity 0.8
-                      size: popupIconSize,
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Change Date',
-                      style: TextStyle(fontSize: popupFontSize),
-                    ),
+                    Icon(Icons.refresh, color: Colors.white.withAlpha(150), size: popupIconSize),
+                    SizedBox(width: 8),
+                    Text('Retry Stabilization', style: TextStyle(fontSize: popupFontSize)),
                   ],
                 ),
                 onTap: () {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    _showChangeDateDialog(timestamp);
+                  Future.delayed(Duration.zero, () async {
+                    await _retryStabilization();
                   });
                 },
               ),
