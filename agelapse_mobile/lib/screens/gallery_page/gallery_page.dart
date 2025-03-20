@@ -1245,8 +1245,6 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
       Navigator.of(context).pop();
     }
 
-
-
     Future<void> updateImagePreviewPath(StateSetter dialogSetState, Future<String> Function() getPathFunction, String buttonType) async {
       String newPath = await getPathFunction();
       dialogSetState(() {

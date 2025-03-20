@@ -22,6 +22,11 @@ class SettingsUtil {
     }
   }
 
+  static Future<bool> loadCameraMirror(String projectId) async {
+    final value = await DB.instance.getSettingValueByTitle('camera_mirror', projectId);
+    return value.toLowerCase() == 'true';
+  }
+
   static Future<bool> lightThemeActive() async {
     final String activeTheme = await loadTheme();
     return activeTheme == 'light';
@@ -37,6 +42,15 @@ class SettingsUtil {
       return bool.tryParse(enableGridValueStr) ?? false;
     } catch (e) {
       return false;
+    }
+  }
+
+  static Future<String> loadCameraFlash(String projectId) async {
+    try {
+      String cameraFlashValueStr = await DB.instance.getSettingValueByTitle('camera_flash', projectId);
+      return cameraFlashValueStr;
+    } catch (e) {
+      return "auto";
     }
   }
 

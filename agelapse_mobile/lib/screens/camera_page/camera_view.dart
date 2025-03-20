@@ -80,7 +80,7 @@ class _CameraViewState extends State<CameraView> {
   GridMode _gridMode = GridMode.none;
   Completer<void>? _pictureTakingCompleter;
   bool _isInfoWidgetVisible = true;
-  bool isMirrored = true;
+  bool isMirrored = false;
 
   @override
   void initState() {
@@ -103,10 +103,14 @@ class _CameraViewState extends State<CameraView> {
   void _initialize() async {
     final bool hasSeenGuideModeTut = await SettingsUtil.hasSeenGuideModeTut(widget.projectId.toString());
     final bool hasTakenFirstPhoto = await SettingsUtil.hasTakenFirstPhoto(widget.projectId.toString());
+    final bool mirrorSettingBool = await SettingsUtil.loadCameraMirror(widget.projectId.toString());
 
-    final String mirrorSetting = await DB.instance.getSettingValueByTitle('camera_mirror');
+    final String mirrorSetting = mirrorSettingBool.toString();
+    print("[camera_view.dart _initialize]: mirrorSetting => '${mirrorSetting}'");
+
     if (mirrorSetting.isNotEmpty) {
-      setState(() => isMirrored = mirrorSetting == 'true');
+      // Not a mistake
+      setState(() => isMirrored = mirrorSetting == 'false');
     }
 
     if (hasTakenFirstPhoto && !hasSeenGuideModeTut) {
@@ -138,7 +142,7 @@ class _CameraViewState extends State<CameraView> {
 
     takingGuidePhoto = (widget.takingGuidePhoto != null && widget.takingGuidePhoto == true);
 
-    final String flashSetting = await DB.instance.getSettingValueByTitle('camera_flash');
+    final String flashSetting = await SettingsUtil.loadCameraFlash(widget.projectId.toString());
     if (flashSetting == 'off') flashEnabled = false;
 
     _cameras = await availableCameras();
@@ -199,7 +203,7 @@ class _CameraViewState extends State<CameraView> {
           null,
           false,
           refreshSettings: widget.refreshSettings,
-          applyMirroring: isMirrored
+          applyMirroring: !isMirrored
         );
 
         final bool hasTakenFirstPhoto = await SettingsUtil.hasTakenFirstPhoto(widget.projectId.toString());
@@ -242,27 +246,66 @@ class _CameraViewState extends State<CameraView> {
     });
   }
 
-  Widget mirrorButton() => Positioned(
-    bottom: 21,
-    left: 112,
-    child: _buildButton(
-          () => toggleMirror(),
-      Icon(isMirrored ? Icons.flip : Icons.flip_outlined, size: 24, color: Colors.white),
-    ),
+  Widget mirrorButton() => _buildButton(() => toggleMirror(),
+    Icon(isMirrored ? Icons.flip : Icons.flip_outlined, size: 24, color: Colors.white),
   );
 
   void toggleMirror() {
+    DB.instance.setSettingByTitle('camera_mirror', isMirrored.toString(), widget.projectId.toString());
+
     setState(() {
       isMirrored = !isMirrored;
     });
+
+    print("[toggleMirror] setting setting by title 'camera_mirror' to '${isMirrored.toString()}' for projectId '${widget.projectId.toString()}' ");
+
     _restartCameraWithCurrentSettings();
-    DB.instance.setSettingByTitle('camera_mirror', isMirrored.toString());
   }
 
   Future<void> _restartCameraWithCurrentSettings() async {
     await _stopLiveFeed();
     await _startLiveFeed();
   }
+
+  Widget _leftSideControls() => Positioned(
+    bottom: 21,
+    left: 16,
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildButton(
+              () => toggleFlash(),
+          Icon(flashEnabled ? Icons.flash_auto : Icons.flash_off, size: 24, color: Colors.white),
+        ),
+        SizedBox(width: 16),
+        _buildButton(
+              () => _toggleGrid(),
+          _buildIcon(),
+        ),
+      ],
+    ),
+  );
+
+  Widget _rightSideControls() => Positioned(
+    bottom: 21,
+    right: 16,
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        mirrorButton(),
+        SizedBox(width: 16),
+        _buildButton(
+          _switchLiveCamera,
+          Icon(
+            Platform.isIOS ? Icons.flip_camera_ios_outlined : Icons.flip_camera_android_outlined,
+            color: Colors.white,
+            size: 27,
+          ),
+        ),
+      ],
+    ),
+  );
+
 
   void _toggleGrid() {
     setState(() {
@@ -333,10 +376,8 @@ class _CameraViewState extends State<CameraView> {
                     ),
             ),
             if (_gridMode != GridMode.none) CameraGridOverlay(widget.projectId, _gridMode, offsetX, offsetY),
-            if (!modifyGridMode) flashButton(),
-            mirrorButton(),
-            if (!takingGuidePhoto && !modifyGridMode) gridButton(),
-            if (_newWidget != null) _newWidget!,
+            if (!modifyGridMode) _leftSideControls(),
+            if (!modifyGridMode) _rightSideControls(),
             if (_showFlash) ...[
               AnimatedOpacity(
                 duration: const Duration(milliseconds: 200),
@@ -345,7 +386,6 @@ class _CameraViewState extends State<CameraView> {
               ),
             ],
             if (modifyGridMode) gridModifierOverlay(),
-            if (!modifyGridMode) _switchLiveCameraToggle(),
             if (!modifyGridMode) _cameraControl(),
             if (modifyGridMode && _isInfoWidgetVisible) ...[
 
@@ -553,11 +593,11 @@ class _CameraViewState extends State<CameraView> {
     setState(() => flashEnabled = !flashEnabled);
     if (flashEnabled) {
       await _controller?.setFlashMode(FlashMode.auto);
-      DB.instance.setSettingByTitle('camera_flash', 'auto');
+      DB.instance.setSettingByTitle('camera_flash', 'auto', widget.projectId.toString());
       return;
     }
     await _controller?.setFlashMode(FlashMode.off);
-    DB.instance.setSettingByTitle('camera_flash', 'off');
+    DB.instance.setSettingByTitle('camera_flash', 'off', widget.projectId.toString());
   }
 
   Widget _buildButton(onTap, child, {Color color = Colors.black54}) {

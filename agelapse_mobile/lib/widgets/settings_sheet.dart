@@ -91,6 +91,7 @@ class SettingsSheetState extends State<SettingsSheet> {
         SettingsUtil.loadNotificationSetting(),
         SettingsUtil.loadDailyNotificationTime(widget.projectId.toString()),
         SettingsUtil.loadGridModeIndex(widget.projectId.toString()),
+        SettingsUtil.loadCameraMirror(widget.projectId.toString()),
       ]);
 
       notificationsEnabled = results[2] as bool;
@@ -110,7 +111,9 @@ class SettingsSheetState extends State<SettingsSheet> {
       return {
         'enableGrid': results[0] as bool,
         'saveToCameraRoll': results[1] as bool,
+        'cameraMirror': results[5] as bool,
       };
+
     } catch (e) {
       throw Exception('Failed to load settings: $e');
     }
@@ -563,11 +566,26 @@ class SettingsSheetState extends State<SettingsSheet> {
 
   Widget _buildCameraSettingsContent(Map<String, bool> settings) {
     bool saveToCameraRoll = settings['saveToCameraRoll']!;
+    bool cameraMirror = settings['cameraMirror']!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildGridModeDropdown(),
         _buildSaveToCameraRollSwitch(saveToCameraRoll),
+        BoolSettingSwitch(
+          title: 'Camera Mirror',
+          initialValue: cameraMirror,
+          onChanged: (bool value) async {
+            setState(() {
+              cameraMirror = value;
+            });
+
+            print("Setting camera_mirror to ${value.toString()}");
+
+            await DB.instance.setSettingByTitle('camera_mirror', value.toString(), widget.projectId.toString());
+            widget.refreshSettings();
+          },
+        ),
         const SizedBox(height: 20),
       ],
     );

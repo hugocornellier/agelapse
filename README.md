@@ -10,6 +10,10 @@ AgeLapse runs natively on desktop (Windows and MacOS) and on mobile (Android and
 
 Download AgeLapse here: [https://agelapse.com](https://agelapse.com)
 
+## Bulk Imports (Mobile)
+
+IMPORTANT: To easily import a large number of photos into the mobile version of AgeLapse, create a .zip file containing all the files and import it. Otherwise, if you choose to import them all from your phone gallery, there is a limit of 100 photos at a time. 
+
 ## Platforms Supported
 
 | Platforms            | Status         |

@@ -255,6 +255,10 @@ class DB {
     String title,
     [String projectId = globalSettingFlag]
   ) async {
+    if (title == "camera_mirror") {
+      print("[getSettingByTitle] Called for camera_mirror...");
+    }
+
     final db = await database;
     final results = await db.query(
       settingTable,
@@ -264,10 +268,18 @@ class DB {
     );
 
     if (results.isNotEmpty) {
+      if (title == "camera_mirror") {
+        print("[getSettingByTitle] in results.isNotEmpty");
+        print("[getSettingByTitle] results.first =>");
+        print(results.first);
+      }
       return results.first;
     }
 
     if (!defaultValues.containsKey(title)) {
+      if (title == "camera_mirror") {
+        print("[getSettingByTitle] in !defaultValues.containsKey(title)");
+      }
       return null;
     }
 
@@ -278,6 +290,11 @@ class DB {
     );
 
     await addSetting(defaultSetting);
+    if (title == "camera_mirror") {
+      print("[getSettingByTitle] Returning this...");
+      print(defaultSetting.toJson());
+    }
+
     return defaultSetting.toJson();
   }
 

@@ -187,9 +187,14 @@ class CameraUtils {
         return false;
       }
 
-      // Apply mirroring if needed
       if (applyMirroring) {
         rawImage = imglib.flipHorizontal(rawImage);
+        if (extension == ".png") {
+          bytes = imglib.encodePng(rawImage);
+        } else {
+          bytes = imglib.encodeJpg(rawImage);
+        }
+        await File(imgPath).writeAsBytes(bytes);
       }
 
       int? importedImageWidth = rawImage.width;
