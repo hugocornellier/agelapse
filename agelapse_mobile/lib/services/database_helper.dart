@@ -566,7 +566,9 @@ class DB {
         "${stabilizedColumn}AspectRatio": aspectRatio,
         "${stabilizedColumn}Resolution": resolution,
         "${stabilizedColumn}OffsetX": offsetX.toString(),
-        "${stabilizedColumn}OffsetY": offsetY.toString()
+        "${stabilizedColumn}OffsetY": offsetY.toString(),
+        "stabFailed": 0,
+        "noFacesFound": 0,
       },
       where: 'timestamp = ?',
       whereArgs: [timestamp],

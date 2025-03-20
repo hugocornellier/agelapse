@@ -22,6 +22,7 @@ import '../../utils/settings_utils.dart';
 import '../../utils/utils.dart';
 import '../../widgets/progress_widget.dart';
 import '../../widgets/yellow_tip_bar.dart';
+import '../manual_stab_page.dart';
 import '../stab_on_diff_face.dart';
 import 'gallery_widgets.dart';
 
@@ -1336,6 +1337,35 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
                   Future.delayed(Duration.zero, () async {
                     await _retryStabilization();
                   });
+                },
+              ),
+              const PopupMenuDivider(),
+              PopupMenuItem<String>(
+                value: 'manual',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.handyman,
+                      color: Colors.white.withAlpha(150),
+                      size: popupIconSize,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Manual Stabilization',
+                      style: TextStyle(fontSize: popupFontSize),
+                    ),
+                  ],
+                ),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ManualStabilizationPage(
+                        imagePath: activeImagePreviewPath!,
+                        projectId: widget.projectId,
+                      ),
+                    ),
+                  );
                 },
               ),
               const PopupMenuDivider(),

@@ -138,7 +138,7 @@ class FaceStabilizer {
 
       if (projectType == "musc") translateY = 0;
 
-      final Uint8List? imageBytesStabilized = await _generateStabilizedImageBytes(img, rotationDegrees, scaleFactor, translateX, translateY);
+      final Uint8List? imageBytesStabilized = await generateStabilizedImageBytes(img, rotationDegrees, scaleFactor, translateX, translateY);
       if (imageBytesStabilized == null) return false;
 
       String stabilizedPhotoPath = await StabUtils.getStabilizedImagePath(rawPhotoPath, projectId, projectOrientation);
@@ -148,7 +148,7 @@ class FaceStabilizer {
       await StabUtils.writeImagesBytesToJpgFile(imageBytesStabilized, stabilizedPhotoPath);
       final bool result = await _finalizeStabilization(rawPhotoPath, stabilizedPhotoPath, img, translateX, translateY, rotationDegrees, scaleFactor, imageBytesStabilized);
 
-      if (result) await _createStabThumbnail(stabilizedPhotoPath.replaceAll('.jpg', '.png'));
+      if (result) await createStabThumbnail(stabilizedPhotoPath.replaceAll('.jpg', '.png'));
 
       img.dispose();
       return result;
@@ -160,7 +160,7 @@ class FaceStabilizer {
 
   Future<bool> _finalizeStabilization(String rawPhotoPath, String stabilizedJpgPhotoPath, ui.Image? img, double translateX, double translateY, double rotationDegrees, double scaleFactor, Uint8List imageBytesStabilized) async {
     if (projectType != "face") {
-      return await _saveStabilizedImage(imageBytesStabilized, rawPhotoPath, stabilizedJpgPhotoPath, 0.0);
+      return await saveStabilizedImage(imageBytesStabilized, rawPhotoPath, stabilizedJpgPhotoPath, 0.0);
     }
 
     rawPhotoPath = _cleanUpPhotoPath(rawPhotoPath);
@@ -218,7 +218,7 @@ class FaceStabilizer {
     = _calculateOvershots(eyes, goalLeftEye, goalRightEye);
 
     if (!correctionIsNeeded(score, overshotLeftX, overshotRightX, overshotLeftY, overshotRightY)) {
-      successfulStabilization = await _saveStabilizedImage(imageBytesStabilized, rawPhotoPath, stabilizedJpgPhotoPath, score);
+      successfulStabilization = await saveStabilizedImage(imageBytesStabilized, rawPhotoPath, stabilizedJpgPhotoPath, score);
     } else {
       print("Attempting to correct with two-pass. Initial score = $score...");
 
@@ -232,7 +232,7 @@ class FaceStabilizer {
       );
 
       String stabilizedPhotoPath = await StabUtils.getStabilizedImagePath(rawPhotoPath, projectId, projectOrientation);
-      Uint8List? newImageBytesStabilized = await _generateStabilizedImageBytes(img, rotationDegrees, scaleFactor, newTranslateX, newTranslateY);
+      Uint8List? newImageBytesStabilized = await generateStabilizedImageBytes(img, rotationDegrees, scaleFactor, newTranslateX, newTranslateY);
       if (newImageBytesStabilized == null) return false;
 
       await StabUtils.writeImagesBytesToJpgFile(newImageBytesStabilized, stabilizedPhotoPath);
@@ -249,7 +249,7 @@ class FaceStabilizer {
       }
 
       if (newScore < 5) {
-        successfulStabilization = await _saveStabilizedImage(newImageBytesStabilized, rawPhotoPath, stabilizedPhotoPath, newScore);
+        successfulStabilization = await saveStabilizedImage(newImageBytesStabilized, rawPhotoPath, stabilizedPhotoPath, newScore);
       } else {
         print("STAB FAILURE. STAB SCORE: $newScore");
         await _handleStabilizationFailure(rawPhotoPath, stabilizedJpgPhotoPath, toDelete);
@@ -260,7 +260,7 @@ class FaceStabilizer {
     return successfulStabilization;
   }
 
-  Future<bool> _saveStabilizedImage(Uint8List imageBytes, String rawPhotoPath, String stabilizedPhotoPath, double score) async {
+  Future<bool> saveStabilizedImage(Uint8List imageBytes, String rawPhotoPath, String stabilizedPhotoPath, double score) async {
     final imglib.Image? rawImage = await compute(imglib.decodeImage, imageBytes);
 
     final imglib.Image blackBackground = imglib.Image(
@@ -337,7 +337,7 @@ class FaceStabilizer {
     return false;
   }
 
-  Future<void> _createStabThumbnail(String stabilizedPhotoPath) async {
+  Future<void> createStabThumbnail(String stabilizedPhotoPath) async {
     final String stabThumbnailPath = getStabThumbnailPath(stabilizedPhotoPath);
     await DirUtils.createDirectoryIfNotExists(stabThumbnailPath);
     final bytes = await CameraUtils.readBytesInIsolate(stabilizedPhotoPath);
@@ -510,7 +510,7 @@ class FaceStabilizer {
     return (translateX, translateY);
   }
 
-  Future<Uint8List?>? _generateStabilizedImageBytes(ui.Image? image, double? rotation, double? scale, double? translateX, double? translateY) async {
+  Future<Uint8List?>? generateStabilizedImageBytes(ui.Image? image, double? rotation, double? scale, double? translateX, double? translateY) async {
     ui.PictureRecorder recorder = ui.PictureRecorder();
     final painter = StabilizerPainter(
       image: image,
