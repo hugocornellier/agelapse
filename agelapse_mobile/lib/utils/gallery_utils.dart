@@ -279,43 +279,38 @@ class GalleryUtils {
 
       increasePhotosImported(entries.length);
 
-      for (int i = 0; i < entries.length; i += 2) {
-        // Process 2 entries concurrently
-        final entriesToProcess = entries.sublist(i, (i + 2) > entries.length ? entries.length : (i + 2));
-        await Future.wait(entriesToProcess.map((entry) async {
-          final int currentIndex = entries.indexOf(entry);
-          setProgressInMain(((currentIndex / entries.length) * 100).toInt());
+      // Process entries one at a time
+      for (int i = 0; i < entries.length; i++) {
+        final entry = entries[i];
+        setProgressInMain(((i / entries.length) * 100).toInt());
 
-          final String tempFilePath = path.join(
-            await DirUtils.getTemporaryDirPath(),
-            path.basename(entry.name).toLowerCase(),
+        final String tempFilePath = path.join(
+          await DirUtils.getTemporaryDirPath(),
+          path.basename(entry.name).toLowerCase(),
+        );
+        final File tempFile = File(tempFilePath);
+
+        try {
+          await reader.readToFile(entry.name, tempFile);
+          await processPickedImage(
+            tempFilePath,
+            projectId,
+            activeProcessingDateNotifier,
+            onImagesLoaded: onImagesLoaded,
+            increaseSuccessfulImportCount: increaseSuccessfulImportCount,
           );
-          final File tempFile = File(tempFilePath);
-
-          try {
-            await reader.readToFile(entry.name, tempFile);
-            await processPickedImage(
-              tempFilePath,
-              projectId,
-              activeProcessingDateNotifier,
-              onImagesLoaded: onImagesLoaded,
-              increaseSuccessfulImportCount: increaseSuccessfulImportCount,
-            );
-          } catch (_) {
-            //
-          } finally {
-            if (await tempFile.exists()) {
-              await tempFile.delete();
-            }
+        } catch (_) {
+          //
+        } finally {
+          if (await tempFile.exists()) {
+            await tempFile.delete();
           }
-        }).toList());
+        }
       }
     } finally {
       reader.close();
     }
   }
-
-
 
   static Future<void> fetchFilesRecursively(Directory dir) async {
     await for (FileSystemEntity entity in dir.list(recursive: false)) {
@@ -326,7 +321,6 @@ class GalleryUtils {
       }
     }
   }
-
 
   static Future<Map<String, IfdTag>> tryReadExifFromBytes(Uint8List bytes) async {
     try {
@@ -514,13 +508,11 @@ class GalleryUtils {
           }
         }
       }
-
       return 'error';
     } catch (e) {
       return 'error';
     }
   }
-
 
   static Future<String> waitForThumbnail(String thumbnailPath, int projectId) async {
     while (true) {
@@ -543,11 +535,9 @@ class GalleryUtils {
         return "success";
       }
 
-//      print("Waiting for 1s for $thumbnailPath...");
       await Future.delayed(const Duration(seconds: 1));
     }
   }
-
 }
 
 class ZipIsolateParams {

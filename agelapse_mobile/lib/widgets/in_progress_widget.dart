@@ -15,7 +15,7 @@ class InProgress extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: goToPage != null ? () {
-        goToPage!(3);
+        // goToPage!(3);
       } : null,
       child: Container(
         width: double.infinity,

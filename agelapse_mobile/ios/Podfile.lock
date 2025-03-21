@@ -55,14 +55,14 @@ PODS:
     - Flutter
   - flutter_timezone (0.0.1):
     - Flutter
-  - google_mlkit_commons (0.9.0):
+  - google_mlkit_commons (0.11.0):
     - Flutter
     - MLKitVision
-  - google_mlkit_face_detection (0.12.0):
+  - google_mlkit_face_detection (0.13.1):
     - Flutter
     - google_mlkit_commons
     - GoogleMLKit/FaceDetection (~> 7.0.0)
-  - google_mlkit_pose_detection (0.13.0):
+  - google_mlkit_pose_detection (0.14.0):
     - Flutter
     - google_mlkit_commons
     - GoogleMLKit/PoseDetection (~> 7.0.0)
@@ -266,7 +266,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   async_zip: 3336dcf37c9257572a91c18e4d6539a213f21fed
   camera_avfoundation: dd002b0330f4981e1bbcb46ae9b62829237459a4
-  device_info_plus: 97af1d7e84681a90d0693e63169a5d50e0839a0d
+  device_info_plus: bf2e3232933866d73fe290f2942f2156cdd10342
   DKImagePickerController: 946cec48c7873164274ecc4624d19e3da4c1ef3c
   DKPhotoGallery: b3834fecb755ee09a593d7c9e389d8b5d6deed60
   ffmpeg-kit-ios-video: 0da52fe8b78ee5d27833b988383cf8e945fb9649
@@ -277,9 +277,9 @@ SPEC CHECKSUMS:
   flutter_local_notifications: ff50f8405aaa0ccdc7dcfb9022ca192e8ad9688f
   flutter_native_splash: df59bb2e1421aa0282cb2e95618af4dcb0c56c29
   flutter_timezone: ac3da59ac941ff1c98a2e1f0293420e020120282
-  google_mlkit_commons: 384e4e206e122b6dad430d3158205e0b2fac6789
-  google_mlkit_face_detection: ff627695d8eba051db7e0f13f7b20d802df1f84c
-  google_mlkit_pose_detection: 3e38d756c918444cc462692f4c745546313dea54
+  google_mlkit_commons: 2544377e5503bf78ee7412ccfce0394c2dcb8a6b
+  google_mlkit_face_detection: 111b3ac2f2df6ad5f464bafed9ba380ac8366d37
+  google_mlkit_pose_detection: 59df333b48a6e2a3115504f7811bf87454b20537
   GoogleDataTransport: aae35b7ea0c09004c3797d53c8c41f66f219d6a7
   GoogleMLKit: eff9e23ec1d90ea4157a1ee2e32a4f610c5b3318
   GoogleToolboxForMac: d1a2cbf009c453f4d6ded37c105e2f67a32206d8
@@ -295,7 +295,7 @@ SPEC CHECKSUMS:
   MLKitVision: 45e79d68845a2de77e2dd4d7f07947f0ed157b0e
   MLKitXenoCommon: ce5047943af6b4be7ae035dd81b3a56fdb29aab3
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
-  package_info_plus: 58f0028419748fad15bf008b270aaa8e54380b1c
+  package_info_plus: c0502532a26c7662a62a356cebe2692ec5fe4ec4
   path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
   permission_handler_apple: 9878588469a2b0d0fc1e048d9f43605f92e6cec2
   photo_manager: ff695c7a1dd5bc379974953a2b5c0a293f7c4c8a

@@ -116,11 +116,7 @@ class TipsPageState extends State<TipsPage> {
         ),
         child: Text(
           text.toUpperCase(),
-          style: const TextStyle(
-              fontSize: 15,
-              color: Colors.white,
-              fontWeight: FontWeight.bold
-          ),
+          style: const TextStyle(fontSize: 15, color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
     );
