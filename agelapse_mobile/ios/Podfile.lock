@@ -36,12 +36,12 @@ PODS:
   - DKPhotoGallery/Resource (0.0.19):
     - SDWebImage
     - SwiftyGif
-  - ffmpeg-kit-ios-video (6.0.LTS)
-  - ffmpeg_kit_flutter_video (6.0.3.LTS):
-    - ffmpeg_kit_flutter_video/video-lts (= 6.0.3.LTS)
+  - ffmpeg-kit-ios-video (6.0)
+  - ffmpeg_kit_flutter_video (6.0.3):
+    - ffmpeg_kit_flutter_video/video (= 6.0.3)
     - Flutter
-  - ffmpeg_kit_flutter_video/video-lts (6.0.3.LTS):
-    - ffmpeg-kit-ios-video (= 6.0.LTS)
+  - ffmpeg_kit_flutter_video/video (6.0.3):
+    - ffmpeg-kit-ios-video (= 6.0)
     - Flutter
   - file_picker (0.0.1):
     - DKImagePickerController/PhotoGallery
@@ -269,8 +269,8 @@ SPEC CHECKSUMS:
   device_info_plus: bf2e3232933866d73fe290f2942f2156cdd10342
   DKImagePickerController: 946cec48c7873164274ecc4624d19e3da4c1ef3c
   DKPhotoGallery: b3834fecb755ee09a593d7c9e389d8b5d6deed60
-  ffmpeg-kit-ios-video: 0da52fe8b78ee5d27833b988383cf8e945fb9649
-  ffmpeg_kit_flutter_video: d86ecaff9f5a0b104b1f47163748cfae64bad9cf
+  ffmpeg-kit-ios-video: 0f0f42e2dbe89208480af123c5a791d68b2aeb46
+  ffmpeg_kit_flutter_video: a3b221c1909b7972f73b3bf44a967454d98335b7
   file_picker: b159e0c068aef54932bb15dc9fd1571818edaf49
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
   flutter_email_sender: e03bdda7637bcd3539bfe718fddd980e9508efaa

@@ -245,10 +245,10 @@ packages:
     dependency: "direct main"
     description:
       name: ffmpeg_kit_flutter_video
-      sha256: "95ffa2cfc647ee9a383a5bbded622bf48dd2a942a0ba0b70db07226b43debdf9"
+      sha256: "86d2e56f0c9ad23350001dbe91a87f0a23ec5016353dd776cc087ecdb734539d"
       url: "https://pub.dev"
     source: hosted
-    version: "6.0.3-LTS"
+    version: "6.0.3"
   file:
     dependency: transitive
     description:
@@ -290,10 +290,10 @@ packages:
     dependency: "direct dev"
     description:
       name: flutter_lints
-      sha256: "9e8c3858111da373efc5aa341de011d9bd23e2c5c5e0c62bccf32438e192d7b1"
+      sha256: "5398f14efa795ffb7a33e9b6a08798b26a180edac4ad7db3f231e40f82ce11e1"
       url: "https://pub.dev"
     source: hosted
-    version: "3.0.2"
+    version: "5.0.0"
   flutter_local_notifications:
     dependency: "direct main"
     description:
@@ -500,10 +500,10 @@ packages:
     dependency: transitive
     description:
       name: lints
-      sha256: cbf8d4b858bb0134ef3ef87841abdf8d63bfc255c266b7bf6b39daa1085c4290
+      sha256: c35bb79562d980e9a453fc715854e1ed39e24e7d0297a880ef54e17f9874a9d7
       url: "https://pub.dev"
     source: hosted
-    version: "3.0.0"
+    version: "5.1.1"
   matcher:
     dependency: transitive
     description:
