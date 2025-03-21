@@ -36,12 +36,12 @@ PODS:
   - DKPhotoGallery/Resource (0.0.19):
     - SDWebImage
     - SwiftyGif
-  - ffmpeg-kit-ios-video (6.0)
-  - ffmpeg_kit_flutter_video (6.0.3):
-    - ffmpeg_kit_flutter_video/video (= 6.0.3)
+  - ffmpeg-kit-ios-https (6.0.LTS)
+  - ffmpeg_kit_flutter (6.0.3):
+    - ffmpeg_kit_flutter/https-lts (= 6.0.3)
     - Flutter
-  - ffmpeg_kit_flutter_video/video (6.0.3):
-    - ffmpeg-kit-ios-video (= 6.0)
+  - ffmpeg_kit_flutter/https-lts (6.0.3):
+    - ffmpeg-kit-ios-https (= 6.0.LTS)
     - Flutter
   - file_picker (0.0.1):
     - DKImagePickerController/PhotoGallery
@@ -168,7 +168,7 @@ DEPENDENCIES:
   - async_zip (from `.symlinks/plugins/async_zip/ios`)
   - camera_avfoundation (from `.symlinks/plugins/camera_avfoundation/ios`)
   - device_info_plus (from `.symlinks/plugins/device_info_plus/ios`)
-  - ffmpeg_kit_flutter_video (from `.symlinks/plugins/ffmpeg_kit_flutter_video/ios`)
+  - ffmpeg_kit_flutter (from `.symlinks/plugins/ffmpeg_kit_flutter/ios`)
   - file_picker (from `.symlinks/plugins/file_picker/ios`)
   - Flutter (from `Flutter`)
   - flutter_email_sender (from `.symlinks/plugins/flutter_email_sender/ios`)
@@ -194,7 +194,7 @@ SPEC REPOS:
   trunk:
     - DKImagePickerController
     - DKPhotoGallery
-    - ffmpeg-kit-ios-video
+    - ffmpeg-kit-ios-https
     - GoogleDataTransport
     - GoogleMLKit
     - GoogleToolboxForMac
@@ -220,8 +220,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/camera_avfoundation/ios"
   device_info_plus:
     :path: ".symlinks/plugins/device_info_plus/ios"
-  ffmpeg_kit_flutter_video:
-    :path: ".symlinks/plugins/ffmpeg_kit_flutter_video/ios"
+  ffmpeg_kit_flutter:
+    :path: ".symlinks/plugins/ffmpeg_kit_flutter/ios"
   file_picker:
     :path: ".symlinks/plugins/file_picker/ios"
   Flutter:
@@ -269,8 +269,8 @@ SPEC CHECKSUMS:
   device_info_plus: bf2e3232933866d73fe290f2942f2156cdd10342
   DKImagePickerController: 946cec48c7873164274ecc4624d19e3da4c1ef3c
   DKPhotoGallery: b3834fecb755ee09a593d7c9e389d8b5d6deed60
-  ffmpeg-kit-ios-video: 0f0f42e2dbe89208480af123c5a791d68b2aeb46
-  ffmpeg_kit_flutter_video: a3b221c1909b7972f73b3bf44a967454d98335b7
+  ffmpeg-kit-ios-https: fb05056b051ae41106354f51d66d379a1e4d1d04
+  ffmpeg_kit_flutter: 0ef0074d3eba05b07a52175e874f9feffb4a27c2
   file_picker: b159e0c068aef54932bb15dc9fd1571818edaf49
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
   flutter_email_sender: e03bdda7637bcd3539bfe718fddd980e9508efaa

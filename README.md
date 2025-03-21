@@ -12,7 +12,7 @@ Download AgeLapse here: [https://agelapse.com](https://agelapse.com)
 
 ## Bulk Imports (Mobile)
 
-IMPORTANT: To easily import a large number of photos into the mobile version of AgeLapse, create a .zip file containing all the files and import it. Otherwise, if you choose to import them all from your phone gallery, there is a limit of 100 photos at a time. 
+IMPORTANT: To easily import a large number of photos into the mobile version of AgeLapse, create a .zip file containing all the files and import it. 
 
 ## Platforms Supported
 
