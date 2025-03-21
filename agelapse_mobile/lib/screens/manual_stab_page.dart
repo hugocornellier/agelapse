@@ -26,6 +26,12 @@ class ManualStabilizationPage extends StatefulWidget {
 class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
   String rawPhotoPath = "";
   Uint8List? _stabilizedImageBytes; // State variable for the stabilized image.
+  late FaceStabilizer faceStabilizer;
+  int? _canvasWidth;
+  int? _canvasHeight;
+  int? _leftEyeXGoal;
+  int? _rightEyeXGoal;
+  int? _bothEyesYGoal;
 
   // Controllers for the four input fields.
   final TextEditingController _inputController1 = TextEditingController();
@@ -63,6 +69,9 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
       });
     }
     print(rawPhotoPath);
+
+    faceStabilizer = FaceStabilizer(widget.projectId, () => print("Test"));
+    await faceStabilizer.init();
   }
 
   @override
@@ -75,68 +84,120 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            // Input fields and submit button.
-            TextField(
-              controller: _inputController1,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Translate X',
-                border: OutlineInputBorder(),
+      body: GestureDetector(
+        onTap: () {
+          FocusScope.of(context).unfocus();
+        },
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              // Two inputs side by side - Translate X and Y
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _inputController1,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
+                        labelText: 'Translate X',
+                        labelStyle: TextStyle(fontSize: 14),
+                        floatingLabelStyle: TextStyle(fontSize: 12),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextField(
+                      controller: _inputController2,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
+                        labelText: 'Translate Y',
+                        labelStyle: TextStyle(fontSize: 14),
+                        floatingLabelStyle: TextStyle(fontSize: 12),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _inputController2,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Translate Y',
-                border: OutlineInputBorder(),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _inputController3,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
+                        labelText: 'Scale Factor',
+                        labelStyle: TextStyle(fontSize: 14),
+                        floatingLabelStyle: TextStyle(fontSize: 12),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextField(
+                      controller: _inputController4,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
+                        labelText: 'Rotation (Deg)',
+                        labelStyle: TextStyle(fontSize: 14),
+                        floatingLabelStyle: TextStyle(fontSize: 12),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _inputController3,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Scale Factor',
-                border: OutlineInputBorder(),
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: () {
+                  double? translateX = double.tryParse(_inputController1.text);
+                  double? translateY = double.tryParse(_inputController2.text);
+                  double? scaleFactor = double.tryParse(_inputController3.text);
+                  double? rotationDegrees = double.tryParse(_inputController4.text);
+                  print('Input 1: $translateX, Input 2: $translateY, Input 3: $scaleFactor, Input 4: $rotationDegrees');
+                  processRequest(translateX, translateY, scaleFactor, rotationDegrees);
+                },
+                child: const Text('Submit'),
               ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _inputController4,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Rotation (Degrees)',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: () {
-                double? translateX = double.tryParse(_inputController1.text);
-                double? translateY = double.tryParse(_inputController2.text);
-                double? scaleFactor = double.tryParse(_inputController3.text);
-                double? rotationDegrees = double.tryParse(_inputController4.text);
-                print('Input 1: $translateX, Input 2: $translateY, Input 3: $scaleFactor, Input 4: $rotationDegrees');
-                processRequest(translateX, translateY, scaleFactor, rotationDegrees);
-              },
-              child: const Text('Submit'),
-            ),
-            const SizedBox(height: 32),
-            // Display the stabilized image if available.
-            if (_stabilizedImageBytes != null)
-              Image.memory(
-                _stabilizedImageBytes!,
-                width: MediaQuery.of(context).size.width,
-                fit: BoxFit.fitWidth,
-              ),
-          ],
+              const SizedBox(height: 32),
+              if (_stabilizedImageBytes != null &&
+                  _canvasWidth != null &&
+                  _canvasHeight != null &&
+                  _leftEyeXGoal != null &&
+                  _rightEyeXGoal != null &&
+                  _bothEyesYGoal != null)
+                Stack(
+                  children: [
+                    Image.memory(
+                      _stabilizedImageBytes!,
+                      width: MediaQuery.of(context).size.width,
+                      height: MediaQuery.of(context).size.width * _canvasHeight! / _canvasWidth!,
+                      fit: BoxFit.fill,
+                    ),
+                    CustomPaint(
+                      painter: LineOverlayPainter(
+                        canvasWidth: _canvasWidth!,
+                        canvasHeight: _canvasHeight!,
+                        leftEyeXGoal: _leftEyeXGoal!,
+                        rightEyeXGoal: _rightEyeXGoal!,
+                        bothEyesYGoal: _bothEyesYGoal!,
+                      ),
+                      child: SizedBox(
+                        width: MediaQuery.of(context).size.width,
+                        height: MediaQuery.of(context).size.width * _canvasHeight! / _canvasWidth!,
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
         ),
+
       ),
     );
   }
@@ -148,7 +209,6 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
         return;
       }
 
-      FaceStabilizer faceStabilizer = FaceStabilizer(widget.projectId, () => print("Test"));
       final Uint8List? imageBytesStabilized = await faceStabilizer.generateStabilizedImageBytes(img, rotationDegrees, scaleFactor, translateX, translateY);
       if (imageBytesStabilized == null) {
         return;
@@ -173,13 +233,32 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
         await stabThumbFile.delete();
       }
 
-      print("Here3. stabilizedPhotoPath: $stabilizedPhotoPath");
-
       await faceStabilizer.saveStabilizedImage(imageBytesStabilized, rawPhotoPath, stabilizedPhotoPath, 0.0);
-      print("Here4");
-
       await faceStabilizer.createStabThumbnail(stabilizedPhotoPath.replaceAll('.jpg', '.png'));
-      print("Here5");
+
+      print("All done with stabilizing!");
+
+      final String aspectRatio = faceStabilizer.aspectRatio;
+      final int canvasHeight = faceStabilizer.canvasHeight;
+      final int canvasWidth = faceStabilizer.canvasWidth;
+      final int leftEyeXGoal = faceStabilizer.leftEyeXGoal;
+      final int rightEyeXGoal = faceStabilizer.rightEyeXGoal;
+      final int bothEyesYGoal = faceStabilizer.bothEyesYGoal;
+
+      setState(() {
+        _canvasWidth = canvasWidth;
+        _canvasHeight = canvasHeight;
+        _leftEyeXGoal = leftEyeXGoal;
+        _rightEyeXGoal = rightEyeXGoal;
+        _bothEyesYGoal = bothEyesYGoal;
+      });
+
+      print("aspectRatio => ${aspectRatio}");
+      print("canvasWidth => ${canvasWidth}");
+      print("canvasHeight => ${canvasHeight}");
+      print("leftEyeXGoal => ${leftEyeXGoal}");
+      print("rightEyeXGoal => ${rightEyeXGoal}");
+      print("bothEyesYGoal => ${bothEyesYGoal}");
 
       img.dispose();
     } catch (e, stackTrace) {
@@ -189,3 +268,28 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
   }
 }
 
+class LineOverlayPainter extends CustomPainter {
+  final int canvasWidth;
+  final int canvasHeight;
+  final int leftEyeXGoal;
+  final int rightEyeXGoal;
+  final int bothEyesYGoal;
+  LineOverlayPainter({
+    required this.canvasWidth,
+    required this.canvasHeight,
+    required this.leftEyeXGoal,
+    required this.rightEyeXGoal,
+    required this.bothEyesYGoal,
+  });
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double scaleX = size.width / canvasWidth;
+    final double scaleY = size.height / canvasHeight;
+    final paint = Paint()..color = Colors.red..strokeWidth = 2.0;
+    canvas.drawLine(Offset(0, bothEyesYGoal * scaleY), Offset(size.width, bothEyesYGoal * scaleY), paint);
+    canvas.drawLine(Offset(leftEyeXGoal * scaleX, 0), Offset(leftEyeXGoal * scaleX, size.height), paint);
+    canvas.drawLine(Offset(rightEyeXGoal * scaleX, 0), Offset(rightEyeXGoal * scaleX, size.height), paint);
+  }
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}

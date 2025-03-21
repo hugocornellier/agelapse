@@ -22,8 +22,8 @@ import 'database_helper.dart';
 class FaceStabilizer {
   final int projectId;
   String? projectOrientation;
-  static late int canvasHeight;
-  static late int canvasWidth;
+  late int canvasHeight;
+  late int canvasWidth;
   late int leftEyeXGoal;
   late int rightEyeXGoal;
   late int bothEyesYGoal;
