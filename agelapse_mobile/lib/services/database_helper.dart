@@ -116,6 +116,21 @@ class DB {
     });
   }
 
+  Future<String?> getProjectNameById(int projectId) async {
+    final db = await database;
+    final results = await db.query(
+      projectTable,
+      columns: ['name'],
+      where: 'id = ?',
+      whereArgs: [projectId],
+      limit: 1,
+    );
+    if (results.isNotEmpty) {
+      return results.first['name'] as String;
+    }
+    return null;
+  }
+
   Future<Map<String, dynamic>?> getProject(int id) async {
     final db = await database;
     final results = await db.query(
@@ -307,6 +322,7 @@ class DB {
     var settingValue = settingData?['value'];
 
     if (title == 'daily_notification_time' && settingValue == "not_set") {
+      print("returning default notif time");
       return getNotifDefault();
     }
 
@@ -327,6 +343,8 @@ class DB {
 
     if (title == 'framerate') {
       setSettingByTitle('framerate_is_default', 'false', projectId);
+    } else if (title == 'daily_notification_time') {
+      print("setting daily_notification_time to ${value}");
     }
 
     return await db.update(

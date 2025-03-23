@@ -33,7 +33,12 @@ class SettingsUtil {
   }
 
   static Future<String> loadDailyNotificationTime(String projectId) async {
-    return await DB.instance.getSettingValueByTitle('daily_notification_time', projectId);
+    final String result = await DB.instance.getSettingValueByTitle('daily_notification_time', projectId);
+
+    print("here, projectId ${projectId} [loadDailyNotificationTime]");
+    print("Returning ${result}");
+
+    return result;
   }
 
   static Future<bool> loadEnableGrid() async {

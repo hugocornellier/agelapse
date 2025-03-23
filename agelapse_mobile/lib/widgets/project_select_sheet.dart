@@ -6,6 +6,7 @@ import '../screens/create_project_page.dart';
 import '../services/database_helper.dart';
 import '../styles/styles.dart';
 import '../utils/dir_utils.dart';
+import '../utils/notification_util.dart';
 import '../utils/settings_utils.dart';
 import '../utils/utils.dart';
 import 'main_navigation.dart';
@@ -276,7 +277,10 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
     }
 
     final int result = await DB.instance.deleteProject(projectId);
-    if (result > 0) _getProjects();
+    if (result > 0) {
+      _getProjects();
+      await NotificationUtil.cancelNotification(projectId);
+    }
 
     final String projectDirPath = await DirUtils.getProjectDirPath(projectId);
     await DirUtils.deleteDirectoryContents(Directory(projectDirPath));

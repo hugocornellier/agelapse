@@ -5,6 +5,7 @@ import '../services/database_helper.dart';
 import '../services/settings_cache.dart';
 import '../styles/styles.dart';
 import '../utils/notification_util.dart';
+import '../utils/settings_utils.dart';
 import 'main_navigation.dart';
 
 class CreateProjectSheet extends StatefulWidget {
@@ -246,11 +247,16 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
             print("Error while setting new default project: $e");
           }
 
+          // initialize notif col in settings
+          final String dnt = await SettingsUtil.loadDailyNotificationTime(projectId.toString());
+          print("here dnt => ${dnt}");
+
           // Initialize notifications
           try {
             DateTime fivePMLocalTime = NotificationUtil.getFivePMLocalTime();
-            final String dailyNotificationTime = "${fivePMLocalTime.millisecondsSinceEpoch}";
+            final dailyNotificationTime = fivePMLocalTime.millisecondsSinceEpoch.toString();
 
+            print("Setting daily_notification_time col for proj ${projectId.toString()} to ${dailyNotificationTime}");
             await DB.instance.setSettingByTitle('daily_notification_time', dailyNotificationTime, projectId.toString());
             await NotificationUtil.initializeNotifications();
             await NotificationUtil.scheduleDailyNotification(projectId, dailyNotificationTime);

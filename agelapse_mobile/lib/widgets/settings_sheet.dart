@@ -2,15 +2,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:flutter_timezone/flutter_timezone.dart';
-import 'package:timezone/data/latest.dart' as tz;
-import 'package:timezone/timezone.dart' as tz;
 import 'package:file_picker/file_picker.dart';
 import 'package:image/image.dart' as imglib;
 import '../screens/set_eye_position_page.dart';
 import '../services/database_helper.dart';
 import '../styles/styles.dart';
 import '../utils/dir_utils.dart';
+import '../utils/notification_util.dart';
 import '../utils/settings_utils.dart';
 import '../utils/stabilizer_utils/stabilizer_utils.dart';
 import '../utils/utils.dart';
@@ -75,7 +73,7 @@ class SettingsSheetState extends State<SettingsSheet> {
   void _init() {
     _settingsFuture = _initializeData();
     _notificationInitialization = _settingsFuture.then((_) {
-      return _initializeNotifications();
+      //
     });
 
     _videoSettingsFuture = _initializeVideoSettings();
@@ -98,9 +96,8 @@ class SettingsSheetState extends State<SettingsSheet> {
       dailyNotificationTime = results[3] as String;
       _gridModeIndex = results[4] as int;
 
-      tz.initializeTimeZones();
-
       if (dailyNotificationTime == "not set") {
+        print("not set...");
         _selectedTime = const TimeOfDay(hour: 17, minute: 0);
       } else {
         final int timestamp = int.parse(dailyNotificationTime);
@@ -116,39 +113,6 @@ class SettingsSheetState extends State<SettingsSheet> {
 
     } catch (e) {
       throw Exception('Failed to load settings: $e');
-    }
-  }
-
-
-  Future<void> _initializeNotifications() async {
-    tz.initializeTimeZones();
-
-    const initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
-    final initializationSettingsDarwin = DarwinInitializationSettings();
-
-    final initializationSettings = InitializationSettings(
-      android: initializationSettingsAndroid,
-      iOS: initializationSettingsDarwin,
-    );
-
-    await _flutterLocalNotificationsPlugin.initialize(
-      initializationSettings,
-      onDidReceiveNotificationResponse: (notificationResponse) async {
-        //
-      },
-    );
-
-    await _flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()?.requestPermissions(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
-
-    final timeZoneName = await FlutterTimezone.getLocalTimezone();
-    tz.setLocalLocation(tz.getLocation(timeZoneName));
-
-    if (notificationsEnabled) {
-      await _scheduleDailyNotification();
     }
   }
 
@@ -199,11 +163,12 @@ class SettingsSheetState extends State<SettingsSheet> {
         picked.minute,
       );
       final selectedDateTimestamp = selectedDateTime.millisecondsSinceEpoch;
+      dailyNotificationTime = selectedDateTimestamp.toString();
 
       await DB.instance.setSettingByTitle(
-          'daily_notification_time',
-          selectedDateTimestamp.toString(),
-          widget.projectId.toString()
+        'daily_notification_time',
+        dailyNotificationTime,
+        widget.projectId.toString()
       );
       widget.refreshSettings();
 
@@ -212,44 +177,7 @@ class SettingsSheetState extends State<SettingsSheet> {
   }
 
   Future<void> _scheduleDailyNotification() async {
-    final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
-    final tz.TZDateTime scheduledDate = _calculateScheduledDate(now);
-
-    const androidDetails = AndroidNotificationDetails(
-      'daily_notification_channel_id',
-      'daily_notification_channel_name',
-      importance: Importance.max,
-      priority: Priority.high,
-    );
-
-    const iOSDetails = DarwinNotificationDetails();
-    const platformDetails = NotificationDetails(
-      android: androidDetails,
-      iOS: iOSDetails,
-    );
-
-    await _flutterLocalNotificationsPlugin.zonedSchedule(
-      0,
-      'Daily Notification',
-      'This is your daily notification.',
-      scheduledDate,
-      platformDetails,
-      payload: 'Daily Notification Payload',
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      matchDateTimeComponents: DateTimeComponents.time,
-    );
-  }
-
-  tz.TZDateTime _calculateScheduledDate(tz.TZDateTime now) {
-    final scheduledDate = tz.TZDateTime(
-      tz.local,
-      now.year,
-      now.month,
-      now.day,
-      _selectedTime.hour,
-      _selectedTime.minute,
-    );
-    return scheduledDate.isBefore(now) ? scheduledDate.add(const Duration(days: 1)) : scheduledDate;
+    NotificationUtil.scheduleDailyNotification(widget.projectId, dailyNotificationTime);
   }
 
   @override

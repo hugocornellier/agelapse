@@ -5,9 +5,14 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
+import '../services/database_helper.dart';
 
 class NotificationUtil {
   static final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
+  static Future<void> cancelNotification(int projectId) async {
+    await _flutterLocalNotificationsPlugin.cancel(projectId);
+  }
 
   static Future<void> initializeNotifications() async {
     tz.initializeTimeZones();
@@ -51,6 +56,8 @@ class NotificationUtil {
     // Set the local time zone
     final timeZoneName = await FlutterTimezone.getLocalTimezone();
     tz.setLocalLocation(tz.getLocation(timeZoneName));
+
+    print("Local timezone set to ${timeZoneName}");
   }
 
   static Future<void> scheduleDailyNotification(int projectId, String dailyNotificationTime) async {
@@ -60,6 +67,9 @@ class NotificationUtil {
     final int timestamp = int.parse(dailyNotificationTime);
     final DateTime dateTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
     final TimeOfDay selectedTime = TimeOfDay.fromDateTime(dateTime);
+
+    final String? projectName = await DB.instance.getProjectNameById(projectId);
+    print("projectName => ${projectName}");
 
     final tz.TZDateTime scheduledDate = _calculateScheduledDate(now, selectedTime);
 
@@ -78,14 +88,27 @@ class NotificationUtil {
 
     await _flutterLocalNotificationsPlugin.zonedSchedule(
       projectId,
-      'AgeLapse',
-      'Don\'t forget to take your photo!',
+      'AgeLapse - ${projectName}',
+      '${projectName}: Don\'t forget to take your photo!',
       scheduledDate,
       platformDetails,
-      payload: 'Daily Notification Payload',
+      payload: 'date: ${scheduledDate.toString()}',
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
     );
+
+    print("zonedSchedule call made...");
+
+    final List<PendingNotificationRequest> pendingNotifications =
+    await _flutterLocalNotificationsPlugin.pendingNotificationRequests();
+
+    pendingNotifications.forEach((notification) {
+      print('ID: ${notification.id}');
+      print('Title: ${notification.title}');
+      print('Body: ${notification.body}');
+      print('Payload: ${notification.payload}');
+      print('-----------------------');
+    });
   }
 
   static tz.TZDateTime _calculateScheduledDate(DateTime now, TimeOfDay selectedTime) {
@@ -101,7 +124,6 @@ class NotificationUtil {
   }
 
   static DateTime getFivePMLocalTime() {
-    tz.initializeTimeZones();
     final now = DateTime.now();
     return DateTime(
       now.year,
