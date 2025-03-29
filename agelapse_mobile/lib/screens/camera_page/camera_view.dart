@@ -110,7 +110,7 @@ class _CameraViewState extends State<CameraView> {
 
     if (mirrorSetting.isNotEmpty) {
       // Not a mistake
-      setState(() => isMirrored = mirrorSetting == 'false');
+      setState(() => isMirrored = mirrorSetting == 'true');
     }
 
     if (hasTakenFirstPhoto && !hasSeenGuideModeTut) {
@@ -163,8 +163,15 @@ class _CameraViewState extends State<CameraView> {
 
     for (var i = 0; i < _cameras.length; i++) {
       CameraDescription camera = _cameras[i];
+
       if (camera.lensDirection == CameraLensDirection.front) {
         frontFacingLensIndex = i;
+
+        final lensDirection = camera.lensDirection;
+        final sensorOrientation = camera.sensorOrientation;
+
+        print("lensDirection => '${lensDirection}'");
+        print("sensorOrientation => '${sensorOrientation}'");
       }
       if (camera.lensDirection == CameraLensDirection.back && !backIndexSet) {
         backFacingLensIndex = i;
@@ -203,7 +210,7 @@ class _CameraViewState extends State<CameraView> {
           null,
           false,
           refreshSettings: widget.refreshSettings,
-          applyMirroring: !isMirrored
+          applyMirroring: isMirrored
         );
 
         final bool hasTakenFirstPhoto = await SettingsUtil.hasTakenFirstPhoto(widget.projectId.toString());
