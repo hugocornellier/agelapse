@@ -299,7 +299,7 @@ class _CameraViewState extends State<CameraView> {
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        mirrorButton(),
+        // mirrorButton(),
         SizedBox(width: 16),
         _buildButton(
           _switchLiveCamera,

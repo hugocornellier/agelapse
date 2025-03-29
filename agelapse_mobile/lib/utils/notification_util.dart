@@ -37,6 +37,18 @@ class NotificationUtil {
       }
     }
 
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      const AndroidNotificationChannel channel = AndroidNotificationChannel(
+        'daily_notification_channel_id',
+        'daily_notification_channel_name',
+        importance: Importance.max,
+      );
+
+      await _flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(channel);
+    }
+
     const initializationSettingsAndroid =
     AndroidInitializationSettings('@mipmap/ic_launcher');
     final initializationSettingsDarwin = DarwinInitializationSettings();
@@ -58,6 +70,30 @@ class NotificationUtil {
     tz.setLocalLocation(tz.getLocation(timeZoneName));
 
     print("Local timezone set to ${timeZoneName}");
+  }
+
+  static Future<void> showImmediateNotification() async {
+    const androidDetails = AndroidNotificationDetails(
+      'daily_notification_channel_id',
+      'daily_notification_channel_name',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+
+    const iOSDetails = DarwinNotificationDetails();
+    const platformDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iOSDetails,
+    );
+
+    await _flutterLocalNotificationsPlugin.show(
+      9999,
+      'Test Notification',
+      'This is an immediate test notification',
+      platformDetails,
+    );
+
+    print("Immediate notification triggered");
   }
 
   static Future<void> scheduleDailyNotification(int projectId, String dailyNotificationTime) async {
