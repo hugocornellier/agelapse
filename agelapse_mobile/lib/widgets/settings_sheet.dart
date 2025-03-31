@@ -177,8 +177,6 @@ class SettingsSheetState extends State<SettingsSheet> {
   }
 
   Future<void> _scheduleDailyNotification() async {
-    print("123");
-    NotificationUtil.showImmediateNotification();
     NotificationUtil.scheduleDailyNotification(widget.projectId, dailyNotificationTime);
   }
 
