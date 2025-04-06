@@ -18,6 +18,35 @@ import 'grid_mode.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:ui' as ui;
 
+class RotatingIconButton extends StatelessWidget {
+  final Widget child;
+  final double rotationTurns;
+  final VoidCallback onPressed;
+  final Duration duration;
+  const RotatingIconButton({Key? key, required this.child, required this.rotationTurns, required this.onPressed, this.duration = const Duration(milliseconds: 300)}) : super(key: key);
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedRotation(
+      turns: rotationTurns,
+      duration: duration,
+      curve: Curves.easeInOut,
+      child: IconButton(
+        icon: child,
+        onPressed: onPressed,
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(),
+      ),
+    );
+
+  }
+}
+
+double getRotation(String orientation) {
+  if (orientation == 'Landscape Left') return 0.25;
+  if (orientation == 'Landscape Right') return -0.25;
+  return 0.0;
+}
+
 class CameraView extends StatefulWidget {
   final CustomPaint? customPaint;
   final VoidCallback? onCameraFeedReady;
@@ -257,10 +286,8 @@ class _CameraViewState extends State<CameraView> {
   }
 
   void _saveGridOffsets() async {
-    final String projectOrientation = await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
-
-    final String guideOffSetXColName = projectOrientation == 'landscape' ? "guideOffsetXLandscape" : "guideOffsetXPortrait";
-    final String guideOffSetYColName = projectOrientation == 'landscape' ? "guideOffsetYLandscape" : "guideOffsetYPortrait";
+    final String guideOffSetXColName = _orientation == 'Portrait Up' ? "guideOffsetXPortrait" : "guideOffsetXLandscape";
+    final String guideOffSetYColName = _orientation == 'Portrait Up' ? "guideOffsetYPortrait" : "guideOffsetYLandscape";
 
     await DB.instance.setSettingByTitle(guideOffSetXColName, offsetX.toString(), widget.projectId.toString());
     await DB.instance.setSettingByTitle(guideOffSetYColName, offsetY.toString(), widget.projectId.toString());
@@ -297,15 +324,32 @@ class _CameraViewState extends State<CameraView> {
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _buildButton(
-              () => toggleFlash(),
-          Icon(flashEnabled ? Icons.flash_auto : Icons.flash_off, size: 24, color: Colors.white),
+        Container(
+          padding: const EdgeInsets.all(0),
+          decoration: BoxDecoration(
+            color: Colors.black54,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: RotatingIconButton(
+            child: Icon(flashEnabled ? Icons.flash_auto : Icons.flash_off, size: 24, color: Colors.white),
+            rotationTurns: getRotation(_orientation),
+            onPressed: toggleFlash,
+          ),
         ),
         SizedBox(width: 16),
-        _buildButton(
-              () => _toggleGrid(),
-          _buildIcon(),
+        Container(
+          padding: const EdgeInsets.all(0),
+          decoration: BoxDecoration(
+            color: Colors.black54,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: RotatingIconButton(
+            child: _buildIcon(),
+            rotationTurns: getRotation(_orientation),
+            onPressed: _toggleGrid,
+          ),
         ),
+
       ],
     ),
   );
@@ -318,14 +362,23 @@ class _CameraViewState extends State<CameraView> {
       children: [
         // mirrorButton(),
         SizedBox(width: 16),
-        _buildButton(
-          _switchLiveCamera,
-          Icon(
-            Platform.isIOS ? Icons.flip_camera_ios_outlined : Icons.flip_camera_android_outlined,
-            color: Colors.white,
-            size: 27,
+        Container(
+          padding: const EdgeInsets.all(0),
+          decoration: BoxDecoration(
+            color: Colors.black54,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: RotatingIconButton(
+            child: Icon(
+              Platform.isIOS ? Icons.flip_camera_ios_outlined : Icons.flip_camera_android_outlined,
+              color: Colors.white,
+              size: 27,
+            ),
+            rotationTurns: getRotation(_orientation),
+            onPressed: _switchLiveCamera,
           ),
         ),
+
       ],
     ),
   );
@@ -407,8 +460,6 @@ class _CameraViewState extends State<CameraView> {
                 offsetY,
                 orientation: _orientation, // Passing the current orientation
               ),
-            if (!modifyGridMode) _leftSideControls(),
-            if (!modifyGridMode) _rightSideControls(),
             if (_showFlash) ...[
               AnimatedOpacity(
                 duration: const Duration(milliseconds: 200),
@@ -416,10 +467,11 @@ class _CameraViewState extends State<CameraView> {
                 child: Container(color: Colors.black),
               ),
             ],
-            if (modifyGridMode) gridModifierOverlay(),
+            if (!modifyGridMode) _leftSideControls(),
+            if (!modifyGridMode) _rightSideControls(),
             if (!modifyGridMode) _cameraControl(),
+            if (modifyGridMode) gridModifierOverlay(),
             if (modifyGridMode && _isInfoWidgetVisible) ...[
-
               Positioned(
                 bottom: 32,
                 child: Container(
@@ -539,16 +591,24 @@ class _CameraViewState extends State<CameraView> {
   Widget modifyGridButton() => Positioned(
     bottom: 75,
     left: 16,
-    child: _buildButton(
-          () => _toggleModifyGridMode(),
-      const Text(
-        "Move\nGuides",
-        textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 12),
+    child: RotatingIconButton(
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: const Color(0x3F84C4FF),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: const Text(
+          "Move\nGuides",
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 12),
+        ),
       ),
-      color: const Color(0x3F84C4FF),
+      rotationTurns: getRotation(_orientation),
+      onPressed: _toggleModifyGridMode,
     ),
   );
+
 
   Widget saveGridButton() => Positioned(
     top: 32,
@@ -567,41 +627,95 @@ class _CameraViewState extends State<CameraView> {
             key: _widgetKey,
             onPanStart: (details) {
               _getWidgetHeight();
-
+              final size = MediaQuery.of(context).size;
               final dx = details.localPosition.dx;
               final dy = details.localPosition.dy;
+              final bool isLandscape = (_orientation == "Landscape Left" || _orientation == "Landscape Right");
 
-              final centerX = MediaQuery.of(context).size.width / 2;
-              final leftX = centerX - offsetX * MediaQuery.of(context).size.width;
-              final rightX = centerX + offsetX * MediaQuery.of(context).size.width;
-              final centerY = _widgetHeight * offsetY;
+              if (!isLandscape) {
+                // PORTRAIT MODE:
+                final centerX = size.width / 2;
+                final leftX = centerX - offsetX * size.width;
+                final rightX = centerX + offsetX * size.width;
+                final centerY = _widgetHeight * offsetY;
 
-              final distanceToLeftX = (dx - leftX).abs();
-              final distanceToRightX = (dx - rightX).abs();
-              final distanceToCenterY = (dy - centerY).abs();
+                final distanceToLeftX = (dx - leftX).abs();
+                final distanceToRightX = (dx - rightX).abs();
+                final distanceToCenterY = (dy - centerY).abs();
 
-              if (distanceToLeftX < 20 || distanceToRightX < 20) {
-                _isDraggingVertical = true;
-                _draggingRight = distanceToRightX < 20;
-              } else if (distanceToCenterY < 20) {
-                _isDraggingHorizontal = true;
+                if (distanceToLeftX < 20 || distanceToRightX < 20) {
+                  _isDraggingVertical = true;
+                  _draggingRight = distanceToRightX < 20;
+                } else if (distanceToCenterY < 20) {
+                  _isDraggingHorizontal = true;
+                }
+              } else {
+                // LANDSCAPE MODE:
+                // The vertical line is now drawn based on offsetY.
+                double verticalLineX = _orientation == "Landscape Left"
+                    ? size.width * (1 - offsetY)
+                    : size.width * offsetY;
+
+                // The two horizontal lines are based on offsetX.
+                final offsetXInPixels = size.height * offsetX;
+                final centerY = _widgetHeight / 2;
+                final topY = centerY - offsetXInPixels;
+                final bottomY = centerY + offsetXInPixels;
+
+                final distanceToVertical = (dx - verticalLineX).abs();
+                final distanceToTop = (dy - topY).abs();
+                final distanceToBottom = (dy - bottomY).abs();
+
+                if (distanceToVertical < 20) {
+                  // Touch is near the vertical line (adjust offsetY).
+                  _isDraggingVertical = true;
+                } else if (distanceToTop < 20 || distanceToBottom < 20) {
+                  // Touch is near one of the horizontal lines (adjust offsetX).
+                  _isDraggingHorizontal = true;
+                }
               }
             },
             onPanUpdate: (details) {
-              if (_isDraggingVertical) {
-                setState(() {
-                  if (_draggingRight) {
-                    offsetX += details.delta.dx / MediaQuery.of(context).size.width;
-                  } else {
-                    offsetX -= details.delta.dx / MediaQuery.of(context).size.width;
-                  }
-                  offsetX = offsetX.clamp(0.0, 1.0);
-                });
-              } else if (_isDraggingHorizontal) {
-                setState(() {
-                  offsetY += details.delta.dy / _widgetHeight;
-                  offsetY = offsetY.clamp(0.0, 1.0);
-                });
+              final size = MediaQuery.of(context).size;
+              final bool isLandscape = (_orientation == "Landscape Left" || _orientation == "Landscape Right");
+
+              if (!isLandscape) {
+                // PORTRAIT MODE:
+                if (_isDraggingVertical) {
+                  setState(() {
+                    if (_draggingRight) {
+                      offsetX += details.delta.dx / size.width;
+                    } else {
+                      offsetX -= details.delta.dx / size.width;
+                    }
+                    offsetX = offsetX.clamp(0.0, 1.0);
+                  });
+                } else if (_isDraggingHorizontal) {
+                  setState(() {
+                    offsetY += details.delta.dy / _widgetHeight;
+                    offsetY = offsetY.clamp(0.0, 1.0);
+                  });
+                }
+              } else {
+                // LANDSCAPE MODE:
+                if (_isDraggingVertical) {
+                  // Dragging the vertical line: update offsetY using horizontal delta.
+                  setState(() {
+                    if (_orientation == "Landscape Right") {
+                      offsetY += details.delta.dx / size.width;
+                    } else {
+                      offsetY -= details.delta.dx / size.width;
+                    }
+
+                    offsetY = offsetY.clamp(0.0, 1.0);
+                  });
+                } else if (_isDraggingHorizontal) {
+                  // Dragging the horizontal lines: update offsetX using vertical delta.
+                  setState(() {
+                    offsetX += details.delta.dy / _widgetHeight;
+                    offsetX = offsetX.clamp(0.0, 1.0);
+                  });
+                }
               }
             },
             onPanEnd: (details) {
@@ -609,12 +723,13 @@ class _CameraViewState extends State<CameraView> {
               _isDraggingHorizontal = false;
             },
             child: CustomPaint(
-              painter: _GridPainter(offsetX, offsetY),
+              painter: _GridPainter(offsetX, offsetY, _orientation),
               child: Container(
                 color: Colors.transparent,
               ),
             ),
-          ),
+          )
+
         ],
       ),
     );
@@ -786,8 +901,9 @@ class _CameraViewState extends State<CameraView> {
 class _GridPainter extends CustomPainter {
   final double offsetX;
   final double offsetY;
+  final String orientation; // New parameter
 
-  _GridPainter(this.offsetX, this.offsetY);
+  _GridPainter(this.offsetX, this.offsetY, this.orientation);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -795,21 +911,45 @@ class _GridPainter extends CustomPainter {
       ..color = Colors.lightBlueAccent
       ..strokeWidth = 2;
 
-    final offsetXInPixels = size.width * offsetX;
-    final centerX = size.width / 2;
-    final leftX = centerX - offsetXInPixels;
-    final rightX = centerX + offsetXInPixels;
+    // Check if orientation indicates landscape.
+    final bool isLandscape =
+    (orientation == "Landscape Left" || orientation == "Landscape Right");
 
-    canvas.drawLine(Offset(leftX, 0), Offset(leftX, size.height), paint);
-    canvas.drawLine(Offset(rightX, 0), Offset(rightX, size.height), paint);
+    if (!isLandscape) {
+      // PORTRAIT MODE:
+      final offsetXInPixels = size.width * offsetX;
+      final centerX = size.width / 2;
+      final leftX = centerX - offsetXInPixels;
+      final rightX = centerX + offsetXInPixels;
+      // Draw two vertical lines.
+      canvas.drawLine(Offset(leftX, 0), Offset(leftX, size.height), paint);
+      canvas.drawLine(Offset(rightX, 0), Offset(rightX, size.height), paint);
 
-    final y = size.height * offsetY;
-    canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+      // Draw one horizontal line.
+      final y = size.height * offsetY;
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    } else {
+      // LANDSCAPE MODE:
+      // Determine the vertical line's x-position using offsetY.
+      double verticalLineX = orientation == "Landscape Left"
+          ? size.width * (1 - offsetY)
+          : size.width * offsetY;
+      canvas.drawLine(Offset(verticalLineX, 0), Offset(verticalLineX, size.height), paint);
+
+      // Determine horizontal lines using offsetX.
+      final offsetYInPixels = size.height * offsetX;
+      final centerY = size.height / 2;
+      final topY = centerY - offsetYInPixels;
+      final bottomY = centerY + offsetYInPixels;
+      canvas.drawLine(Offset(0, topY), Offset(size.width, topY), paint);
+      canvas.drawLine(Offset(0, bottomY), Offset(size.width, bottomY), paint);
+    }
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
+
 
 class CameraGridOverlay extends StatefulWidget {
   final int projectId;
