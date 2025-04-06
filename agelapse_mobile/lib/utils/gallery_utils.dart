@@ -420,14 +420,20 @@ class GalleryUtils {
   }
 
   static void zipFiles(ZipIsolateParams params) async {
+    final reader = ZipFileWriter();
+
     try {
-      final encoder = ZipFileEncoder();
-      encoder.create(params.zipFilePath);
+      await reader.create(File(params.zipFilePath));
 
       Map<String, int> rawFilenameCounts = {};
       Map<String, int> stabilizedFilenameCounts = {};
 
+      int processed = 0;
+      final int totalFiles = params.filesToExport.values.fold<int>(0, (sum, list) => sum + list.length);
+
+
       for (var entry in params.filesToExport.entries) {
+
         String folderName = entry.key;
         List<String> files = entry.value;
 
@@ -437,18 +443,19 @@ class GalleryUtils {
           return timestampA.compareTo(timestampB);
         });
 
-        int i = 1;
         for (String filePath in files) {
+
           File file = File(filePath);
           if (file.existsSync()) {
             String basename = path.basenameWithoutExtension(filePath);
             String extension = path.extension(filePath);
 
             int timestamp = int.parse(basename);
-            DateTime date = DateTime.fromMillisecondsSinceEpoch(timestamp);
-            String formattedDate = DateFormat('yyyy-MM-dd').format(date);
-
-            String newFileName = formattedDate + extension;
+            DateTime dateLocal = DateTime
+                .fromMillisecondsSinceEpoch(timestamp, isUtc: true)
+                .toLocal();
+            String formattedDateTime = DateFormat('yyyy-MM-dd_HH-mm-ss').format(dateLocal);
+            String newFileName = '$formattedDateTime$extension';
 
             // Use separate filename counts for 'Raw' and 'Stabilized' folders
             Map<String, int> filenameCounts = folderName == 'Raw' ? rawFilenameCounts : stabilizedFilenameCounts;
@@ -457,30 +464,38 @@ class GalleryUtils {
             if (filenameCounts.containsKey(newFileName)) {
               int count = filenameCounts[newFileName]!;
               filenameCounts[newFileName] = count + 1;
-              newFileName = '$formattedDate (${count + 1})$extension';
+              newFileName = '$formattedDateTime (${count + 1})$extension';
             } else {
               filenameCounts[newFileName] = 1;
             }
 
-            encoder.addFile(file, '$folderName/$newFileName');
+            await reader.writeFile('$folderName/$newFileName', file);
           }
 
-          double percent = (i / files.length) * 100;
+          processed++;
+          double percent = (processed / totalFiles) * 100;
           params.sendPort.send(percent);
-          i++;
+
         }
       }
-
-      encoder.close();
-      params.sendPort.send('success');
     } catch (e) {
+      print("Error: $e");
       params.sendPort.send('error');
+    } finally {
+      await reader.close();
+      params.sendPort.send('success');
     }
   }
 
   static Future<String> exportZipFile(int projectId, String projectName, Map<String, List<String>> filesToExport, void Function(double exportProgressIn) setExportProgress) async {
     try {
       String zipFilePath = await DirUtils.getZipFileExportPath(projectId, projectName);
+
+      // Ensure exports dir exists
+      final exportsDir = File(zipFilePath).parent;
+      if (!exportsDir.existsSync()) {
+        exportsDir.createSync(recursive: true);
+      }
 
       final receivePort = ReceivePort();
       await Isolate.spawn(

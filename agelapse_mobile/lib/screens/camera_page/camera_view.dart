@@ -158,7 +158,6 @@ class _CameraViewState extends State<CameraView> {
     final bool mirrorSettingBool = await SettingsUtil.loadCameraMirror(widget.projectId.toString());
 
     final String mirrorSetting = mirrorSettingBool.toString();
-    print("[camera_view.dart _initialize]: mirrorSetting => '${mirrorSetting}'");
 
     if (mirrorSetting.isNotEmpty) {
       // Not a mistake
@@ -214,9 +213,6 @@ class _CameraViewState extends State<CameraView> {
 
         final lensDirection = camera.lensDirection;
         final sensorOrientation = camera.sensorOrientation;
-
-        print("lensDirection => '${lensDirection}'");
-        print("sensorOrientation => '${sensorOrientation}'");
       }
       if (camera.lensDirection == CameraLensDirection.back && !backIndexSet) {
         backFacingLensIndex = i;
@@ -308,8 +304,6 @@ class _CameraViewState extends State<CameraView> {
       isMirrored = !isMirrored;
     });
 
-    print("[toggleMirror] setting setting by title 'camera_mirror' to '${isMirrored.toString()}' for projectId '${widget.projectId.toString()}' ");
-
     _restartCameraWithCurrentSettings();
   }
 
@@ -387,10 +381,8 @@ class _CameraViewState extends State<CameraView> {
   void _toggleGrid() {
     setState(() {
       if (showGuidePhoto) {
-        // Cycle through all modes
         _gridMode = GridMode.values[(_gridMode.index + 1) % GridMode.values.length];
       } else {
-        // Cycle through only none and gridOnly
         if (_gridMode.index == 0) {
           _gridMode = GridMode.values[2];
         } else {
@@ -458,7 +450,7 @@ class _CameraViewState extends State<CameraView> {
                 _gridMode,
                 offsetX,
                 offsetY,
-                orientation: _orientation, // Passing the current orientation
+                orientation: _orientation,
               ),
             if (_showFlash) ...[
               AnimatedOpacity(
@@ -652,11 +644,12 @@ class _CameraViewState extends State<CameraView> {
               } else {
                 // LANDSCAPE MODE:
                 // The vertical line is now drawn based on offsetY.
+                // The two horizontal lines are based on offsetX.
+
                 double verticalLineX = _orientation == "Landscape Left"
                     ? size.width * (1 - offsetY)
                     : size.width * offsetY;
 
-                // The two horizontal lines are based on offsetX.
                 final offsetXInPixels = size.height * offsetX;
                 final centerY = _widgetHeight / 2;
                 final topY = centerY - offsetXInPixels;
@@ -667,10 +660,8 @@ class _CameraViewState extends State<CameraView> {
                 final distanceToBottom = (dy - bottomY).abs();
 
                 if (distanceToVertical < 20) {
-                  // Touch is near the vertical line (adjust offsetY).
                   _isDraggingVertical = true;
                 } else if (distanceToTop < 20 || distanceToBottom < 20) {
-                  // Touch is near one of the horizontal lines (adjust offsetX).
                   _isDraggingHorizontal = true;
                 }
               }
@@ -699,7 +690,6 @@ class _CameraViewState extends State<CameraView> {
               } else {
                 // LANDSCAPE MODE:
                 if (_isDraggingVertical) {
-                  // Dragging the vertical line: update offsetY using horizontal delta.
                   setState(() {
                     if (_orientation == "Landscape Right") {
                       offsetY += details.delta.dx / size.width;
@@ -710,7 +700,6 @@ class _CameraViewState extends State<CameraView> {
                     offsetY = offsetY.clamp(0.0, 1.0);
                   });
                 } else if (_isDraggingHorizontal) {
-                  // Dragging the horizontal lines: update offsetX using vertical delta.
                   setState(() {
                     offsetX += details.delta.dy / _widgetHeight;
                     offsetX = offsetX.clamp(0.0, 1.0);
@@ -873,10 +862,8 @@ class _CameraViewState extends State<CameraView> {
     String customOrientation;
     if (potentialOrientation == "Landscape Left" || potentialOrientation == "Landscape Right") {
       customOrientation = "landscape";
-      print("[resetOffsetValues] Landscape set.");
     } else {
       customOrientation = "portrait";
-      print("[resetOffsetValues] Portrait set.");
     }
 
     final String offsetXStr = await SettingsUtil.loadGuideOffsetXCustomOrientation(
@@ -892,9 +879,6 @@ class _CameraViewState extends State<CameraView> {
       offsetX = double.parse(offsetXStr);
       offsetY = double.parse(offsetYStr);
     });
-
-    print("[resetOffsetValues] offsetX set to ${double.parse(offsetXStr)}.");
-    print("[resetOffsetValues] offsetY set to ${double.parse(offsetYStr)}.");
   }
 }
 

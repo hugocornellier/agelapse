@@ -122,7 +122,7 @@ class CameraUtils {
 
   static Future<void> flashAndVibrate() async {
     var hasVibrator = await Vibration.hasVibrator();
-    if (hasVibrator != null && hasVibrator) {
+    if (hasVibrator) {
       Vibration.vibrate(duration: 5, amplitude: 1);
     }
     await Future.delayed(const Duration(milliseconds: 50));

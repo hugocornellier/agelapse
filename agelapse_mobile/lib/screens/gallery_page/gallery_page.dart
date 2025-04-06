@@ -898,9 +898,11 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
                           if (res == 'success') {
                             setState(() => exportSuccessful = true);
                             _shareZipFile();
+                          } else {
+                            print("here123");
                           }
                         } catch (e) {
-                          // print(e);
+                          print(e);
                         } finally {
                           setState(() => localExportingToZip = false);
                         }

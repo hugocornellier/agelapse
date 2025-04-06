@@ -60,7 +60,7 @@ class DirUtils {
       join(await getWatermarkDirPath(projectId), 'watermark.png');
 
   static Future<String> getZipFileExportPath(int projectId, String projectName) async =>
-      path.join(await getExportsDirPath(projectId), "$projectName AgeLapse Export.zip");
+      path.join(await getExportsDirPath(projectId), "$projectName-AgeLapse-Export.zip");
 
   static Future<String> getRawPhotoPathFromTimestampAndProjectId(String timestamp, int projectId, {String? fileExtension}) async {
     fileExtension ??= await DB.instance.getPhotoExtensionByTimestampAndProjectId(timestamp, projectId);
