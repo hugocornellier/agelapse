@@ -9,6 +9,7 @@ import '../../styles/styles.dart';
 import '../../utils/camera_utils.dart';
 import '../../utils/dir_utils.dart';
 import '../../utils/utils.dart';
+import 'package:sensors_plus/sensors_plus.dart';
 import '../../utils/settings_utils.dart';
 import '../guide_mode_tutorial_page.dart';
 import '../took_first_photo_page.dart';
@@ -81,11 +82,25 @@ class _CameraViewState extends State<CameraView> {
   Completer<void>? _pictureTakingCompleter;
   bool _isInfoWidgetVisible = true;
   bool isMirrored = false;
+  String _orientation = '';
 
   @override
   void initState() {
     super.initState();
     _initialize();
+
+    accelerometerEventStream().listen((AccelerometerEvent event) {
+      final newOrientation = event.x.abs() > event.y.abs()
+          ? (event.x > 0 ? "Landscape Left" : "Landscape Right")
+          : (event.y > 0 ? "Portrait Up" : "Portrait Down");
+      if (newOrientation != _orientation) {
+        setState(() {
+          _orientation = newOrientation;
+        });
+        print("Device orientation changed: $newOrientation");
+      }
+    });
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _getWidgetHeight();
     });
@@ -678,6 +693,9 @@ class _CameraViewState extends State<CameraView> {
       if (!mounted) {
         return;
       }
+
+
+      _controller?.lockCaptureOrientation(DeviceOrientation.portraitUp);
       _controller?.startImageStream(_processCameraImage).then((value) {
         if (widget.onCameraFeedReady != null) {
           widget.onCameraFeedReady!();

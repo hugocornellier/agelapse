@@ -33,6 +33,7 @@ dependencies:
   google_mlkit_pose_detection: ^0.14.0
   heif_converter: ^1.0.1
   image: ^4.5.3
+  sensors_plus: ^6.1.1
   intl: ^0.20.2
   path_provider: ^2.1.5
   permission_handler: ^11.4.0
