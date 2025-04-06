@@ -138,7 +138,8 @@ class CameraUtils {
       Uint8List? bytes,
       VoidCallback? increaseSuccessfulImportCount,
       VoidCallback? refreshSettings,
-      bool applyMirroring = false
+      bool applyMirroring = false,
+      String? deviceOrientation,
     }
   ) async {
     String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
@@ -189,6 +190,20 @@ class CameraUtils {
 
       if (applyMirroring) {
         rawImage = imglib.flipHorizontal(rawImage);
+        if (extension == ".png") {
+          bytes = imglib.encodePng(rawImage);
+        } else {
+          bytes = imglib.encodeJpg(rawImage);
+        }
+        await File(imgPath).writeAsBytes(bytes);
+      }
+
+      if (deviceOrientation != null) {
+        if (deviceOrientation == "Landscape Left") {
+          rawImage = imglib.copyRotate(rawImage, angle: 90); // rotate 90° clockwise
+        } else if (deviceOrientation == "Landscape Right") {
+          rawImage = imglib.copyRotate(rawImage, angle: -90); // rotate 90° counter-clockwise
+        }
         if (extension == ".png") {
           bytes = imglib.encodePng(rawImage);
         } else {

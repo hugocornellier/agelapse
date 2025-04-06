@@ -164,6 +164,27 @@ class SettingsUtil {
     );
   }
 
+  static Future<String> loadGuideOffsetXCustomOrientation(String projectId, String customOrientation) async {
+    return await _loadGuideOffsetCustomOrientation(projectId, 'X', customOrientation);
+  }
+
+  static Future<String> loadGuideOffsetYCustomOrientation(String projectId, String customOrientation) async {
+    return await _loadGuideOffsetCustomOrientation(projectId, 'Y', customOrientation);
+  }
+
+  static Future<String> _loadGuideOffsetCustomOrientation(String projectId, String axis, String customOrientation) async {
+    final String offsetColName = (customOrientation == 'landscape')
+        ? "guideOffset${axis}Landscape"
+        : "guideOffset${axis}Portrait";
+
+    print("offsetColName => '${offsetColName}'");
+
+    return await DB.instance.getSettingValueByTitle(
+        offsetColName,
+        projectId.toString()
+    );
+  }
+
   static Future<bool> hasOpenedNonEmptyGallery(String projectId) async {
     try {
       final String settingValueStr = await DB.instance.getSettingValueByTitle(

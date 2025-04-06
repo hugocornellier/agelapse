@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -90,14 +91,21 @@ class _CameraViewState extends State<CameraView> {
     _initialize();
 
     accelerometerEventStream().listen((AccelerometerEvent event) {
-      final newOrientation = event.x.abs() > event.y.abs()
+      final potentialOrientation = event.x.abs() > event.y.abs()
           ? (event.x > 0 ? "Landscape Left" : "Landscape Right")
           : (event.y > 0 ? "Portrait Up" : "Portrait Down");
-      if (newOrientation != _orientation) {
+
+      if (potentialOrientation == "Portrait Down" &&
+          (_orientation == "Landscape Left" || _orientation == "Landscape Right")) {
+        return;
+      }
+
+      if (potentialOrientation != _orientation) {
         setState(() {
-          _orientation = newOrientation;
+          _orientation = potentialOrientation;
         });
-        print("Device orientation changed: $newOrientation");
+
+        resetOffsetValues(potentialOrientation);
       }
     });
 
@@ -167,13 +175,6 @@ class _CameraViewState extends State<CameraView> {
     } else if (!takingGuidePhoto) {
       final bool enableGridSetting = await SettingsUtil.loadEnableGrid();
       setState(() => enableGrid = enableGridSetting);
-
-      final String offsetXStr = await SettingsUtil.loadGuideOffsetXCurrentOrientation(widget.projectId.toString());
-      final String offsetYStr = await SettingsUtil.loadGuideOffsetYCurrentOrientation(widget.projectId.toString());
-      setState(() {
-        offsetX = double.parse(offsetXStr);
-        offsetY = double.parse(offsetYStr);
-      });
     }
 
     for (var i = 0; i < _cameras.length; i++) {
@@ -225,7 +226,8 @@ class _CameraViewState extends State<CameraView> {
           null,
           false,
           refreshSettings: widget.refreshSettings,
-          applyMirroring: isMirrored
+          applyMirroring: isMirrored,
+          deviceOrientation: _orientation,
         );
 
         final bool hasTakenFirstPhoto = await SettingsUtil.hasTakenFirstPhoto(widget.projectId.toString());
@@ -397,7 +399,14 @@ class _CameraViewState extends State<CameraView> {
                       ),
                     ),
             ),
-            if (_gridMode != GridMode.none) CameraGridOverlay(widget.projectId, _gridMode, offsetX, offsetY),
+            if (_gridMode != GridMode.none)
+              CameraGridOverlay(
+                widget.projectId,
+                _gridMode,
+                offsetX,
+                offsetY,
+                orientation: _orientation, // Passing the current orientation
+              ),
             if (!modifyGridMode) _leftSideControls(),
             if (!modifyGridMode) _rightSideControls(),
             if (_showFlash) ...[
@@ -744,6 +753,34 @@ class _CameraViewState extends State<CameraView> {
   Future<void> _processCameraImage(CameraImage image) async {
 
   }
+
+  Future<void> resetOffsetValues(String potentialOrientation) async {
+    String customOrientation;
+    if (potentialOrientation == "Landscape Left" || potentialOrientation == "Landscape Right") {
+      customOrientation = "landscape";
+      print("[resetOffsetValues] Landscape set.");
+    } else {
+      customOrientation = "portrait";
+      print("[resetOffsetValues] Portrait set.");
+    }
+
+    final String offsetXStr = await SettingsUtil.loadGuideOffsetXCustomOrientation(
+      widget.projectId.toString(),
+      customOrientation,
+    );
+    final String offsetYStr = await SettingsUtil.loadGuideOffsetYCustomOrientation(
+      widget.projectId.toString(),
+      customOrientation,
+    );
+
+    setState(() {
+      offsetX = double.parse(offsetXStr);
+      offsetY = double.parse(offsetYStr);
+    });
+
+    print("[resetOffsetValues] offsetX set to ${double.parse(offsetXStr)}.");
+    print("[resetOffsetValues] offsetY set to ${double.parse(offsetYStr)}.");
+  }
 }
 
 class _GridPainter extends CustomPainter {
@@ -779,8 +816,12 @@ class CameraGridOverlay extends StatefulWidget {
   final GridMode gridMode;
   final double offsetX;
   final double offsetY;
+  final String orientation;
 
-  const CameraGridOverlay(this.projectId, this.gridMode, this.offsetX, this.offsetY, {super.key});
+  const CameraGridOverlay(this.projectId, this.gridMode, this.offsetX, this.offsetY, {
+    required this.orientation,
+    super.key
+  });
 
   @override
   CameraGridOverlayState createState() => CameraGridOverlayState();
@@ -845,82 +886,149 @@ class CameraGridOverlayState extends State<CameraGridOverlay> {
     return IgnorePointer(
       ignoring: true,
       child: CustomPaint(
-        painter: _CameraGridPainter(widget.offsetX, widget.offsetY, ghostImageOffsetX, ghostImageOffsetY, guideImage, widget.projectId, widget.gridMode),
+        painter: _CameraGridPainter(widget.offsetX, widget.offsetY, ghostImageOffsetX, ghostImageOffsetY, guideImage, widget.projectId, widget.gridMode, widget.orientation),
       ),
     );
   }
 }
 
 class _CameraGridPainter extends CustomPainter {
-  final double offsetX;
-  final double offsetY;
+  final double offsetX; // normalized value for the "eye" positions (portrait vertical lines)
+  final double offsetY; // normalized value for the x-axis (portrait horizontal line)
   final double? ghostImageOffsetX;
   final double? ghostImageOffsetY;
   final ui.Image? guideImage;
   final int projectId;
   final GridMode gridMode;
+  final String orientation; // e.g., "Portrait Up", "Landscape Left", etc.
 
-  _CameraGridPainter(this.offsetX, this.offsetY, this.ghostImageOffsetX, this.ghostImageOffsetY, this.guideImage, this.projectId, this.gridMode);
+  _CameraGridPainter(
+      this.offsetX,
+      this.offsetY,
+      this.ghostImageOffsetX,
+      this.ghostImageOffsetY,
+      this.guideImage,
+      this.projectId,
+      this.gridMode,
+      this.orientation,
+      );
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Determine if we are in landscape.
+    final bool isLandscape =
+    (orientation == "Landscape Left" || orientation == "Landscape Right");
+
     if (gridMode == GridMode.none) return;
 
-    final paint = Paint()
-      ..color = Colors.white.withAlpha(153) // Equivalent to opacity 0.6
-      ..strokeWidth = 1;
+    if (gridMode == GridMode.gridOnly || gridMode == GridMode.doubleGhostGrid ) {
+      final paint = Paint()
+        ..color = Colors.white.withAlpha(153)
+        ..strokeWidth = 1;
 
-    if (gridMode == GridMode.gridOnly || gridMode == GridMode.doubleGhostGrid) {
-      _drawVerticalLines(canvas, size, paint);
-      _drawHorizontalLine(canvas, size, paint);
+      if (!isLandscape) {
+        // --- PORTRAIT MODE ---
+        // Two vertical lines (for each eye)
+        final offsetXInPixels = size.width * offsetX;
+        final centerX = size.width / 2;
+        final leftX = centerX - offsetXInPixels;
+        final rightX = centerX + offsetXInPixels;
+        canvas.drawLine(Offset(leftX, 0), Offset(leftX, size.height), paint);
+        canvas.drawLine(Offset(rightX, 0), Offset(rightX, size.height), paint);
+
+        // One horizontal line (the x-axis through the eyes)
+        final y = size.height * offsetY;
+        canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+      } else {
+        // --- LANDSCAPE MODE ---
+        // Instead of a horizontal line, draw a vertical line.
+
+        double verticalLineX = 0;
+        if (orientation == "Landscape Left") {
+          verticalLineX = size.width * (1 - offsetY);
+        } else {
+          verticalLineX = size.width * offsetY;
+        }
+
+        canvas.drawLine(Offset(verticalLineX, 0), Offset(verticalLineX, size.height), paint);
+
+        // Instead of vertical lines, draw two horizontal lines.
+        // Here, use offsetX scaled by the canvas height.
+        final offsetYInPixels = size.height * offsetX;
+        final centerY = size.height / 2;
+        final topY = centerY - offsetYInPixels;
+        final bottomY = centerY + offsetYInPixels;
+        canvas.drawLine(Offset(0, topY), Offset(size.width, topY), paint);
+        canvas.drawLine(Offset(0, bottomY), Offset(size.width, bottomY), paint);
+      }
     }
 
+    // Draw the ghost (guide) image if needed.
     if (gridMode == GridMode.ghostOnly || gridMode == GridMode.doubleGhostGrid) {
-      _drawGuideImage(canvas, size);
+      _drawGuideImage(canvas, size, isLandscape);
     }
   }
 
-  void _drawVerticalLines(Canvas canvas, Size size, Paint paint) {
-    final offsetXInPixels = size.width * offsetX;
-    final centerX = size.width / 2;
-    final leftX = centerX - offsetXInPixels;
-    final rightX = centerX + offsetXInPixels;
-
-    canvas.drawLine(Offset(leftX, 0), Offset(leftX, size.height), paint);
-    canvas.drawLine(Offset(rightX, 0), Offset(rightX, size.height), paint);
-  }
-
-  void _drawHorizontalLine(Canvas canvas, Size size, Paint paint) {
-    final y = size.height * offsetY;
-    canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-  }
-
-  void _drawGuideImage(Canvas canvas, Size size) {
+  void _drawGuideImage(Canvas canvas, Size size, bool isLandscape) {
     if (guideImage != null && ghostImageOffsetX != null && ghostImageOffsetY != null) {
-      final imagePaint = Paint()..color = Colors.white.withAlpha(77); // Equivalent to opacity 0.3
+      final imagePaint = Paint()..color = Colors.white.withAlpha(77);
       final imageWidth = guideImage!.width.toDouble();
       final imageHeight = guideImage!.height.toDouble();
-      final scale = _calculateImageScale(size.width, imageWidth, imageHeight);
 
+      // Use the portrait height as the base reference for scaling and offsets.
+      final double baseDimension = isLandscape ? size.height : size.width;
+      final scale = _calculateImageScale(baseDimension, imageWidth, imageHeight);
       final scaledWidth = imageWidth * scale;
       final scaledHeight = imageHeight * scale;
-
       final eyeOffsetFromCenterInGhostPhoto = (0.5 - ghostImageOffsetY!) * scaledHeight;
-      final eyeOffsetFromCenterGuideLines = (0.5 - offsetY) * size.height;
-      final difference = eyeOffsetFromCenterGuideLines - eyeOffsetFromCenterInGhostPhoto;
 
-      final rect = Rect.fromCenter(
-        center: Offset(size.width / 2, (size.height / 2) - difference),
-        width: scaledWidth,
-        height: scaledHeight,
-      );
-      canvas.drawImageRect(guideImage!, Offset.zero & Size(imageWidth, imageHeight), rect, imagePaint);
+      if (!isLandscape) {
+        final eyeOffsetFromCenterGuideLines = (0.5 - offsetY) * size.height;
+        final difference = eyeOffsetFromCenterGuideLines - eyeOffsetFromCenterInGhostPhoto;
+
+        // Portrait: draw the guide image normally.
+        final rect = Rect.fromCenter(
+          center: Offset(size.width / 2, size.height / 2 - difference),
+          width: scaledWidth,
+          height: scaledHeight,
+        );
+        canvas.drawImageRect(
+          guideImage!,
+          Offset.zero & Size(imageWidth, imageHeight),
+          rect,
+          imagePaint,
+        );
+      } else {
+        final eyeOffsetFromCenterGuideLines = (0.5 - offsetY) * size.width;
+        final difference = eyeOffsetFromCenterGuideLines - eyeOffsetFromCenterInGhostPhoto;
+
+        // Landscape: rotate the ghost image only.
+        final center = Offset(size.width / 2, size.height / 2);
+        canvas.save();
+        canvas.translate(center.dx, center.dy);
+        final angle = orientation == "Landscape Left" ? math.pi / 2 : -math.pi / 2;
+        canvas.rotate(angle);
+        final rect = Rect.fromCenter(
+          center: Offset(0, -difference),
+          width: scaledWidth,
+          height: scaledHeight,
+        );
+        canvas.drawImageRect(
+          guideImage!,
+          Offset.zero & Size(imageWidth, imageHeight),
+          rect,
+          imagePaint,
+        );
+        canvas.restore();
+      }
     }
   }
 
-  double _calculateImageScale(double canvasWidth, double imageWidth, double imageHeight) {
-    return (canvasWidth * offsetX) / (imageWidth * ghostImageOffsetX!);
+  double _calculateImageScale(double baseDimension, double imageWidth, double imageHeight) {
+    // Here we assume that offsetX (the normalized pupil offset) is defined relative to the portrait base dimension.
+    return (baseDimension * offsetX) / (imageWidth * ghostImageOffsetX!);
   }
+
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
