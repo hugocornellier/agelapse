@@ -197,8 +197,7 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
         isImporting = true;
       });
 
-      String oldRawPhotoPath = await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-          oldTimestamp, projectId);
+      String oldRawPhotoPath = await DirUtils.getRawPhotoPathFromTimestampAndProjectId(oldTimestamp, projectId);
       File oldRawFile = File(oldRawPhotoPath);
 
       if (!await oldRawFile.exists()) {
@@ -206,47 +205,26 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
       }
 
       String fileExtension = path.extension(oldRawPhotoPath);
-
-      String newRawPhotoPath = path.join(
-          path.dirname(oldRawPhotoPath),
-          '$newTimestamp$fileExtension'
-      );
-
+      String newRawPhotoPath = path.join(path.dirname(oldRawPhotoPath), '$newTimestamp$fileExtension');
       await oldRawFile.rename(newRawPhotoPath);
-
-      String oldRawThumbPath = oldRawPhotoPath.replaceAll(
-          DirUtils.photosRawDirname,
-          DirUtils.thumbnailDirname
-      );
-      oldRawThumbPath = path.join(
-          path.dirname(oldRawThumbPath),
-          "${path.basenameWithoutExtension(oldRawPhotoPath)}.jpg"
-      );
-
+      String oldRawThumbPath = oldRawPhotoPath.replaceAll(DirUtils.photosRawDirname, DirUtils.thumbnailDirname);
+      oldRawThumbPath = path.join(path.dirname(oldRawThumbPath), "${path.basenameWithoutExtension(oldRawPhotoPath)}.jpg");
       File oldRawThumbFile = File(oldRawThumbPath);
+
       if (await oldRawThumbFile.exists()) {
-        String newRawThumbPath = path.join(
-            path.dirname(oldRawThumbPath),
-            "$newTimestamp.jpg"
-        );
+        String newRawThumbPath = path.join(path.dirname(oldRawThumbPath), "$newTimestamp.jpg");
         await oldRawThumbFile.rename(newRawThumbPath);
       }
 
       List<String> orientations = ['portrait', 'landscape'];
       for (String orientation in orientations) {
         try {
-          String oldStabPath = await DirUtils.getStabilizedImagePathFromRawPathAndProjectOrientation(
-              projectId, oldRawPhotoPath, orientation);
+          String oldStabPath = await DirUtils.getStabilizedImagePathFromRawPathAndProjectOrientation(projectId, oldRawPhotoPath, orientation);
           File oldStabFile = File(oldStabPath);
 
           if (await oldStabFile.exists()) {
-            String newStabPath = path.join(
-                path.dirname(oldStabPath),
-                '$newTimestamp.png'
-            );
-
+            String newStabPath = path.join(path.dirname(oldStabPath), '$newTimestamp.png');
             await oldStabFile.rename(newStabPath);
-
             String oldStabThumbPath = FaceStabilizer.getStabThumbnailPath(oldStabPath);
             File oldStabThumbFile = File(oldStabThumbPath);
 
@@ -261,15 +239,23 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
         }
       }
 
-      await DB.instance.updatePhotoTimestamp(oldTimestamp, newTimestamp, projectId);
+      final oldPhotoRecord = await DB.instance.getPhotoByTimestamp(oldTimestamp, projectId);
+
+      if (oldPhotoRecord == null) return;
+
+      final int oldId = oldPhotoRecord['id'] as int;
+      int? newId = await DB.instance.updatePhotoTimestamp(oldTimestamp, newTimestamp, projectId);
+      final String currentGuidePhoto = await SettingsUtil.loadSelectedGuidePhoto(projectId.toString());
+
+      if (currentGuidePhoto == oldId.toString() && newId != null) {
+        await DB.instance.setSettingByTitle("selected_guide_photo", newId.toString(), projectId.toString());
+      }
+
       await _loadImages();
       await DB.instance.setNewVideoNeeded(projectId);
-
     } catch (e) {
       print('Error changing photo date: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to change photo date: $e'))
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to change photo date: $e')));
     } finally {
       setState(() {
         isImporting = false;
