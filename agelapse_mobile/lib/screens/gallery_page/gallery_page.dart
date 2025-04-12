@@ -158,8 +158,6 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
   }
 
   Future<void> _showChangeDateDialog(String currentTimestamp) async {
-    Navigator.of(context).pop();
-
     DateTime initialDate = DateTime.fromMillisecondsSinceEpoch(int.parse(currentTimestamp));
     DateTime? newDate = await showDatePicker(
       context: context,
@@ -959,6 +957,120 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
     }
   }
 
+  Future<void> _retryStabilization() async {
+    if (activeImagePreviewPath == null) return;
+    final String timestamp = path.basenameWithoutExtension(activeImagePreviewPath!);
+    _retryingPhotoTimestamps.add(timestamp);
+    final String rawPhotoPath = await DirUtils.getRawPhotoPathFromTimestampAndProjectId(timestamp, widget.projectId);
+    final String projectOrientation = await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
+    final String stabilizedImagePath = await DirUtils.getStabilizedImagePathFromRawPathAndProjectOrientation(widget.projectId, rawPhotoPath, projectOrientation);
+    final String stabThumbPath = FaceStabilizer.getStabThumbnailPath(stabilizedImagePath);
+    final File stabImageFile = File(stabilizedImagePath);
+    final File stabThumbFile = File(stabThumbPath);
+    if (await stabImageFile.exists()) {
+      await stabImageFile.delete();
+    }
+    if (await stabThumbFile.exists()) {
+      await stabThumbFile.delete();
+    }
+    await DB.instance.resetStabilizedColumnByTimestamp(projectOrientation, timestamp);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Retrying stabilization...')));
+    widget.stabCallback();
+    // Navigator.of(context).pop();
+  }
+
+  Future<void> _showImageOptionsMenu(File imageFile) async {
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xff121212),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+          contentPadding: EdgeInsets.zero,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(Icons.calendar_today, color: Colors.white.withAlpha(204), size: 18.0),
+                title: const Text('Change Date', style: TextStyle(fontSize: 12, color: Colors.white)),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    _showChangeDateDialog(path.basenameWithoutExtension(imageFile.path));
+                  });
+                },
+              ),
+              const Divider(),
+              ListTile(
+                leading: Icon(Icons.video_stable, color: Colors.white.withAlpha(150), size: 18.0),
+                title: const Text('Stabilize on Other Faces', style: TextStyle(fontSize: 12, color: Colors.white)),
+                onTap: () {
+                  StabDiffFacePage stabNewFaceScreen = StabDiffFacePage(
+                      projectId: projectId,
+                      imageTimestamp: path.basenameWithoutExtension(imageFile.path),
+                      reloadImagesInGallery: _loadImages,
+                      stabCallback: widget.stabCallback,
+                      userRanOutOfSpaceCallback: widget.userRanOutOfSpaceCallback
+                  );
+                  Utils.navigateToScreenReplace(context, stabNewFaceScreen);
+                },
+              ),
+              const Divider(),
+              ListTile(
+                leading: Icon(Icons.refresh, color: Colors.white.withAlpha(150), size: 18.0),
+                title: const Text('Retry Stabilization', style: TextStyle(fontSize: 12, color: Colors.white)),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  Future.delayed(Duration.zero, () async {
+                    await _retryStabilization();
+                  });
+                },
+              ),
+              const Divider(),
+              ListTile(
+                leading: Icon(Icons.photo, color: Colors.white.withAlpha(150), size: 18.0),
+                title: const Text('Set as Guide Photo', style: TextStyle(fontSize: 12, color: Colors.white)),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  final photoRecord = await DB.instance.getPhotoByTimestamp(path.basenameWithoutExtension(imageFile.path), projectId);
+                  if (photoRecord != null) {
+                    await DB.instance.setSettingByTitle("selected_guide_photo", photoRecord['id'].toString(), projectId.toString());
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Guide photo updated')));
+                  }
+                },
+              ),
+              const Divider(),
+              ListTile(
+                leading: Icon(Icons.handyman, color: Colors.white.withAlpha(150), size: 18.0),
+                title: const Text('Manual Stabilization', style: TextStyle(fontSize: 12, color: Colors.white)),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ManualStabilizationPage(
+                        imagePath: imageFile.path,
+                        projectId: widget.projectId,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const Divider(),
+              ListTile(
+                leading: Icon(Icons.delete, color: Colors.red.withAlpha(204), size: 18.0),
+                title: const Text('Delete Image', style: TextStyle(fontSize: 12, color: Colors.white)),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _showDeleteDialog(imageFile);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildThumbnailContent({
     required Widget imageWidget,
     required String filepath,
@@ -1003,7 +1115,7 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
             ),
             filepath: filepath,
             onTap: () => _showImagePreviewDialog(File(filepath), isStabilized: false),
-            onLongPress: () => _showDeleteDialog(File(filepath)),
+            onLongPress: () => _showImageOptionsMenu(File(filepath)),
           );
         }
       },
@@ -1026,7 +1138,7 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
     final String thumbnailPath = FaceStabilizer.getStabThumbnailPath(filepath);
     return GestureDetector(
       onTap: () => _showImagePreviewDialog(File(filepath), isStabilized: true),
-      onLongPress: () => _showDeleteDialog(File(filepath)),
+      onLongPress: () => _showImageOptionsMenu(File(filepath)),
       child: StabilizedThumbnail(thumbnailPath: thumbnailPath, projectId: widget.projectId),
     );
   }
@@ -1208,28 +1320,6 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
       }
     }
 
-    Future<void> _retryStabilization() async {
-      if (activeImagePreviewPath == null) return;
-      final String timestamp = path.basenameWithoutExtension(activeImagePreviewPath!);
-      _retryingPhotoTimestamps.add(timestamp);
-      final String rawPhotoPath = await DirUtils.getRawPhotoPathFromTimestampAndProjectId(timestamp, widget.projectId);
-      final String projectOrientation = await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
-      final String stabilizedImagePath = await DirUtils.getStabilizedImagePathFromRawPathAndProjectOrientation(widget.projectId, rawPhotoPath, projectOrientation);
-      final String stabThumbPath = FaceStabilizer.getStabThumbnailPath(stabilizedImagePath);
-      final File stabImageFile = File(stabilizedImagePath);
-      final File stabThumbFile = File(stabThumbPath);
-      if (await stabImageFile.exists()) {
-        await stabImageFile.delete();
-      }
-      if (await stabThumbFile.exists()) {
-        await stabThumbFile.delete();
-      }
-      await DB.instance.resetStabilizedColumnByTimestamp(projectOrientation, timestamp);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Retrying stabilization...')));
-      widget.stabCallback();
-      Navigator.of(context).pop();
-    }
-
     Future<void> updateImagePreviewPath(StateSetter dialogSetState, Future<String> Function() getPathFunction, String buttonType) async {
       String newPath = await getPathFunction();
       dialogSetState(() {
@@ -1250,149 +1340,9 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
         icon: const Icon(Icons.more_vert, color: Colors.white),
         iconSize: iconSize,
         onPressed: () async {
-          final RenderBox button = context.findRenderObject() as RenderBox;
-          final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
-          final Offset offset = button.localToGlobal(Offset(0, button.size.height), ancestor: overlay);
-          await showMenu<String>(
-            context: context,
-            position: RelativeRect.fromLTRB(offset.dx - 10, offset.dy - 70, overlay.size.width - offset.dx, 0),
-            items: <PopupMenuEntry<String>>[
-              PopupMenuItem<String>(
-                value: 'changeDate',
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_today,
-                      color: Colors.white.withAlpha(204), // Equivalent to opacity 0.8
-                      size: popupIconSize,
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Change Date',
-                      style: TextStyle(fontSize: popupFontSize),
-                    ),
-                  ],
-                ),
-                onTap: () {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    _showChangeDateDialog(timestamp);
-                  });
-                },
-              ),
-              const PopupMenuDivider(),
-              PopupMenuItem<String>(
-                value: 'stabilize',
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.video_stable,
-                      color: Colors.white.withAlpha(150), // Equivalent to opacity 0.3
-                      size: popupIconSize,
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Stabilize on Other Faces',
-                      style: TextStyle(fontSize: popupFontSize),
-                    ),
-                  ],
-                ),
-                onTap: () {
-                  StabDiffFacePage stabNewFaceScreen = StabDiffFacePage(
-                      projectId: projectId,
-                      imageTimestamp: timestamp,
-                      reloadImagesInGallery: _loadImages,
-                      stabCallback: widget.stabCallback,
-                      userRanOutOfSpaceCallback: widget.userRanOutOfSpaceCallback
-                  );
-                  Utils.navigateToScreenReplace(context, stabNewFaceScreen);
-                },
-              ),
-              const PopupMenuDivider(),
-              PopupMenuItem<String>(
-                value: 'retry',
-                child: Row(
-                  children: [
-                    Icon(Icons.refresh, color: Colors.white.withAlpha(150), size: popupIconSize),
-                    SizedBox(width: 8),
-                    Text('Retry Stabilization', style: TextStyle(fontSize: popupFontSize)),
-                  ],
-                ),
-                onTap: () {
-                  Future.delayed(Duration.zero, () async {
-                    await _retryStabilization();
-                  });
-                },
-              ),
-              const PopupMenuDivider(),PopupMenuItem<String>(
-                value: 'setGuide',
-                child: Row(
-                  children: [
-                    Icon(Icons.photo, color: Colors.white.withAlpha(150), size: 18),
-                    SizedBox(width: 8),
-                    Text('Set as Guide Photo', style: TextStyle(fontSize: 12)),
-                  ],
-                ),
-                onTap: () async {
-                  final photoRecord = await DB.instance.getPhotoByTimestamp(path.basenameWithoutExtension(activeImagePreviewPath!), projectId);
-                  if (photoRecord != null) {
-                    await DB.instance.setSettingByTitle("selected_guide_photo", photoRecord['id'].toString(), projectId.toString());
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Guide photo updated')));
-                  }
-                },
-              ),
-              const PopupMenuDivider(),
-              PopupMenuItem<String>(
-                value: 'manual',
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.handyman,
-                      color: Colors.white.withAlpha(150),
-                      size: popupIconSize,
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Manual Stabilization',
-                      style: TextStyle(fontSize: popupFontSize),
-                    ),
-                  ],
-                ),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ManualStabilizationPage(
-                        imagePath: activeImagePreviewPath!,
-                        projectId: widget.projectId,
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const PopupMenuDivider(),
-              PopupMenuItem<String>(
-                value: 'delete',
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.delete,
-                      color: Colors.red.withAlpha(204), // Equivalent to opacity 0.8
-                      size: popupIconSize,
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Delete Image',
-                      style: TextStyle(fontSize: popupFontSize),
-                    ),
-                  ],
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showDeleteDialog(imageFile);
-                },
-              ),
-            ],
-          );
+          if (activeImagePreviewPath != null) {
+            await _showImageOptionsMenu(File(activeImagePreviewPath!));
+          }
         },
       );
     }
