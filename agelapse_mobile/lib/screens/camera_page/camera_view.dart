@@ -37,7 +37,6 @@ class RotatingIconButton extends StatelessWidget {
         constraints: const BoxConstraints(),
       ),
     );
-
   }
 }
 
@@ -101,7 +100,6 @@ class _CameraViewState extends State<CameraView> {
   double offsetX = 0;
   double offsetY = 0;
   Timer? _timer;
-  Widget? _newWidget;
   late final bool takingGuidePhoto;
   bool _isDraggingVertical = false;
   bool _isDraggingHorizontal = false;
@@ -160,7 +158,6 @@ class _CameraViewState extends State<CameraView> {
     final String mirrorSetting = mirrorSettingBool.toString();
 
     if (mirrorSetting.isNotEmpty) {
-      // Not a mistake
       setState(() => isMirrored = mirrorSetting == 'true');
     }
 
@@ -210,14 +207,13 @@ class _CameraViewState extends State<CameraView> {
 
       if (camera.lensDirection == CameraLensDirection.front) {
         frontFacingLensIndex = i;
-
-        final lensDirection = camera.lensDirection;
-        final sensorOrientation = camera.sensorOrientation;
       }
+
       if (camera.lensDirection == CameraLensDirection.back && !backIndexSet) {
         backFacingLensIndex = i;
         backIndexSet = true;
       }
+
       if (camera.lensDirection == widget.initialCameraLensDirection) {
         _cameraIndex = i;
       }
@@ -269,7 +265,6 @@ class _CameraViewState extends State<CameraView> {
         }
       }
     } finally {
-      // Complete the Completer
       _pictureTakingCompleter?.complete();
       _pictureTakingCompleter = null;
     }
@@ -376,7 +371,6 @@ class _CameraViewState extends State<CameraView> {
       ],
     ),
   );
-
 
   void _toggleGrid() {
     setState(() {
@@ -807,7 +801,6 @@ class _CameraViewState extends State<CameraView> {
         return;
       }
 
-
       _controller?.lockCaptureOrientation(DeviceOrientation.portraitUp);
       _controller?.startImageStream(_processCameraImage).then((value) {
         if (widget.onCameraFeedReady != null) {
@@ -885,7 +878,7 @@ class _CameraViewState extends State<CameraView> {
 class _GridPainter extends CustomPainter {
   final double offsetX;
   final double offsetY;
-  final String orientation; // New parameter
+  final String orientation;
 
   _GridPainter(this.offsetX, this.offsetY, this.orientation);
 
@@ -895,32 +888,26 @@ class _GridPainter extends CustomPainter {
       ..color = Colors.lightBlueAccent
       ..strokeWidth = 2;
 
-    // Check if orientation indicates landscape.
     final bool isLandscape =
     (orientation == "Landscape Left" || orientation == "Landscape Right");
 
     if (!isLandscape) {
-      // PORTRAIT MODE:
       final offsetXInPixels = size.width * offsetX;
       final centerX = size.width / 2;
       final leftX = centerX - offsetXInPixels;
       final rightX = centerX + offsetXInPixels;
-      // Draw two vertical lines.
+
       canvas.drawLine(Offset(leftX, 0), Offset(leftX, size.height), paint);
       canvas.drawLine(Offset(rightX, 0), Offset(rightX, size.height), paint);
 
-      // Draw one horizontal line.
       final y = size.height * offsetY;
       canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
     } else {
-      // LANDSCAPE MODE:
-      // Determine the vertical line's x-position using offsetY.
       double verticalLineX = orientation == "Landscape Left"
           ? size.width * (1 - offsetY)
           : size.width * offsetY;
       canvas.drawLine(Offset(verticalLineX, 0), Offset(verticalLineX, size.height), paint);
 
-      // Determine horizontal lines using offsetX.
       final offsetYInPixels = size.height * offsetX;
       final centerY = size.height / 2;
       final topY = centerY - offsetYInPixels;
@@ -933,7 +920,6 @@ class _GridPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
-
 
 class CameraGridOverlay extends StatefulWidget {
   final int projectId;
@@ -968,8 +954,30 @@ class CameraGridOverlayState extends State<CameraGridOverlay> {
     final stabPhotos = await DB.instance.getStabilizedPhotosByProjectID(widget.projectId, projectOrientation);
 
     if (stabPhotos.isNotEmpty) {
-      final guidePhoto = stabPhotos.first;
-      final timestamp = guidePhoto['timestamp'].toString();
+      Map<String, dynamic> guidePhoto;
+      String timestamp;
+
+      final String selectedGuidePhoto = await SettingsUtil.loadSelectedGuidePhoto(widget.projectId.toString());
+      if (selectedGuidePhoto == "not set") {
+        print("not set");
+
+        guidePhoto = stabPhotos.first;
+        timestamp = guidePhoto['timestamp'].toString();
+      } else {
+        final guidePhotoRecord = await DB.instance.getPhotoById(selectedGuidePhoto, widget.projectId);
+
+        print("guidePhotoRecord");
+        print(guidePhotoRecord);
+
+        if (guidePhotoRecord != null) {
+          guidePhoto = guidePhotoRecord;
+          timestamp = guidePhotoRecord['timestamp'].toString();
+        } else {
+          guidePhoto = stabPhotos.first;
+          timestamp = guidePhoto['timestamp'].toString();
+        }
+      }
+
       final rawPhotoPath = await getRawPhotoPathFromTimestamp(timestamp);
       final stabilizedPath = await DirUtils.getStabilizedImagePath(rawPhotoPath, widget.projectId);
 
@@ -1017,14 +1025,14 @@ class CameraGridOverlayState extends State<CameraGridOverlay> {
 }
 
 class _CameraGridPainter extends CustomPainter {
-  final double offsetX; // normalized value for the "eye" positions (portrait vertical lines)
-  final double offsetY; // normalized value for the x-axis (portrait horizontal line)
+  final double offsetX;
+  final double offsetY;
   final double? ghostImageOffsetX;
   final double? ghostImageOffsetY;
   final ui.Image? guideImage;
   final int projectId;
   final GridMode gridMode;
-  final String orientation; // e.g., "Portrait Up", "Landscape Left", etc.
+  final String orientation;
 
   _CameraGridPainter(
       this.offsetX,
@@ -1051,8 +1059,6 @@ class _CameraGridPainter extends CustomPainter {
         ..strokeWidth = 1;
 
       if (!isLandscape) {
-        // --- PORTRAIT MODE ---
-        // Two vertical lines (for each eye)
         final offsetXInPixels = size.width * offsetX;
         final centerX = size.width / 2;
         final leftX = centerX - offsetXInPixels;
@@ -1060,13 +1066,9 @@ class _CameraGridPainter extends CustomPainter {
         canvas.drawLine(Offset(leftX, 0), Offset(leftX, size.height), paint);
         canvas.drawLine(Offset(rightX, 0), Offset(rightX, size.height), paint);
 
-        // One horizontal line (the x-axis through the eyes)
         final y = size.height * offsetY;
         canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
       } else {
-        // --- LANDSCAPE MODE ---
-        // Instead of a horizontal line, draw a vertical line.
-
         double verticalLineX = 0;
         if (orientation == "Landscape Left") {
           verticalLineX = size.width * (1 - offsetY);
@@ -1076,8 +1078,6 @@ class _CameraGridPainter extends CustomPainter {
 
         canvas.drawLine(Offset(verticalLineX, 0), Offset(verticalLineX, size.height), paint);
 
-        // Instead of vertical lines, draw two horizontal lines.
-        // Here, use offsetX scaled by the canvas height.
         final offsetYInPixels = size.height * offsetX;
         final centerY = size.height / 2;
         final topY = centerY - offsetYInPixels;
@@ -1087,7 +1087,6 @@ class _CameraGridPainter extends CustomPainter {
       }
     }
 
-    // Draw the ghost (guide) image if needed.
     if (gridMode == GridMode.ghostOnly || gridMode == GridMode.doubleGhostGrid) {
       _drawGuideImage(canvas, size, isLandscape);
     }
@@ -1099,7 +1098,6 @@ class _CameraGridPainter extends CustomPainter {
       final imageWidth = guideImage!.width.toDouble();
       final imageHeight = guideImage!.height.toDouble();
 
-      // Use the portrait height as the base reference for scaling and offsets.
       final double baseDimension = isLandscape ? size.height : size.width;
       final scale = _calculateImageScale(baseDimension, imageWidth, imageHeight);
       final scaledWidth = imageWidth * scale;
@@ -1110,7 +1108,6 @@ class _CameraGridPainter extends CustomPainter {
         final eyeOffsetFromCenterGuideLines = (0.5 - offsetY) * size.height;
         final difference = eyeOffsetFromCenterGuideLines - eyeOffsetFromCenterInGhostPhoto;
 
-        // Portrait: draw the guide image normally.
         final rect = Rect.fromCenter(
           center: Offset(size.width / 2, size.height / 2 - difference),
           width: scaledWidth,
@@ -1126,7 +1123,6 @@ class _CameraGridPainter extends CustomPainter {
         final eyeOffsetFromCenterGuideLines = (0.5 - offsetY) * size.width;
         final difference = eyeOffsetFromCenterGuideLines - eyeOffsetFromCenterInGhostPhoto;
 
-        // Landscape: rotate the ghost image only.
         final center = Offset(size.width / 2, size.height / 2);
         canvas.save();
         canvas.translate(center.dx, center.dy);
@@ -1149,10 +1145,8 @@ class _CameraGridPainter extends CustomPainter {
   }
 
   double _calculateImageScale(double baseDimension, double imageWidth, double imageHeight) {
-    // Here we assume that offsetX (the normalized pupil offset) is defined relative to the portrait base dimension.
     return (baseDimension * offsetX) / (imageWidth * ghostImageOffsetX!);
   }
-
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;

@@ -1337,6 +1337,23 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
                   });
                 },
               ),
+              const PopupMenuDivider(),PopupMenuItem<String>(
+                value: 'setGuide',
+                child: Row(
+                  children: [
+                    Icon(Icons.photo, color: Colors.white.withAlpha(150), size: 18),
+                    SizedBox(width: 8),
+                    Text('Set as Guide Photo', style: TextStyle(fontSize: 12)),
+                  ],
+                ),
+                onTap: () async {
+                  final photoRecord = await DB.instance.getPhotoByTimestamp(path.basenameWithoutExtension(activeImagePreviewPath!), projectId);
+                  if (photoRecord != null) {
+                    await DB.instance.setSettingByTitle("selected_guide_photo", photoRecord['id'].toString(), projectId.toString());
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Guide photo updated')));
+                  }
+                },
+              ),
               const PopupMenuDivider(),
               PopupMenuItem<String>(
                 value: 'manual',

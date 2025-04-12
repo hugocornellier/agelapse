@@ -116,6 +116,10 @@ class SettingsUtil {
     return await DB.instance.getSettingValueByTitle('video_resolution', projectId);
   }
 
+  static Future<String> loadSelectedGuidePhoto(String projectId) async {
+    return await DB.instance.getSettingValueByTitle('selected_guide_photo', projectId);
+  }
+
   static Future<String> loadProjectOrientation(String projectId) async {
     return (await DB.instance
         .getSettingValueByTitle('project_orientation', projectId))
@@ -202,8 +206,8 @@ class SettingsUtil {
   static Future<bool> hasTakenFirstPhoto(String projectId) async {
     try {
       final String settingValueStr = await DB.instance.getSettingValueByTitle(
-          'has_taken_first_photo',
-          projectId
+        'has_taken_first_photo',
+        projectId
       );
       return bool.tryParse(settingValueStr) ?? false;
     } catch (e) {
@@ -213,9 +217,9 @@ class SettingsUtil {
 
   static Future<void> setHasTakenFirstPhotoToTrue(String projectIdStr) async {
     await DB.instance.setSettingByTitle(
-        'has_taken_first_photo',
-        'true',
-        projectIdStr
+      'has_taken_first_photo',
+      'true',
+      projectIdStr
     );
   }
 

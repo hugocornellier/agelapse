@@ -261,9 +261,10 @@ class DB {
     'guideOffsetXLandscape'   : '0.045',
     'guideOffsetYPortrait'    : '0.421875',
     'guideOffsetYLandscape'   : '0.421875',
+    'gridAxisCount'           : '5',
     'video_resolution'        : '1080p',
     'aspect_ratio'            : '16:9',
-    'gridAxisCount'           : '5',
+    'selected_guide_photo'    : 'not set',
   };
 
   Future<Map<String, dynamic>?> getSettingByTitle(
@@ -310,6 +311,17 @@ class DB {
     }
 
     return settingValue;
+  }
+
+  Future<Map<String, dynamic>?> getPhotoById(String id, int projectId) async {
+    final db = await database;
+    final results = await db.query(
+      photoTable,
+      where: 'id = ? AND projectID = ?',
+      whereArgs: [id, projectId],
+      limit: 1,
+    );
+    return results.isNotEmpty ? results.first : null;
   }
 
   String getNotifDefault() {
