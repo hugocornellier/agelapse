@@ -236,8 +236,6 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
       await faceStabilizer.saveStabilizedImage(imageBytesStabilized, rawPhotoPath, stabilizedPhotoPath, 0.0);
       await faceStabilizer.createStabThumbnail(stabilizedPhotoPath.replaceAll('.jpg', '.png'));
 
-      print("All done with stabilizing!");
-
       final String aspectRatio = faceStabilizer.aspectRatio;
       final int canvasHeight = faceStabilizer.canvasHeight;
       final int canvasWidth = faceStabilizer.canvasWidth;
@@ -252,13 +250,6 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
         _rightEyeXGoal = rightEyeXGoal;
         _bothEyesYGoal = bothEyesYGoal;
       });
-
-      print("aspectRatio => ${aspectRatio}");
-      print("canvasWidth => ${canvasWidth}");
-      print("canvasHeight => ${canvasHeight}");
-      print("leftEyeXGoal => ${leftEyeXGoal}");
-      print("rightEyeXGoal => ${rightEyeXGoal}");
-      print("bothEyesYGoal => ${bothEyesYGoal}");
 
       img.dispose();
     } catch (e, stackTrace) {

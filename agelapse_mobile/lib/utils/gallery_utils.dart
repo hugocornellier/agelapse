@@ -228,24 +228,24 @@ class GalleryUtils {
   }
 
   static Future<void> processPickedFile(
-      File file,
-      int projectId,
-      ValueNotifier<String> activeProcessingDateNotifier, {
-        required Function onImagesLoaded,
-        required Function(int p1) setProgressInMain,
-        required void Function() increaseSuccessfulImportCount,
-        required void Function(int value) increasePhotosImported,
-      }
-      ) async {
+    File file,
+    int projectId,
+    ValueNotifier<String> activeProcessingDateNotifier, {
+      required Function onImagesLoaded,
+      required Function(int p1) setProgressInMain,
+      required void Function() increaseSuccessfulImportCount,
+      required void Function(int value) increasePhotosImported,
+    }
+  ) async {
     if (path.extension(file.path) == ".zip") {
       await processPickedZipFile(
-          file,
-          projectId,
-          activeProcessingDateNotifier,
-          onImagesLoaded,
-          setProgressInMain,
-          increaseSuccessfulImportCount,
-          increasePhotosImported
+        file,
+        projectId,
+        activeProcessingDateNotifier,
+        onImagesLoaded,
+        setProgressInMain,
+        increaseSuccessfulImportCount,
+        increasePhotosImported
       );
     } else if (Utils.isImage(file.path)) {
       await processPickedImage(
@@ -258,14 +258,14 @@ class GalleryUtils {
   }
 
   static Future<void> processPickedZipFile(
-      File file,
-      int projectId,
-      ValueNotifier<String> activeProcessingDateNotifier,
-      Function onImagesLoaded,
-      Function(int p1) setProgressInMain,
-      void Function() increaseSuccessfulImportCount,
-      void Function(int value) increasePhotosImported,
-      ) async {
+    File file,
+    int projectId,
+    ValueNotifier<String> activeProcessingDateNotifier,
+    Function onImagesLoaded,
+    Function(int p1) setProgressInMain,
+    void Function() increaseSuccessfulImportCount,
+    void Function(int value) increasePhotosImported,
+  ) async {
     final reader = ZipFileReader();
     try {
       reader.open(File(file.path));
@@ -279,7 +279,6 @@ class GalleryUtils {
 
       increasePhotosImported(entries.length);
 
-      // Process entries one at a time
       for (int i = 0; i < entries.length; i++) {
         final entry = entries[i];
         setProgressInMain(((i / entries.length) * 100).toInt());

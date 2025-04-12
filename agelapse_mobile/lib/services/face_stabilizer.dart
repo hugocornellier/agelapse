@@ -177,11 +177,6 @@ class FaceStabilizer {
 
     List<Point<int>?> eyes = _filterAndCenterEyes(stabFaces);
 
-    if (eyes.isEmpty && stabFaces.isNotEmpty) {
-      print("Here. Eyes is empty but stab Faces is not...");
-      print("stabFaces length: ${stabFaces.length}. ");
-    }
-
     final Point<int> goalLeftEye = Point(leftEyeXGoal, bothEyesYGoal);
     final Point<int> goalRightEye = Point(rightEyeXGoal, bothEyesYGoal);
 
@@ -418,7 +413,7 @@ class FaceStabilizer {
       final InputImage inputImage = InputImage.fromFilePath(pngPath);
       poses = await _poseDetector?.processImage(inputImage);
     } catch (e) {
-      print("Caught error3 $e");
+      print("Error caught => $e");
     } finally {
       _poseDetector?.close();
     }
@@ -450,7 +445,7 @@ class FaceStabilizer {
       final InputImage inputImage = InputImage.fromFilePath(pngPath);
       poses = await _poseDetector?.processImage(inputImage);
     } catch (e) {
-      print("Caught error3 $e");
+      print("Error caught => $e");
     } finally {
       _poseDetector?.close();
     }

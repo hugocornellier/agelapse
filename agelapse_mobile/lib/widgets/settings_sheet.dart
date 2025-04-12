@@ -97,7 +97,6 @@ class SettingsSheetState extends State<SettingsSheet> {
       _gridModeIndex = results[4] as int;
 
       if (dailyNotificationTime == "not set") {
-        print("not set...");
         _selectedTime = const TimeOfDay(hour: 17, minute: 0);
       } else {
         final int timestamp = int.parse(dailyNotificationTime);

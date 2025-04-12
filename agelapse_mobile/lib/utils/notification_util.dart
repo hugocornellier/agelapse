@@ -22,7 +22,6 @@ class NotificationUtil {
       if (!notificationStatus.isGranted) {
         notificationStatus = await Permission.notification.request();
         if (!notificationStatus.isGranted) {
-          print('Notification permission denied');
           return;
         }
       }
@@ -31,7 +30,6 @@ class NotificationUtil {
       if (!exactAlarmStatus.isGranted) {
         exactAlarmStatus = await Permission.scheduleExactAlarm.request();
         if (!exactAlarmStatus.isGranted) {
-          print('Exact alarms permission denied');
           return;
         }
       }
@@ -61,15 +59,12 @@ class NotificationUtil {
     await _flutterLocalNotificationsPlugin.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: (notificationResponse) async {
-        // Handle notification response
+        // maybe do something here in the future?
       },
     );
 
-    // Set the local time zone
     final timeZoneName = await FlutterTimezone.getLocalTimezone();
     tz.setLocalLocation(tz.getLocation(timeZoneName));
-
-    print("Local timezone set to ${timeZoneName}");
   }
 
   static Future<void> showImmediateNotification() async {
@@ -92,13 +87,9 @@ class NotificationUtil {
       'This is an immediate test notification',
       platformDetails,
     );
-
-    print("Immediate notification triggered");
   }
 
   static Future<void> scheduleDailyNotification(int projectId, String dailyNotificationTime) async {
-    print("Schedule daily notif call made.");
-
     final now = DateTime.now();
     final int timestamp = int.parse(dailyNotificationTime);
     final DateTime dateTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
@@ -133,18 +124,8 @@ class NotificationUtil {
       matchDateTimeComponents: DateTimeComponents.time,
     );
 
-    print("zonedSchedule call made...");
-
     final List<PendingNotificationRequest> pendingNotifications =
     await _flutterLocalNotificationsPlugin.pendingNotificationRequests();
-
-    pendingNotifications.forEach((notification) {
-      print('ID: ${notification.id}');
-      print('Title: ${notification.title}');
-      print('Body: ${notification.body}');
-      print('Payload: ${notification.payload}');
-      print('-----------------------');
-    });
   }
 
   static tz.TZDateTime _calculateScheduledDate(DateTime now, TimeOfDay selectedTime) {

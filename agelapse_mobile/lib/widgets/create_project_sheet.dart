@@ -203,8 +203,6 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
       widthFactor: 1.0,
       child: ElevatedButton(
         onPressed: () async {
-          print("Create project was pressed");
-
           final projectName = _nameController.text.trim();
           if (projectName.isEmpty) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -249,14 +247,12 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
 
           // initialize notif col in settings
           final String dnt = await SettingsUtil.loadDailyNotificationTime(projectId.toString());
-          print("here dnt => ${dnt}");
 
           // Initialize notifications
           try {
             DateTime fivePMLocalTime = NotificationUtil.getFivePMLocalTime();
             final dailyNotificationTime = fivePMLocalTime.millisecondsSinceEpoch.toString();
 
-            print("Setting daily_notification_time col for proj ${projectId.toString()} to ${dailyNotificationTime}");
             await DB.instance.setSettingByTitle('daily_notification_time', dailyNotificationTime, projectId.toString());
             await NotificationUtil.initializeNotifications();
             await NotificationUtil.scheduleDailyNotification(projectId, dailyNotificationTime);

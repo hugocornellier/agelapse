@@ -34,10 +34,6 @@ class SettingsUtil {
 
   static Future<String> loadDailyNotificationTime(String projectId) async {
     final String result = await DB.instance.getSettingValueByTitle('daily_notification_time', projectId);
-
-    print("here, projectId ${projectId} [loadDailyNotificationTime]");
-    print("Returning ${result}");
-
     return result;
   }
 
@@ -176,8 +172,6 @@ class SettingsUtil {
     final String offsetColName = (customOrientation == 'landscape')
         ? "guideOffset${axis}Landscape"
         : "guideOffset${axis}Portrait";
-
-    print("offsetColName => '${offsetColName}'");
 
     return await DB.instance.getSettingValueByTitle(
         offsetColName,

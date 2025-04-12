@@ -312,7 +312,6 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
       if (stabCount != _stabCount) {
         _stabCount = stabCount;
         if (_isMounted) {
-          print("Refreshing gallery");
           await _loadImages();
         }
       }
@@ -333,9 +332,7 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
   }
 
   Future<bool> requestPermission() async {
-    print("here1");
     PermissionStatus status = await Permission.photos.request();
-    print("status: ${status}");
 
     if (status.isGranted) {
       return true;
@@ -344,7 +341,7 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
 
       return false;
     } else if (status.isPermanentlyDenied) {
-      openAppSettings(); // Prompt user to open settings
+      openAppSettings();
       return false;
     }
 
@@ -366,8 +363,9 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
 
       if (result == null) return;
 
+      // for reference this means switching to the raw tab in the gallery
       setState(() {
-        _tabController.index = 1; // Switch to raw tab
+        _tabController.index = 1;
       });
 
       for (final AssetEntity asset in result) {
@@ -898,8 +896,6 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
                           if (res == 'success') {
                             setState(() => exportSuccessful = true);
                             _shareZipFile();
-                          } else {
-                            print("here123");
                           }
                         } catch (e) {
                           print(e);

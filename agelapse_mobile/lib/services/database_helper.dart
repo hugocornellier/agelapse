@@ -306,7 +306,6 @@ class DB {
     var settingValue = settingData?['value'];
 
     if (title == 'daily_notification_time' && settingValue == "not_set") {
-      print("returning default notif time");
       return getNotifDefault();
     }
 
@@ -327,8 +326,6 @@ class DB {
 
     if (title == 'framerate') {
       setSettingByTitle('framerate_is_default', 'false', projectId);
-    } else if (title == 'daily_notification_time') {
-      print("setting daily_notification_time to ${value}");
     }
 
     return await db.update(
@@ -609,7 +606,6 @@ class DB {
   }
 
   Future<void> setPhotoNoFacesFound(String timestamp) async {
-    print("Setting $timestamp noFacesFound.");
     final db = await database;
     await db.update(
       photoTable,

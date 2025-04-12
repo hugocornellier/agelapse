@@ -75,12 +75,10 @@ class VideoUtils {
       FFmpegSession session = await FFmpegKit.execute(ffmpegCommand);
 
       if (ReturnCode.isSuccess(await session.getReturnCode())) {
-        print("Success");
         final String resolution = await SettingsUtil.loadVideoResolution(projectId.toString());
         await DB.instance.addVideo(projectId, resolution, watermarkEnabled.toString(), watermarkPos, totalPhotoCount, framerate!);
         return true;
       } else {
-        print("Failure");
         return false;
       }
     } catch (e) {
@@ -139,7 +137,6 @@ class VideoUtils {
 
   static createGif(videoOutputPath, framerate) async {
     String gifPath = videoOutputPath.replaceAll(path.extension(videoOutputPath), ".gif");
-    print("Trying to save gif to $gifPath");
 
     await FFmpegKit.execute('-i $videoOutputPath $gifPath');
   }
@@ -149,26 +146,22 @@ class VideoUtils {
 
     final bool newPhotos = newestVideo['photoCount'] != await _getTotalPhotoCountByProjectId(projectId);
     if (newPhotos) {
-      print("New photos found");
       return true;
     }
 
     final framerateSetting = await _getFramerate(projectId);
     final bool framerateChanged = newestVideo['framerate'] != framerateSetting;
     if (framerateChanged) {
-      print("Framerate changed. video framerate: ${newestVideo['framerate']}, framerate setting: $framerateSetting");
       return true;
     }
 
     final String watermarkEnabled = (await SettingsUtil.loadWatermarkSetting(projectId.toString())).toString();
     if (newestVideo['watermarkEnabled'] != watermarkEnabled) {
-      print("Watermark enabled setting changed");
       return true;
     }
 
     final String watermarkPos = (await DB.instance.getSettingValueByTitle('watermark_position')).toLowerCase();
     if (newestVideo['watermarkPos'] != watermarkPos) {
-      print("Watermark pos setting changed");
       return true;
     }
 

@@ -230,7 +230,6 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
             ElevatedButton(
               onPressed: () async {
                 final newName = _editProjectNameController.text;
-                print("The user is changing the project name to $newName");
                 await DB.instance.updateProjectName(project['id'], newName);
                 _getProjects();  // Refresh the project list
                 Navigator.pop(context);
