@@ -219,10 +219,16 @@ class MainNavigationState extends State<MainNavigation> {
     // Automatically set project orientation based on imported photos.
     // eg: If all imported photos were landscape, set project to landscape
     if (photoCountBeforeImport == 0) {
-      String? importedPhotosOrientation = await DB.instance.checkAllPhotoOrientations();
+      print("[processPickedFiles] photoCountBeforeImport == 0 is true");
+
+      String? importedPhotosOrientation = await DB.instance.checkPhotoOrientationThreshold(widget.projectId);
       if (importedPhotosOrientation == 'landscape') {
+        print("[processPickedFiles] importedPhotosOrientation == 'landscape' is true");
+
         DB.instance.setSettingByTitle("project_orientation", 'landscape', projectIdStr);
         DB.instance.setSettingByTitle("aspect_ratio", "4:3", projectIdStr);
+      } else {
+        print("[processPickedFiles] importedPhotosOrientation == 'landscape' NOT true. importedPhotosOrientation = ${importedPhotosOrientation}");
       }
     }
 

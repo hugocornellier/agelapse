@@ -503,6 +503,46 @@ class DB {
     }
   }
 
+  Future<String?> checkPhotoOrientationThreshold(int projectId) async {
+    final db = await database;
+    final List<Map<String, dynamic>> photos = await db.query(
+      photoTable,
+      columns: ['originalOrientation'],
+      where: 'projectID = ?',
+      whereArgs: [projectId],
+    );
+    print("Debug: Retrieved ${photos.length} photos for projectId $projectId");
+    if (photos.isEmpty) return null;
+    int portraitCount = 0;
+    int landscapeCount = 0;
+    int totalCount = 0;
+    for (var photo in photos) {
+      final String? orientation = photo['originalOrientation'] as String?;
+      print("Debug: Processing photo with orientation: $orientation");
+      if (orientation == null) continue;
+      totalCount++;
+      if (orientation == 'portrait') {
+        portraitCount++;
+      } else if (orientation == 'landscape') {
+        landscapeCount++;
+      }
+    }
+    print("Debug: Total valid photos: $totalCount, Portrait: $portraitCount, Landscape: $landscapeCount");
+    if (totalCount == 0) return null;
+    double portraitRatio = portraitCount / totalCount;
+    double landscapeRatio = landscapeCount / totalCount;
+    print("Debug: Portrait ratio: $portraitRatio, Landscape ratio: $landscapeRatio");
+    if (portraitRatio >= 0.8) {
+      print("Debug: Returning 'portrait'");
+      return 'portrait';
+    } else if (landscapeRatio >= 0.8) {
+      print("Debug: Returning 'landscape'");
+      return 'landscape';
+    } else {
+      print("Debug: Returning null");
+      return null;
+    }
+  }
 
   String getStabilizedColumn(String projectOrientation) {
     return projectOrientation.toLowerCase() == "portrait"

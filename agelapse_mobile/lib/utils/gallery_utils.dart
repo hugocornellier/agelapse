@@ -205,15 +205,15 @@ class GalleryUtils {
   }
 
   static Future<void> processPickedImage(
-      String imagePath,
-      int projectId,
-      ValueNotifier<String> activeProcessingDateNotifier,
-      {
-        required Function onImagesLoaded,
-        int? timestamp,
-        VoidCallback? increaseSuccessfulImportCount
-      }
-      ) async {
+    String imagePath,
+    int projectId,
+    ValueNotifier<String> activeProcessingDateNotifier,
+    {
+      required Function onImagesLoaded,
+      int? timestamp,
+      VoidCallback? increaseSuccessfulImportCount
+    }
+  ) async {
     final imageProcessor = ImageProcessor(
         imagePath: imagePath,
         projectId: projectId,
