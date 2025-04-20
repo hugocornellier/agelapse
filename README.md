@@ -10,18 +10,16 @@ Download AgeLapse: [https://agelapse.com](https://agelapse.com)
 
 **Mobile Import Note:** To easily import a large number of photos into the mobile version, create a .zip file containing all files.
 
-## What's New - Mobile v1.5.0
+## What's New - Mobile v1.5.1
 
 ### New Features
-- Photo date/time editing: Change the date and time of imported photos to ultimately re-order your project. Thanks to everyone who suggested this.
-- Mirror camera setting. Thanks to everyone who suggested this.
-- Manual stabilization: in the rare case where facial landmark detection fails - usually due to an obstructed face from sunglasses or a facial cover - users no longer have to exclude these photos. Instead, use the manual stabilization feature to align your eyes/face with your guidelines by hand.
+- Full support for Landscape photos within the app with guides/ghost photos. Thanks to those that suggested this.
+- Customize your ghost/guide photo! In the gallery, you can now set a photo as your guide. Thanks to those who wrote in and suggested this feature.
 
 ### Improvements & Bug Fixes
-- Fixed issue where importing .zip files on Mobile could lead to photo duplicates
-- Increased gallery import limit from 9 photos to 100 photos at a time. Remember that importing a .zip file containing all your photos is always the best move. 
-- Notification system improvements (Resolves Github issue #14)
-- Camera flash improvements (Resolves Github issue #10)
+- Project exports: fixed bug where exporting a project with stabilized photos could cause the .zip archive to fail to generate.
+- Fixed a bug that prevented some images from appearing on specific devices in the tutorial section.
+- Automatically set a new project orientation to Landscape/Portrait based on the initial import. 
 
 ## Platform Support
 
