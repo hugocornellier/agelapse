@@ -13,8 +13,8 @@ Download AgeLapse: [https://agelapse.com](https://agelapse.com)
 ## What's New - Mobile v1.5.1
 
 ### New Features
-- Full support for Landscape photos within the app with guides/ghost photos. Thanks to those that suggested this.
-- Customize your ghost/guide photo! In the gallery, you can now set a photo as your guide. Thanks to those who wrote in and suggested this feature.
+- Customize your ghost/guide photo. In the gallery, you can now set a photo as your guide. Thanks to those who wrote in and suggested this feature.
+- Full support for Landscape photos within the app's camera WITH guides/ghost photos. Thanks to those that suggested this.
 
 ### Improvements & Bug Fixes
 - Project exports: fixed bug where exporting a project with stabilized photos could cause the .zip archive to fail to generate.

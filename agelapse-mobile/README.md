@@ -34,9 +34,9 @@ Download links can be found at https://agelapse.com
    git clone https://github.com/hugocornellier/agelapse
    ```
 
-2. **Set working directory to agelapse_mobile**:
+2. **Set working directory to agelapse-mobile**:
 
-   ```cd agelapse/agelapse_mobile```
+   ```cd agelapse/agelapse-mobile```
 
 3. **Install Dependencies**:
 
