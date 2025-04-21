@@ -123,7 +123,10 @@ class CameraUtils {
   static Future<void> flashAndVibrate() async {
     var hasVibrator = await Vibration.hasVibrator();
     if (hasVibrator) {
-      Vibration.vibrate(duration: 5, amplitude: 1);
+      print("vibrating");
+      Vibration.vibrate(duration: 500, amplitude: 155);
+    } else {
+      print("no vibrate");
     }
     await Future.delayed(const Duration(milliseconds: 50));
   }
@@ -188,8 +191,12 @@ class CameraUtils {
         return false;
       }
 
-      if (applyMirroring) {
-        rawImage = imglib.flipHorizontal(rawImage);
+      if (deviceOrientation != null) {
+        if (deviceOrientation == "Landscape Left") {
+          rawImage = imglib.copyRotate(rawImage, angle: 90); // rotate 90° clockwise
+        } else if (deviceOrientation == "Landscape Right") {
+          rawImage = imglib.copyRotate(rawImage, angle: -90); // rotate 90° counter-clockwise
+        }
         if (extension == ".png") {
           bytes = imglib.encodePng(rawImage);
         } else {
@@ -198,12 +205,8 @@ class CameraUtils {
         await File(imgPath).writeAsBytes(bytes);
       }
 
-      if (deviceOrientation != null) {
-        if (deviceOrientation == "Landscape Left") {
-          rawImage = imglib.copyRotate(rawImage, angle: 90); // rotate 90° clockwise
-        } else if (deviceOrientation == "Landscape Right") {
-          rawImage = imglib.copyRotate(rawImage, angle: -90); // rotate 90° counter-clockwise
-        }
+      if (applyMirroring) {
+        rawImage = imglib.flipHorizontal(rawImage);
         if (extension == ".png") {
           bytes = imglib.encodePng(rawImage);
         } else {
@@ -292,4 +295,4 @@ class CameraUtils {
       return null;
     }
   }
-} 
+}

@@ -500,7 +500,7 @@ class SettingsSheetState extends State<SettingsSheet> {
         _buildGridModeDropdown(),
         _buildSaveToCameraRollSwitch(saveToCameraRoll),
         BoolSettingSwitch(
-          title: 'Camera Mirror',
+          title: 'Mirror Front Camera',
           initialValue: cameraMirror,
           onChanged: (bool value) async {
             setState(() {

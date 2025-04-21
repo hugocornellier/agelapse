@@ -238,31 +238,31 @@ class _CameraViewState extends State<CameraView> {
     setState(() => _showFlash = false);
 
     try {
-      final XFile? image = await _controller?.takePicture();
-      if (image != null) {
-        CameraUtils.savePhoto(
-          image,
-          widget.projectId,
-          false,
-          null,
-          false,
-          refreshSettings: widget.refreshSettings,
-          applyMirroring: isMirrored,
-          deviceOrientation: _orientation,
-        );
+      final XFile image = await _controller!.takePicture();
+      final Uint8List bytes = await image.readAsBytes();
+      CameraUtils.savePhoto(
+        image,
+        widget.projectId,
+        false,
+        null,
+        false,
+        bytes: bytes,
+        applyMirroring: isMirrored,
+        deviceOrientation: _orientation,
+        refreshSettings: widget.refreshSettings,
+      );
 
-        final bool hasTakenFirstPhoto = await SettingsUtil.hasTakenFirstPhoto(widget.projectId.toString());
-        if (!hasTakenFirstPhoto) {
-          await SettingsUtil.setHasTakenFirstPhotoToTrue(widget.projectId.toString());
-          Utils.navigateToScreenNoAnim(
-            context,
-            TookFirstPhotoPage(
+      final bool hasTakenFirstPhoto = await SettingsUtil.hasTakenFirstPhoto(widget.projectId.toString());
+      if (!hasTakenFirstPhoto) {
+        await SettingsUtil.setHasTakenFirstPhotoToTrue(widget.projectId.toString());
+        Utils.navigateToScreenNoAnim(
+          context,
+          TookFirstPhotoPage(
               projectId: widget.projectId,
               projectName: widget.projectName,
               goToPage: widget.goToPage
-            ),
-          );
-        }
+          ),
+        );
       }
     } finally {
       _pictureTakingCompleter?.complete();
@@ -425,18 +425,18 @@ class _CameraViewState extends State<CameraView> {
               child: _changingCameraLens
                   ? const Center(child: CircularProgressIndicator())
                   : Transform.scale(
-                      scale: scale,
-                      child: Center(
-                        child: Transform(
-                          alignment: Alignment.center,
-                          transform: Matrix4.identity()..scale(isMirrored ? -1.0 : 1.0, 1.0, 1.0),
-                          child: CameraPreview(
-                            _controller!,
-                            child: null,
-                          ),
-                        ),
-                      ),
+                scale: scale,
+                child: Center(
+                  child: Transform(
+                    alignment: Alignment.center,
+                    transform: Matrix4.identity()..scale(1.0, 1.0, 1.0),
+                    child: CameraPreview(
+                      _controller!,
+                      child: null,
                     ),
+                  ),
+                ),
+              ),
             ),
             if (_gridMode != GridMode.none)
               CameraGridOverlay(
@@ -505,7 +505,7 @@ class _CameraViewState extends State<CameraView> {
     bottom: 21,
     left: 16,
     child: _buildButton(
-      () => toggleFlash(),
+          () => toggleFlash(),
       Icon(flashEnabled ? Icons.flash_auto : Icons.flash_off, size: 24, color: Colors.white),
     ),
   );
@@ -794,7 +794,7 @@ class _CameraViewState extends State<CameraView> {
       camera,
       ResolutionPreset.max,
       enableAudio: false,
-      imageFormatGroup: Platform.isAndroid ? ImageFormatGroup.nv21 : ImageFormatGroup.bgra8888,
+      imageFormatGroup: ImageFormatGroup.jpeg,
     );
     _controller?.initialize().then((_) {
       if (!mounted) {
