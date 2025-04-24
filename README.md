@@ -19,7 +19,7 @@ Download AgeLapse: [https://agelapse.com](https://agelapse.com)
 ### Improvements & Bug Fixes
 - Project exports: fixed bug where exporting a project with stabilized photos could cause the .zip archive to fail to generate.
 - Fixed a bug that prevented some images from appearing on specific devices in the tutorial section.
-- Automatically set a new project orientation to Landscape/Portrait based on the initial import. 
+- Automatically set a new project orientation to Landscape/Portrait based on the initial import.   
 
 ## Platform Support
 
