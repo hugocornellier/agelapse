@@ -1,10 +1,10 @@
-
 import 'package:flutter/material.dart';
 import '../services/database_helper.dart';
 import '../styles/styles.dart';
 import '../widgets/main_navigation.dart';
 import '../widgets/project_select_sheet.dart';
 import 'welcome_page.dart';
+import 'package:flutter/services.dart';
 
 class ProjectsPage extends StatefulWidget {
   const ProjectsPage({super.key});
@@ -20,6 +20,9 @@ class ProjectsPageState extends State<ProjectsPage> {
   @override
   void initState() {
     super.initState();
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
     _getProjects();
   }
 
