@@ -21,6 +21,12 @@ Download AgeLapse: [https://agelapse.com](https://agelapse.com)
 - Fixed a bug that prevented some images from appearing on specific devices in the tutorial section.
 - Automatically set a new project orientation to Landscape/Portrait based on the initial import.   
 
+## What's New - Desktop v0.2.0
+
+### Improvements & Bug Fixes
+- Improved universal support to allow AgeLapse to run on Silicon and Intel Macs  
+- Minor bug fixes
+
 ## Platform Support
 
 | Platforms | Status      |

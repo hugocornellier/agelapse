@@ -1,3 +1,5 @@
+import os, fdlite
+
 # -*- mode: python ; coding: utf-8 -*-
 
 a = Analysis(
@@ -5,11 +7,20 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[
-        ('/usr/local/lib/python3.10/site-packages/fdlite/data/face_detection_back.tflite', 'fdlite/data/'),
-        ('/usr/local/lib/python3.10/site-packages/fdlite/data/face_landmark.tflite', 'fdlite/data/'),
-        ('/usr/local/lib/python3.10/site-packages/fdlite/data/iris_landmark.tflite', 'fdlite/data/'),
-        ('assets/images/agelapse.png', 'assets/images/'),
-        ('assets/ffmpeg_mac/ffmpeg', 'assets/ffmpeg_mac/')
+        (
+            os.path.join(os.path.dirname(fdlite.__file__), 'data', 'face_detection_back.tflite'),
+            'fdlite/data/'
+        ),
+        (
+            os.path.join(os.path.dirname(fdlite.__file__), 'data', 'face_landmark.tflite'),
+            'fdlite/data/'
+        ),
+        (
+            os.path.join(os.path.dirname(fdlite.__file__), 'data', 'iris_landmark.tflite'),
+            'fdlite/data/'
+        ),
+        ('assets/images/agelapse.png',           'assets/images/'),
+        ('assets/ffmpeg_mac/ffmpeg',             'assets/ffmpeg_mac/')
     ],
     hiddenimports=[
         'fdlite.data.face_detection_back',
@@ -39,7 +50,7 @@ exe = EXE(
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
-    target_arch=None,
+    target_arch='x86_64',
     codesign_identity=None,
     entitlements_file=None,
     icon='assets/1024_1024x1024.icns'  # Set the path to your .icns file here
