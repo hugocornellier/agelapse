@@ -19,10 +19,9 @@ def get_ffmpeg_path() -> str:
     ffmpeg_path = os.path.join(base_dir, 'assets', 'ffmpeg_win', 'ffmpeg.exe')
     return ffmpeg_path
   elif platform.system() == 'Darwin':
-    # Use the static FFmpeg binary for macOS
     ffmpeg_path = os.path.join(base_dir, 'assets', 'ffmpeg_mac', 'ffmpeg')
     return ffmpeg_path
-  return 'ffmpeg'  # Assume ffmpeg is available in PATH on Linux
+  return 'ffmpeg'
 
 
 def get_image_files(image_dir: str) -> List[str]:
@@ -57,7 +56,6 @@ def run_ffmpeg(image_dir: str, output_video: str, framerate: int) -> None:
 
   print(f"[LOG] ffmpeg path is: {ffmpeg_path}")
 
-  # Create the file list using a temporary file
   list_filename = create_file_list(image_dir, framerate)
 
   print(f"[LOG] File list has been created")
@@ -91,7 +89,6 @@ def run_ffmpeg(image_dir: str, output_video: str, framerate: int) -> None:
 
   process.wait()
 
-  # Remove the temporary file
   if os.path.exists(list_filename):
     os.remove(list_filename)
 
@@ -110,15 +107,13 @@ def create_file_list(image_dir, framerate, list_filename=None):
   try:
     print("[LOG] Creating ffmpeg file list...")
 
-    time_per_frame = 1 / framerate  # Calculate duration for each frame
+    time_per_frame = 1 / framerate
 
-    # Get all image files sorted by name
     image_files = sorted([img for img in os.listdir(image_dir) if img.endswith('.png')])
 
     print(f"[LOG] image_files:")
     print(image_files)
 
-    # Create a temporary file if no filename is provided
     if list_filename is None:
       temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".txt")
       list_filename = temp_file.name
@@ -126,11 +121,9 @@ def create_file_list(image_dir, framerate, list_filename=None):
 
     with open(list_filename, 'w') as file_list:
       for image_file in image_files:
-        # Write each file name and duration
         file_list.write(f"file '{os.path.join(image_dir, image_file)}'\n")
         file_list.write(f"duration {time_per_frame}\n")
 
-      # Add an extra duration line for the last image
       if image_files:
         file_list.write(f"duration {time_per_frame}\n")
 
@@ -139,7 +132,7 @@ def create_file_list(image_dir, framerate, list_filename=None):
   except Exception as e:
     print(f"[ERROR] Error while compiling video file list: {e}")
 
-  return list_filename  # Return the path to the file list
+  return list_filename
 
 
 def compile_video(stabilized_img_dir: str, output_video_path: str, framerate: int) -> str:

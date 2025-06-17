@@ -6,20 +6,15 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from PIL import Image
-from PIL.ExifTags import TAGS
 import exifread
-
-import pillow_heif
 from PyQt5 import QtGui
-from PyQt5.QtCore import Qt, pyqtSignal, QObject, QTimer, QRect, QEvent
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QRect, QEvent
 from PyQt5.QtGui import QPixmap, QFont, QDragEnterEvent, QDropEvent, QMouseEvent, QCursor, QTextCursor, QIcon
 from PyQt5.QtWidgets import (
   QMainWindow, QLabel, QVBoxLayout, QWidget, QProgressBar, QPushButton, QGridLayout, QStackedWidget, QListWidget,
   QListWidgetItem, QHBoxLayout, QApplication, QFileDialog, QTextEdit,
-  QComboBox
+  QComboBox, QSizePolicy
 )
-
 from src.video_compile import compile_video
 
 # Stylesheets
@@ -54,21 +49,18 @@ progress_bar_style = """
         background-color: #0066cc;
     }
 """
+TITLE_BAR_COLOR = "#1A1A1A"
 
 
 def get_path(filename):
-  # Split the filename into the base name and extension
   name = os.path.splitext(filename)[0]
   ext = os.path.splitext(filename)[1]
 
   if platform.system() == "Darwin":
     from AppKit import NSBundle
-    # Attempt to find the file in the macOS app bundle
     file = NSBundle.mainBundle().pathForResource_ofType_(name, ext)
-    # Return the found file path or fallback to os.path.realpath
     return file or os.path.realpath(filename)
   else:
-    # Use os.path.realpath for non-macOS platforms
     return os.path.realpath(filename)
 
 
@@ -92,14 +84,12 @@ class CustomLabelButton(QLabel):
       self.on_click()
 
   def on_click(self):
-    pass  # Override this method in the subclass or instance
+    pass
 
   def get_style_sheet(self, text):
-    # Add margin-bottom and adjust font size when the text is a hyphen
-    margin_bottom = "5px" if text == "⎯" else "0px"
+    margin_bottom = "0px"
     font_size = "24px" if text == "⎯" else "28px"
 
-    # Determine the hover color based on the text
     hover_color = "rgba(255, 0, 0, 0.5)" if text == "×" else "rgba(255, 255, 255, 0.1)"
 
     return f"""
@@ -119,8 +109,12 @@ class CustomLabelButton(QLabel):
 class CustomTitleBar(QWidget):
   def __init__(self, parent=None):
     super().__init__(parent)
+    # TO REPLACE WITH
     self.setAutoFillBackground(True)
     self.setFixedHeight(40)
+    self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+    self.setAttribute(Qt.WA_StyledBackground, True)
+    self.setStyleSheet(f"background-color: {TITLE_BAR_COLOR};")
     self.init_ui()
 
   def init_ui(self):
@@ -130,14 +124,12 @@ class CustomTitleBar(QWidget):
       self.setup_windows_title_bar()
 
   def setup_windows_title_bar(self):
-    # Logo
     self.logo_label = QLabel(self)
     self.logo_label.setFixedSize(120, 30)
     pixmap = QPixmap(resource_path('assets/images/agelapse.png')).scaled(
       self.logo_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
     self.logo_label.setPixmap(pixmap)
 
-    # Buttons
     self.minimize_button = CustomLabelButton("⎯", self)
     self.minimize_button.on_click = self.minimize_window
 
@@ -147,29 +139,25 @@ class CustomTitleBar(QWidget):
     self.close_button = CustomLabelButton("×", self)
     self.close_button.on_click = self.close_window
 
-    # Layout
     layout = QHBoxLayout(self)
-    layout.setContentsMargins(10, 0, 0, 0)  # Adjust margins as needed
-    layout.setSpacing(5)  # Space between buttons
+    layout.setContentsMargins(10, 0, 0, 0)
+    layout.setSpacing(5)
+    layout.setAlignment(Qt.AlignVCenter)
     layout.addWidget(self.logo_label)
     layout.addStretch(1)
     layout.addWidget(self.minimize_button)
     layout.addWidget(self.restore_button)
     layout.addWidget(self.close_button)
 
-    # Set the layout to the main widget (or parent widget)
     self.setLayout(layout)
 
   def setup_mac_title_bar(self):
-    # macOS standard title bar buttons on the left
-    self.setStyleSheet("background-color: transparent;")
+    self.setStyleSheet(f"background-color: {TITLE_BAR_COLOR};")
 
-    # Button setup
     self.close_button = QPushButton(self)
     self.minimize_button = QPushButton(self)
     self.restore_button = QPushButton(self)
 
-    # Make buttons circular
     circular_style = """
             QPushButton {{
                 border-radius: 6px;  /* Half of the button's width and height */
@@ -189,28 +177,24 @@ class CustomTitleBar(QWidget):
     self.minimize_button.clicked.connect(self.minimize_window)
     self.restore_button.clicked.connect(self.restore_window)
 
-    # Logo centered and ensure it does not get cut off
     self.logo_label = QLabel(self)
     self.logo_label.setFixedSize(120, 30)
     pixmap = QPixmap(resource_path('assets/images/agelapse.png')).scaled(self.logo_label.size(), Qt.KeepAspectRatio,
                                                                          Qt.SmoothTransformation)
     self.logo_label.setPixmap(pixmap)
 
-    # Main layout for entire window
     main_layout = QHBoxLayout(self)
-    main_layout.setContentsMargins(10, 5, 10, 5)  # Adjusted margins for overall layout
+    main_layout.setContentsMargins(10, 5, 10, 5)
+    main_layout.setAlignment(Qt.AlignVCenter)
 
-    # Add buttons to the layout
     main_layout.addWidget(self.close_button)
     main_layout.addWidget(self.minimize_button)
     main_layout.addWidget(self.restore_button)
-    main_layout.addStretch(1)  # This adds a stretchable space that pushes the logo to center
+    main_layout.addStretch(1)
 
-    # Add the logo
     main_layout.addWidget(self.logo_label)
 
-    # Spacer or invisible widgets to mirror the left side
-    main_layout.addStretch(1)  # Ensures the logo is centered
+    main_layout.addStretch(1)
 
     # Invisible widgets to match the width of the buttons
     invisible_button = QWidget(self)  # Create an invisible widget
@@ -273,7 +257,6 @@ class DropArea(QLabel):
         """)
     self.setAcceptDrops(True)
 
-    # Initialize the timer if needed for future use
     self.timer = QTimer(self)
 
   def mousePressEvent(self, event: QMouseEvent):
@@ -311,33 +294,24 @@ class MainWindow(QMainWindow):
     else:
       print("Window icon loaded")
 
-    # Set window flags to remove default title bar but keep resizing capabilities
     self.setWindowFlags(
       Qt.FramelessWindowHint | Qt.WindowMinimizeButtonHint | Qt.WindowMaximizeButtonHint | Qt.WindowCloseButtonHint
     )
 
-    # Initialize framerate variable
     self.selected_framerate = 15  # Default value
-
-    # Set the window style
     self.setStyleSheet("background-color: #222; color: white;")  # Dark background and white text
-
-    # Create and add the custom title bar
     self.title_bar = CustomTitleBar(self)
 
-    # Main widget and layout setup
     self.main_widget = QWidget(self)
     self.main_layout = QVBoxLayout(self.main_widget)
     self.main_layout.setContentsMargins(0, 0, 0, 0)
     self.main_layout.setSpacing(0)
     self.main_layout.addWidget(self.title_bar)
 
-    # Create the settings section and gallery container
     self.create_settings_section()
     self.stacked_widget = QStackedWidget(self)
     self.gallery_container = self.create_gallery_container()
 
-    # Add widgets to the stacked layout
     self.stacked_widget.addWidget(self.gallery_container)
     self.main_layout.addWidget(self.stacked_widget)
 
@@ -532,7 +506,31 @@ class MainWindow(QMainWindow):
     grid_widget.setLayout(self.grid_layout)
 
     layout = QVBoxLayout()
+    get_started_label = QLabel("Get Started", self)
+    get_started_label.setAlignment(Qt.AlignLeft)
+    get_started_label.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
+    get_started_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+    get_started_subtext = QLabel("To get started, drop a directory containing image files within the dotted line.",
+                                 self)
+    get_started_subtext.setAlignment(Qt.AlignLeft)
+    get_started_subtext.setWordWrap(True)
+    get_started_subtext.setStyleSheet("font-size: 12px; color: white;")
+    get_started_subtext.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+    your_photos_label = QLabel("Your Photos", self)
+    your_photos_label.setAlignment(Qt.AlignLeft)
+    your_photos_label.setStyleSheet("font-size: 18px; font-weight: bold; color: white; margin-top: 14px;")
+    your_photos_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+    settings_label = QLabel("Settings", self)
+    settings_label.setAlignment(Qt.AlignLeft)
+    settings_label.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
+    settings_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+    layout.addWidget(get_started_label)
+    layout.addWidget(get_started_subtext)
+    layout.addWidget(your_photos_label)
     layout.addWidget(self.drop_area)
+    layout.addWidget(settings_label)
+    self.drop_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
     layout.addWidget(self.settings_section)  # Move settings section here
     layout.addWidget(self.image_count_label)
     layout.addWidget(self.image_list_widget)

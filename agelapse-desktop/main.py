@@ -1,6 +1,6 @@
 import sys
 from PyQt5.QtWidgets import QApplication
-from src.ui import MainWindow  # Import the MainWindow from the ui module
+from src.ui import MainWindow
 
 def main():
     app = showUI()

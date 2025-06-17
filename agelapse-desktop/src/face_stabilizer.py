@@ -1,7 +1,6 @@
 import math
 import os
 import shutil
-
 import cv2
 import numpy as np
 import pillow_heif
@@ -46,17 +45,14 @@ def get_transformation_matrix(
     cos_a = math.cos(angle)
     sin_a = math.sin(angle)
 
-    # Calculate rotation matrix
     m00 = scale * cos_a
     m01 = scale * sin_a
     m10 = -scale * sin_a
     m11 = scale * cos_a
 
-    # Translation
     tX = eyes_to_stabilize_on[0].x - (eyes[0].x * m00 + eyes[0].y * m01)
     tY = eyes_to_stabilize_on[0].y - (eyes[0].x * m10 + eyes[0].y * m11)
 
-    # Return matrix as numpy array
     return np.array([[m00, m01, tX],
                      [m10, m11, tY]])
 
@@ -79,10 +75,7 @@ def apply_transformation(
     """
     return cv2.warpAffine(np.array(image), matrix, output_size)
 
-
-# Register HEIF format with Pillow
 pillow_heif.register_heif_opener()
-
 
 def stabilize_images(
     images: list[str],
@@ -124,13 +117,11 @@ def stabilize_images(
                     log_no_faces(img_path, images_with_no_face)
                     continue
 
-
                 curr_eyes = get_closest_eyes_to_center(eyes, img.size[0])
 
                 transformation_matrix = get_transformation_matrix(curr_eyes, eyes_to_stabilize_on)
                 stabilized_img = apply_transformation(img, transformation_matrix, output_size)
 
-                # Save stabilized image immediately
                 save_stabilized_image(img_path, stabilized_img, output_dir)
 
                 percent_complete = update_progress(img_path, index, total_images, loading_symbols)
@@ -274,10 +265,10 @@ def save_stabilized_image(img_path: str, img: np.ndarray, output_dir: str) -> No
     base_name = os.path.basename(img_path)
     name, _ = os.path.splitext(base_name)
 
-    output_path = os.path.join(output_dir, f'{name}.png')  # Save as PNG
+    output_path = os.path.join(output_dir, f'{name}.png')
 
     img = Image.fromarray(img)
-    img.save(output_path, 'PNG')  # Save in PNG format
+    img.save(output_path, 'PNG')
 
 
 def get_horizontal_center_distance(eyes: list[Point], image_center_x: float) -> float:
