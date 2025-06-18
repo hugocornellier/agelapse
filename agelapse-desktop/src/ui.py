@@ -9,11 +9,12 @@ from pathlib import Path
 import exifread
 from PyQt5 import QtGui
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QRect, QEvent
-from PyQt5.QtGui import QPixmap, QFont, QDragEnterEvent, QDropEvent, QMouseEvent, QCursor, QTextCursor, QIcon
+from PyQt5.QtGui import QPixmap, QFont, QDragEnterEvent, QDropEvent, QMouseEvent, QCursor, QTextCursor, QIcon, QColor
+from PyQt5.QtSvg import QSvgWidget
 from PyQt5.QtWidgets import (
   QMainWindow, QLabel, QVBoxLayout, QWidget, QProgressBar, QPushButton, QGridLayout, QStackedWidget, QListWidget,
   QListWidgetItem, QHBoxLayout, QApplication, QFileDialog, QTextEdit,
-  QComboBox, QSizePolicy
+  QComboBox, QSizePolicy, QFrame, QGraphicsColorizeEffect
 )
 from src.video_compile import compile_video
 
@@ -46,10 +47,22 @@ progress_bar_style = """
         color: white;
     }
     QProgressBar::chunk {
-        background-color: #0066cc;
+        background-color: qlineargradient(
+            spread:pad, x1:0, y1:0, x2:1, y2:0,
+            stop:0  #0066ff, stop:1 #7f00ff);
     }
 """
-TITLE_BAR_COLOR = "#1A1A1A"
+TITLE_BAR_COLOR = "#0C1220"
+
+MAIN_GRADIENT = (
+    "QWidget{background: qlineargradient("
+    "spread:pad, x1:0, y1:0, x2:0, y2:1,"
+    "stop:0 #0f172a, stop:0.5 #1e293b, stop:1 #0f172a); color:white}"
+)
+GLASS_PANEL = (
+    "QFrame{background: rgba(30,41,59,0.5);"
+    "border:1px solid rgba(51,65,85,0.5); border-radius:12px;}"
+)
 
 
 def get_path(filename):
@@ -299,7 +312,7 @@ class MainWindow(QMainWindow):
     )
 
     self.selected_framerate = 15  # Default value
-    self.setStyleSheet("background-color: #222; color: white;")  # Dark background and white text
+    #self.setStyleSheet(MAIN_GRADIENT)
     self.title_bar = CustomTitleBar(self)
 
     self.main_widget = QWidget(self)
@@ -307,6 +320,17 @@ class MainWindow(QMainWindow):
     self.main_layout.setContentsMargins(0, 0, 0, 0)
     self.main_layout.setSpacing(0)
     self.main_layout.addWidget(self.title_bar)
+
+    self.main_widget.setObjectName("main_widget")
+    self.main_widget.setStyleSheet("""
+    QWidget#main_widget {
+        background: qlineargradient(
+            spread:pad, x1:0, y1:0, x2:0, y2:1,
+            stop:0 #0f172a, stop:0.5 #1e293b, stop:1 #0f172a
+        );
+        color: white;
+    }
+    """)
 
     self.create_settings_section()
     self.stacked_widget = QStackedWidget(self)
@@ -357,11 +381,6 @@ class MainWindow(QMainWindow):
     self.settings_section = QWidget(self)
     settings_layout = QVBoxLayout(self.settings_section)
 
-    # Create a label for the settings title
-    settings_title = QLabel("Settings", self.settings_section)
-    settings_title.setAlignment(Qt.AlignCenter)  # Center align the title
-    settings_title.setStyleSheet(common_title_style)  # Apply common style
-
     # Create a dropdown for framerate selection
     self.framerate_dropdown = QComboBox(self.settings_section)
     self.framerate_dropdown.addItems([str(i) for i in range(1, 31)])
@@ -380,12 +399,10 @@ class MainWindow(QMainWindow):
     self.framerate_dropdown.currentIndexChanged.connect(self.update_framerate)
 
     # Add the title and dropdown to the settings layout
-    settings_layout.addWidget(settings_title)
-    settings_layout.addWidget(QLabel("Select Framerate:", self.settings_section))
     settings_layout.addWidget(self.framerate_dropdown)
 
     self.settings_section.setLayout(settings_layout)
-    self.settings_section.setVisible(False)  # Ensure initially hidden
+    self.settings_section.setVisible(True)  # Ensure initially hidden
     self.settings_section.setStyleSheet("color: white;")
 
     # Add settings section to the main layout
@@ -425,16 +442,14 @@ class MainWindow(QMainWindow):
     event.accept()
 
   def create_gallery_container(self):
+    # ——— left-column widgets stay as-is ———
     self.drop_area = DropArea(self)
-    self.progress_bar = QProgressBar(self)
-    self.progress_bar.setStyleSheet(progress_bar_style)
-    self.progress_bar.setVisible(False)
+    self.drop_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
     self.image_list_widget = QListWidget(self)
     self.image_list_widget.setVisible(False)
-    self.image_list_widget.setStyleSheet("background-color: #333; color: white;")
+    self.image_list_widget.setStyleSheet(GLASS_PANEL)
 
-    # Create a button to toggle the visibility of the image list
     self.toggle_image_list_button = QPushButton("Hide Image List", self)
     self.toggle_image_list_button.setVisible(False)
     self.toggle_image_list_button.clicked.connect(self.toggle_image_list_visibility)
@@ -444,108 +459,124 @@ class MainWindow(QMainWindow):
     self.start_button.setEnabled(False)
     self.start_button.clicked.connect(self.start_stabilization)
     self.start_button.setStyleSheet("""
-                QPushButton {
-                    background-color: #004080;
-                    color: white;
-                    border-radius: 5px;
-                    padding: 10px;
-                }
-                QPushButton:disabled {
-                    background-color: #555;
-                    color: #888;
-                }
-            """)
+        QPushButton{background:qlineargradient(x1:0,y1:0,x2:1,y2:0,
+                     stop:0 #2563eb, stop:1 #4f46e5);
+                     color:white;border-radius:8px;padding:10px 24px}
+        QPushButton:hover{transform:scale(1.04)}
+        QPushButton:disabled{background:#555;color:#888}
+    """)
 
-    self.image_count_label = QLabel(self)
-    self.image_count_label.setAlignment(Qt.AlignCenter)
-    self.image_count_label.setVisible(False)
-    self.image_count_label.setStyleSheet(common_title_style)  # Apply common style
-
-    self.progress_value_label = QLabel(self)
-    self.progress_value_label.setAlignment(Qt.AlignCenter)
-    self.progress_value_label.setVisible(False)
-    self.progress_value_label.setStyleSheet("color: white;")
-
-    self.open_stabilized_folder_button = QPushButton("Open Stabilized Image Folder", self)
+    # Action buttons that appear later
+    self.open_stabilized_folder_button = QPushButton("Open Stabilized Folder", self)
     self.open_stabilized_folder_button.setVisible(False)
     self.open_stabilized_folder_button.clicked.connect(self.open_stabilized_folder)
-    self.open_stabilized_folder_button.setStyleSheet("""
-                QPushButton {
-                    background-color: #008000;
-                    color: white;
-                    border-radius: 5px;
-                    padding: 10px;
-                }
-                QPushButton:hover {
-                    background-color: #006400;
-                }
-            """)
+    self.open_stabilized_folder_button.setStyleSheet(button_style)
 
     self.open_video_folder_button = QPushButton("Open Video Folder", self)
     self.open_video_folder_button.setVisible(False)
     self.open_video_folder_button.clicked.connect(self.open_video_folder)
-    self.open_video_folder_button.setStyleSheet("""
-                QPushButton {
-                    background-color: #008000;
-                    color: white;
-                    border-radius: 5px;
-                    padding: 10px;
-                }
-                QPushButton:hover {
-                    background-color: #006400;
-                }
-            """)
+    self.open_video_folder_button.setStyleSheet(button_style)
 
     self.show_log_button = QPushButton("Show Log", self)
-    self.show_log_button.setVisible(True)
     self.show_log_button.clicked.connect(self.toggle_log)
     self.show_log_button.setStyleSheet(button_style)
 
-    grid_widget = QWidget()
-    self.grid_layout = QGridLayout()
-    grid_widget.setLayout(self.grid_layout)
+    # Progress block
+    self.progress_bar = QProgressBar(self)
+    self.progress_bar.setStyleSheet(progress_bar_style)
+    self.progress_bar.setVisible(False)
 
-    layout = QVBoxLayout()
-    get_started_label = QLabel("Get Started", self)
-    get_started_label.setAlignment(Qt.AlignLeft)
-    get_started_label.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
-    get_started_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
-    get_started_subtext = QLabel("To get started, drop a directory containing image files within the dotted line.",
-                                 self)
-    get_started_subtext.setAlignment(Qt.AlignLeft)
-    get_started_subtext.setWordWrap(True)
-    get_started_subtext.setStyleSheet("font-size: 12px; color: white;")
-    get_started_subtext.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
-    your_photos_label = QLabel("Your Photos", self)
-    your_photos_label.setAlignment(Qt.AlignLeft)
-    your_photos_label.setStyleSheet("font-size: 18px; font-weight: bold; color: white; margin-top: 14px;")
-    your_photos_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
-    settings_label = QLabel("Settings", self)
-    settings_label.setAlignment(Qt.AlignLeft)
-    settings_label.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
-    settings_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
-    layout.addWidget(get_started_label)
-    layout.addWidget(get_started_subtext)
-    layout.addWidget(your_photos_label)
-    layout.addWidget(self.drop_area)
-    layout.addWidget(settings_label)
-    self.drop_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+    # ——— right-column log viewer ———
+    self.log_viewer = QTextEdit(self)
+    self.log_viewer.setReadOnly(True)
+    self.log_viewer.setStyleSheet(
+        "QTextEdit{font-family:monospace;font-size:11px;"  # tall fixed window
+        "background:rgba(15,23,42,0.6);border:none}")
+    self.log_viewer.setVisible(False)
 
-    layout.addWidget(self.settings_section)  # Move settings section here
-    layout.addWidget(self.image_count_label)
-    layout.addWidget(self.image_list_widget)
-    layout.addWidget(self.toggle_image_list_button)
-    layout.addWidget(self.open_stabilized_folder_button)
-    layout.addWidget(self.open_video_folder_button)
-    layout.addWidget(self.show_log_button)
-    layout.addWidget(self.start_button)
-    layout.addWidget(self.progress_bar)
-    layout.setSpacing(10)
-    layout.setContentsMargins(20, 20, 20, 20)
+    # ——— main grid (v0.dev: 3 cols, log is last) ———
+    grid = QGridLayout()
+    grid.setHorizontalSpacing(24)
+    grid.setVerticalSpacing(16)
+    grid.setContentsMargins(0, 0, 0, 0)
 
-    gallery_container = QWidget()
-    gallery_container.setLayout(layout)
+    # Left-two-columns container
+    left_box = QVBoxLayout()
+    left_box.setSpacing(16)
 
+    # Header text + divider
+    p = QLabel("To begin, drag & drop a directory containing image files or click to browse.", self)
+    p.setWordWrap(True)
+    p.setStyleSheet("color:#cbd5e1;font-size:14px")
+    line = QFrame(self); line.setFixedHeight(1); line.setStyleSheet(
+        "background:qlineargradient(x1:0,y1:0,x2:1,y2:0,"
+        "stop:0 transparent, stop:0.5 #475569, stop:1 transparent)")
+    left_box.addWidget(p)
+    left_box.addWidget(line)
+
+    # SETTINGS glass panel
+    header_hbox = QHBoxLayout()
+    header_hbox.setSpacing(8)
+
+    icon_svg = QSvgWidget(resource_path("assets/icons/settings.svg"), self)
+    icon_svg.setFixedSize(20, 20)
+    icon_svg.setStyleSheet("""
+        background: transparent;
+        color: white;
+    """)
+    effect = QGraphicsColorizeEffect(icon_svg)
+    effect.setColor(QColor("#60A5FA"))
+    icon_svg.setGraphicsEffect(effect)
+
+    title_lbl = QLabel("Settings", self)
+    title_lbl.setStyleSheet("font-size:18px;font-weight:600")
+
+    header_hbox.addWidget(icon_svg)
+    header_hbox.addWidget(title_lbl)
+    header_hbox.addStretch(1)
+    left_box.addLayout(header_hbox)
+
+    # SETTINGS glass panel (rounded box containing only the dropdown)
+    settings_card = QFrame(self)
+    settings_card.setLayout(QVBoxLayout())
+    settings_card.layout().setContentsMargins(16, 16, 16, 16)
+    settings_card.setStyleSheet(GLASS_PANEL)
+
+    framerate_label = QLabel("Framerate (FPS):", settings_card)
+    framerate_label.setStyleSheet("""
+        border: none;
+        background: transparent;
+        color: white;
+        font-size: 14px;
+    """)
+    settings_card.layout().addWidget(framerate_label)
+    self.framerate_dropdown.setParent(settings_card)
+    self.framerate_dropdown.setStyleSheet(
+        "QComboBox{background:#334155;color:white;padding:6px 12px;border:1px solid #475569;"
+        "border-radius:8px}")
+    settings_card.layout().addWidget(self.framerate_dropdown)
+
+    left_box.addWidget(settings_card)
+
+    # Drop area + list + buttons
+    left_box.addWidget(self.drop_area)
+    left_box.addWidget(self.image_list_widget)
+    left_box.addWidget(self.toggle_image_list_button)
+    left_box.addWidget(self.start_button)
+    left_box.addWidget(self.open_stabilized_folder_button)
+    left_box.addWidget(self.open_video_folder_button)
+    left_box.addWidget(self.show_log_button)
+    left_box.addWidget(self.progress_bar)
+
+    # Fill the first two columns
+    left_container = QWidget(); left_container.setLayout(left_box)
+    grid.addWidget(left_container, 0, 0, 1, 2)
+
+    # Log viewer in third column
+    grid.addWidget(self.log_viewer, 0, 2)
+
+    # Assemble final widget
+    gallery_container = QWidget(); gallery_container.setLayout(grid)
     return gallery_container
 
   def get_image_creation_date(self, image_path):
