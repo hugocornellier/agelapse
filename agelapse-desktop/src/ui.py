@@ -8,8 +8,11 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import exifread
 from PyQt5 import QtGui
-from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QRect, QEvent
-from PyQt5.QtGui import QPixmap, QFont, QDragEnterEvent, QDropEvent, QMouseEvent, QCursor, QTextCursor, QIcon, QColor
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QRect, QEvent, QSize
+from PyQt5.QtGui import (
+    QPixmap, QFont, QDragEnterEvent, QDragLeaveEvent, QDropEvent, QMouseEvent,
+    QCursor, QTextCursor, QIcon, QColor
+)
 from PyQt5.QtSvg import QSvgWidget
 from PyQt5.QtWidgets import (
   QMainWindow, QLabel, QVBoxLayout, QWidget, QProgressBar, QPushButton, QGridLayout, QStackedWidget, QListWidget,
@@ -17,6 +20,10 @@ from PyQt5.QtWidgets import (
   QComboBox, QSizePolicy, QFrame, QGraphicsColorizeEffect
 )
 from src.video_compile import compile_video
+
+DROP_AREA_BG_COLOR = "#334155"
+DROP_AREA_BORDER_COLOR = "#475569"
+DROP_AREA_HOVER_BG_COLOR = "#475569"
 
 # Stylesheets
 common_title_style = """
@@ -31,7 +38,7 @@ button_style = """
     QPushButton {
         background-color: #333333;
         color: white;
-        border-radius: 5px;
+        border-radius: 10px;
         padding: 10px;
     }
     QPushButton:hover {
@@ -41,15 +48,17 @@ button_style = """
 
 progress_bar_style = """
     QProgressBar {
-        background-color: #555;
-        border: 1px solid #444;
-        text-align: center;
-        color: white;
+        border: none;
+        background-color: rgba(51,65,85,0.5);
+        height: 6px;
+        border-radius: 3px;
+        text-indent: -9999px;
     }
     QProgressBar::chunk {
-        background-color: qlineargradient(
-            spread:pad, x1:0, y1:0, x2:1, y2:0,
-            stop:0  #0066ff, stop:1 #7f00ff);
+        border-radius: 3px;
+        background: qlineargradient(
+            x1:0, y1:0, x2:1, y2:0,
+            stop:0 #2563EB, stop:1 #7F00FF);
     }
 """
 TITLE_BAR_COLOR = "#0C1220"
@@ -233,7 +242,7 @@ class CustomTitleBar(QWidget):
     return f"""
             QPushButton {{
                 background-color: {color};
-                border-radius: 15px;
+                border-radius: 25px;
                 margin: 5px;
             }}
             QPushButton:hover {{
@@ -255,41 +264,89 @@ class CustomTitleBar(QWidget):
       self.window().showMaximized()
 
 
-class DropArea(QLabel):
-  def __init__(self, main_window, parent=None):
-    super().__init__(parent)
-    self.main_window = main_window
-    self.setText("Drag and drop a directory containing image files\n\n(Click to browse for a directory)")
-    self.setAlignment(Qt.AlignCenter)
-    self.setStyleSheet("""
-            border: 2px dashed #aaa; 
-            padding: 20px; 
-            margin: 10px;
-            background-color: #333;  /* Dark background */
-            color: white;  /* White text */
-        """)
-    self.setAcceptDrops(True)
+class DropArea(QFrame):
+    def __init__(self, main_window, parent=None):
+        super().__init__(parent)
+        self.main_window = main_window
+        self.setAcceptDrops(True)
+        self.setCursor(QCursor(Qt.PointingHandCursor))
 
-    self.timer = QTimer(self)
+        self.base_style = (
+          "QFrame{background: rgba(30,41,59,0.5);"
+          "border:2px dashed #475569;"
+          "border-radius:16px;"
+          "padding:48px;}"
+        )
+        self.hover_style = (
+          "QFrame{background: rgba(30,41,59,0.5);"
+          "border:2px dashed #60a5fa;"
+          "border-radius:16px;"
+          "padding:48px;}"
+        )
+        self.setStyleSheet(self.base_style)
 
-  def mousePressEvent(self, event: QMouseEvent):
-    if event.button() == Qt.LeftButton:
-      self.main_window.browse_directory()
+        layout = QVBoxLayout(self)
+        layout.setAlignment(Qt.AlignCenter)
+        layout.setSpacing(4)
 
-  def dragEnterEvent(self, event: QDragEnterEvent):
-    self.setText("Drop it...")
-    if event.mimeData().hasUrls():
-      event.acceptProposedAction()
+        self.icon_widget = QSvgWidget(resource_path("assets/icons/import.svg"), self)
+        self.icon_widget.setFixedSize(64, 64)
+        self.icon_effect = QGraphicsColorizeEffect(self.icon_widget)
+        self.icon_effect.setColor(QColor("#ffffff"))
+        self.icon_widget.setGraphicsEffect(self.icon_effect)
 
-  def dropEvent(self, event: QDropEvent):
-    urls = event.mimeData().urls()
-    if urls:
-      directory = urls[0].toLocalFile()
-      if os.path.isdir(directory):
-        self.setText("processing dir")
-        self.main_window.process_directory(directory)
-      else:
-        self.setText("Please drop a valid directory")
+        self.header_label = QLabel("Drag and drop a directory containing image files", self)
+        self.header_label.setStyleSheet("border:none;background:transparent;font-size:18px;color:#cbd5e1")
+        self.header_label.setAlignment(Qt.AlignCenter)
+
+        self.sub_label = QLabel("(Click to browse for a directory)", self)
+        self.sub_label.setStyleSheet("border:none;background:transparent;font-size:14px;color:#94a3b8")
+        self.sub_label.setAlignment(Qt.AlignCenter)
+
+        layout.addWidget(self.icon_widget, 0, Qt.AlignHCenter)
+        layout.addWidget(self.header_label, 0, Qt.AlignHCenter)
+        layout.addWidget(self.sub_label, 0, Qt.AlignHCenter)
+
+    def setText(self, text):
+        self.header_label.setText(text)
+
+    def enterEvent(self, event):
+      self.setStyleSheet(self.hover_style)
+      self.icon_effect.setColor(QColor("#60A5FA"))
+      super().enterEvent(event)
+
+    def leaveEvent(self, event):
+      self.setStyleSheet(self.base_style)
+      self.icon_effect.setColor(QColor("#ffffff"))
+      super().leaveEvent(event)
+
+    def mousePressEvent(self, event: QMouseEvent):
+        if event.button() == Qt.LeftButton:
+            self.main_window.browse_directory()
+
+    def dragEnterEvent(self, event: QDragEnterEvent):
+      if event.mimeData().hasUrls():
+        self.setStyleSheet(self.hover_style)
+        self.setText("Drop it...")
+        self.icon_effect.setColor(QColor("#60A5FA"))
+        event.acceptProposedAction()
+
+    def dragLeaveEvent(self, event: QDragLeaveEvent):
+      self.setStyleSheet(self.base_style)
+      self.setText("Drag and drop a directory containing image files")
+      self.icon_effect.setColor(QColor("#ffffff"))
+
+    def dropEvent(self, event: QDropEvent):
+      self.setStyleSheet(self.base_style)
+      self.icon_effect.setColor(QColor("#ffffff"))
+      urls = event.mimeData().urls()
+      if urls:
+        directory = urls[0].toLocalFile()
+        if os.path.isdir(directory):
+          self.setText("processing dir")
+          self.main_window.process_directory(directory)
+        else:
+          self.setText("Please drop a valid directory")
 
 
 class MainWindow(QMainWindow):
@@ -450,41 +507,161 @@ class MainWindow(QMainWindow):
     self.image_list_widget.setVisible(False)
     self.image_list_widget.setStyleSheet(GLASS_PANEL)
 
-    self.toggle_image_list_button = QPushButton("Hide Image List", self)
-    self.toggle_image_list_button.setVisible(False)
-    self.toggle_image_list_button.clicked.connect(self.toggle_image_list_visibility)
-    self.toggle_image_list_button.setStyleSheet(button_style)
-
-    self.start_button = QPushButton("Start Stabilization", self)
+    # Build a composite button with a white SVG icon and spaced text
+    self.start_button = QPushButton(self)
+    self.start_button.setVisible(False)
     self.start_button.setEnabled(False)
-    self.start_button.clicked.connect(self.start_stabilization)
-    self.start_button.setStyleSheet("""
-        QPushButton{background:qlineargradient(x1:0,y1:0,x2:1,y2:0,
-                     stop:0 #2563eb, stop:1 #4f46e5);
-                     color:white;border-radius:8px;padding:10px 24px}
-        QPushButton:hover{transform:scale(1.04)}
-        QPushButton:disabled{background:#555;color:#888}
-    """)
 
-    # Action buttons that appear later
-    self.open_stabilized_folder_button = QPushButton("Open Stabilized Folder", self)
+    # SVG icon + colorize
+    icon_widget = QSvgWidget(resource_path("assets/icons/play.svg"), self.start_button)
+    icon_widget.setFixedSize(16, 16)
+    icon_effect = QGraphicsColorizeEffect(icon_widget)
+    icon_effect.setColor(QColor("#ffffff"))
+    icon_widget.setGraphicsEffect(icon_effect)
+
+    # Layout inside the button
+    button_layout = QHBoxLayout(self.start_button)
+    button_layout.setContentsMargins(12, 12, 24, 12)
+    button_layout.setSpacing(8)
+    button_layout.addWidget(icon_widget)
+
+    text_label = QLabel("Start Stabilization", self.start_button)
+    text_label.setStyleSheet("color: white; font-weight: 500;")
+    button_layout.addWidget(text_label)
+
+    self.start_button.setLayout(button_layout)
+
+    # Click handler & styling
+    self.start_button.clicked.connect(self.start_stabilization)
+    self.start_button.setCursor(Qt.PointingHandCursor)
+    self.start_button.setStyleSheet("""
+        QPushButton {
+            border-radius: 8px;
+            height: 50px;
+            min-width: 177px;
+            background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
+                stop:0 #2563EB, stop:1 #1D4ED8);
+        }
+        QPushButton:hover {
+            background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
+                stop:0 #1D4ED8, stop:1 #1E40AF);
+            cursor: pointer;
+        }
+        QPushButton:disabled {
+            background: #555;
+        }
+    """)
+    self.start_button.setFixedWidth(177)
+
+    self.open_stabilized_folder_button = QPushButton(self)
+    icon_widget = QSvgWidget(resource_path("assets/icons/folder.svg"), self.open_stabilized_folder_button)
+    icon_widget.setFixedSize(16, 16)
+    icon_effect = QGraphicsColorizeEffect(icon_widget)
+    icon_effect.setColor(QColor("#ffffff"))
+    icon_widget.setGraphicsEffect(icon_effect)
+    button_layout = QHBoxLayout(self.open_stabilized_folder_button)
+    button_layout.setContentsMargins(12, 12, 24, 12)
+    button_layout.setSpacing(8)
+    button_layout.addWidget(icon_widget)
+    text_label = QLabel("Open Stabilized Folder", self.open_stabilized_folder_button)
+    text_label.setStyleSheet("color: white; font-weight: 500;")
+    button_layout.addWidget(text_label)
+    self.open_stabilized_folder_button.setLayout(button_layout)
+    self.open_stabilized_folder_button.setCursor(Qt.PointingHandCursor)
+    self.open_stabilized_folder_button.setStyleSheet("""
+        QPushButton {
+            border-radius: 8px;
+            height: 50px;
+            min-width: 200px;
+            background-color: #334155;
+        }
+        QPushButton:hover {
+            background-color: #475569;
+            cursor: pointer;
+        }
+        QPushButton:disabled {
+            background: #555;
+        }
+    """)
     self.open_stabilized_folder_button.setVisible(False)
     self.open_stabilized_folder_button.clicked.connect(self.open_stabilized_folder)
-    self.open_stabilized_folder_button.setStyleSheet(button_style)
 
-    self.open_video_folder_button = QPushButton("Open Video Folder", self)
+    self.open_video_folder_button = QPushButton(self)
+    icon_widget = QSvgWidget(resource_path("assets/icons/folder.svg"), self.open_video_folder_button)
+    icon_widget.setFixedSize(16, 16)
+    icon_effect = QGraphicsColorizeEffect(icon_widget)
+    icon_effect.setColor(QColor("#ffffff"))
+    icon_widget.setGraphicsEffect(icon_effect)
+    button_layout = QHBoxLayout(self.open_video_folder_button)
+    button_layout.setContentsMargins(12, 12, 24, 12)
+    button_layout.setSpacing(8)
+    button_layout.addWidget(icon_widget)
+    text_label = QLabel("Open Video Folder", self.open_video_folder_button)
+    text_label.setStyleSheet("color: white; font-weight: 500;")
+    button_layout.addWidget(text_label)
+    self.open_video_folder_button.setLayout(button_layout)
+    self.open_video_folder_button.setCursor(Qt.PointingHandCursor)
+    self.open_video_folder_button.setStyleSheet("""
+        QPushButton {
+            border-radius: 8px;
+            height: 50px;
+            min-width: 185px;
+            background-color: #334155;
+        }
+        QPushButton:hover {
+            background-color: #475569;
+            cursor: pointer;
+        }
+        QPushButton:disabled {
+            background: #555;
+        }
+    """)
     self.open_video_folder_button.setVisible(False)
     self.open_video_folder_button.clicked.connect(self.open_video_folder)
-    self.open_video_folder_button.setStyleSheet(button_style)
 
-    self.show_log_button = QPushButton("Show Log", self)
+    self.show_log_button = QPushButton(self)
+    icon_widget = QSvgWidget(resource_path("assets/icons/eye.svg"), self.show_log_button)
+    icon_widget.setFixedSize(16, 16)
+    icon_effect = QGraphicsColorizeEffect(icon_widget)
+    icon_effect.setColor(QColor("#ffffff"))
+    icon_widget.setGraphicsEffect(icon_effect)
+    button_layout = QHBoxLayout(self.show_log_button)
+    button_layout.setContentsMargins(12, 12, 24, 12)
+    button_layout.setSpacing(8)
+    button_layout.addWidget(icon_widget)
+    text_label = QLabel("Show Log", self.show_log_button)
+    text_label.setStyleSheet("color: white; font-weight: 500;")
+    button_layout.addWidget(text_label)
+    self.show_log_button.setLayout(button_layout)
     self.show_log_button.clicked.connect(self.toggle_log)
-    self.show_log_button.setStyleSheet(button_style)
+    self.show_log_button.setCursor(Qt.PointingHandCursor)
+    self.show_log_button.setStyleSheet("""
+        QPushButton {
+            border-radius: 8px;
+            height: 50px;
+            max-width: 123px;
+            background-color: #334155;
+        }
+        QPushButton:hover {
+            background-color: #475569;
+            cursor: pointer;
+        }
+        QPushButton:disabled {
+            background: #555;
+        }
+    """)
+    self.show_log_button.setFixedWidth(123)
 
     # Progress block
     self.progress_bar = QProgressBar(self)
     self.progress_bar.setStyleSheet(progress_bar_style)
+    self.progress_bar.setTextVisible(False)
     self.progress_bar.setVisible(False)
+
+    self.progress_value_label = QLabel(self)
+    self.progress_value_label.setAlignment(Qt.AlignCenter)
+    self.progress_value_label.setVisible(False)
+    self.progress_value_label.setStyleSheet("color: white;")
 
     # ——— right-column log viewer ———
     self.log_viewer = QTextEdit(self)
@@ -505,68 +682,109 @@ class MainWindow(QMainWindow):
     left_box.setSpacing(16)
 
     # Header text + divider
-    p = QLabel("To begin, drag & drop a directory containing image files or click to browse.", self)
-    p.setWordWrap(True)
-    p.setStyleSheet("color:#cbd5e1;font-size:14px")
-    line = QFrame(self); line.setFixedHeight(1); line.setStyleSheet(
-        "background:qlineargradient(x1:0,y1:0,x2:1,y2:0,"
-        "stop:0 transparent, stop:0.5 #475569, stop:1 transparent)")
-    left_box.addWidget(p)
-    left_box.addWidget(line)
+    self.intro_label = QLabel("To begin, drag & drop a directory containing image files or click to browse.")
+    self.intro_label.setWordWrap(True)
+    self.intro_label.setStyleSheet("color:#cbd5e1;font-size:14px")
+    self.intro_line = QFrame()
+    self.intro_line.setFixedHeight(1)
+    self.intro_line.setStyleSheet(
+      "background:qlineargradient(x1:0,y1:0,x2:1,y2:0,"
+      "stop:0 transparent, stop:0.5 #475569, stop:1 transparent)")
+    left_box.addWidget(self.intro_label)
+    left_box.addWidget(self.intro_line)
 
     # SETTINGS glass panel
     header_hbox = QHBoxLayout()
     header_hbox.setSpacing(8)
 
-    icon_svg = QSvgWidget(resource_path("assets/icons/settings.svg"), self)
-    icon_svg.setFixedSize(20, 20)
-    icon_svg.setStyleSheet("""
-        background: transparent;
-        color: white;
-    """)
-    effect = QGraphicsColorizeEffect(icon_svg)
-    effect.setColor(QColor("#60A5FA"))
-    icon_svg.setGraphicsEffect(effect)
+    self.settings_icon = QSvgWidget(resource_path("assets/icons/settings.svg"))
+    self.settings_icon.setFixedSize(20, 20)
+    self.settings_icon.setStyleSheet("background: transparent;")
+    icon_effect = QGraphicsColorizeEffect(self.settings_icon)
+    icon_effect.setColor(QColor("#60A5FA"))
+    self.settings_icon.setGraphicsEffect(icon_effect)
 
-    title_lbl = QLabel("Settings", self)
-    title_lbl.setStyleSheet("font-size:18px;font-weight:600")
+    self.settings_title_lbl = QLabel("Settings")
+    self.settings_title_lbl.setStyleSheet("font-size:18px;font-weight:600")
 
-    header_hbox.addWidget(icon_svg)
-    header_hbox.addWidget(title_lbl)
+    header_hbox.addWidget(self.settings_icon)
+    header_hbox.addWidget(self.settings_title_lbl)
     header_hbox.addStretch(1)
     left_box.addLayout(header_hbox)
 
     # SETTINGS glass panel (rounded box containing only the dropdown)
-    settings_card = QFrame(self)
-    settings_card.setLayout(QVBoxLayout())
-    settings_card.layout().setContentsMargins(16, 16, 16, 16)
-    settings_card.setStyleSheet(GLASS_PANEL)
+    self.settings_card = QFrame(self)
+    self.settings_card.setLayout(QVBoxLayout())
+    self.settings_card.layout().setContentsMargins(16, 16, 16, 16)
+    self.settings_card.setStyleSheet(GLASS_PANEL)
 
-    framerate_label = QLabel("Framerate (FPS):", settings_card)
+    framerate_label = QLabel("Framerate (FPS):", self.settings_card)
     framerate_label.setStyleSheet("""
         border: none;
         background: transparent;
         color: white;
         font-size: 14px;
     """)
-    settings_card.layout().addWidget(framerate_label)
-    self.framerate_dropdown.setParent(settings_card)
+    self.settings_card.layout().addWidget(framerate_label)
+    self.framerate_dropdown.setParent(self.settings_card)
     self.framerate_dropdown.setStyleSheet(
         "QComboBox{background:#334155;color:white;padding:6px 12px;border:1px solid #475569;"
         "border-radius:8px}")
-    settings_card.layout().addWidget(self.framerate_dropdown)
+    self.settings_card.layout().addWidget(self.framerate_dropdown)
 
-    left_box.addWidget(settings_card)
+    left_box.addWidget(self.settings_card)
+
+    self.status_card = QFrame(self)
+    self.status_card.setLayout(QVBoxLayout())
+    self.status_card.layout().setContentsMargins(16, 16, 16, 16)
+    self.status_card.layout().setSpacing(2)
+    self.status_card.setObjectName("status_card")
+    self.status_card.setStyleSheet("""
+        QFrame#status_card {
+            background: rgba(30,41,59,0.5);
+            border: 1px solid rgba(51,65,85,0.5);
+            border-radius: 12px;
+        }
+    """)
+    self.status_card.setVisible(False)
+    self.status_card.setFixedHeight(180)
+    self.status_header = QLabel("Stabilizing...")
+    self.status_header.setAlignment(Qt.AlignCenter)
+    self.status_header.setVisible(True)
+    self.status_header.setStyleSheet(common_title_style)
+    self.status_card.layout().addWidget(self.status_header)
+    header_layout = QHBoxLayout()
+    header_layout.setContentsMargins(0, 0, 0, 0)
+    progress_static_label = QLabel("Progress", self)
+    progress_static_label.setStyleSheet("color: white;")
+    header_layout.addWidget(progress_static_label)
+    header_layout.addWidget(self.progress_value_label, alignment=Qt.AlignRight)
+    self.status_card.layout().addLayout(header_layout)
+    self.status_card.layout().addWidget(self.progress_bar)
+
+    self.status_card.setFixedWidth(600)
+    left_box.addStretch(1)
+    left_box.addWidget(self.status_card, alignment=Qt.AlignHCenter)
+    left_box.addStretch(1)
 
     # Drop area + list + buttons
     left_box.addWidget(self.drop_area)
+    self.image_count_label = QLabel()
+    self.image_count_label.setAlignment(Qt.AlignCenter)
+    self.image_count_label.setVisible(False)
+    self.image_count_label.setStyleSheet(common_title_style)
+    left_box.addWidget(self.image_count_label, alignment=Qt.AlignCenter)
     left_box.addWidget(self.image_list_widget)
-    left_box.addWidget(self.toggle_image_list_button)
-    left_box.addWidget(self.start_button)
+    button_row = QHBoxLayout()
+    button_row.setSpacing(8)
+    button_row.addWidget(self.start_button)
+    button_row.addWidget(self.show_log_button)
+    button_row.addWidget(self.open_stabilized_folder_button)
+    button_row.addWidget(self.open_video_folder_button)
+    button_row.addStretch(1)
+    left_box.addLayout(button_row)
     left_box.addWidget(self.open_stabilized_folder_button)
     left_box.addWidget(self.open_video_folder_button)
-    left_box.addWidget(self.show_log_button)
-    left_box.addWidget(self.progress_bar)
 
     # Fill the first two columns
     left_container = QWidget(); left_container.setLayout(left_box)
@@ -604,13 +822,10 @@ class MainWindow(QMainWindow):
   def toggle_image_list_visibility(self):
     if self.image_list_widget.isVisible():
       self.image_list_widget.setVisible(False)
-      self.toggle_image_list_button.setText("Show Image List")
     else:
       self.image_list_widget.setVisible(True)
-      self.toggle_image_list_button.setText("Hide Image List")
 
   def browse_directory(self):
-    # Open a dialog to select a directory
     directory = QFileDialog.getExistingDirectory(self, "Select Directory")
     if directory:
       self.process_directory(directory)  # Process the selected directory
@@ -621,23 +836,17 @@ class MainWindow(QMainWindow):
       self.drop_area.setText("I'm in the processing dir call...")
       QApplication.processEvents()  # Force the GUI to update
 
-      # Resolve the directory path
       self.input_dir = get_path(directory)
-
-      # Collect image paths and display them in the list widget
       self.image_list_widget.clear()
 
-      # Use the resolved path to list valid images
       valid_images = [f for f in os.listdir(self.input_dir) if
                       f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.heic'))]
 
-      # Sort the list of valid images alphabetically
       valid_images.sort()
 
       if valid_images:
-        self.toggle_image_list_button.setVisible(True)
-        self.image_list_widget.setVisible(True)  # Show the image list widget
-        self.settings_section.setVisible(True)  # Show settings section
+        self.image_list_widget.setVisible(True)
+        self.start_button.setVisible(True)
 
         for image in valid_images:
           item = QListWidgetItem(image)
@@ -653,8 +862,10 @@ class MainWindow(QMainWindow):
         self.image_count_label.setText(f"Image List ({valid_image_len})")  # Update text with image count
         print(f"[LOG] Loaded {valid_image_len} images.")
 
-        self.start_button.setEnabled(True)  # Enable start button when images are loaded
-        self.drop_area.setVisible(False)  # Hide the drop area
+        self.start_button.setEnabled(True)
+        self.drop_area.setVisible(False)
+        self.intro_label.setVisible(False)
+        self.intro_line.setVisible(False)
       else:
         self.drop_area.setText("No valid images found in the directory.")
     except FileNotFoundError as e:
@@ -665,18 +876,21 @@ class MainWindow(QMainWindow):
       self.drop_area.setText(f"An unexpected error occurred: {e}")
 
   def start_stabilization(self):
-    self.start_button.setEnabled(False)  # Disable start button during processing
-    self.start_button.setVisible(False)  # Hide the start button during processing
-    self.settings_section.setVisible(False)  # Show settings section
-    self.toggle_image_list_button.setVisible(False)
+    self.start_button.setEnabled(False)
+    self.start_button.setVisible(False)
+    self.settings_section.setVisible(False)
+    self.image_count_label.setVisible(False)
+    self.settings_card.setVisible(False)
+    self.settings_icon.setVisible(False)
+    self.settings_title_lbl.setVisible(False)
 
-    # Hide the image list and show the "Stabilizing... please wait" message
     self.image_list_widget.setVisible(False)
     self.image_count_label.setText("Initializing TensorFlow...\nThis will take a moment.")
-    self.image_count_label.setVisible(True)
     self.image_count_label.setStyleSheet("font-size: 24px; font-weight: bold; text-align: center; color: white;")
+    self.status_card.setVisible(True)
 
-    self.progress_bar.setVisible(True)  # Show progress bar when stabilization starts
+    self.progress_bar.setVisible(True)
+    self.progress_value_label.setVisible(True)
 
     if self.executor is None:
       self.executor = ThreadPoolExecutor(max_workers=1)
@@ -691,7 +905,6 @@ class MainWindow(QMainWindow):
         from src.face_stabilizer import stabilize_image_directory
 
         self.image_count_label.setText("Stabilizing... please wait")
-        self.image_count_label.setVisible(True)
         self.image_count_label.setStyleSheet("font-size: 24px; font-weight: bold; text-align: center; color: white;")
 
         stabilize_image_directory(input_dir, output_dir, self.update_progress_signal.emit)
@@ -701,7 +914,6 @@ class MainWindow(QMainWindow):
       else:
         self.finished_signal.emit()
 
-    # Run stabilization in a separate thread to avoid blocking the UI
     with concurrent.futures.ThreadPoolExecutor() as executor:
       executor.submit(stabilize_in_background, input_dir, output_dir)
 
@@ -717,28 +929,25 @@ class MainWindow(QMainWindow):
 
   def update_progress(self, value):
     self.progress_bar.setValue(value)
-    self.progress_value_label.setText(f"Progress: {value}%")  # Update progress value label
+    self.progress_value_label.setText(f"{value}%")
 
   def on_processing_finished(self):
     print("On processing finished call")
 
     self.image_count_label.setText("Compiling video...")
     self.image_count_label.setStyleSheet("font-size: 24px; font-weight: normal; text-align: center; color: white;")
-    self.progress_value_label.setVisible(False)  # Hide progress value label after finishing
+    self.progress_value_label.setVisible(False)
 
-    # Show the button to open the stabilized image folder
     self.open_stabilized_folder_button.setVisible(True)
-    # Force the GUI to update
     QApplication.processEvents()
 
     import time
-    time.sleep(1)  # Wait for 1 second
+    time.sleep(1)
 
     try:
       self.output_video_dir = os.path.join(self.app_dir, "Video")
       os.makedirs(self.output_video_dir, exist_ok=True)
 
-      # Use the selected framerate from the dropdown
       framerate = self.selected_framerate
 
       self.video_output_file = compile_video(
@@ -750,8 +959,6 @@ class MainWindow(QMainWindow):
       self.drop_area.setText(f"Processing complete! Your video is at {self.video_output_file}")
       self.image_count_label.setText("Video compiled successfully!")
       self.image_count_label.setStyleSheet("font-size: 24px; font-weight: bold; text-align: center; color: white;")
-
-      # Show the button to open the video folder after compilation
       self.open_video_folder_button.setVisible(True)
 
     except Exception as e:
@@ -791,12 +998,10 @@ class MainWindow(QMainWindow):
         self.offset = event.pos()
 
   def mouseMoveEvent(self, event: QMouseEvent):
-    # Determine the resizing direction on mouse hover
     direction = self.get_resizing_direction(event.pos())
     self.update_cursor_shape(direction)
 
     if self.resizing_direction is not None:
-      # Perform resizing
       diff = event.globalPos() - self.start_pos
       new_rect = QRect(self.geometry())
       if self.resizing_direction & Qt.LeftEdge:
@@ -810,7 +1015,6 @@ class MainWindow(QMainWindow):
       self.setGeometry(new_rect)
       self.start_pos = event.globalPos()
     elif hasattr(self, 'offset') and event.buttons() == Qt.LeftButton:
-      # Handle window dragging
       x = event.globalX()
       y = event.globalY()
       x_w = self.offset.x()
@@ -819,13 +1023,11 @@ class MainWindow(QMainWindow):
 
   def event(self, event):
     if event.type() == QEvent.MouseMove:
-      # Update cursor on hover
       direction = self.get_resizing_direction(event.pos())
       self.update_cursor_shape(direction)
     return super().event(event)
 
   def update_cursor_shape(self, direction):
-    # Update the cursor shape based on the direction
     if direction is not None:
       if direction & (Qt.LeftEdge | Qt.RightEdge):
         self.setCursor(QCursor(Qt.SizeHorCursor))
@@ -839,7 +1041,6 @@ class MainWindow(QMainWindow):
       self.setCursor(QCursor(Qt.ArrowCursor))
 
   def leaveEvent(self, event):
-    # Reset cursor when leaving the window
     self.setCursor(QCursor(Qt.ArrowCursor))
     super().leaveEvent(event)
 
@@ -847,7 +1048,7 @@ class MainWindow(QMainWindow):
     self.resizing_direction = None
 
   def get_resizing_direction(self, pos):
-    margins = 5  # Margin in pixels to detect resizing edges
+    margins = 5
     rect = self.rect()
     direction = 0
     if pos.x() <= margins:
