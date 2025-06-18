@@ -136,7 +136,16 @@ class CustomTitleBar(QWidget):
     self.setFixedHeight(40)
     self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
     self.setAttribute(Qt.WA_StyledBackground, True)
-    self.setStyleSheet(f"background-color: {TITLE_BAR_COLOR};")
+    # give this widget an object name for scoped styling
+    self.setObjectName("title_bar")
+
+    # only style the title bar itself (not its children)
+    self.setStyleSheet(f"""
+      QWidget#title_bar {{
+        background-color: {TITLE_BAR_COLOR};
+        border-bottom: 1px solid rgba(51,65,85,0.5);
+      }}
+    """)
     self.init_ui()
 
   def init_ui(self):
@@ -165,7 +174,22 @@ class CustomTitleBar(QWidget):
     layout.setContentsMargins(10, 0, 0, 0)
     layout.setSpacing(5)
     layout.setAlignment(Qt.AlignVCenter)
-    layout.addWidget(self.logo_label)
+    self.logo_container = QWidget(self)
+    logo_layout = QHBoxLayout(self.logo_container)
+    logo_layout.setContentsMargins(0, 0, 0, 0)
+    logo_layout.setSpacing(4)
+    logo_layout.addWidget(self.logo_label)
+    self.version_badge = QLabel("Desktop 0.2.1", self.logo_container)
+    self.version_badge.setStyleSheet("""
+        background-color: #f97316;
+        color: white;
+        font-size: 10px;
+        padding: 2px 8px;
+        border: 1px solid #ea580c;
+        border-radius: 10px;
+    """)
+    logo_layout.addWidget(self.version_badge)
+    layout.addWidget(self.logo_container)
     layout.addStretch(1)
     layout.addWidget(self.minimize_button)
     layout.addWidget(self.restore_button)
@@ -174,7 +198,13 @@ class CustomTitleBar(QWidget):
     self.setLayout(layout)
 
   def setup_mac_title_bar(self):
-    self.setStyleSheet(f"background-color: {TITLE_BAR_COLOR};")
+    # reuse the same scoped rule
+    self.setStyleSheet(f"""
+      QWidget#title_bar {{
+        background-color: {TITLE_BAR_COLOR};
+        border-bottom: 1px solid rgba(51,65,85,0.5);
+      }}
+    """)
 
     self.close_button = QPushButton(self)
     self.minimize_button = QPushButton(self)
@@ -206,7 +236,7 @@ class CustomTitleBar(QWidget):
     self.logo_label.setPixmap(pixmap)
 
     main_layout = QHBoxLayout(self)
-    main_layout.setContentsMargins(10, 5, 10, 5)
+    main_layout.setContentsMargins(10, 3, 10, 3)
     main_layout.setAlignment(Qt.AlignVCenter)
 
     main_layout.addWidget(self.close_button)
@@ -214,7 +244,23 @@ class CustomTitleBar(QWidget):
     main_layout.addWidget(self.restore_button)
     main_layout.addStretch(1)
 
-    main_layout.addWidget(self.logo_label)
+    self.logo_container = QWidget(self)
+    logo_layout = QHBoxLayout(self.logo_container)
+    logo_layout.setContentsMargins(0, 0, 0, 0)
+    logo_layout.setSpacing(4)
+    logo_layout.addWidget(self.logo_label)
+    self.version_badge = QLabel("Desktop 0.2.1", self.logo_container)
+    self.version_badge.setStyleSheet("""
+        background-color: rgba(249,115,22,0.75);
+        color: white;
+        font-size: 10px;
+        padding: 1px 2px;
+        border: 1px solid rgba(234,88,12,0.6);
+        margin-left: 7px;
+        border-radius: 10px;
+    """)
+    logo_layout.addWidget(self.version_badge)
+    main_layout.addWidget(self.logo_container)
 
     main_layout.addStretch(1)
 
@@ -459,7 +505,7 @@ class MainWindow(QMainWindow):
     settings_layout.addWidget(self.framerate_dropdown)
 
     self.settings_section.setLayout(settings_layout)
-    self.settings_section.setVisible(True)  # Ensure initially hidden
+    self.settings_section.setVisible(False)  # Ensure initially hidden
     self.settings_section.setStyleSheet("color: white;")
 
     # Add settings section to the main layout
@@ -473,10 +519,10 @@ class MainWindow(QMainWindow):
   def toggle_log(self):
     if self.log_viewer.isVisible():
       self.log_viewer.setVisible(False)
-      self.show_log_button.setText("Show Log")  # Change toggle_log_button to show_log_button
+      self.show_log_label.setText("Show Log")
     else:
       self.log_viewer.setVisible(True)
-      self.show_log_button.setText("Hide Log")  # Change toggle_log_button to show_log_button
+      self.show_log_label.setText("Hide Log")
 
   def write(self, message):
     # Move cursor to the end of the text edit to append the new message
@@ -526,7 +572,7 @@ class MainWindow(QMainWindow):
     button_layout.addWidget(icon_widget)
 
     text_label = QLabel("Start Stabilization", self.start_button)
-    text_label.setStyleSheet("color: white; font-weight: 500;")
+    text_label.setStyleSheet("color: white;")
     button_layout.addWidget(text_label)
 
     self.start_button.setLayout(button_layout)
@@ -564,7 +610,7 @@ class MainWindow(QMainWindow):
     button_layout.setSpacing(8)
     button_layout.addWidget(icon_widget)
     text_label = QLabel("Open Stabilized Folder", self.open_stabilized_folder_button)
-    text_label.setStyleSheet("color: white; font-weight: 500;")
+    text_label.setStyleSheet("color: white;")
     button_layout.addWidget(text_label)
     self.open_stabilized_folder_button.setLayout(button_layout)
     self.open_stabilized_folder_button.setCursor(Qt.PointingHandCursor)
@@ -572,8 +618,8 @@ class MainWindow(QMainWindow):
         QPushButton {
             border-radius: 8px;
             height: 50px;
-            min-width: 200px;
-            background-color: #334155;
+            min-width: 205px;
+            background-color: #00a63e;
         }
         QPushButton:hover {
             background-color: #475569;
@@ -597,7 +643,7 @@ class MainWindow(QMainWindow):
     button_layout.setSpacing(8)
     button_layout.addWidget(icon_widget)
     text_label = QLabel("Open Video Folder", self.open_video_folder_button)
-    text_label.setStyleSheet("color: white; font-weight: 500;")
+    text_label.setStyleSheet("color: white;")
     button_layout.addWidget(text_label)
     self.open_video_folder_button.setLayout(button_layout)
     self.open_video_folder_button.setCursor(Qt.PointingHandCursor)
@@ -606,7 +652,7 @@ class MainWindow(QMainWindow):
             border-radius: 8px;
             height: 50px;
             min-width: 185px;
-            background-color: #334155;
+            background-color: #00a63e;
         }
         QPushButton:hover {
             background-color: #475569;
@@ -629,9 +675,9 @@ class MainWindow(QMainWindow):
     button_layout.setContentsMargins(12, 12, 24, 12)
     button_layout.setSpacing(8)
     button_layout.addWidget(icon_widget)
-    text_label = QLabel("Show Log", self.show_log_button)
-    text_label.setStyleSheet("color: white; font-weight: 500;")
-    button_layout.addWidget(text_label)
+    self.show_log_label = QLabel("Show Log", self.show_log_button)
+    text_label.setStyleSheet("color: white;")
+    button_layout.addWidget(self.show_log_label)
     self.show_log_button.setLayout(button_layout)
     self.show_log_button.clicked.connect(self.toggle_log)
     self.show_log_button.setCursor(Qt.PointingHandCursor)
@@ -767,7 +813,7 @@ class MainWindow(QMainWindow):
     left_box.addWidget(self.status_card, alignment=Qt.AlignHCenter)
     left_box.addStretch(1)
 
-    # Drop area + list + buttons
+    # Drop area + list
     left_box.addWidget(self.drop_area)
     self.image_count_label = QLabel()
     self.image_count_label.setAlignment(Qt.AlignCenter)
@@ -775,16 +821,22 @@ class MainWindow(QMainWindow):
     self.image_count_label.setStyleSheet(common_title_style)
     left_box.addWidget(self.image_count_label, alignment=Qt.AlignCenter)
     left_box.addWidget(self.image_list_widget)
-    button_row = QHBoxLayout()
-    button_row.setSpacing(8)
-    button_row.addWidget(self.start_button)
-    button_row.addWidget(self.show_log_button)
-    button_row.addWidget(self.open_stabilized_folder_button)
-    button_row.addWidget(self.open_video_folder_button)
-    button_row.addStretch(1)
-    left_box.addLayout(button_row)
-    left_box.addWidget(self.open_stabilized_folder_button)
-    left_box.addWidget(self.open_video_folder_button)
+
+    # Row 1: Open-folder buttons
+    folder_button_row = QHBoxLayout()
+    folder_button_row.setSpacing(8)
+    folder_button_row.addWidget(self.open_stabilized_folder_button)
+    folder_button_row.addWidget(self.open_video_folder_button)
+    folder_button_row.addStretch(1)
+    left_box.addLayout(folder_button_row)
+
+    # Row 2: Start + Show Log buttons
+    action_button_row = QHBoxLayout()
+    action_button_row.setSpacing(8)
+    action_button_row.addWidget(self.start_button)
+    action_button_row.addWidget(self.show_log_button)
+    action_button_row.addStretch(1)
+    left_box.addLayout(action_button_row)
 
     # Fill the first two columns
     left_container = QWidget(); left_container.setLayout(left_box)
@@ -934,10 +986,7 @@ class MainWindow(QMainWindow):
   def on_processing_finished(self):
     print("On processing finished call")
 
-    self.image_count_label.setText("Compiling video...")
-    self.image_count_label.setStyleSheet("font-size: 24px; font-weight: normal; text-align: center; color: white;")
-    self.progress_value_label.setVisible(False)
-
+    self.status_header.setText("Compiling video...")
     self.open_stabilized_folder_button.setVisible(True)
     QApplication.processEvents()
 
@@ -955,10 +1004,8 @@ class MainWindow(QMainWindow):
         os.path.join(self.output_video_dir, "video.mp4"),
         framerate
       )
+      self.status_header.setText("Completed successfully!")
 
-      self.drop_area.setText(f"Processing complete! Your video is at {self.video_output_file}")
-      self.image_count_label.setText("Video compiled successfully!")
-      self.image_count_label.setStyleSheet("font-size: 24px; font-weight: bold; text-align: center; color: white;")
       self.open_video_folder_button.setVisible(True)
 
     except Exception as e:
