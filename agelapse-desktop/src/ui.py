@@ -440,7 +440,13 @@ class MainWindow(QMainWindow):
     self.gallery_container = self.create_gallery_container()
 
     self.stacked_widget.addWidget(self.gallery_container)
-    self.main_layout.addWidget(self.stacked_widget)
+    self.content_widget = QWidget()
+    content_layout = QVBoxLayout(self.content_widget)
+    content_layout.setContentsMargins(13, 13, 13, 13)  # <-- adjust these values as needed
+    content_layout.setSpacing(8)  # optional, adjust spacing between child widgets
+
+    content_layout.addWidget(self.stacked_widget)
+    self.main_layout.addWidget(self.content_widget)
 
     self.setCentralWidget(self.main_widget)
     self.stacked_widget.setCurrentWidget(self.gallery_container)
@@ -809,18 +815,37 @@ class MainWindow(QMainWindow):
     self.status_card.layout().addWidget(self.progress_bar)
 
     self.status_card.setFixedWidth(600)
-    left_box.addStretch(1)
     left_box.addWidget(self.status_card, alignment=Qt.AlignHCenter)
-    left_box.addStretch(1)
 
-    # Drop area + list
+
     left_box.addWidget(self.drop_area)
-    self.image_count_label = QLabel()
-    self.image_count_label.setAlignment(Qt.AlignCenter)
-    self.image_count_label.setVisible(False)
-    self.image_count_label.setStyleSheet(common_title_style)
-    left_box.addWidget(self.image_count_label, alignment=Qt.AlignCenter)
+
+    # create a header container so we can hide/show both icon and label
+    self.image_list_header = QWidget(self)
+    header_layout = QHBoxLayout(self.image_list_header)
+    header_layout.setContentsMargins(0, 0, 0, 0)
+    header_layout.setSpacing(8)
+
+    self.image_list_icon = QSvgWidget(resource_path("assets/icons/image.svg"))
+    self.image_list_icon.setFixedSize(20, 20)
+    self.image_list_icon.setStyleSheet("background: transparent;")
+    icon_effect = QGraphicsColorizeEffect(self.image_list_icon)
+    icon_effect.setColor(QColor("#60A5FA"))
+    self.image_list_icon.setGraphicsEffect(icon_effect)
+
+    self.image_list_label = QLabel("Image List")
+    self.image_list_label.setStyleSheet("font-size:18px; font-weight:600;")
+
+    header_layout.addWidget(self.image_list_icon)
+    header_layout.addWidget(self.image_list_label)
+    header_layout.addStretch(1)
+
+    # initially hide until images load
+    self.image_list_header.setVisible(False)
+
+    left_box.addWidget(self.image_list_header)
     left_box.addWidget(self.image_list_widget)
+    left_box.addStretch(1)
 
     # Row 1: Open-folder buttons
     folder_button_row = QHBoxLayout()
@@ -899,6 +924,7 @@ class MainWindow(QMainWindow):
       if valid_images:
         self.image_list_widget.setVisible(True)
         self.start_button.setVisible(True)
+        self.image_list_header.setVisible(True)
 
         for image in valid_images:
           item = QListWidgetItem(image)
@@ -908,10 +934,9 @@ class MainWindow(QMainWindow):
           ##date = self.get_image_creation_date(full_path)
           ##print(date)
 
-        self.image_count_label.setVisible(True)  # Show image count label
-
         valid_image_len = len(valid_images)
-        self.image_count_label.setText(f"Image List ({valid_image_len})")  # Update text with image count
+        self.image_list_label.setText(f"Image List ({valid_image_len})")
+        self.image_list_label.setVisible(True)
         print(f"[LOG] Loaded {valid_image_len} images.")
 
         self.start_button.setEnabled(True)
@@ -931,16 +956,12 @@ class MainWindow(QMainWindow):
     self.start_button.setEnabled(False)
     self.start_button.setVisible(False)
     self.settings_section.setVisible(False)
-    self.image_count_label.setVisible(False)
     self.settings_card.setVisible(False)
     self.settings_icon.setVisible(False)
     self.settings_title_lbl.setVisible(False)
-
     self.image_list_widget.setVisible(False)
-    self.image_count_label.setText("Initializing TensorFlow...\nThis will take a moment.")
-    self.image_count_label.setStyleSheet("font-size: 24px; font-weight: bold; text-align: center; color: white;")
+    self.image_list_header.setVisible(False)
     self.status_card.setVisible(True)
-
     self.progress_bar.setVisible(True)
     self.progress_value_label.setVisible(True)
 
@@ -955,9 +976,6 @@ class MainWindow(QMainWindow):
     def stabilize_in_background(input_dir, output_dir):
       try:
         from src.face_stabilizer import stabilize_image_directory
-
-        self.image_count_label.setText("Stabilizing... please wait")
-        self.image_count_label.setStyleSheet("font-size: 24px; font-weight: bold; text-align: center; color: white;")
 
         stabilize_image_directory(input_dir, output_dir, self.update_progress_signal.emit)
       except Exception as e:
