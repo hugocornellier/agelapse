@@ -9,14 +9,10 @@ from PIL import Image, UnidentifiedImageError
 from src.face_detector import FaceDetector
 from src.point import Point
 
-# Constants for output image dimensions
-OUTPUT_HEIGHT: int = 1080
-OUTPUT_WIDTH: int = 1920
-
-# Alternative higher resolution
-# OUTPUT_HEIGHT = 2160
-# OUTPUT_WIDTH = 2880
-
+RESOLUTION_SIZES = {
+    "1080p": (1920, 1080),
+    "4K":     (3840, 2160),
+}
 
 def get_transformation_matrix(
     eyes: list[Point],
@@ -81,8 +77,9 @@ def stabilize_images(
     images: list[str],
     eyes_to_stabilize_on: list[Point],
     output_dir: str,
-    output_size: tuple[int, int] = (OUTPUT_WIDTH, OUTPUT_HEIGHT),
-    progress_callback=None
+    output_size: tuple[int, int],
+    progress_callback=None,
+    selected_resolution="1080p"
 ) -> None:
     """
     Stabilize a list of images by aligning their eyes to a reference position.
@@ -192,23 +189,28 @@ def print_results(images_with_errors: list[str], images_with_no_face: list[str])
 def stabilize_image_directory(
     input_dir: str,
     output_dir: str,
-    progress_callback=None
+    progress_callback=None,
+    selected_resolution="1080p"
 ) -> None:
     """
     Stabilize all images in a directory.
-
-    Args:
-        input_dir (str): Directory containing images to stabilize.
-        output_dir (str): Directory to save stabilized images.
-        progress_callback (optional): Optional callback function to report progress.
     """
     prepare_output_directory(output_dir)
+    # derive width/height from selected_resolution:
+    output_size = RESOLUTION_SIZES.get(selected_resolution, RESOLUTION_SIZES["1080p"])
 
-    eyes_to_stabilize_on = get_reference_eyes_position()
-
+    # now pass output_size into reference-eyes calculation
+    eyes_to_stabilize_on = get_reference_eyes_position(output_size)
     img_paths = get_image_paths(input_dir)
 
-    stabilize_images(img_paths, eyes_to_stabilize_on, output_dir, progress_callback=progress_callback)
+    stabilize_images(
+        img_paths,
+        eyes_to_stabilize_on,
+        output_dir,
+        output_size=output_size,
+        progress_callback=progress_callback,
+        selected_resolution=selected_resolution
+    )
 
 
 def prepare_output_directory(output_dir: str) -> None:
@@ -223,17 +225,12 @@ def prepare_output_directory(output_dir: str) -> None:
     os.makedirs(output_dir)
 
 
-def get_reference_eyes_position() -> list[Point]:
-    """
-    Get the reference positions of the eyes for stabilization.
-
-    Returns:
-        list[Point]: Reference positions for eyes.
-    """
-    y = 0.48 * OUTPUT_HEIGHT
+def get_reference_eyes_position(output_size: tuple[int, int]) -> list[Point]:
+    w, h = output_size
+    y = 0.48 * h
     return [
-        Point((OUTPUT_WIDTH / 2) - 0.035 * OUTPUT_WIDTH, y),
-        Point((OUTPUT_WIDTH / 2) + 0.035 * OUTPUT_WIDTH, y)
+        Point((w * 0.5) - (0.035 * w), y),
+        Point((w * 0.5) + (0.035 * w), y),
     ]
 
 

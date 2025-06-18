@@ -415,6 +415,8 @@ class MainWindow(QMainWindow):
     )
 
     self.selected_framerate = 15  # Default value
+    self.selected_resolution = "1080p"
+
     #self.setStyleSheet(MAIN_GRADIENT)
     self.title_bar = CustomTitleBar(self)
 
@@ -485,6 +487,12 @@ class MainWindow(QMainWindow):
 
     self.main_layout.addWidget(self.log_viewer)
 
+  def update_resolution(self, index):
+    text = self.resolution_dropdown.itemText(index)
+    # if the selected text mentions 4K (2160), store "4K", else default to "1080p"
+    self.selected_resolution = "4K" if "4K" in text or "2160" in text else "1080p"
+    print(f"[LOG] Resolution changed to {self.selected_resolution}")
+
   def create_settings_section(self):
     # Create the settings section
     self.settings_section = QWidget(self)
@@ -506,6 +514,22 @@ class MainWindow(QMainWindow):
 
     self.framerate_dropdown.setCurrentIndex(self.selected_framerate - 1)
     self.framerate_dropdown.currentIndexChanged.connect(self.update_framerate)
+
+    # Create a dropdown for resolution selection
+    self.resolution_dropdown = QComboBox(self.settings_section)
+    self.resolution_dropdown.addItems(["1080p (1920 x 1080)", "4K (3840 x 2160)"])
+    self.resolution_dropdown.setStyleSheet("""
+        QComboBox {
+            background-color: #333333;
+            color: white;
+            padding: 5px;
+        }
+        QComboBox:hover {
+            background-color: #262626;
+        }
+    """)
+
+    self.resolution_dropdown.currentIndexChanged.connect(self.update_resolution)
 
     # Add the title and dropdown to the settings layout
     settings_layout.addWidget(self.framerate_dropdown)
@@ -784,6 +808,20 @@ class MainWindow(QMainWindow):
         "border-radius:8px}")
     self.settings_card.layout().addWidget(self.framerate_dropdown)
 
+    resolution_label = QLabel("Resolution:", self.settings_card)
+    resolution_label.setStyleSheet("""
+        border: none;
+        background: transparent;
+        color: white;
+        font-size: 14px;
+    """)
+    self.settings_card.layout().addWidget(resolution_label)
+    self.resolution_dropdown.setParent(self.settings_card)
+    self.resolution_dropdown.setStyleSheet(
+        "QComboBox{background:#334155;color:white;padding:6px 12px;border:1px solid #475569;"
+        "border-radius:8px}")
+    self.settings_card.layout().addWidget(self.resolution_dropdown)
+
     left_box.addWidget(self.settings_card)
 
     self.status_card = QFrame(self)
@@ -977,7 +1015,12 @@ class MainWindow(QMainWindow):
       try:
         from src.face_stabilizer import stabilize_image_directory
 
-        stabilize_image_directory(input_dir, output_dir, self.update_progress_signal.emit)
+        stabilize_image_directory(
+          input_dir,
+          output_dir,
+          self.update_progress_signal.emit,
+          self.selected_resolution
+        )
       except Exception as e:
         print(f"Error: {e}")
         self.drop_area.setText(f"Error during stabilization: {e}")
