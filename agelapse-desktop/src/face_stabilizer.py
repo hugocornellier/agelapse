@@ -79,7 +79,6 @@ def stabilize_images(
     output_dir: str,
     output_size: tuple[int, int],
     progress_callback=None,
-    selected_resolution="1080p"
 ) -> None:
     """
     Stabilize a list of images by aligning their eyes to a reference position.
@@ -196,10 +195,8 @@ def stabilize_image_directory(
     Stabilize all images in a directory.
     """
     prepare_output_directory(output_dir)
-    # derive width/height from selected_resolution:
     output_size = RESOLUTION_SIZES.get(selected_resolution, RESOLUTION_SIZES["1080p"])
 
-    # now pass output_size into reference-eyes calculation
     eyes_to_stabilize_on = get_reference_eyes_position(output_size)
     img_paths = get_image_paths(input_dir)
 
@@ -209,7 +206,6 @@ def stabilize_image_directory(
         output_dir,
         output_size=output_size,
         progress_callback=progress_callback,
-        selected_resolution=selected_resolution
     )
 
 

@@ -21,11 +21,15 @@ Download AgeLapse: [https://agelapse.com](https://agelapse.com)
 - Fixed a bug that prevented some images from appearing on specific devices in the tutorial section.
 - Automatically set a new project orientation to Landscape/Portrait based on the initial import.   
 
-## What's New - Mac v0.2.0
+## What's New - Desktop v0.3.0
+
+### New Features
+- Huge overhaul of the UI. New clean, modern look and feel.
 
 ### Improvements & Bug Fixes
-- Improved universal support to allow AgeLapse to run on Silicon and Intel Macs  
-- Minor bug fixes
+- Improved universal support to allow AgeLapse to run on Silicon and Intel Macs.
+- Fixes a bug where the user received a "Process Completed" alert prior to the video compilation finishing.
+- Minor bug fixes.
 
 ## Platform Support
 
