@@ -1,31 +1,42 @@
-import os, fdlite
+import os, sys, inspect, pathlib, fdlite
+
+# -------------------------------------------------
+# figure out where we are & import version
+# -------------------------------------------------
+spec_path = pathlib.Path(inspect.getfile(inspect.currentframe())).resolve()
+root_dir  = spec_path.parent
+sys.path.insert(0, str(root_dir))
+
+from version import __version__ as ver
+assets_dir = root_dir / "assets"
+# -------------------------------------------------
 
 # -*- mode: python ; coding: utf-8 -*-
 
+script_path = root_dir / "main.py"     # absolute path to main.py
+
+icon_dir   = assets_dir / 'icons'
+icon_datas = [(str(p), 'assets/icons/') for p in icon_dir.rglob('*.svg')]
+
 a = Analysis(
-    ['main.py'],
-    pathex=[],
+    [str(script_path)],
+    pathex=[str(root_dir)],        # allow absolute imports like `import src.foo`
     binaries=[],
     datas=[
-        (
-            os.path.join(os.path.dirname(fdlite.__file__), 'data', 'face_detection_back.tflite'),
-            'fdlite/data/'
-        ),
-        (
-            os.path.join(os.path.dirname(fdlite.__file__), 'data', 'face_landmark.tflite'),
-            'fdlite/data/'
-        ),
-        (
-            os.path.join(os.path.dirname(fdlite.__file__), 'data', 'iris_landmark.tflite'),
-            'fdlite/data/'
-        ),
-        ('assets/images/agelapse.png',           'assets/images/'),
-        ('assets/ffmpeg_mac/ffmpeg',             'assets/ffmpeg_mac/')
+        (os.path.join(os.path.dirname(fdlite.__file__), 'data', 'face_detection_back.tflite'),
+         'fdlite/data/'),
+        (os.path.join(os.path.dirname(fdlite.__file__), 'data', 'face_landmark.tflite'),
+         'fdlite/data/'),
+        (os.path.join(os.path.dirname(fdlite.__file__), 'data', 'iris_landmark.tflite'),
+         'fdlite/data/'),
+        (str(assets_dir / 'images' / 'agelapse.png'),          'assets/images/'),
+        (str(assets_dir / 'ffmpeg_mac' / 'ffmpeg'),            'assets/ffmpeg_mac/'),
+        *icon_datas,
     ],
     hiddenimports=[
         'fdlite.data.face_detection_back',
         'fdlite.data.face_landmark',
-        'fdlite.data.iris_landmark'
+        'fdlite.data.iris_landmark',
     ],
     hookspath=[],
     hooksconfig={},
@@ -42,7 +53,7 @@ exe = EXE(
     a.scripts,
     [('v', None, 'OPTION')],
     exclude_binaries=True,
-    name='AgeLapse',
+    name=f'AgeLapse-{ver}',
     debug=True,
     bootloader_ignore_signals=False,
     strip=False,
@@ -53,7 +64,7 @@ exe = EXE(
     target_arch='arm64',
     codesign_identity=None,
     entitlements_file=None,
-    icon='assets/1024_1024x1024.icns'  # Set the path to your .icns file here
+    icon=str(assets_dir / '1024_1024x1024.icns'),
 )
 
 coll = COLLECT(
@@ -63,12 +74,12 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='AgeLapse',
+    name=f'AgeLapse-{ver}',
 )
 
 app = BUNDLE(
     coll,
-    name='AgeLapse.app',
-    icon='assets/1024_1024x1024.icns',  # Set the path to your .icns file here
+    name=f'AgeLapse-{ver}.app',
+    icon=str(assets_dir / '1024_1024x1024.icns'),
     bundle_identifier=None,
 )

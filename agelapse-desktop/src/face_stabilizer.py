@@ -160,7 +160,7 @@ def update_progress(img_path: str, index: int, total_images: int, loading_symbol
     """
     percent_complete = (index + 1) / total_images * 100
     symbol_index = index % len(loading_symbols)
-    print(f"\r[LOG] Stabilizing {img_path} {loading_symbols[symbol_index]} ......... {percent_complete:.2f}% complete", end='')
+    print(f"\r[LOG] Stabilizing {img_path} {loading_symbols[symbol_index]} ({percent_complete:.2f}% complete)", end='')
     return percent_complete
 
 

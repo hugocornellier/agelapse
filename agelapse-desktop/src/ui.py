@@ -211,7 +211,7 @@ class CustomTitleBar(QWidget):
 
     logo_layout.addWidget(self.logo_label)
 
-    self.version_badge = QLabel("Desktop 0.2.1", self.logo_container)
+    self.version_badge = QLabel("Desktop 0.3.0", self.logo_container)
     self.version_badge.setStyleSheet("""
         background-color: #f97316;
         color: white;
@@ -288,7 +288,7 @@ class CustomTitleBar(QWidget):
 
     logo_layout.addWidget(self.logo_label)
 
-    self.version_badge = QLabel("Desktop 0.2.1", self.logo_container)
+    self.version_badge = QLabel("Desktop 0.3.0", self.logo_container)
     self.version_badge.setStyleSheet("""
         background-color: rgba(249,115,22,0.75);
         color: white;

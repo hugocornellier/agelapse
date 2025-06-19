@@ -111,9 +111,6 @@ def create_file_list(image_dir, framerate, list_filename=None):
 
     image_files = sorted([img for img in os.listdir(image_dir) if img.endswith('.png')])
 
-    print(f"[LOG] image_files:")
-    print(image_files)
-
     if list_filename is None:
       temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".txt")
       list_filename = temp_file.name
@@ -127,8 +124,6 @@ def create_file_list(image_dir, framerate, list_filename=None):
       if image_files:
         file_list.write(f"duration {time_per_frame}\n")
 
-    print(f"[LOG] File list created at {list_filename}")
-
   except Exception as e:
     print(f"[ERROR] Error while compiling video file list: {e}")
 
@@ -137,7 +132,7 @@ def create_file_list(image_dir, framerate, list_filename=None):
 
 def compile_video(stabilized_img_dir: str, output_video_path: str, framerate: int) -> str:
   try:
-    print(f"[LOG] Compiling video (framerate: {framerate})..... ", end=' ', flush=True)
+    print(f"[LOG] Compiling video (framerate: {framerate})... ", end=' ', flush=True)
 
     if not os.path.exists(stabilized_img_dir):
       raise FileNotFoundError(f"The specified image directory '{stabilized_img_dir}' does not exist.")
@@ -145,8 +140,6 @@ def compile_video(stabilized_img_dir: str, output_video_path: str, framerate: in
     output_dir = os.path.dirname(output_video_path)
     if not os.path.exists(output_dir):
       os.makedirs(output_dir)
-
-    print(f'Saving video to {output_dir}')
 
     run_ffmpeg(stabilized_img_dir, output_video_path, framerate)
 
