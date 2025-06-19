@@ -136,9 +136,6 @@ def create_file_list(image_dir, framerate, list_filename=None):
 
 
 def compile_video(stabilized_img_dir: str, output_video_path: str, framerate: int) -> str:
-  """
-  Compile images from a specified directory into a video file.
-  """
   try:
     print(f"[LOG] Compiling video (framerate: {framerate})..... ", end=' ', flush=True)
 
@@ -151,11 +148,7 @@ def compile_video(stabilized_img_dir: str, output_video_path: str, framerate: in
 
     print(f'Saving video to {output_dir}')
 
-    def target():
-      run_ffmpeg(stabilized_img_dir, output_video_path, framerate)
-
-    thread = threading.Thread(target=target)
-    thread.start()
+    run_ffmpeg(stabilized_img_dir, output_video_path, framerate)
 
     print("[LOG] Video compilation completed successfully.")
     return output_video_path
