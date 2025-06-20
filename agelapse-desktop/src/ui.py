@@ -18,7 +18,7 @@ from PyQt5.QtSvg import QSvgWidget
 from PyQt5.QtWidgets import (
   QMainWindow, QLabel, QVBoxLayout, QWidget, QProgressBar, QPushButton, QGridLayout, QStackedWidget, QListWidget,
   QListWidgetItem, QHBoxLayout, QApplication, QFileDialog, QTextEdit,
-  QComboBox, QSizePolicy, QFrame, QGraphicsColorizeEffect
+  QComboBox, QSizePolicy, QFrame, QGraphicsColorizeEffect, QTableWidgetItem, QTableWidget
 )
 from src.video_compile import compile_video
 
@@ -623,7 +623,11 @@ class MainWindow(QMainWindow):
     self.drop_area = DropArea(self)
     self.drop_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-    self.image_list_widget = QListWidget(self)
+    self.image_list_widget = QTableWidget(self)
+    self.image_list_widget.setColumnCount(2)
+    self.image_list_widget.setHorizontalHeaderLabels(["File Name", "Date Created"])
+    self.image_list_widget.horizontalHeader().setStretchLastSection(True)
+    self.image_list_widget.setEditTriggers(QTableWidget.NoEditTriggers)
     self.image_list_widget.setVisible(False)
     self.image_list_widget.setStyleSheet(GLASS_PANEL)
 
@@ -743,9 +747,13 @@ class MainWindow(QMainWindow):
     grid.setHorizontalSpacing(24)
     grid.setVerticalSpacing(16)
     grid.setContentsMargins(0, 0, 0, 0)
+    grid.setColumnStretch(0, 1)   # left half of the UI
+    grid.setColumnStretch(1, 1)   # second half of the left-side span
+    grid.setColumnStretch(2, 1)   # log-viewer column
 
-    left_box = QVBoxLayout()
-    left_box.setSpacing(16)
+    self.left_box = QVBoxLayout()
+
+    self.left_box.setSpacing(16)
 
     self.intro_label = QLabel("To begin, drag & drop a directory containing image files or click to browse.")
     self.intro_label.setWordWrap(True)
@@ -755,8 +763,8 @@ class MainWindow(QMainWindow):
     self.intro_line.setStyleSheet(
       "background:qlineargradient(x1:0,y1:0,x2:1,y2:0,"
       "stop:0 transparent, stop:0.5 #475569, stop:1 transparent)")
-    left_box.addWidget(self.intro_label)
-    left_box.addWidget(self.intro_line)
+    self.left_box.addWidget(self.intro_label)
+    self.left_box.addWidget(self.intro_line)
 
     header_hbox = QHBoxLayout()
     header_hbox.setSpacing(8)
@@ -774,7 +782,7 @@ class MainWindow(QMainWindow):
     header_hbox.addWidget(self.settings_icon)
     header_hbox.addWidget(self.settings_title_lbl)
     header_hbox.addStretch(1)
-    left_box.addLayout(header_hbox)
+    self.left_box.addLayout(header_hbox)
 
     self.settings_card = QFrame(self)
     self.settings_card.setLayout(QVBoxLayout())
@@ -809,11 +817,32 @@ class MainWindow(QMainWindow):
         "border-radius:8px}")
     self.settings_card.layout().addWidget(self.resolution_dropdown)
 
+    self.left_box.addWidget(self.settings_card)
 
-    left_box.addWidget(self.settings_card)
+    self.image_list_header = QWidget(self)
+    header_layout = QHBoxLayout(self.image_list_header)
+    header_layout.setContentsMargins(0, 0, 0, 0)
+    header_layout.setSpacing(8)
 
-    # top spacer so the status card can sit in the vertical centre
-    left_box.addStretch(1)
+    self.image_list_icon = QSvgWidget(resource_path("assets/icons/image.svg"))
+    self.image_list_icon.setFixedSize(20, 20)
+    self.image_list_icon.setStyleSheet("background: transparent;")
+    icon_effect = QGraphicsColorizeEffect(self.image_list_icon)
+    icon_effect.setColor(QColor("#60A5FA"))
+    self.image_list_icon.setGraphicsEffect(icon_effect)
+
+    self.image_list_label = QLabel("Image List")
+    self.image_list_label.setStyleSheet("font-size:18px; font-weight:600;")
+
+    header_layout.addWidget(self.image_list_icon)
+    header_layout.addWidget(self.image_list_label)
+    header_layout.addStretch(1)
+
+    self.image_list_header.setVisible(False)
+
+    self.left_box.addWidget(self.image_list_header)
+    self.left_box.addWidget(self.image_list_widget)
+    self.left_box.addStretch(1)
 
     self.status_card = QFrame(self)
     self.status_card.setLayout(QVBoxLayout())
@@ -844,52 +873,29 @@ class MainWindow(QMainWindow):
     self.status_card.layout().addWidget(self.progress_bar)
 
     self.status_card.setFixedWidth(600)
-    left_box.addWidget(self.status_card, alignment=Qt.AlignHCenter)
 
-
-    left_box.addWidget(self.drop_area)
-
-    self.image_list_header = QWidget(self)
-    header_layout = QHBoxLayout(self.image_list_header)
-    header_layout.setContentsMargins(0, 0, 0, 0)
-    header_layout.setSpacing(8)
-
-    self.image_list_icon = QSvgWidget(resource_path("assets/icons/image.svg"))
-    self.image_list_icon.setFixedSize(20, 20)
-    self.image_list_icon.setStyleSheet("background: transparent;")
-    icon_effect = QGraphicsColorizeEffect(self.image_list_icon)
-    icon_effect.setColor(QColor("#60A5FA"))
-    self.image_list_icon.setGraphicsEffect(icon_effect)
-
-    self.image_list_label = QLabel("Image List")
-    self.image_list_label.setStyleSheet("font-size:18px; font-weight:600;")
-
-    header_layout.addWidget(self.image_list_icon)
-    header_layout.addWidget(self.image_list_label)
-    header_layout.addStretch(1)
-
-    self.image_list_header.setVisible(False)
-
-    left_box.addWidget(self.image_list_header)
-    left_box.addWidget(self.image_list_widget)
-    left_box.addStretch(1)
+    self.left_box.addWidget(self.drop_area)
 
     folder_button_row = QHBoxLayout()
     folder_button_row.setSpacing(8)
     folder_button_row.addWidget(self.open_stabilized_folder_button)
     folder_button_row.addWidget(self.open_video_folder_button)
     folder_button_row.addStretch(1)
-    left_box.addLayout(folder_button_row)
+    self.left_box.addLayout(folder_button_row)
 
     action_button_row = QHBoxLayout()
     action_button_row.setSpacing(8)
     action_button_row.addWidget(self.start_button)
     action_button_row.addWidget(self.show_log_button)
     action_button_row.addStretch(1)
-    left_box.addLayout(action_button_row)
+    self.left_box.addLayout(action_button_row)
 
-    left_container = QWidget(); left_container.setLayout(left_box)
-    grid.addWidget(left_container, 0, 0, 1, 2)
+    left_container = QWidget();
+    left_container.setLayout(self.left_box)
+    left_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+    grid.addWidget(left_container, 0, 0, 1, 3)
+
+    grid.addWidget(self.status_card, 0, 0, 1, 3, alignment=Qt.AlignCenter)
 
     grid.addWidget(self.log_viewer, 0, 2)
 
@@ -897,26 +903,16 @@ class MainWindow(QMainWindow):
     return gallery_container
 
   def get_image_creation_date(self, image_path):
-    with open(image_path, 'rb') as f:
-      tags = exifread.process_file(f)
-
-    print(tags)
-
-    for tag in tags.keys():
-        print(f"{tag}: {tags[tag]}")
-
-    # EXIF DateTimeOriginal tag is usually what stores the creation date
-    date_tag = tags.get('EXIF DateTimeOriginal')
-
-    if date_tag:
-      return str(date_tag)
-    else:
-      modification_time = os.path.getmtime(image_path)
-      formatted_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(modification_time))
-
-      print(f"Last modified time: {formatted_time}")
-
-      return None
+    try:
+      with open(image_path, 'rb') as f:
+        tags = exifread.process_file(f, stop_tag="EXIF DateTimeOriginal", details=False)
+      date_tag = tags.get('EXIF DateTimeOriginal')
+      if date_tag:
+        return str(date_tag)
+    except Exception:
+      pass
+    modification_time = os.path.getmtime(image_path)
+    return time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(modification_time))
 
   def toggle_image_list_visibility(self):
     if self.image_list_widget.isVisible():
@@ -928,32 +924,29 @@ class MainWindow(QMainWindow):
     try:
       self.drop_area.setText("Processing files...")
       QApplication.processEvents()
-
-      self.image_list_widget.clear()
+      self.image_list_widget.setRowCount(0)
       valid_images = [
         p for p in file_paths
         if p.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.heic'))
       ]
-
       if valid_images:
         self.image_list_widget.setVisible(True)
         self.start_button.setVisible(True)
         self.image_list_header.setVisible(True)
-
         for image_path in valid_images:
-          item = QListWidgetItem(os.path.basename(image_path))
-          self.image_list_widget.addItem(item)
-
+          row = self.image_list_widget.rowCount()
+          self.image_list_widget.insertRow(row)
+          self.image_list_widget.setItem(row, 0, QTableWidgetItem(os.path.basename(image_path)))
+          date_str = self.get_image_creation_date(image_path) or ""
+          self.image_list_widget.setItem(row, 1, QTableWidgetItem(date_str))
         count = len(valid_images)
         self.image_list_label.setText(f"Image List ({count})")
         self.image_list_label.setVisible(True)
         print(f"[LOG] Loaded {count} images.")
-
         self.start_button.setEnabled(True)
         self.drop_area.setVisible(False)
         self.intro_label.setVisible(False)
         self.intro_line.setVisible(False)
-
         self.input_dir = os.path.dirname(valid_images[0])
       else:
         self.drop_area.setText("No valid image files selected.")
@@ -979,34 +972,27 @@ class MainWindow(QMainWindow):
     print("[LOG] Processing directory...")
     try:
       self.drop_area.setText("I'm in the processing dir call...")
-      QApplication.processEvents()  # Force the GUI to update
-
+      QApplication.processEvents()
       self.input_dir = get_path(directory)
-      self.image_list_widget.clear()
-
+      self.image_list_widget.setRowCount(0)
       valid_images = [f for f in os.listdir(self.input_dir) if
                       f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.heic'))]
-
       valid_images.sort()
-
       if valid_images:
         self.image_list_widget.setVisible(True)
         self.start_button.setVisible(True)
         self.image_list_header.setVisible(True)
-
         for image in valid_images:
-          item = QListWidgetItem(image)
-          self.image_list_widget.addItem(item)
-
-          # full_path = os.path.join(self.input_dir, image)
-          # date = self.get_image_creation_date(full_path)
-          # print(date)
-
+          row = self.image_list_widget.rowCount()
+          self.image_list_widget.insertRow(row)
+          self.image_list_widget.setItem(row, 0, QTableWidgetItem(image))
+          full_path = os.path.join(self.input_dir, image)
+          date_str = self.get_image_creation_date(full_path) or ""
+          self.image_list_widget.setItem(row, 1, QTableWidgetItem(date_str))
         valid_image_len = len(valid_images)
         self.image_list_label.setText(f"Image List ({valid_image_len})")
         self.image_list_label.setVisible(True)
         print(f"[LOG] Loaded {valid_image_len} images.")
-
         self.start_button.setEnabled(True)
         self.drop_area.setVisible(False)
         self.intro_label.setVisible(False)
