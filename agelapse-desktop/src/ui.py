@@ -3,22 +3,23 @@ import os
 import platform
 import subprocess
 import sys
+import tempfile, shutil
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import exifread
 from PyQt5 import QtGui
-from PyQt5.QtCore import Qt, pyqtSignal, QRect, QEvent
+from PyQt5.QtCore import Qt, pyqtSignal, QRect, QEvent, QRectF
 from PyQt5.QtGui import (
   QPixmap, QFont, QDragEnterEvent, QDragLeaveEvent, QDropEvent, QMouseEvent,
-  QCursor, QTextCursor, QIcon, QColor
+  QCursor, QTextCursor, QIcon, QColor, QPainterPath, QRegion
 )
 from PyQt5.QtSvg import QSvgWidget
 from PyQt5.QtWidgets import (
   QMainWindow, QLabel, QVBoxLayout, QWidget, QProgressBar, QPushButton, QGridLayout, QStackedWidget, QListWidget,
   QListWidgetItem, QHBoxLayout, QApplication, QFileDialog, QTextEdit,
-  QComboBox, QSizePolicy, QFrame, QGraphicsColorizeEffect, QTableWidgetItem, QTableWidget
+  QComboBox, QSizePolicy, QFrame, QGraphicsColorizeEffect, QTableWidgetItem, QTableWidget, QHeaderView
 )
 from src.video_compile import compile_video
 
@@ -68,7 +69,7 @@ TITLE_BAR_COLOR = "#0C1220"
 MAIN_GRADIENT = (
     "QWidget{background: qlineargradient("
     "spread:pad, x1:0, y1:0, x2:0, y2:1,"
-    "stop:0 #0f172a, stop:0.5 #1e293b, stop:1 #0f172a); color:white}"
+    "stop:0 #0f172a, stop:0.5 #080c1c, stop:1 #0f172a); color:white}"
 )
 GLASS_PANEL = (
     "QFrame{background: rgba(30,41,59,0.5);"
@@ -470,6 +471,9 @@ class MainWindow(QMainWindow):
 
     self.selected_framerate = 15  # Default value
     self.selected_resolution = "1080p"
+    self.image_paths = []
+    self.order_ascending = True
+    self.temp_input_dir = None
 
     #self.setStyleSheet(MAIN_GRADIENT)
     self.title_bar = CustomTitleBar(self)
@@ -516,6 +520,8 @@ class MainWindow(QMainWindow):
     self.log_signal.connect(self.append_log_line)
 
     self.resize(1200, 800)
+    if sys.platform == "darwin":
+      self.update_window_mask()
 
     self.resizing_direction = None
     self.start_pos = None
@@ -562,9 +568,23 @@ class MainWindow(QMainWindow):
             background-color: #262626;
         }
     """)
-
     self.framerate_dropdown.setCurrentIndex(self.selected_framerate - 1)
     self.framerate_dropdown.currentIndexChanged.connect(self.update_framerate)
+
+    self.image_order_dropdown = QComboBox(self.settings_section)
+    self.image_order_dropdown.addItems(["Filename (Asc)", "Filename (Desc)"])
+    self.image_order_dropdown.setStyleSheet("""
+        QComboBox {
+            background-color: #333333;
+            color: white;
+            padding: 5px;
+        }
+        QComboBox:hover {
+            background-color: #262626;
+        }
+    """)
+    self.image_order_dropdown.setCurrentIndex(0)
+    self.image_order_dropdown.currentIndexChanged.connect(self.update_image_order)
 
     self.resolution_dropdown = QComboBox(self.settings_section)
     self.resolution_dropdown.addItems(["1080p (1920 x 1080)", "4K (3840 x 2160)"])
@@ -593,6 +613,31 @@ class MainWindow(QMainWindow):
     # Update the selected framerate
     self.selected_framerate = int(self.framerate_dropdown.itemText(index))
     print(f"[LOG] Framerate changed to {self.selected_framerate}")
+
+  def update_image_order(self, index):
+    self.order_ascending = (index == 0)
+    self.apply_sort()
+    self.populate_image_table()
+
+  def apply_sort(self):
+    self.image_paths.sort(reverse=not self.order_ascending)
+
+  def populate_image_table(self):
+    self.image_list_widget.setRowCount(0)
+    for image_path in self.image_paths:
+      row = self.image_list_widget.rowCount()
+      self.image_list_widget.insertRow(row)
+      self.image_list_widget.setItem(row, 0, QTableWidgetItem(os.path.basename(image_path)))
+      date_str = self.get_image_creation_date(image_path) or ""
+      self.image_list_widget.setItem(row, 1, QTableWidgetItem(date_str))
+
+  def get_ordered_input_dir(self):
+    tmp_dir = tempfile.mkdtemp(prefix="agelapse_ordered_")
+    for idx, src in enumerate(self.image_paths, 1):
+      dst = os.path.join(tmp_dir, f"{idx:06d}{Path(src).suffix.lower()}")
+      shutil.copy2(src, dst)
+    self.temp_input_dir = tmp_dir
+    return tmp_dir
 
   def toggle_log(self):
     if self.log_viewer.isVisible():
@@ -626,10 +671,30 @@ class MainWindow(QMainWindow):
     self.image_list_widget = QTableWidget(self)
     self.image_list_widget.setColumnCount(2)
     self.image_list_widget.setHorizontalHeaderLabels(["File Name", "Date Created"])
-    self.image_list_widget.horizontalHeader().setStretchLastSection(True)
+    self.image_list_widget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+    self.image_list_widget.verticalHeader().setVisible(False)
+    self.image_list_widget.setAlternatingRowColors(True)
     self.image_list_widget.setEditTriggers(QTableWidget.NoEditTriggers)
     self.image_list_widget.setVisible(False)
-    self.image_list_widget.setStyleSheet(GLASS_PANEL)
+    self.image_list_widget.setStyleSheet("""
+        QTableWidget {
+            background: rgba(30,41,59,0.5);
+            border: 1px solid rgba(51,65,85,0.5);
+            border-radius: 12px;
+            color: white;
+            gridline-color: #475569;
+            selection-background-color: #334155;
+        }
+        QHeaderView::section {
+            background-color: #1e293b;
+            color: #cbd5e1;
+            padding: 4px;
+            border: 1px solid #475569;
+        }
+        QTableWidget::item {
+            padding: 6px;
+        }
+    """)
 
     self.start_button = make_icon_button(
       "assets/icons/play.svg",
@@ -789,35 +854,59 @@ class MainWindow(QMainWindow):
     self.settings_card.layout().setContentsMargins(16, 16, 16, 16)
     self.settings_card.setStyleSheet(GLASS_PANEL)
 
+    settings_hbox = QHBoxLayout()
+    settings_hbox.setSpacing(24)
+
+    fr_col = QVBoxLayout()
+    fr_col.setContentsMargins(0, 0, 0, 0)
+    fr_col.setSpacing(6)
+    res_col = QVBoxLayout()
+    res_col.setContentsMargins(0, 0, 0, 0)
+    res_col.setSpacing(6)
+
     framerate_label = QLabel("Framerate (FPS):", self.settings_card)
-    framerate_label.setStyleSheet("""
-        border: none;
-        background: transparent;
-        color: white;
-        font-size: 14px;
-    """)
-    self.settings_card.layout().addWidget(framerate_label)
+    framerate_label.setStyleSheet("border:none;background:transparent;color:white;font-size:14px;")
+    fr_col.addWidget(framerate_label)
     self.framerate_dropdown.setParent(self.settings_card)
     self.framerate_dropdown.setStyleSheet(
-        "QComboBox{background:#334155;color:white;padding:6px 12px;border:1px solid #475569;"
-        "border-radius:8px}")
-    self.settings_card.layout().addWidget(self.framerate_dropdown)
+        "QComboBox{background:#334155;color:white;padding:6px 12px;border:1px solid #475569;border-radius:8px}")
+    fr_col.addWidget(self.framerate_dropdown)
 
     resolution_label = QLabel("Resolution:", self.settings_card)
-    resolution_label.setStyleSheet("""
-        border: none;
-        background: transparent;
-        color: white;
-        font-size: 14px;
-    """)
-    self.settings_card.layout().addWidget(resolution_label)
+    resolution_label.setStyleSheet("border:none;background:transparent;color:white;font-size:14px;")
+    res_col.addWidget(resolution_label)
     self.resolution_dropdown.setParent(self.settings_card)
     self.resolution_dropdown.setStyleSheet(
-        "QComboBox{background:#334155;color:white;padding:6px 12px;border:1px solid #475569;"
-        "border-radius:8px}")
-    self.settings_card.layout().addWidget(self.resolution_dropdown)
+        "QComboBox{background:#334155;color:white;padding:6px 12px;border:1px solid #475569;border-radius:8px}")
+    res_col.addWidget(self.resolution_dropdown)
+
+    settings_hbox.addLayout(fr_col)
+    settings_hbox.addLayout(res_col)
+    self.settings_card.layout().addLayout(settings_hbox)
+
+    settings_hbox = QHBoxLayout()
+    settings_hbox.setSpacing(24)
+
+    io_col = QVBoxLayout()
+    io_col.setContentsMargins(0, 0, 0, 0)
+    io_col.setSpacing(6)
+
+    framerate_label = QLabel("Image Order:", self.settings_card)
+    framerate_label.setStyleSheet("border:none;background:transparent;color:white;font-size:14px;")
+    io_col.addWidget(framerate_label)
+    self.image_order_dropdown.setParent(self.settings_card)
+    self.image_order_dropdown.setStyleSheet(
+        "QComboBox{background:#334155;color:white;padding:6px 12px;border:1px solid #475569;border-radius:8px}")
+    io_col.addWidget(self.image_order_dropdown)
+
+    settings_hbox.addLayout(io_col)
+    self.settings_card.layout().addLayout(settings_hbox)
 
     self.left_box.addWidget(self.settings_card)
+    self.space_between = QWidget(self)
+    self.space_between.setFixedHeight(10)
+    self.space_between.setVisible(False)
+    self.left_box.addWidget(self.space_between)
 
     self.image_list_header = QWidget(self)
     header_layout = QHBoxLayout(self.image_list_header)
@@ -924,30 +1013,25 @@ class MainWindow(QMainWindow):
     try:
       self.drop_area.setText("Processing files...")
       QApplication.processEvents()
-      self.image_list_widget.setRowCount(0)
-      valid_images = [
+      self.image_paths = [
         p for p in file_paths
         if p.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.heic'))
       ]
-      if valid_images:
-        self.image_list_widget.setVisible(True)
-        self.start_button.setVisible(True)
-        self.image_list_header.setVisible(True)
-        for image_path in valid_images:
-          row = self.image_list_widget.rowCount()
-          self.image_list_widget.insertRow(row)
-          self.image_list_widget.setItem(row, 0, QTableWidgetItem(os.path.basename(image_path)))
-          date_str = self.get_image_creation_date(image_path) or ""
-          self.image_list_widget.setItem(row, 1, QTableWidgetItem(date_str))
-        count = len(valid_images)
+      if self.image_paths:
+        self.apply_sort()
+        self.populate_image_table()
+        count = len(self.image_paths)
         self.image_list_label.setText(f"Image List ({count})")
-        self.image_list_label.setVisible(True)
         print(f"[LOG] Loaded {count} images.")
         self.start_button.setEnabled(True)
         self.drop_area.setVisible(False)
         self.intro_label.setVisible(False)
         self.intro_line.setVisible(False)
-        self.input_dir = os.path.dirname(valid_images[0])
+        self.image_list_widget.setVisible(True)
+        self.start_button.setVisible(True)
+        self.image_list_header.setVisible(True)
+        self.space_between.setVisible(True)
+        self.input_dir = os.path.dirname(self.image_paths[0])
       else:
         self.drop_area.setText("No valid image files selected.")
     except Exception as e:
@@ -971,32 +1055,27 @@ class MainWindow(QMainWindow):
   def process_directory(self, directory):
     print("[LOG] Processing directory...")
     try:
-      self.drop_area.setText("I'm in the processing dir call...")
+      self.drop_area.setText("Processing directory...")
       QApplication.processEvents()
       self.input_dir = get_path(directory)
-      self.image_list_widget.setRowCount(0)
-      valid_images = [f for f in os.listdir(self.input_dir) if
-                      f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.heic'))]
-      valid_images.sort()
-      if valid_images:
-        self.image_list_widget.setVisible(True)
-        self.start_button.setVisible(True)
-        self.image_list_header.setVisible(True)
-        for image in valid_images:
-          row = self.image_list_widget.rowCount()
-          self.image_list_widget.insertRow(row)
-          self.image_list_widget.setItem(row, 0, QTableWidgetItem(image))
-          full_path = os.path.join(self.input_dir, image)
-          date_str = self.get_image_creation_date(full_path) or ""
-          self.image_list_widget.setItem(row, 1, QTableWidgetItem(date_str))
-        valid_image_len = len(valid_images)
-        self.image_list_label.setText(f"Image List ({valid_image_len})")
-        self.image_list_label.setVisible(True)
-        print(f"[LOG] Loaded {valid_image_len} images.")
+      self.image_paths = [
+        os.path.join(self.input_dir, f) for f in os.listdir(self.input_dir)
+        if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.heic'))
+      ]
+      if self.image_paths:
+        self.apply_sort()
+        self.populate_image_table()
+        count = len(self.image_paths)
+        self.image_list_label.setText(f"Image List ({count})")
+        print(f"[LOG] Loaded {count} images.")
         self.start_button.setEnabled(True)
         self.drop_area.setVisible(False)
         self.intro_label.setVisible(False)
         self.intro_line.setVisible(False)
+        self.image_list_widget.setVisible(True)
+        self.start_button.setVisible(True)
+        self.image_list_header.setVisible(True)
+        self.space_between.setVisible(True)
       else:
         self.drop_area.setText("No valid images found in the directory.")
     except FileNotFoundError as e:
@@ -1019,10 +1098,12 @@ class MainWindow(QMainWindow):
     self.progress_bar.setVisible(True)
     self.progress_value_label.setVisible(True)
 
+    ordered_input = self.get_ordered_input_dir()
+
     if self.executor is None:
       self.executor = ThreadPoolExecutor(max_workers=1)
 
-    self.executor.submit(self.run_stabilization, self.input_dir, self.output_dir)
+    self.executor.submit(self.run_stabilization, ordered_input, self.output_dir)
 
   def run_stabilization(self, input_dir, output_dir):
     print("[LOG] Initializing Tensorflow...")
@@ -1086,6 +1167,10 @@ class MainWindow(QMainWindow):
       self.video_finished_signal.emit(False)
 
   def on_video_finished(self, success):
+    if self.temp_input_dir and os.path.isdir(self.temp_input_dir):
+      shutil.rmtree(self.temp_input_dir)
+      self.temp_input_dir = None
+
     if success:
       self.status_header.setText("Completed successfully!")
       self.open_video_folder_button.setVisible(True)
@@ -1153,6 +1238,18 @@ class MainWindow(QMainWindow):
       direction = self.get_resizing_direction(event.pos())
       self.update_cursor_shape(direction)
     return super().event(event)
+
+  def resizeEvent(self, event):
+    super().resizeEvent(event)
+    if sys.platform == "darwin":
+      self.update_window_mask()
+
+  def update_window_mask(self):
+    radius = 12.0
+    rectf = QRectF(self.rect())
+    path = QPainterPath()
+    path.addRoundedRect(rectf, radius, radius)
+    self.setMask(QRegion(path.toFillPolygon().toPolygon()))
 
   def update_cursor_shape(self, direction):
     if direction is not None:
