@@ -21,7 +21,7 @@ Download AgeLapse: [https://agelapse.com](https://agelapse.com)
 - Fixed a bug that prevented some images from appearing on specific devices in the tutorial section.
 - Automatically set a new project orientation to Landscape/Portrait based on the initial import.   
 
-## What's New - Desktop v0.3.0
+## What's New - Desktop v0.3.1
 
 ### New Features
 - Huge overhaul of the UI. New clean, modern look and feel.
