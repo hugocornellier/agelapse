@@ -25,7 +25,7 @@ class ManualStabilizationPage extends StatefulWidget {
 
 class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
   String rawPhotoPath = "";
-  Uint8List? _stabilizedImageBytes; // State variable for the stabilized image.
+  Uint8List? _stabilizedImageBytes;
   late FaceStabilizer faceStabilizer;
   int? _canvasWidth;
   int? _canvasHeight;
@@ -33,7 +33,6 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
   int? _rightEyeXGoal;
   int? _bothEyesYGoal;
 
-  // Controllers for the four input fields.
   final TextEditingController _inputController1 = TextEditingController();
   final TextEditingController _inputController2 = TextEditingController();
   final TextEditingController _inputController3 = TextEditingController();
@@ -197,7 +196,6 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
             ],
           ),
         ),
-
       ),
     );
   }
