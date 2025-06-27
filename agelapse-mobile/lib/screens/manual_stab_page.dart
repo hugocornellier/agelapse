@@ -32,6 +32,9 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
   int? _leftEyeXGoal;
   int? _rightEyeXGoal;
   int? _bothEyesYGoal;
+  late String aspectRatio;
+  late int canvasHeight;
+  late int canvasWidth;
 
   final TextEditingController _inputController1 = TextEditingController();
   final TextEditingController _inputController2 = TextEditingController();
@@ -40,7 +43,12 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
 
   @override
   void initState() {
+
     super.initState();
+    _inputController1.text = '0';
+    _inputController2.text = '0';
+    _inputController3.text = '1';
+    _inputController4.text = '0';
     init();
   }
 
@@ -54,6 +62,25 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
   }
 
   Future<void> init() async {
+    String projectOrientation = await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
+    String resolution = await SettingsUtil.loadVideoResolution(widget.projectId.toString());
+    aspectRatio = await SettingsUtil.loadAspectRatio(widget.projectId.toString());
+    double? aspectRatioDecimal = StabUtils.getAspectRatioAsDecimal(aspectRatio);
+
+    final double? shortSideDouble = StabUtils.getShortSide(resolution);
+    final int longSide = (aspectRatioDecimal! * shortSideDouble!).toInt();
+    final int shortSide = shortSideDouble.toInt();
+
+    canvasWidth = projectOrientation == "landscape" ? longSide : shortSide;
+    canvasHeight = projectOrientation == "landscape" ? shortSide : longSide;
+
+    print("canvasWidth => '$canvasWidth'");
+    print("canvasHeight => '$canvasHeight'");
+
+    // TODO:
+    // Set Scale Factor to ~ canvasWidth/imageWidth
+    // First need to (calculate imageWidth from imagePath)
+
     if (widget.imagePath.contains('/stabilized/')) {
       final rawPhotoPathRes = await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
         p.basenameWithoutExtension(widget.imagePath),
@@ -97,7 +124,7 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
                   Expanded(
                     child: TextField(
                       controller: _inputController1,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
                       decoration: const InputDecoration(
                         labelText: 'Translate X',
                         labelStyle: TextStyle(fontSize: 14),
@@ -110,7 +137,7 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
                   Expanded(
                     child: TextField(
                       controller: _inputController2,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
                       decoration: const InputDecoration(
                         labelText: 'Translate Y',
                         labelStyle: TextStyle(fontSize: 14),
@@ -140,7 +167,7 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
                   Expanded(
                     child: TextField(
                       controller: _inputController4,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
                       decoration: const InputDecoration(
                         labelText: 'Rotation (Deg)',
                         labelStyle: TextStyle(fontSize: 14),
@@ -212,7 +239,6 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
         return;
       }
 
-      // Update the state so that the stabilized image is shown on the screen.
       setState(() {
         _stabilizedImageBytes = imageBytesStabilized;
       });

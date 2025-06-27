@@ -24,6 +24,23 @@ class StabUtils {
     return await DB.instance.getUnstabilizedPhotos(projectId, projectOrientation);
   }
 
+  static double? getShortSide(String resolution) {
+    if (resolution == "1080p") return 1080;
+    if (resolution == "2K") return 1152;
+    if (resolution == "3K") return 1728;
+    if (resolution == "4K") return 2304;
+    return null;
+  }
+
+  static double? getAspectRatioAsDecimal(String aspectRatio) {
+    if (!aspectRatio.contains(':')) return null;
+    final List<String> split = aspectRatio.split(":");
+    int? dividend = int.tryParse(split[0]);
+    int? divisor = int.tryParse(split[1]);
+    if (dividend == null || divisor == null) return null;
+    return dividend / divisor;
+  }
+
   static List<Point<int>?> extractEyePositions(List<Face> faces) {
     return faces
         .where((face) => face.landmarks[FaceLandmarkType.leftEye] != null && face.landmarks[FaceLandmarkType.rightEye] != null)
