@@ -93,7 +93,7 @@ class InfoPageState extends State<InfoPage> with SingleTickerProviderStateMixin 
                           color: AppColors.lessDarkGrey,
                           onPressed: () => _sendEmail('agelapse+bugs@gmail.com', 'Bug Report'),
                         ),
-                        const SizedBox(height: 20.0), // Add spacing between buttons
+                        const SizedBox(height: 20.0),
                         FancyButton.buildElevatedButton(
                           context,
                           text: 'Suggest Features',

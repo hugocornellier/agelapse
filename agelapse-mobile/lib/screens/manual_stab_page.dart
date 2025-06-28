@@ -32,6 +32,7 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
   int? _canvasHeight;
   int? _leftEyeXGoal;
   int? _rightEyeXGoal;
+  int _currentRequestId = 0;
   int? _bothEyesYGoal;
   late String aspectRatio;
   late int canvasHeight;
@@ -44,9 +45,10 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
 
   bool _isProcessing = false;
   Timer? _debounce;
+  double _baseScale = 1.0;
   double? _lastTx;
   double? _lastTy;
-  double? _lastSc;
+  double? _lastMult;
   double? _lastRot;
 
   @override
@@ -57,6 +59,13 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
     _inputController2.text = '0';
     _inputController3.text = '1';
     _inputController4.text = '0';
+
+    _lastValid = {
+      _inputController1: _inputController1.text,
+      _inputController2: _inputController2.text,
+      _inputController3: _inputController3.text,
+      _inputController4: _inputController4.text,
+    };
 
     _inputController1.addListener(_onParamChanged);
     _inputController2.addListener(_onParamChanged);
@@ -105,7 +114,8 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
     final ui.Image? original = await StabUtils.loadImageFromFile(File(localRawPath));
     if (original != null) {
       final double defaultScale = canvasWidth / original.width;
-      _inputController3.text = defaultScale.toStringAsFixed(2);
+      _baseScale = defaultScale;
+      _inputController3.text = '1';
       original.dispose();
     }
 
@@ -114,19 +124,66 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
 
     double? tx = double.tryParse(_inputController1.text);
     double? ty = double.tryParse(_inputController2.text);
-    double? sc = double.tryParse(_inputController3.text);
+    double? mult = double.tryParse(_inputController3.text) ?? 1.0;
     double? rot = double.tryParse(_inputController4.text);
+    double? sc = _baseScale * mult;
     processRequest(tx, ty, sc, rot);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true,           // let the body draw underneath the bottom bar
       appBar: AppBar(
-        title: const Text('Manual Stabilization'),
+        toolbarHeight: 48,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        shadowColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        title: const Text(
+          'Manual Stabilization',
+          style: TextStyle(fontSize: 18),
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.info_outline),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Quick Guide'),
+                  content: const SingleChildScrollView(
+                    child: Text(
+                      '• Goal: Center each pupil on its vertical line and place both pupils exactly on the horizontal line.\n'
+                          '• Horiz. Offset (whole number, ±): Shifts the image left/right. Increase to move the face right, decrease to move left.\n'
+                          '• Vert. Offset (whole number, ±): Shifts the image up/down. Increase to move the face up, decrease to move down.\n'
+                          '• Scale Factor (positive decimal): Zooms in or out. Values > 1 enlarge, values between 0 and 1 shrink.\n'
+                          '• Rotation (decimal, ±): Tilts the image. Positive values rotate clockwise, negative counter-clockwise.\n\n'
+                          'Use the toolbar arrows or type exact numbers. Keep adjusting until the pupils touch all three guides.',
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('OK'),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(0.5),
+          child: Container(
+            height: 0.5,
+            color: Colors.grey.shade700.withOpacity(0.5),
+          ),
         ),
       ),
       body: GestureDetector(
@@ -137,17 +194,18 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              // Two inputs side by side - Translate X and Y
+              const SizedBox(height: 4),
               Row(
                 children: [
                   Expanded(
                     child: TextField(
                       controller: _inputController1,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                      onEditingComplete: _validateInputs,
                       decoration: const InputDecoration(
                         labelText: 'Horiz. Offset',
-                        labelStyle: TextStyle(fontSize: 14),
-                        floatingLabelStyle: TextStyle(fontSize: 12),
+                        labelStyle: TextStyle(fontSize: 15),
+                        floatingLabelStyle: TextStyle(fontSize: 14),
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -157,10 +215,11 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
                     child: TextField(
                       controller: _inputController2,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                      onEditingComplete: _validateInputs,
                       decoration: const InputDecoration(
                         labelText: 'Vert. Offset',
-                        labelStyle: TextStyle(fontSize: 14),
-                        floatingLabelStyle: TextStyle(fontSize: 12),
+                        labelStyle: TextStyle(fontSize: 15),
+                        floatingLabelStyle: TextStyle(fontSize: 14),
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -174,10 +233,11 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
                     child: TextField(
                       controller: _inputController3,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      onEditingComplete: _validateInputs,
                       decoration: const InputDecoration(
                         labelText: 'Scale Factor',
-                        labelStyle: TextStyle(fontSize: 14),
-                        floatingLabelStyle: TextStyle(fontSize: 12),
+                        labelStyle: TextStyle(fontSize: 15),
+                        floatingLabelStyle: TextStyle(fontSize: 14),
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -187,10 +247,11 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
                     child: TextField(
                       controller: _inputController4,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                      onEditingComplete: _validateInputs,
                       decoration: const InputDecoration(
                         labelText: 'Rotation (Deg)',
-                        labelStyle: TextStyle(fontSize: 14),
-                        floatingLabelStyle: TextStyle(fontSize: 12),
+                        labelStyle: TextStyle(fontSize: 15),
+                        floatingLabelStyle: TextStyle(fontSize: 14),
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -238,10 +299,53 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
           ),
         ),
       ),
+      bottomNavigationBar: _buildToolbar(context),
     );
   }
 
+  Map<TextEditingController, String> _lastValid = {};
+
+  bool _isWholeNumber(String s) => RegExp(r'^-?\d+$').hasMatch(s);
+  bool _isPositiveDecimal(String s) => RegExp(r'^\d+(\.\d+)?$').hasMatch(s) && double.parse(s) > 0;
+  bool _isSignedDecimal(String s) => RegExp(r'^-?\d+(\.\d+)?$').hasMatch(s);
+
+  void _showInvalidInputDialog(List<String> fields) {
+    showDialog(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          title: const Text('Invalid input'),
+          content: Text(
+            'Please check these fields:\n• ${fields.join('\n• ')}\n\n'
+                'Horiz./Vert. Offset: whole numbers like -10 or 25\n'
+                'Scale Factor: positive numbers like 1 or 2.5\n'
+                'Rotation: any number like -1.5 or 30',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _validateInputs() {
+    FocusScope.of(context).unfocus();
+    final List<String> invalid = [];
+    if (!_isWholeNumber(_inputController1.text)) invalid.add('Horiz. Offset');
+    if (!_isWholeNumber(_inputController2.text)) invalid.add('Vert. Offset');
+    if (!_isPositiveDecimal(_inputController3.text)) invalid.add('Scale Factor');
+    if (!_isSignedDecimal(_inputController4.text)) invalid.add('Rotation');
+    if (invalid.isNotEmpty) {
+      _showInvalidInputDialog(invalid);
+    }
+  }
+
   Future<void> processRequest(double? translateX, double? translateY, double? scaleFactor, double? rotationDegrees) async {
+    final int requestId = ++_currentRequestId;
     setState(() {
       _isProcessing = true;
     });
@@ -251,8 +355,20 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
         return;
       }
 
-      final Uint8List? imageBytesStabilized = await faceStabilizer.generateStabilizedImageBytes(img, rotationDegrees, scaleFactor, translateX, translateY);
+      final Uint8List? imageBytesStabilized = await faceStabilizer.generateStabilizedImageBytes(
+        img,
+        rotationDegrees,
+        scaleFactor,
+        translateX,
+        translateY,
+      );
       if (imageBytesStabilized == null) {
+        img.dispose();
+        return;
+      }
+
+      if (requestId != _currentRequestId) {
+        img.dispose();
         return;
       }
 
@@ -260,21 +376,29 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
         _stabilizedImageBytes = imageBytesStabilized;
       });
 
-      final String projectOrientation = await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
-      final String stabilizedPhotoPath = await StabUtils.getStabilizedImagePath(rawPhotoPath, widget.projectId, projectOrientation);
+      final String projectOrientation =
+      await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
+      final String stabilizedPhotoPath =
+      await StabUtils.getStabilizedImagePath(rawPhotoPath, widget.projectId, projectOrientation);
       final String stabThumbPath = FaceStabilizer.getStabThumbnailPath(stabilizedPhotoPath);
 
       final File stabImageFile = File(stabilizedPhotoPath);
       final File stabThumbFile = File(stabThumbPath);
-      if (await stabImageFile.exists()) {
-        await stabImageFile.delete();
-      }
-      if (await stabThumbFile.exists()) {
-        await stabThumbFile.delete();
-      }
+      if (await stabImageFile.exists()) await stabImageFile.delete();
+      if (await stabThumbFile.exists()) await stabThumbFile.delete();
 
-      await faceStabilizer.saveStabilizedImage(imageBytesStabilized, rawPhotoPath, stabilizedPhotoPath, 0.0);
+      await faceStabilizer.saveStabilizedImage(
+        imageBytesStabilized,
+        rawPhotoPath,
+        stabilizedPhotoPath,
+        0.0,
+      );
       await faceStabilizer.createStabThumbnail(stabilizedPhotoPath.replaceAll('.jpg', '.png'));
+
+      if (requestId != _currentRequestId) {
+        img.dispose();
+        return;
+      }
 
       final int canvasHeight = faceStabilizer.canvasHeight;
       final int canvasWidth = faceStabilizer.canvasWidth;
@@ -290,13 +414,13 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
         _bothEyesYGoal = bothEyesYGoal;
         _lastTx = translateX;
         _lastTy = translateY;
-        _lastSc = scaleFactor;
+        _lastMult = scaleFactor == null ? null : scaleFactor / _baseScale;
         _lastRot = rotationDegrees;
       });
 
       img.dispose();
     } catch (_) {} finally {
-      if (mounted) {
+      if (mounted && requestId == _currentRequestId) {
         setState(() {
           _isProcessing = false;
         });
@@ -304,24 +428,69 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
     }
   }
 
+  void _adjustScale(double delta) {
+    double mult = double.tryParse(_inputController3.text) ?? 1.0;
+    mult += delta;
+    if (mult < 0.01) mult = 0.01;
+    _inputController3.text = mult.toStringAsFixed(2);
+  }
+
   void _onParamChanged() {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 800), () {
       double? tx = double.tryParse(_inputController1.text);
       double? ty = double.tryParse(_inputController2.text);
-      double? sc = double.tryParse(_inputController3.text);
+      double mult = double.tryParse(_inputController3.text) ?? 1.0;
       double? rot = double.tryParse(_inputController4.text);
+      double? sc = _baseScale * mult;
 
       const double tolerance = 0.0001;
       bool changed = (_lastTx == null || (_lastTx! - (tx ?? 0)).abs() > tolerance) ||
           (_lastTy == null || (_lastTy! - (ty ?? 0)).abs() > tolerance) ||
-          (_lastSc == null || (_lastSc! - (sc ?? 0)).abs() > tolerance) ||
+          (_lastMult == null || (_lastMult! - mult).abs() > tolerance) ||
           (_lastRot == null || (_lastRot! - (rot ?? 0)).abs() > tolerance);
 
       if (changed) {
         processRequest(tx, ty, sc, rot);
       }
     });
+  }
+
+  void _adjustOffsets({int dx = 0, int dy = 0}) {
+    double tx = double.tryParse(_inputController1.text) ?? 0;
+    double ty = double.tryParse(_inputController2.text) ?? 0;
+
+    tx += dx;
+    ty += dy;
+
+    _inputController1.text = tx.toString();
+    _inputController2.text = ty.toString();
+  }
+
+  Widget _buildToolbar(BuildContext context) {
+    final Color barColor = Colors.black.withAlpha((0.75 * 255).round());
+    return ColoredBox(
+      color: barColor,
+      child: SafeArea(
+        top: false,
+        left: false,
+        right: false,
+        child: SizedBox(
+          height: 56,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              IconButton(icon: const Icon(Icons.remove),       onPressed: () => _adjustScale(-0.01)),
+              IconButton(icon: const Icon(Icons.add),          onPressed: () => _adjustScale(0.01)),
+              IconButton(icon: const Icon(Icons.arrow_left),   onPressed: () => _adjustOffsets(dx: -1)),
+              IconButton(icon: const Icon(Icons.arrow_right),  onPressed: () => _adjustOffsets(dx: 1)),
+              IconButton(icon: const Icon(Icons.arrow_upward), onPressed: () => _adjustOffsets(dy: 1)),
+              IconButton(icon: const Icon(Icons.arrow_downward), onPressed: () => _adjustOffsets(dy: -1)),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
