@@ -77,24 +77,25 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
     print("canvasWidth => '$canvasWidth'");
     print("canvasHeight => '$canvasHeight'");
 
-    // TODO:
-    // Set Scale Factor to ~ canvasWidth/imageWidth
-    // First need to (calculate imageWidth from imagePath)
-
+    String localRawPath;
     if (widget.imagePath.contains('/stabilized/')) {
-      final rawPhotoPathRes = await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
+      localRawPath = await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
         p.basenameWithoutExtension(widget.imagePath),
         widget.projectId,
       );
-      setState(() {
-        rawPhotoPath = rawPhotoPathRes;
-      });
     } else {
-      setState(() {
-        rawPhotoPath = widget.imagePath;
-      });
+      localRawPath = widget.imagePath;
     }
-    print(rawPhotoPath);
+    setState(() {
+      rawPhotoPath = localRawPath;
+    });
+
+    final ui.Image? original = await StabUtils.loadImageFromFile(File(localRawPath));
+    if (original != null) {
+      final double defaultScale = canvasWidth / original.width;
+      _inputController3.text = defaultScale.toStringAsFixed(2);
+      original.dispose();
+    }
 
     faceStabilizer = FaceStabilizer(widget.projectId, () => print("Test"));
     await faceStabilizer.init();

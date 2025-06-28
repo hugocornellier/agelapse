@@ -532,15 +532,13 @@ class DB {
     double portraitRatio = portraitCount / totalCount;
     double landscapeRatio = landscapeCount / totalCount;
     print("Debug: Portrait ratio: $portraitRatio, Landscape ratio: $landscapeRatio");
-    if (portraitRatio >= 0.8) {
-      print("Debug: Returning 'portrait'");
-      return 'portrait';
-    } else if (landscapeRatio >= 0.8) {
+
+    if (landscapeRatio >= 0.5) {
       print("Debug: Returning 'landscape'");
       return 'landscape';
     } else {
-      print("Debug: Returning null");
-      return null;
+      print("Debug: Returning 'portrait'");
+      return 'portrait';
     }
   }
 
