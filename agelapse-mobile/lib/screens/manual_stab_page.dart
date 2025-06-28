@@ -9,6 +9,7 @@ import '../services/face_stabilizer.dart';
 import '../utils/dir_utils.dart';
 import '../utils/settings_utils.dart';
 import '../utils/stabilizer_utils/stabilizer_utils.dart';
+import '../widgets/grid_painter_se.dart';
 
 class ManualStabilizationPage extends StatefulWidget {
   final String imagePath;
@@ -35,6 +36,7 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
   int _currentRequestId = 0;
   int? _bothEyesYGoal;
   late String aspectRatio;
+  late String projectOrientation;
   late int canvasHeight;
   late int canvasWidth;
 
@@ -86,10 +88,12 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
   }
 
   Future<void> init() async {
-    String projectOrientation = await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
+    projectOrientation = await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
     String resolution = await SettingsUtil.loadVideoResolution(widget.projectId.toString());
     aspectRatio = await SettingsUtil.loadAspectRatio(widget.projectId.toString());
     double? aspectRatioDecimal = StabUtils.getAspectRatioAsDecimal(aspectRatio);
+
+    print("Project orientation => '${projectOrientation}'");
 
     final double? shortSideDouble = StabUtils.getShortSide(resolution);
     final int longSide = (aspectRatioDecimal! * shortSideDouble!).toInt();
@@ -272,29 +276,41 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
                   _leftEyeXGoal != null &&
                   _rightEyeXGoal != null &&
                   _bothEyesYGoal != null)
-                Stack(
-                  children: [
-                    Image.memory(
-                      _stabilizedImageBytes!,
-                      width: MediaQuery.of(context).size.width,
-                      height: MediaQuery.of(context).size.width * _canvasHeight! / _canvasWidth!,
-                      fit: BoxFit.fill,
+                Builder(builder: (context) {
+                  final double fullWidth = MediaQuery.of(context).size.width;
+                  final bool isPortrait = projectOrientation == 'portrait';
+                  final double previewWidth = isPortrait ? fullWidth * 0.8 : fullWidth;
+                  final double previewHeight = previewWidth * _canvasHeight! / _canvasWidth!;
+                  return Center(
+                    child: Stack(
+                      children: [
+                        Image.memory(
+                          _stabilizedImageBytes!,
+                          width: previewWidth,
+                          height: previewHeight,
+                          fit: BoxFit.fill,
+                        ),
+                        CustomPaint(
+                          painter: GridPainterSE(
+                              (_rightEyeXGoal! - _leftEyeXGoal!) / (2 * _canvasWidth!),
+                              _bothEyesYGoal! / _canvasHeight!,
+                              null,
+                              null,
+                              null,
+                              aspectRatio,
+                              projectOrientation,
+                              hideToolTip: true
+                          ),
+                          child: SizedBox(
+                            width: previewWidth,
+                            height: previewHeight,
+                          ),
+                        ),
+                      ],
                     ),
-                    CustomPaint(
-                      painter: LineOverlayPainter(
-                        canvasWidth: _canvasWidth!,
-                        canvasHeight: _canvasHeight!,
-                        leftEyeXGoal: _leftEyeXGoal!,
-                        rightEyeXGoal: _rightEyeXGoal!,
-                        bothEyesYGoal: _bothEyesYGoal!,
-                      ),
-                      child: SizedBox(
-                        width: MediaQuery.of(context).size.width,
-                        height: MediaQuery.of(context).size.width * _canvasHeight! / _canvasWidth!,
-                      ),
-                    ),
-                  ],
-                ),
+                  );
+                }),
+              const SizedBox(height: 88),
             ],
           ),
         ),
@@ -492,30 +508,4 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
       ),
     );
   }
-}
-
-class LineOverlayPainter extends CustomPainter {
-  final int canvasWidth;
-  final int canvasHeight;
-  final int leftEyeXGoal;
-  final int rightEyeXGoal;
-  final int bothEyesYGoal;
-  LineOverlayPainter({
-    required this.canvasWidth,
-    required this.canvasHeight,
-    required this.leftEyeXGoal,
-    required this.rightEyeXGoal,
-    required this.bothEyesYGoal,
-  });
-  @override
-  void paint(Canvas canvas, Size size) {
-    final double scaleX = size.width / canvasWidth;
-    final double scaleY = size.height / canvasHeight;
-    final paint = Paint()..color = Colors.red..strokeWidth = 2.0;
-    canvas.drawLine(Offset(0, bothEyesYGoal * scaleY), Offset(size.width, bothEyesYGoal * scaleY), paint);
-    canvas.drawLine(Offset(leftEyeXGoal * scaleX, 0), Offset(leftEyeXGoal * scaleX, size.height), paint);
-    canvas.drawLine(Offset(rightEyeXGoal * scaleX, 0), Offset(rightEyeXGoal * scaleX, size.height), paint);
-  }
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
