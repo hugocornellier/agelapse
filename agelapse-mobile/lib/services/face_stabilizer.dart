@@ -64,7 +64,7 @@ class FaceStabilizer {
     projectOrientation = await SettingsUtil.loadProjectOrientation(projectId.toString());
     resolution = await SettingsUtil.loadVideoResolution(projectId.toString());
     aspectRatio = await SettingsUtil.loadAspectRatio(projectId.toString());
-    aspectRatioDecimal = getAspectRatioAsDecimal(aspectRatio);
+    aspectRatioDecimal = StabUtils.getAspectRatioAsDecimal(aspectRatio);
 
     if (projectType == "face") {
       final FaceDetector faceDetector = FaceDetector(options: FaceDetectorOptions(
@@ -83,7 +83,7 @@ class FaceStabilizer {
       _poseDetector = poseDetector;
     }
 
-    final double? shortSideDouble = getShortSide(resolution);
+    final double? shortSideDouble = StabUtils.getShortSide(resolution);
     final int longSide = (aspectRatioDecimal! * shortSideDouble!).toInt();
     final int shortSide = shortSideDouble.toInt();
 
@@ -652,23 +652,6 @@ class FaceStabilizer {
     await StabUtils.preparePNG(rawPhotoPath);
     final String pngPath = await DirUtils.getPngPathFromRawPhotoPath(rawPhotoPath);
     return (await StabUtils.getFacesFromFilepath(pngPath, _faceDetector!, filterByFaceSize: filterByFaceSize, imageWidth: width));
-  }
-
-  static double? getAspectRatioAsDecimal(String aspectRatio) {
-    if (!aspectRatio.contains(':')) return null;
-    final List<String> split = aspectRatio.split(":");
-    int? dividend = int.tryParse(split[0]);
-    int? divisor = int.tryParse(split[1]);
-    if (dividend == null || divisor == null) return null;
-    return dividend / divisor;
-  }
-
-  double? getShortSide(String resolution) {
-    if (resolution == "1080p") return 1080;
-    if (resolution == "2K") return 1152;
-    if (resolution == "3K") return 1728;
-    if (resolution == "4K") return 2304;
-    return null;
   }
 
   List<Point<int>?> getEyesFromFaces(List<Face> faces) => StabUtils.extractEyePositions(faces);
