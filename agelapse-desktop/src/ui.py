@@ -1,14 +1,14 @@
-import concurrent.futures
 import os
 import platform
+import shutil
 import subprocess
 import sys
-import tempfile, shutil
+import tempfile
 import time
+import exifread
+
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-
-import exifread
 from PyQt5 import QtGui
 from PyQt5.QtCore import Qt, pyqtSignal, QRect, QEvent, QRectF
 from PyQt5.QtGui import (
@@ -17,11 +17,12 @@ from PyQt5.QtGui import (
 )
 from PyQt5.QtSvg import QSvgWidget
 from PyQt5.QtWidgets import (
-  QMainWindow, QLabel, QVBoxLayout, QWidget, QProgressBar, QPushButton, QGridLayout, QStackedWidget, QListWidget,
-  QListWidgetItem, QHBoxLayout, QApplication, QFileDialog, QTextEdit,
+  QMainWindow, QLabel, QVBoxLayout, QWidget, QProgressBar, QPushButton, QGridLayout, QStackedWidget, QHBoxLayout,
+  QApplication, QFileDialog, QTextEdit,
   QComboBox, QSizePolicy, QFrame, QGraphicsColorizeEffect, QTableWidgetItem, QTableWidget, QHeaderView
 )
 from src.video_compile import compile_video
+from version import __version__
 
 DROP_AREA_BG_COLOR = "#334155"
 DROP_AREA_BORDER_COLOR = "#475569"
@@ -212,7 +213,7 @@ class CustomTitleBar(QWidget):
 
     logo_layout.addWidget(self.logo_label)
 
-    self.version_badge = QLabel("Desktop 0.3.1", self.logo_container)
+    self.version_badge = QLabel(f"Desktop {__version__}", self.logo_container)
     self.version_badge.setStyleSheet("""
         background-color: #f97316;
         color: white;
@@ -289,7 +290,7 @@ class CustomTitleBar(QWidget):
 
     logo_layout.addWidget(self.logo_label)
 
-    self.version_badge = QLabel("Desktop 0.3.1", self.logo_container)
+    self.version_badge = QLabel(f"Desktop {__version__}", self.logo_container)
     self.version_badge.setStyleSheet("""
         background-color: rgba(249,115,22,0.75);
         color: white;
