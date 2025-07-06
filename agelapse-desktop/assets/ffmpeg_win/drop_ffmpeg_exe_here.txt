@@ -1,0 +1,4 @@
+Should you wish to compile or run AgeLapse Desktop on Windows, you must download the ffmpeg executable
+(https://www.ffmpeg.org/download.html), and place it at this path: assets/ffmpeg_win/ffmpeg.exe.
+
+This .txt file is a placeholder.
