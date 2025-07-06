@@ -5,7 +5,7 @@ import os, sys, inspect, pathlib, fdlite
 # locate project root & import version
 # -------------------------------------------------
 spec_path = pathlib.Path(inspect.getfile(inspect.currentframe())).resolve()
-root_dir  = spec_path.parent
+root_dir  = spec_path.parent.parent
 sys.path.insert(0, str(root_dir))
 
 from version import __version__ as ver

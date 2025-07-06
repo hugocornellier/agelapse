@@ -4,7 +4,7 @@ import os, sys, inspect, pathlib, fdlite
 # figure out where we are & import version
 # -------------------------------------------------
 spec_path = pathlib.Path(inspect.getfile(inspect.currentframe())).resolve()
-root_dir  = spec_path.parent
+root_dir  = spec_path.parent.parent
 sys.path.insert(0, str(root_dir))
 
 from version import __version__ as ver
@@ -61,7 +61,7 @@ exe = EXE(
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
-    target_arch='x86_64',
+    target_arch='arm64',
     codesign_identity=None,
     entitlements_file=None,
     icon=str(assets_dir / '1024_1024x1024.icns'),
