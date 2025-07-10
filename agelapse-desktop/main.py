@@ -1,3 +1,6 @@
+import tensorflow as tf
+print("[DEBUG] TensorFlow", tf.__version__)
+
 import sys
 from PyQt5.QtWidgets import QApplication
 from src.ui import MainWindow

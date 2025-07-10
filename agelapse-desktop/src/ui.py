@@ -1122,6 +1122,7 @@ class MainWindow(QMainWindow):
         self.selected_resolution
       )
     except Exception as e:
+      print(f"Error: {e}")
       self.status_text_signal.emit(f"Error: {e}")
     else:
       self.finished_signal.emit()
