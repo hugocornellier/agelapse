@@ -30,6 +30,8 @@ pillow==10.4.0
 pillow_heif==0.18.0
 protobuf==5.29.5
 Pygments==2.19.1
+pyobjc-core==11.1
+pyobjc-framework-Cocoa==11.1
 PyQt5==5.15.11
 PyQt5-Qt5==5.15.17
 PyQt5_sip==12.15.0

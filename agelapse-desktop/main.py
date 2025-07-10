@@ -1,5 +1,7 @@
+print("[LOG] Initializing Tensorflow, this may take a moment. Please wait...")
+
 import tensorflow as tf
-print("[DEBUG] TensorFlow", tf.__version__)
+print("[LOG] TensorFlow", tf.__version__)
 
 import sys
 from PyQt5.QtWidgets import QApplication
