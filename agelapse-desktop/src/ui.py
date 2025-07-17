@@ -880,7 +880,7 @@ class MainWindow(QMainWindow):
     self.image_list_icon.setGraphicsEffect(icon_effect)
 
     self.image_list_label = QLabel("Image List")
-    self.image_list_label.setStyleSheet("font-size:18px; font-weight:600;")
+    self.image_list_label.setStyleSheet("font-size:18px; font-weight:600; color:white")
 
     header_layout.addWidget(self.image_list_icon)
     header_layout.addWidget(self.image_list_label)
