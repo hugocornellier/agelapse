@@ -77,6 +77,19 @@ GLASS_PANEL = (
     "border:1px solid rgba(51,65,85,0.5); border-radius:12px;}"
 )
 
+def styled_combobox(parent=None):
+  cb = QComboBox(parent)
+  cb.setStyleSheet("""
+      QComboBox {
+          background-color: #333333;
+          color: white;
+          padding: 5px;
+      }
+      QComboBox:hover {
+          background-color: #262626;
+      }
+  """)
+  return cb
 
 def get_path(filename):
   name = os.path.splitext(filename)[0]
@@ -487,13 +500,10 @@ class MainWindow(QMainWindow):
 
     self.main_widget.setObjectName("main_widget")
     self.main_widget.setStyleSheet("""
-    QWidget#main_widget {
-        background: qlineargradient(
-            spread:pad, x1:0, y1:0, x2:0, y2:1,
-            stop:0 #0f172a, stop:0.5 #1e293b, stop:1 #0f172a
-        );
-        color: white;
-    }
+        QWidget#main_widget {
+            background-color: #0f172a;
+            color: white;
+        }
     """)
 
     self.create_settings_section()
@@ -557,49 +567,18 @@ class MainWindow(QMainWindow):
     self.settings_section = QWidget(self)
     settings_layout = QVBoxLayout(self.settings_section)
 
-    self.framerate_dropdown = QComboBox(self.settings_section)
+    self.framerate_dropdown = styled_combobox(self.settings_section)
     self.framerate_dropdown.addItems([str(i) for i in range(1, 31)])
-    self.framerate_dropdown.setStyleSheet("""
-        QComboBox {
-            background-color: #333333;
-            color: white;
-            padding: 5px;
-        }
-        QComboBox:hover {
-            background-color: #262626;
-        }
-    """)
     self.framerate_dropdown.setCurrentIndex(self.selected_framerate - 1)
     self.framerate_dropdown.currentIndexChanged.connect(self.update_framerate)
 
-    self.image_order_dropdown = QComboBox(self.settings_section)
+    self.image_order_dropdown = styled_combobox(self.settings_section)
     self.image_order_dropdown.addItems(["Filename (Asc)", "Filename (Desc)"])
-    self.image_order_dropdown.setStyleSheet("""
-        QComboBox {
-            background-color: #333333;
-            color: white;
-            padding: 5px;
-        }
-        QComboBox:hover {
-            background-color: #262626;
-        }
-    """)
     self.image_order_dropdown.setCurrentIndex(0)
     self.image_order_dropdown.currentIndexChanged.connect(self.update_image_order)
 
-    self.resolution_dropdown = QComboBox(self.settings_section)
+    self.resolution_dropdown = styled_combobox(self.settings_section)
     self.resolution_dropdown.addItems(["1080p (1920 x 1080)", "4K (3840 x 2160)"])
-    self.resolution_dropdown.setStyleSheet("""
-        QComboBox {
-            background-color: #333333;
-            color: white;
-            padding: 5px;
-        }
-        QComboBox:hover {
-            background-color: #262626;
-        }
-    """)
-
     self.resolution_dropdown.currentIndexChanged.connect(self.update_resolution)
 
     settings_layout.addWidget(self.framerate_dropdown)
@@ -697,99 +676,78 @@ class MainWindow(QMainWindow):
         }
     """)
 
-    self.start_button = make_icon_button(
-      "assets/icons/play.svg",
-      "Start Stabilization",
-      177,
-      """
-          QPushButton {
-              border-radius: 8px;
-              height: 50px;
-              min-width: 177px;
-              background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
-                  stop:0 #2563EB, stop:1 #1D4ED8);
-          }
-          QPushButton:hover {
-              background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
-                  stop:0 #1D4ED8, stop:1 #1E40AF);
-          }
-          QPushButton:disabled {
-              background: #555;
-          }
-      """,
-      self.start_stabilization,
-      self
-    )
-    self.start_button.setVisible(False)
+    BUTTON_DEFS = [
+      ("assets/icons/play.svg", "Start Stabilization", 177, """
+            QPushButton {
+                border-radius: 8px;
+                height: 50px;
+                min-width: 177px;
+                background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
+                    stop:0 #2563EB, stop:1 #1D4ED8);
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
+                    stop:0 #1D4ED8, stop:1 #1E40AF);
+            }
+            QPushButton:disabled {
+                background: #555;
+            }
+        """, self.start_stabilization),
+      ("assets/icons/folder.svg", "Open Stabilized Folder", 205, """
+            QPushButton {
+                border-radius: 8px;
+                height: 50px;
+                min-width: 205px;
+                background-color: #00a63e;
+            }
+            QPushButton:hover {
+                background-color: #475569;
+            }
+            QPushButton:disabled {
+                background: #555;
+            }
+        """, self.open_stabilized_folder),
+      ("assets/icons/folder.svg", "Open Video Folder", 185, """
+            QPushButton {
+                border-radius: 8px;
+                height: 50px;
+                min-width: 185px;
+                background-color: #00a63e;
+            }
+            QPushButton:hover {
+                background-color: #475569;
+            }
+            QPushButton:disabled {
+                background: #555;
+            }
+        """, self.open_video_folder),
+      ("assets/icons/eye.svg", "Show Log", 123, """
+            QPushButton {
+                border-radius: 8px;
+                height: 50px;
+                max-width: 123px;
+                background-color: #334155;
+            }
+            QPushButton:hover {
+                background-color: #475569;
+            }
+            QPushButton:disabled {
+                background: #555;
+            }
+        """, self.toggle_log),
+    ]
+    self.buttons = {}
+    for icon, text, width, style, slot in BUTTON_DEFS:
+      btn = make_icon_button(icon, text, width, style, slot, self)
+      if text != "Show Log":
+        btn.setVisible(False)
+      self.buttons[text] = btn
+
+    self.start_button = self.buttons["Start Stabilization"]
     self.start_button.setEnabled(False)
-
-    self.open_stabilized_folder_button = make_icon_button(
-      "assets/icons/folder.svg",
-      "Open Stabilized Folder",
-      205,
-      """
-          QPushButton {
-              border-radius: 8px;
-              height: 50px;
-              min-width: 205px;
-              background-color: #00a63e;
-          }
-          QPushButton:hover {
-              background-color: #475569;
-          }
-          QPushButton:disabled {
-              background: #555;
-          }
-      """,
-      self.open_stabilized_folder,
-      self
-    )
-    self.open_stabilized_folder_button.setVisible(False)
-
-    self.open_video_folder_button = make_icon_button(
-      "assets/icons/folder.svg",
-      "Open Video Folder",
-      185,
-      """
-          QPushButton {
-              border-radius: 8px;
-              height: 50px;
-              min-width: 185px;
-              background-color: #00a63e;
-          }
-          QPushButton:hover {
-              background-color: #475569;
-          }
-          QPushButton:disabled {
-              background: #555;
-          }
-      """,
-      self.open_video_folder,
-      self
-    )
-    self.open_video_folder_button.setVisible(False)
-
-    self.show_log_button = make_icon_button(
-      "assets/icons/eye.svg",
-      "Show Log",
-      123,
-      """
-          QPushButton {
-              border-radius: 8px;
-              height: 50px;
-              max-width: 123px;
-              background-color: #334155;
-          }
-          QPushButton:hover {
-              background-color: #475569;
-          }
-          QPushButton:disabled {
-              background: #555;
-          }
-      """,
-      self.toggle_log,
-      self
-    )
+    self.open_stabilized_folder_button = self.buttons["Open Stabilized Folder"]
+    self.open_video_folder_button = self.buttons["Open Video Folder"]
+    self.show_log_button = self.buttons["Show Log"]
     self.show_log_label = self.show_log_button.findChild(QLabel)
 
     self.progress_bar = QProgressBar(self)
@@ -843,7 +801,7 @@ class MainWindow(QMainWindow):
     self.settings_icon.setGraphicsEffect(icon_effect)
 
     self.settings_title_lbl = QLabel("Settings")
-    self.settings_title_lbl.setStyleSheet("font-size:18px;font-weight:600")
+    self.settings_title_lbl.setStyleSheet("font-size: 18px; font-weight: 600; color: white;")
 
     header_hbox.addWidget(self.settings_icon)
     header_hbox.addWidget(self.settings_title_lbl)
@@ -1011,32 +969,12 @@ class MainWindow(QMainWindow):
       self.image_list_widget.setVisible(True)
 
   def process_files(self, file_paths):
-    try:
-      self.drop_area.setText("Processing files...")
-      QApplication.processEvents()
-      self.image_paths = [
-        p for p in file_paths
-        if p.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.heic'))
-      ]
-      if self.image_paths:
-        self.apply_sort()
-        self.populate_image_table()
-        count = len(self.image_paths)
-        self.image_list_label.setText(f"Image List ({count})")
-        print(f"[LOG] Loaded {count} images.")
-        self.start_button.setEnabled(True)
-        self.drop_area.setVisible(False)
-        self.intro_label.setVisible(False)
-        self.intro_line.setVisible(False)
-        self.image_list_widget.setVisible(True)
-        self.start_button.setVisible(True)
-        self.image_list_header.setVisible(True)
-        self.space_between.setVisible(True)
+    self.drop_area.setText("Processing files...")
+    QApplication.processEvents()
+    if self._load_images(file_paths):
         self.input_dir = os.path.dirname(self.image_paths[0])
-      else:
+    else:
         self.drop_area.setText("No valid image files selected.")
-    except Exception as e:
-      self.drop_area.setText(f"An unexpected error occurred: {e}")
 
   def browse_directory(self):
     files, _ = QFileDialog.getOpenFileNames(
@@ -1059,25 +997,11 @@ class MainWindow(QMainWindow):
       self.drop_area.setText("Processing directory...")
       QApplication.processEvents()
       self.input_dir = get_path(directory)
-      self.image_paths = [
-        os.path.join(self.input_dir, f) for f in os.listdir(self.input_dir)
-        if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.heic'))
+      files = [
+        os.path.join(self.input_dir, f)
+        for f in os.listdir(self.input_dir)
       ]
-      if self.image_paths:
-        self.apply_sort()
-        self.populate_image_table()
-        count = len(self.image_paths)
-        self.image_list_label.setText(f"Image List ({count})")
-        print(f"[LOG] Loaded {count} images.")
-        self.start_button.setEnabled(True)
-        self.drop_area.setVisible(False)
-        self.intro_label.setVisible(False)
-        self.intro_line.setVisible(False)
-        self.image_list_widget.setVisible(True)
-        self.start_button.setVisible(True)
-        self.image_list_header.setVisible(True)
-        self.space_between.setVisible(True)
-      else:
+      if not self._load_images(files):
         self.drop_area.setText("No valid images found in the directory.")
     except FileNotFoundError as e:
       self.drop_area.setText(f"Error: Directory not found: {e}")
@@ -1140,6 +1064,28 @@ class MainWindow(QMainWindow):
   def update_progress(self, value):
     self.progress_bar.setValue(value)
     self.progress_value_label.setText(f"{value}%")
+
+  def _load_images(self, paths):
+    self.image_paths = [
+        p for p in paths
+        if p.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.heic'))
+    ]
+    if not self.image_paths:
+        return False
+    self.apply_sort()
+    self.populate_image_table()
+    count = len(self.image_paths)
+    self.image_list_label.setText(f"Image List ({count})")
+    print(f"[LOG] Loaded {count} images.")
+    self.start_button.setEnabled(True)
+    self.drop_area.setVisible(False)
+    self.intro_label.setVisible(False)
+    self.intro_line.setVisible(False)
+    self.image_list_widget.setVisible(True)
+    self.start_button.setVisible(True)
+    self.image_list_header.setVisible(True)
+    self.space_between.setVisible(True)
+    return True
 
   def on_processing_finished(self):
     self.status_header.setText("Compiling video...")

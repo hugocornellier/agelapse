@@ -13,7 +13,7 @@ def main():
     logo_path = "./assets/images/agelapse.png"
     logo = QPixmap(logo_path).scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation)
 
-    splash_size = QSize(600, 400)
+    splash_size = QSize(650, 450)
     splash_pixmap = QPixmap(splash_size)
     splash_pixmap.fill(QColor("#1e1e1e"))
 
