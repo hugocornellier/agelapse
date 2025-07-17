@@ -72,6 +72,7 @@ a = Analysis(
         # app assets
         (str(assets_dir / "images" / "agelapse.png"),          "assets/images/"),
         (str(assets_dir / "ffmpeg_win" / "ffmpeg.exe"),        "assets/ffmpeg_win/"),
+        (str(assets_dir / "fonts" / "Inter-VariableFont.ttf"), "assets/fonts/"),
         *icon_datas,
     ],
     hiddenimports=[

@@ -228,11 +228,12 @@ class CustomTitleBar(QWidget):
 
     self.version_badge = QLabel(f"Desktop {__version__}", self.logo_container)
     self.version_badge.setStyleSheet("""
-        background-color: #f97316;
+        background-color: rgba(249,115,22,0.75);
         color: white;
         font-size: 10px;
-        padding: 2px 8px;
-        border: 1px solid #ea580c;
+        padding: 1px 2px;
+        border: 1px solid rgba(234,88,12,0.6);
+        margin-left: 7px;
         border-radius: 10px;
     """)
     logo_layout.addWidget(self.version_badge)

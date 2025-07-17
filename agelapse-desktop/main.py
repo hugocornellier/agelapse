@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QApplication, QSplashScreen
-from PyQt5.QtGui import QPixmap, QPainter, QColor, QFont
+from PyQt5.QtGui import QPixmap, QPainter, QColor, QFont, QFontDatabase
 from PyQt5.QtCore import Qt, QSize, QRect
 
 import sys
@@ -7,8 +7,13 @@ from src.ui import MainWindow
 
 
 def main():
+    QApplication.setAttribute(Qt.ApplicationAttribute.AA_EnableHighDpiScaling)
+    QApplication.setAttribute(Qt.ApplicationAttribute.AA_UseHighDpiPixmaps)
     app = QApplication(sys.argv)
-
+    font_id = QFontDatabase.addApplicationFont("assets/fonts/Inter-VariableFont.ttf")
+    if font_id != -1:
+        family = QFontDatabase.applicationFontFamilies(font_id)[0]
+        app.setFont(QFont(family, 12))
 
     logo_path = "./assets/images/agelapse.png"
     logo = QPixmap(logo_path).scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation)

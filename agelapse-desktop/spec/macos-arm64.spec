@@ -31,6 +31,7 @@ a = Analysis(
          'fdlite/data/'),
         (str(assets_dir / 'images' / 'agelapse.png'),          'assets/images/'),
         (str(assets_dir / 'ffmpeg_mac' / 'ffmpeg'),            'assets/ffmpeg_mac/'),
+        (str(assets_dir / "fonts" / "Inter-VariableFont.ttf"), "assets/fonts/"),
         *icon_datas,
     ],
     hiddenimports=[
