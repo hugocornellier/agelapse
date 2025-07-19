@@ -31,6 +31,8 @@ protobuf==4.25.8
 Pygments==2.19.1
 pyinstaller==6.14.1
 pyinstaller-hooks-contrib==2025.5
+pyobjc-core==11.1
+pyobjc-framework-Cocoa==11.1
 PyQt5==5.15.11
 PyQt5-Qt5==5.15.17
 PyQt5_sip==12.17.0
