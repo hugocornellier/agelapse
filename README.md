@@ -39,8 +39,8 @@ Download AgeLapse: [https://agelapse.com](https://agelapse.com)
 
 ## Development Setup
 
-- **Desktop:** To run the desktop application in a development environment, please refer to the [agelapse-desktop README](./agelapse-desktop/README.md).
-- **Mobile:** To run the mobile application in a development environment, please refer to the [agelapse-mobile README](./agelapse-mobile/README.md).
+- **Desktop:** To run the desktop application in a development environment, refer to the [agelapse-desktop README](./agelapse-desktop/README.md).
+- **Mobile:** To run the mobile application in a development environment, refer to the [agelapse-mobile README](./agelapse-mobile/README.md).
 
 ## Resources
 
