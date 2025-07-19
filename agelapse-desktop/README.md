@@ -2,7 +2,7 @@
 
 ![AgeLapse Logo](https://i.imgur.com/lfC2Y4y.png)
 
-Here is a simple tutorial to help developers run AgeLapse Desktop in a development environment.
+Here is a simple tutorial to help developers run AgeLapse Desktop in a development environment. 
 
 ## For Non-Devs:
 
