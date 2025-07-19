@@ -41,6 +41,11 @@ Download AgeLapse: [https://agelapse.com](https://agelapse.com)
 | iOS       | Available   |
 | Linux     | Coming Soon |
 
+## Development Setup
+
+- **Desktop:** To run the desktop application in a development environment, please refer to the [agelapse-desktop README](./agelapse-desktop/README.md).
+- **Mobile:** To run the mobile application in a development environment, please refer to the [agelapse-mobile README](./agelapse-mobile/README.md).
+
 ## Resources
 
 - **Demo Video:** [https://www.youtube.com/watch?v=vMOWSAHdwhA](https://www.youtube.com/watch?v=vMOWSAHdwhA)
