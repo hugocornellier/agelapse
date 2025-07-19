@@ -106,7 +106,7 @@ exe = EXE(
     argv_emulation=False,
     target_arch="amd64",
     version=version_info,
-    icon=str(assets_dir / "1024_1024x1024.ico"),
+    icon=str(assets_dir / "256x256.ico"),
 )
 
 coll = COLLECT(
