@@ -42,10 +42,6 @@ def main():
     splash.show()
     app.processEvents()
 
-    print("[LOG] Initializing Tensorflow, this may take a moment. Please wait...")
-    import tensorflow as tf
-    print("[LOG] TensorFlow", tf.__version__)
-
     window = MainWindow()
     window.show()
     splash.finish(window)
