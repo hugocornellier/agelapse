@@ -2,9 +2,7 @@
 
 ![AgeLapse Logo](https://i.imgur.com/lfC2Y4y.png)
 
-**AgeLapse** is a comprehensive tool for creating, stabilizing and exporting aging timelapses, i.e. "selfie a day" projects.  
-
-This is the Flutter build of AgeLapse. This README serves mostly to help developers run AgeLapse in a development environment.
+Here is a simple tutorial to help developers run AgeLapse Desktop in a development environment.
 
 ## For Non-Devs:
 
