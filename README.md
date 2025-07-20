@@ -1,4 +1,18 @@
-![AgeLapse Logo](https://i.imgur.com/CmsixvW.png)
+<p align="center">
+  <img
+    src="https://i.imgur.com/CmsixvW.png"
+    alt="Demo animation"
+  />
+</p>
+
+<p align="center">
+  <img
+    src="/agelapse-mobile/assets/demo_50fps_4.gif"
+    alt="Demo animation"
+    width="540"
+  />
+</p>
+
 
 ## Overview
 
