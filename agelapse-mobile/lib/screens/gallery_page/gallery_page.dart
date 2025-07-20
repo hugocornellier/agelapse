@@ -1236,8 +1236,8 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
                   );
                 } else if (snapshot.data == "no_faces_found" || snapshot.data == "stab_failed") {
                   var text = snapshot.data == "no_faces_found"
-                      ? "Stabilization failed. No faces found."
-                      : "Stabilization failed. We were unable to stabilize facial landmarks.";
+                      ? "Stabilization failed. No faces found. Try the 'manual stabilization' option."
+                      : "Stabilization failed. We were unable to stabilize facial landmarks. Try the 'manual stabilization' option.";
 
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 32.0, horizontal: 20.0),

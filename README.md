@@ -24,16 +24,11 @@ Download AgeLapse: [https://agelapse.com](https://agelapse.com)
 
 **Mobile Import Note:** To easily import a large number of photos into the mobile version, create a .zip file containing all files.
 
-## What's New - Mobile v1.5.1
+## What's New - Mobile v1.5.2
 
 ### New Features
-- Customize your ghost/guide photo. In the gallery, you can now set a photo as your guide. Thanks to those who wrote in and suggested this feature.
-- Full support for Landscape photos within the app's camera WITH guides/ghost photos. Thanks to those that suggested this.
-
-### Improvements & Bug Fixes
-- Project exports: fixed bug where exporting a project with stabilized photos could cause the .zip archive to fail to generate.
-- Fixed a bug that prevented some images from appearing on specific devices in the tutorial section.
-- Automatically set a new project orientation to Landscape/Portrait based on the initial import.   
+- Improved "manual stabilization" option for when AgeLapse fails to detect landmarks (eg: if the user is wearing sunglasses, the eyes are partially obstructed, etc.)
+- Added to the user tutorials + more informational tooltips to improve UX 
 
 ## What's New - Desktop v0.4.0
 
