@@ -2,9 +2,7 @@
 
 ![AgeLapse Logo](https://i.imgur.com/lfC2Y4y.png)
 
-**AgeLapse** is a comprehensive tool for creating, stabilizing and exporting aging timelapses, i.e. "selfie a day" projects.  
-
-This is the Flutter build of AgeLapse. This README serves mostly to help developers run AgeLapse in a development environment.
+Here is a simple tutorial to help developers run AgeLapse Mobile in a development environment. This is a Flutter build, and will run on iOS and Android. 
 
 ## For Non-Devs:
 
@@ -26,10 +24,14 @@ Not a developer and just looking to install the app? Click here: https://agelaps
 
    ```cd agelapse/agelapse-mobile```
 
-3. **Install Dependencies**:
+3. **Check flutter doctor**. Address anything listed before proceeding:
+
+   ```flutter doctor```
+
+4. **Install Dependencies**:
 
    ```flutter pub get```
 
-4. **Run app**:
+5. **Run app**:
 
    ```flutter run```
