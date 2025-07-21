@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:AgeLapse/screens/project_page.dart';
+import '../screens/project_page.dart';
 import 'package:flutter/material.dart';
 import '../services/database_helper.dart';
 import '../services/settings_cache.dart';

@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:AgeLapse/screens/project_page.dart';
+import '../screens/project_page.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
 import '../screens/create_project_page.dart';

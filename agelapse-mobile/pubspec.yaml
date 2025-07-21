@@ -1,4 +1,4 @@
-name: AgeLapse
+name: agelapse
 description: A powerful tool for creating stabilized aging timelapses.
 publish_to: 'none'
 
@@ -14,7 +14,7 @@ dependencies:
   async_zip: ^0.1.0
   camera: ^0.11.0
   camera_android_camerax: 0.6.7
-  chewie: ^1.11.3
+  chewie: ^1.12.1
   cupertino_icons: ^1.0.8
   exif: ^3.3.0
   ffmpeg_kit_flutter_new: ^2.0.0
@@ -22,7 +22,8 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_email_sender: ^7.0.0
-  flutter_local_notifications: ^19.3.0
+  flutter_launcher_icons: ^0.14.4
+  flutter_local_notifications: ^19.3.1
   flutter_native_splash: ^2.4.6
   flutter_svg: ^2.2.0
   flutter_timezone: ^4.1.1
@@ -33,8 +34,8 @@ dependencies:
   image: ^4.5.4
   intl: ^0.20.2
   path_provider: ^2.1.5
-  permission_handler: ^12.0.0+1
-  provider: ^6.1.4
+  permission_handler: ^12.0.1
+  provider: ^6.1.5
   saver_gallery: ^4.0.1
   sensors_plus: ^6.1.1
   share_plus: ^11.0.0
@@ -49,6 +50,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: "^0.14.4"
 
 flutter:
   fonts:
@@ -61,6 +63,11 @@ flutter:
     - assets/images/
     - assets/ghost-custom.svg
     - assets/relax.svg
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/app_icon.jpg"
 
 flutter_native_splash:
   color: "#2b2b2b"
