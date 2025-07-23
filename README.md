@@ -7,7 +7,7 @@
 
 <p align="center">
   <img
-    src="/agelapse-mobile/assets/demo_50fps_4.gif"
+    src="https://i.imgur.com/yo6FLCd.gif"
     alt="Demo animation"
     width="540"
   />
