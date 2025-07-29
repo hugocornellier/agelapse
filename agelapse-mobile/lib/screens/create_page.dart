@@ -461,7 +461,9 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
     String projectOrientation = await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
     final String videoOutputPath = await DirUtils.getVideoOutputPath(widget.projectId, projectOrientation);
 
-    final result = await Share.shareXFiles([XFile(videoOutputPath)]);
+    final result = await SharePlus.instance.share(
+      ShareParams(files: [XFile(videoOutputPath)]),
+    );
     if (result.status == ShareResultStatus.success) {
       // Success
     }
