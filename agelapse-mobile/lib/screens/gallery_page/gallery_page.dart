@@ -588,40 +588,44 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
   }
 
   Future<void> _pickFiles() async {
-    setState(() {
-      photosImported = 0;
-      successfullyImported = 0;
-      _tabController.index = 1;
-    });
-
-    FilePickerResult? pickedFiles;
     try {
-      pickedFiles = await FilePicker.platform.pickFiles(allowMultiple: true);
+      setState(() {
+        photosImported = 0;
+        successfullyImported = 0;
+        _tabController.index = 1;
+      });
+
+      FilePickerResult? pickedFiles;
+      try {
+        pickedFiles = await FilePicker.platform.pickFiles(allowMultiple: true);
+      } catch (e) {
+        return;
+      }
+
+      if (pickedFiles == null) return;
+
+      setState(() => isImporting = true);
+
+      if (widget.stabilizingRunningInMain) {
+        widget.cancelStabCallback();
+      }
+
+      await widget.processPickedFiles(pickedFiles, processPickedFile);
+
+      final String projectOrientationRaw = await SettingsUtil.loadProjectOrientation(projectIdStr);
+      setState(() {
+        projectOrientation = projectOrientationRaw;
+      });
+
+      widget.refreshSettings();
+      widget.stabCallback();
+      setState(() => isImporting = false);
+      _loadImages();
+
+      _showImportCompleteDialog(successfullyImported, photosImported - successfullyImported);
     } catch (e) {
-      return;
+      print("ERROR CAUGHT IN PICK FILES");
     }
-
-    if (pickedFiles == null) return;
-
-    setState(() => isImporting = true);
-
-    if (widget.stabilizingRunningInMain) {
-      widget.cancelStabCallback();
-    }
-
-    await widget.processPickedFiles(pickedFiles, processPickedFile);
-
-    final String projectOrientationRaw = await SettingsUtil.loadProjectOrientation(projectIdStr);
-    setState(() {
-      projectOrientation = projectOrientationRaw;
-    });
-
-    widget.refreshSettings();
-    widget.stabCallback();
-    setState(() => isImporting = false);
-    _loadImages();
-
-    _showImportCompleteDialog(successfullyImported, photosImported - successfullyImported);
   }
 
   Future<void> processPickedFile(file) async {
