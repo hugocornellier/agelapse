@@ -1,0 +1,63 @@
+name: wechat_assets_picker
+version: 9.5.1
+description: |
+  An image picker (also with videos and audio)
+  for Flutter projects based on WeChat's UI,
+  with full support for customization.
+topics:
+  - picker
+  - image
+  - audio
+  - video
+  - wechat
+
+repository: https://github.com/fluttercandies/flutter_wechat_assets_picker
+issue_tracker: https://github.com/fluttercandies/flutter_wechat_assets_picker/issues
+
+environment:
+  sdk: ^3.4.0
+  flutter: '>=3.22.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  wechat_picker_library: ^1.0.5
+
+  extended_image: '>=8.3.0 <11.0.0'
+  photo_manager: ^3.5.0
+  photo_manager_image_provider: ^2.2.0
+  provider: ^6.0.5
+  video_player: ^2.7.0
+  visibility_detector: ^0.4.0
+
+dev_dependencies:
+  flutter_lints: any
+  flutter_localizations:
+    sdk: flutter
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  assets:
+    - 'assets/icon/'
+
+screenshots:
+  - description: 'Screenshot 1'
+    path: screenshots/README_1.webp
+  - description: 'Screenshot 2'
+    path: screenshots/README_2.webp
+  - description: 'Screenshot 3'
+    path: screenshots/README_3.webp
+  - description: 'Screenshot 4'
+    path: screenshots/README_4.webp
+  - description: 'Screenshot 5'
+    path: screenshots/README_5.webp
+  - description: 'Screenshot 6'
+    path: screenshots/README_6.webp
+  - description: 'Screenshot 7'
+    path: screenshots/README_7.webp
+  - description: 'Screenshot 8'
+    path: screenshots/README_8.webp
+  - description: 'Screenshot 9'
+    path: screenshots/README_9.webp

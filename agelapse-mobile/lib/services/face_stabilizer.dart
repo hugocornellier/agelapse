@@ -259,14 +259,11 @@ class FaceStabilizer {
     final imglib.Image? rawImage = await compute(imglib.decodeImage, imageBytes);
 
     final imglib.Image blackBackground = imglib.Image(
-      width: rawImage!.width,
-      height: rawImage.height,
-      numChannels: 4,
+        width: rawImage!.width,
+        height: rawImage.height
     );
-
     imglib.fill(blackBackground, color: imglib.ColorRgb8(0, 0, 0));
     imglib.compositeImage(blackBackground, rawImage);
-
     final Uint8List blackBackgroundBytes = imglib.encodePng(blackBackground);
 
     final String result = await saveBytesToPngFileInIsolate(

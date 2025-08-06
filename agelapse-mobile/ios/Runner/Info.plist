@@ -20,6 +20,14 @@
 		<string>$(FLUTTER_BUILD_NAME)</string>
 		<key>CFBundleSignature</key>
 		<string>????</string>
+		<key>NSCameraUsageDescription</key>
+        <string>AgeLapse needs camera access to take photos for creating personalized time-lapse videos of your face.</string>
+        <key>NSPhotoLibraryUsageDescription</key>
+        <string>AgeLapse needs access to your photo library to import photos for creating your time-lapse videos.</string>
+        <key>NSPhotoLibraryAddUsageDescription</key>
+        <string>AgeLapse needs permission to save media to your photo library, such as photos or the compiled timelapse video.</string>
+        <key>NSMotionUsageDescription</key>
+        <string>This app requires access to the barometer for camera rotation purposes.</string>
 		<key>CFBundleVersion</key>
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
 		<key>LSRequiresIPhoneOS</key>
