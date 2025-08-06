@@ -11,7 +11,7 @@
     alt="Demo animation"
     width="540"
   />
-</p>
+</p> 
 
 
 ## Overview
