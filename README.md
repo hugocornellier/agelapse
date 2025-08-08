@@ -4,7 +4,6 @@
   <a href="https://agelapse.com/docs/support-and-feedback/" style="text-decoration:none; font-weight:bold;">SUPPORT</a>
 </p>
 
-
 <p align="center">
   <img
     src="https://i.imgur.com/CmsixvW.png"
@@ -23,7 +22,7 @@
 
 ## Overview
 
-**AgeLapse** is a cross-platform, native application for automatically stabilizing & compiling aging timelapses, i.e. "photo a day" projects. The application runs natively on desktop (Windows and MacOS) and on mobile (Android and iOS).
+**AgeLapse** automates the process of aligning face pictures and creating stabilized aging time-lapses, i.e. "photo-a-day" videos. The application runs natively on mobile (iOS and Android) and on desktop (MacOS and Windows).
 
 ## Installation
 
