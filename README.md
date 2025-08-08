@@ -1,4 +1,10 @@
 <p align="center">
+  <a href="https://agelapse.com">DOWNLOAD</a> |
+  <a href="https://agelapse.com/docs/intro/">DOCS</a> |
+  <a href="https://agelapse.com/docs/support-and-feedback/">SUPPORT</a>
+</p>
+
+<p align="center">
   <img
     src="https://i.imgur.com/CmsixvW.png"
     alt="Demo animation"
