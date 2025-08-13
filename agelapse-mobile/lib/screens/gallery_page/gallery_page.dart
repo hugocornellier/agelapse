@@ -937,7 +937,6 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
     }
   }
 
-// Utility method to list files in a directory
   static Future<List<String>> listFilesInDirectory(String dirPath) async {
     Directory directory = Directory(dirPath);
     List<String> filePaths = [];

@@ -709,11 +709,11 @@ class SettingsSheetState extends State<SettingsSheet> {
         ),
         style: ElevatedButton.styleFrom(
           textStyle: const TextStyle(color: Colors.white),
-          backgroundColor: AppColors.evenDarkerLightBlue, // Button background color
+          backgroundColor: AppColors.evenDarkerLightBlue,
         ),
         child: const Text(
           "Configure",
-          style: TextStyle(color: Colors.white), // Text color
+          style: TextStyle(color: Colors.white),
         ),
       ),
       infoContent: '',

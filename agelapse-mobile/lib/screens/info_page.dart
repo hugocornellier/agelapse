@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_email_sender/flutter_email_sender.dart';
+import 'package:material_symbols_icons/material_symbols_icons.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../styles/styles.dart';
 import '../utils/utils.dart';
 import '../widgets/fancy_button.dart';
@@ -50,6 +52,16 @@ class InfoPageState extends State<InfoPage> with SingleTickerProviderStateMixin 
     }
   }
 
+  Future<void> _openDocumentation() async {
+    final uri = Uri.parse('https://agelapse.com/docs/category/mobile/');
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open Documentation')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -70,10 +82,18 @@ class InfoPageState extends State<InfoPage> with SingleTickerProviderStateMixin 
                         const SizedBox(height: 30),
                         FancyButton.buildElevatedButton(
                           context,
-                          text: 'Tutorials',
-                          icon: Icons.question_mark,
+                          text: 'Documentation',
+                          icon: Symbols.diamond_shine,
                           color: AppColors.lessDarkGrey,
-                          onPressed: () => Utils.navigateToScreen(context, TutorialPage()),
+                          onPressed: _openDocumentation,
+                        ),
+                        const SizedBox(height: 20),
+                        FancyButton.buildElevatedButton(
+                          context,
+                          text: 'Tutorials',
+                          icon: Icons.menu_book_outlined,
+                          color: AppColors.lessDarkGrey,
+                          onPressed: () => Utils.navigateToScreen(context, const TutorialPage()),
                         ),
                         const SizedBox(height: 20),
                         FancyButton.buildElevatedButton(

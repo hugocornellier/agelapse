@@ -231,7 +231,9 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
               onPressed: () async {
                 final newName = _editProjectNameController.text;
                 await DB.instance.updateProjectName(project['id'], newName);
-                _getProjects();  // Refresh the project list
+
+                // Refresh the project list
+                _getProjects();
                 Navigator.pop(context);
               },
               child: const Text('Submit'),

@@ -403,7 +403,7 @@ class DB {
         'favorite': 0
       });
     } catch (e) {
-      // Handle exception
+
     }
   }
 
@@ -475,7 +475,6 @@ class DB {
 
     if (photos.isEmpty) return null;
 
-    // Initialize flags
     bool allPortrait = true;
     bool allLandscape = true;
 
