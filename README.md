@@ -1,3 +1,9 @@
+<p align="center" style="font-size:16px; font-family:Arial, sans-serif;">
+  <a href="https://agelapse.com" style="text-decoration:none; font-weight:bold;">DOWNLOAD</a> |
+  <a href="https://agelapse.com/docs/intro/" style="text-decoration:none; font-weight:bold;">DOCS</a> |
+  <a href="https://agelapse.com/docs/support-and-feedback/" style="text-decoration:none; font-weight:bold;">SUPPORT</a>
+</p>
+
 <p align="center">
   <img
     src="https://i.imgur.com/CmsixvW.png"
@@ -11,12 +17,12 @@
     alt="Demo animation"
     width="540"
   />
-</p>
+</p> 
 
 
 ## Overview
 
-**AgeLapse** is a cross-platform, native application for automatically stabilizing & compiling aging timelapses, i.e. "photo a day" projects. The application runs natively on desktop (Windows and MacOS) and on mobile (Android and iOS).
+**AgeLapse** automates the process of aligning face pictures and creating stabilized aging time-lapses, i.e. "photo-a-day" videos. The application runs natively on mobile (iOS and Android) and on desktop (MacOS and Windows).
 
 ## Installation
 

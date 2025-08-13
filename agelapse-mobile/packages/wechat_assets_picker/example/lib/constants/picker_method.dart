@@ -4,7 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:wechat_assets_picker/wechat_assets_picker.dart';
-import 'package:wechat_camera_picker/wechat_camera_picker.dart';
+import '../../../../wechat_camera_picker/lib/wechat_camera_picker.dart';
 
 import 'extensions.dart';
 
