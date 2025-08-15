@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import webbrowser
 import exifread
 
 from concurrent.futures import ThreadPoolExecutor
@@ -19,7 +20,8 @@ from PyQt5.QtSvg import QSvgWidget
 from PyQt5.QtWidgets import (
   QMainWindow, QLabel, QVBoxLayout, QWidget, QProgressBar, QPushButton, QGridLayout, QStackedWidget, QHBoxLayout,
   QApplication, QFileDialog, QTextEdit,
-  QComboBox, QSizePolicy, QFrame, QGraphicsColorizeEffect, QTableWidgetItem, QTableWidget, QHeaderView
+  QComboBox, QSizePolicy, QFrame, QGraphicsColorizeEffect, QTableWidgetItem, QTableWidget, QHeaderView,
+  QAction, QMenu, QMenuBar
 )
 from src.video_compile import compile_video
 from version import __version__
@@ -521,6 +523,7 @@ class MainWindow(QMainWindow):
     self.main_layout.addWidget(self.content_widget)
 
     self.setCentralWidget(self.main_widget)
+    self.build_menus()
     self.stacked_widget.setCurrentWidget(self.gallery_container)
 
     self.executor = None
@@ -556,6 +559,18 @@ class MainWindow(QMainWindow):
     sys.stdout = self
 
     self.main_layout.addWidget(self.log_viewer)
+
+  def build_menus(self):
+    menubar = self.menuBar()
+    try:
+      menubar.setNativeMenuBar(True)
+    except Exception:
+      pass
+
+    help_menu = menubar.addMenu("Help")
+    docs_action = QAction("Documentation", self)
+    docs_action.triggered.connect(lambda: webbrowser.open("https://agelapse.com/docs/intro"))
+    help_menu.addAction(docs_action)
 
   def update_resolution(self, index):
     text = self.resolution_dropdown.itemText(index)
@@ -736,11 +751,25 @@ class MainWindow(QMainWindow):
                 background: #555;
             }
         """, self.toggle_log),
+      ("assets/icons/book.svg", "Read Documentation", 185, """
+            QPushButton {
+                border-radius: 8px;
+                height: 50px;
+                min-width: 185px;
+                background-color: #334155;
+            }
+            QPushButton:hover {
+                background-color: #475569;
+            }
+            QPushButton:disabled {
+                background: #555;
+            }
+        """, lambda: webbrowser.open("https://agelapse.com/docs/intro")),
     ]
     self.buttons = {}
     for icon, text, width, style, slot in BUTTON_DEFS:
       btn = make_icon_button(icon, text, width, style, slot, self)
-      if text != "Show Log":
+      if text not in ("Show Log", "Read Documentation"):
         btn.setVisible(False)
       self.buttons[text] = btn
 
@@ -749,6 +778,8 @@ class MainWindow(QMainWindow):
     self.open_stabilized_folder_button = self.buttons["Open Stabilized Folder"]
     self.open_video_folder_button = self.buttons["Open Video Folder"]
     self.show_log_button = self.buttons["Show Log"]
+    self.read_docs_button = self.buttons["Read Documentation"]
+    self.read_docs_button.setVisible(True)
     self.show_log_label = self.show_log_button.findChild(QLabel)
 
     self.progress_bar = QProgressBar(self)
@@ -936,6 +967,7 @@ class MainWindow(QMainWindow):
     action_button_row.setSpacing(8)
     action_button_row.addWidget(self.start_button)
     action_button_row.addWidget(self.show_log_button)
+    action_button_row.addWidget(self.read_docs_button)
     action_button_row.addStretch(1)
     self.left_box.addLayout(action_button_row)
 

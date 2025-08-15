@@ -10,6 +10,10 @@ def main():
     QApplication.setAttribute(Qt.ApplicationAttribute.AA_EnableHighDpiScaling)
     QApplication.setAttribute(Qt.ApplicationAttribute.AA_UseHighDpiPixmaps)
     app = QApplication(sys.argv)
+    app.setApplicationName("AgeLapse")
+    app.setApplicationDisplayName("AgeLapse")
+    app.setOrganizationName("AgeLapse")
+    app.setOrganizationDomain("agelapse.com")
     font_id = QFontDatabase.addApplicationFont("assets/fonts/Inter-VariableFont.ttf")
     if font_id != -1:
         family = QFontDatabase.applicationFontFamilies(font_id)[0]
