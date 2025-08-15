@@ -6,10 +6,10 @@ import sys
 import tempfile
 import time
 import webbrowser
-import exifread
-
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+
+import exifread
 from PyQt5 import QtGui
 from PyQt5.QtCore import Qt, pyqtSignal, QRect, QEvent, QRectF
 from PyQt5.QtGui import (
@@ -21,7 +21,7 @@ from PyQt5.QtWidgets import (
   QMainWindow, QLabel, QVBoxLayout, QWidget, QProgressBar, QPushButton, QGridLayout, QStackedWidget, QHBoxLayout,
   QApplication, QFileDialog, QTextEdit,
   QComboBox, QSizePolicy, QFrame, QGraphicsColorizeEffect, QTableWidgetItem, QTableWidget, QHeaderView,
-  QAction, QMenu, QMenuBar
+  QAction
 )
 from src.video_compile import compile_video
 from version import __version__
@@ -30,7 +30,6 @@ DROP_AREA_BG_COLOR = "#334155"
 DROP_AREA_BORDER_COLOR = "#475569"
 DROP_AREA_HOVER_BG_COLOR = "#475569"
 
-# Stylesheets
 common_title_style = """
     QLabel {
         font-size: 24px;
@@ -78,6 +77,11 @@ GLASS_PANEL = (
     "QFrame{background: rgba(30,41,59,0.5);"
     "border:1px solid rgba(51,65,85,0.5); border-radius:12px;}"
 )
+APP_STATE_IDLE = "IDLE"
+APP_STATE_STABILIZING = "STABILIZING"
+APP_STATE_COMPILING = "COMPILING"
+APP_STATE_DONE = "DONE"
+APP_STATE_ERROR = "ERROR"
 
 def styled_combobox(parent=None):
   cb = QComboBox(parent)
@@ -486,7 +490,7 @@ class MainWindow(QMainWindow):
       Qt.FramelessWindowHint | Qt.WindowMinimizeButtonHint | Qt.WindowMaximizeButtonHint | Qt.WindowCloseButtonHint
     )
 
-    self.selected_framerate = 15  # Default value
+    self.selected_framerate = 15
     self.selected_resolution = "1080p"
     self.image_paths = []
     self.order_ascending = True
@@ -533,6 +537,7 @@ class MainWindow(QMainWindow):
     self.video_status_signal.connect(self.status_header.setText)
     self.video_finished_signal.connect(self.on_video_finished)
     self.log_signal.connect(self.append_log_line)
+    self.state = APP_STATE_IDLE
 
     self.resize(1200, 800)
     if sys.platform == "darwin":
@@ -606,7 +611,6 @@ class MainWindow(QMainWindow):
     self.main_layout.addWidget(self.settings_section)
 
   def update_framerate(self, index):
-    # Update the selected framerate
     self.selected_framerate = int(self.framerate_dropdown.itemText(index))
     print(f"[LOG] Framerate changed to {self.selected_framerate}")
 
@@ -654,7 +658,7 @@ class MainWindow(QMainWindow):
     self.log_viewer.ensureCursorVisible()
 
   def flush(self):
-    pass  # Required for the write method to work correctly
+    pass
 
   def closeEvent(self, event):
     sys.stdout = self.stdout
@@ -1044,6 +1048,7 @@ class MainWindow(QMainWindow):
       self.drop_area.setText(f"An unexpected error occurred: {e}")
 
   def start_stabilization(self):
+    self.state = APP_STATE_STABILIZING
     self.start_button.setEnabled(False)
     self.start_button.setVisible(False)
     self.settings_section.setVisible(False)
@@ -1052,6 +1057,8 @@ class MainWindow(QMainWindow):
     self.settings_title_lbl.setVisible(False)
     self.image_list_widget.setVisible(False)
     self.image_list_header.setVisible(False)
+    self.open_stabilized_folder_button.setVisible(False)
+    self.open_video_folder_button.setVisible(False)
     self.status_card.setVisible(True)
     self.progress_bar.setVisible(True)
     self.progress_value_label.setVisible(True)
@@ -1095,8 +1102,12 @@ class MainWindow(QMainWindow):
     self.grid_layout.addWidget(thumbnail_label, row, col)
 
   def update_progress(self, value):
-    self.progress_bar.setValue(value)
-    self.progress_value_label.setText(f"{value}%")
+    if self.state in (APP_STATE_STABILIZING, APP_STATE_COMPILING):
+      clamped = min(int(value), 99)
+    else:
+      clamped = int(value)
+    self.progress_bar.setValue(clamped)
+    self.progress_value_label.setText(f"{clamped}%")
 
   def _load_images(self, paths):
     self.image_paths = [
@@ -1121,8 +1132,12 @@ class MainWindow(QMainWindow):
     return True
 
   def on_processing_finished(self):
+    self.state = APP_STATE_COMPILING
     self.status_header.setText("Compiling video...")
-    self.open_stabilized_folder_button.setVisible(True)
+    self.progress_bar.setValue(99)
+    self.progress_value_label.setText("99%")
+    self.open_stabilized_folder_button.setVisible(False)
+    self.open_video_folder_button.setVisible(False)
     QApplication.processEvents()
 
     if self.executor is None:
@@ -1153,10 +1168,19 @@ class MainWindow(QMainWindow):
       self.temp_input_dir = None
 
     if success:
+      self.state = APP_STATE_DONE
+      self.progress_bar.setValue(100)
+      self.progress_value_label.setText("100%")
       self.status_header.setText("Completed successfully!")
+      self.open_stabilized_folder_button.setVisible(True)
       self.open_video_folder_button.setVisible(True)
     else:
+      self.state = APP_STATE_ERROR
+      self.progress_bar.setValue(99)
+      self.progress_value_label.setText("99%")
       self.status_header.setText("Compilation failed.")
+      self.open_stabilized_folder_button.setVisible(False)
+      self.open_video_folder_button.setVisible(False)
 
   def open_stabilized_folder(self):
     if os.path.isdir(self.output_dir):
