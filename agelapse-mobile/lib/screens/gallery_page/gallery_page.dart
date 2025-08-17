@@ -589,6 +589,8 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
 
   Future<void> _pickFiles() async {
     try {
+      print("Hello world :)");
+
       setState(() {
         photosImported = 0;
         successfullyImported = 0;
@@ -599,6 +601,7 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
       try {
         pickedFiles = await FilePicker.platform.pickFiles(allowMultiple: true);
       } catch (e) {
+        print(e);
         return;
       }
 

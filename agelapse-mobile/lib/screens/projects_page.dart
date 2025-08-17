@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../services/database_helper.dart';
 import '../styles/styles.dart';
@@ -20,9 +22,12 @@ class ProjectsPageState extends State<ProjectsPage> {
   @override
   void initState() {
     super.initState();
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-    ]);
+    final bool isDesktop = !kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
+    if (!isDesktop) {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+      ]);
+    }
     _getProjects();
   }
 
@@ -33,10 +38,13 @@ class ProjectsPageState extends State<ProjectsPage> {
 
   @override
   Widget build(BuildContext context) {
-    Widget bodyContents = _projects.isEmpty
-        ? _buildWelcomePage()
-        : _buildProjectSelectScreen();
-    var backgroundColor = _projects.isEmpty
+    final bool isDesktop = !kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
+
+    Widget bodyContents = isDesktop
+        ? (_projects.isEmpty ? _buildWelcomePageDesktop() : _buildProjectSelectScreenDesktop())
+        : (_projects.isEmpty ? _buildWelcomePage() : _buildProjectSelectScreen());
+
+    final Color backgroundColor = _projects.isEmpty
         ? const Color(0xff151517)
         : Colors.black;
 
@@ -64,6 +72,44 @@ class ProjectsPageState extends State<ProjectsPage> {
           )
         )
       ],
+    );
+  }
+
+  Widget _buildProjectSelectScreenDesktop() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1200),
+            child: SizedBox(
+              height: constraints.maxHeight,
+              child: ProjectSelectionSheet(
+                isDefaultProject: false,
+                showCloseButton: false,
+                cancelStabCallback: () {},
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildWelcomePageDesktop() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 900),
+            child: SizedBox(
+              height: constraints.maxHeight,
+              child: _buildWelcomePage(),
+            ),
+          ),
+        );
+      },
     );
   }
 

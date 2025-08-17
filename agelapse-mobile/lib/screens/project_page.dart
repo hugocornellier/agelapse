@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../services/settings_cache.dart';
 import '../styles/styles.dart';
@@ -89,33 +91,79 @@ class ProjectPageState extends State<ProjectPage> {
     }
 
     final cache = widget.settingsCache!;
+    final bool isDesktop = _isDesktop;
+
+    if (!isDesktop) {
+      return Scaffold(
+        backgroundColor: const Color(0xff0F0F0F),
+        body: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: cache.noPhotos ||
+                          !cache.hasOpenedNonEmptyGallery ||
+                          !cache.hasTakenMoreThanOnePhoto ||
+                          !cache.hasViewedFirstVideo
+                          ? _buildNoPhotosContent(context, includeOutput: true)
+                          : _buildDashboardContent(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xff0F0F0F),
-      body: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  Padding(
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final double rightPaneWidth =
+          (constraints.maxWidth * 0.38).clamp(360.0, 560.0);
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: cache.noPhotos ||
                         !cache.hasOpenedNonEmptyGallery ||
                         !cache.hasTakenMoreThanOnePhoto ||
                         !cache.hasViewedFirstVideo
-                        ? _buildNoPhotosContent(context)
-                        : _buildDashboardContent(),
+                        ? _buildNoPhotosContent(context, includeOutput: false)
+                        : _buildDashboardSection(includeOutput: false),
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
-        ],
+              SizedBox(
+                width: 1,
+                child: Container(color: const Color(0xff1E1E1E)),
+              ),
+              SizedBox(
+                width: rightPaneWidth,
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: _buildOutputSectionForWidth(rightPaneWidth - 32.0),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildNoPhotosContent(BuildContext context) {
+  Widget _buildNoPhotosContent(BuildContext context, {bool includeOutput = true}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -124,7 +172,7 @@ class ProjectPageState extends State<ProjectPage> {
         const SizedBox(height: 21),
         ..._buildStepButtons(context, _determineStep()),
         const SizedBox(height: 40),
-        _buildDashboardSection(),
+        _buildDashboardSection(includeOutput: includeOutput),
       ],
     );
   }
@@ -273,6 +321,14 @@ class ProjectPageState extends State<ProjectPage> {
     );
   }
 
+  bool get _isDesktop {
+    if (kIsWeb) return false;
+    final platform = defaultTargetPlatform;
+    return platform == TargetPlatform.macOS ||
+        platform == TargetPlatform.windows ||
+        platform == TargetPlatform.linux;
+  }
+
   void _openSettings(BuildContext context) async {
     final bool isDefaultProject = await ProjectUtils.isDefaultProject(widget.projectId);
 
@@ -293,7 +349,7 @@ class ProjectPageState extends State<ProjectPage> {
     );
   }
 
-  Widget _buildDashboardSection() {
+  Widget _buildDashboardSection({bool includeOutput = true}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -304,7 +360,53 @@ class ProjectPageState extends State<ProjectPage> {
         const SizedBox(height: 21),
         dashboardWidget(),
         const SizedBox(height: 30),
-        _buildOutputSection(),
+        if (includeOutput) _buildOutputSection(),
+      ],
+    );
+  }
+
+  Widget _buildOutputSectionForWidth(double availableWidth) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (!widget.settingsCache!.noPhotos) ...[
+          const SizedBox(height: 30)
+        ],
+        _buildSectionTitle('Output', ''),
+        const SizedBox(height: 21),
+        _buildOutputContentForWidth(availableWidth),
+        const SizedBox(height: 64),
+      ],
+    );
+  }
+
+  Widget _buildOutputContentForWidth(double paneWidth) {
+    final isLandscape = widget.settingsCache!.projectOrientation == "landscape";
+    final double sideLength = paneWidth * (isLandscape ? 0.5 : 0.43);
+    final double landscapeCardWidth = (sideLength - 8.0) / 2;
+
+    return Column(
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildImageAndOffsetCards(
+              sideLength: sideLength,
+              landscapeCardWidth: landscapeCardWidth,
+              isLandscape: isLandscape,
+            ),
+            const SizedBox(width: 16.0),
+            Flexible(
+              child: SpecialCard(
+                projectOrientation: widget.settingsCache!.projectOrientation,
+                aspectRatio: widget.settingsCache!.aspectRatio,
+                resolution: widget.settingsCache!.resolution,
+                watermarkEnabled: widget.settingsCache!.watermarkEnabled,
+                framerate: framerate,
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
