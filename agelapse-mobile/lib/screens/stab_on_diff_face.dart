@@ -47,6 +47,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
 
     rawImagePath = await _getRawPhotoPath();
     faceStabilizer = FaceStabilizer(widget.projectId, widget.userRanOutOfSpaceCallback);
+    await faceStabilizer.init();
 
     final image = await decodeImageFromList(File(rawImagePath).readAsBytesSync());
     setState(() {
@@ -95,9 +96,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
         rawImagePath,
         false,
         userRanOutOfSpaceCallback,
-        // Keep ML Kit fast path when available…
         targetFace: Platform.isMacOS ? null : tappedFace,
-        // …but always provide a platform-agnostic bounding box:
         targetBoundingBox: targetBox,
       );
 

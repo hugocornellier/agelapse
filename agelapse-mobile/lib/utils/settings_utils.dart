@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../utils/utils.dart';
 
@@ -284,12 +285,15 @@ class SettingsUtil {
   }
 
   static Future<int> loadGridAxisCount(String projectId) async {
-    final String gridAxisCountAsStr;
-    gridAxisCountAsStr = await DB.instance.getSettingValueByTitle(
-      'gridAxisCount',
-      projectId
-    );
-    return int.parse(gridAxisCountAsStr);
+    try {
+      final String s = await DB.instance.getSettingValueByTitle('gridAxisCount', projectId);
+      final int parsed = int.tryParse(s) ?? 4;
+      final bool isDesktop = Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+      final int maxSteps = isDesktop ? 12 : 5;
+      return parsed.clamp(1, maxSteps);
+    } catch (_) {
+      return 4;
+    }
   }
 
   static Future<int> loadGridModeIndex(String projectId) async {

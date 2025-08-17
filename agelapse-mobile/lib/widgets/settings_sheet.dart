@@ -406,9 +406,12 @@ class SettingsSheetState extends State<SettingsSheet> {
               } else if (snapshot.hasData) {
                 return StatefulBuilder(
                   builder: (context, setState) {
+                    final bool isDesktop = Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+                    final int maxSteps = isDesktop ? 12 : 5;
+
                     return CustomDropdownButton<int>(
-                      value: gridCount,
-                      items: List.generate(5, (index) {
+                      value: gridCount.clamp(1, maxSteps),
+                      items: List.generate(maxSteps, (index) {
                         return DropdownMenuItem<int>(
                           value: index + 1,
                           child: Text('${index + 1}'),
@@ -441,7 +444,6 @@ class SettingsSheetState extends State<SettingsSheet> {
       ],
     );
   }
-
 
   Widget _buildVideoSettings() {
     return Column(

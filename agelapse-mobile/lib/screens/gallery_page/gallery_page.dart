@@ -425,7 +425,9 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
               onScaleUpdate: (details) {
                 setState(() {
                   _scale = _previousScale * details.scale;
-                  gridAxisCount = (4 / _scale).clamp(1, 5).toInt();
+                  final bool isDesktop = Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+                  final int maxSteps = isDesktop ? 12 : 5;
+                  gridAxisCount = (4 / _scale).clamp(1, maxSteps).toInt();
                 });
               },
               child: Stack(
@@ -549,8 +551,8 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
     return GridView.builder(
       padding: EdgeInsets.zero,
       controller: scrollController,
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: gridAxisCount,
+      gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: _tileExtentForGridCount(context),
         crossAxisSpacing: 2.0,
         mainAxisSpacing: 2.0,
       ),
@@ -579,6 +581,18 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
         ],
       ),
     );
+  }
+
+  double _tileExtentForGridCount(BuildContext context) {
+    final bool isDesktop = Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+    if (isDesktop) {
+      const List<double> steps = [480, 360, 280, 220, 180, 160, 140, 120, 110, 100, 90, 80];
+      final int idx = gridAxisCount.clamp(1, steps.length) - 1;
+      return steps[idx];
+    } else {
+      final double width = MediaQuery.of(context).size.width;
+      return width / gridAxisCount;
+    }
   }
 
   void increaseSuccessfulImportCount() => successfullyImported++;
@@ -820,7 +834,6 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
           builder: (BuildContext context, StateSetter setState) {
             void setExportProgress(double exportProgressIn) {
               setState(() {
-                // Trick to filter to 1 decimal place, including .0
                 exportProgressPercent = (exportProgressIn * 10).round() / 10;
               });
             }
@@ -1402,7 +1415,6 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
 
       try {
         if (sdkInt >= 33) {
-          // For Android 13 and above, request new media permissions
           PermissionStatus imagesStatus = await Permission.photos.request();
           PermissionStatus videosStatus = await Permission.videos.request();
           PermissionStatus audioStatus = await Permission.audio.request();
@@ -1413,7 +1425,6 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
             await openAppSettings();
           }
         } else {
-          // For Android 12 and below, request storage permission
           PermissionStatus storageStatus = await Permission.storage.request();
 
           if (storageStatus.isGranted) return;
