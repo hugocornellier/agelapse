@@ -32,15 +32,6 @@ void main() async {
     WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
 
     await DB.instance.createTablesIfNotExist();
-
-    Map<String, dynamic>? project = await DB.instance.getProject(1);
-    if (project == null) {
-      final int projectId = await DB.instance.addProject(
-        "Untitled",
-        "face",
-        DateTime.now().millisecondsSinceEpoch
-      );
-    }
   }
 
   runApp(AgeLapse(homePage: await _getHomePage()));
