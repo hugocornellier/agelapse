@@ -169,6 +169,8 @@ class FaceStabilizer {
       await StabUtils.writeImagesBytesToJpgFile(imageBytesStabilized, stabilizedPhotoPath);
       final bool result = await _finalizeStabilization(rawPhotoPath, stabilizedPhotoPath, img, translateX, translateY, rotationDegrees, scaleFactor, imageBytesStabilized);
 
+      print("Result => '${result}'");
+
       if (result) await createStabThumbnail(stabilizedPhotoPath.replaceAll('.jpg', '.png'));
 
       img.dispose();
@@ -186,9 +188,18 @@ class FaceStabilizer {
 
     rawPhotoPath = _cleanUpPhotoPath(rawPhotoPath);
 
+    if (Platform.isMacOS) {
+      final leftRight = _estimatedEyesAfterTransform(img!, scaleFactor, rotationDegrees);
+      final Point<int> goalLeftEye = Point(leftEyeXGoal, bothEyesYGoal);
+      final Point<int> goalRightEye = Point(rightEyeXGoal, bothEyesYGoal);
+      final score = calculateStabScore(leftRight, goalLeftEye, goalRightEye);
+      return await saveStabilizedImage(imageBytesStabilized, rawPhotoPath, stabilizedJpgPhotoPath, score);
+    }
+
     final stabFaces = await StabUtils.getFacesFromFilepath(
       stabilizedJpgPhotoPath,
-      Platform.isMacOS ? null : _faceDetector,
+      _faceDetector,
+      filterByFaceSize: false,
       imageWidth: canvasWidth,
     );
     if (stabFaces == null) {
@@ -209,16 +220,40 @@ class FaceStabilizer {
 
     final Point<int> goalLeftEye = Point(leftEyeXGoal, bothEyesYGoal);
     final Point<int> goalRightEye = Point(rightEyeXGoal, bothEyesYGoal);
-
-    print("EYE POS GOALS: $goalLeftEye $goalRightEye");
-    print("POST-STAB POS: ${eyes[0]} ${eyes[1]}");
-
     List<String> toDelete = [await DirUtils.getPngPathFromRawPhotoPath(rawPhotoPath), stabilizedJpgPhotoPath];
 
     bool successfulStabilization = await _performTwoPassFixIfNeeded(stabFaces, eyes, goalLeftEye, goalRightEye, translateX, translateY, rotationDegrees, scaleFactor, imageBytesStabilized, rawPhotoPath, stabilizedJpgPhotoPath, toDelete, img);
 
     await DirUtils.tryDeleteFiles(toDelete);
     return successfulStabilization;
+  }
+
+  List<Point<int>> _estimatedEyesAfterTransform(ui.Image img, double scale, double rotationDegrees) {
+    final Point<int> left0 = originalEyePositions![0]!;
+    final Point<int> right0 = originalEyePositions![1]!;
+
+    final a = transformPointByCanvasSize(
+      originalPointX: left0.x.toDouble(),
+      originalPointY: left0.y.toDouble(),
+      scale: scale,
+      rotationDegrees: rotationDegrees,
+      canvasWidth: canvasWidth.toDouble(),
+      canvasHeight: canvasHeight.toDouble(),
+      originalWidth: img.width.toDouble(),
+      originalHeight: img.height.toDouble(),
+    );
+    final b = transformPointByCanvasSize(
+      originalPointX: right0.x.toDouble(),
+      originalPointY: right0.y.toDouble(),
+      scale: scale,
+      rotationDegrees: rotationDegrees,
+      canvasWidth: canvasWidth.toDouble(),
+      canvasHeight: canvasHeight.toDouble(),
+      originalWidth: img.width.toDouble(),
+      originalHeight: img.height.toDouble(),
+    );
+
+    return [Point(a['x']!.toInt(), a['y']!.toInt()), Point(b['x']!.toInt(), b['y']!.toInt())];
   }
 
   Future<bool> _performTwoPassFixIfNeeded(
@@ -730,7 +765,7 @@ class FaceStabilizer {
       }).toList();
     }
 
-    const double margin = 4.0;
+    final double margin = Platform.isMacOS ? 0.0 : 4.0;
 
     final int pairCount = eyes.length ~/ 2;
     final int limit = faces.length < pairCount ? faces.length : pairCount;
@@ -745,10 +780,8 @@ class FaceStabilizer {
       if (bordersLeft || bordersTop || bordersRight || bordersBottom) continue;
 
       final int li = 2 * i, ri = li + 1;
-      Point<int>? leftEye  = eyes[li];
-      Point<int>? rightEye = eyes[ri];
-      if (leftEye == null || rightEye == null) continue;
-
+      final Point<int>? leftEye = eyes[li];
+      final Point<int>? rightEye = eyes[ri];
       if (leftEye == null || rightEye == null) continue;
 
       final double distance = calculateHorizontalProximityToCenter(leftEye, imgWidth)
@@ -758,6 +791,10 @@ class FaceStabilizer {
         smallestDistance = distance;
         centeredEyes = [leftEye, rightEye];
       }
+    }
+
+    if (centeredEyes.isEmpty && eyes.length >= 2 && eyes[0] != null && eyes[1] != null) {
+      centeredEyes = [eyes[0]!, eyes[1]!];
     }
 
     eyes.clear();
@@ -787,7 +824,16 @@ class FaceStabilizer {
       for (final f in (faces as List)) {
         Point<int>? a = f.leftEye == null ? null : Point<int>(f.leftEye!.x.toInt(), f.leftEye!.y.toInt());
         Point<int>? b = f.rightEye == null ? null : Point<int>(f.rightEye!.x.toInt(), f.rightEye!.y.toInt());
-        if (a != null && b != null && a.x > b.x) {
+
+        if (a == null || b == null) {
+          final Rect bb = f.boundingBox as Rect;
+          final double ex = bb.left + bb.width * 0.5;
+          final double ey = bb.top + bb.height * 0.42;
+          a = Point((bb.left + bb.width * 0.33).toInt(), ey.toInt());
+          b = Point((bb.left + bb.width * 0.67).toInt(), ey.toInt());
+        }
+
+        if (a.x > b.x) {
           final tmp = a; a = b; b = tmp;
         }
         eyes..add(a)..add(b);
