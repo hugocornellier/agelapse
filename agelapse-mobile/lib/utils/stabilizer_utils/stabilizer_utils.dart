@@ -17,6 +17,7 @@ import '../camera_utils.dart';
 import '../dir_utils.dart';
 import '../project_utils.dart';
 import '../settings_utils.dart';
+import '../apple_vision_gateway.dart';
 
 class StabUtils {
   static Future<List<Map<String, dynamic>>> getUnstabilizedPhotos(projectId) async {
@@ -42,36 +43,53 @@ class StabUtils {
   }
 
   static List<Point<int>?> extractEyePositions(List<Face> faces) {
-    return faces
-        .where((face) => face.landmarks[FaceLandmarkType.leftEye] != null && face.landmarks[FaceLandmarkType.rightEye] != null)
-        .expand((face) => [
-          Point(face.landmarks[FaceLandmarkType.leftEye]!.position.x.toInt(), face.landmarks[FaceLandmarkType.leftEye]!.position.y.toInt()),
-          Point(face.landmarks[FaceLandmarkType.rightEye]!.position.x.toInt(), face.landmarks[FaceLandmarkType.rightEye]!.position.y.toInt()),
-        ])
-        .toList();
+    final out = <Point<int>?>[];
+    for (final face in faces) {
+      final l = face.landmarks[FaceLandmarkType.leftEye];
+      final r = face.landmarks[FaceLandmarkType.rightEye];
+      if (l == null || r == null) continue;
+      var a = Point(l.position.x.toInt(), l.position.y.toInt());
+      var b = Point(r.position.x.toInt(), r.position.y.toInt());
+      if (a.x > b.x) { final t = a; a = b; b = t; }
+      out..add(a)..add(b);
+    }
+    return out;
   }
 
-  static Future<List<Face>?> getFacesFromFilepath(
-    String imagePath,
-    FaceDetector faceDetector,
-    {
-      bool filterByFaceSize = true,
-      int? imageWidth,
-    }
-  ) async {
+  static Future<List<dynamic>?> getFacesFromFilepath(
+      String imagePath,
+      FaceDetector? faceDetector,
+      {
+        bool filterByFaceSize = true,
+        int? imageWidth,
+      }
+      ) async {
     final bool fileExists = File(imagePath).existsSync();
     if (!fileExists) {
       return null;
     }
 
     try {
-      final List<Face> faces = await faceDetector.processImage(
-        InputImage.fromFilePath(imagePath),
-      );
+      if (Platform.isMacOS) {
+        final ui.Image? uiImg = await loadImageFromFile(File(imagePath));
+        if (uiImg == null) return [];
+        final int width = imageWidth ?? uiImg.width;
+        final int height = uiImg.height;
+        uiImg.dispose();
 
-      if (!filterByFaceSize || faces.isEmpty) return faces;
+        final faces = await AppleVisionGateway.instance.detectFromFile(imagePath, width, height);
+        if (!filterByFaceSize || faces.isEmpty) return faces;
 
-      return await _filterFacesBySize(faces, imageWidth, imagePath);
+        const double minFaceSize = 0.1;
+        final filtered = faces.where((f) => (f.boundingBox.width / width) > minFaceSize).toList();
+        return filtered.isNotEmpty ? filtered : faces;
+      } else {
+        final List<Face> faces = await faceDetector!.processImage(
+          InputImage.fromFilePath(imagePath),
+        );
+        if (!filterByFaceSize || faces.isEmpty) return faces;
+        return await _filterFacesBySize(faces, imageWidth, imagePath);
+      }
     } catch(e) {
       print("Error caught while fetching faces: $e");
       return [];

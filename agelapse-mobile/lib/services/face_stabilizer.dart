@@ -67,17 +67,20 @@ class FaceStabilizer {
     aspectRatioDecimal = StabUtils.getAspectRatioAsDecimal(aspectRatio);
 
     if (projectType == "face") {
-      final FaceDetector faceDetector = FaceDetector(options: FaceDetectorOptions(
-        enableLandmarks: true,
-        enableContours: true,
-        performanceMode: FaceDetectorMode.accurate,
-      ));
-
-      _faceDetector = faceDetector;
+      if (!Platform.isMacOS) {
+        final FaceDetector faceDetector = FaceDetector(options: FaceDetectorOptions(
+          enableLandmarks: true,
+          enableContours: true,
+          performanceMode: FaceDetectorMode.accurate,
+        ));
+        _faceDetector = faceDetector;
+      } else {
+        _faceDetector = null;
+      }
     } else {
       final PoseDetector poseDetector = PoseDetector(options: PoseDetectorOptions(
-        mode: PoseDetectionMode.single,
-        model: PoseDetectionModel.accurate
+          mode: PoseDetectionMode.single,
+          model: PoseDetectionModel.accurate
       ));
 
       _poseDetector = poseDetector;
@@ -116,7 +119,8 @@ class FaceStabilizer {
     bool cancelStabilization,
     void Function() userRanOutOfSpaceCallback,
     {
-      Face? targetFace
+      Face? targetFace,
+      Rect? targetBoundingBox,
     }
   ) async {
     try {
@@ -130,7 +134,13 @@ class FaceStabilizer {
       final ui.Image? img = await StabUtils.loadImageFromFile(File(rawPhotoPath));
       if (img == null) return false;
 
-      (scaleFactor, rotationDegrees) = await _calculateRotationAndScale(rawPhotoPath, img, targetFace, userRanOutOfSpaceCallback);
+      (scaleFactor, rotationDegrees) = await _calculateRotationAndScale(
+          rawPhotoPath,
+          img,
+          targetFace,
+          targetBoundingBox,
+          userRanOutOfSpaceCallback
+      );
       if (rotationDegrees == null || scaleFactor == null || cancelStabilization) return false;
 
       (translateX, translateY) = _calculateTranslateData(scaleFactor, rotationDegrees, img);
@@ -165,7 +175,7 @@ class FaceStabilizer {
 
     rawPhotoPath = _cleanUpPhotoPath(rawPhotoPath);
 
-    List<Face>? stabFaces = await StabUtils.getFacesFromFilepath(stabilizedJpgPhotoPath, _faceDetector!, imageWidth: canvasWidth);
+    final stabFaces = await StabUtils.getFacesFromFilepath(stabilizedJpgPhotoPath, _faceDetector, imageWidth: canvasWidth);
     if (stabFaces == null) {
       return false;
     }
@@ -176,6 +186,11 @@ class FaceStabilizer {
     }
 
     List<Point<int>?> eyes = _filterAndCenterEyes(stabFaces);
+
+    if (eyes.length < 2 || eyes[0] == null || eyes[1] == null) {
+      await DB.instance.setPhotoNoFacesFound(path.basenameWithoutExtension(rawPhotoPath));
+      return false;
+    }
 
     final Point<int> goalLeftEye = Point(leftEyeXGoal, bothEyesYGoal);
     final Point<int> goalRightEye = Point(rightEyeXGoal, bothEyesYGoal);
@@ -192,20 +207,20 @@ class FaceStabilizer {
   }
 
   Future<bool> _performTwoPassFixIfNeeded(
-    List<Face> stabFaces,
-    List<Point<int>?> eyes,
-    Point<int> goalLeftEye,
-    Point<int> goalRightEye,
-    double translateX,
-    double translateY,
-    double rotationDegrees,
-    double scaleFactor,
-    Uint8List imageBytesStabilized,
-    String rawPhotoPath,
-    String stabilizedJpgPhotoPath,
-    List<String> toDelete,
-    ui.Image? img
-  ) async {
+      List<dynamic> stabFaces,
+      List<Point<int>?> eyes,
+      Point<int> goalLeftEye,
+      Point<int> goalRightEye,
+      double translateX,
+      double translateY,
+      double rotationDegrees,
+      double scaleFactor,
+      Uint8List imageBytesStabilized,
+      String rawPhotoPath,
+      String stabilizedJpgPhotoPath,
+      List<String> toDelete,
+      ui.Image? img
+      ) async {
     bool successfulStabilization = false;
 
     final double score = calculateStabScore(eyes, goalLeftEye, goalRightEye);
@@ -218,12 +233,12 @@ class FaceStabilizer {
       print("Attempting to correct with two-pass. Initial score = $score...");
 
       final (double newTranslateX, double newTranslateY) = _calculateNewTranslations(
-        translateX,
-        translateY,
-        overshotLeftX,
-        overshotRightX,
-        overshotLeftY,
-        overshotRightY
+          translateX,
+          translateY,
+          overshotLeftX,
+          overshotRightX,
+          overshotLeftY,
+          overshotRightY
       );
 
       String stabilizedPhotoPath = await StabUtils.getStabilizedImagePath(rawPhotoPath, projectId, projectOrientation);
@@ -232,7 +247,7 @@ class FaceStabilizer {
 
       await StabUtils.writeImagesBytesToJpgFile(newImageBytesStabilized, stabilizedPhotoPath);
 
-      List<Face>? newStabFaces = await StabUtils.getFacesFromFilepath(stabilizedJpgPhotoPath, _faceDetector!, imageWidth: canvasWidth);
+      final newStabFaces = await StabUtils.getFacesFromFilepath(stabilizedPhotoPath, _faceDetector, imageWidth: canvasWidth);
       if (newStabFaces == null) return false;
 
       List<Point<int>?> newEyes = _filterAndCenterEyes(newStabFaces);
@@ -353,10 +368,22 @@ class FaceStabilizer {
     await File(stabThumbnailPath).writeAsBytes(thumbnailBytes);
   }
 
-  Future<(double?, double?)> _calculateRotationAndScale(String rawPhotoPath, ui.Image? img, Face? targetFace, userRanOutOfSpaceCallback) async {
+  Future<(double?, double?)> _calculateRotationAndScale(
+    String rawPhotoPath,
+    ui.Image? img,
+    Face? targetFace,
+    Rect? targetBoundingBox,
+    userRanOutOfSpaceCallback
+  ) async {
     try {
       if (projectType == "face") {
-        return await _calculateRotationAngleAndScaleFace(rawPhotoPath, img, targetFace, userRanOutOfSpaceCallback);
+        return await _calculateRotationAngleAndScaleFace(
+          rawPhotoPath,
+          img,
+          targetFace,
+          targetBoundingBox,
+          userRanOutOfSpaceCallback
+        );
       } else if (projectType == "pregnancy") {
         return await _calculateRotationAngleAndScalePregnancy(rawPhotoPath);
       } else if (projectType == "musc") {
@@ -370,35 +397,96 @@ class FaceStabilizer {
     }
   }
 
-  Future<(double?, double?)> _calculateRotationAngleAndScaleFace(String rawPhotoPath, ui.Image? img, Face? targetFace, userRanOutOfSpaceCallback) async {
+  Future<(double?, double?)> _calculateRotationAngleAndScaleFace(
+      String rawPhotoPath,
+      ui.Image? img,
+      Face? targetFace,
+      Rect? targetBoundingBox,
+      userRanOutOfSpaceCallback
+      ) async {
     List<Point<int>?> eyes;
-    if (targetFace != null) {
+
+    if (targetFace != null && !Platform.isMacOS) {
       eyes = getEyesFromFaces([targetFace]);
     } else {
-      final List<Face>? faces = await getFacesFromRawPhotoPath(rawPhotoPath, img!.width);
-      if (faces == null) {
-        return (null, null);
-      }
-
-      if (faces.isEmpty) {
+      final bool noFaceSizeFilter = targetBoundingBox != null;
+      final faces = await getFacesFromRawPhotoPath(
+        rawPhotoPath,
+        img!.width,
+        filterByFaceSize: !noFaceSizeFilter,
+      );
+      if (faces == null || faces.isEmpty) {
         print("No faces found. Attempting to flip...");
         await flipAndTryAgain(rawPhotoPath, userRanOutOfSpaceCallback);
         return (null, null);
       }
 
-      eyes = getEyesFromFaces(faces);
-      if (faces.length > 1) {
-        eyes = getCentermostEyes(eyes, faces, img.width, img.height);
+      List<dynamic> facesToUse = faces;
+      if (targetBoundingBox != null) {
+        final idx = _pickFaceIndexByBox(faces, targetBoundingBox);
+        if (idx != -1) {
+          facesToUse = [faces[idx]];
+        }
+      }
+
+      eyes = getEyesFromFaces(facesToUse);
+
+      if (facesToUse.length > 1) {
+        eyes = getCentermostEyes(eyes, facesToUse, img.width, img.height);
       }
     }
 
-    if (eyes.isEmpty) {
+    if (eyes.length < 2 || eyes[0] == null || eyes[1] == null) {
       await DB.instance.setPhotoNoFacesFound(path.basenameWithoutExtension(rawPhotoPath));
       return (null, null);
     }
 
     originalEyePositions = eyes;
     return _calculateEyeMetrics(eyes);
+  }
+
+  int _pickFaceIndexByBox(List<dynamic> faces, Rect targetBox) {
+    double bestIoU = 0.0;
+    int bestIdx = -1;
+
+    for (int i = 0; i < faces.length; i++) {
+      final Rect bb = faces[i].boundingBox as Rect;
+      final double iou = _rectIoU(bb, targetBox);
+      if (iou > bestIoU) {
+        bestIoU = iou;
+        bestIdx = i;
+      }
+    }
+
+    if (bestIdx != -1) return bestIdx;
+
+    double bestDist = double.infinity;
+    for (int i = 0; i < faces.length; i++) {
+      final Rect bb = faces[i].boundingBox as Rect;
+      final dx = bb.center.dx - targetBox.center.dx;
+      final dy = bb.center.dy - targetBox.center.dy;
+      final d2 = dx * dx + dy * dy;
+      if (d2 < bestDist) {
+        bestDist = d2;
+        bestIdx = i;
+      }
+    }
+    return bestIdx;
+  }
+
+  double _rectIoU(Rect a, Rect b) {
+    final double x1 = (a.left > b.left) ? a.left : b.left;
+    final double y1 = (a.top  > b.top ) ? a.top  : b.top;
+    final double x2 = (a.right  < b.right ) ? a.right  : b.right;
+    final double y2 = (a.bottom < b.bottom) ? a.bottom : b.bottom;
+
+    final double w = (x2 - x1);
+    final double h = (y2 - y1);
+    if (w <= 0 || h <= 0) return 0.0;
+
+    final double inter = w * h;
+    final double union = a.width * a.height + b.width * b.height - inter;
+    return union <= 0 ? 0.0 : inter / union;
   }
 
   Future<(double?, double?)> _calculateRotationAngleAndScalePregnancy(String rawPhotoPath) async {
@@ -502,7 +590,7 @@ class FaceStabilizer {
     return (translateX, translateY);
   }
 
-  Future<Uint8List?>? generateStabilizedImageBytes(ui.Image? image, double? rotation, double? scale, double? translateX, double? translateY) async {
+  Future<Uint8List?> generateStabilizedImageBytes(ui.Image? image, double? rotation, double? scale, double? translateX, double? translateY) async {
     ui.PictureRecorder recorder = ui.PictureRecorder();
     final painter = StabilizerPainter(
       image: image,
@@ -565,34 +653,29 @@ class FaceStabilizer {
     return (newTranslateX, newTranslateY);
   }
 
-  List<Point<int>?> _filterAndCenterEyes(List<Face> stabFaces) {
-    List<Point<int>?> eyes = getEyesFromFaces(stabFaces);
+  List<Point<int>?> _filterAndCenterEyes(List<dynamic> stabFaces) {
+    // Keep the 2-at-a-time pairing intact; skip faces with a missing eye.
+    final List<Point<int>> validPairs = [];
 
-    eyes = eyes.where((point) => point != null).toList();
-    if (eyes.length <= 2) {
-      return eyes;
-    }
+    final List<Point<int>?> eyes = getEyesFromFaces(stabFaces); // [L0,R0,L1,R1,...]
 
-    List<Point<int>?> filteredEyes = [];
-    List filteredFaces = [];
-    int facePos = 0;
-    for (int i = 0; i < eyes.length; i += 2) {
-      Point<int> leftEye = eyes[i]!;
-      Point<int> rightEye = eyes[i + 1]!;
+    for (int i = 0; i + 1 < eyes.length; i += 2) {
+      final Point<int>? leftEye  = eyes[i];
+      final Point<int>? rightEye = eyes[i + 1];
+      if (leftEye == null || rightEye == null) continue;
+
+      // Filter out tiny faces (helps both ML Kit & Apple Vision)
       if ((rightEye.x - leftEye.x).abs() > 0.75 * eyeDistanceGoal) {
-        filteredEyes.add(leftEye);
-        filteredEyes.add(rightEye);
-        filteredFaces.add(stabFaces[facePos]);
-        filteredFaces.add(stabFaces[facePos]);
+        validPairs..add(leftEye)..add(rightEye);
       }
-      facePos++;
     }
-    if (stabFaces.length > 1 && filteredEyes.length > 2) {
-      eyes = getCentermostEyes(eyes, stabFaces, canvasWidth, canvasHeight);
-    } else {
-      eyes = filteredEyes;
+
+    if (stabFaces.length > 1 && validPairs.length > 2) {
+      // Reuse your "centermost" tie-breaker on the cleaned list.
+      return getCentermostEyes(validPairs, stabFaces, canvasWidth, canvasHeight);
     }
-    return eyes;
+
+    return validPairs;
   }
 
   String _cleanUpPhotoPath(String photoPath) {
@@ -602,21 +685,26 @@ class FaceStabilizer {
         .replaceAll('_rotated_clockwise', '');
   }
 
-  List<Point<int>> getCentermostEyes(List<Point<int>?> eyes, List<Face> faces, int imgWidth, int imgHeight) {
+  List<Point<int>> getCentermostEyes(List<Point<int>?> eyes, List<dynamic> faces, int imgWidth, int imgHeight) {
     double smallestDistance = double.infinity;
     List<Point<int>> centeredEyes = [];
 
-    faces = faces.where((face) {
-      final bool rightEyeNotNull = face.landmarks[FaceLandmarkType.rightEye] != null;
-      final bool leftEyeNotNull = face.landmarks[FaceLandmarkType.leftEye] != null;
-      return leftEyeNotNull && rightEyeNotNull;
-    }).toList();
+    if (!Platform.isMacOS) {
+      faces = (faces as List<Face>).where((face) {
+        final bool rightEyeNotNull = face.landmarks[FaceLandmarkType.rightEye] != null;
+        final bool leftEyeNotNull = face.landmarks[FaceLandmarkType.leftEye] != null;
+        return leftEyeNotNull && rightEyeNotNull;
+      }).toList();
+    }
+
+    const double margin = 4.0;
 
     for (var i = 0; i < faces.length; i++) {
-      final bool bordersLeft = faces[i].boundingBox.left <= 1;
-      final bool bordersTop = faces[i].boundingBox.top <= 1;
-      final bool bordersRight = faces[i].boundingBox.right <= 1;
-      final bool bordersBottom = faces[i].boundingBox.bottom <= 1;
+      final Rect bbox = faces[i].boundingBox;
+      final bool bordersLeft = bbox.left <= margin;
+      final bool bordersTop = bbox.top <= margin;
+      final bool bordersRight = bbox.right >= imgWidth - margin;
+      final bool bordersBottom = bbox.bottom >= imgHeight - margin;
 
       if (bordersLeft || bordersTop || bordersRight || bordersBottom) continue;
 
@@ -645,13 +733,31 @@ class FaceStabilizer {
     return horizontalDistance;
   }
 
-  Future<List<Face>?> getFacesFromRawPhotoPath(String rawPhotoPath, int width, {bool filterByFaceSize = true}) async {
+  Future<List<dynamic>?> getFacesFromRawPhotoPath(String rawPhotoPath, int width, {bool filterByFaceSize = true}) async {
+    if (Platform.isMacOS) {
+      return await StabUtils.getFacesFromFilepath(rawPhotoPath, _faceDetector, filterByFaceSize: filterByFaceSize, imageWidth: width);
+    }
     await StabUtils.preparePNG(rawPhotoPath);
     final String pngPath = await DirUtils.getPngPathFromRawPhotoPath(rawPhotoPath);
-    return (await StabUtils.getFacesFromFilepath(pngPath, _faceDetector!, filterByFaceSize: filterByFaceSize, imageWidth: width));
+    return await StabUtils.getFacesFromFilepath(pngPath, _faceDetector, filterByFaceSize: filterByFaceSize, imageWidth: width);
   }
 
-  List<Point<int>?> getEyesFromFaces(List<Face> faces) => StabUtils.extractEyePositions(faces);
+  List<Point<int>?> getEyesFromFaces(dynamic faces) {
+    if (Platform.isMacOS) {
+      final List<Point<int>?> eyes = [];
+      for (final f in (faces as List)) {
+        Point<int>? a = f.leftEye == null ? null : Point<int>(f.leftEye!.x.toInt(), f.leftEye!.y.toInt());
+        Point<int>? b = f.rightEye == null ? null : Point<int>(f.rightEye!.x.toInt(), f.rightEye!.y.toInt());
+        if (a != null && b != null && a.x > b.x) {
+          final tmp = a; a = b; b = tmp;
+        }
+        eyes..add(a)..add(b);
+      }
+      return eyes;
+    } else {
+      return StabUtils.extractEyePositions(faces as List<Face>);
+    }
+  }
 
   Future<bool> videoSettingsChanged() async =>
       await VideoUtils.videoOutputSettingsChanged(projectId, await DB.instance.getNewestVideoByProjectId(projectId));

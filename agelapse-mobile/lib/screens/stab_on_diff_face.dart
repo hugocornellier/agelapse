@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'dart:io';
 import '../services/database_helper.dart';
 import '../services/face_stabilizer.dart';
@@ -29,8 +28,8 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
   late String rawImagePath;
   late FaceStabilizer faceStabilizer;
   late Size originalImageSize;
-  List<Face> faces = [];
-  List<MapEntry<Face, Rect>> faceContours = [];
+  List<dynamic> faces = [];
+  List<MapEntry<dynamic, Rect>> faceContours = [];
   bool isLoading = true;
   bool? stabCompletedSuccessfully;
   String loadingStatus = "Loading image...";
@@ -55,10 +54,10 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
       loadingStatus = "Detecting faces...";
     });
 
-    List<Face>? facesRaw = await faceStabilizer.getFacesFromRawPhotoPath(
-      rawImagePath,
-      image.width,
-      filterByFaceSize: false
+    List<dynamic>? facesRaw = await faceStabilizer.getFacesFromRawPhotoPath(
+        rawImagePath,
+        image.width,
+        filterByFaceSize: false
     );
 
     if (facesRaw == null) {
@@ -82,7 +81,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
     );
   }
 
-  void _handleContourTapped(Face tappedFace, VoidCallback userRanOutOfSpaceCallback) async {
+  void _handleContourTapped(dynamic tappedFace, VoidCallback userRanOutOfSpaceCallback) async {
     final bool? userConfirmed = await _showConfirmationDialog();
     if (userConfirmed!) {
       setState(() {
@@ -90,16 +89,19 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
         isLoading = true;
       });
 
+      final Rect targetBox = (tappedFace as dynamic).boundingBox as Rect;
+
       final bool successful = await faceStabilizer.stabilize(
         rawImagePath,
         false,
         userRanOutOfSpaceCallback,
-        targetFace: tappedFace,
+        // Keep ML Kit fast path when available…
+        targetFace: Platform.isMacOS ? null : tappedFace,
+        // …but always provide a platform-agnostic bounding box:
+        targetBoundingBox: targetBox,
       );
 
-      final String loadStatus = successful
-          ? "Stabilization successful"
-          : "Stabilization failed";
+      final String loadStatus = successful ? "Stabilization successful" : "Stabilization failed";
 
       await DB.instance.setNewVideoNeeded(widget.projectId);
       widget.reloadImagesInGallery();
@@ -151,36 +153,36 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
       body: Center(
         child: stabCompletedSuccessfully == null
             ? !isLoading
-                ? LayoutBuilder(
-                    builder: (context, constraints) {
-                      return _buildImageWithContours(constraints, widget.userRanOutOfSpaceCallback);
-                    },
-                  )
-                : Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const CircularProgressIndicator(),
-                      const SizedBox(height: 20),
-                      Text(loadingStatus),
-                    ],
-                  )
+            ? LayoutBuilder(
+          builder: (context, constraints) {
+            return _buildImageWithContours(constraints, widget.userRanOutOfSpaceCallback);
+          },
+        )
+            : Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 20),
+            Text(loadingStatus),
+          ],
+        )
             : stabCompletedSuccessfully!
-                ? Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.check, color: Colors.green),
-                      const SizedBox(height: 20),
-                      Text(loadingStatus),
-                    ],
-                  )
-                : Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.error_outline, color: Colors.red),
-                      const SizedBox(height: 20),
-                      Text(loadingStatus),
-                    ],
-                  ),
+            ? Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.check, color: Colors.green),
+            const SizedBox(height: 20),
+            Text(loadingStatus),
+          ],
+        )
+            : Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, color: Colors.red),
+            const SizedBox(height: 20),
+            Text(loadingStatus),
+          ],
+        ),
       ),
     );
   }
@@ -226,7 +228,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
     }
   }
 
-  Widget _buildContourRect(Rect rect, Face face, VoidCallback userRanOutOfSpaceCallback) {
+  Widget _buildContourRect(Rect rect, dynamic face, VoidCallback userRanOutOfSpaceCallback) {
     return Positioned(
       left: rect.left,
       top: rect.top,
@@ -235,7 +237,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
       child: GestureDetector(
         onTap: () => _handleContourTapped(face, userRanOutOfSpaceCallback),
         child: Container(
-          color: Colors.blue.withAlpha(77), // Equivalent to opacity 0.3
+          color: Colors.blue.withAlpha(77),
         ),
       ),
     );
@@ -243,21 +245,22 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
 }
 
 class FaceContourPainter extends CustomPainter {
-  final List<Face> faces;
+  final List<dynamic> faces;
   final Size originalImageSize;
   final Size displaySize;
 
   FaceContourPainter(this.faces, this.originalImageSize, this.displaySize);
 
-  static List<Rect> calculateContours(List<Face> faces, Size originalImageSize, Size displaySize) {
+  static List<Rect> calculateContours(List<dynamic> faces, Size originalImageSize, Size displaySize) {
     final double scaleX = displaySize.width / originalImageSize.width;
     final double scaleY = displaySize.height / originalImageSize.height;
     return faces.map((face) {
+      final Rect bb = face.boundingBox as Rect;
       return Rect.fromLTRB(
-        face.boundingBox.left * scaleX,
-        face.boundingBox.top * scaleY,
-        face.boundingBox.right * scaleX,
-        face.boundingBox.bottom * scaleY,
+        bb.left * scaleX,
+        bb.top * scaleY,
+        bb.right * scaleX,
+        bb.bottom * scaleY,
       );
     }).toList();
   }
