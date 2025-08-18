@@ -147,8 +147,13 @@ class CameraUtils {
   ) async {
     String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
     try {
+      print("Attempting to save photo");
+
       final int? newPhotoLength = await image?.length();
-      if (newPhotoLength == null) return false;
+      if (newPhotoLength == null) {
+        print("Returning false 0");
+        return false;
+      }
 
       if (imageTimestampFromExif != null) {
         timestamp = imageTimestampFromExif.toString();
@@ -156,6 +161,8 @@ class CameraUtils {
         while (photoExists) {
           final Map<String, dynamic> existingPhoto = (await DB.instance.getPhotosByTimestamp(timestamp, projectId)).first;
           if (newPhotoLength == existingPhoto['imageLength']) {
+            print("Returning false 1");
+
             return false;
           }
 
@@ -183,11 +190,15 @@ class CameraUtils {
 
       bytes = await CameraUtils.readBytesInIsolate(imgPath);
       if (bytes == null) {
+        print("Returning false 2");
+
         return false;
       }
 
       imglib.Image? rawImage = await compute(imglib.decodeImage, bytes);
       if (rawImage == null) {
+        print("Returning false 3");
+
         return false;
       }
 
@@ -250,7 +261,10 @@ class CameraUtils {
       await DirUtils.createDirectoryIfNotExists(thumbnailPath);
 
       bool result = await _createThumbnailForNewImage(extension, bytes, imgPath, thumbnailPath, rawImage);
-      if (!result) return false;
+      if (!result) {
+        print("Returning false 3");
+        return false;
+      }
 
       bytes = null;
 
@@ -263,7 +277,14 @@ class CameraUtils {
         increaseSuccessfulImportCount();
       }
 
+      print("Returning true");
+
       return true;
+    } catch (e) {
+      print("error during savePhoto camera utils call: ");
+      print(e);
+
+      return false;
     } finally {
       bytes = null;
     }

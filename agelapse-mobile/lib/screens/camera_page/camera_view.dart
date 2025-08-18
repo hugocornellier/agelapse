@@ -17,6 +17,7 @@ import '../took_first_photo_page.dart';
 import 'grid_mode.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:ui' as ui;
+import 'package:camera_macos/camera_macos.dart' as cmacos;
 
 class RotatingIconButton extends StatelessWidget {
   final Widget child;
@@ -111,6 +112,7 @@ class _CameraViewState extends State<CameraView> {
   bool _isInfoWidgetVisible = true;
   bool isMirrored = false;
   String _orientation = '';
+  cmacos.CameraMacOSController? _macController;
 
   @override
   void initState() {
@@ -148,6 +150,30 @@ class _CameraViewState extends State<CameraView> {
         _widgetHeight = renderBox.size.height;
       });
     }
+  }
+
+  Widget _macOSBody() {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        cmacos.CameraMacOSView(
+          fit: BoxFit.cover,
+          cameraMode: cmacos.CameraMacOSMode.photo,
+          onCameraInizialized: (cmacos.CameraMacOSController c) {
+            setState(() => _macController = c);
+          },
+        ),
+        if (_gridMode != GridMode.none)
+          CameraGridOverlay(widget.projectId, _gridMode, offsetX, offsetY, orientation: _orientation),
+        if (!modifyGridMode) _leftSideControls(),
+        if (!modifyGridMode) _rightSideControls(),
+        if (!modifyGridMode) _cameraControl(),
+        if (modifyGridMode) gridModifierOverlay(),
+        if (modifyGridMode) saveGridButton(),
+        if (!modifyGridMode && (_gridMode == GridMode.gridOnly || _gridMode == GridMode.doubleGhostGrid || _gridMode == GridMode.ghostOnly))
+          modifyGridButton(),
+      ],
+    );
   }
 
   void _initialize() async {
@@ -193,33 +219,42 @@ class _CameraViewState extends State<CameraView> {
     final String flashSetting = await SettingsUtil.loadCameraFlash(widget.projectId.toString());
     if (flashSetting == 'off') flashEnabled = false;
 
-    _cameras = await availableCameras();
+    if (!Platform.isMacOS) {
+      _cameras = await availableCameras();
 
-    if (widget.forceGridModeEnum != null) {
-      _gridMode = GridMode.values[widget.forceGridModeEnum!];
-    } else if (!takingGuidePhoto) {
-      final bool enableGridSetting = await SettingsUtil.loadEnableGrid();
-      setState(() => enableGrid = enableGridSetting);
-    }
-
-    for (var i = 0; i < _cameras.length; i++) {
-      CameraDescription camera = _cameras[i];
-
-      if (camera.lensDirection == CameraLensDirection.front) {
-        frontFacingLensIndex = i;
+      if (widget.forceGridModeEnum != null) {
+        _gridMode = GridMode.values[widget.forceGridModeEnum!];
+      } else if (!takingGuidePhoto) {
+        final bool enableGridSetting = await SettingsUtil.loadEnableGrid();
+        setState(() => enableGrid = enableGridSetting);
       }
 
-      if (camera.lensDirection == CameraLensDirection.back && !backIndexSet) {
-        backFacingLensIndex = i;
-        backIndexSet = true;
-      }
+      for (var i = 0; i < _cameras.length; i++) {
+        CameraDescription camera = _cameras[i];
 
-      if (camera.lensDirection == widget.initialCameraLensDirection) {
-        _cameraIndex = i;
+        if (camera.lensDirection == CameraLensDirection.front) {
+          frontFacingLensIndex = i;
+        }
+
+        if (camera.lensDirection == CameraLensDirection.back && !backIndexSet) {
+          backFacingLensIndex = i;
+          backIndexSet = true;
+        }
+
+        if (camera.lensDirection == widget.initialCameraLensDirection) {
+          _cameraIndex = i;
+        }
       }
-    }
-    if (_cameraIndex != -1) {
-      _startLiveFeed();
+      if (_cameraIndex != -1) {
+        _startLiveFeed();
+      }
+    } else {
+      if (widget.forceGridModeEnum != null) {
+        _gridMode = GridMode.values[widget.forceGridModeEnum!];
+      } else if (!takingGuidePhoto) {
+        final bool enableGridSetting = await SettingsUtil.loadEnableGrid();
+        setState(() => enableGrid = enableGridSetting);
+      }
     }
   }
 
@@ -238,19 +273,51 @@ class _CameraViewState extends State<CameraView> {
     setState(() => _showFlash = false);
 
     try {
-      final XFile image = await _controller!.takePicture();
-      final Uint8List bytes = await image.readAsBytes();
-      CameraUtils.savePhoto(
-        image,
-        widget.projectId,
-        false,
-        null,
-        false,
-        bytes: bytes,
-        applyMirroring: isMirrored,
-        deviceOrientation: _orientation,
-        refreshSettings: widget.refreshSettings,
-      );
+      if (Platform.isMacOS) {
+        try {
+          print('macOS: taking picture...');
+          final photo = await _macController?.takePicture();
+          final Uint8List? bytes = photo?.bytes;
+          if (bytes == null) {
+            print('macOS: photo bytes are null');
+            return;
+          }
+          final String debugPath = '${Directory.systemTemp.path}/camera_debug_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          await File(debugPath).writeAsBytes(bytes, flush: true);
+          final bool exists = await File(debugPath).exists();
+          print('macOS: wrote debug image to $debugPath, exists=$exists, length=${bytes.length}');
+
+          final XFile xImage = XFile(debugPath);
+          await CameraUtils.savePhoto(
+            xImage,
+            widget.projectId,
+            false,
+            null,
+            false,
+            applyMirroring: isMirrored,
+            deviceOrientation: _orientation,
+            refreshSettings: widget.refreshSettings,
+          );
+          print('macOS: CameraUtils.savePhoto completed');
+        } catch (e, st) {
+          print('macOS: save failed: $e');
+          print(st);
+        }
+      } else {
+        final XFile image = await _controller!.takePicture();
+        final Uint8List bytes = await image.readAsBytes();
+        CameraUtils.savePhoto(
+          image,
+          widget.projectId,
+          false,
+          null,
+          false,
+          bytes: bytes,
+          applyMirroring: isMirrored,
+          deviceOrientation: _orientation,
+          refreshSettings: widget.refreshSettings,
+        );
+      }
 
       final bool hasTakenFirstPhoto = await SettingsUtil.hasTakenFirstPhoto(widget.projectId.toString());
       if (!hasTakenFirstPhoto) {
@@ -396,7 +463,7 @@ class _CameraViewState extends State<CameraView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(toolbarHeight: 0, backgroundColor: Colors.black),
-      body: _liveFeedBody(),
+      body: Platform.isMacOS ? _macOSBody() : _liveFeedBody(),
     );
   }
 
