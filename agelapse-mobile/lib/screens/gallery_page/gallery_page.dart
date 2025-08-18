@@ -420,15 +420,18 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
           Expanded(
             child: GestureDetector(
               onScaleStart: (details) {
-                _previousScale = _scale;
+                if (Platform.isAndroid || Platform.isIOS) {
+                  _previousScale = _scale;
+                }
               },
               onScaleUpdate: (details) {
-                setState(() {
-                  _scale = _previousScale * details.scale;
-                  final bool isDesktop = Platform.isMacOS || Platform.isWindows || Platform.isLinux;
-                  final int maxSteps = isDesktop ? 12 : 5;
-                  gridAxisCount = (4 / _scale).clamp(1, maxSteps).toInt();
-                });
+                if (Platform.isAndroid || Platform.isIOS) {
+                  setState(() {
+                    _scale = _previousScale * details.scale;
+                    const int maxSteps = 5;
+                    gridAxisCount = (4 / _scale).clamp(1, maxSteps).toInt();
+                  });
+                }
               },
               child: Stack(
                 children: [
