@@ -142,7 +142,9 @@ class FaceStabilizer {
 
       double? rotationDegrees, scaleFactor, translateX, translateY;
 
-      final ui.Image? img = await StabUtils.loadImageFromFile(File(rawPhotoPath));
+      await StabUtils.preparePNG(rawPhotoPath);
+      final String canonicalPath = await DirUtils.getPngPathFromRawPhotoPath(rawPhotoPath);
+      final ui.Image? img = await StabUtils.loadImageFromFile(File(canonicalPath));
       if (img == null) return false;
 
       (scaleFactor, rotationDegrees) = await _calculateRotationAndScale(
@@ -189,11 +191,51 @@ class FaceStabilizer {
     rawPhotoPath = _cleanUpPhotoPath(rawPhotoPath);
 
     if (Platform.isMacOS) {
-      final leftRight = _estimatedEyesAfterTransform(img!, scaleFactor, rotationDegrees);
-      final Point<int> goalLeftEye = Point(leftEyeXGoal, bothEyesYGoal);
+      final Point<int> goalLeftEye  = Point(leftEyeXGoal,  bothEyesYGoal);
       final Point<int> goalRightEye = Point(rightEyeXGoal, bothEyesYGoal);
-      final score = calculateStabScore(leftRight, goalLeftEye, goalRightEye);
-      return await saveStabilizedImage(imageBytesStabilized, rawPhotoPath, stabilizedJpgPhotoPath, score);
+
+      final stabFaces = await StabUtils.getFacesFromFilepath(
+        stabilizedJpgPhotoPath,
+        null,
+        filterByFaceSize: false,
+        imageWidth: canvasWidth,
+      );
+
+      if (stabFaces != null && stabFaces.isNotEmpty) {
+        final eyes = _filterAndCenterEyes(stabFaces);
+        if (eyes.length >= 2 && eyes[0] != null && eyes[1] != null) {
+          final toDelete = [
+            await DirUtils.getPngPathFromRawPhotoPath(rawPhotoPath),
+            stabilizedJpgPhotoPath,
+          ];
+          final ok = await _performTwoPassFixIfNeeded(
+            stabFaces,
+            eyes,
+            goalLeftEye,
+            goalRightEye,
+            translateX,
+            translateY,
+            rotationDegrees,
+            scaleFactor,
+            imageBytesStabilized,
+            rawPhotoPath,
+            stabilizedJpgPhotoPath,
+            toDelete,
+            img,
+          );
+          await DirUtils.tryDeleteFiles(toDelete);
+          return ok;
+        }
+      }
+
+      final eyesXY = _estimatedEyesAfterTransform(
+        img!, scaleFactor, rotationDegrees,
+        translateX: translateX, translateY: translateY,
+      );
+      final score = calculateStabScore(eyesXY, goalLeftEye, goalRightEye);
+      return await saveStabilizedImage(
+          imageBytesStabilized, rawPhotoPath, stabilizedJpgPhotoPath, score
+      );
     }
 
     final stabFaces = await StabUtils.getFacesFromFilepath(
@@ -228,7 +270,13 @@ class FaceStabilizer {
     return successfulStabilization;
   }
 
-  List<Point<int>> _estimatedEyesAfterTransform(ui.Image img, double scale, double rotationDegrees) {
+  List<Point<int>> _estimatedEyesAfterTransform(
+      ui.Image img,
+      double scale,
+      double rotationDegrees, {
+        double translateX = 0,
+        double translateY = 0,
+      }) {
     final Point<int> left0 = originalEyePositions![0]!;
     final Point<int> right0 = originalEyePositions![1]!;
 
@@ -253,7 +301,12 @@ class FaceStabilizer {
       originalHeight: img.height.toDouble(),
     );
 
-    return [Point(a['x']!.toInt(), a['y']!.toInt()), Point(b['x']!.toInt(), b['y']!.toInt())];
+    final ax = (a['x']! + translateX).toInt();
+    final ay = (a['y']! + translateY).toInt();
+    final bx = (b['x']! + translateX).toInt();
+    final by = (b['y']! + translateY).toInt();
+
+    return [Point(ax, ay), Point(bx, by)];
   }
 
   Future<bool> _performTwoPassFixIfNeeded(
@@ -810,11 +863,12 @@ class FaceStabilizer {
 
   Future<List<dynamic>?> getFacesFromRawPhotoPath(String rawPhotoPath, int width, {bool filterByFaceSize = true}) async {
     await _ensureReady();
-    if (Platform.isMacOS) {
-      return await StabUtils.getFacesFromFilepath(rawPhotoPath, null, filterByFaceSize: filterByFaceSize, imageWidth: width);
-    }
     await StabUtils.preparePNG(rawPhotoPath);
     final String pngPath = await DirUtils.getPngPathFromRawPhotoPath(rawPhotoPath);
+
+    if (Platform.isMacOS) {
+      return await StabUtils.getFacesFromFilepath(pngPath, null, filterByFaceSize: filterByFaceSize, imageWidth: width);
+    }
     return await StabUtils.getFacesFromFilepath(pngPath, _faceDetector, filterByFaceSize: filterByFaceSize, imageWidth: width);
   }
 
