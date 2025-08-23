@@ -125,27 +125,39 @@ class ProjectPageState extends State<ProjectPage> {
       body: LayoutBuilder(
         builder: (context, constraints) {
           final double rightPaneWidth =
-          (constraints.maxWidth * 0.38).clamp(360.0, 560.0);
+          (constraints.maxWidth * 0.42).clamp(480.0, 840.0);
+
+          final double leftMaxWidth =
+          (constraints.maxWidth - rightPaneWidth - 1).clamp(800.0, 1160.0);
 
           return Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: cache.noPhotos ||
-                        !cache.hasOpenedNonEmptyGallery ||
-                        !cache.hasTakenMoreThanOnePhoto ||
-                        !cache.hasViewedFirstVideo
-                        ? _buildNoPhotosContent(context, includeOutput: false)
-                        : _buildDashboardSection(includeOutput: false),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: leftMaxWidth),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: cache.noPhotos ||
+                            !cache.hasOpenedNonEmptyGallery ||
+                            !cache.hasTakenMoreThanOnePhoto ||
+                            !cache.hasViewedFirstVideo
+                            ? _buildNoPhotosContent(context, includeOutput: false)
+                            : _buildDashboardSection(includeOutput: false),
+                      ),
+                    ),
                   ),
                 ),
               ),
-              SizedBox(
+              const SizedBox(
                 width: 1,
-                child: Container(color: const Color(0xff1E1E1E)),
+                child: VerticalDivider(
+                  width: 1,
+                  thickness: 1,
+                  color: Color(0xff1E1E1E),
+                ),
               ),
               SizedBox(
                 width: rightPaneWidth,

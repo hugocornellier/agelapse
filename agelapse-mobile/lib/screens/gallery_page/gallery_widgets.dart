@@ -64,14 +64,17 @@ class StabilizedThumbnailState extends State<StabilizedThumbnail> {
     _thumbnailFuture = _loadThumbnail();
   }
 
-  Future<String> _loadThumbnail() async {
-    // Return the cached result if available
-    // Otherwise, compute the future and cache the result
-
-    if (_cachedResult != null) {
-      return _cachedResult!;
+  @override
+  void didUpdateWidget(covariant StabilizedThumbnail oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.thumbnailPath != widget.thumbnailPath) {
+      _cachedResult = null;
+      _thumbnailFuture = _loadThumbnail();
     }
+  }
 
+  Future<String> _loadThumbnail() async {
+    if (_cachedResult != null) return _cachedResult!;
     final result = await GalleryUtils.waitForThumbnail(widget.thumbnailPath, widget.projectId);
     _cachedResult = result;
     return result;
@@ -84,7 +87,9 @@ class StabilizedThumbnailState extends State<StabilizedThumbnail> {
       builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting || !snapshot.hasData) {
           return const FlashingBox();
-        } else if (snapshot.data == "no_faces_found" || snapshot.data == "stab_failed") {
+        }
+
+        if (snapshot.data == "no_faces_found" || snapshot.data == "stab_failed") {
           return Container(
             color: Colors.transparent,
             child: const Stack(
@@ -92,33 +97,27 @@ class StabilizedThumbnailState extends State<StabilizedThumbnail> {
                 Positioned(
                   top: 8.0,
                   right: 8.0,
-                  child: Icon(
-                    Icons.error,
-                    color: Colors.red,
-                    size: 24.0,
-                  ),
+                  child: Icon(Icons.error, color: Colors.red, size: 24.0),
                 ),
               ],
             ),
           );
-        } else if (snapshot.data == "success") {
-          if (File(widget.thumbnailPath).existsSync()) {
-            try {
-              return Image.file(
-                File(widget.thumbnailPath),
-                fit: BoxFit.cover,
-                width: double.infinity,
-                height: double.infinity,
-              );
-            } catch (e) {
-              print("Error loading image: $e");
-              return Container();
-            }
-          } else {
-            return Container();
-          }
         }
-        return Container();
+
+        if (snapshot.data == "success") {
+          if (File(widget.thumbnailPath).existsSync()) {
+            return Image.file(
+              File(widget.thumbnailPath),
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              errorBuilder: (context, error, stack) => Container(color: Colors.black),
+            );
+          }
+          return Container(color: Colors.black);
+        }
+
+        return Container(color: Colors.black);
       },
     );
   }

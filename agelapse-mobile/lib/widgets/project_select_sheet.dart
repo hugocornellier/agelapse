@@ -314,6 +314,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
             return InkWell(
               onTap: () => navigateToProject(context, project),
               onLongPress: () => _showProjectOptionsPopup(context, project),
+              onSecondaryTap: () => _showProjectOptionsPopup(context, project),
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 0.0),
                 child: Container(

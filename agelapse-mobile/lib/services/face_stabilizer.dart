@@ -262,6 +262,10 @@ class FaceStabilizer {
 
     final Point<int> goalLeftEye = Point(leftEyeXGoal, bothEyesYGoal);
     final Point<int> goalRightEye = Point(rightEyeXGoal, bothEyesYGoal);
+
+    print("EYE POS GOALS: $goalLeftEye $goalRightEye");
+    print("POST-STAB POS: ${eyes[0]} ${eyes[1]}");
+
     List<String> toDelete = [await DirUtils.getPngPathFromRawPhotoPath(rawPhotoPath), stabilizedJpgPhotoPath];
 
     bool successfulStabilization = await _performTwoPassFixIfNeeded(stabFaces, eyes, goalLeftEye, goalRightEye, translateX, translateY, rotationDegrees, scaleFactor, imageBytesStabilized, rawPhotoPath, stabilizedJpgPhotoPath, toDelete, img);
@@ -374,7 +378,7 @@ class FaceStabilizer {
         }
       }
 
-      if (newScore < 5) {
+      if (newScore < 20) {
         successfulStabilization = await saveStabilizedImage(
             newImageBytesStabilized, rawPhotoPath, stabilizedPhotoPath, newScore
         );
@@ -993,13 +997,18 @@ class FaceStabilizer {
   }
 
   (double, double) _calculateEyeMetrics(List<Point<int>?> detectedEyes) {
-    final Point<int> rightEye = detectedEyes[1]!;
     final Point<int> leftEye = detectedEyes[0]!;
+    final Point<int> rightEye = detectedEyes[1]!;
     final int verticalDistance = (rightEye.y - leftEye.y).abs();
     final int horizontalDistance = (rightEye.x - leftEye.x).abs();
     double rotationDegrees = atan2(verticalDistance, horizontalDistance) * (180 / pi) * (rightEye.y > leftEye.y ? -1 : 1);
     double hypotenuse = sqrt(pow(verticalDistance, 2) + pow(horizontalDistance, 2));
     double scaleFactor = eyeDistanceGoal / hypotenuse;
+
+    print("leftEye => '${leftEye}'");
+    print("rightEye => '${rightEye}'");
+    print("Calculated rotationDegrees => '${rotationDegrees}'");
+
     return (scaleFactor, rotationDegrees);
   }
 

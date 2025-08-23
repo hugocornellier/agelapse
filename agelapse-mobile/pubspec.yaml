@@ -50,6 +50,7 @@ dependencies:
   wakelock_plus: ^1.3.2
   wechat_assets_picker:
     path: packages/wechat_assets_picker
+  window_manager: ^0.5.1
 
 dependency_overrides:
   wechat_picker_library:

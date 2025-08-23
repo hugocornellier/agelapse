@@ -6,6 +6,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:provider/provider.dart';
 import 'dart:io' show Platform;
+import 'package:window_manager/window_manager.dart';
 import '../screens/projects_page.dart';
 import '../services/database_helper.dart';
 import '../services/theme_provider.dart';
@@ -13,8 +14,28 @@ import '../widgets/main_navigation.dart';
 import '../theme/theme.dart';
 
 void main() async {
-  if (!Platform.isWindows && !Platform.isLinux && !Platform.isMacOS) {
-    WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    await DB.instance.createTablesIfNotExist();
+
+    await windowManager.ensureInitialized();
+
+    const minimum = Size(800, 450);
+    const initial = Size(1200, 800);
+
+    const options = WindowOptions(
+      size: initial,
+      minimumSize: minimum,
+      center: true,
+      title: 'AgeLapse',
+    );
+
+    await windowManager.waitUntilReadyToShow(options, () async {
+      await windowManager.show();
+      await windowManager.focus();
+    });
+  } else {
     FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
     await _initializeApp();
@@ -28,10 +49,6 @@ void main() async {
       systemNavigationBarIconBrightness: Brightness.light,
     );
     SystemChrome.setSystemUIOverlayStyle(style);
-  } else {
-    WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
-
-    await DB.instance.createTablesIfNotExist();
   }
 
   runApp(AgeLapse(homePage: await _getHomePage()));

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -276,6 +277,8 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
 
   List<File> cloneList(List list) => List.from(list);
 
+  bool _alive = true;
+
   Future<void> _init() async {
     final String projectOrientationRaw = await SettingsUtil.loadProjectOrientation(projectIdStr);
     final int gridAxisCountRaw = await SettingsUtil.loadGridAxisCount(projectIdStr);
@@ -289,9 +292,9 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
       _showImportOptionsBottomSheet(context);
     }
 
-    while (true) {
-      int waitTimeInSeconds = 2;
-      int stabCount = await DB.instance.getStabilizedPhotoCountByProjectID(projectId, projectOrientation!);
+    while (_alive) {
+      final int stabCount = await DB.instance.getStabilizedPhotoCountByProjectID(projectId, projectOrientation!);
+      if (!_alive) break;
 
       if (stabCount != _stabCount) {
         _stabCount = stabCount;
@@ -300,12 +303,13 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
         }
       }
 
-      await Future.delayed(Duration(seconds: waitTimeInSeconds));
+      await Future.delayed(const Duration(seconds: 2));
     }
   }
 
   @override
   void dispose() {
+    _alive = false;
     _tabController.dispose();
     activeProcessingDateNotifier.dispose();
     _stabilizedScrollController.dispose();
@@ -1102,6 +1106,7 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
     return GestureDetector(
       onTap: onTap,
       onLongPress: onLongPress,
+      onSecondaryTap: onLongPress,
       child: Stack(
         children: [
           imageWidget
@@ -1116,38 +1121,58 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
       DirUtils.thumbnailDirname,
     );
     final String thumbnailPath = path.join(
-        path.dirname(switched),
-        "${path.basenameWithoutExtension(filepath)}.jpg"
+      path.dirname(switched),
+      "${path.basenameWithoutExtension(filepath)}.jpg",
     );
 
     final File file = File(thumbnailPath);
 
-    return FutureBuilder(
+    return FutureBuilder<bool>(
       future: _waitForThumbnail(file),
-      builder: (BuildContext context, AsyncSnapshot<void> snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+      builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting || snapshot.data == null) {
           return const FlashingBox();
-        } else {
-          return _buildThumbnailContent(
-            imageWidget: Image.file(
-              File(thumbnailPath),
-              fit: BoxFit.cover,
-              width: double.infinity,
-              height: double.infinity,
-            ),
-            filepath: filepath,
-            onTap: () => _showImagePreviewDialog(File(filepath), isStabilized: false),
-            onLongPress: () => _showImageOptionsMenu(File(filepath)),
-          );
         }
+        if (snapshot.data == false) {
+          return Container(color: Colors.black);
+        }
+        return _buildThumbnailContent(
+          imageWidget: Image.file(
+            File(thumbnailPath),
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorBuilder: (context, error, stack) => Container(color: Colors.black),
+          ),
+          filepath: filepath,
+          onTap: () => _showImagePreviewDialog(File(filepath), isStabilized: false),
+          onLongPress: () => _showImageOptionsMenu(File(filepath)),
+        );
       },
     );
   }
 
-  Future<void> _waitForThumbnail(File file) async {
-    while (!file.existsSync()) {
-      await Future.delayed(const Duration(seconds: 1));
+  Future<bool> _waitForThumbnail(File file, {Duration timeout = const Duration(seconds: 15)}) async {
+    final sw = Stopwatch()..start();
+    int? lastLen;
+    while (sw.elapsed < timeout) {
+      if (file.existsSync()) {
+        final len = file.lengthSync();
+        if (len > 0 && lastLen != null && len == lastLen) {
+          try {
+            final bytes = await file.readAsBytes();
+            final codec = await ui.instantiateImageCodec(bytes);
+            await codec.getNextFrame();
+            return true;
+          } catch (_) {
+            // keep waiting
+          }
+        }
+        lastLen = len;
+      }
+      await Future.delayed(const Duration(milliseconds: 200));
     }
+    return false;
   }
 
   Set<String> _retryingPhotoTimestamps = {};
@@ -1161,6 +1186,7 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
     return GestureDetector(
       onTap: () => _showImagePreviewDialog(File(filepath), isStabilized: true),
       onLongPress: () => _showImageOptionsMenu(File(filepath)),
+      onSecondaryTap: () => _showImageOptionsMenu(File(filepath)),
       child: StabilizedThumbnail(thumbnailPath: thumbnailPath, projectId: widget.projectId),
     );
   }
@@ -1312,6 +1338,7 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
       child: Image.file(
         imageFile,
         fit: BoxFit.contain,
+        errorBuilder: (context, error, stack) => Container(color: Colors.black),
       ),
     );
   }
