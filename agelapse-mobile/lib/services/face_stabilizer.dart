@@ -815,26 +815,29 @@ class FaceStabilizer {
     List<Point<int>> centeredEyes = [];
 
     if (!Platform.isMacOS) {
-      faces = (faces as List<Face>).where((face) {
+      final List<Face> faceList = (faces as List).cast<Face>();
+      faces = faceList.where((face) {
         final bool rightEyeNotNull = face.landmarks[FaceLandmarkType.rightEye] != null;
         final bool leftEyeNotNull = face.landmarks[FaceLandmarkType.leftEye] != null;
         return leftEyeNotNull && rightEyeNotNull;
       }).toList();
     }
 
-    final double margin = Platform.isMacOS ? 0.0 : 4.0;
+    final double marginPx = max(4.0, imgWidth * 0.01);
+
+    bool touchesEdge(Rect bbox) {
+      return bbox.left <= marginPx ||
+          bbox.top <= marginPx ||
+          bbox.right >= imgWidth - marginPx ||
+          bbox.bottom >= imgHeight - marginPx;
+    }
 
     final int pairCount = eyes.length ~/ 2;
     final int limit = faces.length < pairCount ? faces.length : pairCount;
 
     for (var i = 0; i < limit; i++) {
       final Rect bbox = faces[i].boundingBox;
-      final bool bordersLeft = bbox.left <= margin;
-      final bool bordersTop = bbox.top <= margin;
-      final bool bordersRight = bbox.right >= imgWidth - margin;
-      final bool bordersBottom = bbox.bottom >= imgHeight - margin;
-
-      if (bordersLeft || bordersTop || bordersRight || bordersBottom) continue;
+      if (touchesEdge(bbox)) continue;
 
       final int li = 2 * i, ri = li + 1;
       final Point<int>? leftEye = eyes[li];
@@ -885,7 +888,6 @@ class FaceStabilizer {
 
         if (a == null || b == null) {
           final Rect bb = f.boundingBox as Rect;
-          final double ex = bb.left + bb.width * 0.5;
           final double ey = bb.top + bb.height * 0.42;
           a = Point((bb.left + bb.width * 0.33).toInt(), ey.toInt());
           b = Point((bb.left + bb.width * 0.67).toInt(), ey.toInt());
@@ -898,7 +900,8 @@ class FaceStabilizer {
       }
       return eyes;
     } else {
-      return StabUtils.extractEyePositions(faces as List<Face>);
+      final List<Face> typed = (faces as List).cast<Face>();
+      return StabUtils.extractEyePositions(typed);
     }
   }
 

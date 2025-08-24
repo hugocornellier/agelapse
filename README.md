@@ -30,6 +30,12 @@ Download AgeLapse: [https://agelapse.com](https://agelapse.com)
 
 **Mobile Import Note:** To easily import a large number of photos into the mobile version, create a .zip file containing all files.
 
+## How Does It Work?
+
+AgeLapse takes a raw photo, detects a set of landmarks on the person (eyes for face), and applies affine transformations (scale, rotate, translate) so that those anchors land on fixed “goal” coordinates inside a fixed-size canvas.
+
+The face detection model used by AgeLapse is platform-dependent. On Mobile, Google MLKit is used. On MacOS, Apple Vision is used.
+
 ## What's New - Mobile v1.5.2
 
 ### New Features

@@ -1187,6 +1187,9 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
       return const FlashingBox();
     }
     final String thumbnailPath = FaceStabilizer.getStabThumbnailPath(filepath);
+
+    _stdebugLogStabPathsOnce(thumbnailPath, filepath);
+
     return GestureDetector(
       onTap: () => _showImagePreviewDialog(File(filepath), isStabilized: true),
       onLongPress: () => _showImageOptionsMenu(File(filepath)),
@@ -1332,6 +1335,50 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
         : Container();
   }
 
+  final Set<String> _stdebugLoggedOnce = {};
+
+  void _stdebug(String msg) {
+    print('[STDEBUG] $msg');
+  }
+
+  Future<void> _stdebugProbePath(String label, String path) async {
+    try {
+      final f = File(path);
+      if (!f.existsSync()) {
+        _stdebug('$label MISSING path=$path');
+        return;
+      }
+      final len = f.lengthSync();
+      final lm = await f.lastModified();
+      _stdebug('$label EXISTS len=$len lastModified=${lm.toIso8601String()} path=$path');
+
+      final bytes = await f.readAsBytes();
+      final codec = await ui.instantiateImageCodec(bytes);
+      await codec.getNextFrame();
+      _stdebug('$label DECODE_OK path=$path');
+    } catch (e, st) {
+      _stdebug('$label DECODE_FAIL path=$path error=$e');
+    }
+  }
+
+  Future<void> _stdebugEvictFileImage(String path) async {
+    try {
+      final provider = FileImage(File(path));
+      final evicted = await provider.evict();
+      _stdebug('EVICT cache=$evicted path=$path');
+    } catch (e) {
+      _stdebug('EVICT_FAIL path=$path error=$e');
+    }
+  }
+
+  void _stdebugLogStabPathsOnce(String thumbPath, String fullPath) {
+    if (_stdebugLoggedOnce.add(thumbPath)) {
+      Future.microtask(() async {
+        await _stdebugProbePath('STAB_THUMB_CHECK', thumbPath);
+        await _stdebugProbePath('STAB_FULL_CHECK', fullPath);
+      });
+    }
+  }
 
   Widget _buildResizableImage(File imageFile) {
     return Container(
