@@ -117,7 +117,6 @@ class DirUtils {
     );
   }
   
-  // Cross-platform temp & permanent data directory path fetchers 
   static Future<String> getTemporaryDirPath() async => (await getTemporaryDirectory()).path;
   static Future<String> getAppDocumentsDirPath() async => (await getApplicationDocumentsDirectory()).path;
 

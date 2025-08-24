@@ -224,11 +224,11 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
           if (await oldStabFile.exists()) {
             String newStabPath = path.join(path.dirname(oldStabPath), '$newTimestamp.png');
             await oldStabFile.rename(newStabPath);
-            String oldStabThumbPath = FaceStabilizer.getStabThumbnailPath(oldStabPath);
+            String oldStabThumbPath = await FaceStabilizer.getStabThumbnailPath(oldStabPath, projectId, projectOrientation!);
             File oldStabThumbFile = File(oldStabThumbPath);
 
             if (await oldStabThumbFile.exists()) {
-              String newStabThumbPath = FaceStabilizer.getStabThumbnailPath(newStabPath);
+              String newStabThumbPath = await FaceStabilizer.getStabThumbnailPath(oldStabPath, projectId, projectOrientation!);
               await DirUtils.createDirectoryIfNotExists(newStabThumbPath);
               await oldStabThumbFile.rename(newStabThumbPath);
             }
@@ -994,7 +994,7 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
     final String rawPhotoPath = await DirUtils.getRawPhotoPathFromTimestampAndProjectId(timestamp, widget.projectId);
     final String projectOrientation = await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
     final String stabilizedImagePath = await DirUtils.getStabilizedImagePathFromRawPathAndProjectOrientation(widget.projectId, rawPhotoPath, projectOrientation);
-    final String stabThumbPath = FaceStabilizer.getStabThumbnailPath(stabilizedImagePath);
+    final String stabThumbPath = await FaceStabilizer.getStabThumbnailPath(stabilizedImagePath, projectId, projectOrientation!);
     final File stabImageFile = File(stabilizedImagePath);
     final File stabThumbFile = File(stabThumbPath);
     if (await stabImageFile.exists()) {
@@ -1106,6 +1106,7 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
     required String filepath,
     required VoidCallback onTap,
     required VoidCallback onLongPress,
+    bool showErrorBadge = false,
   }) {
     return GestureDetector(
       onTap: onTap,
@@ -1113,7 +1114,13 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
       onSecondaryTap: onLongPress,
       child: Stack(
         children: [
-          imageWidget
+          Positioned.fill(child: imageWidget),
+          if (showErrorBadge)
+            Positioned(
+              top: 4,
+              right: 4,
+              child: Icon(Icons.error_outline, color: Colors.redAccent, size: 16),
+            ),
         ],
       ),
     );
@@ -1138,7 +1145,13 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
           return const FlashingBox();
         }
         if (snapshot.data == false) {
-          return Container(color: Colors.black);
+          return _buildThumbnailContent(
+            imageWidget: Container(color: Colors.black),
+            filepath: filepath,
+            onTap: () => _showImagePreviewDialog(File(filepath), isStabilized: false),
+            onLongPress: () => _showImageOptionsMenu(File(filepath)),
+            showErrorBadge: true,
+          );
         }
         return _buildThumbnailContent(
           imageWidget: Image.file(
@@ -1146,7 +1159,6 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
             fit: BoxFit.cover,
             width: double.infinity,
             height: double.infinity,
-            errorBuilder: (context, error, stack) => Container(color: Colors.black),
           ),
           filepath: filepath,
           onTap: () => _showImagePreviewDialog(File(filepath), isStabilized: false),
@@ -1186,12 +1198,19 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
     if (_retryingPhotoTimestamps.contains(timestamp)) {
       return const FlashingBox();
     }
-    final String thumbnailPath = FaceStabilizer.getStabThumbnailPath(filepath);
     return GestureDetector(
       onTap: () => _showImagePreviewDialog(File(filepath), isStabilized: true),
       onLongPress: () => _showImageOptionsMenu(File(filepath)),
       onSecondaryTap: () => _showImageOptionsMenu(File(filepath)),
-      child: StabilizedThumbnail(thumbnailPath: thumbnailPath, projectId: widget.projectId),
+      child: ThumbnailOrFull(
+        key: ValueKey(filepath),
+        stabilizedPngPath: filepath,
+        width: double.infinity,
+        height: double.infinity,
+        fit: BoxFit.cover,
+        projectId: projectId,
+        projectOrientation: projectOrientation,
+      ),
     );
   }
 
@@ -1261,77 +1280,77 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
   }
 
   Widget _buildImagePreview(StateSetter dialogSetState, File imageFile, bool isStabilized) {
-    return activeImagePreviewPath != null
-        ? Flexible(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (isStabilized && activeButton != 'raw')
-            FutureBuilder<String>(
-              future: GalleryUtils.waitForThumbnail(FaceStabilizer.getStabThumbnailPath(imageFile.path), widget.projectId),
-              builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting ||
-                    !snapshot.hasData) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 32.0, horizontal: 20.0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          "Image being stabilized. Please wait...",
-                          style: TextStyle(color: Colors.white),
-                        ),
-                        SizedBox(height: 10),
-                        Text('View raw photo by tapping "RAW"')
-                      ],
-                    ),
-                  );
-                } else if (snapshot.data == "no_faces_found" || snapshot.data == "stab_failed") {
-                  var text = snapshot.data == "no_faces_found"
-                      ? "Stabilization failed. No faces found. Try the 'manual stabilization' option."
-                      : "Stabilization failed. We were unable to stabilize facial landmarks. Try the 'manual stabilization' option.";
+    if (activeImagePreviewPath == null) {
+      return Container();
+    }
 
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 32.0, horizontal: 20.0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.error, color: Colors.red, size: 50.0),
-                        const SizedBox(height: 10),
-                        Text(
-                          text,
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                      ],
-                    ),
-                  );
-                } else if (snapshot.data == "success") {
-                  return _buildResizableImage(File(activeImagePreviewPath!));
-                } else {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 32.0, horizontal: 20.0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          "Unknown error occurred.",
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-              },
-            )
-          else
-            _buildResizableImage(File(activeImagePreviewPath!)),
-          _buildActionBar(dialogSetState, imageFile),
-        ],
-      ),
-    )
-        : Container();
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (isStabilized && activeButton != 'raw')
+          FutureBuilder<String>(
+            future: (() async {
+              final String thumbPath = await FaceStabilizer.getStabThumbnailPath(imageFile.path, projectId, projectOrientation!);
+              return GalleryUtils.waitForThumbnail(thumbPath, widget.projectId);
+            })(),
+            builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting || !snapshot.hasData) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 32.0, horizontal: 20.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        "Image being stabilized. Please wait...",
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      SizedBox(height: 10),
+                      Text('View raw photo by tapping "RAW"')
+                    ],
+                  ),
+                );
+              } else if (snapshot.data == "no_faces_found" || snapshot.data == "stab_failed") {
+                final String text = snapshot.data == "no_faces_found"
+                    ? "Stabilization failed. No faces found. Try the 'manual stabilization' option."
+                    : "Stabilization failed. We were unable to stabilize facial landmarks. Try the 'manual stabilization' option.";
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 32.0, horizontal: 20.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.error, color: Colors.red, size: 50.0),
+                      const SizedBox(height: 10),
+                      Text(
+                        text,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ],
+                  ),
+                );
+              } else if (snapshot.data == "success") {
+                return _buildResizableImage(File(activeImagePreviewPath!));
+              } else {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 32.0, horizontal: 20.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        "Unknown error occurred.",
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ],
+                  ),
+                );
+              }
+            },
+          )
+        else
+          _buildResizableImage(File(activeImagePreviewPath!)),
+        _buildActionBar(dialogSetState, imageFile),
+      ],
+    );
   }
-
 
   Widget _buildResizableImage(File imageFile) {
     return Container(
@@ -1342,7 +1361,6 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
       child: Image.file(
         imageFile,
         fit: BoxFit.contain,
-        errorBuilder: (context, error, stack) => Container(color: Colors.black),
       ),
     );
   }
@@ -1575,5 +1593,83 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
     if (success) {
       _loadImages();
     }
+  }
+}
+
+class ThumbnailOrFull extends StatelessWidget {
+  final String stabilizedPngPath;
+  final double? width;
+  final double? height;
+  final BoxFit fit;
+  final int projectId;
+  final String? projectOrientation;
+
+  const ThumbnailOrFull({
+    super.key,
+    required this.stabilizedPngPath,
+    this.width,
+    this.height,
+    this.fit = BoxFit.cover,
+    required this.projectId,
+    required this.projectOrientation,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // 1) Resolve thumbnail path, then wait for it to be decodable
+    final Future<Map<String, String>> fut = (() async {
+      final thumb = await FaceStabilizer.getStabThumbnailPath(
+        stabilizedPngPath, projectId, projectOrientation!,
+      );
+      final status = await GalleryUtils.waitForThumbnail(thumb, projectId);
+      return {'thumb': thumb, 'status': status};
+    })();
+
+    return FutureBuilder<Map<String, String>>(
+      future: fut,
+      builder: (context, snap) {
+        if (!snap.hasData) {
+          return const FlashingBox();
+        }
+
+        final thumb = snap.data!['thumb']!;
+        final status = snap.data!['status']!; // "success" | "stab_failed" | "no_faces_found" | other
+
+        if (status == "success") {
+          // 2) Render the thumbnail; if decode still fails, show a badged fallback
+          return Image.file(
+            File(thumb),
+            width: width,
+            height: height,
+            fit: fit,
+            errorBuilder: (_, __, ___) => _badgedFallback(stabilizedPngPath),
+          );
+        }
+
+        // 3) Stabilization failed or not decodable -> badged fallback (or black box)
+        return _badgedFallback(stabilizedPngPath);
+      },
+    );
+  }
+
+  Widget _badgedFallback(String fullPath) {
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: Image.file(
+            File(fullPath),
+            width: width,
+            height: height,
+            fit: fit,
+            errorBuilder: (_, __, ___) => Container(color: Colors.black),
+          ),
+        ),
+        const Positioned(
+          top: 4,
+          right: 4,
+          child: Icon(Icons.error_outline, color: Colors.redAccent, size: 16),
+        ),
+      ],
+    );
   }
 }

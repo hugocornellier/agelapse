@@ -245,10 +245,13 @@ class FaceStabilizer {
       imageWidth: canvasWidth,
     );
     if (stabFaces == null) {
+      print("stabFaces is null, returning false");
       return false;
     }
 
     if (stabFaces.isEmpty) {
+      print("stabFaces is empty, returning false");
+
       await DB.instance.setPhotoNoFacesFound(path.basenameWithoutExtension(rawPhotoPath));
       return false;
     }
@@ -256,6 +259,9 @@ class FaceStabilizer {
     List<Point<int>?> eyes = _filterAndCenterEyes(stabFaces);
 
     if (eyes.length < 2 || eyes[0] == null || eyes[1] == null) {
+      print("this if evaluated to true => 'eyes.length < 2 || eyes[0] == null || eyes[1] == null'");
+      print("returning false");
+
       await DB.instance.setPhotoNoFacesFound(path.basenameWithoutExtension(rawPhotoPath));
       return false;
     }
@@ -467,14 +473,11 @@ class FaceStabilizer {
   }
 
   Future<void> createStabThumbnail(String stabilizedPhotoPath) async {
-    final String stabThumbnailPath = getStabThumbnailPath(stabilizedPhotoPath);
+    final String stabThumbnailPath = await getStabThumbnailPath(stabilizedPhotoPath, projectId, projectOrientation!);
     await DirUtils.createDirectoryIfNotExists(stabThumbnailPath);
     final bytes = await CameraUtils.readBytesInIsolate(stabilizedPhotoPath);
     final imglib.Image? rawImage = await compute(imglib.decodeImage, bytes!);
 
-    // Use .jpgs to store thumbnails to save space, but we also need to
-    // composite the transparency with a black background to ensure the thumbnails
-    // have a dark background in gallery
     final imglib.Image blackBackground = imglib.Image(
       width: rawImage!.width,
       height: rawImage.height,
@@ -485,9 +488,43 @@ class FaceStabilizer {
     imglib.compositeImage(blackBackground, rawImage);
 
     final imglib.Image thumbnail = imglib.copyResize(blackBackground, width: 500);
-    final thumbnailBytes = imglib.encodeJpg(thumbnail);
+    final Uint8List thumbnailBytes = imglib.encodeJpg(thumbnail);
 
-    await File(stabThumbnailPath).writeAsBytes(thumbnailBytes);
+    final String dirpath = path.dirname(stabThumbnailPath);
+    final String temppath = path.join(
+      dirpath,
+      '${path.basename(stabThumbnailPath)}.tmp.${DateTime.now().microsecondsSinceEpoch}.${Random().nextInt(1 << 32)}',
+    );
+
+    final String writeResult = await saveBytesToPngFileInIsolate(thumbnailBytes, temppath);
+    if (writeResult == "NoSpaceLeftError") {
+      userRanOutOfSpaceCallbackIn();
+      try { await File(temppath).delete(); } catch (_) {}
+      return;
+    }
+    if (writeResult != "success") {
+      try { await File(temppath).delete(); } catch (_) {}
+      return;
+    }
+
+    try {
+      await File(temppath).rename(stabThumbnailPath);
+    } catch (e) {
+      final String backupPath = '$stabThumbnailPath.bak';
+      try {
+        final File finalFile = File(stabThumbnailPath);
+        if (await finalFile.exists()) {
+          try { await File(backupPath).delete(); } catch (_) {}
+          await finalFile.rename(backupPath);
+        }
+        await File(temppath).rename(stabThumbnailPath);
+        try { await File(backupPath).delete(); } catch (_) {}
+      } catch (e2) {
+        try { await File(temppath).delete(); } catch (_) {}
+      }
+    } finally {
+      try { await File(temppath).delete(); } catch (_) {}
+    }
   }
 
   Future<(double?, double?)> _calculateRotationAndScale(
@@ -687,10 +724,18 @@ class FaceStabilizer {
     await stabilize(newPath, false, userRanOutOfSpaceCallback);
   }
 
-  static String getStabThumbnailPath(String stabilizedPhotoPath) {
-    final String dirname = path.dirname(stabilizedPhotoPath);
+  static Future<String> getStabThumbnailPath(
+    String stabilizedPhotoPath,
+    int projectId,
+    String projectOrientation
+  ) async {
     final String basenameWithoutExt = path.basenameWithoutExtension(stabilizedPhotoPath);
-    return path.join(dirname, DirUtils.thumbnailDirname, "$basenameWithoutExt.jpg");
+    final String stabilizedDir = await DirUtils.getStabilizedDirPathFromProjectIdAndOrientation(
+      projectId,
+      projectOrientation,
+    );
+
+    return path.join(stabilizedDir, DirUtils.thumbnailDirname, "$basenameWithoutExt.jpg");
   }
 
   (double?, double?) _calculateTranslateData(scaleFactor, rotationDegrees, ui.Image? img) {
@@ -776,7 +821,7 @@ class FaceStabilizer {
   }
 
   List<Point<int>?> _filterAndCenterEyes(List<dynamic> stabFaces) {
-    final List<Point<int>?> allEyes = getEyesFromFaces(stabFaces); // [L0,R0,L1,R1,...]
+    final List<Point<int>?> allEyes = getEyesFromFaces(stabFaces);
 
     final List<Point<int>> validPairs = <Point<int>>[];
     final List<dynamic>   validFaces = <dynamic>[];
@@ -790,7 +835,9 @@ class FaceStabilizer {
       final Point<int>? rightEye = allEyes[ri];
       if (leftEye == null || rightEye == null) continue;
 
-      if ((rightEye.x - leftEye.x).abs() > 0.75 * eyeDistanceGoal) {
+      final int dxLR = (rightEye.x - leftEye.x).abs();
+      final double minDx = max(0.2 * eyeDistanceGoal, 8.0);
+      if (dxLR >= minDx) {
         validPairs..add(leftEye)..add(rightEye);
         validFaces.add(stabFaces[faceIdx]);
       }
@@ -811,52 +858,92 @@ class FaceStabilizer {
   }
 
   List<Point<int>> getCentermostEyes(List<Point<int>?> eyes, List<dynamic> faces, int imgWidth, int imgHeight) {
-    double smallestDistance = double.infinity;
-    List<Point<int>> centeredEyes = [];
+    double bestCenter = double.infinity;
+    double bestEyeTie = double.infinity;
+    double bestArea   = -1.0;
+    int    bestIdx    = -1;
+    List<Point<int>> best = [];
 
-    if (!Platform.isMacOS) {
-      faces = (faces as List<Face>).where((face) {
-        final bool rightEyeNotNull = face.landmarks[FaceLandmarkType.rightEye] != null;
-        final bool leftEyeNotNull = face.landmarks[FaceLandmarkType.leftEye] != null;
-        return leftEyeNotNull && rightEyeNotNull;
-      }).toList();
-    }
-
-    final double margin = Platform.isMacOS ? 0.0 : 4.0;
+    final double cx = imgWidth.toDouble() / 2.0;
 
     final int pairCount = eyes.length ~/ 2;
-    final int limit = faces.length < pairCount ? faces.length : pairCount;
+    final int limit = min(faces.length, pairCount);
 
     for (var i = 0; i < limit; i++) {
-      final Rect bbox = faces[i].boundingBox;
-      final bool bordersLeft = bbox.left <= margin;
-      final bool bordersTop = bbox.top <= margin;
-      final bool bordersRight = bbox.right >= imgWidth - margin;
-      final bool bordersBottom = bbox.bottom >= imgHeight - margin;
-
-      if (bordersLeft || bordersTop || bordersRight || bordersBottom) continue;
-
       final int li = 2 * i, ri = li + 1;
-      final Point<int>? leftEye = eyes[li];
-      final Point<int>? rightEye = eyes[ri];
-      if (leftEye == null || rightEye == null) continue;
+      final Point<int>? L = eyes[li];
+      final Point<int>? R = eyes[ri];
+      if (L == null || R == null) continue;
 
-      final double distance = calculateHorizontalProximityToCenter(leftEye, imgWidth)
-          + calculateHorizontalProximityToCenter(rightEye, imgWidth);
+      final Rect bb = faces[i].boundingBox;
+      final double faceCenterX = bb.center.dx;
 
-      if (distance < smallestDistance) {
-        smallestDistance = distance;
-        centeredEyes = [leftEye, rightEye];
+      final double midX = 0.5 * (L.x + R.x);
+      final double centerScore = (faceCenterX - cx).abs();
+      final double eyeTie      = (midX - cx).abs();
+      final double area        = bb.width * bb.height;
+
+      double? faceScore;
+      if (imgWidth == canvasWidth && imgHeight == canvasHeight) {
+        final Point<int> goalLeftEye  = Point(leftEyeXGoal,  bothEyesYGoal);
+        final Point<int> goalRightEye = Point(rightEyeXGoal, bothEyesYGoal);
+        faceScore = calculateStabScore([L, R], goalLeftEye, goalRightEye);
+      }
+
+      print("[GCE2] imgW=$imgWidth cx=${cx.toStringAsFixed(1)} face[$i] centerX=${faceCenterX.toStringAsFixed(1)} "
+          "eyeMidX=${midX.toStringAsFixed(1)} L=(${L.x},${L.y}) R=(${R.x},${R.y}) "
+          "centerScore=${centerScore.toStringAsFixed(1)} eyeTie=${eyeTie.toStringAsFixed(1)} area=${area.toStringAsFixed(0)} "
+          "score=${faceScore != null ? faceScore.toStringAsFixed(1) : 'n/a'}");
+
+      bool better = false;
+      if (centerScore < bestCenter - 0.5) {
+        better = true;
+      } else if ((centerScore - bestCenter).abs() <= 0.5) {
+        if (eyeTie < bestEyeTie - 0.5) {
+          better = true;
+        } else if ((eyeTie - bestEyeTie).abs() <= 0.5 && area > bestArea) {
+          better = true;
+        }
+      }
+
+      if (better) {
+        bestCenter = centerScore;
+        bestEyeTie = eyeTie;
+        bestArea   = area;
+        bestIdx    = i;
+        best       = [L, R];
       }
     }
 
-    if (centeredEyes.isEmpty && eyes.length >= 2 && eyes[0] != null && eyes[1] != null) {
-      centeredEyes = [eyes[0]!, eyes[1]!];
+    if (best.isEmpty && eyes.length >= 2 && eyes[0] != null && eyes[1] != null) {
+      print("[GCE2] no candidate by bbox center; fallback to pair[0]");
+      best = [eyes[0]!, eyes[1]!];
+      bestIdx = 0;
+    }
+
+    if (bestIdx >= 0) {
+      final li = 2 * bestIdx, ri = li + 1;
+
+      String chosenScoreText = 'n/a';
+      if (imgWidth == canvasWidth && imgHeight == canvasHeight && best.isNotEmpty) {
+        final Point<int> goalLeftEye  = Point(leftEyeXGoal,  bothEyesYGoal);
+        final Point<int> goalRightEye = Point(rightEyeXGoal, bothEyesYGoal);
+        final double chosenScore = calculateStabScore([best[0], best[1]], goalLeftEye, goalRightEye);
+        chosenScoreText = chosenScore.toStringAsFixed(1);
+      }
+
+      print("[GCE2] imgW=$imgWidth chosen faceIdx=$bestIdx eyePairIdx=[$li,$ri] "
+          "L=(${best[0].x},${best[0].y}) R=(${best[1].x},${best[1].y}) "
+          "centerScore=${bestCenter.isFinite ? bestCenter.toStringAsFixed(1) : 'n/a'} "
+          "eyeTie=${bestEyeTie.isFinite ? bestEyeTie.toStringAsFixed(1) : 'n/a'} area=${bestArea.toStringAsFixed(0)} "
+          "score=$chosenScoreText");
+    } else {
+      print("[GCE2] no eyes chosen");
     }
 
     eyes.clear();
-    eyes.addAll(centeredEyes);
-    return centeredEyes;
+    eyes.addAll(best);
+    return best;
   }
 
   double calculateHorizontalProximityToCenter(Point<int> point, int imageWidth) {
@@ -1004,10 +1091,6 @@ class FaceStabilizer {
     double rotationDegrees = atan2(verticalDistance, horizontalDistance) * (180 / pi) * (rightEye.y > leftEye.y ? -1 : 1);
     double hypotenuse = sqrt(pow(verticalDistance, 2) + pow(horizontalDistance, 2));
     double scaleFactor = eyeDistanceGoal / hypotenuse;
-
-    print("leftEye => '${leftEye}'");
-    print("rightEye => '${rightEye}'");
-    print("Calculated rotationDegrees => '${rotationDegrees}'");
 
     return (scaleFactor, rotationDegrees);
   }

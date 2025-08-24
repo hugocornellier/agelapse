@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/database_helper.dart';
 import '../services/face_stabilizer.dart';
 import '../utils/dir_utils.dart';
+import '../utils/settings_utils.dart';
 import '../widgets/project_select_sheet.dart';
 import '../widgets/settings_sheet.dart';
 import 'package:path/path.dart' as path;
@@ -59,8 +60,15 @@ class _CustomAppBarState extends State<CustomAppBar> {
   Future<void> _loadProjectImage() async {
     String imagePath = await ProjectSelectionSheetState.getProjectImage(widget.projectId);
 
+    final String projectOrientation = await SettingsUtil.loadProjectOrientation(
+        widget.projectId.toString()
+    );
     if (path.dirname(imagePath).contains(DirUtils.stabilizedDirname)) {
-      imagePath = FaceStabilizer.getStabThumbnailPath(imagePath);
+      imagePath = await FaceStabilizer.getStabThumbnailPath(
+          imagePath,
+          widget.projectId,
+          projectOrientation
+      );
     }
 
     setState(() {

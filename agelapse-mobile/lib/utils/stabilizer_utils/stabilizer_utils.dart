@@ -84,11 +84,24 @@ class StabUtils {
         final filtered = faces.where((f) => (f.boundingBox.width / width) > minFaceSize).toList();
         return filtered.isNotEmpty ? filtered : faces;
       } else {
+        print("Fetching faces from filepath on non macos device");
+
         final List<Face> faces = await faceDetector!.processImage(
           InputImage.fromFilePath(imagePath),
         );
-        if (!filterByFaceSize || faces.isEmpty) return faces;
-        return await _filterFacesBySize(faces, imageWidth, imagePath);
+        if (!filterByFaceSize || faces.isEmpty) {
+          print("Here1. Returning...");
+          print(faces);
+
+          return faces;
+        };
+
+        final List<Face> result = await _filterFacesBySize(faces, imageWidth, imagePath);
+
+        print("Here2. Returning ... ");
+        print(result);
+
+        return result;
       }
     } catch(e) {
       print("Error caught while fetching faces: $e");

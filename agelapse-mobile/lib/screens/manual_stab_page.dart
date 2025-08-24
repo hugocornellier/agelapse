@@ -396,7 +396,11 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
       await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
       final String stabilizedPhotoPath =
       await StabUtils.getStabilizedImagePath(rawPhotoPath, widget.projectId, projectOrientation);
-      final String stabThumbPath = FaceStabilizer.getStabThumbnailPath(stabilizedPhotoPath);
+      final String stabThumbPath = await FaceStabilizer.getStabThumbnailPath(
+        stabilizedPhotoPath,
+        widget.projectId,
+        projectOrientation
+      );
 
       final File stabImageFile = File(stabilizedPhotoPath);
       final File stabThumbFile = File(stabThumbPath);

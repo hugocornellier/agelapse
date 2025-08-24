@@ -282,8 +282,6 @@ class MainNavigationState extends State<MainNavigation> {
         Stopwatch loopStopwatch = Stopwatch();
         loopStopwatch.start();
 
-        print("\nStabilizing new photo...:");
-
         await _stabilizePhoto(faceStabilizer, photo);
 
         loopStopwatch.stop();

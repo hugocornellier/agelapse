@@ -560,8 +560,8 @@ class ProjectPageState extends State<ProjectPage> {
                   Text(
                     title == "Inter-Eye\nDistance" ? 'of image width' : 'of image height',
                     style: const TextStyle(
-                      color: Colors.grey, // Change this line
-                      fontSize: 7, // Very tiny text
+                      color: Colors.grey,
+                      fontSize: 7,
                     ),
                   ),
                 ],

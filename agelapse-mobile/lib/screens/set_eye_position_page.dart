@@ -191,7 +191,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                   margin: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
                     color: Colors.black.withAlpha(230), // Equivalent to opacity 0.9
-                    borderRadius: BorderRadius.circular(16), // More rounded corners
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -236,7 +236,6 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
           final double width = constraints.maxWidth;
           final double height = width * aspectRatioValue;
 
-          // Adjust width if height is too constrained
           double adjustedWidth = width;
           if (height > constraints.maxHeight) {
             adjustedWidth = constraints.maxHeight / aspectRatioValue;
