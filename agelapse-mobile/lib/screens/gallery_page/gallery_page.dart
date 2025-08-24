@@ -356,6 +356,8 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
         _tabController.index = 1;
       });
 
+      GalleryUtils.startImportBatch(result.length);
+
       for (final AssetEntity asset in result) {
         await _processAsset(asset);
         _loadImages();
@@ -633,6 +635,8 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
       if (widget.stabilizingRunningInMain) {
         widget.cancelStabCallback();
       }
+
+      GalleryUtils.startImportBatch(pickedFiles.files.length);
 
       await widget.processPickedFiles(pickedFiles, processPickedFile);
 

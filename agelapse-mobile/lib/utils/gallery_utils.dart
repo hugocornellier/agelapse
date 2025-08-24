@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
+import 'dart:typed_data';
 
 import 'package:archive/archive_io.dart';
+import 'package:archive/archive.dart';
 import 'package:async_zip/async_zip.dart';
 import 'package:camera/camera.dart';
 import 'package:exif/exif.dart';
@@ -10,6 +12,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as path;
 import 'package:flutter/services.dart';
+import 'package:file_selector/file_selector.dart';
 
 import '../services/database_helper.dart';
 import '../services/image_processor.dart';
@@ -20,6 +23,25 @@ import 'utils.dart';
 
 class GalleryUtils {
   static var fileList = [];
+  static int _batchTotal = 0;
+  static int _batchDone = 0;
+
+  static void startImportBatch(int total) {
+    _batchTotal = total;
+    _batchDone = 0;
+  }
+
+  static void _tickBatchProgress(Function(int) setProgressInMain) {
+    if (_batchTotal <= 0) return;
+    _batchDone++;
+    final p = ((_batchDone / _batchTotal) * 100).round();
+    setProgressInMain(p);
+    if (_batchDone >= _batchTotal) {
+      setProgressInMain(100);
+      _batchTotal = 0;
+      _batchDone = 0;
+    }
+  }
 
   static Future<void> convertAvifToPng(String avifFilePath, String pngFilePath) async {
     try {
@@ -172,36 +194,44 @@ class GalleryUtils {
   }
 
   static Future<String> processZipInIsolate(String zipFileExportPath, List<File> imageFiles) async {
-    Future<void> galleryIsolateOperation(Map<String, dynamic> params) async {
-      String zipFileExportPath = params['zipFileExportPath'];
-      List<String> filePaths = params['filePaths'];
-      var sendPort = params['sendPort'];
+    final List<String> filePaths = imageFiles.map((f) => f.path).toList();
 
-      ZipFileEncoder encoder = ZipFileEncoder();
-      encoder.create(zipFileExportPath);
-
-      for (String path in filePaths) {
-        await encoder.addFile(File(path));
-      }
-
-      encoder.close();
-      sendPort.send("success");
-    }
-
-    List<String> filePaths = imageFiles.map((file) => file.path).toList();
-
-    ReceivePort receivePort = ReceivePort();
-    var params = {
+    final receivePort = ReceivePort();
+    final params = {
       'sendPort': receivePort.sendPort,
       'zipFileExportPath': zipFileExportPath,
       'filePaths': filePaths,
     };
 
-    Isolate isolate = await Isolate.spawn(galleryIsolateOperation, params);
+    final isolate = await Isolate.spawn(GalleryUtils._galleryIsolateOperation, params);
     final res = await receivePort.first;
     receivePort.close();
     isolate.kill(priority: Isolate.immediate);
     return res;
+  }
+
+  static void _galleryIsolateOperation(Map<String, dynamic> params) {
+    final String zipFileExportPath = params['zipFileExportPath'];
+    final List<String> filePaths = List<String>.from(params['filePaths']);
+    final SendPort sendPort = params['sendPort'];
+
+    final encoder = ZipFileEncoder();
+    bool ok = true;
+
+    try {
+      encoder.create(zipFileExportPath);
+      for (final fp in filePaths) {
+        final f = File(fp);
+        if (f.existsSync()) {
+          encoder.addFile(f, path.basename(fp));
+        }
+      }
+    } catch (_) {
+      ok = false;
+    } finally {
+      encoder.close();
+      sendPort.send(ok ? "success" : "error");
+    }
   }
 
   static Future<void> processPickedImage(
@@ -227,26 +257,115 @@ class GalleryUtils {
     imageProcessor.dispose();
   }
 
-  static Future<void> processPickedFile(
-    File file,
-    int projectId,
-    ValueNotifier<String> activeProcessingDateNotifier, {
-      required Function onImagesLoaded,
-      required Function(int p1) setProgressInMain,
-      required void Function() increaseSuccessfulImportCount,
-      required void Function(int value) increasePhotosImported,
+  static Future<void> processPickedZipFileDesktop(
+      File file,
+      int projectId,
+      ValueNotifier<String> activeProcessingDateNotifier,
+      Function onImagesLoaded,
+      Function(int p1) setProgressInMain,
+      void Function() increaseSuccessfulImportCount,
+      void Function(int value) increasePhotosImported,
+      ) async {
+    final input = InputFileStream(file.path);
+    try {
+      final archive = ZipDecoder().decodeStream(input);
+
+      final entries = archive.files
+          .where((f) {
+        if (!f.isFile) return false;
+        final lowerName = path.basename(f.name).toLowerCase();
+        if (lowerName == '.ds_store' || f.name.startsWith('__MACOSX/')) return false;
+
+        const allowed = {
+          '.jpg', '.jpeg', '.png', '.webp', '.bmp',
+          '.tif', '.tiff', '.heic', '.heif', '.avif', '.gif'
+        };
+        final ext = path.extension(lowerName);
+        return allowed.contains(ext); // <-- no size check
+      })
+          .toList()
+        ..sort((a, b) => a.name.compareTo(b.name));
+
+      increasePhotosImported(entries.length);
+      if (entries.isEmpty) {
+        setProgressInMain(100); // or 0
+        return;
+      }
+
+      debugPrint('[unzip] total in zip: ${archive.files.length}'); // or the async_zip entries list length
+      debugPrint('[unzip] usable images: ${entries.length}');
+      if (entries.isEmpty) {
+        for (final f in archive.files) {
+          debugPrint('  - ${f.name} size=${f.size} isFile=${f.isFile}');
+        }
+      }
+
+      for (int i = 0; i < entries.length; i++) {
+        final f = entries[i];
+        setProgressInMain(((i / entries.length) * 100).toInt());
+
+        final String tempFilePath = path.join(
+          await DirUtils.getTemporaryDirPath(),
+          path.basename(f.name).toLowerCase(),
+        );
+
+        final out = OutputFileStream(tempFilePath);
+        f.writeContent(out);
+        out.close();
+
+        try {
+          await processPickedImage(
+            tempFilePath,
+            projectId,
+            activeProcessingDateNotifier,
+            onImagesLoaded: onImagesLoaded,
+            increaseSuccessfulImportCount: increaseSuccessfulImportCount,
+          );
+        } catch (_) {
+        } finally {
+          final tempFile = File(tempFilePath);
+          if (await tempFile.exists()) {
+            await tempFile.delete();
+          }
+        }
+      }
+    } finally {
+      input.close();
     }
-  ) async {
-    if (path.extension(file.path) == ".zip") {
-      await processPickedZipFile(
-        file,
-        projectId,
-        activeProcessingDateNotifier,
-        onImagesLoaded,
-        setProgressInMain,
-        increaseSuccessfulImportCount,
-        increasePhotosImported
-      );
+  }
+
+  static Future<void> processPickedFile(
+      File file,
+      int projectId,
+      ValueNotifier<String> activeProcessingDateNotifier, {
+        required Function onImagesLoaded,
+        required Function(int p1) setProgressInMain,
+        required void Function() increaseSuccessfulImportCount,
+        required void Function(int value) increasePhotosImported,
+      }
+      ) async {
+    if (path.extension(file.path).toLowerCase() == ".zip") {
+      if (Platform.isAndroid || Platform.isIOS) {
+        await processPickedZipFile(
+            file,
+            projectId,
+            activeProcessingDateNotifier,
+            onImagesLoaded,
+            setProgressInMain,
+            increaseSuccessfulImportCount,
+            increasePhotosImported
+        );
+      } else {
+        await processPickedZipFileDesktop(
+            file,
+            projectId,
+            activeProcessingDateNotifier,
+            onImagesLoaded,
+            setProgressInMain,
+            increaseSuccessfulImportCount,
+            increasePhotosImported
+        );
+      }
     } else if (Utils.isImage(file.path)) {
       await processPickedImage(
         file.path,
@@ -254,6 +373,7 @@ class GalleryUtils {
         activeProcessingDateNotifier,
         onImagesLoaded: onImagesLoaded,
       );
+      _tickBatchProgress(setProgressInMain);
     }
   }
 
@@ -271,13 +391,17 @@ class GalleryUtils {
       reader.open(File(file.path));
       List<ZipEntry> entries = (await reader.entries())
           .where((entry) {
-        final String basename = path.basename(entry.name);
-        return entry.size >= 10000 && Utils.isImage(basename) && !entry.isDir;
+        final String basenameOnly = path.basename(entry.name);
+        return entry.size >= 10000 && Utils.isImage(basenameOnly) && !entry.isDir;
       })
           .toList()
         ..sort((a, b) => a.name.compareTo(b.name));
 
       increasePhotosImported(entries.length);
+      if (entries.isEmpty) {
+        setProgressInMain(100); // or 0
+        return;
+      }
 
       for (int i = 0; i < entries.length; i++) {
         final entry = entries[i];
@@ -419,110 +543,209 @@ class GalleryUtils {
   }
 
   static void zipFiles(ZipIsolateParams params) async {
-    final reader = ZipFileWriter();
+    final send = params.sendPort;
+    void log(String m) => send.send({'type': 'log', 'msg': m});
+
+    final exportFile = File(params.zipFilePath);
+    exportFile.parent.createSync(recursive: true);
+    for (final entry in params.filesToExport.entries) {
+      entry.value.removeWhere((p) => path.equals(p, params.zipFilePath));
+    }
+    if (exportFile.existsSync()) {
+      try {
+        exportFile.deleteSync();
+      } catch (e) {
+        send.send({'type': 'log', 'msg': 'Failed to delete pre-existing zip: $e'});
+        send.send('error');
+        return;
+      }
+    }
+
+    bool ok = true;
+    int added = 0, missing = 0, badname = 0;
+
+    int safeNumCompare(String a, String b) {
+      final aBase = path.basenameWithoutExtension(a);
+      final bBase = path.basenameWithoutExtension(b);
+      final ai = int.tryParse(aBase);
+      final bi = int.tryParse(bBase);
+      if (ai != null && bi != null) return ai.compareTo(bi);
+      if (ai == null) badname++;
+      if (bi == null) badname++;
+      return aBase.compareTo(bBase);
+    }
 
     try {
-      await reader.create(File(params.zipFilePath));
+      final Map<String, int> rawFilenameCounts = {};
+      final Map<String, int> stabilizedFilenameCounts = {};
 
-      Map<String, int> rawFilenameCounts = {};
-      Map<String, int> stabilizedFilenameCounts = {};
+      final int totalFiles = params.filesToExport.values.fold<int>(0, (sum, list) => sum + list.length);
+      if (totalFiles == 0) {
+        log('No files to export');
+      } else {
+        log('Total to export: $totalFiles');
+      }
 
       int processed = 0;
-      final int totalFiles = params.filesToExport.values.fold<int>(0, (sum, list) => sum + list.length);
+      final archive = Archive();
 
+      for (final entry in params.filesToExport.entries) {
+        final String folderName = entry.key;
+        final List<String> files = List<String>.from(entry.value)..sort(safeNumCompare);
 
-      for (var entry in params.filesToExport.entries) {
+        log('[$folderName] count=${files.length} first5=${files.take(5).map((p)=>path.basename(p)).toList()}');
 
-        String folderName = entry.key;
-        List<String> files = entry.value;
+        final Map<String, int> filenameCounts = folderName == 'Raw' ? rawFilenameCounts : stabilizedFilenameCounts;
 
-        files.sort((a, b) {
-          int timestampA = int.parse(path.basenameWithoutExtension(a));
-          int timestampB = int.parse(path.basenameWithoutExtension(b));
-          return timestampA.compareTo(timestampB);
-        });
+        for (final filePath in files) {
+          final file = File(filePath);
+          if (path.equals(file.path, params.zipFilePath)) {
+            processed++;
+            final double percent = totalFiles == 0 ? 100.0 : (processed / totalFiles) * 100.0;
+            send.send(percent);
+            continue;
+          }
+          if (!file.existsSync()) {
+            missing++;
+          } else {
+            final base = path.basenameWithoutExtension(filePath);
+            final ext = path.extension(filePath);
 
-        for (String filePath in files) {
+            final ts = int.tryParse(base);
+            DateTime dt;
+            if (ts != null) {
+              dt = DateTime.fromMillisecondsSinceEpoch(ts, isUtc: true).toLocal();
+            } else {
+              dt = file.lastModifiedSync();
+            }
+            final formatted = DateFormat('yyyy-MM-dd_HH-mm-ss').format(dt);
 
-          File file = File(filePath);
-          if (file.existsSync()) {
-            String basename = path.basenameWithoutExtension(filePath);
-            String extension = path.extension(filePath);
-
-            int timestamp = int.parse(basename);
-            DateTime dateLocal = DateTime
-                .fromMillisecondsSinceEpoch(timestamp, isUtc: true)
-                .toLocal();
-            String formattedDateTime = DateFormat('yyyy-MM-dd_HH-mm-ss').format(dateLocal);
-            String newFileName = '$formattedDateTime$extension';
-
-            // Use separate filename counts for 'Raw' and 'Stabilized' folders
-            Map<String, int> filenameCounts = folderName == 'Raw' ? rawFilenameCounts : stabilizedFilenameCounts;
-
-            // Check for duplicates and rename accordingly
+            String newFileName = '$formatted$ext';
             if (filenameCounts.containsKey(newFileName)) {
-              int count = filenameCounts[newFileName]!;
-              filenameCounts[newFileName] = count + 1;
-              newFileName = '$formattedDateTime (${count + 1})$extension';
+              final int count = filenameCounts[newFileName]! + 1;
+              filenameCounts[newFileName] = count;
+              newFileName = '$formatted ($count)$ext';
             } else {
               filenameCounts[newFileName] = 1;
             }
 
-            await reader.writeFile('$folderName/$newFileName', file);
+            try {
+              final bytes = file.readAsBytesSync();
+              archive.addFile(ArchiveFile('$folderName/$newFileName', bytes.length, bytes));
+              added++;
+            } catch (e, st) {
+              ok = false;
+              log('read/add failed for ${file.path}: $e');
+              log('stack: $st');
+              break;
+            }
           }
 
           processed++;
-          double percent = (processed / totalFiles) * 100;
-          params.sendPort.send(percent);
+          final double percent = totalFiles == 0 ? 100.0 : (processed / totalFiles) * 100.0;
+          send.send(percent);
+        }
+      }
 
+      if (ok) {
+        final zipBytes = ZipEncoder().encode(archive);
+        if (zipBytes == null) {
+          ok = false;
+          log('ZipEncoder returned null');
+        } else {
+          exportFile.writeAsBytesSync(zipBytes);
         }
       }
     } catch (e) {
-      print("Error: $e");
-      params.sendPort.send('error');
+      ok = false;
+      send.send({'type': 'log', 'msg': 'zipFiles crashed: $e'});
     } finally {
-      await reader.close();
-      params.sendPort.send('success');
+      send.send({'type': 'summary', 'added': added, 'missing': missing, 'badname': badname});
+      send.send(ok ? 'success' : 'error');
     }
   }
 
   static Future<String> exportZipFile(int projectId, String projectName, Map<String, List<String>> filesToExport, void Function(double exportProgressIn) setExportProgress) async {
     try {
-      String zipFilePath = await DirUtils.getZipFileExportPath(projectId, projectName);
+      String zipTargetPath;
+      String zipWorkPath;
 
-      // Ensure exports dir exists
-      final exportsDir = File(zipFilePath).parent;
-      if (!exportsDir.existsSync()) {
-        exportsDir.createSync(recursive: true);
+      if (Platform.isAndroid || Platform.isIOS) {
+        zipWorkPath = await DirUtils.getZipFileExportPath(projectId, projectName);
+        final exportsDir = File(zipWorkPath).parent;
+        if (!exportsDir.existsSync()) {
+          exportsDir.createSync(recursive: true);
+        }
+        zipTargetPath = zipWorkPath;
+      } else {
+        final tmpDir = await DirUtils.getTemporaryDirPath();
+        final tmpName = '${projectName.isEmpty ? "Export" : projectName}-AgeLapse-Export-${DateTime.now().millisecondsSinceEpoch}.zip';
+        zipWorkPath = path.join(tmpDir, tmpName);
+        final workDir = File(zipWorkPath).parent;
+        if (!workDir.existsSync()) {
+          workDir.createSync(recursive: true);
+        }
+        zipTargetPath = '';
       }
 
       final receivePort = ReceivePort();
       await Isolate.spawn(
         zipFiles,
-        ZipIsolateParams(receivePort.sendPort, projectId, projectName, filesToExport, zipFilePath),
+        ZipIsolateParams(receivePort.sendPort, projectId, projectName, filesToExport, zipWorkPath),
       );
 
+      String result = 'error';
       await for (var message in receivePort) {
         if (message == 'success' || message == 'error') {
+          result = message as String;
           receivePort.close();
-          return message;
-        } else {
-          double percent;
-          try {
-            if (message is String) {
-              percent = double.parse(message);
-            } else if (message is double) {
-              percent = message;
-            } else {
-              throw Exception("Unexpected message type");
-            }
-            setExportProgress(percent);
-          } catch (e) {
-            //print("Error: $e");
+          break;
+        }
+        if (message is Map && message['type'] == 'log') {
+          debugPrint('[zip] ${message['msg']}');
+          continue;
+        }
+        if (message is Map && message['type'] == 'summary') {
+          debugPrint('[zip] summary added=${message['added']} missing=${message['missing']} badname=${message['badname']}');
+          if ((message['added'] ?? 0) == 0) {
+            debugPrint('[zip] WARNING: 0 files added');
+          }
+          continue;
+        }
+        if (message is double) {
+          setExportProgress(message);
+          continue;
+        }
+        if (message is String) {
+          final p = double.tryParse(message);
+          if (p != null) {
+            setExportProgress(p);
+            continue;
           }
         }
+        debugPrint('[zip] Unrecognized message: $message');
       }
-      return 'error';
+
+      if (!(Platform.isAndroid || Platform.isIOS) && result == 'success') {
+        final suggested = '${projectName.isEmpty ? "Export" : projectName}-AgeLapse-Export.zip';
+        final location = await getSaveLocation(
+          suggestedName: suggested,
+          acceptedTypeGroups: const [XTypeGroup(label: 'zip', extensions: ['zip'])],
+        );
+        if (location == null) {
+          try { File(zipWorkPath).deleteSync(); } catch (_) {}
+          return 'error';
+        }
+        zipTargetPath = location.path.toLowerCase().endsWith('.zip') ? location.path : '${location.path}.zip';
+        final targetDir = File(zipTargetPath).parent;
+        if (!targetDir.existsSync()) {
+          targetDir.createSync(recursive: true);
+        }
+        await File(zipWorkPath).copy(zipTargetPath);
+        try { File(zipWorkPath).deleteSync(); } catch (_) {}
+      }
+
+      return result;
     } catch (e) {
       return 'error';
     }
