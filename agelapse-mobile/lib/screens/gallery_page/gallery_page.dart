@@ -782,26 +782,29 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
   }
 
   void _showImportOptionsBottomSheet(BuildContext context) {
-    List<Widget> content = [
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0),
-        child: ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.photo_library),
-          title: const Text('Import from Gallery'),
-          trailing: const Icon(Icons.arrow_forward_ios),
-          onTap: isImporting
-              ? null
-              : () {
-            Navigator.of(context).pop();
-            try {
-              _pickFromGallery();
-            } catch (e) {
-              print(e);
-            }
-          },
+    final bool isMobile = Platform.isAndroid || Platform.isIOS;
+
+    final List<Widget> content = [
+      if (isMobile)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.photo_library),
+            title: const Text('Import from Gallery'),
+            trailing: const Icon(Icons.arrow_forward_ios),
+            onTap: isImporting
+                ? null
+                : () {
+              Navigator.of(context).pop();
+              try {
+                _pickFromGallery();
+              } catch (e) {
+                print(e);
+              }
+            },
+          ),
         ),
-      ),
       Padding(
         padding: const EdgeInsets.symmetric(vertical: 8.0),
         child: ListTile(
