@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:path/path.dart' as path;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
@@ -796,6 +797,8 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
 
   void _showImportOptionsBottomSheet(BuildContext context) {
     final bool isMobile = Platform.isAndroid || Platform.isIOS;
+    final bool isDesktop = Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+    final String filesLabel = isDesktop ? 'Browse Files' : 'Import from Files';
 
     final List<Widget> content = [
       if (isMobile)
@@ -823,7 +826,7 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
         child: ListTile(
           contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.folder_open),
-          title: const Text('Import from Files'),
+          title: Text(filesLabel),
           trailing: const Icon(Icons.arrow_forward_ios),
           onTap: isImporting
               ? null
@@ -836,6 +839,11 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
           },
         ),
       ),
+      if (isDesktop)
+        Padding(
+          padding: const EdgeInsets.only(top: 12.0),
+          child: _buildDesktopDropZone(),
+        ),
     ];
 
     showModalBottomSheet(
@@ -843,6 +851,66 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
       builder: (BuildContext context) {
         return _buildOptionsBottomSheet(context, 'Import Photos', content);
       },
+    );
+  }
+
+  Widget _buildDesktopDropZone() {
+    return DropTarget(
+      onDragDone: (details) async {
+        if (isImporting) return;
+        Navigator.of(context).pop();
+
+        setState(() {
+          photosImported = 0;
+          successfullyImported = 0;
+          _tabController.index = 1;
+          isImporting = true;
+        });
+
+        if (widget.stabilizingRunningInMain) {
+          widget.cancelStabCallback();
+        }
+
+        GalleryUtils.startImportBatch(details.files.length);
+
+        for (final f in details.files) {
+          await processPickedFile(File(f.path));
+          _loadImages();
+        }
+
+        final String projectOrientationRaw = await SettingsUtil.loadProjectOrientation(projectIdStr);
+        setState(() {
+          projectOrientation = projectOrientationRaw;
+        });
+
+        widget.refreshSettings();
+        widget.stabCallback();
+
+        setState(() => isImporting = false);
+        _loadImages();
+
+        _showImportCompleteDialog(successfullyImported, photosImported - successfullyImported);
+      },
+      child: CustomPaint(
+        foregroundPainter: _DashedRectPainter(
+          color: Colors.white24,
+          strokeWidth: 2,
+          dash: 8,
+          gap: 6,
+        ),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 12.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              Icon(Icons.file_upload_outlined, size: 28),
+              SizedBox(height: 8),
+              Text('Drop files here to import'),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -1629,4 +1697,51 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
       _loadImages();
     }
   }
+}
+
+class _DashedRectPainter extends CustomPainter {
+  final Color color;
+  final double strokeWidth;
+  final double dash;
+  final double gap;
+
+  _DashedRectPainter({
+    required this.color,
+    this.strokeWidth = 2,
+    this.dash = 8,
+    this.gap = 6,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint p = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth;
+
+    final Rect rect = Rect.fromLTWH(0, 0, size.width, size.height);
+    final ui.Path outline = ui.Path()..addRect(rect);
+    final ui.Path dashedPath = _dashPath(outline, dash, gap);
+
+    canvas.drawPath(dashedPath, p);
+  }
+
+  ui.Path _dashPath(ui.Path source, double dashLength, double gapLength) {
+    final ui.Path dest = ui.Path();
+    for (final ui.PathMetric metric in source.computeMetrics()) {
+      double distance = 0.0;
+      while (distance < metric.length) {
+        final double next = distance + dashLength;
+        dest.addPath(
+          metric.extractPath(distance, next.clamp(0.0, metric.length)),
+          ui.Offset.zero,
+        );
+        distance = next + gapLength;
+      }
+    }
+    return dest;
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
