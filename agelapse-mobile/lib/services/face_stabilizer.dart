@@ -1008,10 +1008,6 @@ class FaceStabilizer {
     double hypotenuse = sqrt(pow(verticalDistance, 2) + pow(horizontalDistance, 2));
     double scaleFactor = eyeDistanceGoal / hypotenuse;
 
-    print("leftEye => '${leftEye}'");
-    print("rightEye => '${rightEye}'");
-    print("Calculated rotationDegrees => '${rotationDegrees}'");
-
     return (scaleFactor, rotationDegrees);
   }
 

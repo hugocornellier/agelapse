@@ -52,6 +52,14 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
   double? _lastTy;
   double? _lastMult;
   double? _lastRot;
+  ui.Image? _rawImage;
+
+  final Map<String, Timer?> _holdTimers = {};
+  final Map<String, bool> _recentlyHeld = {};
+  bool _suppressListener = false;
+  DateTime? _lastApplyAt;
+  final Duration _applyThrottle = const Duration(milliseconds: 140);
+  final Duration _repeatInterval = const Duration(milliseconds: 60);
 
   @override
   void initState() {
@@ -80,6 +88,11 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
   @override
   void dispose() {
     _debounce?.cancel();
+    for (final t in _holdTimers.values) {
+      t?.cancel();
+    }
+    _holdTimers.clear();
+    _rawImage?.dispose();
     _inputController1.dispose();
     _inputController2.dispose();
     _inputController3.dispose();
@@ -115,12 +128,11 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
       rawPhotoPath = localRawPath;
     });
 
-    final ui.Image? original = await StabUtils.loadImageFromFile(File(localRawPath));
-    if (original != null) {
-      final double defaultScale = canvasWidth / original.width;
+    _rawImage = await StabUtils.loadImageFromFile(File(localRawPath));
+    if (_rawImage != null) {
+      final double defaultScale = canvasWidth / _rawImage!.width.toDouble();
       _baseScale = defaultScale;
       _inputController3.text = '1';
-      original.dispose();
     }
 
     faceStabilizer = FaceStabilizer(widget.projectId, () => print("Test"));
@@ -128,10 +140,10 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
 
     double? tx = double.tryParse(_inputController1.text);
     double? ty = double.tryParse(_inputController2.text);
-    double? mult = double.tryParse(_inputController3.text) ?? 1.0;
+    double mult = double.tryParse(_inputController3.text) ?? 1.0;
     double? rot = double.tryParse(_inputController4.text);
-    double? sc = _baseScale * mult;
-    processRequest(tx, ty, sc, rot);
+    double sc = _baseScale * mult;
+    processRequest(tx, ty, sc, rot, save: true);
   }
 
   @override
@@ -263,14 +275,7 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
                 ],
               ),
               const SizedBox(height: 16),
-              if (_isProcessing) ...[
-                const CircularProgressIndicator(),
-                const SizedBox(height: 8),
-                const Text('Please wait a moment...'),
-                const SizedBox(height: 16),
-              ],
-              if (!_isProcessing &&
-                  _stabilizedImageBytes != null &&
+              if (_stabilizedImageBytes != null &&
                   _canvasWidth != null &&
                   _canvasHeight != null &&
                   _leftEyeXGoal != null &&
@@ -306,6 +311,16 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
                             height: previewHeight,
                           ),
                         ),
+                        if (_isProcessing)
+                          const Positioned(
+                            top: 8,
+                            right: 8,
+                            child: SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
                       ],
                     ),
                   );
@@ -360,13 +375,13 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
     }
   }
 
-  Future<void> processRequest(double? translateX, double? translateY, double? scaleFactor, double? rotationDegrees) async {
+  Future<void> processRequest(double? translateX, double? translateY, double? scaleFactor, double? rotationDegrees, {bool save = false}) async {
     final int requestId = ++_currentRequestId;
     setState(() {
       _isProcessing = true;
     });
     try {
-      final ui.Image? img = await StabUtils.loadImageFromFile(File(rawPhotoPath));
+      final ui.Image? img = _rawImage;
       if (img == null) {
         return;
       }
@@ -379,12 +394,10 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
         translateY,
       );
       if (imageBytesStabilized == null) {
-        img.dispose();
         return;
       }
 
       if (requestId != _currentRequestId) {
-        img.dispose();
         return;
       }
 
@@ -392,27 +405,28 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
         _stabilizedImageBytes = imageBytesStabilized;
       });
 
-      final String projectOrientation =
-      await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
-      final String stabilizedPhotoPath =
-      await StabUtils.getStabilizedImagePath(rawPhotoPath, widget.projectId, projectOrientation);
-      final String stabThumbPath = FaceStabilizer.getStabThumbnailPath(stabilizedPhotoPath);
+      if (save) {
+        final String projectOrientation =
+        await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
+        final String stabilizedPhotoPath =
+        await StabUtils.getStabilizedImagePath(rawPhotoPath, widget.projectId, projectOrientation);
+        final String stabThumbPath = FaceStabilizer.getStabThumbnailPath(stabilizedPhotoPath);
 
-      final File stabImageFile = File(stabilizedPhotoPath);
-      final File stabThumbFile = File(stabThumbPath);
-      if (await stabImageFile.exists()) await stabImageFile.delete();
-      if (await stabThumbFile.exists()) await stabThumbFile.delete();
+        final File stabImageFile = File(stabilizedPhotoPath);
+        final File stabThumbFile = File(stabThumbPath);
+        if (await stabImageFile.exists()) await stabImageFile.delete();
+        if (await stabThumbFile.exists()) await stabThumbFile.delete();
 
-      await faceStabilizer.saveStabilizedImage(
-        imageBytesStabilized,
-        rawPhotoPath,
-        stabilizedPhotoPath,
-        0.0,
-      );
-      await faceStabilizer.createStabThumbnail(stabilizedPhotoPath.replaceAll('.jpg', '.png'));
+        await faceStabilizer.saveStabilizedImage(
+          imageBytesStabilized,
+          rawPhotoPath,
+          stabilizedPhotoPath,
+          0.0,
+        );
+        await faceStabilizer.createStabThumbnail(stabilizedPhotoPath.replaceAll('.jpg', '.png'));
+      }
 
       if (requestId != _currentRequestId) {
-        img.dispose();
         return;
       }
 
@@ -433,8 +447,6 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
         _lastMult = scaleFactor == null ? null : scaleFactor / _baseScale;
         _lastRot = rotationDegrees;
       });
-
-      img.dispose();
     } catch (_) {} finally {
       if (mounted && requestId == _currentRequestId) {
         setState(() {
@@ -448,17 +460,30 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
     double mult = double.tryParse(_inputController3.text) ?? 1.0;
     mult += delta;
     if (mult < 0.01) mult = 0.01;
+    _suppressListener = true;
     _inputController3.text = mult.toStringAsFixed(2);
+    _suppressListener = false;
+
+    final now = DateTime.now();
+    if (_lastApplyAt == null || now.difference(_lastApplyAt!) >= _applyThrottle) {
+      _lastApplyAt = now;
+      double? tx = double.tryParse(_inputController1.text);
+      double? ty = double.tryParse(_inputController2.text);
+      double? rot = double.tryParse(_inputController4.text);
+      double? sc = _baseScale * mult;
+      processRequest(tx, ty, sc, rot);
+    }
   }
 
   void _onParamChanged() {
+    if (_suppressListener) return;
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 800), () {
       double? tx = double.tryParse(_inputController1.text);
       double? ty = double.tryParse(_inputController2.text);
       double mult = double.tryParse(_inputController3.text) ?? 1.0;
       double? rot = double.tryParse(_inputController4.text);
-      double? sc = _baseScale * mult;
+      double sc = _baseScale * mult;
 
       const double tolerance = 0.0001;
       bool changed = (_lastTx == null || (_lastTx! - (tx ?? 0)).abs() > tolerance) ||
@@ -467,7 +492,7 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
           (_lastRot == null || (_lastRot! - (rot ?? 0)).abs() > tolerance);
 
       if (changed) {
-        processRequest(tx, ty, sc, rot);
+        processRequest(tx, ty, sc, rot, save: true);
       }
     });
   }
@@ -479,12 +504,53 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
     tx += dx;
     ty += dy;
 
+    _suppressListener = true;
     _inputController1.text = tx.toString();
     _inputController2.text = ty.toString();
+    _suppressListener = false;
+
+    final now = DateTime.now();
+    if (_lastApplyAt == null || now.difference(_lastApplyAt!) >= _applyThrottle) {
+      _lastApplyAt = now;
+      double mult = double.tryParse(_inputController3.text) ?? 1.0;
+      double? rot = double.tryParse(_inputController4.text);
+      double? sc = _baseScale * mult;
+      processRequest(tx, ty, sc, rot);
+    }
   }
 
   Widget _buildToolbar(BuildContext context) {
     final Color barColor = Colors.black.withAlpha((0.75 * 255).round());
+
+    void _forceApplyNow() {
+      final now = DateTime.now();
+      if (_lastApplyAt != null && now.difference(_lastApplyAt!) < const Duration(milliseconds: 50)) return;
+      _lastApplyAt = now;
+      double? tx = double.tryParse(_inputController1.text);
+      double? ty = double.tryParse(_inputController2.text);
+      double mult = double.tryParse(_inputController3.text) ?? 1.0;
+      double? rot = double.tryParse(_inputController4.text);
+      double sc = _baseScale * mult;
+      processRequest(tx, ty, sc, rot, save: true);
+    }
+
+    void _startHold(String key, VoidCallback onTick) {
+      _recentlyHeld[key] = false;
+      _holdTimers[key]?.cancel();
+      _holdTimers[key] = Timer.periodic(_repeatInterval, (t) {
+        if (_recentlyHeld[key] == false) {
+          _recentlyHeld[key] = true;
+        }
+        onTick();
+      });
+    }
+
+    void _stopHold(String key) {
+      _holdTimers[key]?.cancel();
+      _holdTimers.remove(key);
+      _forceApplyNow();
+    }
+
     return ColoredBox(
       color: barColor,
       child: SafeArea(
@@ -496,12 +562,120 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              IconButton(icon: const Icon(Icons.remove),       onPressed: () => _adjustScale(-0.01)),
-              IconButton(icon: const Icon(Icons.add),          onPressed: () => _adjustScale(0.01)),
-              IconButton(icon: const Icon(Icons.arrow_left),   onPressed: () => _adjustOffsets(dx: -1)),
-              IconButton(icon: const Icon(Icons.arrow_right),  onPressed: () => _adjustOffsets(dx: 1)),
-              IconButton(icon: const Icon(Icons.arrow_upward), onPressed: () => _adjustOffsets(dy: 1)),
-              IconButton(icon: const Icon(Icons.arrow_downward), onPressed: () => _adjustOffsets(dy: -1)),
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapDown: (_) => _startHold('scaleMinus', () => _adjustScale(-0.01)),
+                onTapUp: (_) => _stopHold('scaleMinus'),
+                onTapCancel: () => _stopHold('scaleMinus'),
+                onPanEnd: (_) => _stopHold('scaleMinus'),
+                onPanCancel: () => _stopHold('scaleMinus'),
+                child: IconButton(
+                  icon: const Icon(Icons.remove),
+                  onPressed: () {
+                    if (_recentlyHeld['scaleMinus'] == true) {
+                      _recentlyHeld['scaleMinus'] = false;
+                      return;
+                    }
+                    _adjustScale(-0.01);
+                    _forceApplyNow();
+                  },
+                ),
+              ),
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapDown: (_) => _startHold('scalePlus', () => _adjustScale(0.01)),
+                onTapUp: (_) => _stopHold('scalePlus'),
+                onTapCancel: () => _stopHold('scalePlus'),
+                onPanEnd: (_) => _stopHold('scalePlus'),
+                onPanCancel: () => _stopHold('scalePlus'),
+                child: IconButton(
+                  icon: const Icon(Icons.add),
+                  onPressed: () {
+                    if (_recentlyHeld['scalePlus'] == true) {
+                      _recentlyHeld['scalePlus'] = false;
+                      return;
+                    }
+                    _adjustScale(0.01);
+                    _forceApplyNow();
+                  },
+                ),
+              ),
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapDown: (_) => _startHold('left', () => _adjustOffsets(dx: -1)),
+                onTapUp: (_) => _stopHold('left'),
+                onTapCancel: () => _stopHold('left'),
+                onPanEnd: (_) => _stopHold('left'),
+                onPanCancel: () => _stopHold('left'),
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_left),
+                  onPressed: () {
+                    if (_recentlyHeld['left'] == true) {
+                      _recentlyHeld['left'] = false;
+                      return;
+                    }
+                    _adjustOffsets(dx: -1);
+                    _forceApplyNow();
+                  },
+                ),
+              ),
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapDown: (_) => _startHold('right', () => _adjustOffsets(dx: 1)),
+                onTapUp: (_) => _stopHold('right'),
+                onTapCancel: () => _stopHold('right'),
+                onPanEnd: (_) => _stopHold('right'),
+                onPanCancel: () => _stopHold('right'),
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_right),
+                  onPressed: () {
+                    if (_recentlyHeld['right'] == true) {
+                      _recentlyHeld['right'] = false;
+                      return;
+                    }
+                    _adjustOffsets(dx: 1);
+                    _forceApplyNow();
+                  },
+                ),
+              ),
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapDown: (_) => _startHold('up', () => _adjustOffsets(dy: -1)),
+                onTapUp: (_) => _stopHold('up'),
+                onTapCancel: () => _stopHold('up'),
+                onPanEnd: (_) => _stopHold('up'),
+                onPanCancel: () => _stopHold('up'),
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_upward),
+                  onPressed: () {
+                    if (_recentlyHeld['up'] == true) {
+                      _recentlyHeld['up'] = false;
+                      return;
+                    }
+                    _adjustOffsets(dy: -1);
+                    _forceApplyNow();
+                  },
+                ),
+              ),
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapDown: (_) => _startHold('down', () => _adjustOffsets(dy: 1)),
+                onTapUp: (_) => _stopHold('down'),
+                onTapCancel: () => _stopHold('down'),
+                onPanEnd: (_) => _stopHold('down'),
+                onPanCancel: () => _stopHold('down'),
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_downward),
+                  onPressed: () {
+                    if (_recentlyHeld['down'] == true) {
+                      _recentlyHeld['down'] = false;
+                      return;
+                    }
+                    _adjustOffsets(dy: 1);
+                    _forceApplyNow();
+                  },
+                ),
+              ),
             ],
           ),
         ),

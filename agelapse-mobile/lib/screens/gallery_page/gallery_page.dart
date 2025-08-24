@@ -442,19 +442,32 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
               child: Stack(
                 children: [
                   (!isImporting && !widget.importRunningInMain) ? _buildTabBarView() : _buildLoadingView(),
-                  _buildFloatingActionButton(
-                    context,
-                    right: -13,
-                    icon: Icons.upload,
-                    onPressed: isImporting
-                        ? _showImportingDialog
-                        : () => _showImportOptionsBottomSheet(context),
-                  ),
-                  _buildFloatingActionButton(
-                    context,
-                    right: 35,
-                    icon: Icons.download,
-                    onPressed: () => _showExportOptionsBottomSheet(context),
+                  Positioned(
+                    top: 7,
+                    right: 8,
+                    child: Row(
+                      children: [
+                        RawMaterialButton(
+                          onPressed: () => _showExportOptionsBottomSheet(context),
+                          elevation: 2.0,
+                          fillColor: Theme.of(context).primaryColor,
+                          constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+                          shape: const CircleBorder(),
+                          child: const Icon(Icons.download, size: 20.0),
+                        ),
+                        const SizedBox(width: 12),
+                        RawMaterialButton(
+                          onPressed: isImporting
+                              ? _showImportingDialog
+                              : () => _showImportOptionsBottomSheet(context),
+                          elevation: 2.0,
+                          fillColor: Theme.of(context).primaryColor,
+                          constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+                          shape: const CircleBorder(),
+                          child: const Icon(Icons.upload, size: 20.0),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -957,10 +970,10 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
     );
   }
 
-
   Future<void> _shareZipFile() async {
     String zipFileExportPath = await DirUtils.getZipFileExportPath(widget.projectId, widget.projectName);
-    final result = await Share.shareXFiles([XFile(zipFileExportPath)]);
+    final params = ShareParams(files: [XFile(zipFileExportPath)]);
+    final result = await SharePlus.instance.share(params);
 
     if (result.status == ShareResultStatus.success) {
       // print('Share success.');
@@ -1361,16 +1374,6 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
       _stdebug('$label DECODE_OK path=$path');
     } catch (e, st) {
       _stdebug('$label DECODE_FAIL path=$path error=$e');
-    }
-  }
-
-  Future<void> _stdebugEvictFileImage(String path) async {
-    try {
-      final provider = FileImage(File(path));
-      final evicted = await provider.evict();
-      _stdebug('EVICT cache=$evicted path=$path');
-    } catch (e) {
-      _stdebug('EVICT_FAIL path=$path error=$e');
     }
   }
 
