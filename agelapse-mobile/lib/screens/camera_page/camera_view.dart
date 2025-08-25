@@ -153,26 +153,30 @@ class _CameraViewState extends State<CameraView> {
   }
 
   Widget _macOSBody() {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        cmacos.CameraMacOSView(
-          fit: BoxFit.cover,
-          cameraMode: cmacos.CameraMacOSMode.photo,
-          onCameraInizialized: (cmacos.CameraMacOSController c) {
-            setState(() => _macController = c);
-          },
-        ),
-        if (_gridMode != GridMode.none)
-          CameraGridOverlay(widget.projectId, _gridMode, offsetX, offsetY, orientation: _orientation),
-        if (!modifyGridMode) _leftSideControls(),
-        if (!modifyGridMode) _rightSideControls(),
-        if (!modifyGridMode) _cameraControl(),
-        if (modifyGridMode) gridModifierOverlay(),
-        if (modifyGridMode) saveGridButton(),
-        if (!modifyGridMode && (_gridMode == GridMode.gridOnly || _gridMode == GridMode.doubleGhostGrid || _gridMode == GridMode.ghostOnly))
-          modifyGridButton(),
-      ],
+    return SafeArea(
+      bottom: true,
+      child: Stack(
+        fit: StackFit.expand,
+        alignment: Alignment.bottomCenter,
+        children: [
+          cmacos.CameraMacOSView(
+            fit: BoxFit.cover,
+            cameraMode: cmacos.CameraMacOSMode.photo,
+            onCameraInizialized: (cmacos.CameraMacOSController c) {
+              setState(() => _macController = c);
+            },
+          ),
+          if (_gridMode != GridMode.none)
+            CameraGridOverlay(widget.projectId, _gridMode, offsetX, offsetY, orientation: _orientation),
+          if (!modifyGridMode) _leftSideControls(),
+          if (!modifyGridMode) _rightSideControls(),
+          if (!modifyGridMode) _cameraControl(),
+          if (modifyGridMode) gridModifierOverlay(),
+          if (modifyGridMode) saveGridButton(),
+          if (!modifyGridMode && (_gridMode == GridMode.gridOnly || _gridMode == GridMode.doubleGhostGrid || _gridMode == GridMode.ghostOnly))
+            modifyGridButton(),
+        ],
+      ),
     );
   }
 
@@ -380,19 +384,20 @@ class _CameraViewState extends State<CameraView> {
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          padding: const EdgeInsets.all(0),
-          decoration: BoxDecoration(
-            color: Colors.black54,
-            borderRadius: BorderRadius.circular(10),
+        if (!Platform.isMacOS)
+          Container(
+            padding: const EdgeInsets.all(0),
+            decoration: BoxDecoration(
+              color: Colors.black54,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: RotatingIconButton(
+              child: Icon(flashEnabled ? Icons.flash_auto : Icons.flash_off, size: 24, color: Colors.white),
+              rotationTurns: getRotation(_orientation),
+              onPressed: toggleFlash,
+            ),
           ),
-          child: RotatingIconButton(
-            child: Icon(flashEnabled ? Icons.flash_auto : Icons.flash_off, size: 24, color: Colors.white),
-            rotationTurns: getRotation(_orientation),
-            onPressed: toggleFlash,
-          ),
-        ),
-        SizedBox(width: 16),
+        if (!Platform.isMacOS) const SizedBox(width: 16),
         Container(
           padding: const EdgeInsets.all(0),
           decoration: BoxDecoration(
@@ -405,19 +410,19 @@ class _CameraViewState extends State<CameraView> {
             onPressed: _toggleGrid,
           ),
         ),
-
       ],
     ),
   );
 
-  Widget _rightSideControls() => Positioned(
+  Widget _rightSideControls() => Platform.isMacOS
+      ? const SizedBox.shrink()
+      : Positioned(
     bottom: 21,
     right: 16,
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // mirrorButton(),
-        SizedBox(width: 16),
+        const SizedBox(width: 16),
         Container(
           padding: const EdgeInsets.all(0),
           decoration: BoxDecoration(
@@ -434,7 +439,6 @@ class _CameraViewState extends State<CameraView> {
             onPressed: _switchLiveCamera,
           ),
         ),
-
       ],
     ),
   );
