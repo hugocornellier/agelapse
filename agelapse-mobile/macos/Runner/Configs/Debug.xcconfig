@@ -1,0 +1,4 @@
+#include "../../Flutter/Flutter-Debug.xcconfig"
+#include "Warnings.xcconfig"
+
+MACOSX_DEPLOYMENT_TARGET = 11.0
