@@ -5,6 +5,8 @@ import 'package:chewie/chewie.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
+import 'package:file_selector/file_selector.dart';
+import 'package:path/path.dart' as path;
 
 import '../services/database_helper.dart';
 import '../services/settings_cache.dart';
@@ -457,16 +459,75 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
     );
   }
 
-  void _shareVideo() async {
-    String projectOrientation = await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
-    final String videoOutputPath = await DirUtils.getVideoOutputPath(widget.projectId, projectOrientation);
+  Future<void> _saveVideoDesktop(String sourcePath) async {
+    try {
+      final File src = File(sourcePath);
+      if (!await src.exists()) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Video not found on disk')),
+          );
+        }
+        return;
+      }
 
-    final result = await SharePlus.instance.share(
-      ShareParams(files: [XFile(videoOutputPath)]),
-    );
-    if (result.status == ShareResultStatus.success) {
-      // Success
+      final String suggestedBase =
+      (widget.projectName.isEmpty ? 'AgeLapse' : widget.projectName)
+          .replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+      final String suggestedName = '$suggestedBase.mp4';
+
+      final FileSaveLocation? location = await getSaveLocation(
+        suggestedName: suggestedName,
+        acceptedTypeGroups: const [
+          XTypeGroup(label: 'MP4 video', extensions: ['mp4']),
+        ],
+      );
+      if (location == null) return;
+
+      String targetPath = location.path;
+      if (path.extension(targetPath).toLowerCase() != '.mp4') {
+        targetPath = '$targetPath.mp4';
+      }
+
+      final File dest = File(targetPath);
+      dest.parent.createSync(recursive: true);
+
+      if (await dest.exists()) {
+        await dest.delete();
+      }
+      await src.copy(dest.path);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Saved to ${dest.path}')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to save video: $e')),
+      );
     }
+  }
+
+  void _shareVideo() async {
+    final String projectOrientation =
+    await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
+    final String videoOutputPath =
+    await DirUtils.getVideoOutputPath(widget.projectId, projectOrientation);
+
+    if (Platform.isAndroid || Platform.isIOS) {
+      // Mobile: keep using native share sheets
+      final result = await SharePlus.instance.share(
+        ShareParams(files: [XFile(videoOutputPath)]),
+      );
+      if (result.status == ShareResultStatus.success) {
+        // optional: toast/snackbar
+      }
+      return;
+    }
+
+    // Desktop: do a "Save As..."
+    await _saveVideoDesktop(videoOutputPath);
   }
 
   Future<bool> videoSettingsChanged(newestVideo) async =>

@@ -994,7 +994,9 @@ class GalleryPageState extends State<GalleryPage> with SingleTickerProviderState
                           );
                           if (res == 'success') {
                             setState(() => exportSuccessful = true);
-                            _shareZipFile();
+                            if (Platform.isAndroid || Platform.isIOS) {
+                              _shareZipFile();
+                            }
                           }
                         } catch (e) {
                           print(e);

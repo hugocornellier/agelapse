@@ -546,16 +546,16 @@ class GalleryUtils {
     final send = params.sendPort;
     void log(String m) => send.send({'type': 'log', 'msg': m});
 
-    final exportFile = File(params.zipFilePath);
-    exportFile.parent.createSync(recursive: true);
-    for (final entry in params.filesToExport.entries) {
-      entry.value.removeWhere((p) => path.equals(p, params.zipFilePath));
+    final outFile = File(params.zipFilePath);
+    outFile.parent.createSync(recursive: true);
+
+    for (final e in params.filesToExport.entries) {
+      e.value.removeWhere((p) => path.equals(p, params.zipFilePath));
     }
-    if (exportFile.existsSync()) {
-      try {
-        exportFile.deleteSync();
-      } catch (e) {
-        send.send({'type': 'log', 'msg': 'Failed to delete pre-existing zip: $e'});
+
+    if (outFile.existsSync()) {
+      try { outFile.deleteSync(); } catch (e) {
+        log('Cannot delete pre-existing zip: $e');
         send.send('error');
         return;
       }
@@ -576,92 +576,88 @@ class GalleryUtils {
     }
 
     try {
-      final Map<String, int> rawFilenameCounts = {};
-      final Map<String, int> stabilizedFilenameCounts = {};
-
-      final int totalFiles = params.filesToExport.values.fold<int>(0, (sum, list) => sum + list.length);
-      if (totalFiles == 0) {
-        log('No files to export');
-      } else {
-        log('Total to export: $totalFiles');
-      }
-
-      int processed = 0;
-      final archive = Archive();
+      final Map<String,int> rawCounts = {};
+      final Map<String,int> stabCounts = {};
+      final items = <({File file, String arcPath, int len})>[];
 
       for (final entry in params.filesToExport.entries) {
-        final String folderName = entry.key;
-        final List<String> files = List<String>.from(entry.value)..sort(safeNumCompare);
+        final folder = entry.key; // "Raw" or "Stabilized"
+        final files = List<String>.from(entry.value)..sort(safeNumCompare);
+        final counts = folder == 'Raw' ? rawCounts : stabCounts;
 
-        log('[$folderName] count=${files.length} first5=${files.take(5).map((p)=>path.basename(p)).toList()}');
+        for (final p in files) {
+          final f = File(p);
+          if (!f.existsSync()) { missing++; continue; }
 
-        final Map<String, int> filenameCounts = folderName == 'Raw' ? rawFilenameCounts : stabilizedFilenameCounts;
+          final base = path.basenameWithoutExtension(p);
+          final ext  = path.extension(p);
+          final ts = int.tryParse(base);
+          final dt = ts != null
+              ? DateTime.fromMillisecondsSinceEpoch(ts, isUtc: true).toLocal()
+              : f.lastModifiedSync();
+          final stamp = DateFormat('yyyy-MM-dd_HH-mm-ss').format(dt);
 
-        for (final filePath in files) {
-          final file = File(filePath);
-          if (path.equals(file.path, params.zipFilePath)) {
-            processed++;
-            final double percent = totalFiles == 0 ? 100.0 : (processed / totalFiles) * 100.0;
-            send.send(percent);
-            continue;
-          }
-          if (!file.existsSync()) {
-            missing++;
+          var newName = '$stamp$ext';
+          final dup = counts[newName];
+          if (dup != null) {
+            final n = dup + 1;
+            counts[newName] = n;
+            newName = '$stamp ($n)$ext';
           } else {
-            final base = path.basenameWithoutExtension(filePath);
-            final ext = path.extension(filePath);
-
-            final ts = int.tryParse(base);
-            DateTime dt;
-            if (ts != null) {
-              dt = DateTime.fromMillisecondsSinceEpoch(ts, isUtc: true).toLocal();
-            } else {
-              dt = file.lastModifiedSync();
-            }
-            final formatted = DateFormat('yyyy-MM-dd_HH-mm-ss').format(dt);
-
-            String newFileName = '$formatted$ext';
-            if (filenameCounts.containsKey(newFileName)) {
-              final int count = filenameCounts[newFileName]! + 1;
-              filenameCounts[newFileName] = count;
-              newFileName = '$formatted ($count)$ext';
-            } else {
-              filenameCounts[newFileName] = 1;
-            }
-
-            try {
-              final bytes = file.readAsBytesSync();
-              archive.addFile(ArchiveFile('$folderName/$newFileName', bytes.length, bytes));
-              added++;
-            } catch (e, st) {
-              ok = false;
-              log('read/add failed for ${file.path}: $e');
-              log('stack: $st');
-              break;
-            }
+            counts[newName] = 1;
           }
 
-          processed++;
-          final double percent = totalFiles == 0 ? 100.0 : (processed / totalFiles) * 100.0;
-          send.send(percent);
+          final len = f.lengthSync();
+          if (len <= 0) continue;
+          items.add((file: f, arcPath: '$folder/$newName', len: len));
+        }
+      }
+
+      if (items.isEmpty) {
+        log('No files to add (missing=$missing, badname=$badname)');
+        send.send({'type': 'summary', 'added': added, 'missing': missing, 'badname': badname});
+        send.send('error');
+        return;
+      }
+
+      final totalBytes = items.fold<int>(0, (s, it) => s + it.len);
+      var stagedBytes = 0;
+
+      final archive = Archive();
+      for (final it in items) {
+        try {
+          final bytes = it.file.readAsBytesSync();
+          final af = ArchiveFile.noCompress(it.arcPath, bytes.length, bytes);
+          archive.addFile(af);
+          added++;
+
+          stagedBytes += it.len;
+          final pct = totalBytes == 0 ? 0.0 : (stagedBytes / totalBytes) * 98.0;
+          send.send(pct);
+        } catch (e, st) {
+          ok = false;
+          log('read/add failed for ${it.file.path}: $e');
+          log('stack: $st');
+          break;
         }
       }
 
       if (ok) {
-        final zipBytes = ZipEncoder().encode(archive);
-        if (zipBytes == null) {
-          ok = false;
-          log('ZipEncoder returned null');
-        } else {
-          exportFile.writeAsBytesSync(zipBytes);
-        }
+        final zipBytes = ZipEncoder().encode(archive, level: 0);
+        outFile.writeAsBytesSync(zipBytes, flush: true);
       }
-    } catch (e) {
+    } catch (e, st) {
       ok = false;
-      send.send({'type': 'log', 'msg': 'zipFiles crashed: $e'});
+      log('zipFiles crashed: $e\n$st');
     } finally {
       send.send({'type': 'summary', 'added': added, 'missing': missing, 'badname': badname});
-      send.send(ok ? 'success' : 'error');
+      if (ok) {
+        send.send(100.0);
+        send.send('success');
+      } else {
+        try { if (outFile.existsSync()) outFile.deleteSync(); } catch (_) {}
+        send.send('error');
+      }
     }
   }
 
