@@ -66,20 +66,20 @@ class DB {
           "noFacesFound INTEGER NOT NULL, "
           "favorite INTEGER NOT NULL, "
           "tempPath TEXT"
-        ");",
+          ");",
       settingTable: "CREATE TABLE $settingTable("
           "id INTEGER PRIMARY KEY AUTOINCREMENT, "
           "title TEXT NOT NULL, "
           "value TEXT NOT NULL, "
           "projectID TEXT NOT NULL"
-        ");",
+          ");",
       projectTable: "CREATE TABLE $projectTable("
           "id INTEGER PRIMARY KEY AUTOINCREMENT, "
           "name TEXT NOT NULL, "
           "type TEXT NOT NULL, "
           "timestampCreated INTEGER NOT NULL,"
           "newVideoNeeded INTEGER NOT NULL"
-        ");",
+          ");",
       videoTable: "CREATE TABLE $videoTable("
           "id INTEGER PRIMARY KEY AUTOINCREMENT, "
           "resolution TEXT NOT NULL, "
@@ -89,7 +89,7 @@ class DB {
           "photoCount INTEGER NOT NULL, "
           "framerate INTEGER NOT NULL, "
           "timestampCreated INTEGER NOT NULL"
-        ");",
+          ");",
     };
 
     for (MapEntry<String, String> entry in tablesToCreate.entries) {
@@ -97,8 +97,10 @@ class DB {
         await db.execute(entry.value);
       }
     }
-  }
 
+    await _ensurePhotoTransformColumns();
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_photos_project_ts ON $photoTable(projectID, timestamp);');
+  }
 
   /* ┌──────────────────────┐
      │                      │
@@ -407,6 +409,32 @@ class DB {
     }
   }
 
+  Future<void> _ensurePhotoTransformColumns() async {
+    final db = await database;
+    final cols = await db.rawQuery('PRAGMA table_info($photoTable)');
+    bool has(String name) => cols.any((c) => c['name'] == name);
+
+    // Column names follow your existing per-orientation pattern
+    final toAdd = <String, String>{
+      // Portrait
+      'stabilizedPortraitTranslateX': 'REAL DEFAULT 0',
+      'stabilizedPortraitTranslateY': 'REAL DEFAULT 0',
+      'stabilizedPortraitRotationDegrees': 'REAL DEFAULT 0',
+      'stabilizedPortraitScaleFactor': 'REAL DEFAULT 1',
+      // Landscape
+      'stabilizedLandscapeTranslateX': 'REAL DEFAULT 0',
+      'stabilizedLandscapeTranslateY': 'REAL DEFAULT 0',
+      'stabilizedLandscapeRotationDegrees': 'REAL DEFAULT 0',
+      'stabilizedLandscapeScaleFactor': 'REAL DEFAULT 1',
+    };
+
+    for (final entry in toAdd.entries) {
+      if (!has(entry.key)) {
+        await db.execute('ALTER TABLE $photoTable ADD COLUMN ${entry.key} ${entry.value};');
+      }
+    }
+  }
+
   Future<bool> isFavoritePhoto(String timestamp) async {
     final db = await database;
     final results = await db.query(
@@ -599,28 +627,41 @@ class DB {
   }
 
   Future<void> setPhotoStabilized(
-    String timestamp,
-    String projectOrientation,
-    String aspectRatio,
-    String resolution,
-    double offsetX,
-    double offsetY
-  ) async {
+      String timestamp,
+      int projectId,
+      String projectOrientation,
+      String aspectRatio,
+      String resolution,
+      double offsetX,
+      double offsetY, {
+        double? translateX,
+        double? translateY,
+        double? rotationDegrees,
+        double? scaleFactor,
+      }) async {
     final db = await database;
     final String stabilizedColumn = getStabilizedColumn(projectOrientation);
+
+    final Map<String, Object?> data = {
+      stabilizedColumn: 1,
+      "${stabilizedColumn}AspectRatio": aspectRatio,
+      "${stabilizedColumn}Resolution": resolution,
+      "${stabilizedColumn}OffsetX": offsetX.toString(),
+      "${stabilizedColumn}OffsetY": offsetY.toString(),
+      "stabFailed": 0,
+      "noFacesFound": 0,
+    };
+
+    if (translateX != null) data["${stabilizedColumn}TranslateX"] = translateX;
+    if (translateY != null) data["${stabilizedColumn}TranslateY"] = translateY;
+    if (rotationDegrees != null) data["${stabilizedColumn}RotationDegrees"] = rotationDegrees;
+    if (scaleFactor != null) data["${stabilizedColumn}ScaleFactor"] = scaleFactor;
+
     await db.update(
       photoTable,
-      {
-        stabilizedColumn: 1,
-        "${stabilizedColumn}AspectRatio": aspectRatio,
-        "${stabilizedColumn}Resolution": resolution,
-        "${stabilizedColumn}OffsetX": offsetX.toString(),
-        "${stabilizedColumn}OffsetY": offsetY.toString(),
-        "stabFailed": 0,
-        "noFacesFound": 0,
-      },
-      where: 'timestamp = ?',
-      whereArgs: [timestamp],
+      data,
+      where: 'timestamp = ? AND projectID = ?',
+      whereArgs: [timestamp, projectId],
     );
   }
 

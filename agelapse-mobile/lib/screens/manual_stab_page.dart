@@ -6,6 +6,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import '../services/face_stabilizer.dart';
+import '../services/database_helper.dart';
 import '../utils/dir_utils.dart';
 import '../utils/settings_utils.dart';
 import '../utils/stabilizer_utils/stabilizer_utils.dart';
@@ -106,8 +107,6 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
     aspectRatio = await SettingsUtil.loadAspectRatio(widget.projectId.toString());
     double? aspectRatioDecimal = StabUtils.getAspectRatioAsDecimal(aspectRatio);
 
-    print("Project orientation => '${projectOrientation}'");
-
     final double? shortSideDouble = StabUtils.getShortSide(resolution);
     final int longSide = (aspectRatioDecimal! * shortSideDouble!).toInt();
     final int shortSide = shortSideDouble.toInt();
@@ -138,12 +137,7 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
     faceStabilizer = FaceStabilizer(widget.projectId, () => print("Test"));
     await faceStabilizer.init();
 
-    double? tx = double.tryParse(_inputController1.text);
-    double? ty = double.tryParse(_inputController2.text);
-    double mult = double.tryParse(_inputController3.text) ?? 1.0;
-    double? rot = double.tryParse(_inputController4.text);
-    double sc = _baseScale * mult;
-    processRequest(tx, ty, sc, rot, save: true);
+    await _loadSavedTransformAndBootPreview();
   }
 
   @override
@@ -363,6 +357,46 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
     );
   }
 
+  Future<void> _loadSavedTransformAndBootPreview() async {
+    final String timestamp = p.basenameWithoutExtension(rawPhotoPath);
+    final Map<String, dynamic>? row = await DB.instance.getPhotoByTimestamp(timestamp, widget.projectId);
+    final String prefix = DB.instance.getStabilizedColumn(projectOrientation);
+
+    double tx = 0;
+    double ty = 0;
+    double rot = 0;
+    double sc = _baseScale;
+
+    if (row != null) {
+      final dynamic vTx = row['${prefix}TranslateX'];
+      final dynamic vTy = row['${prefix}TranslateY'];
+      final dynamic vRot = row['${prefix}RotationDegrees'];
+      final dynamic vSc = row['${prefix}ScaleFactor'];
+      if (vTx != null) tx = (vTx as num).toDouble();
+      if (vTy != null) ty = (vTy as num).toDouble();
+      if (vRot != null) rot = (vRot as num).toDouble();
+      if (vSc != null) sc = (vSc as num).toDouble();
+    }
+
+    final double mult = sc / _baseScale;
+
+    _suppressListener = true;
+    _inputController1.text = tx.round().toString();
+    _inputController2.text = ty.round().toString();
+    _inputController3.text = mult.toStringAsFixed(2);
+    _inputController4.text = rot.toStringAsFixed(2);
+    _suppressListener = false;
+
+    await processRequest(tx, ty, sc, rot, save: false);
+
+    setState(() {
+      _lastTx = tx;
+      _lastTy = ty;
+      _lastMult = mult;
+      _lastRot = rot;
+    });
+  }
+
   void _validateInputs() {
     FocusScope.of(context).unfocus();
     final List<String> invalid = [];
@@ -422,6 +456,10 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
           rawPhotoPath,
           stabilizedPhotoPath,
           0.0,
+          translateX: translateX,
+          translateY: translateY,
+          rotationDegrees: rotationDegrees,
+          scaleFactor: scaleFactor,
         );
         await faceStabilizer.createStabThumbnail(stabilizedPhotoPath.replaceAll('.jpg', '.png'));
       }

@@ -185,7 +185,16 @@ class FaceStabilizer {
 
   Future<bool> _finalizeStabilization(String rawPhotoPath, String stabilizedJpgPhotoPath, ui.Image? img, double translateX, double translateY, double rotationDegrees, double scaleFactor, Uint8List imageBytesStabilized) async {
     if (projectType != "face") {
-      return await saveStabilizedImage(imageBytesStabilized, rawPhotoPath, stabilizedJpgPhotoPath, 0.0);
+      return await saveStabilizedImage(
+        imageBytesStabilized,
+        rawPhotoPath,
+        stabilizedJpgPhotoPath,
+        0.0,
+        translateX: translateX,
+        translateY: translateY,
+        rotationDegrees: rotationDegrees,
+        scaleFactor: scaleFactor,
+      );
     }
 
     rawPhotoPath = _cleanUpPhotoPath(rawPhotoPath);
@@ -234,7 +243,14 @@ class FaceStabilizer {
       );
       final score = calculateStabScore(eyesXY, goalLeftEye, goalRightEye);
       return await saveStabilizedImage(
-          imageBytesStabilized, rawPhotoPath, stabilizedJpgPhotoPath, score
+        imageBytesStabilized,
+        rawPhotoPath,
+        stabilizedJpgPhotoPath,
+        score,
+        translateX: translateX,
+        translateY: translateY,
+        rotationDegrees: rotationDegrees,
+        scaleFactor: scaleFactor,
       );
     }
 
@@ -335,22 +351,35 @@ class FaceStabilizer {
     = _calculateOvershots(eyes, goalLeftEye, goalRightEye);
 
     if (!correctionIsNeeded(score, overshotLeftX, overshotRightX, overshotLeftY, overshotRightY)) {
-      successfulStabilization = await saveStabilizedImage(imageBytesStabilized, rawPhotoPath, stabilizedJpgPhotoPath, score);
+      successfulStabilization = await saveStabilizedImage(
+        imageBytesStabilized,
+        rawPhotoPath,
+        stabilizedJpgPhotoPath,
+        score,
+        translateX: translateX,
+        translateY: translateY,
+        rotationDegrees: rotationDegrees,
+        scaleFactor: scaleFactor,
+      );
     } else {
       print("Attempting to correct with two-pass. Initial score = $score...");
 
       final (double newTranslateX, double newTranslateY) = _calculateNewTranslations(
-          translateX,
-          translateY,
-          overshotLeftX,
-          overshotRightX,
-          overshotLeftY,
-          overshotRightY
+        translateX,
+        translateY,
+        overshotLeftX,
+        overshotRightX,
+        overshotLeftY,
+        overshotRightY,
       );
 
       final String stabilizedPhotoPath = await StabUtils.getStabilizedImagePath(rawPhotoPath, projectId, projectOrientation);
       Uint8List? newImageBytesStabilized = await generateStabilizedImageBytes(
-          img, rotationDegrees, scaleFactor, newTranslateX, newTranslateY
+        img,
+        rotationDegrees,
+        scaleFactor,
+        newTranslateX,
+        newTranslateY,
       );
       if (newImageBytesStabilized == null) return false;
 
@@ -367,20 +396,34 @@ class FaceStabilizer {
       final List<Point<int>?> newEyes = _filterAndCenterEyes(newStabFaces);
 
       double newScore;
+      bool usedTwoPass = true;
+
       if (newEyes.length < 2 || newEyes[0] == null || newEyes[1] == null) {
         newImageBytesStabilized = imageBytesStabilized;
         newScore = score;
+        usedTwoPass = false;
       } else {
         newScore = calculateStabScore(newEyes, goalLeftEye, goalRightEye);
         if (score - newScore <= 0) {
           newImageBytesStabilized = imageBytesStabilized;
           newScore = score;
+          usedTwoPass = false;
         }
       }
 
       if (newScore < 20) {
+        final double finalTX = usedTwoPass ? newTranslateX : translateX;
+        final double finalTY = usedTwoPass ? newTranslateY : translateY;
+
         successfulStabilization = await saveStabilizedImage(
-            newImageBytesStabilized, rawPhotoPath, stabilizedPhotoPath, newScore
+          newImageBytesStabilized,
+          rawPhotoPath,
+          stabilizedPhotoPath,
+          newScore,
+          translateX: finalTX,
+          translateY: finalTY,
+          rotationDegrees: rotationDegrees,
+          scaleFactor: scaleFactor,
         );
       } else {
         print("STAB FAILURE. STAB SCORE: $newScore");
@@ -392,31 +435,55 @@ class FaceStabilizer {
     return successfulStabilization;
   }
 
-  Future<bool> saveStabilizedImage(Uint8List imageBytes, String rawPhotoPath, String stabilizedPhotoPath, double score) async {
+  Future<bool> saveStabilizedImage(
+      Uint8List imageBytes,
+      String rawPhotoPath,
+      String stabilizedPhotoPath,
+      double score, {
+        double? translateX,
+        double? translateY,
+        double? rotationDegrees,
+        double? scaleFactor,
+      }) async {
     final imglib.Image? rawImage = await compute(imglib.decodeImage, imageBytes);
 
     final imglib.Image blackBackground = imglib.Image(
-        width: rawImage!.width,
-        height: rawImage.height
+      width: rawImage!.width,
+      height: rawImage.height,
     );
     imglib.fill(blackBackground, color: imglib.ColorRgb8(0, 0, 0));
     imglib.compositeImage(blackBackground, rawImage);
     final Uint8List blackBackgroundBytes = imglib.encodePng(blackBackground);
 
     final String result = await saveBytesToPngFileInIsolate(
-        blackBackgroundBytes,
-        stabilizedPhotoPath.replaceAll('.jpg', '.png')
+      blackBackgroundBytes,
+      stabilizedPhotoPath.replaceAll('.jpg', '.png'),
     );
 
-    if (result == "NoSpaceLeftError") {
-      print("User is out of space...");
-      userRanOutOfSpaceCallbackIn();
+    if (result != "success") {
+      if (result == "NoSpaceLeftError") {
+        print("User is out of space...");
+        userRanOutOfSpaceCallbackIn();
+      }
       return false;
     }
 
-    await setPhotoStabilized(rawPhotoPath);
+    final tx = translateX ?? 0;
+    final ty = translateY ?? 0;
+    final rot = rotationDegrees ?? 0;
+    final sc  = scaleFactor ?? 1;
+
+    await setPhotoStabilized(
+      rawPhotoPath,
+      translateX: tx,
+      translateY: ty,
+      rotationDegrees: rot,
+      scaleFactor: sc,
+    );
 
     print("SUCCESS! STAB SCORE: $score (closer to 0 is better)");
+    print("FINAL TRANSFORM -> translateX: $tx, translateY: $ty, rotationDegrees: $rot, scaleFactor: $sc");
+
     return true;
   }
 
@@ -911,9 +978,27 @@ class FaceStabilizer {
   Future<String> getRawPhotoPathFromTimestamp(String timestamp) async =>
       await DirUtils.getRawPhotoPathFromTimestampAndProjectId(timestamp, projectId);
 
-  Future<void> setPhotoStabilized(String rawPhotoPath) async {
+  Future<void> setPhotoStabilized(
+      String rawPhotoPath, {
+        double? translateX,
+        double? translateY,
+        double? rotationDegrees,
+        double? scaleFactor,
+      }) async {
     final String timestamp = path.basenameWithoutExtension(rawPhotoPath);
-    await DB.instance.setPhotoStabilized(timestamp, await SettingsUtil.loadProjectOrientation(projectId.toString()), aspectRatio, resolution, eyeOffsetX, eyeOffsetY);
+    await DB.instance.setPhotoStabilized(
+      timestamp,
+      projectId,
+      await SettingsUtil.loadProjectOrientation(projectId.toString()),
+      aspectRatio,
+      resolution,
+      eyeOffsetX,
+      eyeOffsetY,
+      translateX: translateX,
+      translateY: translateY,
+      rotationDegrees: rotationDegrees,
+      scaleFactor: scaleFactor,
+    );
   }
 
   double calculateStabScore(List<Point<int>?> eyes, Point<int> goalLeftEye, Point<int> goalRightEye) {
