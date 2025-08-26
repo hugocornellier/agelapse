@@ -21,7 +21,7 @@ class ProjectsPageState extends State<ProjectsPage> {
   final TextEditingController _projectNameController = TextEditingController();
   bool _introConstraintsApplied = false;
   Size? _prevSize;
-  static const double _introMinHeight = 820;
+  static const double _introMinHeight = 950;
   static const Size _desktopDefaultMinSize = Size(800, 450);
 
   @override
