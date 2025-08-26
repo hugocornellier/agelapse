@@ -7,6 +7,7 @@ import '../widgets/main_navigation.dart';
 import '../widgets/project_select_sheet.dart';
 import 'welcome_page.dart';
 import 'package:flutter/services.dart';
+import 'package:window_manager/window_manager.dart';
 
 class ProjectsPage extends StatefulWidget {
   const ProjectsPage({super.key});
@@ -18,6 +19,10 @@ class ProjectsPage extends StatefulWidget {
 class ProjectsPageState extends State<ProjectsPage> {
   List<Map<String, dynamic>> _projects = [];
   final TextEditingController _projectNameController = TextEditingController();
+  bool _introConstraintsApplied = false;
+  Size? _prevSize;
+  static const double _introMinHeight = 820;
+  static const Size _desktopDefaultMinSize = Size(800, 450);
 
   @override
   void initState() {
@@ -34,6 +39,13 @@ class ProjectsPageState extends State<ProjectsPage> {
   Future<void> _getProjects() async {
     final List<Map<String, dynamic>> projects = await DB.instance.getAllProjects();
     setState(() => _projects = projects);
+    if (_isDesktop()) {
+      if (_projects.isEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _applyIntroWindowConstraints());
+      } else {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _restoreWindowConstraints());
+      }
+    }
   }
 
   @override
@@ -67,9 +79,9 @@ class ProjectsPageState extends State<ProjectsPage> {
           cancelStabCallback: () {  } ,
         ),
         Expanded(
-          child: Container(
-            color: const Color(0xff121212),
-          )
+            child: Container(
+              color: const Color(0xff121212),
+            )
         )
       ],
     );
@@ -139,8 +151,6 @@ class ProjectsPageState extends State<ProjectsPage> {
   }
 
   void openWelcomePagePartTwo() {
-    print("Going to next page");
-
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
@@ -181,8 +191,8 @@ class ProjectsPageState extends State<ProjectsPage> {
               padding: EdgeInsets.symmetric(horizontal: 16.0),
               child: Text(
                 'The most powerful tool for creating aging timelapses.'
-                '\n\n'
-                '100% free, forever.',
+                    '\n\n'
+                    '100% free, forever.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
@@ -203,7 +213,6 @@ class ProjectsPageState extends State<ProjectsPage> {
     );
   }
 
-
   void navigateToProject(BuildContext context, Map<String, dynamic> project) {
     Navigator.pushReplacement(
       context,
@@ -217,8 +226,33 @@ class ProjectsPageState extends State<ProjectsPage> {
     );
   }
 
+  bool _isDesktop() {
+    return !kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
+  }
+
+  Future<void> _applyIntroWindowConstraints() async {
+    if (!_isDesktop() || _introConstraintsApplied) return;
+    _prevSize = await windowManager.getSize();
+    final currentSize = _prevSize!;
+    await windowManager.setMinimumSize(Size(_desktopDefaultMinSize.width, _introMinHeight));
+    if (currentSize.height < _introMinHeight) {
+      await windowManager.setSize(Size(currentSize.width, _introMinHeight));
+    }
+    _introConstraintsApplied = true;
+  }
+
+  Future<void> _restoreWindowConstraints() async {
+    if (!_isDesktop() || !_introConstraintsApplied) return;
+    await windowManager.setMinimumSize(_desktopDefaultMinSize);
+    if (_prevSize != null) {
+      await windowManager.setSize(_prevSize!);
+    }
+    _introConstraintsApplied = false;
+  }
+
   @override
   void dispose() {
+    _restoreWindowConstraints();
     _projectNameController.dispose();
     super.dispose();
   }
