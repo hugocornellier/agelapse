@@ -136,11 +136,14 @@ class _TestPageState extends State<TestPage> {
   }
 
 
-  Future<List<Map<String, dynamic>>> runBlazeFace(img.Image? image,
-      {double threshold = 0.7}) async {
+  Future<List<Map<String, dynamic>>> runBlazeFace(img.Image? image, {double threshold = 0.75}) async {
     if (image == null) return [];
     imageWidth = image.width;
     imageHeight = image.height;
+
+    final int side = min(imageWidth, imageHeight);
+    final int offsetX = ((imageWidth - side) / 2).floor();
+    final int offsetY = ((imageHeight - side) / 2).floor();
 
     final resized = img.copyResizeCropSquare(image, size: 128);
     final input = [
@@ -148,16 +151,13 @@ class _TestPageState extends State<TestPage> {
         128,
             (y) => List.generate(128, (x) {
           final p = resized.getPixel(x, y);
-          return [p.r / 255.0, p.g / 255.0, p.b / 255.0];
+          return [(p.r / 127.5) - 1.0, (p.g / 127.5) - 1.0, (p.b / 127.5) - 1.0];
         }),
       ),
     ];
 
-    final regressors =
-    List.generate(1, (_) => List.generate(896, (_) => List.filled(16, 0.0)));
-    final classificators =
-    List.generate(1, (_) => List.generate(896, (_) => List.filled(1, 0.0)));
-
+    final regressors = List.generate(1, (_) => List.generate(896, (_) => List.filled(16, 0.0)));
+    final classificators = List.generate(1, (_) => List.generate(896, (_) => List.filled(1, 0.0)));
     final outputs = {0: regressors, 1: classificators};
     interpreter.runForMultipleInputs([input], outputs);
 
@@ -195,9 +195,9 @@ class _TestPageState extends State<TestPage> {
 
     final Map<String, int> bestPerCell = {};
     final Map<String, double> bestScore = {};
-
     int aboveThresh = 0;
     final List<double> topScores = [];
+
     for (int i = 0; i < 896; i++) {
       final score = sigmoid((cls[i][0] as double));
       if (score < threshold) continue;
@@ -207,16 +207,11 @@ class _TestPageState extends State<TestPage> {
       final a = anchors[i];
       final key = '${a['li']}_${a['xi']}_${a['yi']}';
       final prev = bestScore[key];
-
       if (prev == null || score > prev) {
         bestScore[key] = score;
         bestPerCell[key] = i;
       }
     }
-    topScores.sort((a, b) => b.compareTo(a));
-    final topPreview = topScores.take(10).map((e) => e.toStringAsFixed(3)).join(', ');
-    print('scores>=thresh: $aboveThresh, unique-cells: ${bestPerCell.length}, top10: [$topPreview]');
-
 
     List<BoundingBox> rawBoxes = [];
     for (final entry in bestPerCell.entries) {
@@ -234,10 +229,10 @@ class _TestPageState extends State<TestPage> {
       final w = dw / 128.0 * (a['w'] as double);
       final h = dh / 128.0 * (a['h'] as double);
 
-      double xmin = (xCenter - w / 2.0) * imageWidth;
-      double ymin = (yCenter - h / 2.0) * imageHeight;
-      double xmax = (xCenter + w / 2.0) * imageWidth;
-      double ymax = (yCenter + h / 2.0) * imageHeight;
+      double xmin = (xCenter - w / 2.0) * side + offsetX.toDouble();
+      double ymin = (yCenter - h / 2.0) * side + offsetY.toDouble();
+      double xmax = (xCenter + w / 2.0) * side + offsetX.toDouble();
+      double ymax = (yCenter + h / 2.0) * side + offsetY.toDouble();
 
       xmin = xmin.clamp(0.0, imageWidth.toDouble());
       ymin = ymin.clamp(0.0, imageHeight.toDouble());
@@ -245,25 +240,16 @@ class _TestPageState extends State<TestPage> {
       ymax = ymax.clamp(0.0, imageHeight.toDouble());
 
       if (xmax > xmin && ymax > ymin) {
-        rawBoxes.add(BoundingBox(
-          xmin: xmin,
-          ymin: ymin,
-          xmax: xmax,
-          ymax: ymax,
-          score: score,
-        ));
+        rawBoxes.add(BoundingBox(xmin: xmin, ymin: ymin, xmax: xmax, ymax: ymax, score: score));
       }
     }
 
-    print('rawBoxes=${rawBoxes.length}');
     final finalBoxes = nonMaximumSuppression(
       rawBoxes,
-      iouThreshold: 0.3,
-      overlapMinAreaThreshold: 0.5,
+      iouThreshold: 0.45,
+      overlapMinAreaThreshold: 0.6,
+      centerDistThreshold: 0.03,
     );
-
-    print('finalBoxes=${finalBoxes.length}');
-
 
     detectedRects = finalBoxes
         .map((b) => Rect.fromLTWH(b.xmin, b.ymin, b.xmax - b.xmin, b.ymax - b.ymin))
@@ -271,6 +257,7 @@ class _TestPageState extends State<TestPage> {
 
     return finalBoxes.map((b) => {'confidence': b.score, 'bbox': b}).toList();
   }
+
 
   bool isCenterInside(BoundingBox a, BoundingBox b) {
     final double cx = (a.xmin + a.xmax) * 0.5;
@@ -389,12 +376,25 @@ class _TestPageState extends State<TestPage> {
                         style: TextStyle(color: Colors.white70),
                       ),
                     )
-                        : Image.memory(
-                      selectedImage!,
-                      fit: BoxFit.contain,
+                        : Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.memory(
+                          selectedImage!,
+                          fit: BoxFit.contain,
+                        ),
+                        CustomPaint(
+                          painter: FaceBoxesPainter(
+                            boxes: detectedRects,
+                            imageWidth: imageWidth,
+                            imageHeight: imageHeight,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
+
               ),
               const SizedBox(height: 20),
               Text(
@@ -490,5 +490,51 @@ class _TestPageState extends State<TestPage> {
         ),
       ),
     );
+  }
+}
+
+class FaceBoxesPainter extends CustomPainter {
+  final List<Rect> boxes;
+  final int imageWidth;
+  final int imageHeight;
+
+  FaceBoxesPainter({
+    required this.boxes,
+    required this.imageWidth,
+    required this.imageHeight,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (imageWidth <= 0 || imageHeight <= 0 || boxes.isEmpty) return;
+
+    final double scale = (size.width / imageWidth).clamp(0, double.infinity);
+    final double scaleH = (size.height / imageHeight).clamp(0, double.infinity);
+    final double s = scale < scaleH ? scale : scaleH;
+
+    final double dx = (size.width - imageWidth * s) * 0.5;
+    final double dy = (size.height - imageHeight * s) * 0.5;
+
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..color = Colors.redAccent;
+
+    for (final b in boxes) {
+      final rect = Rect.fromLTWH(
+        b.left * s + dx,
+        b.top * s + dy,
+        b.width * s,
+        b.height * s,
+      );
+      canvas.drawRect(rect, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant FaceBoxesPainter oldDelegate) {
+    return oldDelegate.boxes != boxes ||
+        oldDelegate.imageWidth != imageWidth ||
+        oldDelegate.imageHeight != imageHeight;
   }
 }
