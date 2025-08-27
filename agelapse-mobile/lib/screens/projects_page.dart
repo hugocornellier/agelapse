@@ -1,13 +1,15 @@
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:window_manager/window_manager.dart';
+
 import '../services/database_helper.dart';
 import '../styles/styles.dart';
 import '../widgets/main_navigation.dart';
 import '../widgets/project_select_sheet.dart';
 import 'welcome_page.dart';
-import 'package:flutter/services.dart';
-import 'package:window_manager/window_manager.dart';
 
 class ProjectsPage extends StatefulWidget {
   const ProjectsPage({super.key});

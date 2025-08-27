@@ -7,6 +7,7 @@ import '../utils/utils.dart';
 import '../widgets/fancy_button.dart';
 import 'tutorial_page.dart';
 import 'faq_page.dart';
+import 'test_page.dart';
 
 class InfoPage extends StatefulWidget {
   final int projectId;
@@ -121,6 +122,20 @@ class InfoPageState extends State<InfoPage> with SingleTickerProviderStateMixin 
                           color: AppColors.lessDarkGrey,
                           onPressed: () => _sendEmail('agelapse+features@gmail.com', 'Feature Suggestion'),
                         ),
+                        const SizedBox(height: 20),
+                        FancyButton.buildElevatedButton(
+                          context,
+                          text: 'Test Page',
+                          icon: Icons.pages,
+                          color: AppColors.lessDarkGrey,
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const TestPage()),
+                            );
+                          },
+                        ),
+
                       ],
                     ),
                   ),
