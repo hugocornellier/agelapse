@@ -75,9 +75,13 @@ flutter:
     - assets/images/
     - assets/ghost-custom.svg
     - assets/relax.svg
-    - assets/blazeface.tflite
-    - assets/face_landmark_with_attention.tflite
+    - assets/models/face_detection_front.tflite
+    - assets/models/face_detection_back.tflite
     - assets/models/face_detection_short_range.tflite
+    - assets/models/face_detection_full_range.tflite
+    - assets/models/face_detection_full_range_sparse.tflite
+    - assets/models/face_landmark.tflite
+    - assets/models/iris_landmark.tflite
 
 flutter_icons:
   android: true
