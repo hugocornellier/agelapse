@@ -1,4 +1,3 @@
-// lib/utils/fdlite_single.dart
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:image/image.dart' as img;
@@ -102,7 +101,7 @@ ImageTensor _imageToTensor(img.Image src, {required int outW, required int outH}
     src,
     width: newW,
     height: newH,
-    interpolation: img.Interpolation.average,
+    interpolation: img.Interpolation.linear,
   );
 
   final dx = (outW - newW) ~/ 2;
@@ -273,9 +272,6 @@ class FaceDetection {
   final Interpreter _itp;
   final int _inW, _inH;
   final int _bboxIndex = 0, _scoreIndex = 1;
-  final int _inputIndex = 0;
-
-
 
   final Float32List _anchors;
   final bool _assumeMirrored;
@@ -315,7 +311,6 @@ class FaceDetection {
     }
     _itp.resizeInputTensor(inputIdx, [1, _inH, _inW, 3]);
     _itp.allocateTensors();
-
 
     int _numElements(List<int> s) => s.fold(1, (a, b) => a * b);
     final boxesShape = _itp.getOutputTensor(_bboxIndex).shape;
@@ -448,8 +443,6 @@ class FaceDetection {
       print("BBox -> xmin: $xminPx, ymin: $yminPx, xmax: $xmaxPx, ymax: $ymaxPx, score: ${det.score}");
     }
     return mapped;
-
-
   }
 
   List<_DecodedBox> _decodeBoxes(Float32List raw, List<int> shape) {
@@ -533,59 +526,88 @@ class FaceLandmark {
     _itp.allocateTensors();
 
     int _numElements(List<int> s) => s.fold(1, (a, b) => a * b);
-    final outShape = _itp.getOutputTensor(0).shape;
 
-    final input4d = List.generate(1, (_) => List.generate(_inH, (y) => List.generate(_inW, (x) {
-      final base = (y * _inW + x) * 3;
-      return [pack.tensorNHWC[base], pack.tensorNHWC[base + 1], pack.tensorNHWC[base + 2]];
-    })));
+    final input4d = List.generate(
+      1,
+          (_) => List.generate(
+        _inH,
+            (y) => List.generate(
+          _inW,
+              (x) {
+            final base = (y * _inW + x) * 3;
+            return [pack.tensorNHWC[base], pack.tensorNHWC[base + 1], pack.tensorNHWC[base + 2]];
+          },
+        ),
+      ),
+    );
 
-    dynamic outY;
-    if (outShape.length == 3) {
-      outY = List.generate(outShape[0], (_) =>
-          List.generate(outShape[1], (_) => List.filled(outShape[2], 0.0)));
-    } else if (outShape.length == 2) {
-      outY = List.generate(outShape[0], (_) => List.filled(outShape[1], 0.0));
-    } else {
-      outY = List.filled(outShape[0], 0.0);
-    }
-
-    _itp.runForMultipleInputs([input4d], {0: outY});
-
-    final flat = Float32List(_numElements(outShape));
-    var k = 0;
-    if (outShape.length == 3) {
-      for (var i = 0; i < outShape[0]; i++) {
-        for (var j = 0; j < outShape[1]; j++) {
-          for (var l = 0; l < outShape[2]; l++) {
-            flat[k++] = (outY[i][j][l] as num).toDouble();
-          }
-        }
-      }
-    } else if (outShape.length == 2) {
-      for (var i = 0; i < outShape[0]; i++) {
-        for (var j = 0; j < outShape[1]; j++) {
-          flat[k++] = (outY[i][j] as num).toDouble();
-        }
-      }
-    } else {
-      for (var i = 0; i < outShape[0]; i++) {
-        flat[k++] = (outY[i] as num).toDouble();
+    final outputs = <int, dynamic>{};
+    final shapes = <int, List<int>>{};
+    for (var i = 0;; i++) {
+      try {
+        final s = _itp.getOutputTensor(i).shape;
+        shapes[i] = s;
+        outputs[i] = _zerosForShape(s);
+      } catch (_) {
+        break;
       }
     }
 
+    _itp.runForMultipleInputs([input4d], outputs.cast<int, Object>());
 
+    int? bestIdx;
+    int bestLen = -1;
+    for (final entry in shapes.entries) {
+      final len = _numElements(entry.value);
+      if (len > bestLen && len % 3 == 0) {
+        bestLen = len;
+        bestIdx = entry.key;
+      }
+    }
+    if (bestIdx == null) return const <List<double>>[];
+
+    final flat = _flattenToFloat32List(outputs[bestIdx], bestLen);
+
+    final pt = pack.padding[0], pb = pack.padding[1], pl = pack.padding[2], pr = pack.padding[3];
+    final sx = 1.0 - (pl + pr);
+    final sy = 1.0 - (pt + pb);
 
     final n = (flat.length / 3).floor();
     final lm = <List<double>>[];
     for (var i = 0; i < n; i++) {
-      final x = flat[i * 3 + 0];
-      final y = flat[i * 3 + 1];
+      var x = flat[i * 3 + 0] / _inW;
+      var y = flat[i * 3 + 1] / _inH;
       final z = flat[i * 3 + 2];
+      x = (x - pl) / sx;
+      y = (y - pt) / sy;
+      if (x < 0) x = 0; else if (x > 1) x = 1;
+      if (y < 0) y = 0; else if (y > 1) y = 1;
       lm.add([x, y, z]);
     }
     return lm;
   }
+}
+
+Object _zerosForShape(List<int> shape) {
+  if (shape.isEmpty) return 0.0;
+  if (shape.length == 1) return List<double>.filled(shape[0], 0.0);
+  return List.generate(shape[0], (_) => _zerosForShape(shape.sublist(1)));
+}
+
+Float32List _flattenToFloat32List(dynamic nested, int totalLen) {
+  final out = Float32List(totalLen);
+  int k = 0;
+  void walk(dynamic v) {
+    if (v is List) {
+      for (final e in v) {
+        walk(e);
+      }
+    } else {
+      out[k++] = (v as num).toDouble();
+    }
+  }
+  walk(nested);
+  return out;
 }
 
 class IrisLandmark {
@@ -613,66 +635,55 @@ class IrisLandmark {
 
     int _numElements(List<int> s) => s.fold(1, (a, b) => a * b);
 
-    final outShape0 = _itp.getOutputTensor(0).shape;
-    final outShape1 = _itp.getOutputTensor(1).shape;
+    final input4d = List.generate(
+      1,
+          (_) => List.generate(
+        _inH,
+            (y) => List.generate(
+          _inW,
+              (x) {
+            final base = (y * _inW + x) * 3;
+            return [pack.tensorNHWC[base], pack.tensorNHWC[base + 1], pack.tensorNHWC[base + 2]];
+          },
+        ),
+      ),
+    );
 
-    final input4d = List.generate(1, (_) => List.generate(_inH, (y) => List.generate(_inW, (x) {
-      final base = (y * _inW + x) * 3;
-      return [pack.tensorNHWC[base], pack.tensorNHWC[base + 1], pack.tensorNHWC[base + 2]];
-    })));
-
-    dynamic out0;
-    out0 = List.generate(outShape0[0], (_) => List.filled(outShape0[1], 0.0));
-    dynamic out1;
-    out1 = List.generate(outShape1[0], (_) => List.filled(outShape1[1], 0.0));
-
-    _itp.runForMultipleInputs([input4d], {0: out0, 1: out1});
-
-    final flat0 = Float32List(_numElements(outShape0));
-    var k = 0;
-    for (var i = 0; i < outShape0[0]; i++) {
-      for (var j = 0; j < outShape0[1]; j++) {
-        flat0[k++] = (out0[i][j] as num).toDouble();
+    final outputs = <int, dynamic>{};
+    final shapes = <int, List<int>>{};
+    for (var i = 0;; i++) {
+      try {
+        final s = _itp.getOutputTensor(i).shape;
+        shapes[i] = s;
+        outputs[i] = _zerosForShape(s);
+      } catch (_) {
+        break;
       }
     }
 
-    final flat1 = Float32List(_numElements(outShape1));
-    k = 0;
-    for (var i = 0; i < outShape1[0]; i++) {
-      for (var j = 0; j < outShape1[1]; j++) {
-        flat1[k++] = (out1[i][j] as num).toDouble();
-      }
-    }
+    _itp.runForMultipleInputs([input4d], outputs.cast<int, Object>());
 
+    final lm = <List<double>>[];
     final pt = pack.padding[0], pb = pack.padding[1], pl = pack.padding[2], pr = pack.padding[3];
     final sx = 1.0 - (pl + pr);
     final sy = 1.0 - (pt + pb);
 
-    final lm = <List<double>>[];
-
-    final n0 = (flat0.length / 3).floor();
-    for (var i = 0; i < n0; i++) {
-      var x = flat0[i * 3 + 0];
-      var y = flat0[i * 3 + 1];
-      final z = flat0[i * 3 + 2];
-      x = (x - pl) / sx;
-      y = (y - pt) / sy;
-      lm.add([x, y, z]);
-    }
-
-    final n1 = (flat1.length / 3).floor();
-    for (var i = 0; i < n1; i++) {
-      var x = flat1[i * 3 + 0];
-      var y = flat1[i * 3 + 1];
-      final z = flat1[i * 3 + 2];
-      x = (x - pl) / sx;
-      y = (y - pt) / sy;
-      lm.add([x, y, z]);
+    for (final entry in outputs.entries) {
+      final shape = shapes[entry.key]!;
+      final flat = _flattenToFloat32List(entry.value, _numElements(shape));
+      final n = (flat.length / 3).floor();
+      for (var i = 0; i < n; i++) {
+        var x = flat[i * 3 + 0] / _inW;
+        var y = flat[i * 3 + 1] / _inH;
+        final z = flat[i * 3 + 2];
+        x = (x - pl) / sx;
+        y = (y - pt) / sy;
+        lm.add([x, y, z]);
+      }
     }
 
     return lm;
   }
-
 
   Future<List<List<double>>> runOnImage(img.Image src, RectF eyeRoi) async {
     final eyeCrop = cropFromRoi(src, eyeRoi);
@@ -693,7 +704,7 @@ class IrisLandmark {
   }
 }
 
-RectF faceDetectionToRoi(RectF bbox, {double expandFraction = 0.5}) {
+RectF faceDetectionToRoi(RectF bbox, {double expandFraction = 0.6}) {
   final e = bbox.expand(expandFraction);
   final cx = (e.xmin + e.xmax) * 0.5;
   final cy = (e.ymin + e.ymax) * 0.5;
@@ -710,4 +721,64 @@ img.Image cropFromRoi(img.Image src, RectF roi) {
   final cw = math.max(1, x1 - x0);
   final ch = math.max(1, y1 - y0);
   return img.copyCrop(src, x: x0, y: y0, width: cw, height: ch);
+}
+
+class AlignedRoi {
+  final double cx;
+  final double cy;
+  final double size;
+  final double theta;
+  const AlignedRoi(this.cx, this.cy, this.size, this.theta);
+}
+
+img.Image extractAlignedSquare(img.Image src, double cx, double cy, double size, double theta) {
+  final side = math.max(1, size.round());
+  final half = size * 0.5;
+  final ct = math.cos(theta);
+  final st = math.sin(theta);
+  final out = img.Image(width: side, height: side);
+  for (int y = 0; y < side; y++) {
+    final vy = ((y + 0.5) / side - 0.5) * size;
+    for (int x = 0; x < side; x++) {
+      final vx = ((x + 0.5) / side - 0.5) * size;
+      final sx = cx + vx * ct - vy * st;
+      final sy = cy + vx * st + vy * ct;
+      final px = _bilinearSampleRgb8(src, sx, sy);
+      out.setPixel(x, y, px);
+    }
+  }
+  return out;
+}
+
+img.ColorRgb8 _bilinearSampleRgb8(img.Image src, double fx, double fy) {
+  final x0 = fx.floor();
+  final y0 = fy.floor();
+  final x1 = x0 + 1;
+  final y1 = y0 + 1;
+  final ax = fx - x0;
+  final ay = fy - y0;
+
+  int cx0 = x0.clamp(0, src.width - 1);
+  int cx1 = x1.clamp(0, src.width - 1);
+  int cy0 = y0.clamp(0, src.height - 1);
+  int cy1 = y1.clamp(0, src.height - 1);
+
+  final p00 = src.getPixel(cx0, cy0) as img.Pixel;
+  final p10 = src.getPixel(cx1, cy0) as img.Pixel;
+  final p01 = src.getPixel(cx0, cy1) as img.Pixel;
+  final p11 = src.getPixel(cx1, cy1) as img.Pixel;
+
+  final r0 = p00.r * (1 - ax) + p10.r * ax;
+  final g0 = p00.g * (1 - ax) + p10.g * ax;
+  final b0 = p00.b * (1 - ax) + p10.b * ax;
+
+  final r1 = p01.r * (1 - ax) + p11.r * ax;
+  final g1 = p01.g * (1 - ax) + p11.g * ax;
+  final b1 = p01.b * (1 - ax) + p11.b * ax;
+
+  final r = (r0 * (1 - ay) + r1 * ay).round().clamp(0, 255);
+  final g = (g0 * (1 - ay) + g1 * ay).round().clamp(0, 255);
+  final b = (b0 * (1 - ay) + b1 * ay).round().clamp(0, 255);
+
+  return img.ColorRgb8(r, g, b);
 }

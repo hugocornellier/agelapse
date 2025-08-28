@@ -273,6 +273,15 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.0.6"
+  face_detector_flutter:
+    dependency: "direct main"
+    description:
+      path: "."
+      ref: HEAD
+      resolved-ref: "9fa7e37becaed85cc01bcd494977fd66a4e21124"
+      url: "https://github.com/hugocornellier/face_detector_flutter.git"
+    source: git
+    version: "1.0.0+1"
   face_detector_plugin:
     dependency: "direct main"
     description:
@@ -1483,5 +1492,5 @@ packages:
     source: hosted
     version: "3.1.3"
 sdks:
-  dart: ">=3.9.0 <4.0.0"
+  dart: ">=3.10.0-75.1.beta <4.0.0"
   flutter: ">=3.29.0"
