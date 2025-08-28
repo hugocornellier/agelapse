@@ -158,10 +158,13 @@ class _DetectionsPainter extends CustomPainter {
       ..strokeWidth = 2;
 
     final kpPaint = Paint()
-      ..style = PaintingStyle.fill;
+      ..style = PaintingStyle.fill
+      ..color = const Color(0xFF89CFF0);
 
     final irisPaint = Paint()
-      ..style = PaintingStyle.fill;
+      ..style = PaintingStyle.fill
+      ..color = const Color(0xFF89CFF0);
+
 
     for (final d in detections) {
       final rect = Rect.fromLTRB(
