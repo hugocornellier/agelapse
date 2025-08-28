@@ -439,7 +439,17 @@ class FaceDetection {
       }).toList();
     }
 
+    for (final det in mapped) {
+      final bbox = det.bbox;
+      final xminPx = (bbox.xmin * src.width).toInt();
+      final yminPx = (bbox.ymin * src.height).toInt();
+      final xmaxPx = (bbox.xmax * src.width).toInt();
+      final ymaxPx = (bbox.ymax * src.height).toInt();
+      print("BBox -> xmin: $xminPx, ymin: $yminPx, xmax: $xmaxPx, ymax: $ymaxPx, score: ${det.score}");
+    }
     return mapped;
+
+
   }
 
   List<_DecodedBox> _decodeBoxes(Float32List raw, List<int> shape) {

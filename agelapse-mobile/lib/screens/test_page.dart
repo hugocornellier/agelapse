@@ -150,12 +150,10 @@ class _DetectionsPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final sx = size.width / originalSize.width;
-    final sy = size.height / originalSize.height;
-
     final boxPaint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
+      ..strokeWidth = 2
+      ..color = const Color(0xFF00FFCC);
 
     final kpPaint = Paint()
       ..style = PaintingStyle.fill
@@ -165,13 +163,12 @@ class _DetectionsPainter extends CustomPainter {
       ..style = PaintingStyle.fill
       ..color = const Color(0xFF89CFF0);
 
-
     for (final d in detections) {
       final rect = Rect.fromLTRB(
-        d.bbox.xmin * originalSize.width * sx / (originalSize.width / size.width),
-        d.bbox.ymin * originalSize.height * sy / (originalSize.height / size.height),
-        d.bbox.xmax * originalSize.width * sx / (originalSize.width / size.width),
-        d.bbox.ymax * originalSize.height * sy / (originalSize.height / size.height),
+        d.bbox.xmin * size.width,
+        d.bbox.ymin * size.height,
+        d.bbox.xmax * size.width,
+        d.bbox.ymax * size.height,
       );
       canvas.drawRect(rect, boxPaint);
 
@@ -196,3 +193,5 @@ class _DetectionsPainter extends CustomPainter {
         oldDelegate.originalSize != originalSize;
   }
 }
+
+
