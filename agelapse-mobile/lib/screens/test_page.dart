@@ -1,11 +1,9 @@
-import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:image/image.dart' as img;
 
-import '../utils/fdlite_single.dart'; // uses your updated FaceDetection/FaceLandmark/IrisLandmark
+import '../utils/fdlite_single.dart';
 
 class TestPage extends StatefulWidget {
   const TestPage({super.key});
@@ -16,132 +14,48 @@ class TestPage extends StatefulWidget {
 class _TestPageState extends State<TestPage> {
   Uint8List? _imageBytes;
 
-  // Results
   List<Detection> _detections = [];
   List<Offset> _faceMeshPoints = [];
   List<Offset> _irisPoints = [];
+  Size? _originalSize;
 
-  // Models
-  FaceDetection? _detector;
-  FaceLandmark? _faceLm;
-  IrisLandmark? _iris;
+  final FaceDetector _faceDetector = FaceDetector();
 
   @override
   void initState() {
     super.initState();
-    _initModels();
+    _initEngine();
   }
 
-  Future<void> _initModels() async {
-    final det = await FaceDetection.create(FaceDetectionModel.backCamera);
-    final faceLm = await FaceLandmark.create();
-    final iris = await IrisLandmark.create();
-    setState(() {
-      _detector = det;
-      _faceLm = faceLm;
-      _iris = iris;
-    });
+  Future<void> _initEngine() async {
+    await _faceDetector.initialize(model: FaceDetectionModel.backCamera);
+    setState(() {});
   }
 
   Future<void> _pickAndRun() async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 100);
     if (picked == null) return;
-
     final bytes = await picked.readAsBytes();
-    if (_detector == null || _faceLm == null || _iris == null) return;
+    if (!_faceDetector.isReady) return;
 
-    // 1) face detection
-    final dets = await _detector!.call(bytes);
-    final decoded = img.decodeImage(bytes);
-
-    final meshPoints = <Offset>[];
-    final irisPoints = <Offset>[];
-
-    if (decoded != null && dets.isNotEmpty) {
-      // for demo, just use the most confident face
-      final d = dets.first;
-
-      final imgW = decoded.width.toDouble();
-      final imgH = decoded.height.toDouble();
-
-      final lx = d.keypointsXY[FaceIndex.leftEye.index * 2] * imgW;
-      final ly = d.keypointsXY[FaceIndex.leftEye.index * 2 + 1] * imgH;
-      final rx = d.keypointsXY[FaceIndex.rightEye.index * 2] * imgW;
-      final ry = d.keypointsXY[FaceIndex.rightEye.index * 2 + 1] * imgH;
-      final mx = d.keypointsXY[FaceIndex.mouth.index * 2] * imgW;
-      final my = d.keypointsXY[FaceIndex.mouth.index * 2 + 1] * imgH;
-
-      final eyeCenter = Offset((lx + rx) * 0.5, (ly + ry) * 0.5);
-      final vEye = Offset(rx - lx, ry - ly);
-      final vMouth = Offset(mx - eyeCenter.dx, my - eyeCenter.dy);
-
-      final cx = eyeCenter.dx + vMouth.dx * 0.1;
-      final cy = eyeCenter.dy + vMouth.dy * 0.1;
-      final size = math.max(vMouth.distance * 3.6, vEye.distance * 4.0);
-      final theta = math.atan2(vEye.dy, vEye.dx);
-
-      final faceCrop = extractAlignedSquare(decoded, cx, cy, size, -theta);
-
-      final lmNorm = await _faceLm!.call(faceCrop);
-
-      final ct = math.cos(theta);
-      final st = math.sin(theta);
-      for (final p in lmNorm) {
-        final lx2 = (p[0] - 0.5) * size;
-        final ly2 = (p[1] - 0.5) * size;
-        final x = cx + lx2 * ct - ly2 * st;
-        final y = cy + lx2 * st + ly2 * ct;
-        meshPoints.add(Offset(x.toDouble(), y.toDouble()));
-      }
-
-      // 3) (optional) iris points from mesh-derived eye ROIs
-      final eyeRois = _eyeRoisFromMesh(meshPoints, decoded.width, decoded.height);
-      for (final roi in eyeRois) {
-        final irisLm = await _iris!.runOnImage(decoded, roi); // returns absolute image coords
-        for (final p in irisLm) {
-          irisPoints.add(Offset(p[0].toDouble(), p[1].toDouble()));
-        }
-      }
-    }
+    final detections = await _faceDetector.getDetections(bytes);
+    final faceMeshPoints = await _faceDetector.getFaceMeshFromDetections(bytes, detections);
+    final irisPoints = await _faceDetector.getIrisFromMesh(bytes, faceMeshPoints);
+    final size = await _faceDetector.getOriginalSize(bytes);
 
     setState(() {
       _imageBytes = bytes;
-      _detections = dets;
-      _faceMeshPoints = meshPoints;
+      _detections = detections;
+      _faceMeshPoints = faceMeshPoints;
       _irisPoints = irisPoints;
+      _originalSize = size;
     });
-  }
-
-  // Eye ROIs from mesh points (MediaPipe indices around eyelids)
-  List<RectF> _eyeRoisFromMesh(List<Offset> meshAbs, int imgW, int imgH) {
-    RectF boxFrom(List<int> idxs) {
-      double xmin = double.infinity, ymin = double.infinity, xmax = -double.infinity, ymax = -double.infinity;
-      for (final i in idxs) {
-        final p = meshAbs[i];
-        if (p.dx < xmin) xmin = p.dx;
-        if (p.dy < ymin) ymin = p.dy;
-        if (p.dx > xmax) xmax = p.dx;
-        if (p.dy > ymax) ymax = p.dy;
-      }
-      final cx = (xmin + xmax) * 0.5;
-      final cy = (ymin + ymax) * 0.5;
-      final s = ((xmax - xmin) > (ymax - ymin) ? (xmax - xmin) : (ymax - ymin)) * 0.85;
-      final half = s * 0.5;
-      return RectF(
-        (cx - half) / imgW,
-        (cy - half) / imgH,
-        (cx + half) / imgW,
-        (cy + half) / imgH,
-      );
-    }
-
-    return [boxFrom(_leftEyeIdx), boxFrom(_rightEyeIdx)];
   }
 
   @override
   Widget build(BuildContext context) {
-    final hasImage = _imageBytes != null;
+    final hasImage = _imageBytes != null && _originalSize != null;
     return Scaffold(
       appBar: AppBar(title: const Text('FDLite Mesh Demo')),
       floatingActionButton: FloatingActionButton.extended(
@@ -153,42 +67,30 @@ class _TestPageState extends State<TestPage> {
         child: hasImage
             ? LayoutBuilder(
           builder: (context, constraints) {
-            return FutureBuilder<Size>(
-              future: _imageSize(_imageBytes!),
-              builder: (context, snap) {
-                if (!snap.hasData) return const CircularProgressIndicator();
-                final imgSize = snap.data!;
-                final fitted = _fitSize(imgSize, Size(constraints.maxWidth, constraints.maxHeight));
-                return SizedBox(
-                  width: fitted.width,
-                  height: fitted.height,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Image.memory(_imageBytes!, fit: BoxFit.contain),
-                      CustomPaint(
-                        painter: _DetectionsPainter(
-                          detections: _detections,
-                          faceMeshPoints: _faceMeshPoints,
-                          irisPoints: _irisPoints,
-                          originalSize: imgSize,
-                        ),
-                      ),
-                    ],
+            final fitted = _fitSize(_originalSize!, Size(constraints.maxWidth, constraints.maxHeight));
+            return SizedBox(
+              width: fitted.width,
+              height: fitted.height,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.memory(_imageBytes!, fit: BoxFit.contain),
+                  CustomPaint(
+                    painter: _DetectionsPainter(
+                      detections: _detections,
+                      faceMeshPoints: _faceMeshPoints,
+                      irisPoints: _irisPoints,
+                      originalSize: _originalSize!,
+                    ),
                   ),
-                );
-              },
+                ],
+              ),
             );
           },
         )
             : const Text('Pick an image to run detection'),
       ),
     );
-  }
-
-  Future<Size> _imageSize(Uint8List bytes) async {
-    final decoded = await decodeImageFromList(bytes);
-    return Size(decoded.width.toDouble(), decoded.height.toDouble());
   }
 
   Size _fitSize(Size src, Size bound) {
@@ -198,8 +100,6 @@ class _TestPageState extends State<TestPage> {
     return Size(src.width * scale, src.height * scale);
   }
 }
-
-// ——— Painter ————————————————————————————————————————————————————————————
 
 class _DetectionsPainter extends CustomPainter {
   final List<Detection> detections;
@@ -227,14 +127,13 @@ class _DetectionsPainter extends CustomPainter {
 
     final meshPaint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.0 // point size for mesh
-      ..color = const Color(0xFFFF00FF); // magenta like your screenshot
+      ..strokeWidth = 3.0
+      ..color = const Color(0xFFFF00FF);
 
     final irisPtPaint = Paint()
       ..style = PaintingStyle.fill
       ..color = const Color(0xFF89CFF0);
 
-    // detector boxes + detector keypoints
     for (final d in detections) {
       final rect = Rect.fromLTRB(
         d.bbox.xmin * size.width,
@@ -251,16 +150,13 @@ class _DetectionsPainter extends CustomPainter {
       }
     }
 
-    // face mesh points (scaled from original image space to the fitted canvas)
     if (faceMeshPoints.isNotEmpty) {
       final scaled = faceMeshPoints
           .map((p) => Offset(p.dx * size.width / originalSize.width, p.dy * size.height / originalSize.height))
           .toList();
-      print(scaled);
       canvas.drawPoints(PointMode.points, scaled, meshPaint);
     }
 
-    // iris points (optional, same scaling)
     if (irisPoints.isNotEmpty) {
       final scaledIris = irisPoints
           .map((p) => Offset(p.dx * size.width / originalSize.width, p.dy * size.height / originalSize.height))
@@ -277,13 +173,3 @@ class _DetectionsPainter extends CustomPainter {
         old.originalSize != originalSize;
   }
 }
-
-// ——— Mesh eye indices for ROI estimation ————————————————
-
-const List<int> _leftEyeIdx = [
-  33, 133, 160, 159, 158, 157, 173, 246, 161, 144, 145, 153
-];
-
-const List<int> _rightEyeIdx = [
-  362, 263, 387, 386, 385, 384, 398, 466, 388, 373, 374, 380
-];

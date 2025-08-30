@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
+import 'dart:ui';
 
 enum FaceIndex { leftEye, rightEye, noseTip, mouth, leftEyeTragion, rightEyeTragion }
 enum FaceDetectionModel { frontCamera, backCamera, shortRange, full, fullSparse }
@@ -54,6 +55,210 @@ const _ssdFull = {
   'strides': [4],
   'interpolated_scale_aspect_ratio': 0.0,
 };
+
+
+
+class AlignedFace {
+  final double cx;
+  final double cy;
+  final double size;
+  final double theta;
+  final img.Image faceCrop;
+  AlignedFace({required this.cx, required this.cy, required this.size, required this.theta, required this.faceCrop});
+}
+
+class PipelineResult {
+  final List<Detection> detections;
+  final List<Offset> mesh;
+  final List<Offset> irises;
+  final Size originalSize;
+  PipelineResult({required this.detections, required this.mesh, required this.irises, required this.originalSize});
+}
+
+const List<int> _leftEyeIdx = [33, 133, 160, 159, 158, 157, 173, 246, 161, 144, 145, 153];
+const List<int> _rightEyeIdx = [362, 263, 387, 386, 385, 384, 398, 466, 388, 373, 374, 380];
+
+class FaceDetector {
+  FaceDetection? _detector;
+  FaceLandmark? _faceLm;
+  IrisLandmark? _iris;
+
+  bool get isReady => _detector != null && _faceLm != null && _iris != null;
+
+  Future<void> initialize({FaceDetectionModel model = FaceDetectionModel.backCamera, InterpreterOptions? options}) async {
+    _detector = await FaceDetection.create(model, options: options);
+    _faceLm = await FaceLandmark.create(options: options);
+    _iris = await IrisLandmark.create(options: options);
+  }
+
+  Future<List<Detection>> detectFaces(Uint8List imageBytes, {RectF? roi}) async {
+    final d = _detector;
+    if (d == null) return const <Detection>[];
+    return await d.call(imageBytes, roi: roi);
+  }
+
+  AlignedFace estimateAlignedFace(img.Image decoded, Detection det) {
+    final imgW = decoded.width.toDouble();
+    final imgH = decoded.height.toDouble();
+
+    final lx = det.keypointsXY[FaceIndex.leftEye.index * 2] * imgW;
+    final ly = det.keypointsXY[FaceIndex.leftEye.index * 2 + 1] * imgH;
+    final rx = det.keypointsXY[FaceIndex.rightEye.index * 2] * imgW;
+    final ry = det.keypointsXY[FaceIndex.rightEye.index * 2 + 1] * imgH;
+    final mx = det.keypointsXY[FaceIndex.mouth.index * 2] * imgW;
+    final my = det.keypointsXY[FaceIndex.mouth.index * 2 + 1] * imgH;
+
+    final eyeCx = (lx + rx) * 0.5;
+    final eyeCy = (ly + ry) * 0.5;
+
+    final vEx = rx - lx;
+    final vEy = ry - ly;
+    final vMx = mx - eyeCx;
+    final vMy = my - eyeCy;
+
+    final theta = math.atan2(vEy, vEx);
+    final eyeDist = math.sqrt(vEx * vEx + vEy * vEy);
+    final mouthDist = math.sqrt(vMx * vMx + vMy * vMy);
+    final size = math.max(mouthDist * 3.6, eyeDist * 4.0);
+
+    final cx = eyeCx + vMx * 0.1;
+    final cy = eyeCy + vMy * 0.1;
+
+    final faceCrop = extractAlignedSquare(decoded, cx, cy, size, -theta);
+
+    return AlignedFace(cx: cx, cy: cy, size: size, theta: theta, faceCrop: faceCrop);
+  }
+
+  Future<List<Offset>> meshFromAlignedFace(img.Image faceCrop, AlignedFace aligned) async {
+    final fl = _faceLm;
+    if (fl == null) return const <Offset>[];
+    final lmNorm = await fl.call(faceCrop);
+    final ct = math.cos(aligned.theta);
+    final st = math.sin(aligned.theta);
+    final s = aligned.size;
+    final cx = aligned.cx;
+    final cy = aligned.cy;
+    final out = <Offset>[];
+    for (final p in lmNorm) {
+      final lx2 = (p[0] - 0.5) * s;
+      final ly2 = (p[1] - 0.5) * s;
+      final x = cx + lx2 * ct - ly2 * st;
+      final y = cy + lx2 * st + ly2 * ct;
+      out.add(Offset(x.toDouble(), y.toDouble()));
+    }
+    return out;
+  }
+
+  List<RectF> eyeRoisFromMesh(List<Offset> meshAbs, int imgW, int imgH) {
+    RectF boxFrom(List<int> idxs) {
+      double xmin = double.infinity, ymin = double.infinity, xmax = -double.infinity, ymax = -double.infinity;
+      for (final i in idxs) {
+        final p = meshAbs[i];
+        if (p.dx < xmin) xmin = p.dx;
+        if (p.dy < ymin) ymin = p.dy;
+        if (p.dx > xmax) xmax = p.dx;
+        if (p.dy > ymax) ymax = p.dy;
+      }
+      final cx = (xmin + xmax) * 0.5;
+      final cy = (ymin + ymax) * 0.5;
+      final s = ((xmax - xmin) > (ymax - ymin) ? (xmax - xmin) : (ymax - ymin)) * 0.85;
+      final half = s * 0.5;
+      return RectF(
+        (cx - half) / imgW,
+        (cy - half) / imgH,
+        (cx + half) / imgW,
+        (cy + half) / imgH,
+      );
+    }
+    return [boxFrom(_leftEyeIdx), boxFrom(_rightEyeIdx)];
+  }
+
+  Future<List<Offset>> irisFromEyeRois(img.Image decoded, List<RectF> rois) async {
+    final ir = _iris;
+    if (ir == null) return const <Offset>[];
+    final pts = <Offset>[];
+    for (final roi in rois) {
+      final irisLm = await ir.runOnImage(decoded, roi);
+      for (final p in irisLm) {
+        pts.add(Offset(p[0].toDouble(), p[1].toDouble()));
+      }
+    }
+    return pts;
+  }
+
+  Future<List<Detection>> getDetections(Uint8List imageBytes) async {
+    return await detectFaces(imageBytes);
+  }
+
+  Future<List<Offset>> getFaceMesh(Uint8List imageBytes) async {
+    final decoded = img.decodeImage(imageBytes);
+    if (decoded == null) return const <Offset>[];
+    final dets = await detectFaces(imageBytes);
+    if (dets.isEmpty) return const <Offset>[];
+    final aligned = estimateAlignedFace(decoded, dets.first);
+    return await meshFromAlignedFace(aligned.faceCrop, aligned);
+  }
+
+  Future<List<Offset>> getIris(Uint8List imageBytes) async {
+    final decoded = img.decodeImage(imageBytes);
+    if (decoded == null) return const <Offset>[];
+    final dets = await detectFaces(imageBytes);
+    if (dets.isEmpty) return const <Offset>[];
+    final aligned = estimateAlignedFace(decoded, dets.first);
+    final meshPts = await meshFromAlignedFace(aligned.faceCrop, aligned);
+    final rois = eyeRoisFromMesh(meshPts, decoded.width, decoded.height);
+    return await irisFromEyeRois(decoded, rois);
+  }
+
+  Future<Size> getOriginalSize(Uint8List imageBytes) async {
+    final decoded = img.decodeImage(imageBytes);
+    if (decoded == null) return const Size(0, 0);
+    return Size(decoded.width.toDouble(), decoded.height.toDouble());
+  }
+
+  Future<List<Offset>> getFaceMeshFromDetections(Uint8List imageBytes, List<Detection> dets) async {
+    if (dets.isEmpty) return const <Offset>[];
+    final decoded = img.decodeImage(imageBytes);
+    if (decoded == null) return const <Offset>[];
+    final aligned = estimateAlignedFace(decoded, dets.first);
+    return await meshFromAlignedFace(aligned.faceCrop, aligned);
+  }
+
+  Future<List<Offset>> getIrisFromMesh(Uint8List imageBytes, List<Offset> meshPts) async {
+    if (meshPts.isEmpty) return const <Offset>[];
+    final decoded = img.decodeImage(imageBytes);
+    if (decoded == null) return const <Offset>[];
+    final rois = eyeRoisFromMesh(meshPts, decoded.width, decoded.height);
+    return await irisFromEyeRois(decoded, rois);
+  }
+
+  Future<PipelineResult> runAll(Uint8List imageBytes) async {
+    final decoded = img.decodeImage(imageBytes);
+    if (decoded == null) {
+      return PipelineResult(detections: const [], mesh: const [], irises: const [], originalSize: const Size(0, 0));
+    }
+    final dets = await detectFaces(imageBytes);
+    if (dets.isEmpty) {
+      return PipelineResult(
+        detections: dets,
+        mesh: const [],
+        irises: const [],
+        originalSize: Size(decoded.width.toDouble(), decoded.height.toDouble()),
+      );
+    }
+    final d = dets.first;
+    final aligned = estimateAlignedFace(decoded, d);
+    final meshPts = await meshFromAlignedFace(aligned.faceCrop, aligned);
+    final rois = eyeRoisFromMesh(meshPts, decoded.width, decoded.height);
+    final irisPts = await irisFromEyeRois(decoded, rois);
+    return PipelineResult(
+      detections: dets,
+      mesh: meshPts,
+      irises: irisPts,
+      originalSize: Size(decoded.width.toDouble(), decoded.height.toDouble()),
+    );
+  }
+}
 
 class RectF {
   final double xmin, ymin, xmax, ymax;
