@@ -277,11 +277,11 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: HEAD
-      resolved-ref: d4a3d97e6a540951ee74e7a190d8110afb7aaa78
+      ref: fd1054f111324f224e1502d02f2fd224f7ff541f
+      resolved-ref: fd1054f111324f224e1502d02f2fd224f7ff541f
       url: "https://github.com/hugocornellier/face_detection_tflite.git"
     source: git
-    version: "0.0.1+1"
+    version: "0.1.0+1"
   face_detector_plugin:
     dependency: "direct main"
     description:
@@ -1492,5 +1492,5 @@ packages:
     source: hosted
     version: "3.1.3"
 sdks:
-  dart: ">=3.10.0-75.1.beta <4.0.0"
+  dart: ">=3.9.0 <4.0.0"
   flutter: ">=3.29.0"

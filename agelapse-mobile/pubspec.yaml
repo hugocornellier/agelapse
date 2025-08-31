@@ -24,6 +24,7 @@ dependencies:
   face_detection_tflite:
     git:
       url: https://github.com/hugocornellier/face_detection_tflite.git
+      ref: fd1054f111324f224e1502d02f2fd224f7ff541f
   ffmpeg_kit_flutter_new: ^2.0.0
   file_picker: ^10.3.2
   file_selector: ^1.0.3
