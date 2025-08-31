@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import '../models/setting_model.dart';
-import 'package:sqflite/sqflite.dart';
+import 'database_import.dart';
 import 'package:path/path.dart';
 
 import '../utils/dir_utils.dart';
