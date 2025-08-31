@@ -2,8 +2,7 @@ import 'dart:typed_data';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-
-import '../utils/fdlite_single.dart';
+import 'package:face_detection_tflite/face_detection_tflite.dart';
 
 class TestPage extends StatefulWidget {
   const TestPage({super.key});
@@ -24,10 +23,10 @@ class _TestPageState extends State<TestPage> {
   @override
   void initState() {
     super.initState();
-    _initEngine();
+    _initFaceDetector();
   }
 
-  Future<void> _initEngine() async {
+  Future<void> _initFaceDetector() async {
     await _faceDetector.initialize(model: FaceDetectionModel.backCamera);
     setState(() {});
   }
@@ -37,7 +36,12 @@ class _TestPageState extends State<TestPage> {
     final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 100);
     if (picked == null) return;
     final bytes = await picked.readAsBytes();
-    if (!_faceDetector.isReady) return;
+    if (!_faceDetector.isReady) {
+      print("face detector not ready");
+      return;
+    }
+
+    print("fetching detections");
 
     final detections = await _faceDetector.getDetections(bytes);
     final faceMeshPoints = await _faceDetector.getFaceMeshFromDetections(bytes, detections);

@@ -21,9 +21,9 @@ dependencies:
   desktop_drop: ^0.6.1
   exif: ^3.3.0
   face_detector_plugin: ^0.0.3
-  face_detector_flutter:
+  face_detection_tflite:
     git:
-      url: https://github.com/hugocornellier/face_detector_flutter.git
+      url: https://github.com/hugocornellier/face_detection_tflite.git
   ffmpeg_kit_flutter_new: ^2.0.0
   file_picker: ^10.3.2
   file_selector: ^1.0.3

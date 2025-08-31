@@ -273,15 +273,15 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.0.6"
-  face_detector_flutter:
+  face_detection_tflite:
     dependency: "direct main"
     description:
       path: "."
       ref: HEAD
-      resolved-ref: "9fa7e37becaed85cc01bcd494977fd66a4e21124"
-      url: "https://github.com/hugocornellier/face_detector_flutter.git"
+      resolved-ref: d4a3d97e6a540951ee74e7a190d8110afb7aaa78
+      url: "https://github.com/hugocornellier/face_detection_tflite.git"
     source: git
-    version: "1.0.0+1"
+    version: "0.0.1+1"
   face_detector_plugin:
     dependency: "direct main"
     description:
