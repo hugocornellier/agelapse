@@ -13,14 +13,16 @@ import '../services/database_helper.dart';
 import '../services/theme_provider.dart';
 import '../widgets/main_navigation.dart';
 import '../theme/theme.dart';
-import '../services/database_import.dart' as db;
+import 'package:sqflite/sqflite.dart' as sqflite; // main sqflite API
+import 'package:sqflite_common_ffi/sqflite_ffi.dart' as sqflite_ffi;
+
 
 void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
 
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-    db.sqfliteFfiInit();
-    db.databaseFactory = db.databaseFactoryFfi;
+    sqflite_ffi.sqfliteFfiInit();
+    sqflite.databaseFactory = sqflite_ffi.databaseFactoryFfi;
 
     await DB.instance.createTablesIfNotExist();
 
