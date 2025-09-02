@@ -277,8 +277,8 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: fd1054f111324f224e1502d02f2fd224f7ff541f
-      resolved-ref: fd1054f111324f224e1502d02f2fd224f7ff541f
+      ref: eeb8337c50670506993e54bd207c0db752041092
+      resolved-ref: eeb8337c50670506993e54bd207c0db752041092
       url: "https://github.com/hugocornellier/face_detection_tflite.git"
     source: git
     version: "0.1.0+1"
