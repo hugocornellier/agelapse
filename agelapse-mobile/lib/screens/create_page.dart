@@ -7,6 +7,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:path/path.dart' as path;
+import '../utils/ffmpeg_windows.dart' show encodeTimelapseWindows;
+import '../utils/ffmpeg_bridge.dart';
 
 import '../services/database_helper.dart';
 import '../services/settings_cache.dart';
@@ -134,11 +136,60 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
     setupVideoPlayer();
   }
 
+  Future<void> _maybeEncodeWindowsVideo() async {
+    if (!Platform.isWindows) return;
+
+    final String projectOrientation =
+    await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
+    final String videoPath =
+    await DirUtils.getVideoOutputPath(widget.projectId, projectOrientation);
+    final File outFile = File(videoPath);
+
+    // skip if already exists and non-empty
+    if (await outFile.exists() && await outFile.length() > 0) return;
+
+    final String framesDir = await DirUtils
+        .getStabilizedDirPathFromProjectIdAndOrientation(widget.projectId, projectOrientation);
+    final String inputPattern = path.join(framesDir, '*.png').replaceAll(r'\', '/');
+
+    final int fps =
+    await SettingsUtil.loadFramerate(widget.projectId.toString());
+
+    final rc = await FFmpegBridge.encode(
+      nonWindowsCmd: '',
+      windowsPath: () => encodeTimelapseWindows(
+        inputPattern: inputPattern,
+        outputPath: videoPath,
+        fps: fps,
+      ),
+    );
+    final ok = rc == 0;
+
+
+    if (!ok) {
+      setState(() {
+        loadingText = "ffmpeg failed to create video";
+      });
+    }
+  }
+
+
   Future<void> setupVideoPlayer() async {
+    await _maybeEncodeWindowsVideo();
+
     String projectOrientation = await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
     final String videoPath = await DirUtils.getVideoOutputPath(widget.projectId, projectOrientation);
     final File videoFile = File(videoPath);
+
+    if (!await videoFile.exists() || await videoFile.length() == 0) {
+      setState(() {
+        loadingText = "Could not create video file";
+      });
+      return;
+    }
+
     _videoPlayerController = VideoPlayerController.file(videoFile);
+
     await _videoPlayerController!.initialize();
     _videoPlayerController!.setLooping(true);
     _videoPlayerController!.setPlaybackSpeed(playbackSpeed);

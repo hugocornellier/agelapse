@@ -56,6 +56,7 @@ dependencies:
   url_launcher: ^6.3.2
   vibration: ^3.1.3
   video_player: ^2.10.0
+  video_player_win: ^3.2.0
   wakelock_plus: ^1.3.2
   wechat_assets_picker: ^9.8.0
   window_manager: ^0.5.1
@@ -87,6 +88,8 @@ flutter:
     - assets/models/face_detection_full_range_sparse.tflite
     - assets/models/face_landmark.tflite
     - assets/models/iris_landmark.tflite
+    - assets/ffmpeg/windows/ffmpeg.exe
+    - assets/ffmpeg/windows/LICENSE.txt
 
 flutter_icons:
   android: true
