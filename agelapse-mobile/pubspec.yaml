@@ -89,7 +89,7 @@ flutter:
     - assets/models/face_landmark.tflite
     - assets/models/iris_landmark.tflite
     - assets/ffmpeg/windows/ffmpeg.exe
-    - assets/ffmpeg/windows/LICENSE.txt
+    - assets/ffmpeg/windows/LICENSE
 
 flutter_icons:
   android: true
