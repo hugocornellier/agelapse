@@ -56,14 +56,14 @@ class StabUtils {
     return dividend / divisor;
   }
 
-  static List<Point<int>?> extractEyePositions(List<Face> faces) {
-    final out = <Point<int>?>[];
+  static List<Point<double>?> extractEyePositions(List<Face> faces) {
+    final out = <Point<double>?>[];
     for (final face in faces) {
       final l = face.landmarks[FaceLandmarkType.leftEye];
       final r = face.landmarks[FaceLandmarkType.rightEye];
       if (l == null || r == null) continue;
-      var a = Point(l.position.x.toInt(), l.position.y.toInt());
-      var b = Point(r.position.x.toInt(), r.position.y.toInt());
+      var a = Point(l.position.x.toDouble(), l.position.y.toDouble());
+      var b = Point(r.position.x.toDouble(), r.position.y.toDouble());
       if (a.x > b.x) { final t = a; a = b; b = t; }
       out..add(a)..add(b);
     }

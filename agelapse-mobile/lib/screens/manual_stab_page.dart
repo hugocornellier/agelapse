@@ -32,10 +32,10 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
   late FaceStabilizer faceStabilizer;
   int? _canvasWidth;
   int? _canvasHeight;
-  int? _leftEyeXGoal;
-  int? _rightEyeXGoal;
+  double? _leftEyeXGoal;
+  double? _rightEyeXGoal;
   int _currentRequestId = 0;
-  int? _bothEyesYGoal;
+  double? _bothEyesYGoal;
   late String aspectRatio;
   late String projectOrientation;
   late int canvasHeight;
@@ -462,9 +462,9 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
 
       final int canvasHeight = faceStabilizer.canvasHeight;
       final int canvasWidth = faceStabilizer.canvasWidth;
-      final int leftEyeXGoal = faceStabilizer.leftEyeXGoal;
-      final int rightEyeXGoal = faceStabilizer.rightEyeXGoal;
-      final int bothEyesYGoal = faceStabilizer.bothEyesYGoal;
+      final double leftEyeXGoal = faceStabilizer.leftEyeXGoal;
+      final double rightEyeXGoal = faceStabilizer.rightEyeXGoal;
+      final double bothEyesYGoal = faceStabilizer.bothEyesYGoal;
 
       setState(() {
         _canvasWidth = canvasWidth;

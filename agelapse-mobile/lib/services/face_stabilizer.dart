@@ -24,12 +24,12 @@ class FaceStabilizer {
   String? projectOrientation;
   late int canvasHeight;
   late int canvasWidth;
-  late int leftEyeXGoal;
-  late int rightEyeXGoal;
-  late int bothEyesYGoal;
-  late int eyeDistanceGoal;
+  late double leftEyeXGoal;
+  late double rightEyeXGoal;
+  late double bothEyesYGoal;
+  late double eyeDistanceGoal;
   late double bodyDistanceGoal;
-  List<Point<int>?>? originalEyePositions;
+  List<Point<double>?>? originalEyePositions;
   late String aspectRatio;
   late double? aspectRatioDecimal;
   late String resolution;
@@ -114,10 +114,10 @@ class FaceStabilizer {
     eyeOffsetY = double.parse(offsetY);
 
     final double xAxisCenter = canvasWidth / 2;
-    leftEyeXGoal = (xAxisCenter - eyeOffsetX * canvasWidth).toInt();
-    rightEyeXGoal = (xAxisCenter + eyeOffsetX * canvasWidth).toInt();
+    leftEyeXGoal = (xAxisCenter - eyeOffsetX * canvasWidth);
+    rightEyeXGoal = (xAxisCenter + eyeOffsetX * canvasWidth);
     eyeDistanceGoal = rightEyeXGoal - leftEyeXGoal;
-    bothEyesYGoal = (canvasHeight * eyeOffsetY).toInt();
+    bothEyesYGoal = (canvasHeight * eyeOffsetY);
     bodyDistanceGoal = canvasHeight * 0.7;
     pregRightAnkleXGoal = xAxisCenter.toInt();
     pregRightAnkleYGoal = (canvasHeight * 0.85).toInt();
@@ -199,8 +199,8 @@ class FaceStabilizer {
     rawPhotoPath = _cleanUpPhotoPath(rawPhotoPath);
 
     if (Platform.isMacOS) {
-      final Point<int> goalLeftEye  = Point(leftEyeXGoal,  bothEyesYGoal);
-      final Point<int> goalRightEye = Point(rightEyeXGoal, bothEyesYGoal);
+      final Point<double> goalLeftEye  = Point(leftEyeXGoal,  bothEyesYGoal);
+      final Point<double> goalRightEye = Point(rightEyeXGoal, bothEyesYGoal);
 
       final stabFaces = await StabUtils.getFacesFromFilepath(
         stabilizedJpgPhotoPath,
@@ -268,15 +268,15 @@ class FaceStabilizer {
       return false;
     }
 
-    List<Point<int>?> eyes = _filterAndCenterEyes(stabFaces);
+    List<Point<double>?> eyes = _filterAndCenterEyes(stabFaces);
 
     if (eyes.length < 2 || eyes[0] == null || eyes[1] == null) {
       await DB.instance.setPhotoNoFacesFound(path.basenameWithoutExtension(rawPhotoPath));
       return false;
     }
 
-    final Point<int> goalLeftEye = Point(leftEyeXGoal, bothEyesYGoal);
-    final Point<int> goalRightEye = Point(rightEyeXGoal, bothEyesYGoal);
+    final Point<double> goalLeftEye = Point(leftEyeXGoal, bothEyesYGoal);
+    final Point<double> goalRightEye = Point(rightEyeXGoal, bothEyesYGoal);
 
     print("EYE POS GOALS: $goalLeftEye $goalRightEye");
     print("POST-STAB POS: ${eyes[0]} ${eyes[1]}");
@@ -289,15 +289,15 @@ class FaceStabilizer {
     return successfulStabilization;
   }
 
-  List<Point<int>> _estimatedEyesAfterTransform(
+  List<Point<double>> _estimatedEyesAfterTransform(
       ui.Image img,
       double scale,
       double rotationDegrees, {
         double translateX = 0,
         double translateY = 0,
       }) {
-    final Point<int> left0 = originalEyePositions![0]!;
-    final Point<int> right0 = originalEyePositions![1]!;
+    final Point<double> left0 = originalEyePositions![0]!;
+    final Point<double> right0 = originalEyePositions![1]!;
 
     final a = transformPointByCanvasSize(
       originalPointX: left0.x.toDouble(),
@@ -320,19 +320,19 @@ class FaceStabilizer {
       originalHeight: img.height.toDouble(),
     );
 
-    final ax = (a['x']! + translateX).toInt();
-    final ay = (a['y']! + translateY).toInt();
-    final bx = (b['x']! + translateX).toInt();
-    final by = (b['y']! + translateY).toInt();
+    final ax = (a['x']! + translateX);
+    final ay = (a['y']! + translateY);
+    final bx = (b['x']! + translateX);
+    final by = (b['y']! + translateY);
 
     return [Point(ax, ay), Point(bx, by)];
   }
 
   Future<bool> _performTwoPassFixIfNeeded(
     List<dynamic> stabFaces,
-    List<Point<int>?> eyes,
-    Point<int> goalLeftEye,
-    Point<int> goalRightEye,
+    List<Point<double>?> eyes,
+    Point<double> goalLeftEye,
+    Point<double> goalRightEye,
     double translateX,
     double translateY,
     double rotationDegrees,
@@ -346,7 +346,7 @@ class FaceStabilizer {
     bool successfulStabilization = false;
 
     final double score = calculateStabScore(eyes, goalLeftEye, goalRightEye);
-    final (int overshotLeftX, int overshotLeftY, int overshotRightX, int overshotRightY)
+    final (double overshotLeftX, double overshotLeftY, double overshotRightX, double overshotRightY)
     = _calculateOvershots(eyes, goalLeftEye, goalRightEye);
 
     if (!correctionIsNeeded(score, overshotLeftX, overshotRightX, overshotLeftY, overshotRightY)) {
@@ -392,7 +392,7 @@ class FaceStabilizer {
       );
       if (newStabFaces == null) return false;
 
-      final List<Point<int>?> newEyes = _filterAndCenterEyes(newStabFaces);
+      final List<Point<double>?> newEyes = _filterAndCenterEyes(newStabFaces);
 
       double newScore;
       bool usedTwoPass = true;
@@ -592,7 +592,7 @@ class FaceStabilizer {
       Rect? targetBoundingBox,
       userRanOutOfSpaceCallback
       ) async {
-    List<Point<int>?> eyes;
+    List<Point<double>?> eyes;
 
     if (targetFace != null && !Platform.isMacOS) {
       eyes = getEyesFromFaces([targetFace]);
@@ -825,15 +825,22 @@ class FaceStabilizer {
     return await receivePort.first;
   }
 
-  (int, int, int, int) _calculateOvershots(List<Point<int>?> eyes, Point<int> goalLeftEye, Point<int> goalRightEye) {
-    final int overshotLeftX = eyes[0]!.x - goalLeftEye.x;
-    final int overshotLeftY = eyes[0]!.y - goalLeftEye.y;
-    final int overshotRightX = eyes[1]!.x - goalRightEye.x;
-    final int overshotRightY = eyes[1]!.y - goalRightEye.y;
+  (double, double, double, double) _calculateOvershots(List<Point<double>?> eyes, Point<double> goalLeftEye, Point<double> goalRightEye) {
+    final double overshotLeftX = eyes[0]!.x - goalLeftEye.x;
+    final double overshotLeftY = eyes[0]!.y - goalLeftEye.y;
+    final double overshotRightX = eyes[1]!.x - goalRightEye.x;
+    final double overshotRightY = eyes[1]!.y - goalRightEye.y;
     return (overshotLeftX, overshotLeftY, overshotRightX, overshotRightY);
   }
 
-  (double, double) _calculateNewTranslations(double translateX, double translateY, int overshotLeftX, int overshotRightX, int overshotLeftY, int overshotRightY) {
+  (double, double) _calculateNewTranslations(
+    double translateX,
+    double translateY,
+    double overshotLeftX,
+    double overshotRightX,
+    double overshotLeftY,
+    double overshotRightY
+  ) {
     final double overshotAverageX = (overshotLeftX + overshotRightX) / 2;
     final double overshotAverageY = (overshotLeftY + overshotRightY) / 2;
     final double newTranslateX = translateX - overshotAverageX.toDouble();
@@ -841,10 +848,9 @@ class FaceStabilizer {
     return (newTranslateX, newTranslateY);
   }
 
-  List<Point<int>?> _filterAndCenterEyes(List<dynamic> stabFaces) {
-    final List<Point<int>?> allEyes = getEyesFromFaces(stabFaces); // [L0,R0,L1,R1,...]
-
-    final List<Point<int>> validPairs = <Point<int>>[];
+  List<Point<double>?> _filterAndCenterEyes(List<dynamic> stabFaces) {
+    final List<Point<double>?> allEyes = getEyesFromFaces(stabFaces);
+    final List<Point<double>> validPairs = <Point<double>>[];
     final List<dynamic>   validFaces = <dynamic>[];
 
     for (int faceIdx = 0; faceIdx < stabFaces.length; faceIdx++) {
@@ -852,8 +858,8 @@ class FaceStabilizer {
       final int ri = li + 1;
       if (ri >= allEyes.length) break;
 
-      final Point<int>? leftEye  = allEyes[li];
-      final Point<int>? rightEye = allEyes[ri];
+      final Point<double>? leftEye  = allEyes[li];
+      final Point<double>? rightEye = allEyes[ri];
       if (leftEye == null || rightEye == null) continue;
 
       if ((rightEye.x - leftEye.x).abs() > 0.75 * eyeDistanceGoal) {
@@ -876,9 +882,9 @@ class FaceStabilizer {
         .replaceAll('_rotated_clockwise', '');
   }
 
-  List<Point<int>> getCentermostEyes(List<Point<int>?> eyes, List<dynamic> faces, int imgWidth, int imgHeight) {
+  List<Point<double>> getCentermostEyes(List<Point<double>?> eyes, List<dynamic> faces, int imgWidth, int imgHeight) {
     double smallestDistance = double.infinity;
-    List<Point<int>> centeredEyes = [];
+    List<Point<double>> centeredEyes = [];
 
     if (Platform.isAndroid || Platform.isIOS) {
       final List<Face> faceList = (faces as List).cast<Face>();
@@ -906,8 +912,8 @@ class FaceStabilizer {
       if (touchesEdge(bbox)) continue;
 
       final int li = 2 * i, ri = li + 1;
-      final Point<int>? leftEye = eyes[li];
-      final Point<int>? rightEye = eyes[ri];
+      final Point<double>? leftEye = eyes[li];
+      final Point<double>? rightEye = eyes[ri];
       if (leftEye == null || rightEye == null) continue;
 
       final double distance = calculateHorizontalProximityToCenter(leftEye, imgWidth)
@@ -928,7 +934,7 @@ class FaceStabilizer {
     return centeredEyes;
   }
 
-  double calculateHorizontalProximityToCenter(Point<int> point, int imageWidth) {
+  double calculateHorizontalProximityToCenter(Point<double> point, int imageWidth) {
     final int centerX = imageWidth ~/ 2;
     final double horizontalDistance = (point.x.toDouble() - centerX).abs();
     return horizontalDistance;
@@ -956,18 +962,18 @@ class FaceStabilizer {
     }
   }
 
-  List<Point<int>?> getEyesFromFaces(dynamic faces) {
+  List<Point<double>?> getEyesFromFaces(dynamic faces) {
     if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
-      final List<Point<int>?> eyes = [];
+      final List<Point<double>?> eyes = [];
       for (final f in (faces as List)) {
-        Point<int>? a = f.leftEye == null ? null : Point<int>(f.leftEye!.x.toInt(), f.leftEye!.y.toInt());
-        Point<int>? b = f.rightEye == null ? null : Point<int>(f.rightEye!.x.toInt(), f.rightEye!.y.toInt());
+        Point<double>? a = f.leftEye == null ? null : Point<double>(f.leftEye!.x.toDouble(), f.leftEye!.y.toDouble());
+        Point<double>? b = f.rightEye == null ? null : Point<double>(f.rightEye!.x.toDouble(), f.rightEye!.y.toDouble());
 
         if (a == null || b == null) {
           final Rect bb = f.boundingBox as Rect;
           final double ey = bb.top + bb.height * 0.42;
-          a = Point((bb.left + bb.width * 0.33).toInt(), ey.toInt());
-          b = Point((bb.left + bb.width * 0.67).toInt(), ey.toInt());
+          a = Point((bb.left + bb.width * 0.33), ey);
+          b = Point((bb.left + bb.width * 0.67), ey);
         }
 
         if (a.x > b.x) {
@@ -1011,17 +1017,17 @@ class FaceStabilizer {
     );
   }
 
-  double calculateStabScore(List<Point<int>?> eyes, Point<int> goalLeftEye, Point<int> goalRightEye) {
+  double calculateStabScore(List<Point<double>?> eyes, Point<double> goalLeftEye, Point<double> goalRightEye) {
     final double distanceLeftEye = calculateDistance(eyes[0]!, goalLeftEye);
     final double distanceRightEye = calculateDistance(eyes[1]!, goalRightEye);
     return ((distanceLeftEye + distanceRightEye) * 1000 / 2) / canvasHeight;
   }
 
-  double calculateDistance(Point<int> point1, Point<int> point2) {
+  double calculateDistance(Point<double> point1, Point<double> point2) {
     return sqrt(pow(point1.x - point2.x, 2) + pow(point1.y - point2.y, 2));
   }
 
-  bool correctionIsNeeded(double score, int overshotLeftX, int overshotRightX, int overshotLeftY, int overshotRightY) {
+  bool correctionIsNeeded(double score, double overshotLeftX, double overshotRightX, double overshotLeftY, double overshotRightY) {
     if (score > 1) return true;
     return ((overshotLeftX > 0 && overshotRightX > 0) ||
         (overshotLeftX < 0 && overshotRightX < 0) ||
@@ -1094,11 +1100,11 @@ class FaceStabilizer {
     };
   }
 
-  (double, double) _calculateEyeMetrics(List<Point<int>?> detectedEyes) {
-    final Point<int> leftEye = detectedEyes[0]!;
-    final Point<int> rightEye = detectedEyes[1]!;
-    final int verticalDistance = (rightEye.y - leftEye.y).abs();
-    final int horizontalDistance = (rightEye.x - leftEye.x).abs();
+  (double, double) _calculateEyeMetrics(List<Point<double>?> detectedEyes) {
+    final Point<double> leftEye = detectedEyes[0]!;
+    final Point<double> rightEye = detectedEyes[1]!;
+    final double verticalDistance = (rightEye.y - leftEye.y).abs();
+    final double horizontalDistance = (rightEye.x - leftEye.x).abs();
     double rotationDegrees = atan2(verticalDistance, horizontalDistance) * (180 / pi) * (rightEye.y > leftEye.y ? -1 : 1);
     double hypotenuse = sqrt(pow(verticalDistance, 2) + pow(horizontalDistance, 2));
     double scaleFactor = eyeDistanceGoal / hypotenuse;
