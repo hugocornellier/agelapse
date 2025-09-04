@@ -27,7 +27,12 @@ class _TestPageState extends State<TestPage> {
   }
 
   Future<void> _initFaceDetector() async {
-    await _faceDetector.initialize(model: FaceDetectionModel.backCamera);
+    try {
+      await _faceDetector.initialize(model: FaceDetectionModel.backCamera);
+    } catch (e) {
+      print(e);
+    }
+
     setState(() {});
   }
 
@@ -44,6 +49,15 @@ class _TestPageState extends State<TestPage> {
     print("fetching detections");
 
     final detections = await _faceDetector.getDetections(bytes);
+    if (detections.isNotEmpty) {
+      // Example of how to fetch specific landmarks from FaceIndex:
+      final lm = detections.first.landmarks;
+      final leftEye = lm[FaceIndex.leftEye]!;
+      final rightEye = lm[FaceIndex.rightEye]!;
+      print('Left eye pixel: $leftEye');
+      print('Right eye pixel: $rightEye');
+    }
+
     final faceMeshPoints = await _faceDetector.getFaceMeshFromDetections(bytes, detections);
     final irisPoints = await _faceDetector.getIrisFromMesh(bytes, faceMeshPoints);
     final size = await _faceDetector.getOriginalSize(bytes);
@@ -147,9 +161,12 @@ class _DetectionsPainter extends CustomPainter {
       );
       canvas.drawRect(rect, boxPaint);
 
-      for (int i = 0; i < d.keypointsXY.length; i += 2) {
-        final x = d.keypointsXY[i] * size.width;
-        final y = d.keypointsXY[i + 1] * size.height;
+      final scaleX = size.width / originalSize.width;
+      final scaleY = size.height / originalSize.height;
+      final lm = d.landmarks;
+      for (final p in lm.values) {
+        final x = p.dx * scaleX;
+        final y = p.dy * scaleY;
         canvas.drawCircle(Offset(x, y), 3, detKpPaint);
       }
     }
