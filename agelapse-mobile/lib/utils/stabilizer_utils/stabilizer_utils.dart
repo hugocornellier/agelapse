@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:image/image.dart' as imglib;
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
+import 'package:face_detection_tflite/face_detection_tflite.dart' as fdl;
 
 import '../../services/database_helper.dart';
 import '../camera_utils.dart';
@@ -20,6 +21,19 @@ import '../settings_utils.dart';
 import '../apple_vision_gateway.dart';
 
 class StabUtils {
+  static fdl.FaceDetector? _fdLite;
+  static bool _fdLiteReady = false;
+
+  static Future<void> _ensureFDLite() async {
+    if (_fdLite == null) {
+      _fdLite = fdl.FaceDetector();
+      await _fdLite!.initialize(model: fdl.FaceDetectionModel.backCamera);
+      _fdLiteReady = true;
+    } else if (!_fdLiteReady) {
+      await _fdLite!.initialize(model: fdl.FaceDetectionModel.backCamera);
+      _fdLiteReady = true;
+    }
+  }
   static Future<List<Map<String, dynamic>>> getUnstabilizedPhotos(projectId) async {
     String projectOrientation = await SettingsUtil.loadProjectOrientation(projectId.toString());
     return await DB.instance.getUnstabilizedPhotos(projectId, projectOrientation);
@@ -82,6 +96,42 @@ class StabUtils {
 
         const double minFaceSize = 0.1;
         final filtered = faces.where((f) => (f.boundingBox.width / width) > minFaceSize).toList();
+        return filtered.isNotEmpty ? filtered : faces;
+      } else if (Platform.isLinux || Platform.isWindows) {
+        await _ensureFDLite();
+        final Uint8List bytes = await File(imagePath).readAsBytes();
+        final Size? origSize = await _fdLite!.getOriginalSize(bytes);
+        if (origSize == null) return [];
+        final double w = origSize.width;
+        final double h = origSize.height;
+
+        final detections = await _fdLite!.getDetections(bytes);
+        final List<AVFaceLike> faces = [];
+        for (final d in detections) {
+          final Rect bbox = Rect.fromLTRB(
+            d.bbox.xmin * w,
+            d.bbox.ymin * h,
+            d.bbox.xmax * w,
+            d.bbox.ymax * h,
+          );
+
+          final Offset? l = d.landmarks[fdl.FaceIndex.leftEye];
+          final Offset? r = d.landmarks[fdl.FaceIndex.rightEye];
+
+          final Point<double>? leftPt  = l == null ? null : Point<double>(l.dx.toDouble(), l.dy.toDouble());
+          final Point<double>? rightPt = r == null ? null : Point<double>(r.dx.toDouble(), r.dy.toDouble());
+
+          faces.add(AVFaceLike(
+            boundingBox: bbox,
+            leftEye: leftPt,
+            rightEye: rightPt,
+          ));
+        }
+
+        if (!filterByFaceSize || faces.isEmpty) return faces;
+
+        const double minFaceSize = 0.1;
+        final filtered = faces.where((f) => (f.boundingBox.width / w) > minFaceSize).toList();
         return filtered.isNotEmpty ? filtered : faces;
       } else {
         final List<Face> faces = await faceDetector!.processImage(

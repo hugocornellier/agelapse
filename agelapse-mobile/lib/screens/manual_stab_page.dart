@@ -71,12 +71,6 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
     _inputController3.text = '1';
     _inputController4.text = '0';
 
-    _lastValid = {
-      _inputController1: _inputController1.text,
-      _inputController2: _inputController2.text,
-      _inputController3: _inputController3.text,
-      _inputController4: _inputController4.text,
-    };
 
     _inputController1.addListener(_onParamChanged);
     _inputController2.addListener(_onParamChanged);
@@ -327,8 +321,6 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
       bottomNavigationBar: _buildToolbar(context),
     );
   }
-
-  Map<TextEditingController, String> _lastValid = {};
 
   bool _isWholeNumber(String s) => RegExp(r'^-?\d+$').hasMatch(s);
   bool _isPositiveDecimal(String s) => RegExp(r'^\d+(\.\d+)?$').hasMatch(s) && double.parse(s) > 0;

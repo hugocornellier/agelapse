@@ -79,7 +79,7 @@ class FaceStabilizer {
     aspectRatioDecimal = StabUtils.getAspectRatioAsDecimal(aspectRatio);
 
     if (projectType == "face") {
-      if (!Platform.isMacOS) {
+      if (Platform.isAndroid || Platform.isIOS) {
         final FaceDetector faceDetector = FaceDetector(options: FaceDetectorOptions(
           enableLandmarks: true,
           enableContours: true,
@@ -94,7 +94,6 @@ class FaceStabilizer {
           mode: PoseDetectionMode.single,
           model: PoseDetectionModel.accurate
       ));
-
       _poseDetector = poseDetector;
     }
 
@@ -881,7 +880,7 @@ class FaceStabilizer {
     double smallestDistance = double.infinity;
     List<Point<int>> centeredEyes = [];
 
-    if (!Platform.isMacOS) {
+    if (Platform.isAndroid || Platform.isIOS) {
       final List<Face> faceList = (faces as List).cast<Face>();
       faces = faceList.where((face) {
         final bool rightEyeNotNull = face.landmarks[FaceLandmarkType.rightEye] != null;
@@ -940,14 +939,25 @@ class FaceStabilizer {
     await StabUtils.preparePNG(rawPhotoPath);
     final String pngPath = await DirUtils.getPngPathFromRawPhotoPath(rawPhotoPath);
 
-    if (Platform.isMacOS) {
-      return await StabUtils.getFacesFromFilepath(pngPath, null, filterByFaceSize: filterByFaceSize, imageWidth: width);
+    if (Platform.isAndroid || Platform.isIOS) {
+      return await StabUtils.getFacesFromFilepath(
+        pngPath,
+        _faceDetector,
+        filterByFaceSize: filterByFaceSize,
+        imageWidth: width,
+      );
+    } else {
+      return await StabUtils.getFacesFromFilepath(
+        pngPath,
+        null,
+        filterByFaceSize: filterByFaceSize,
+        imageWidth: width,
+      );
     }
-    return await StabUtils.getFacesFromFilepath(pngPath, _faceDetector, filterByFaceSize: filterByFaceSize, imageWidth: width);
   }
 
   List<Point<int>?> getEyesFromFaces(dynamic faces) {
-    if (Platform.isMacOS) {
+    if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
       final List<Point<int>?> eyes = [];
       for (final f in (faces as List)) {
         Point<int>? a = f.leftEye == null ? null : Point<int>(f.leftEye!.x.toInt(), f.leftEye!.y.toInt());
