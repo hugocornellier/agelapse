@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:isolate';
 import 'dart:math';
 import 'dart:ui' as ui;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:heif_converter/heif_converter.dart';
@@ -12,17 +13,30 @@ import 'package:image/image.dart' as imglib;
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:face_detection_tflite/face_detection_tflite.dart' as fdl;
+import 'package:apple_vision_face/apple_vision_face.dart' as av hide Face;
 
 import '../../services/database_helper.dart';
 import '../camera_utils.dart';
 import '../dir_utils.dart';
 import '../project_utils.dart';
 import '../settings_utils.dart';
-import '../apple_vision_gateway.dart';
+
+class AVFaceLike {
+  final Rect boundingBox;
+  final Point<double>? leftEye;
+  final Point<double>? rightEye;
+
+  AVFaceLike({
+    required this.boundingBox,
+    required this.leftEye,
+    required this.rightEye,
+  });
+}
 
 class StabUtils {
   static fdl.FaceDetector? _fdLite;
   static bool _fdLiteReady = false;
+  static final av.AppleVisionFaceController _avController = av.AppleVisionFaceController();
 
   static Future<void> _ensureFDLite() async {
     if (_fdLite == null) {
@@ -84,22 +98,9 @@ class StabUtils {
     }
 
     try {
-      if (Platform.isMacOS) {
-        final ui.Image? uiImg = await loadImageFromFile(File(imagePath));
-        if (uiImg == null) return [];
-        final int width = imageWidth ?? uiImg.width;
-        final int height = uiImg.height;
-        uiImg.dispose();
-
-        final faces = await AppleVisionGateway.instance.detectFromFile(imagePath, width, height);
-        if (!filterByFaceSize || faces.isEmpty) return faces;
-
-        const double minFaceSize = 0.1;
-        final filtered = faces.where((f) => (f.boundingBox.width / width) > minFaceSize).toList();
-        return filtered.isNotEmpty ? filtered : faces;
-      } else if (Platform.isLinux || Platform.isWindows) {
+      if (Platform.isLinux || Platform.isWindows) {
         await _ensureFDLite();
-        final Uint8List bytes = await File(imagePath).readAsBytes();
+        final bytes = await File(imagePath).readAsBytes();
         final Size? origSize = await _fdLite!.getOriginalSize(bytes);
         if (origSize == null) return [];
         final double w = origSize.width;
@@ -132,6 +133,79 @@ class StabUtils {
 
         const double minFaceSize = 0.1;
         final filtered = faces.where((f) => (f.boundingBox.width / w) > minFaceSize).toList();
+        return filtered.isNotEmpty ? filtered : faces;
+      } else if (Platform.isMacOS) {
+        final ui.Image? uiImg = await loadImageFromFile(File(imagePath));
+        if (uiImg == null) return [];
+        final int width = imageWidth ?? uiImg.width;
+        final int height = uiImg.height;
+        uiImg.dispose();
+
+        final bytes = await File(imagePath).readAsBytes();
+        final results = await _avController.processImage(bytes, Size(width.toDouble(), height.toDouble()));
+        if (results == null || results.isEmpty) return [];
+
+        final List<AVFaceLike> faces = [];
+        for (final faceData in results) {
+          double minX = double.infinity, minY = double.infinity;
+          double maxX = double.negativeInfinity, maxY = double.negativeInfinity;
+
+          Point<double>? leftEyeCenter;
+          Point<double>? rightEyeCenter;
+
+          for (final mark in faceData.marks) {
+            if (mark.location.isEmpty) continue;
+
+            final bool isLeft = mark.landmark == av.LandMark.leftEye;
+            final bool isRight = mark.landmark == av.LandMark.rightEye;
+
+            double sx = 0, sy = 0;
+            for (final p in mark.location) {
+              sx += p.x;
+              sy += p.y;
+              if (p.x < minX) minX = p.x;
+              if (p.y < minY) minY = p.y;
+              if (p.x > maxX) maxX = p.x;
+              if (p.y > maxY) maxY = p.y;
+            }
+
+            if (isLeft || isRight) {
+              final cx = sx / mark.location.length;
+              final cy = sy / mark.location.length;
+              final center = Point<double>(cx, cy);
+              if (isLeft) {
+                leftEyeCenter = center;
+              } else {
+                rightEyeCenter = center;
+              }
+            }
+          }
+
+          final bool normalized = maxX <= 1.0 && maxY <= 1.0;
+          final double sx = normalized ? width.toDouble() : 1.0;
+          final double sy = normalized ? height.toDouble() : 1.0;
+
+          final Rect bbox = Rect.fromLTRB(
+            (minX.isFinite ? minX : 0) * sx,
+            (minY.isFinite ? minY : 0) * sy,
+            (maxX.isFinite ? maxX : 0) * sx,
+            (maxY.isFinite ? maxY : 0) * sy,
+          );
+
+          final Point<double>? leftScaled = leftEyeCenter == null ? null : Point<double>(leftEyeCenter.x * sx, leftEyeCenter.y * sy);
+          final Point<double>? rightScaled = rightEyeCenter == null ? null : Point<double>(rightEyeCenter.x * sx, rightEyeCenter.y * sy);
+
+          faces.add(AVFaceLike(
+            boundingBox: bbox,
+            leftEye: leftScaled,
+            rightEye: rightScaled,
+          ));
+        }
+
+        if (!filterByFaceSize || faces.isEmpty) return faces;
+
+        const double minFaceSize = 0.1;
+        final filtered = faces.where((f) => (f.boundingBox.width / width) > minFaceSize).toList();
         return filtered.isNotEmpty ? filtered : faces;
       } else {
         final List<Face> faces = await faceDetector!.processImage(
