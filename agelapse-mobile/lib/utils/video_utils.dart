@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart' as kit;
@@ -5,9 +6,11 @@ import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit_config.dart' as kitcfg;
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_session.dart' as kitsession;
 import 'package:ffmpeg_kit_flutter_new/log.dart' as kitlog;
 import 'package:ffmpeg_kit_flutter_new/return_code.dart' as kitrc;
-import '../utils/ffmpeg_windows.dart';
 
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
+
 import '../utils/settings_utils.dart';
 import '../utils/utils.dart';
 
@@ -46,7 +49,7 @@ class VideoUtils {
 
     if (Platform.isWindows) {
       final String framesDir = path.join(stabilizedDirPath, projectOrientation);
-      final bool ok = await FfmpegWindows.encode(
+      final bool ok = await _encodeWindows(
         framesDir: framesDir,
         outputPath: videoOutputPath,
         fps: framerate,
@@ -54,8 +57,14 @@ class VideoUtils {
       );
       if (ok) {
         final String resolution = await SettingsUtil.loadVideoResolution(projectId.toString());
-        await DB.instance.addVideo(projectId, resolution, (await SettingsUtil.loadWatermarkSetting(projectId.toString())).toString(),
-            (await DB.instance.getSettingValueByTitle('watermark_position')).toLowerCase(), totalPhotoCount, framerate);
+        await DB.instance.addVideo(
+          projectId,
+          resolution,
+          (await SettingsUtil.loadWatermarkSetting(projectId.toString())).toString(),
+          (await DB.instance.getSettingValueByTitle('watermark_position')).toLowerCase(),
+          totalPhotoCount,
+          framerate,
+        );
       }
       return ok;
     }
@@ -190,7 +199,6 @@ class VideoUtils {
   static String getWatermarkFilter(double opacity, String watermarkPos, int offset) {
     String watermarkFilter = "[1:v]format=rgba,colorchannelmixer=aa=$opacity[watermark];[0:v][watermark]overlay=";
 
-    // Set watermark position based on watermarkPos setting
     switch (watermarkPos) {
       case "lower left":
         watermarkFilter += "$offset:main_h-overlay_h-$offset";
@@ -205,11 +213,139 @@ class VideoUtils {
         watermarkFilter += "main_w-overlay_w-$offset:$offset";
         break;
       default:
-      // Default to lower left if the setting is invalid or not specified
         watermarkFilter += "$offset:main_h-overlay_h-$offset";
         break;
     }
 
     return watermarkFilter;
+  }
+
+  static const String _winFfmpegAssetPath = 'assets/ffmpeg/windows/ffmpeg.exe';
+  static const String _winMarkerName = 'ffmpeg.version';
+
+  static Future<String> _ensureBundledFfmpeg() async {
+    final dir = await getApplicationSupportDirectory();
+    final binDir = Directory(path.join(dir.path, 'bin'));
+    if (!await binDir.exists()) {
+      await binDir.create(recursive: true);
+    }
+    final exePath = path.join(binDir.path, 'ffmpeg.exe');
+    final markerPath = path.join(binDir.path, _winMarkerName);
+    final needsWrite = !(await File(exePath).exists()) || !(await File(markerPath).exists());
+    if (needsWrite) {
+      final bytes = await rootBundle.load(_winFfmpegAssetPath);
+      await File(exePath).writeAsBytes(bytes.buffer.asUint8List(), flush: true);
+      await File(markerPath).writeAsString('1', flush: true);
+    }
+    return exePath;
+  }
+
+  static Future<String> _findFfmpegOnPath() async {
+    try {
+      final result = await Process.run('where', ['ffmpeg'], runInShell: true);
+      if (result.exitCode == 0) {
+        final out = (result.stdout as String).trim().split(RegExp(r'\r?\n')).first;
+        if (out.isNotEmpty && await File(out).exists()) {
+          return out;
+        }
+      }
+    } catch (_) {}
+    return '';
+  }
+
+  static Future<String> _resolveFfmpegPath() async {
+    try {
+      final bundled = await _ensureBundledFfmpeg();
+      if (await File(bundled).exists()) return bundled;
+    } catch (_) {}
+    final onPath = await _findFfmpegOnPath();
+    if (onPath.isNotEmpty) return onPath;
+    return 'ffmpeg';
+  }
+
+  static Future<void> _ensureOutDir(String outputPath) async {
+    final outDir = Directory(path.dirname(outputPath));
+    if (!await outDir.exists()) {
+      await outDir.create(recursive: true);
+    }
+  }
+
+  static Future<String> _buildConcatListFromDir(String framesDir, int fps) async {
+    final dir = Directory(framesDir);
+    if (!await dir.exists()) {
+      throw FileSystemException('image directory not found', framesDir);
+    }
+    final files = await dir
+        .list()
+        .where((e) => e is File && e.path.toLowerCase().endsWith('.png'))
+        .map((e) => e.path)
+        .toList();
+
+    files.sort((a, b) => path.basename(a).compareTo(path.basename(b)));
+    if (files.isEmpty) {
+      throw StateError('no .png files found in $framesDir');
+    }
+
+    final tmpPath = path.join(Directory.systemTemp.path, 'ffconcat_${DateTime.now().millisecondsSinceEpoch}.txt');
+    final f = File(tmpPath);
+    final perFrame = 1.0 / fps;
+
+    final sb = StringBuffer();
+    for (final fp in files) {
+      final norm = fp.replaceAll(r'\', '/');
+      final esc = norm.replaceAll("'", r"'\''");
+      sb.writeln("file '$esc'");
+      sb.writeln('duration $perFrame');
+    }
+    sb.writeln('duration $perFrame');
+
+    await f.writeAsString(sb.toString(), flush: true);
+    return tmpPath;
+  }
+
+  static Future<bool> _encodeWindows({
+    required String framesDir,
+    required String outputPath,
+    required int fps,
+    void Function(String line)? onLog,
+    void Function(int frameIndex)? onProgress,
+  }) async {
+    final exe = await _resolveFfmpegPath();
+    await _ensureOutDir(outputPath);
+    final listPath = await _buildConcatListFromDir(framesDir, fps);
+
+    final args = <String>[
+      '-y',
+      '-f', 'concat',
+      '-safe', '0',
+      '-i', listPath,
+      '-vsync', 'cfr',
+      '-r', '$fps',
+      '-pix_fmt', 'yuv420p',
+      '-c:v', 'libx264',
+      '-profile:v', 'main',
+      '-level', '4.1',
+      '-movflags', '+faststart',
+      outputPath,
+    ];
+
+    final proc = await Process.start(exe, args, runInShell: false);
+    proc.stdout.transform(utf8.decoder).transform(const LineSplitter()).listen((line) {
+      if (onLog != null) onLog(line);
+    });
+    proc.stderr.transform(utf8.decoder).transform(const LineSplitter()).listen((line) {
+      if (onLog != null) onLog(line);
+      final m = RegExp(r'frame=\s*(\d+)').firstMatch(line);
+      if (m != null && onProgress != null) {
+        final f = int.tryParse(m.group(1)!);
+        if (f != null) onProgress(f);
+      }
+    });
+
+    final code = await proc.exitCode;
+    try {
+      await File(listPath).delete();
+    } catch (_) {}
+    return code == 0;
   }
 }
