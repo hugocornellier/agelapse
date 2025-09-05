@@ -5,7 +5,7 @@ import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit_config.dart' as kitcfg;
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_session.dart' as kitsession;
 import 'package:ffmpeg_kit_flutter_new/log.dart' as kitlog;
 import 'package:ffmpeg_kit_flutter_new/return_code.dart' as kitrc;
-import '../utils/ffmpeg_windows.dart' show encodeTimelapseWindows;
+import '../utils/ffmpeg_windows.dart';
 
 import 'package:path/path.dart' as path;
 import '../utils/settings_utils.dart';
@@ -46,11 +46,11 @@ class VideoUtils {
 
     if (Platform.isWindows) {
       final String framesDir = path.join(stabilizedDirPath, projectOrientation);
-      final String inputPattern = path.join(framesDir, '*.png').replaceAll(r'\', '/');
-      final bool ok = await encodeTimelapseWindows(
-        inputPattern: inputPattern,
+      final bool ok = await FfmpegWindows.encode(
+        framesDir: framesDir,
         outputPath: videoOutputPath,
         fps: framerate,
+        onProgress: setCurrentFrame,
       );
       if (ok) {
         final String resolution = await SettingsUtil.loadVideoResolution(projectId.toString());

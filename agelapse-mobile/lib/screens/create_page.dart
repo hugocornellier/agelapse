@@ -7,8 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:path/path.dart' as path;
-import '../utils/ffmpeg_windows.dart' show encodeTimelapseWindows;
-import '../utils/ffmpeg_bridge.dart';
+import '../utils/ffmpeg_windows.dart';
 
 import '../services/database_helper.dart';
 import '../services/settings_cache.dart';
@@ -145,26 +144,19 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
     await DirUtils.getVideoOutputPath(widget.projectId, projectOrientation);
     final File outFile = File(videoPath);
 
-    // skip if already exists and non-empty
     if (await outFile.exists() && await outFile.length() > 0) return;
 
     final String framesDir = await DirUtils
         .getStabilizedDirPathFromProjectIdAndOrientation(widget.projectId, projectOrientation);
-    final String inputPattern = path.join(framesDir, '*.png').replaceAll(r'\', '/');
 
     final int fps =
     await SettingsUtil.loadFramerate(widget.projectId.toString());
 
-    final rc = await FFmpegBridge.encode(
-      nonWindowsCmd: '',
-      windowsPath: () => encodeTimelapseWindows(
-        inputPattern: inputPattern,
-        outputPath: videoPath,
-        fps: fps,
-      ),
+    final bool ok = await FfmpegWindows.encode(
+      framesDir: framesDir,
+      outputPath: videoPath,
+      fps: fps,
     );
-    final ok = rc == 0;
-
 
     if (!ok) {
       setState(() {
@@ -172,7 +164,6 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
       });
     }
   }
-
 
   Future<void> setupVideoPlayer() async {
     await _maybeEncodeWindowsVideo();
