@@ -7,7 +7,6 @@ import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:path/path.dart' as path;
-import '../utils/ffmpeg_windows.dart';
 
 import '../services/database_helper.dart';
 import '../services/settings_cache.dart';
@@ -136,8 +135,6 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
   }
 
   Future<void> _maybeEncodeWindowsVideo() async {
-    if (!Platform.isWindows) return;
-
     final String projectOrientation =
     await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
     final String videoPath =
@@ -146,16 +143,9 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
 
     if (await outFile.exists() && await outFile.length() > 0) return;
 
-    final String framesDir = await DirUtils
-        .getStabilizedDirPathFromProjectIdAndOrientation(widget.projectId, projectOrientation);
-
-    final int fps =
-    await SettingsUtil.loadFramerate(widget.projectId.toString());
-
-    final bool ok = await FfmpegWindows.encode(
-      framesDir: framesDir,
-      outputPath: videoPath,
-      fps: fps,
+    final bool ok = await VideoUtils.createTimelapseFromProjectId(
+      widget.projectId,
+      null,
     );
 
     if (!ok) {
