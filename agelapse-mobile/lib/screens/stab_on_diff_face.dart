@@ -96,7 +96,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
         rawImagePath,
         false,
         userRanOutOfSpaceCallback,
-        targetFace: Platform.isMacOS ? null : tappedFace,
+        targetFace: (Platform.isAndroid || Platform.isIOS) ? tappedFace : null,
         targetBoundingBox: targetBox,
       );
 
