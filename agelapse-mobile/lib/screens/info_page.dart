@@ -1,7 +1,10 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_email_sender/flutter_email_sender.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
+
 import '../styles/styles.dart';
 import '../utils/utils.dart';
 import '../widgets/fancy_button.dart';
@@ -39,17 +42,33 @@ class InfoPageState extends State<InfoPage> with SingleTickerProviderStateMixin 
   int photoCount = 0;
 
   Future<void> _sendEmail(String email, String subject) async {
-    final Email emailToSend = Email(
-      body: '',
-      subject: subject,
-      recipients: [email],
-      isHTML: false,
-    );
-
-    try {
-      await FlutterEmailSender.send(emailToSend);
-    } catch (error) {
-      print('Error sending email: $error');
+    if (Platform.isAndroid || Platform.isIOS) {
+      final Email emailToSend = Email(
+        body: '',
+        subject: subject,
+        recipients: [email],
+        isHTML: false,
+      );
+      try {
+        await FlutterEmailSender.send(emailToSend);
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open email app')),
+        );
+      }
+    } else {
+      final uri = Uri(
+        scheme: 'mailto',
+        path: email,
+        queryParameters: {'subject': subject},
+      );
+      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!ok && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No default mail client found')),
+        );
+      }
     }
   }
 
@@ -122,20 +141,6 @@ class InfoPageState extends State<InfoPage> with SingleTickerProviderStateMixin 
                           color: AppColors.lessDarkGrey,
                           onPressed: () => _sendEmail('agelapse+features@gmail.com', 'Feature Suggestion'),
                         ),
-                        const SizedBox(height: 20),
-                        FancyButton.buildElevatedButton(
-                          context,
-                          text: 'Test Page',
-                          icon: Icons.pages,
-                          color: AppColors.lessDarkGrey,
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const TestPage()),
-                            );
-                          },
-                        ),
-
                       ],
                     ),
                   ),

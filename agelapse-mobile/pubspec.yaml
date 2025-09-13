@@ -16,21 +16,20 @@ dependencies:
   camera: ^0.11.0
   camera_android_camerax: 0.6.7
   camera_macos: ^0.0.9
-  chewie: ^1.12.1
+  chewie: ^1.13.0
   cupertino_icons: ^1.0.8
   desktop_drop: ^0.6.1
   exif: ^3.3.0
-  face_detector_plugin: ^0.0.3
   face_detection_tflite:
     git:
       url: https://github.com/hugocornellier/face_detection_tflite.git
       ref: 57f38d029ac87abd71e8d5a045456d79404f4f66
-  ffmpeg_kit_flutter_new: ^2.0.0
-  file_picker: ^10.3.2
+  ffmpeg_kit_flutter_new: ^3.2.0
+  file_picker: ^10.3.3
   file_selector: ^1.0.3
   flutter:
     sdk: flutter
-  flutter_email_sender: ^7.0.0
+  flutter_email_sender: ^8.0.0
   flutter_launcher_icons: ^0.14.4
   flutter_local_notifications: ^19.4.0
   flutter_native_splash: ^2.4.6

@@ -71,6 +71,8 @@ class MainNavigationState extends State<MainNavigation> {
   bool _photoTakenToday = false;
   String minutesRemaining = "";
   bool _userRanOutOfSpace = false;
+  int _totalPhotoCountForProgress = 0;
+  int _stabilizedAtStart = 0;
 
   @override
   void initState() {
@@ -252,6 +254,9 @@ class MainNavigationState extends State<MainNavigation> {
 
     final FaceStabilizer faceStabilizer = FaceStabilizer(widget.projectId, userRanOutOfSpaceCallback);
     final List<Map<String, dynamic>> unstabilizedPhotos = await StabUtils.getUnstabilizedPhotos(widget.projectId);
+    _totalPhotoCountForProgress = (await DB.instance.getPhotosByProjectID(widget.projectId)).length;
+    _stabilizedAtStart = await getStabilizedPhotoCount();
+    _successfullyStabilizedPhotos = 0;
 
     // Wait for previous stabilization cycle to cancel
     while (_cancelStabilization && _stabilizingActive) {
@@ -338,13 +343,22 @@ class MainNavigationState extends State<MainNavigation> {
     } catch (e) {
       return false;
     } finally {
-      setState(() => _photoIndex++);
+      if (mounted) {
+        setState(() => _photoIndex++);
+      }
 
-      final double newProgPercentDouble = _photoIndex / _unstabilizedPhotoCount * 100;
-      final int newProgPercentAsInt = newProgPercentDouble.toInt();
-      final int newProgPercent = newProgPercentAsInt == 100 ? 99 : newProgPercentAsInt;
+      final int total = _totalPhotoCountForProgress;
+      final int completed = _stabilizedAtStart + _successfullyStabilizedPhotos;
 
-      setState(() => progressPercent = newProgPercent);
+      if (total > 0) {
+        int pct = ((completed * 100) ~/ total);
+        if (pct >= 100) pct = 99;
+        if (pct < 0) pct = 0;
+
+        if (mounted) {
+          setState(() => progressPercent = pct);
+        }
+      }
     }
   }
 

@@ -548,17 +548,15 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
     await DirUtils.getVideoOutputPath(widget.projectId, projectOrientation);
 
     if (Platform.isAndroid || Platform.isIOS) {
-      // Mobile: keep using native share sheets
       final result = await SharePlus.instance.share(
         ShareParams(files: [XFile(videoOutputPath)]),
       );
       if (result.status == ShareResultStatus.success) {
-        // optional: toast/snackbar
+        // maybe a confirmation at some point
       }
       return;
     }
 
-    // Desktop: do a "Save As..."
     await _saveVideoDesktop(videoOutputPath);
   }
 
