@@ -1,0 +1,51 @@
+{
+  "main_library": {
+    "exported_symbols": [
+      {
+        "data": {
+          "global": [
+            "_$s14tflite_flutter19TfliteFlutterPluginC6handle_6resultySo0D10MethodCallC_yypSgctF",
+            "_$s14tflite_flutter19TfliteFlutterPluginCACycfC",
+            "_$s14tflite_flutter19TfliteFlutterPluginC6handle_6resultySo0D10MethodCallC_yypSgctFTq",
+            "_$s14tflite_flutter19TfliteFlutterPluginCfD",
+            "_$s14tflite_flutter19TfliteFlutterPluginCMa",
+            "_$s14tflite_flutter19TfliteFlutterPluginCACycfc",
+            "_$s14tflite_flutter19TfliteFlutterPluginC8register4withySo0dE9Registrar_p_tFZ",
+            "_tflite_flutterVersionNumber",
+            "_tflite_flutterVersionString",
+            "_$s14tflite_flutter19TfliteFlutterPluginCN",
+            "_$s14tflite_flutter19TfliteFlutterPluginCMn"
+          ],
+          "objc_class": [
+            "PodsDummy_tflite_flutter",
+            "_TtC14tflite_flutter19TfliteFlutterPlugin"
+          ]
+        }
+      }
+    ],
+    "flags": [
+      {
+        "attributes": [
+          "not_app_extension_safe"
+        ]
+      }
+    ],
+    "install_names": [
+      {
+        "name": "@rpath/tflite_flutter.framework/Versions/A/tflite_flutter"
+      }
+    ],
+    "swift_abi": [
+      {
+        "abi": 7
+      }
+    ],
+    "target_info": [
+      {
+        "min_deployment": "11",
+        "target": "arm64-macos"
+      }
+    ]
+  },
+  "tapi_tbd_version": 5
+}

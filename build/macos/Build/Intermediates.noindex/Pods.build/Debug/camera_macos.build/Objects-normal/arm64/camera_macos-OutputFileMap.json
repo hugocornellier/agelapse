@@ -1,0 +1,68 @@
+{
+  "" : {
+    "diagnostics" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/camera_macos-master.dia",
+    "emit-module-dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/camera_macos-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/camera_macos-master-emit-module.dia",
+    "swift-dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/camera_macos-master.swiftdeps"
+  },
+  "/Users/hugocornellier/.pub-cache/hosted/pub.dev/camera_macos-0.0.9/macos/Classes/AVCaptureDevice+Extension.swift" : {
+    "const-values" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/AVCaptureDevice+Extension.swiftconstvalues",
+    "dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/AVCaptureDevice+Extension.d",
+    "diagnostics" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/AVCaptureDevice+Extension.dia",
+    "index-unit-output-path" : "/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/AVCaptureDevice+Extension.o",
+    "llvm-bc" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/AVCaptureDevice+Extension.bc",
+    "object" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/AVCaptureDevice+Extension.o",
+    "swift-dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/AVCaptureDevice+Extension.swiftdeps",
+    "swiftmodule" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/AVCaptureDevice+Extension~partial.swiftmodule"
+  },
+  "/Users/hugocornellier/.pub-cache/hosted/pub.dev/camera_macos-0.0.9/macos/Classes/CameraMacOSNativeFactory.swift" : {
+    "const-values" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/CameraMacOSNativeFactory.swiftconstvalues",
+    "dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/CameraMacOSNativeFactory.d",
+    "diagnostics" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/CameraMacOSNativeFactory.dia",
+    "index-unit-output-path" : "/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/CameraMacOSNativeFactory.o",
+    "llvm-bc" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/CameraMacOSNativeFactory.bc",
+    "object" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/CameraMacOSNativeFactory.o",
+    "swift-dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/CameraMacOSNativeFactory.swiftdeps",
+    "swiftmodule" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/CameraMacOSNativeFactory~partial.swiftmodule"
+  },
+  "/Users/hugocornellier/.pub-cache/hosted/pub.dev/camera_macos-0.0.9/macos/Classes/CameraMacosPlugin.swift" : {
+    "const-values" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/CameraMacosPlugin.swiftconstvalues",
+    "dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/CameraMacosPlugin.d",
+    "diagnostics" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/CameraMacosPlugin.dia",
+    "index-unit-output-path" : "/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/CameraMacosPlugin.o",
+    "llvm-bc" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/CameraMacosPlugin.bc",
+    "object" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/CameraMacosPlugin.o",
+    "swift-dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/CameraMacosPlugin.swiftdeps",
+    "swiftmodule" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/CameraMacosPlugin~partial.swiftmodule"
+  },
+  "/Users/hugocornellier/.pub-cache/hosted/pub.dev/camera_macos-0.0.9/macos/Classes/FlutterMacOS+Extension.swift" : {
+    "const-values" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/FlutterMacOS+Extension.swiftconstvalues",
+    "dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/FlutterMacOS+Extension.d",
+    "diagnostics" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/FlutterMacOS+Extension.dia",
+    "index-unit-output-path" : "/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/FlutterMacOS+Extension.o",
+    "llvm-bc" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/FlutterMacOS+Extension.bc",
+    "object" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/FlutterMacOS+Extension.o",
+    "swift-dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/FlutterMacOS+Extension.swiftdeps",
+    "swiftmodule" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/FlutterMacOS+Extension~partial.swiftmodule"
+  },
+  "/Users/hugocornellier/.pub-cache/hosted/pub.dev/camera_macos-0.0.9/macos/Classes/ImageStreamHandler.swift" : {
+    "const-values" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/ImageStreamHandler.swiftconstvalues",
+    "dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/ImageStreamHandler.d",
+    "diagnostics" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/ImageStreamHandler.dia",
+    "index-unit-output-path" : "/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/ImageStreamHandler.o",
+    "llvm-bc" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/ImageStreamHandler.bc",
+    "object" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/ImageStreamHandler.o",
+    "swift-dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/ImageStreamHandler.swiftdeps",
+    "swiftmodule" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/ImageStreamHandler~partial.swiftmodule"
+  },
+  "/Users/hugocornellier/.pub-cache/hosted/pub.dev/camera_macos-0.0.9/macos/Classes/URL+Extension.swift" : {
+    "const-values" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/URL+Extension.swiftconstvalues",
+    "dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/URL+Extension.d",
+    "diagnostics" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/URL+Extension.dia",
+    "index-unit-output-path" : "/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/URL+Extension.o",
+    "llvm-bc" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/URL+Extension.bc",
+    "object" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/URL+Extension.o",
+    "swift-dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/URL+Extension.swiftdeps",
+    "swiftmodule" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/camera_macos.build/Objects-normal/arm64/URL+Extension~partial.swiftmodule"
+  }
+}

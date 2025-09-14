@@ -1,0 +1,11 @@
+framework module screen_retriever_macos {
+  umbrella header "screen_retriever_macos-umbrella.h"
+
+  export *
+  module * { export * }
+}
+
+module screen_retriever_macos.Swift {
+  header "screen_retriever_macos-Swift.h"
+  requires objc
+}

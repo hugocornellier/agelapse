@@ -1,0 +1,10 @@
+framework module share_plus {
+  umbrella header "share_plus-umbrella.h"
+
+  export *
+  module * { export * }
+}
+
+module share_plus.__Swift {
+  exclude header "share_plus-Swift.h"
+}

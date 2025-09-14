@@ -1,0 +1,18 @@
+{
+  "" : {
+    "diagnostics" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/wakelock_plus.build/Objects-normal/arm64/wakelock_plus-master.dia",
+    "emit-module-dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/wakelock_plus.build/Objects-normal/arm64/wakelock_plus-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/wakelock_plus.build/Objects-normal/arm64/wakelock_plus-master-emit-module.dia",
+    "swift-dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/wakelock_plus.build/Objects-normal/arm64/wakelock_plus-master.swiftdeps"
+  },
+  "/Users/hugocornellier/.pub-cache/hosted/pub.dev/wakelock_plus-1.3.2/macos/Classes/WakelockPlusMacosPlugin.swift" : {
+    "const-values" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/wakelock_plus.build/Objects-normal/arm64/WakelockPlusMacosPlugin.swiftconstvalues",
+    "dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/wakelock_plus.build/Objects-normal/arm64/WakelockPlusMacosPlugin.d",
+    "diagnostics" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/wakelock_plus.build/Objects-normal/arm64/WakelockPlusMacosPlugin.dia",
+    "index-unit-output-path" : "/Pods.build/Debug/wakelock_plus.build/Objects-normal/arm64/WakelockPlusMacosPlugin.o",
+    "llvm-bc" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/wakelock_plus.build/Objects-normal/arm64/WakelockPlusMacosPlugin.bc",
+    "object" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/wakelock_plus.build/Objects-normal/arm64/WakelockPlusMacosPlugin.o",
+    "swift-dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/wakelock_plus.build/Objects-normal/arm64/WakelockPlusMacosPlugin.swiftdeps",
+    "swiftmodule" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/wakelock_plus.build/Objects-normal/arm64/WakelockPlusMacosPlugin~partial.swiftmodule"
+  }
+}

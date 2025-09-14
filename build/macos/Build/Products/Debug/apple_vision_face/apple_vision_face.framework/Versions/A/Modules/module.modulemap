@@ -1,0 +1,11 @@
+framework module apple_vision_face {
+  umbrella header "apple_vision_face-umbrella.h"
+
+  export *
+  module * { export * }
+}
+
+module apple_vision_face.Swift {
+  header "apple_vision_face-Swift.h"
+  requires objc
+}

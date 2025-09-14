@@ -1,0 +1,11 @@
+framework module face_detection_tflite {
+  umbrella header "face_detection_tflite-umbrella.h"
+
+  export *
+  module * { export * }
+}
+
+module face_detection_tflite.Swift {
+  header "face_detection_tflite-Swift.h"
+  requires objc
+}

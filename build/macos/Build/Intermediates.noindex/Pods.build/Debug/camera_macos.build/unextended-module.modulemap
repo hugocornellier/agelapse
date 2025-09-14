@@ -1,0 +1,10 @@
+framework module camera_macos {
+  umbrella header "camera_macos-umbrella.h"
+
+  export *
+  module * { export * }
+}
+
+module camera_macos.__Swift {
+  exclude header "camera_macos-Swift.h"
+}

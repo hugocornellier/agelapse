@@ -1,0 +1,87 @@
+{
+  "main_library": {
+    "exported_symbols": [
+      {
+        "data": {
+          "global": [
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginCACycfc",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC20externalDisplayCountSivg",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC17getPrimaryDisplay_6resultySo17FlutterMethodCallC_yypSgctFTq",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC8onCancel13withArgumentsSo12FlutterErrorCSgypSg_tF",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC20externalDisplayCountSivMTq",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC8register4withySo07FlutterG9Registrar_p_tFZ",
+            "_$sSo8NSScreenC22screen_retriever_macosE9displayIDs6UInt32VvpMV",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginCMa",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC8onListen13withArguments9eventSinkSo12FlutterErrorCSgypSg_yAJctFTq",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC09getCursorD5Point_6resultySo17FlutterMethodCallC_yypSgctFTq",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC20externalDisplayCountSivgTq",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC20externalDisplayCountSivsTq",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginCN",
+            "_$sSo6CGRectV22screen_retriever_macosE7topLeftSo7CGPointVvM",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC20externalDisplayCountSivs",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC8onListen13withArguments9eventSinkSo12FlutterErrorCSgypSg_yAJctF",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC23handleDisplayConnection12notificationy10Foundation12NotificationV_tF",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC20externalDisplayCountSivM",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC10_eventSink33_95A045D90BEE55DADAF1975CD4979FF8LLyypSgcSgvM",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC10_eventSink33_95A045D90BEE55DADAF1975CD4979FF8LLyypSgcSgvs",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC14getAllDisplays_6resultySo17FlutterMethodCallC_yypSgctFTq",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC6handle_6resultySo17FlutterMethodCallC_yypSgctFTq",
+            "_$sSo6CGRectV22screen_retriever_macosE7topLeftSo7CGPointVvg",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginCMn",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC09getCursorD5Point_6resultySo17FlutterMethodCallC_yypSgctF",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC10_eventSink33_95A045D90BEE55DADAF1975CD4979FF8LLyypSgcSgvg",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC10_eventSink33_95A045D90BEE55DADAF1975CD4979FF8LLyypSgcSgvpfi",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC23setupNotificationCenteryyFTq",
+            "_$sSo6CGRectV22screen_retriever_macosE7topLeftSo7CGPointVvs",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC17getPrimaryDisplay_6resultySo17FlutterMethodCallC_yypSgctF",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC6handle_6resultySo17FlutterMethodCallC_yypSgctF",
+            "_$sSo8NSScreenC22screen_retriever_macosE9displayIDs6UInt32Vvg",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC10_emitEventyySSFTq",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC8onCancel13withArgumentsSo12FlutterErrorCSgypSg_tFTq",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC20externalDisplayCountSivpMV",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC20externalDisplayCountSivpfi",
+            "_screen_retriever_macosVersionString",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC10_emitEventyySSF",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC23setupNotificationCenteryyF",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginCACycfC",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginCfD",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC23handleDisplayConnection12notificationy10Foundation12NotificationV_tFTq",
+            "_$sSo8NSScreenC22screen_retriever_macosE12toDictionarySo12NSDictionaryCyF",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC20externalDisplayCountSivpWvd",
+            "_screen_retriever_macosVersionNumber",
+            "_$sSo6CGRectV22screen_retriever_macosE7topLeftSo7CGPointVvpMV",
+            "_$s22screen_retriever_macos26ScreenRetrieverMacosPluginC14getAllDisplays_6resultySo17FlutterMethodCallC_yypSgctF"
+          ],
+          "objc_class": [
+            "PodsDummy_screen_retriever_macos",
+            "_TtC22screen_retriever_macos26ScreenRetrieverMacosPlugin"
+          ]
+        }
+      }
+    ],
+    "flags": [
+      {
+        "attributes": [
+          "not_app_extension_safe"
+        ]
+      }
+    ],
+    "install_names": [
+      {
+        "name": "@rpath/screen_retriever_macos.framework/Versions/A/screen_retriever_macos"
+      }
+    ],
+    "swift_abi": [
+      {
+        "abi": 7
+      }
+    ],
+    "target_info": [
+      {
+        "min_deployment": "11",
+        "target": "arm64-macos"
+      }
+    ]
+  },
+  "tapi_tbd_version": 5
+}

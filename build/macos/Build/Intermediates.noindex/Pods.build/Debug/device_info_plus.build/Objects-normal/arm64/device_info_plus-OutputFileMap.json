@@ -1,0 +1,48 @@
+{
+  "" : {
+    "diagnostics" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/device_info_plus-master.dia",
+    "emit-module-dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/device_info_plus-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/device_info_plus-master-emit-module.dia",
+    "swift-dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/device_info_plus-master.swiftdeps"
+  },
+  "/Users/hugocornellier/.pub-cache/hosted/pub.dev/device_info_plus-11.3.3/macos/device_info_plus/Sources/device_info_plus/CwlSysctl.swift" : {
+    "const-values" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/CwlSysctl.swiftconstvalues",
+    "dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/CwlSysctl.d",
+    "diagnostics" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/CwlSysctl.dia",
+    "index-unit-output-path" : "/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/CwlSysctl.o",
+    "llvm-bc" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/CwlSysctl.bc",
+    "object" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/CwlSysctl.o",
+    "swift-dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/CwlSysctl.swiftdeps",
+    "swiftmodule" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/CwlSysctl~partial.swiftmodule"
+  },
+  "/Users/hugocornellier/.pub-cache/hosted/pub.dev/device_info_plus-11.3.3/macos/device_info_plus/Sources/device_info_plus/DeviceIdentifiers.swift" : {
+    "const-values" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/DeviceIdentifiers.swiftconstvalues",
+    "dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/DeviceIdentifiers.d",
+    "diagnostics" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/DeviceIdentifiers.dia",
+    "index-unit-output-path" : "/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/DeviceIdentifiers.o",
+    "llvm-bc" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/DeviceIdentifiers.bc",
+    "object" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/DeviceIdentifiers.o",
+    "swift-dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/DeviceIdentifiers.swiftdeps",
+    "swiftmodule" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/DeviceIdentifiers~partial.swiftmodule"
+  },
+  "/Users/hugocornellier/.pub-cache/hosted/pub.dev/device_info_plus-11.3.3/macos/device_info_plus/Sources/device_info_plus/DeviceInfoPlusMacosPlugin.swift" : {
+    "const-values" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/DeviceInfoPlusMacosPlugin.swiftconstvalues",
+    "dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/DeviceInfoPlusMacosPlugin.d",
+    "diagnostics" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/DeviceInfoPlusMacosPlugin.dia",
+    "index-unit-output-path" : "/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/DeviceInfoPlusMacosPlugin.o",
+    "llvm-bc" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/DeviceInfoPlusMacosPlugin.bc",
+    "object" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/DeviceInfoPlusMacosPlugin.o",
+    "swift-dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/DeviceInfoPlusMacosPlugin.swiftdeps",
+    "swiftmodule" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/DeviceInfoPlusMacosPlugin~partial.swiftmodule"
+  },
+  "/Users/hugocornellier/.pub-cache/hosted/pub.dev/device_info_plus-11.3.3/macos/device_info_plus/Sources/device_info_plus/SystemUUID.swift" : {
+    "const-values" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/SystemUUID.swiftconstvalues",
+    "dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/SystemUUID.d",
+    "diagnostics" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/SystemUUID.dia",
+    "index-unit-output-path" : "/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/SystemUUID.o",
+    "llvm-bc" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/SystemUUID.bc",
+    "object" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/SystemUUID.o",
+    "swift-dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/SystemUUID.swiftdeps",
+    "swiftmodule" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/device_info_plus.build/Objects-normal/arm64/SystemUUID~partial.swiftmodule"
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "main_library": {
+    "exported_symbols": [
+      {
+        "data": {
+          "global": [
+            "_$s16device_info_plus6SysctlV7versionSSvgZ",
+            "_$s16device_info_plus6SysctlV10activeCPUss5Int32VvgZ",
+            "_$s16device_info_plus6SysctlV6string3forS2S_tKFZ",
+            "_$s16device_info_plus25DeviceInfoPlusMacosPluginCACycfC",
+            "_$s16device_info_plus6SysctlV5ErrorON",
+            "_$s16device_info_plus6SysctlV4keys3forSays5Int32VGSS_tKFZ",
+            "_$s16device_info_plus15getMacModelName11modelNumberS2S_tF",
+            "_$s16device_info_plus25DeviceInfoPlusMacosPluginC6handle_6resultySo17FlutterMethodCallC_yypSgctF",
+            "_$s16device_info_plus6SysctlVMn",
+            "_$s16device_info_plus10SystemUUIDOMn",
+            "_$s16device_info_plus6SysctlV5osRevs5Int32VvgZ",
+            "_$s16device_info_plus6SysctlV5modelSSvgZ",
+            "_$s16device_info_plus6SysctlV9osVersionSSvgZ",
+            "_$s16device_info_plus25DeviceInfoPlusMacosPluginC8register4withySo07FlutterH9Registrar_p_tFZ",
+            "_$s16device_info_plus6SysctlV5value6ofType7forKeysxxm_Says5Int32VGtKlFZ",
+            "_$s16device_info_plus25DeviceInfoPlusMacosPluginC06handledE033_073FEA501C420308EA4C6AC0C1EC0201LL6resultyyypSgc_tF",
+            "_$s16device_info_plus6SysctlV5ErrorOMn",
+            "_$s16device_info_plus10SystemUUIDOMa",
+            "_$s16device_info_plus6SysctlV5ErrorOMa",
+            "_$s16device_info_plus6SysctlV5value6ofType7forKeysxxm_s5Int32VdtKlFZ",
+            "_$s16device_info_plus6SysctlV6string3forSSSays5Int32VG_tKFZ",
+            "_device_info_plusVersionNumber",
+            "_$s16device_info_plus10SystemUUIDO03getdE0SSSgyFZ",
+            "_$s16device_info_plus10SystemUUIDON",
+            "_$s16device_info_plus6SysctlV6string3forSSs5Int32Vd_tKFZ",
+            "_$s16device_info_plus25DeviceInfoPlusMacosPluginCN",
+            "_$s16device_info_plus25DeviceInfoPlusMacosPluginCMn",
+            "_$s16device_info_plus6SysctlV4data3forSays4Int8VGSays5Int32VG_tKFZ",
+            "_$s16device_info_plus6SysctlVACycfC",
+            "_$s16device_info_plus25DeviceInfoPlusMacosPluginCMa",
+            "_$s16device_info_plus6SysctlV6osTypeSSvgZ",
+            "_$s16device_info_plus6SysctlV9osReleaseSSvgZ",
+            "_$s16device_info_plus6SysctlV7memSizes6UInt64VvgZ",
+            "_$s16device_info_plus6SysctlVN",
+            "_$s16device_info_plus6SysctlV5value6ofType7forNamexxm_SStKlFZ",
+            "_$s16device_info_plus6SysctlV8hostNameSSvgZ",
+            "_$s16device_info_plus6SysctlV5ErrorOsAdAMc",
+            "_device_info_plusVersionString",
+            "_$s16device_info_plus25DeviceInfoPlusMacosPluginCfD",
+            "_$s16device_info_plus6SysctlV7machineSSvgZ",
+            "_$s16device_info_plus6SysctlVMa",
+            "_$s16device_info_plus6SysctlV7cpuFreqs5Int64VvgZ",
+            "_$s16device_info_plus25DeviceInfoPlusMacosPluginC6handle_6resultySo17FlutterMethodCallC_yypSgctFTq",
+            "_$s16device_info_plus25DeviceInfoPlusMacosPluginCACycfc"
+          ],
+          "objc_class": [
+            "PodsDummy_device_info_plus",
+            "_TtC16device_info_plus25DeviceInfoPlusMacosPlugin"
+          ]
+        }
+      }
+    ],
+    "flags": [
+      {
+        "attributes": [
+          "not_app_extension_safe"
+        ]
+      }
+    ],
+    "install_names": [
+      {
+        "name": "@rpath/device_info_plus.framework/Versions/A/device_info_plus"
+      }
+    ],
+    "swift_abi": [
+      {
+        "abi": 7
+      }
+    ],
+    "target_info": [
+      {
+        "min_deployment": "11",
+        "target": "arm64-macos"
+      }
+    ]
+  },
+  "tapi_tbd_version": 5
+}

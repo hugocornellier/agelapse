@@ -1,0 +1,11 @@
+framework module url_launcher_macos {
+  umbrella header "url_launcher_macos-umbrella.h"
+
+  export *
+  module * { export * }
+}
+
+module url_launcher_macos.Swift {
+  header "url_launcher_macos-Swift.h"
+  requires objc
+}

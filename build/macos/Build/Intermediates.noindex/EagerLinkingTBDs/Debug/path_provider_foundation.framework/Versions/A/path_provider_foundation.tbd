@@ -1,0 +1,109 @@
+{
+  "main_library": {
+    "exported_symbols": [
+      {
+        "data": {
+          "global": [
+            "_$s24path_provider_foundation18PathProviderPluginC012getContainerD018appGroupIdentifierSSSgSS_tFTq",
+            "_$s24path_provider_foundation11PigeonErrorC4codeSSvg",
+            "_$s24path_provider_foundation19messagesPigeonCodecC6sharedACvau",
+            "_$s24path_provider_foundation11PigeonErrorCMa",
+            "_$s24path_provider_foundation20PathProviderApiSetupC5setUp15binaryMessenger3api20messageChannelSuffixySo013FlutterBinaryK0_p_AA0deF0_pSgSStFZ",
+            "_$s24path_provider_foundation18PathProviderPluginCMa",
+            "_$s24path_provider_foundation11PigeonErrorCN",
+            "_$s24path_provider_foundation19messagesPigeonCodecCfD",
+            "_$s24path_provider_foundation20PathProviderApiSetupC5setUp15binaryMessenger3api20messageChannelSuffixySo013FlutterBinaryK0_p_AA0deF0_pSgSStFZfA1_",
+            "_$s24path_provider_foundation20PathProviderApiSetupCN",
+            "_$s24path_provider_foundation11PigeonErrorCMn",
+            "_$s24path_provider_foundation18PathProviderPluginC012getContainerD018appGroupIdentifierSSSgSS_tF",
+            "_$s24path_provider_foundation18PathProviderPluginCfD",
+            "_$s24path_provider_foundation11PigeonErrorC20localizedDescriptionSSvg",
+            "_$s24path_provider_foundation13DirectoryTypeOMa",
+            "_$s24path_provider_foundation11PigeonErrorC4code7message7detailsACSS_SSSgypSgtcfc",
+            "_$s24path_provider_foundation11PigeonErrorC7detailsypSgvpWvd",
+            "_$s24path_provider_foundation20PathProviderApiSetupC5codecSo27FlutterStandardMessageCodecCvgZ",
+            "_$s24path_provider_foundation20PathProviderApiSetupCACycfCTq",
+            "_$s24path_provider_foundation19messagesPigeonCodecC6sharedACvgZ",
+            "_$s24path_provider_foundation18PathProviderPluginC012getDirectoryD04typeSSSgAA0H4TypeO_tFTq",
+            "_path_provider_foundationVersionNumber",
+            "_$s24path_provider_foundation11PigeonErrorCMm",
+            "_$s24path_provider_foundation11PigeonErrorC4codeSSvpWvd",
+            "_$s24path_provider_foundation19messagesPigeonCodecCMa",
+            "_$s24path_provider_foundation11PigeonErrorC7messageSSSgvpMV",
+            "_$s24path_provider_foundation13DirectoryTypeOMn",
+            "_$s24path_provider_foundation19messagesPigeonCodecC6sharedACvpZ",
+            "_$s24path_provider_foundation18PathProviderPluginCAA0dE3ApiAAWP",
+            "_$s24path_provider_foundation11PigeonErrorCs0E0AAMc",
+            "_$s24path_provider_foundation11PigeonErrorCfD",
+            "_$s24path_provider_foundation20PathProviderApiSetupCACycfc",
+            "_$s24path_provider_foundation20PathProviderApiSetupCACycfC",
+            "_$s24path_provider_foundation18PathProviderPluginCMn",
+            "_$s24path_provider_foundation11PigeonErrorC7messageSSSgvpWvd",
+            "_path_provider_foundationVersionString",
+            "_$s24path_provider_foundation20PathProviderApiSetupCMa",
+            "_$s24path_provider_foundation11PigeonErrorC20localizedDescriptionSSvpMV",
+            "_$s24path_provider_foundation19messagesPigeonCodecCMn",
+            "_$s24path_provider_foundation11PigeonErrorC7messageSSSgvg",
+            "_$s24path_provider_foundation13DirectoryTypeOSQAAMc",
+            "_$s24path_provider_foundation13DirectoryTypeOSHAAMc",
+            "_$s24path_provider_foundation19messagesPigeonCodecCACycfc",
+            "_$s24path_provider_foundation11PigeonErrorC7detailsypSgvg",
+            "_$s24path_provider_foundation13DirectoryTypeO8rawValueSivg",
+            "_$s24path_provider_foundation19messagesPigeonCodecCN",
+            "_$s24path_provider_foundation11PigeonErrorCfd",
+            "_$s24path_provider_foundation11PigeonErrorC4code7message7detailsACSS_SSSgypSgtcfCTq",
+            "_$s24path_provider_foundation20PathProviderApiSetupCfD",
+            "_$s24path_provider_foundation15PathProviderApiMp",
+            "_$s24path_provider_foundation18PathProviderPluginCAA0dE3ApiAAMc",
+            "_$s24path_provider_foundation20PathProviderApiSetupCfd",
+            "_$s24path_provider_foundation18PathProviderPluginC8register4withySo07FlutterF9Registrar_p_tFZ",
+            "_$s24path_provider_foundation11PigeonErrorC4codeSSvpMV",
+            "_$s24path_provider_foundation11PigeonErrorC7detailsypSgvpMV",
+            "_$s24path_provider_foundation13DirectoryTypeOSYAAMc",
+            "_$s24path_provider_foundation13DirectoryTypeO8rawValueSivpMV",
+            "_$s24path_provider_foundation13DirectoryTypeON",
+            "_$s24path_provider_foundation20PathProviderApiSetupCMn",
+            "_$s24path_provider_foundation18PathProviderPluginCACycfC",
+            "_$s24path_provider_foundation15PathProviderApiTL",
+            "_$s24path_provider_foundation18PathProviderPluginC012getDirectoryD04typeSSSgAA0H4TypeO_tF",
+            "_$s24path_provider_foundation18PathProviderPluginCN",
+            "_$s24path_provider_foundation13DirectoryTypeO8rawValueACSgSi_tcfC",
+            "_$s24path_provider_foundation19messagesPigeonCodecCACycfC",
+            "_$s24path_provider_foundation20PathProviderApiSetupCMm",
+            "_$s24path_provider_foundation18PathProviderPluginCACycfc",
+            "_$s24path_provider_foundation11PigeonErrorC4code7message7detailsACSS_SSSgypSgtcfC"
+          ],
+          "objc_class": [
+            "_TtC24path_provider_foundation18PathProviderPlugin",
+            "PodsDummy_path_provider_foundation",
+            "_TtC24path_provider_foundation19messagesPigeonCodec"
+          ]
+        }
+      }
+    ],
+    "flags": [
+      {
+        "attributes": [
+          "not_app_extension_safe"
+        ]
+      }
+    ],
+    "install_names": [
+      {
+        "name": "@rpath/path_provider_foundation.framework/Versions/A/path_provider_foundation"
+      }
+    ],
+    "swift_abi": [
+      {
+        "abi": 7
+      }
+    ],
+    "target_info": [
+      {
+        "min_deployment": "11",
+        "target": "arm64-macos"
+      }
+    ]
+  },
+  "tapi_tbd_version": 5
+}

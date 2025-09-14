@@ -1,0 +1,23 @@
+{
+  'version': 0,
+  'use-external-names': 'false',
+  'case-sensitive': 'false',
+  'roots': [{
+    'type': 'directory',
+    'name': "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Products/Debug/file_selector_macos/file_selector_macos.framework/Modules"
+    'contents': [{
+      'type': 'file',
+      'name': "module.modulemap",
+      'external-contents': "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/file_selector_macos.build/unextended-module.modulemap",
+    }]
+    },
+    {
+    'type': 'directory',
+    'name': "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Products/Debug/file_selector_macos/file_selector_macos.framework/Headers"
+    'contents': [{
+      'type': 'file',
+      'name': "file_selector_macos-Swift.h",
+      'external-contents': "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/file_selector_macos.build/unextended-interface-header.h",
+    }]
+    }]
+}

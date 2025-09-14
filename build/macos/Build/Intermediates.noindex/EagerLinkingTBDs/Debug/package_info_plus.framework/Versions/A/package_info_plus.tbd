@@ -1,0 +1,37 @@
+{
+  "main_library": {
+    "exported_symbols": [
+      {
+        "data": {
+          "global": [
+            "_package_info_plusVersionNumber",
+            "_package_info_plusVersionString"
+          ],
+          "objc_class": [
+            "PodsDummy_package_info_plus",
+            "FPPPackageInfoPlusPlugin"
+          ]
+        }
+      }
+    ],
+    "flags": [
+      {
+        "attributes": [
+          "not_app_extension_safe"
+        ]
+      }
+    ],
+    "install_names": [
+      {
+        "name": "@rpath/package_info_plus.framework/Versions/A/package_info_plus"
+      }
+    ],
+    "target_info": [
+      {
+        "min_deployment": "11",
+        "target": "arm64-macos"
+      }
+    ]
+  },
+  "tapi_tbd_version": 5
+}

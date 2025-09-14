@@ -1,0 +1,18 @@
+{
+  "" : {
+    "diagnostics" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/flutter_timezone.build/Objects-normal/arm64/flutter_timezone-master.dia",
+    "emit-module-dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/flutter_timezone.build/Objects-normal/arm64/flutter_timezone-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/flutter_timezone.build/Objects-normal/arm64/flutter_timezone-master-emit-module.dia",
+    "swift-dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/flutter_timezone.build/Objects-normal/arm64/flutter_timezone-master.swiftdeps"
+  },
+  "/Users/hugocornellier/.pub-cache/hosted/pub.dev/flutter_timezone-4.1.1/macos/flutter_timezone/Sources/flutter_timezone/FlutterTimezonePlugin.swift" : {
+    "const-values" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/flutter_timezone.build/Objects-normal/arm64/FlutterTimezonePlugin.swiftconstvalues",
+    "dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/flutter_timezone.build/Objects-normal/arm64/FlutterTimezonePlugin.d",
+    "diagnostics" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/flutter_timezone.build/Objects-normal/arm64/FlutterTimezonePlugin.dia",
+    "index-unit-output-path" : "/Pods.build/Debug/flutter_timezone.build/Objects-normal/arm64/FlutterTimezonePlugin.o",
+    "llvm-bc" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/flutter_timezone.build/Objects-normal/arm64/FlutterTimezonePlugin.bc",
+    "object" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/flutter_timezone.build/Objects-normal/arm64/FlutterTimezonePlugin.o",
+    "swift-dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/flutter_timezone.build/Objects-normal/arm64/FlutterTimezonePlugin.swiftdeps",
+    "swiftmodule" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/flutter_timezone.build/Objects-normal/arm64/FlutterTimezonePlugin~partial.swiftmodule"
+  }
+}

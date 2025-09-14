@@ -1,0 +1,10 @@
+framework module flutter_local_notifications {
+  umbrella header "flutter_local_notifications-umbrella.h"
+
+  export *
+  module * { export * }
+}
+
+module flutter_local_notifications.__Swift {
+  exclude header "flutter_local_notifications-Swift.h"
+}

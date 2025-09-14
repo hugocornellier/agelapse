@@ -1,0 +1,135 @@
+{
+  "main_library": {
+    "exported_symbols": [
+      {
+        "data": {
+          "global": [
+            "_$s18url_launcher_macos16UrlLauncherErrorON",
+            "_$s18url_launcher_macos11PigeonErrorC4code7message7detailsACSS_SSSgypSgtcfc",
+            "_$s18url_launcher_macos11PigeonErrorC4codeSSvg",
+            "_$s18url_launcher_macos21UrlLauncherBoolResultV5errorAA0dE5ErrorOSgvs",
+            "_url_launcher_macosVersionNumber",
+            "_$s18url_launcher_macos11PigeonErrorCMn",
+            "_$s18url_launcher_macos21UrlLauncherBoolResultV6toListSayypSgGyF",
+            "_$s18url_launcher_macos19UrlLauncherApiSetupCMm",
+            "_$s18url_launcher_macos16UrlLauncherErrorOMn",
+            "_$s18url_launcher_macos11PigeonErrorC20localizedDescriptionSSvg",
+            "_$s18url_launcher_macos17UrlLauncherPluginC9canLaunch0A0AA0dE10BoolResultVSS_tKFTq",
+            "_$s18url_launcher_macos11PigeonErrorCfD",
+            "_$s18url_launcher_macos11PigeonErrorCfd",
+            "_$s18url_launcher_macos21UrlLauncherBoolResultV5errorAA0dE5ErrorOSgvg",
+            "_$s18url_launcher_macos16UrlLauncherErrorOSYAAMc",
+            "_$s18url_launcher_macos21UrlLauncherBoolResultV5errorAA0dE5ErrorOSgvpfi",
+            "_$s18url_launcher_macos19messagesPigeonCodecCfD",
+            "_$s18url_launcher_macos17UrlLauncherPluginCMn",
+            "_$s18url_launcher_macos19messagesPigeonCodecCACycfc",
+            "_$s18url_launcher_macos17UrlLauncherPluginC6launch0A0AA0dE10BoolResultVSS_tKF",
+            "_$s18url_launcher_macos11PigeonErrorC20localizedDescriptionSSvpMV",
+            "_url_launcher_macosVersionString",
+            "_$s18url_launcher_macos17UrlLauncherPluginCMa",
+            "_$s18url_launcher_macos21UrlLauncherBoolResultV5valueSbvpMV",
+            "_$s18url_launcher_macos11PigeonErrorC4code7message7detailsACSS_SSSgypSgtcfCTq",
+            "_$s18url_launcher_macos19UrlLauncherApiSetupC5setUp15binaryMessenger3api20messageChannelSuffixySo013FlutterBinaryK0_p_AA0deF0_pSgSStFZfA1_",
+            "_$s18url_launcher_macos14UrlLauncherApiMp",
+            "_$sSo11NSWorkspaceC18url_launcher_macos16SystemURLHandlerACWP",
+            "_$s18url_launcher_macos11PigeonErrorCMm",
+            "_$s18url_launcher_macos19messagesPigeonCodecC6sharedACvgZ",
+            "_$s18url_launcher_macos19messagesPigeonCodecCN",
+            "_$s18url_launcher_macos17UrlLauncherPluginCAA0dE3ApiAAWP",
+            "_$s18url_launcher_macos17UrlLauncherPluginCAA0dE3ApiAAMc",
+            "_$s18url_launcher_macos19UrlLauncherApiSetupCACycfC",
+            "_$s18url_launcher_macos21UrlLauncherBoolResultV5value5errorACSb_AA0dE5ErrorOSgtcfC",
+            "_$s18url_launcher_macos19messagesPigeonCodecC6sharedACvau",
+            "_$s18url_launcher_macos11PigeonErrorC7messageSSSgvpWvd",
+            "_$s18url_launcher_macos11PigeonErrorCs0E0AAMc",
+            "_$s18url_launcher_macos21UrlLauncherBoolResultV5valueSbvs",
+            "_$s18url_launcher_macos17UrlLauncherPluginC8register4withySo07FlutterF9Registrar_p_tFZ",
+            "_$s18url_launcher_macos16UrlLauncherErrorO8rawValueSivg",
+            "_$s18url_launcher_macos17UrlLauncherPluginCACycfc",
+            "_$s18url_launcher_macos17UrlLauncherPluginCN",
+            "_$s18url_launcher_macos19UrlLauncherApiSetupC5setUp15binaryMessenger3api20messageChannelSuffixySo013FlutterBinaryK0_p_AA0deF0_pSgSStFZ",
+            "_$s18url_launcher_macos19UrlLauncherApiSetupCACycfc",
+            "_$s18url_launcher_macos11PigeonErrorCMa",
+            "_$s18url_launcher_macos11PigeonErrorC7detailsypSgvpMV",
+            "_$s18url_launcher_macos17UrlLauncherPluginC9workspace33_E116BFEAF60020D55128F0847753BE7ELLAA16SystemURLHandler_pvs",
+            "_$s18url_launcher_macos21UrlLauncherBoolResultV5valueSbvg",
+            "_$s18url_launcher_macos11PigeonErrorC4codeSSvpWvd",
+            "_$s18url_launcher_macos21UrlLauncherBoolResultV8fromListyACSgSayypSgGFZ",
+            "_$sSo11NSWorkspaceC18url_launcher_macos16SystemURLHandlerACMc",
+            "_$s18url_launcher_macos16UrlLauncherErrorO8rawValueACSgSi_tcfC",
+            "_$s18url_launcher_macos11PigeonErrorC7messageSSSgvpMV",
+            "_$s18url_launcher_macos19messagesPigeonCodecCMa",
+            "_$s18url_launcher_macos14UrlLauncherApiTL",
+            "_$s18url_launcher_macos17UrlLauncherPluginCfD",
+            "_$s18url_launcher_macos19UrlLauncherApiSetupC5codecSo27FlutterStandardMessageCodecCvgZ",
+            "_$s18url_launcher_macos17UrlLauncherPluginC9canLaunch0A0AA0dE10BoolResultVSS_tKF",
+            "_$s18url_launcher_macos21UrlLauncherBoolResultVMn",
+            "_$s18url_launcher_macos16UrlLauncherErrorOSQAAMc",
+            "_$s18url_launcher_macos17UrlLauncherPluginCACycfC",
+            "_$s18url_launcher_macos21UrlLauncherBoolResultV5valueSbvM",
+            "_$s18url_launcher_macos11PigeonErrorCN",
+            "_$s18url_launcher_macos19UrlLauncherApiSetupCMa",
+            "_$s18url_launcher_macos11PigeonErrorC7messageSSSgvg",
+            "_$s18url_launcher_macos19UrlLauncherApiSetupCfD",
+            "_$s18url_launcher_macos16UrlLauncherErrorOSHAAMc",
+            "_$s18url_launcher_macos16SystemURLHandlerTL",
+            "_$s18url_launcher_macos19UrlLauncherApiSetupCMn",
+            "_$s18url_launcher_macos11PigeonErrorC7detailsypSgvpWvd",
+            "_$s18url_launcher_macos11PigeonErrorC4code7message7detailsACSS_SSSgypSgtcfC",
+            "_$s18url_launcher_macos16SystemURLHandlerMp",
+            "_$s18url_launcher_macos21UrlLauncherBoolResultV5errorAA0dE5ErrorOSgvpMV",
+            "_$s18url_launcher_macos17UrlLauncherPluginC6launch0A0AA0dE10BoolResultVSS_tKFTq",
+            "_$s18url_launcher_macos11PigeonErrorC7detailsypSgvg",
+            "_$s18url_launcher_macos19UrlLauncherApiSetupCACycfCTq",
+            "_$s18url_launcher_macos17UrlLauncherPluginCyAcA16SystemURLHandler_pcfC",
+            "_$s18url_launcher_macos16UrlLauncherErrorOMa",
+            "_$s18url_launcher_macos17UrlLauncherPluginC9workspace33_E116BFEAF60020D55128F0847753BE7ELLAA16SystemURLHandler_pvM",
+            "_$s18url_launcher_macos17UrlLauncherPluginC9workspace33_E116BFEAF60020D55128F0847753BE7ELLAA16SystemURLHandler_pvg",
+            "_$s18url_launcher_macos21UrlLauncherBoolResultVMa",
+            "_$s18url_launcher_macos21UrlLauncherBoolResultV5value5errorACSb_AA0dE5ErrorOSgtcfcfA0_",
+            "_$s18url_launcher_macos19UrlLauncherApiSetupCfd",
+            "_$s18url_launcher_macos17UrlLauncherPluginCyAcA16SystemURLHandler_pcfCTq",
+            "_$s18url_launcher_macos21UrlLauncherBoolResultV5errorAA0dE5ErrorOSgvM",
+            "_$s18url_launcher_macos19messagesPigeonCodecC6sharedACvpZ",
+            "_$s18url_launcher_macos19messagesPigeonCodecCMn",
+            "_$s18url_launcher_macos21UrlLauncherBoolResultVN",
+            "_$s18url_launcher_macos19UrlLauncherApiSetupCN",
+            "_$s18url_launcher_macos17UrlLauncherPluginCyAcA16SystemURLHandler_pcfc",
+            "_$s18url_launcher_macos19messagesPigeonCodecCACycfC",
+            "_$s18url_launcher_macos16UrlLauncherErrorO8rawValueSivpMV",
+            "_$s18url_launcher_macos11PigeonErrorC4codeSSvpMV"
+          ],
+          "objc_class": [
+            "_TtC18url_launcher_macos17UrlLauncherPlugin",
+            "PodsDummy_url_launcher_macos",
+            "_TtC18url_launcher_macos19messagesPigeonCodec"
+          ]
+        }
+      }
+    ],
+    "flags": [
+      {
+        "attributes": [
+          "not_app_extension_safe"
+        ]
+      }
+    ],
+    "install_names": [
+      {
+        "name": "@rpath/url_launcher_macos.framework/Versions/A/url_launcher_macos"
+      }
+    ],
+    "swift_abi": [
+      {
+        "abi": 7
+      }
+    ],
+    "target_info": [
+      {
+        "min_deployment": "11",
+        "target": "arm64-macos"
+      }
+    ]
+  },
+  "tapi_tbd_version": 5
+}

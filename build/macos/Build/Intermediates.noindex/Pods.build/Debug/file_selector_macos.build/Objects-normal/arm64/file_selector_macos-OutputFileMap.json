@@ -1,0 +1,28 @@
+{
+  "" : {
+    "diagnostics" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/file_selector_macos.build/Objects-normal/arm64/file_selector_macos-master.dia",
+    "emit-module-dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/file_selector_macos.build/Objects-normal/arm64/file_selector_macos-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/file_selector_macos.build/Objects-normal/arm64/file_selector_macos-master-emit-module.dia",
+    "swift-dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/file_selector_macos.build/Objects-normal/arm64/file_selector_macos-master.swiftdeps"
+  },
+  "/Users/hugocornellier/.pub-cache/hosted/pub.dev/file_selector_macos-0.9.4+4/macos/file_selector_macos/Sources/file_selector_macos/FileSelectorPlugin.swift" : {
+    "const-values" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/file_selector_macos.build/Objects-normal/arm64/FileSelectorPlugin.swiftconstvalues",
+    "dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/file_selector_macos.build/Objects-normal/arm64/FileSelectorPlugin.d",
+    "diagnostics" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/file_selector_macos.build/Objects-normal/arm64/FileSelectorPlugin.dia",
+    "index-unit-output-path" : "/Pods.build/Debug/file_selector_macos.build/Objects-normal/arm64/FileSelectorPlugin.o",
+    "llvm-bc" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/file_selector_macos.build/Objects-normal/arm64/FileSelectorPlugin.bc",
+    "object" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/file_selector_macos.build/Objects-normal/arm64/FileSelectorPlugin.o",
+    "swift-dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/file_selector_macos.build/Objects-normal/arm64/FileSelectorPlugin.swiftdeps",
+    "swiftmodule" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/file_selector_macos.build/Objects-normal/arm64/FileSelectorPlugin~partial.swiftmodule"
+  },
+  "/Users/hugocornellier/.pub-cache/hosted/pub.dev/file_selector_macos-0.9.4+4/macos/file_selector_macos/Sources/file_selector_macos/messages.g.swift" : {
+    "const-values" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/file_selector_macos.build/Objects-normal/arm64/messages.g.swiftconstvalues",
+    "dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/file_selector_macos.build/Objects-normal/arm64/messages.g.d",
+    "diagnostics" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/file_selector_macos.build/Objects-normal/arm64/messages.g.dia",
+    "index-unit-output-path" : "/Pods.build/Debug/file_selector_macos.build/Objects-normal/arm64/messages.g.o",
+    "llvm-bc" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/file_selector_macos.build/Objects-normal/arm64/messages.g.bc",
+    "object" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/file_selector_macos.build/Objects-normal/arm64/messages.g.o",
+    "swift-dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/file_selector_macos.build/Objects-normal/arm64/messages.g.swiftdeps",
+    "swiftmodule" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/file_selector_macos.build/Objects-normal/arm64/messages.g~partial.swiftmodule"
+  }
+}

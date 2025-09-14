@@ -1,0 +1,18 @@
+{
+  "" : {
+    "diagnostics" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/share_plus.build/Objects-normal/arm64/share_plus-master.dia",
+    "emit-module-dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/share_plus.build/Objects-normal/arm64/share_plus-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/share_plus.build/Objects-normal/arm64/share_plus-master-emit-module.dia",
+    "swift-dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/share_plus.build/Objects-normal/arm64/share_plus-master.swiftdeps"
+  },
+  "/Users/hugocornellier/.pub-cache/hosted/pub.dev/share_plus-11.1.0/macos/share_plus/Sources/share_plus/SharePlusMacosPlugin.swift" : {
+    "const-values" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/share_plus.build/Objects-normal/arm64/SharePlusMacosPlugin.swiftconstvalues",
+    "dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/share_plus.build/Objects-normal/arm64/SharePlusMacosPlugin.d",
+    "diagnostics" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/share_plus.build/Objects-normal/arm64/SharePlusMacosPlugin.dia",
+    "index-unit-output-path" : "/Pods.build/Debug/share_plus.build/Objects-normal/arm64/SharePlusMacosPlugin.o",
+    "llvm-bc" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/share_plus.build/Objects-normal/arm64/SharePlusMacosPlugin.bc",
+    "object" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/share_plus.build/Objects-normal/arm64/SharePlusMacosPlugin.o",
+    "swift-dependencies" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/share_plus.build/Objects-normal/arm64/SharePlusMacosPlugin.swiftdeps",
+    "swiftmodule" : "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/share_plus.build/Objects-normal/arm64/SharePlusMacosPlugin~partial.swiftmodule"
+  }
+}

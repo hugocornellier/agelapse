@@ -1,0 +1,10 @@
+framework module wakelock_plus {
+  umbrella header "wakelock_plus-umbrella.h"
+
+  export *
+  module * { export * }
+}
+
+module wakelock_plus.__Swift {
+  exclude header "wakelock_plus-Swift.h"
+}

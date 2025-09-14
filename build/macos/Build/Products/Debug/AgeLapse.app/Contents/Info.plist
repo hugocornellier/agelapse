@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>BuildMachineOSBuild</key>
+	<string>24B2083</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>AgeLapse</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.example.agelapse</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>AgeLapse</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.6.0</string>
+	<key>CFBundleSupportedPlatforms</key>
+	<array>
+		<string>MacOSX</string>
+	</array>
+	<key>CFBundleVersion</key>
+	<string>26</string>
+	<key>DTCompiler</key>
+	<string>com.apple.compilers.llvm.clang.1_0</string>
+	<key>DTPlatformBuild</key>
+	<string>24C94</string>
+	<key>DTPlatformName</key>
+	<string>macosx</string>
+	<key>DTPlatformVersion</key>
+	<string>15.2</string>
+	<key>DTSDKBuild</key>
+	<string>24C94</string>
+	<key>DTSDKName</key>
+	<string>macosx15.2</string>
+	<key>DTXcode</key>
+	<string>1620</string>
+	<key>DTXcodeBuild</key>
+	<string>16C5032a</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>11.0</string>
+	<key>NSCameraUsageDescription</key>
+	<string>AgeLapse needs camera access to take photos for creating personalized time-lapse videos of your face.</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright © 2025 com.example. All rights reserved.</string>
+	<key>NSMainNibFile</key>
+	<string>MainMenu</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>AgeLapse needs permission to save media to your photo library, such as photos or the compiled timelapse video.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>AgeLapse needs access to your photo library to import photos for creating your time-lapse videos.</string>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+</dict>
+</plist>

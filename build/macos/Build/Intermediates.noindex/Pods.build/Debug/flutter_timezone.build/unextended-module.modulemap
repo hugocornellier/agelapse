@@ -1,0 +1,10 @@
+framework module flutter_timezone {
+  umbrella header "flutter_timezone-umbrella.h"
+
+  export *
+  module * { export * }
+}
+
+module flutter_timezone.__Swift {
+  exclude header "flutter_timezone-Swift.h"
+}

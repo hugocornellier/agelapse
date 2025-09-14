@@ -1,0 +1,92 @@
+{
+  "main_library": {
+    "exported_symbols": [
+      {
+        "data": {
+          "global": [
+            "_$s10share_plus29SharePlusMacosSuccessDelegateCACycfC",
+            "_$s10share_plus29SharePlusMacosSuccessDelegateC20sharingServicePicker_11delegateForSo09NSSharingiG0_pSgSo0miJ0C_So0mI0CtF",
+            "_$s10share_plus29SharePlusMacosSuccessDelegateC7subject33_878151ABD03943A16A3458DA188B3E29LLSSSgvpfi",
+            "_$s10share_plus29SharePlusMacosSuccessDelegateC8keepSelf33_878151ABD03943A16A3458DA188B3E29LLyycSgvg",
+            "_$s10share_plus29SharePlusMacosSuccessDelegateC7subject8callbackACSSSg_yypSgctcfCTq",
+            "_$s10share_plus29SharePlusMacosSuccessDelegateC20sharingServicePicker_9didChooseySo09NSSharingiJ0C_So0mI0CSgtFTq",
+            "_$s10share_plus29SharePlusMacosSuccessDelegateCMa",
+            "_$s10share_plus20SharePlusMacosPluginC9registrarACSo07FlutterF9Registrar_p_tcfC",
+            "_$s10share_plus20SharePlusMacosPluginCACycfC",
+            "_$s10share_plus20SharePlusMacosPluginC10originRect33_878151ABD03943A16A3458DA188B3E29LLySo6CGRectVSDySSypGF",
+            "_$s10share_plus20SharePlusMacosPluginC7subject33_878151ABD03943A16A3458DA188B3E29LLSSSgvpfi",
+            "_$s10share_plus29SharePlusMacosSuccessDelegateC7subject33_878151ABD03943A16A3458DA188B3E29LLSSSgvs",
+            "_$s10share_plus20SharePlusMacosPluginCMa",
+            "_$s10share_plus20SharePlusMacosPluginC7subject33_878151ABD03943A16A3458DA188B3E29LLSSSgvM",
+            "_$s10share_plus29SharePlusMacosSuccessDelegateC8keepSelf33_878151ABD03943A16A3458DA188B3E29LLyycSgvs",
+            "_$s10share_plus29SharePlusMacosSuccessDelegateCfD",
+            "_$s10share_plus29SharePlusMacosSuccessDelegateC20sharingServicePicker_9didChooseySo09NSSharingiJ0C_So0mI0CSgtF",
+            "_$s10share_plus20SharePlusMacosPluginC7subject33_878151ABD03943A16A3458DA188B3E29LLSSSgvs",
+            "_$s10share_plus20SharePlusMacosPluginC20sharingServicePicker_11delegateForSo09NSSharingH8Delegate_pSgSo0lhI0C_So0lH0CtFTq",
+            "_$s10share_plus29SharePlusMacosSuccessDelegateC7subject33_878151ABD03943A16A3458DA188B3E29LLSSSgvM",
+            "_$s10share_plus20SharePlusMacosPluginC9registrar33_878151ABD03943A16A3458DA188B3E29LLSo07FlutterF9Registrar_pvg",
+            "_$s10share_plus29SharePlusMacosSuccessDelegateC20sharingServicePicker_11delegateForSo09NSSharingiG0_pSgSo0miJ0C_So0mI0CtFTq",
+            "_$s10share_plus29SharePlusMacosSuccessDelegateC4keepACXDyFTq",
+            "_$s10share_plus29SharePlusMacosSuccessDelegateCACycfc",
+            "_$s10share_plus20SharePlusMacosPluginC6handle_6resultySo17FlutterMethodCallC_yypSgctF",
+            "_$s10share_plus20SharePlusMacosPluginCN",
+            "_$s10share_plus20SharePlusMacosPluginC7subject33_878151ABD03943A16A3458DA188B3E29LLSSSgvg",
+            "_$s10share_plus20SharePlusMacosPluginC20sharingServicePicker_11delegateForSo09NSSharingH8Delegate_pSgSo0lhI0C_So0lH0CtF",
+            "_$s10share_plus29SharePlusMacosSuccessDelegateC8keepSelf33_878151ABD03943A16A3458DA188B3E29LLyycSgvpfi",
+            "_$s10share_plus29SharePlusMacosSuccessDelegateCN",
+            "_$s10share_plus20SharePlusMacosPluginC9registrar33_878151ABD03943A16A3458DA188B3E29LLSo07FlutterF9Registrar_pvM",
+            "_$s10share_plus29SharePlusMacosSuccessDelegateC8callback33_878151ABD03943A16A3458DA188B3E29LLyyypSgcvs",
+            "_share_plusVersionString",
+            "_$s10share_plus29SharePlusMacosSuccessDelegateC7subject8callbackACSSSg_yypSgctcfc",
+            "_$s10share_plus20SharePlusMacosPluginC8register4withySo07FlutterF9Registrar_p_tFZ",
+            "_$s10share_plus29SharePlusMacosSuccessDelegateC8callback33_878151ABD03943A16A3458DA188B3E29LLyyypSgcvg",
+            "_$s10share_plus20SharePlusMacosPluginC6handle_6resultySo17FlutterMethodCallC_yypSgctFTq",
+            "_$s10share_plus20SharePlusMacosPluginCMn",
+            "_$s10share_plus20SharePlusMacosPluginC9registrarACSo07FlutterF9Registrar_p_tcfc",
+            "_$s10share_plus29SharePlusMacosSuccessDelegateC7subject8callbackACSSSg_yypSgctcfC",
+            "_$s10share_plus20SharePlusMacosPluginC9registrarACSo07FlutterF9Registrar_p_tcfCTq",
+            "_$s10share_plus20SharePlusMacosPluginCACycfc",
+            "_$s10share_plus29SharePlusMacosSuccessDelegateCMn",
+            "_$s10share_plus20SharePlusMacosPluginC9registrar33_878151ABD03943A16A3458DA188B3E29LLSo07FlutterF9Registrar_pvs",
+            "_share_plusVersionNumber",
+            "_$s10share_plus29SharePlusMacosSuccessDelegateC8callback33_878151ABD03943A16A3458DA188B3E29LLyyypSgcvM",
+            "_$s10share_plus29SharePlusMacosSuccessDelegateC4keepACXDyF",
+            "_$s10share_plus29SharePlusMacosSuccessDelegateC7subject33_878151ABD03943A16A3458DA188B3E29LLSSSgvg",
+            "_$s10share_plus20SharePlusMacosPluginCfD",
+            "_$s10share_plus29SharePlusMacosSuccessDelegateC8keepSelf33_878151ABD03943A16A3458DA188B3E29LLyycSgvM",
+            "_$s10share_plus20SharePlusMacosPluginC0A5Items33_878151ABD03943A16A3458DA188B3E29LL_7subject6origin4view8callbackySayypG_SSSgSo6CGRectVSo6NSViewCyypSgctF"
+          ],
+          "objc_class": [
+            "_TtC10share_plus20SharePlusMacosPlugin",
+            "_TtC10share_plus29SharePlusMacosSuccessDelegate",
+            "PodsDummy_share_plus"
+          ]
+        }
+      }
+    ],
+    "flags": [
+      {
+        "attributes": [
+          "not_app_extension_safe"
+        ]
+      }
+    ],
+    "install_names": [
+      {
+        "name": "@rpath/share_plus.framework/Versions/A/share_plus"
+      }
+    ],
+    "swift_abi": [
+      {
+        "abi": 7
+      }
+    ],
+    "target_info": [
+      {
+        "min_deployment": "11",
+        "target": "arm64-macos"
+      }
+    ]
+  },
+  "tapi_tbd_version": 5
+}

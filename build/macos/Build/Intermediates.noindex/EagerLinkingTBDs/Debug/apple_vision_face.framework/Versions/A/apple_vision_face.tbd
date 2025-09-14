@@ -1,0 +1,63 @@
+{
+  "main_library": {
+    "exported_symbols": [
+      {
+        "data": {
+          "global": [
+            "_$s17apple_vision_face21AppleVisionFacePluginC06assessF14CaptureQualityySDySSypSgGSo17VNFaceObservationC_So6CGSizeVtF",
+            "_$s17apple_vision_face21AppleVisionFacePluginC8registrySo22FlutterTextureRegistry_pvpWvd",
+            "_$s17apple_vision_face21AppleVisionFacePluginCyACSo22FlutterTextureRegistry_pcfC",
+            "_$s17apple_vision_face21AppleVisionFacePluginC06assessF14CaptureQualityySDySSypSgGSo17VNFaceObservationC_So6CGSizeVtFTq",
+            "_apple_vision_faceVersionNumber",
+            "_$s17apple_vision_face21AppleVisionFacePluginC12convertImageySDySSypSgG10Foundation4DataV_So6CGSizeVSo8CIFormataSStF",
+            "_$s17apple_vision_face21AppleVisionFacePluginCyACSo22FlutterTextureRegistry_pcfc",
+            "_$s17apple_vision_face21AppleVisionFacePluginCACycfC",
+            "_$s17apple_vision_face21AppleVisionFacePluginCyACSo22FlutterTextureRegistry_pcfCTq",
+            "_$s17apple_vision_face21AppleVisionFacePluginC8registrySo22FlutterTextureRegistry_pvpMV",
+            "_$s17apple_vision_face21AppleVisionFacePluginCfD",
+            "_$s17apple_vision_face21AppleVisionFacePluginC18processObservationySDySSypSgGSo06VNFaceI0C_So6CGSizeVtFTq",
+            "_apple_vision_faceVersionString",
+            "_$s17apple_vision_face21AppleVisionFacePluginC6handle_6resultySo17FlutterMethodCallC_yypSgctF",
+            "_$s17apple_vision_face21AppleVisionFacePluginC6handle_6resultySo17FlutterMethodCallC_yypSgctFTq",
+            "_$s17apple_vision_face21AppleVisionFacePluginC18processObservationySDySSypSgGSo06VNFaceI0C_So6CGSizeVtF",
+            "_$s17apple_vision_face21AppleVisionFacePluginCMa",
+            "_$s17apple_vision_face21AppleVisionFacePluginC8registrySo22FlutterTextureRegistry_pvg",
+            "_$s17apple_vision_face21AppleVisionFacePluginCN",
+            "_$s17apple_vision_face21AppleVisionFacePluginC12convertImageySDySSypSgG10Foundation4DataV_So6CGSizeVSo8CIFormataSStFTq",
+            "_$s17apple_vision_face21AppleVisionFacePluginCACycfc",
+            "_$s17apple_vision_face21AppleVisionFacePluginCMn",
+            "_$s17apple_vision_face21AppleVisionFacePluginC8register4withySo07FlutterG9Registrar_p_tFZ"
+          ],
+          "objc_class": [
+            "PodsDummy_apple_vision_face",
+            "_TtC17apple_vision_face21AppleVisionFacePlugin"
+          ]
+        }
+      }
+    ],
+    "flags": [
+      {
+        "attributes": [
+          "not_app_extension_safe"
+        ]
+      }
+    ],
+    "install_names": [
+      {
+        "name": "@rpath/apple_vision_face.framework/Versions/A/apple_vision_face"
+      }
+    ],
+    "swift_abi": [
+      {
+        "abi": 7
+      }
+    ],
+    "target_info": [
+      {
+        "min_deployment": "11",
+        "target": "arm64-macos"
+      }
+    ]
+  },
+  "tapi_tbd_version": 5
+}

@@ -1,0 +1,10 @@
+framework module window_manager {
+  umbrella header "window_manager-umbrella.h"
+
+  export *
+  module * { export * }
+}
+
+module window_manager.__Swift {
+  exclude header "window_manager-Swift.h"
+}

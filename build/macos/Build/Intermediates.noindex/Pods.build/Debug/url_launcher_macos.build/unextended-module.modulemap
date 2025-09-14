@@ -1,0 +1,10 @@
+framework module url_launcher_macos {
+  umbrella header "url_launcher_macos-umbrella.h"
+
+  export *
+  module * { export * }
+}
+
+module url_launcher_macos.__Swift {
+  exclude header "url_launcher_macos-Swift.h"
+}

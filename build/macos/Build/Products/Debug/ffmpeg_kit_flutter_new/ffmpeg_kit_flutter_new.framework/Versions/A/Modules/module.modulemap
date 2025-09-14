@@ -1,0 +1,6 @@
+framework module ffmpeg_kit_flutter_new {
+  umbrella header "ffmpeg_kit_flutter_new-umbrella.h"
+
+  export *
+  module * { export * }
+}

@@ -1,0 +1,74 @@
+{
+  "main_library": {
+    "exported_symbols": [
+      {
+        "data": {
+          "global": [
+            "_$s13wakelock_plus23WakelockPlusMacosPluginC11assertionIDs6UInt32VvpMV",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginC07disableC0yyFTq",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginC06enableC06reasonySS_tFTq",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginC11assertionIDs6UInt32VvMTq",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginC11assertionIDs6UInt32VvM",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginC0A7EnabledSbvs",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginCfD",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginC11assertionIDs6UInt32VvpWvd",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginC0A7EnabledSbvpWvd",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginC06enableC06reasonySS_tF",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginC6handle_6resultySo17FlutterMethodCallC_yypSgctF",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginC0A7EnabledSbvsTq",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginC11assertionIDs6UInt32Vvs",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginC0A7EnabledSbvgTq",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginCACycfC",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginC0A7EnabledSbvg",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginC11assertionIDs6UInt32VvgTq",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginCACycfc",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginC11assertionIDs6UInt32Vvpfi",
+            "_wakelock_plusVersionString",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginC6handle_6resultySo17FlutterMethodCallC_yypSgctFTq",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginC06enableC06reasonySS_tFfA_",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginC8register4withySo07FlutterF9Registrar_p_tFZ",
+            "_wakelock_plusVersionNumber",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginC07disableC0yyF",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginC11assertionIDs6UInt32Vvg",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginCMa",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginC11assertionIDs6UInt32VvsTq",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginC0A7EnabledSbvpfi",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginC0A7EnabledSbvM",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginCMn",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginC0A7EnabledSbvMTq",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginCN",
+            "_$s13wakelock_plus23WakelockPlusMacosPluginC0A7EnabledSbvpMV"
+          ],
+          "objc_class": [
+            "_TtC13wakelock_plus23WakelockPlusMacosPlugin",
+            "PodsDummy_wakelock_plus"
+          ]
+        }
+      }
+    ],
+    "flags": [
+      {
+        "attributes": [
+          "not_app_extension_safe"
+        ]
+      }
+    ],
+    "install_names": [
+      {
+        "name": "@rpath/wakelock_plus.framework/Versions/A/wakelock_plus"
+      }
+    ],
+    "swift_abi": [
+      {
+        "abi": 7
+      }
+    ],
+    "target_info": [
+      {
+        "min_deployment": "11",
+        "target": "arm64-macos"
+      }
+    ]
+  },
+  "tapi_tbd_version": 5
+}

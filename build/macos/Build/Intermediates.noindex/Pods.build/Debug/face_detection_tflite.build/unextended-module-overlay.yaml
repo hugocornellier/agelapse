@@ -1,0 +1,23 @@
+{
+  'version': 0,
+  'use-external-names': 'false',
+  'case-sensitive': 'false',
+  'roots': [{
+    'type': 'directory',
+    'name': "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Products/Debug/face_detection_tflite/face_detection_tflite.framework/Modules"
+    'contents': [{
+      'type': 'file',
+      'name': "module.modulemap",
+      'external-contents': "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/face_detection_tflite.build/unextended-module.modulemap",
+    }]
+    },
+    {
+    'type': 'directory',
+    'name': "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Products/Debug/face_detection_tflite/face_detection_tflite.framework/Headers"
+    'contents': [{
+      'type': 'file',
+      'name': "face_detection_tflite-Swift.h",
+      'external-contents': "/Users/hugocornellier/IdeaProjects/agelapse/build/macos/Build/Intermediates.noindex/Pods.build/Debug/face_detection_tflite.build/unextended-interface-header.h",
+    }]
+    }]
+}
