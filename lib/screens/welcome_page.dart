@@ -78,7 +78,7 @@ class WelcomePagePartTwoState extends State<WelcomePagePartTwo> {
             ),
             Expanded(child: Container()),
             _buildActionButton("Create Project"),
-            const SizedBox(height: 64),
+            const SizedBox(height: 32),
           ],
         ),
       ),

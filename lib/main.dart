@@ -31,9 +31,9 @@ void main() async {
     final List<Map<String, dynamic>> projects = await DB.instance.getAllProjects();
     final bool hasProjects = projects.isNotEmpty;
 
-    const Size minDefault = Size(800, 450);
-    const Size minIntro = Size(800, 850);
-    final Size initialDefault = hasProjects ? const Size(1200, 850) : minIntro;
+    const Size minDefault = Size(840, 450);
+    const Size minIntro = Size(840, 750);
+    final Size initialDefault = hasProjects ? const Size(1200, 750) : minIntro;
 
     final Size startSize = hasProjects
         ? initialDefault
