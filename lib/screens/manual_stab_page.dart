@@ -109,7 +109,7 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
     canvasHeight = projectOrientation == "landscape" ? shortSide : longSide;
 
     String localRawPath;
-    if (widget.imagePath.contains('/stabilized/')) {
+    if (widget.imagePath.contains('/stabilized/') || widget.imagePath.contains('\\stabilized\\')) {
       localRawPath = await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
         p.basenameWithoutExtension(widget.imagePath),
         widget.projectId,
