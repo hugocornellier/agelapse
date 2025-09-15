@@ -99,19 +99,46 @@ class ProjectsPageState extends State<ProjectsPage> {
   }
 
   Widget _buildWelcomePageDesktop() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 900),
-            child: SizedBox(
-              height: constraints.maxHeight,
-              child: _buildWelcomePage(),
-            ),
-          ),
-        );
+    return GestureDetector(
+      onTap: () {
+        FocusScope.of(context).unfocus();
       },
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(height: 32),
+            _buildWaveImage(),
+            const SizedBox(height: 64),
+            Image.asset(
+              'assets/images/agelapselogo.png',
+              width: 160,
+              fit: BoxFit.cover,
+            ),
+            const SizedBox(height: 64),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.0),
+              child: Text(
+                'The most powerful tool for creating aging timelapses.'
+                    '\n\n'
+                    '100% free, forever.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Expanded(child: Container()),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32.0),
+              child: _buildActionButton("Get Started"),
+            ),
+            const SizedBox(height: 32),
+          ],
+        ),
+      ),
     );
   }
 
