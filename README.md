@@ -13,7 +13,7 @@
 
 <p align="center">
   <img
-    src="/agelapse-mobile/assets/demo.gif"
+    src="/assets/demo.gif"
     alt="Demo animation"
     width="540"
   />
