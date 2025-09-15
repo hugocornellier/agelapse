@@ -64,6 +64,7 @@ class MainNavigationState extends State<MainNavigation> {
   late String projectIdStr;
   bool _hideNavBar = false;
   int progressPercent = 0;
+  int _importMaxProgress = 0;
   bool userOnImportTutorial = false;
   List<String> _imageFiles = [];
   List<String> _stabilizedImageFiles = [];
@@ -196,30 +197,16 @@ class MainNavigationState extends State<MainNavigation> {
       _isImporting = true;
     });
 
+    _importMaxProgress = 0;
+
     final List<String> allPhotosBefore = await DB.instance.getAllPhotoPathsByProjectID(widget.projectId);
     final int photoCountBeforeImport = allPhotosBefore.length;
 
     final List<File> files = pickedFiles.paths.map((path) => File(path!)).toList();
-    int fileCount = files.length;
-    int i = 0;
     for (File file in files) {
       await processFileCallback(file);
-
-      try {
-        if (i % (fileCount ~/ 10) == 0 || i == fileCount - 1) {
-          setState(() {
-            progressPercent = i ~/ fileCount;
-          });
-        }
-      } catch(e) {
-        print("[processPickedFiles] Error caught: $e");
-      } finally {
-        i++;
-      }
     }
 
-    // Automatically set project orientation based on imported photos.
-    // eg: If all imported photos were landscape, set project to landscape
     if (photoCountBeforeImport == 0) {
       print("[processPickedFiles] photoCountBeforeImport == 0 is true");
 
@@ -238,11 +225,24 @@ class MainNavigationState extends State<MainNavigation> {
       _isImporting = false;
       progressPercent = 0;
     });
+
+    _importMaxProgress = 0;
   }
 
   void setProgressInMain(int progressIn) {
+    int next = progressIn;
+    if (_isImporting && progressIn < _importMaxProgress && progressIn != 100) {
+      next = _importMaxProgress;
+    } else {
+      if (progressIn > _importMaxProgress) {
+        _importMaxProgress = progressIn;
+      }
+      if (progressIn == 100) {
+        _importMaxProgress = 100;
+      }
+    }
     setState(() {
-      progressPercent = progressIn;
+      progressPercent = next;
     });
   }
 
