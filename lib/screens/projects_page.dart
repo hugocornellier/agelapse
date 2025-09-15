@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:window_manager/window_manager.dart';
 
 import '../services/database_helper.dart';
 import '../styles/styles.dart';
@@ -21,10 +20,6 @@ class ProjectsPage extends StatefulWidget {
 class ProjectsPageState extends State<ProjectsPage> {
   List<Map<String, dynamic>> _projects = [];
   final TextEditingController _projectNameController = TextEditingController();
-  bool _introConstraintsApplied = false;
-  Size? _prevSize;
-  static const double _introMinHeight = 950;
-  static const Size _desktopDefaultMinSize = Size(800, 450);
 
   @override
   void initState() {
@@ -41,13 +36,6 @@ class ProjectsPageState extends State<ProjectsPage> {
   Future<void> _getProjects() async {
     final List<Map<String, dynamic>> projects = await DB.instance.getAllProjects();
     setState(() => _projects = projects);
-    if (_isDesktop()) {
-      if (_projects.isEmpty) {
-        WidgetsBinding.instance.addPostFrameCallback((_) => _applyIntroWindowConstraints());
-      } else {
-        WidgetsBinding.instance.addPostFrameCallback((_) => _restoreWindowConstraints());
-      }
-    }
   }
 
   @override
@@ -228,33 +216,8 @@ class ProjectsPageState extends State<ProjectsPage> {
     );
   }
 
-  bool _isDesktop() {
-    return !kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
-  }
-
-  Future<void> _applyIntroWindowConstraints() async {
-    if (!_isDesktop() || _introConstraintsApplied) return;
-    _prevSize = await windowManager.getSize();
-    final currentSize = _prevSize!;
-    await windowManager.setMinimumSize(Size(_desktopDefaultMinSize.width, _introMinHeight));
-    if (currentSize.height < _introMinHeight) {
-      await windowManager.setSize(Size(currentSize.width, _introMinHeight));
-    }
-    _introConstraintsApplied = true;
-  }
-
-  Future<void> _restoreWindowConstraints() async {
-    if (!_isDesktop() || !_introConstraintsApplied) return;
-    await windowManager.setMinimumSize(_desktopDefaultMinSize);
-    if (_prevSize != null) {
-      await windowManager.setSize(_prevSize!);
-    }
-    _introConstraintsApplied = false;
-  }
-
   @override
   void dispose() {
-    _restoreWindowConstraints();
     _projectNameController.dispose();
     super.dispose();
   }

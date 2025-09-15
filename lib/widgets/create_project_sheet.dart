@@ -57,7 +57,6 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
     return Container(
       padding: const EdgeInsets.all(16.0),
       height: 500,
-      width: MediaQuery.of(context).size.height * 0.9,
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.85,
       ),

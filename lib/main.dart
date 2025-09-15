@@ -27,17 +27,36 @@ void main() async {
     await DB.instance.createTablesIfNotExist();
 
     await windowManager.ensureInitialized();
-    const minimum = Size(800, 450);
-    const initial = Size(1200, 800);
-    const options = WindowOptions(
-      size: initial,
-      minimumSize: minimum,
+
+    final List<Map<String, dynamic>> projects = await DB.instance.getAllProjects();
+    final bool hasProjects = projects.isNotEmpty;
+
+    const Size minDefault = Size(800, 450);
+    const Size minIntro = Size(800, 850);
+    final Size initialDefault = hasProjects ? const Size(1200, 850) : minIntro;
+
+    final Size startSize = hasProjects
+        ? initialDefault
+        : Size(initialDefault.width,
+        initialDefault.height < minIntro.height ? minIntro.height : initialDefault.height);
+
+    final options = WindowOptions(
+      size: startSize,
+      minimumSize: hasProjects ? minDefault : minIntro,
       center: true,
       title: 'AgeLapse',
     );
+
     await windowManager.waitUntilReadyToShow(options, () async {
       await windowManager.show();
       await windowManager.focus();
+
+      if (!hasProjects) {
+        final currentSize = await windowManager.getSize();
+        if (currentSize.height < minIntro.height) {
+          await windowManager.setSize(Size(currentSize.width, minIntro.height));
+        }
+      }
     });
   } else {
     FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
