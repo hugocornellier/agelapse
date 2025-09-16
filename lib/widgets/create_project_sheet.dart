@@ -180,6 +180,11 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
         widthFactor: 1.0,
         child: TextField(
           controller: _nameController,
+          onSubmitted: (_) {
+            if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+              _createProject();
+            }
+          },
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             filled: true,
@@ -197,80 +202,72 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
     );
   }
 
+  void _createProject() async {
+    final projectName = _nameController.text.trim();
+    if (projectName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Project name cannot be blank')),
+      );
+      return;
+    }
+
+    String projectType = 'face';
+    switch (_selectedImage) {
+      case 'assets/images/face.png':
+        projectType = 'face';
+        break;
+      case 'assets/images/musc.png':
+        projectType = 'musc';
+        break;
+      case 'assets/images/preg.png':
+        projectType = 'pregnancy';
+        break;
+    }
+
+    final int projectId = await DB.instance.addProject(
+      projectName,
+      projectType,
+      DateTime.now().millisecondsSinceEpoch,
+    );
+
+    try {
+      final String defaultProject = await DB.instance.getSettingValueByTitle('default_project');
+      if (defaultProject == "none") {
+        await DB.instance.setSettingByTitle('default_project', projectId.toString());
+      }
+    } catch (e) {
+      print("Error while setting new default project: $e");
+    }
+
+    try {
+      DateTime fivePMLocalTime = NotificationUtil.getFivePMLocalTime();
+      final dailyNotificationTime = fivePMLocalTime.millisecondsSinceEpoch.toString();
+
+      await DB.instance.setSettingByTitle('daily_notification_time', dailyNotificationTime, projectId.toString());
+      await NotificationUtil.initializeNotifications();
+      await NotificationUtil.scheduleDailyNotification(projectId, dailyNotificationTime);
+    } catch (e) {
+      print("Error while setting up notifications: $e");
+    }
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MainNavigation(
+          projectId: projectId,
+          projectName: projectName,
+          showFlashingCircle: false,
+        ),
+      ),
+    );
+  }
+
   Widget _buildActionButton() {
     return FractionallySizedBox(
       widthFactor: 1.0,
       child: ElevatedButton(
-        onPressed: () async {
-          final projectName = _nameController.text.trim();
-          if (projectName.isEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Project name cannot be blank')),
-            );
-            return;
-          }
+          onPressed: _createProject,
 
-          // Determine the project type based on the selected image
-          String projectType = 'face';
-          switch (_selectedImage) {
-            case 'assets/images/face.png':
-              projectType = 'face';
-              break;
-            case 'assets/images/musc.png':
-              projectType = 'musc';
-              break;
-            case 'assets/images/preg.png':
-              projectType = 'pregnancy';
-              break;
-            default:
-              projectType = 'unknown';
-          }
-
-          // Create project
-          final int projectId = await DB.instance.addProject(
-            projectName,
-            projectType,
-            DateTime.now().millisecondsSinceEpoch
-          );
-
-          print("Project was created... new projectID is $projectId");
-
-          try {
-            final String defaultProject = await DB.instance.getSettingValueByTitle('default_project');
-            if (defaultProject == "none") {
-              await DB.instance.setSettingByTitle('default_project', projectId.toString());
-            }
-          } catch(e) {
-            print("Error while setting new default project: $e");
-          }
-
-          // initialize notif col in settings
-          final String dnt = await SettingsUtil.loadDailyNotificationTime(projectId.toString());
-
-          // Initialize notifications
-          try {
-            DateTime fivePMLocalTime = NotificationUtil.getFivePMLocalTime();
-            final dailyNotificationTime = fivePMLocalTime.millisecondsSinceEpoch.toString();
-
-            await DB.instance.setSettingByTitle('daily_notification_time', dailyNotificationTime, projectId.toString());
-            await NotificationUtil.initializeNotifications();
-            await NotificationUtil.scheduleDailyNotification(projectId, dailyNotificationTime);
-          } catch(e) {
-            print("Error while setting up notifications: $e");
-          }
-
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => MainNavigation(
-                projectId: projectId,
-                projectName: projectName,
-                showFlashingCircle: false,
-              ),
-            ),
-          );
-        }
-        ,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.darkerLightBlue,
           minimumSize: const Size(double.infinity, 50),
