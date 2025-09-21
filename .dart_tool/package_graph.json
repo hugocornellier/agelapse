@@ -5,7 +5,7 @@
   "packages": [
     {
       "name": "agelapse",
-      "version": "1.6.0+26",
+      "version": "2.0.0+27",
       "dependencies": [
         "animated_bottom_navigation_bar",
         "apple_vision_face",

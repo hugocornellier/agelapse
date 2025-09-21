@@ -22,18 +22,17 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
+	<key>NSCameraUsageDescription</key>
+	<string>AgeLapse needs camera access to take photos for creating personalized time-lapse videos of your face.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>$(PRODUCT_COPYRIGHT)</string>
 	<key>NSMainNibFile</key>
 	<string>MainMenu</string>
-	<key>NSPrincipalClass</key>
-	<string>NSApplication</string>
-
-	<key>NSCameraUsageDescription</key>
-	<string>AgeLapse needs camera access to take photos for creating personalized time-lapse videos of your face.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>AgeLapse needs access to your photo library to import photos for creating your time-lapse videos.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>AgeLapse needs permission to save media to your photo library, such as photos or the compiled timelapse video.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>AgeLapse needs access to your photo library to import photos for creating your time-lapse videos.</string>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
 </dict>
 </plist>
