@@ -12,7 +12,7 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
-DefaultDirName={pf}\{#MyAppName}
+DefaultDirName={pf64}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 OutputDir=dist\installer
 OutputBaseFilename={#MyAppName}_Setup_{#MyAppVersion}_x64
@@ -47,20 +47,25 @@ var
   Installed: Cardinal;
 begin
   Result := False;
-  if RegQueryDWordValue(HKLM64, 'SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64', 'Installed', Installed) then
-    if Installed = 1 then
-      Result := True;
-  if not Result then
-    if RegQueryDWordValue(HKLM, 'SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64', 'Installed', Installed) then
-      if Installed = 1 then
-        Result := True;
+
+  if RegQueryDWordValue(HKLM64, 'SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64', 'Installed', Installed) and (Installed = 1) then
+    Result := True;
+
+  if (not Result) and RegQueryDWordValue(HKLM64, 'SOFTWARE\Microsoft\VisualStudio\VC\Runtimes\x64', 'Installed', Installed) and (Installed = 1) then
+    Result := True;
+
+  if (not Result) and RegQueryDWordValue(HKLM, 'SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64', 'Installed', Installed) and (Installed = 1) then
+    Result := True;
+
+  if (not Result) and RegQueryDWordValue(HKLM, 'SOFTWARE\Microsoft\VisualStudio\VC\Runtimes\x64', 'Installed', Installed) and (Installed = 1) then
+    Result := True;
 end;
 
 function NeedsVCRedist: Boolean;
 begin
-  Result := not VCInstalled;
+  Result := not VCInstalled();
 end;
 
 [Run]
-Filename: "{tmp}\VC_redist.x64.exe"; Parameters: "/install /quiet /norestart"; StatusMsg: "Installing Microsoft Visual C++ Runtime..."; Check: NeedsVCRedist; Flags: skipifdoesntexist
+Filename: "{tmp}\VC_redist.x64.exe"; Parameters: "/install /quiet /norestart"; StatusMsg: "Installing Microsoft Visual C++ Runtime..."; Check: NeedsVCRedist(); Flags: skipifdoesntexist
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent
