@@ -33,9 +33,14 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 ; Entire Flutter release output
 Source: "build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
-; Ensure critical Flutter runtime files are present (belt & suspenders)
-Source: "build\windows\x64\runner\Release\icudtl.dat"; DestDir: "{app}"; Flags: ignoreversion
-Source: "build\windows\x64\runner\Release\d3dcompiler_47.dll"; DestDir: "{app}"; Flags: ignoreversion
+; Ensure critical Flutter runtime files (handle layout differences across Flutter versions)
+; Top-level ICU (older/most builds)
+Source: "build\windows\x64\runner\Release\icudtl.dat"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+; ICU sometimes lives under data\ (newer/varied builds) — also copy a top-level copy just in case
+Source: "build\windows\x64\runner\Release\data\icudtl.dat"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+
+; D3D compiler may or may not be emitted with your build; include if present
+Source: "build\windows\x64\runner\Release\d3dcompiler_47.dll"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
 ; Explicitly copy the data/ tree (flutter_assets, etc.)
 Source: "build\windows\x64\runner\Release\data\*"; DestDir: "{app}\data"; Flags: recursesubdirs createallsubdirs ignoreversion
