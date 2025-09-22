@@ -57,33 +57,14 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDi
 Name: "desktopicon"; Description: "Create a desktop icon"; GroupDescription: "Additional shortcuts:"; Flags: unchecked
 
 [Code]
-function VCInstalled: Boolean;
-var
-  Installed: Cardinal;
-begin
-  Result := False;
-
-  if RegQueryDWordValue(HKLM64, 'SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64', 'Installed', Installed) and (Installed = 1) then
-    Result := True;
-
-  if (not Result) and RegQueryDWordValue(HKLM64, 'SOFTWARE\Microsoft\VisualStudio\VC\Runtimes\x64', 'Installed', Installed) and (Installed = 1) then
-    Result := True;
-
-  if (not Result) and RegQueryDWordValue(HKLM, 'SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64', 'Installed', Installed) and (Installed = 1) then
-    Result := True;
-
-  if (not Result) and RegQueryDWordValue(HKLM, 'SOFTWARE\Microsoft\VisualStudio\VC\Runtimes\x64', 'Installed', Installed) and (Installed = 1) then
-    Result := True;
-end;
-
 function NeedsVCRedist: Boolean;
 begin
-  Result := not VCInstalled();
+  Result :=
+    (not FileExists(ExpandConstant('{sys}\vcruntime140.dll'))) or
+    (not FileExists(ExpandConstant('{sys}\vcruntime140_1.dll'))) or
+    (not FileExists(ExpandConstant('{sys}\msvcp140.dll')));
 end;
 
 [Run]
-; Install VC++ runtime if not present
-Filename: "{tmp}\VC_redist.x64.exe"; Parameters: "/install /quiet /norestart"; StatusMsg: "Installing Microsoft Visual C++ Runtime..."; Check: NeedsVCRedist(); Flags: skipifdoesntexist waituntilterminated
-
-; Optional: launch after install
+Filename: "{tmp}\VC_redist.x64.exe"; Parameters: "/install /quiet /norestart /log ""{tmp}\vcredist.log"""; StatusMsg: "Installing Microsoft Visual C++ Runtime..."; Check: NeedsVCRedist; Flags: skipifdoesntexist waituntilterminated
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent
