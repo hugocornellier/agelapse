@@ -3,6 +3,7 @@ import 'dart:io';
 import '../models/setting_model.dart';
 import 'database_import.dart';
 import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../utils/dir_utils.dart';
 import '../utils/notification_util.dart';
@@ -30,8 +31,16 @@ class DB {
   }
 
   Future<Database> _initDB() async {
-    final dbPath = join(await getDatabasesPath(), _dbName);
-    return await openDatabase(dbPath, version: _version);
+    if (Platform.isIOS || Platform.isAndroid) {
+      final dbPath = join(await getDatabasesPath(), _dbName);
+      return await openDatabase(dbPath, version: _version);
+    } else {
+      final baseDir = await getApplicationSupportDirectory();
+      final appDirPath = join(baseDir.path, 'AgeLapse');
+      await Directory(appDirPath).create(recursive: true);
+      final dbPath = join(appDirPath, _dbName);
+      return await openDatabase(dbPath, version: _version);
+    }
   }
 
   Future<void> createTablesIfNotExist() async {
