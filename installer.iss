@@ -29,6 +29,9 @@ SetupIconFile=windows\runner\resources\app_icon.ico
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
+[Dirs]
+Name: "{app}\blobs"; Flags: uninsalwaysuninstall
+
 [Files]
 ; Entire Flutter release output
 Source: "build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
@@ -47,6 +50,9 @@ Source: "build\windows\x64\runner\Release\data\*"; DestDir: "{app}\data"; Flags:
 
 ; VC++ Redist payload (optional but recommended)
 Source: "packaging\redist\VC_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
+
+; Pre-create blobs and place TFLite DLL
+Source: "build\windows\x64\runner\Release\data\flutter_assets\packages\face_detection_tflite\assets\bin\libtensorflowlite_c-win.dll"; DestDir: "{app}\blobs"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
