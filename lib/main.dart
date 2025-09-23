@@ -13,19 +13,16 @@ import '../services/database_helper.dart';
 import '../services/theme_provider.dart';
 import '../widgets/main_navigation.dart';
 import '../theme/theme.dart';
-import 'package:sqflite/sqflite.dart' as sqflite; // main sqflite API
-import 'package:sqflite_common_ffi/sqflite_ffi.dart' as sqflite_ffi;
+import '../services/database_import.dart';
 
 
 void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  initDatabase();
 
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-    sqflite_ffi.sqfliteFfiInit();
-    sqflite.databaseFactory = sqflite_ffi.databaseFactoryFfi;
 
     await DB.instance.createTablesIfNotExist();
-
     await windowManager.ensureInitialized();
 
     final List<Map<String, dynamic>> projects = await DB.instance.getAllProjects();
