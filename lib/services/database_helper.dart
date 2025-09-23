@@ -33,14 +33,19 @@ class DB {
   Future<Database> _initDB() async {
     if (Platform.isIOS || Platform.isAndroid) {
       final dbPath = join(await getDatabasesPath(), _dbName);
-      return await openDatabase(dbPath, version: _version);
+      return await openDatabase(
+        dbPath,
+        version: _version,
+      );
     } else {
-      final baseDir = await getApplicationSupportDirectory();
-      final appDirPath = join(baseDir.path, 'AgeLapse');
-      await Directory(appDirPath).create(recursive: true);
-      final dbPath = join(appDirPath, _dbName);
-      return await openDatabase(dbPath, version: _version);
+      final base = await DirUtils.getAppDocumentsDirPath();
+      final dbPath = join(base, _dbName);
+      return await openDatabase(
+        dbPath,
+        version: _version,
+      );
     }
+
   }
 
   Future<void> createTablesIfNotExist() async {

@@ -118,8 +118,21 @@ class DirUtils {
   }
   
   // Cross-platform temp & permanent data directory path fetchers 
-  static Future<String> getTemporaryDirPath() async => (await getTemporaryDirectory()).path;
-  static Future<String> getAppDocumentsDirPath() async => (await getApplicationDocumentsDirectory()).path;
+  static Future<String> getTemporaryDirPath() async =>
+      (await getTemporaryDirectory()).path;
+
+  static Future<String> getAppDocumentsDirPath() async {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      final supportDir = await getApplicationSupportDirectory();
+      final appRoot = Directory(path.join(supportDir.path, 'AgeLapse'));
+      if (!await appRoot.exists()) {
+        await appRoot.create(recursive: true);
+      }
+      return appRoot.path;
+    } else {
+      return (await getApplicationDocumentsDirectory()).path;
+    }
+  }
 
   static Future<List<File>> getAllFilesInRawPhotoDirByExtension(int projectId, String extension) async {
     try {

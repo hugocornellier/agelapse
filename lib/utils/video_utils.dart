@@ -69,32 +69,38 @@ class VideoUtils {
       return ok;
     }
 
-    final String inputFiles = pngFiles.join('|');
-
     final bool watermarkEnabled = await SettingsUtil.loadWatermarkSetting(projectId.toString());
     final String watermarkPos = (await DB.instance.getSettingValueByTitle('watermark_position')).toLowerCase();
     final String watermarkFilePath = await DirUtils.getWatermarkFilePath(projectId);
-    String watermarkConfig = "";
+
+    String watermarkInputsAndFilter = "";
     if (watermarkEnabled && Utils.isImage(watermarkFilePath) && await File(watermarkFilePath).exists()) {
       final String watermarkOpacitySettingVal = await DB.instance.getSettingValueByTitle('watermark_opacity');
       final double watermarkOpacity = double.tryParse(watermarkOpacitySettingVal) ?? 0.8;
       final String watermarkFilter = getWatermarkFilter(watermarkOpacity, watermarkPos, 10);
-      watermarkConfig = "-i $watermarkFilePath -filter_complex '$watermarkFilter'";
+      watermarkInputsAndFilter = "-i \"$watermarkFilePath\" -filter_complex \"$watermarkFilter\"";
     }
 
+    final String framesDir = path.join(stabilizedDirPath, projectOrientation);
+    final String listPath = await _buildConcatListFromDir(framesDir, framerate);
+
     String ffmpegCommand = "-y "
-        "-framerate $framerate "
-        "-i 'concat:$inputFiles' "
+        "-f concat -safe 0 "
+        "-i \"$listPath\" "
+        "-vsync cfr "
         "-r 30 "
-        "$watermarkConfig "
-        "-c:v mpeg4 -q:v 1 "
+        "$watermarkInputsAndFilter "
+        "-c:v libx264 -profile:v main -level 4.1 -movflags +faststart "
         "-pix_fmt yuv420p "
-        "$videoOutputPath";
+        "\"$videoOutputPath\"";
 
     try {
+      print("2...");
       kitcfg.FFmpegKitConfig.enableLogCallback((kitlog.Log log) {
         final String output = log.getMessage();
         parseFFmpegOutput(output, framerate, setCurrentFrame);
+
+        print(output);
       });
 
       final kitsession.FFmpegSession session = await kit.FFmpegKit.execute(ffmpegCommand);
@@ -103,9 +109,12 @@ class VideoUtils {
         await DB.instance.addVideo(projectId, resolution, watermarkEnabled.toString(), watermarkPos, totalPhotoCount, framerate);
         return true;
       } else {
+        print("ffmpeg failure");
         return false;
       }
-    } catch (_) {
+    } catch (e) {
+      print(e);
+
       return false;
     }
   }
