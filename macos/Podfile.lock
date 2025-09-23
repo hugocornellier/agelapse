@@ -142,7 +142,7 @@ SPEC CHECKSUMS:
   tflite_flutter: d1496f2e968aa5a142fb282da8f5d754fcee5613
   url_launcher_macos: 0fba8ddabfc33ce0a9afe7c5fef5aab3d8d2d673
   video_player_avfoundation: 2cef49524dd1f16c5300b9cd6efd9611ce03639b
-  wakelock_plus: 21ddc249ac4b8d018838dbdabd65c5976c308497
+  wakelock_plus: 917609be14d812ddd9e9528876538b2263aaa03b
   window_manager: b729e31d38fb04905235df9ea896128991cad99e
 
 PODFILE CHECKSUM: 0af13ea7a15fad8c02a495a737daafd743f372ad

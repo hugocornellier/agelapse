@@ -207,7 +207,7 @@
     },
     {
       "name": "face_detection_tflite",
-      "rootUri": "file:///Users/hugocornellier/.pub-cache/git/face_detection_tflite-57f38d029ac87abd71e8d5a045456d79404f4f66/",
+      "rootUri": "file:///Users/hugocornellier/.pub-cache/git/face_detection_tflite-049aec56a24e1d5a8ebf1f8f7d0b656f54d785e3/",
       "packageUri": "lib/",
       "languageVersion": "3.6"
     },
@@ -591,13 +591,13 @@
     },
     {
       "name": "package_info_plus",
-      "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/package_info_plus-8.3.0",
+      "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/package_info_plus-9.0.0",
       "packageUri": "lib/",
       "languageVersion": "3.3"
     },
     {
       "name": "package_info_plus_platform_interface",
-      "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/package_info_plus_platform_interface-3.2.0",
+      "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/package_info_plus_platform_interface-3.2.1",
       "packageUri": "lib/",
       "languageVersion": "2.18"
     },
@@ -1011,13 +1011,13 @@
     },
     {
       "name": "vibration",
-      "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/vibration-3.1.3",
+      "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/vibration-3.1.4",
       "packageUri": "lib/",
       "languageVersion": "3.0"
     },
     {
       "name": "vibration_platform_interface",
-      "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/vibration_platform_interface-0.1.0",
+      "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/vibration_platform_interface-0.1.1",
       "packageUri": "lib/",
       "languageVersion": "3.0"
     },
@@ -1071,15 +1071,15 @@
     },
     {
       "name": "wakelock_plus",
-      "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/wakelock_plus-1.3.2",
+      "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/wakelock_plus-1.4.0",
       "packageUri": "lib/",
       "languageVersion": "3.4"
     },
     {
       "name": "wakelock_plus_platform_interface",
-      "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/wakelock_plus_platform_interface-1.2.3",
+      "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/wakelock_plus_platform_interface-1.3.0",
       "packageUri": "lib/",
-      "languageVersion": "3.3"
+      "languageVersion": "3.4"
     },
     {
       "name": "web",
