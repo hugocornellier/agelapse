@@ -23,7 +23,7 @@ ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
 UninstallDisplayIcon={app}\{#MyAppExeName}
 SetupLogging=yes
-PrivilegesRequired=lowest
+PrivilegesRequired=admin
 SetupIconFile=windows\runner\resources\app_icon.ico
 
 [Languages]
