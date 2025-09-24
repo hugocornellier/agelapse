@@ -41,7 +41,7 @@ The face detection model used by AgeLapse is platform-dependent. On Mobile, Goog
 ### New Features
 - Provide full MacOS and Windows support to the AgeLapse flutter build.
 - Further improvements to the "manual stabilization" option for when AgeLapse fails to detect landmarks (eg: if the user is wearing sunglasses, the eyes are partially obstructed, etc.)
-- Massive improvements to the AgeLapse Documentation 
+- Massive improvements to the [AgeLapse Documentation](https://agelapse.com/docs/intro/) 
 
 ## Platform Support
 
@@ -55,11 +55,11 @@ The face detection model used by AgeLapse is platform-dependent. On Mobile, Goog
 
 ## Development Setup
 
-- To run the desktop application in a development environment, refer to the [AgeLapse Documentation (Dev Setup)](https://agelapse.com/docs/dev-setup/).
+- To run the application in a development environment, refer to the [AgeLapse Documentation (Dev Setup)](https://agelapse.com/docs/dev-setup/).
 
 ## Resources
 
-- **Documentation: https://agelapse.com/docs/intro/
+- **Documentation**: https://agelapse.com/docs/intro/
 - **Demo Video:** [https://www.youtube.com/watch?v=vMOWSAHdwhA](https://www.youtube.com/watch?v=vMOWSAHdwhA)
 - **Support:** For suggestions, feature requests or bugs, please contact agelapse@gmail.com
 
