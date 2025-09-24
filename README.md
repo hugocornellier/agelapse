@@ -36,17 +36,12 @@ AgeLapse takes a raw photo, detects a set of landmarks on the person (eyes for f
 
 The face detection model used by AgeLapse is platform-dependent. On Mobile, Google MLKit is used. On MacOS, Apple Vision is used.
 
-## What's New - Mobile v1.5.2
+## What's New - v2.0.0
 
 ### New Features
-- Improved "manual stabilization" option for when AgeLapse fails to detect landmarks (eg: if the user is wearing sunglasses, the eyes are partially obstructed, etc.)
-- Added to the user tutorials + more informational tooltips to improve UX 
-
-## What's New - Desktop v0.4.0
-
-### New Features
-- UI Overhaul. 
-- Further enhanced cross-platform compatibility. AgeLapse Desktop runs smoothly on both Apple Silicon and Intel Macs, as well as Windows PCs.
+- Provide full MacOS and Windows support to the AgeLapse flutter build.
+- Further improvements to the "manual stabilization" option for when AgeLapse fails to detect landmarks (eg: if the user is wearing sunglasses, the eyes are partially obstructed, etc.)
+- Massive improvements to the AgeLapse Documentation 
 
 ## Platform Support
 
@@ -60,11 +55,11 @@ The face detection model used by AgeLapse is platform-dependent. On Mobile, Goog
 
 ## Development Setup
 
-- **Desktop:** To run the desktop application in a development environment, refer to the [agelapse-desktop README](./agelapse-desktop/README.md).
-- **Mobile:** To run the mobile application in a development environment, refer to the [agelapse-mobile README](./agelapse-mobile/README.md).
+- To run the desktop application in a development environment, refer to the [AgeLapse Documentation (Dev Setup)](https://agelapse.com/docs/dev-setup/).
 
 ## Resources
 
+- **Documentation: https://agelapse.com/docs/intro/
 - **Demo Video:** [https://www.youtube.com/watch?v=vMOWSAHdwhA](https://www.youtube.com/watch?v=vMOWSAHdwhA)
 - **Support:** For suggestions, feature requests or bugs, please contact agelapse@gmail.com
 
