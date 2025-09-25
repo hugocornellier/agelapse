@@ -36,9 +36,14 @@ AgeLapse takes a raw photo, detects a set of landmarks on the person (eyes for f
 
 The face detection model used by AgeLapse is platform-dependent. On Mobile, Google MLKit is used. On MacOS, Apple Vision is used.
 
-## What's New - v2.0.0
+## What's New
 
-### New Features
+### v2.0.1
+
+- Update documentation URL 
+
+### v2.0.0
+
 - Provide full MacOS and Windows support to the AgeLapse flutter build.
 - Further improvements to the "manual stabilization" option for when AgeLapse fails to detect landmarks (eg: if the user is wearing sunglasses, the eyes are partially obstructed, etc.)
 - Massive improvements to the [AgeLapse Documentation](https://agelapse.com/docs/intro/) 
