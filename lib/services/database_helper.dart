@@ -268,7 +268,7 @@ class DB {
     'watermark_opacity'       : '0.7',
     'camera_flash'            : 'auto',
     'grid_mode_index'         : '0',
-    'project_orientation'     : 'portrait',
+    'project_orientation'     : 'landscape',
     'eyeOffsetXPortrait'      : '0.065',
     'eyeOffsetXLandscape'     : '0.035',
     'eyeOffsetYPortrait'      : '0.421875',
