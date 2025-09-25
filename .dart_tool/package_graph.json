@@ -307,7 +307,7 @@
     },
     {
       "name": "material_symbols_icons",
-      "version": "4.2858.1",
+      "version": "4.2873.0",
       "dependencies": [
         "args",
         "chalkdart",
@@ -417,7 +417,7 @@
     },
     {
       "name": "flutter_local_notifications",
-      "version": "19.4.0",
+      "version": "19.4.2",
       "dependencies": [
         "clock",
         "flutter",
@@ -1327,15 +1327,8 @@
       ]
     },
     {
-      "name": "flutter_local_notifications_platform_interface",
-      "version": "9.1.0",
-      "dependencies": [
-        "plugin_platform_interface"
-      ]
-    },
-    {
       "name": "flutter_local_notifications_windows",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "dependencies": [
         "ffi",
         "flutter",
@@ -1343,6 +1336,13 @@
         "meta",
         "timezone",
         "xml"
+      ]
+    },
+    {
+      "name": "flutter_local_notifications_platform_interface",
+      "version": "9.1.0",
+      "dependencies": [
+        "plugin_platform_interface"
       ]
     },
     {

@@ -34,7 +34,6 @@
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/camera_avfoundation-0.9.18+11" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/image_picker_android-0.8.13+1" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/url_launcher_android-6.3.17" />
-      <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/flutter_local_notifications-19.4.0" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/sensors_plus-6.1.2" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/permission_handler-12.0.1" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/image_picker_macos-0.2.2" />
@@ -60,7 +59,6 @@
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/wakelock_plus-1.4.0" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/camera_web-0.3.5" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/window_manager-0.5.1" />
-      <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/flutter_local_notifications_windows-1.0.2" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/path_provider_android-2.2.16" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/ffmpeg_kit_flutter_new-3.2.0" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/path_provider_windows-2.3.0" />
@@ -68,7 +66,9 @@
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/flutter_native_splash-2.4.6" />
       <root url="file://$USER_HOME$/.pub-cache/git/face_detection_tflite-cc3573dd08d240d9506ebc4eefd213f2a18d6175" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/file_selector-1.0.4" />
-      <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/flutter_timezone-5.0.0" />
+      <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/flutter_timezone-4.1.1" />
+      <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/flutter_local_notifications-19.4.2" />
+      <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/flutter_local_notifications_windows-1.0.3" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />

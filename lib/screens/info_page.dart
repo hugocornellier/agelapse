@@ -73,7 +73,7 @@ class InfoPageState extends State<InfoPage> with SingleTickerProviderStateMixin 
   }
 
   Future<void> _openDocumentation() async {
-    final uri = Uri.parse('https://agelapse.com/docs/category/mobile/');
+    final uri = Uri.parse('https://agelapse.com/docs/intro/');
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
