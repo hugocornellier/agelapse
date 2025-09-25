@@ -26,14 +26,14 @@ dependencies:
       ref: cc3573dd08d240d9506ebc4eefd213f2a18d6175
   ffmpeg_kit_flutter_new: ^3.2.0
   file_picker: ^10.3.3
-  file_selector: ^1.0.3
+  file_selector: ^1.0.4
   flutter:
     sdk: flutter
   flutter_email_sender: ^8.0.0
   flutter_launcher_icons: ^0.14.4
   flutter_local_notifications: ^19.4.0
   flutter_native_splash: ^2.4.6
-  flutter_svg: ^2.2.0
+  flutter_svg: ^2.2.1
   flutter_timezone: ^4.1.1
   font_awesome_flutter: ^10.10.0
   google_mlkit_face_detection: ^0.13.1
@@ -51,6 +51,7 @@ dependencies:
   share_plus: ^11.1.0
   smooth_page_indicator: ^1.2.1
   sqflite: ^2.4.2
+  sqflite_common_ffi: ^2.3.6
   tflite_flutter: ^0.11.0
   url_launcher: ^6.3.2
   vibration: ^3.1.4
@@ -59,7 +60,6 @@ dependencies:
   wakelock_plus: ^1.4.0
   wechat_assets_picker: ^9.8.0
   window_manager: ^0.5.1
-  sqflite_common_ffi: ^2.3.6
 
 dev_dependencies:
   flutter_test:

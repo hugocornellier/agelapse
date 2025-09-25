@@ -207,7 +207,7 @@
     },
     {
       "name": "face_detection_tflite",
-      "rootUri": "file:///Users/hugocornellier/.pub-cache/git/face_detection_tflite-049aec56a24e1d5a8ebf1f8f7d0b656f54d785e3/",
+      "rootUri": "file:///Users/hugocornellier/.pub-cache/git/face_detection_tflite-cc3573dd08d240d9506ebc4eefd213f2a18d6175/",
       "packageUri": "lib/",
       "languageVersion": "3.6"
     },
@@ -249,9 +249,9 @@
     },
     {
       "name": "file_selector",
-      "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/file_selector-1.0.3",
+      "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/file_selector-1.0.4",
       "packageUri": "lib/",
-      "languageVersion": "3.0"
+      "languageVersion": "3.7"
     },
     {
       "name": "file_selector_android",
@@ -369,9 +369,9 @@
     },
     {
       "name": "flutter_svg",
-      "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/flutter_svg-2.2.0",
+      "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/flutter_svg-2.2.1",
       "packageUri": "lib/",
-      "languageVersion": "3.6"
+      "languageVersion": "3.7"
     },
     {
       "name": "flutter_test",

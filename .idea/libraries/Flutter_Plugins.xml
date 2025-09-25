@@ -5,7 +5,6 @@
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/video_player_avfoundation-2.7.0" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/flutter_local_notifications_linux-6.0.0" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/device_info_plus-11.3.3" />
-      <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/flutter_timezone-4.1.1" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/file_selector_linux-0.9.3+2" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/apple_vision_face-0.0.4" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/sqflite_android-2.4.1" />
@@ -28,13 +27,11 @@
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/image_picker_linux-0.2.2" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/url_launcher_linux-3.2.1" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/google_mlkit_face_detection-0.13.1" />
-      <root url="file://$USER_HOME$/.pub-cache/git/face_detection_tflite-049aec56a24e1d5a8ebf1f8f7d0b656f54d785e3" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/sqflite_darwin-2.4.2" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/google_mlkit_commons-0.11.0" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/video_player_win-3.2.0" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/image_picker_for_web-3.1.0" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/camera_avfoundation-0.9.18+11" />
-      <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/file_selector-1.0.3" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/image_picker_android-0.8.13+1" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/url_launcher_android-6.3.17" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/flutter_local_notifications-19.4.0" />
@@ -69,6 +66,9 @@
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/path_provider_windows-2.3.0" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/heif_converter-1.0.1" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/flutter_native_splash-2.4.6" />
+      <root url="file://$USER_HOME$/.pub-cache/git/face_detection_tflite-cc3573dd08d240d9506ebc4eefd213f2a18d6175" />
+      <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/file_selector-1.0.4" />
+      <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/flutter_timezone-5.0.0" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />
