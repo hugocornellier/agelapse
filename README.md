@@ -50,13 +50,13 @@ The face detection model used by AgeLapse is platform-dependent. On Mobile, Goog
 
 ## Platform Support
 
-| Platforms | Status      |
-|-----------|-------------|
-| Windows   | Available   |
-| MacOS     | Available   |
-| Android   | Available   |
-| iOS       | Available   |
-| Linux     | Coming Soon |
+| Platforms | Status     |
+|-----------|------------|
+| Windows   | Available  |
+| MacOS     | Available  |
+| Linux     | Available  |
+| iOS       | Available  |
+| Android   | Available  |
 
 ## Development Setup
 
