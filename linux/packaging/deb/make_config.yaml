@@ -1,0 +1,32 @@
+display_name: "AgeLapse"
+package_name: "agelapse"
+version: "2.0.1"
+architecture: "amd64"
+
+section: "utils"
+priority: "optional"
+maintainer:
+  name: "Hugo Cornellier"
+  email: "hugo.cornellier@example.com"
+homepage: "https://github.com/hugocornellier/agelapse"
+description: "AgeLapse - create stabilized aging timelapses."
+
+installed_size: 223124
+
+install_path: "/opt/agelapse"
+icon: "linux/packaging/deb/agelapse.png"
+
+dependencies:
+  - ffmpeg
+  - mpv
+
+generic_name: "Timelapse Creator"
+categories:
+  - "Video"
+  - "Utility"
+keywords:
+  - "timelapse"
+  - "video"
+  - "aging"
+startup_notify: true
+startup_wm_class: "com.hugocornellier.agelapse"

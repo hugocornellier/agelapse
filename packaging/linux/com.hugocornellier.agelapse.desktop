@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=AgeLapse
+GenericName=Timelapse Creator
+Comment=Create stabilized aging timelapses
+Exec=/usr/bin/agelapse %U
+Icon=agelapse
+Categories=AudioVideo;Graphics;Video;Utility;
+StartupNotify=true
+StartupWMClass=com.hugocornellier.agelapse

@@ -1,0 +1,26 @@
+app_id: com.hugocornellier.agelapse
+display_name: AgeLapse
+publisher: Hugo Cornellier
+output: dist
+
+targets:
+  linux:
+    bundle:
+      target: lib/main.dart
+      build_args:
+        - --release
+    deb:
+      depends:
+        - ffmpeg
+        - mpv
+      section: utils
+      priority: optional
+      maintainer: "Hugo Cornellier <hugo.cornellier@example.com>"
+      homepage: "https://github.com/hugocornellier/agelapse"
+      description: "AgeLapse - create stabilized aging timelapses"
+      install_path: /opt/agelapse
+      bin:
+        - source: agelapse
+          symlink: /usr/bin/agelapse
+      desktop_file: packaging/linux/com.hugocornellier.agelapse.desktop
+      icon: packaging/linux/icons/agelapse.png
