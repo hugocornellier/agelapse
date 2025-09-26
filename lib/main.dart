@@ -13,7 +13,7 @@ import '../services/database_helper.dart';
 import '../services/theme_provider.dart';
 import '../widgets/main_navigation.dart';
 import '../theme/theme.dart';
-import '../services/database_import.dart';
+import '../services/database_import_ffi.dart';
 
 
 void main() async {

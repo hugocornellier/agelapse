@@ -46,6 +46,7 @@
         "smooth_page_indicator",
         "sqflite",
         "sqflite_common_ffi",
+        "sqlite3_flutter_libs",
         "tflite_flutter",
         "url_launcher",
         "vibration",
@@ -1751,6 +1752,13 @@
         "flutter",
         "meta",
         "plugin_platform_interface"
+      ]
+    },
+    {
+      "name": "sqlite3_flutter_libs",
+      "version": "0.5.39",
+      "dependencies": [
+        "flutter"
       ]
     }
   ],

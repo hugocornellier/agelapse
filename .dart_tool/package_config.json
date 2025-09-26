@@ -860,6 +860,12 @@
       "languageVersion": "3.5"
     },
     {
+      "name": "sqlite3_flutter_libs",
+      "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/sqlite3_flutter_libs-0.5.39",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
       "name": "stack_trace",
       "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/stack_trace-1.12.1",
       "packageUri": "lib/",
