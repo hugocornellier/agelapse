@@ -203,6 +203,13 @@
       ]
     },
     {
+      "name": "sqlite3_flutter_libs",
+      "version": "0.5.39",
+      "dependencies": [
+        "flutter"
+      ]
+    },
+    {
       "name": "sqflite_common_ffi",
       "version": "2.3.6",
       "dependencies": [
@@ -1752,13 +1759,6 @@
         "flutter",
         "meta",
         "plugin_platform_interface"
-      ]
-    },
-    {
-      "name": "sqlite3_flutter_libs",
-      "version": "0.5.39",
-      "dependencies": [
-        "flutter"
       ]
     }
   ],
