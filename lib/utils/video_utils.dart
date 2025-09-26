@@ -47,7 +47,7 @@ class VideoUtils {
       DB.instance.setSettingByTitle('framerate', framerate.toString(), projectId.toString());
     }
 
-    if (Platform.isWindows) {
+    if (Platform.isWindows || Platform.isLinux) {
       final String framesDir = path.join(stabilizedDirPath, projectOrientation);
       final bool ok = await _encodeWindows(
         framesDir: framesDir,
