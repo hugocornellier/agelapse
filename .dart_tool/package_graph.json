@@ -37,6 +37,7 @@
         "image_picker",
         "intl",
         "material_symbols_icons",
+        "media_kit_libs_linux",
         "path_provider",
         "permission_handler",
         "provider",
@@ -51,6 +52,7 @@
         "url_launcher",
         "vibration",
         "video_player",
+        "video_player_media_kit",
         "video_player_win",
         "wakelock_plus",
         "wechat_assets_picker",
@@ -131,6 +133,17 @@
         "wakelock_plus_platform_interface",
         "web",
         "win32"
+      ]
+    },
+    {
+      "name": "video_player_media_kit",
+      "version": "1.0.6",
+      "dependencies": [
+        "flutter",
+        "media_kit",
+        "media_kit_video",
+        "universal_platform",
+        "video_player_platform_interface"
       ]
     },
     {
@@ -808,6 +821,44 @@
       ]
     },
     {
+      "name": "universal_platform",
+      "version": "1.1.0",
+      "dependencies": []
+    },
+    {
+      "name": "media_kit_video",
+      "version": "1.3.0",
+      "dependencies": [
+        "flutter",
+        "media_kit",
+        "plugin_platform_interface",
+        "screen_brightness_android",
+        "screen_brightness_platform_interface",
+        "synchronized",
+        "universal_platform",
+        "volume_controller",
+        "wakelock_plus",
+        "web"
+      ]
+    },
+    {
+      "name": "media_kit",
+      "version": "1.2.0",
+      "dependencies": [
+        "collection",
+        "http",
+        "image",
+        "meta",
+        "path",
+        "safe_local_storage",
+        "synchronized",
+        "universal_platform",
+        "uri_parser",
+        "uuid",
+        "web"
+      ]
+    },
+    {
       "name": "plugin_platform_interface",
       "version": "2.1.8",
       "dependencies": [
@@ -1473,11 +1524,6 @@
       ]
     },
     {
-      "name": "universal_platform",
-      "version": "1.1.0",
-      "dependencies": []
-    },
-    {
       "name": "stream_transform",
       "version": "2.1.1",
       "dependencies": []
@@ -1648,6 +1694,45 @@
       ]
     },
     {
+      "name": "volume_controller",
+      "version": "3.4.0",
+      "dependencies": [
+        "flutter"
+      ]
+    },
+    {
+      "name": "screen_brightness_platform_interface",
+      "version": "2.1.0",
+      "dependencies": [
+        "flutter",
+        "plugin_platform_interface"
+      ]
+    },
+    {
+      "name": "screen_brightness_android",
+      "version": "2.1.3",
+      "dependencies": [
+        "flutter",
+        "screen_brightness_platform_interface"
+      ]
+    },
+    {
+      "name": "uri_parser",
+      "version": "3.0.0",
+      "dependencies": [
+        "path",
+        "safe_local_storage"
+      ]
+    },
+    {
+      "name": "safe_local_storage",
+      "version": "2.0.1",
+      "dependencies": [
+        "path",
+        "synchronized"
+      ]
+    },
+    {
       "name": "csslib",
       "version": "1.0.2",
       "dependencies": [
@@ -1758,6 +1843,13 @@
         "flutter",
         "meta",
         "plugin_platform_interface"
+      ]
+    },
+    {
+      "name": "media_kit_libs_linux",
+      "version": "1.2.1",
+      "dependencies": [
+        "flutter"
       ]
     }
   ],

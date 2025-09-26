@@ -6,12 +6,14 @@ list(APPEND FLUTTER_PLUGIN_LIST
   desktop_drop
   file_selector_windows
   flutter_timezone
+  media_kit_video
   permission_handler_windows
   screen_retriever_windows
   share_plus
   sqlite3_flutter_libs
   url_launcher_windows
   video_player_win
+  volume_controller
   window_manager
 )
 

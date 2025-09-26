@@ -572,6 +572,24 @@
       "languageVersion": "3.0"
     },
     {
+      "name": "media_kit",
+      "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/media_kit-1.2.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.1"
+    },
+    {
+      "name": "media_kit_libs_linux",
+      "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/media_kit_libs_linux-1.2.1",
+      "packageUri": "lib/",
+      "languageVersion": "2.17"
+    },
+    {
+      "name": "media_kit_video",
+      "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/media_kit_video-1.3.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.17"
+    },
+    {
       "name": "meta",
       "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/meta-1.17.0",
       "packageUri": "lib/",
@@ -734,10 +752,28 @@
       "languageVersion": "2.17"
     },
     {
+      "name": "safe_local_storage",
+      "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/safe_local_storage-2.0.1",
+      "packageUri": "lib/",
+      "languageVersion": "2.16"
+    },
+    {
       "name": "saver_gallery",
       "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/saver_gallery-4.0.1",
       "packageUri": "lib/",
       "languageVersion": "2.12"
+    },
+    {
+      "name": "screen_brightness_android",
+      "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/screen_brightness_android-2.1.3",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
+    },
+    {
+      "name": "screen_brightness_platform_interface",
+      "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/screen_brightness_platform_interface-2.1.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
     },
     {
       "name": "screen_retriever",
@@ -938,6 +974,12 @@
       "languageVersion": "2.12"
     },
     {
+      "name": "uri_parser",
+      "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/uri_parser-3.0.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.16"
+    },
+    {
       "name": "url_launcher",
       "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/url_launcher-6.3.2",
       "packageUri": "lib/",
@@ -1046,6 +1088,12 @@
       "languageVersion": "3.4"
     },
     {
+      "name": "video_player_media_kit",
+      "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/video_player_media_kit-1.0.6",
+      "packageUri": "lib/",
+      "languageVersion": "2.17"
+    },
+    {
       "name": "video_player_platform_interface",
       "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/video_player_platform_interface-6.3.0",
       "packageUri": "lib/",
@@ -1074,6 +1122,12 @@
       "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/vm_service-15.0.0",
       "packageUri": "lib/",
       "languageVersion": "3.3"
+    },
+    {
+      "name": "volume_controller",
+      "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/volume_controller-3.4.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
     },
     {
       "name": "wakelock_plus",

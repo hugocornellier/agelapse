@@ -58,6 +58,8 @@ dependencies:
   vibration: ^3.1.4
   video_player: ^2.10.0
   video_player_win: ^3.2.0
+  video_player_media_kit: ^1.0.6
+  media_kit_libs_linux: any
   wakelock_plus: ^1.4.0
   wechat_assets_picker: ^9.8.0
   window_manager: ^0.5.1

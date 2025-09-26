@@ -24,6 +24,8 @@ PODS:
   - flutter_timezone (0.1.0):
     - FlutterMacOS
   - FlutterMacOS (1.0.0)
+  - media_kit_video (0.0.1):
+    - FlutterMacOS
   - package_info_plus (0.0.1):
     - FlutterMacOS
   - path_provider_foundation (0.0.1):
@@ -71,6 +73,8 @@ PODS:
   - video_player_avfoundation (0.0.1):
     - Flutter
     - FlutterMacOS
+  - volume_controller (0.0.1):
+    - FlutterMacOS
   - wakelock_plus (0.0.1):
     - FlutterMacOS
   - window_manager (0.5.0):
@@ -88,6 +92,7 @@ DEPENDENCIES:
   - flutter_local_notifications (from `Flutter/ephemeral/.symlinks/plugins/flutter_local_notifications/macos`)
   - flutter_timezone (from `Flutter/ephemeral/.symlinks/plugins/flutter_timezone/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
+  - media_kit_video (from `Flutter/ephemeral/.symlinks/plugins/media_kit_video/macos`)
   - package_info_plus (from `Flutter/ephemeral/.symlinks/plugins/package_info_plus/macos`)
   - path_provider_foundation (from `Flutter/ephemeral/.symlinks/plugins/path_provider_foundation/darwin`)
   - photo_manager (from `Flutter/ephemeral/.symlinks/plugins/photo_manager/macos`)
@@ -98,6 +103,7 @@ DEPENDENCIES:
   - tflite_flutter (from `Flutter/ephemeral/.symlinks/plugins/tflite_flutter/macos`)
   - url_launcher_macos (from `Flutter/ephemeral/.symlinks/plugins/url_launcher_macos/macos`)
   - video_player_avfoundation (from `Flutter/ephemeral/.symlinks/plugins/video_player_avfoundation/darwin`)
+  - volume_controller (from `Flutter/ephemeral/.symlinks/plugins/volume_controller/macos`)
   - wakelock_plus (from `Flutter/ephemeral/.symlinks/plugins/wakelock_plus/macos`)
   - window_manager (from `Flutter/ephemeral/.symlinks/plugins/window_manager/macos`)
 
@@ -128,6 +134,8 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/flutter_timezone/macos
   FlutterMacOS:
     :path: Flutter/ephemeral
+  media_kit_video:
+    :path: Flutter/ephemeral/.symlinks/plugins/media_kit_video/macos
   package_info_plus:
     :path: Flutter/ephemeral/.symlinks/plugins/package_info_plus/macos
   path_provider_foundation:
@@ -148,6 +156,8 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/url_launcher_macos/macos
   video_player_avfoundation:
     :path: Flutter/ephemeral/.symlinks/plugins/video_player_avfoundation/darwin
+  volume_controller:
+    :path: Flutter/ephemeral/.symlinks/plugins/volume_controller/macos
   wakelock_plus:
     :path: Flutter/ephemeral/.symlinks/plugins/wakelock_plus/macos
   window_manager:
@@ -165,6 +175,7 @@ SPEC CHECKSUMS:
   flutter_local_notifications: 4bf37a31afde695b56091b4ae3e4d9c7a7e6cda0
   flutter_timezone: d59eea86178cbd7943cd2431cc2eaa9850f935d8
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
+  media_kit_video: 28d7d27611c7769a2464eb7621c37386a61dcc9a
   package_info_plus: f0052d280d17aa382b932f399edf32507174e870
   path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
   photo_manager: d2fbcc0f2d82458700ee6256a15018210a81d413
@@ -176,6 +187,7 @@ SPEC CHECKSUMS:
   tflite_flutter: d1496f2e968aa5a142fb282da8f5d754fcee5613
   url_launcher_macos: 0fba8ddabfc33ce0a9afe7c5fef5aab3d8d2d673
   video_player_avfoundation: 2cef49524dd1f16c5300b9cd6efd9611ce03639b
+  volume_controller: 5c068e6d085c80dadd33fc2c918d2114b775b3dd
   wakelock_plus: 917609be14d812ddd9e9528876538b2263aaa03b
   window_manager: b729e31d38fb04905235df9ea896128991cad99e
 

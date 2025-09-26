@@ -1,13 +1,16 @@
-import '../services/settings_cache.dart';
+import 'package:video_player_media_kit/video_player_media_kit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:provider/provider.dart';
+import 'package:window_manager/window_manager.dart';
+
 import 'dart:io' show Platform;
 import 'dart:ui';
-import 'package:window_manager/window_manager.dart';
+
+import '../services/settings_cache.dart';
 import '../screens/projects_page.dart';
 import '../services/database_helper.dart';
 import '../services/theme_provider.dart';
@@ -15,10 +18,13 @@ import '../widgets/main_navigation.dart';
 import '../theme/theme.dart';
 import '../services/database_import_ffi.dart';
 
-
 void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   initDatabase();
+
+  VideoPlayerMediaKit.ensureInitialized(
+    linux: true,
+  );
 
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
 
