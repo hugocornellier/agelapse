@@ -13,6 +13,7 @@ targets:
       depends:
         - ffmpeg
         - mpv
+        - libmpv2 | libmpv1
       section: utils
       priority: optional
       maintainer: "Hugo Cornellier <hugo.cornellier@example.com>"
