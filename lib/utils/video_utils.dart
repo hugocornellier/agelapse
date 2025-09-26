@@ -48,25 +48,34 @@ class VideoUtils {
     }
 
     if (Platform.isWindows || Platform.isLinux) {
-      final String framesDir = path.join(stabilizedDirPath, projectOrientation);
-      final bool ok = await _encodeWindows(
-        framesDir: framesDir,
-        outputPath: videoOutputPath,
-        fps: framerate,
-        onProgress: setCurrentFrame,
-      );
-      if (ok) {
-        final String resolution = await SettingsUtil.loadVideoResolution(projectId.toString());
-        await DB.instance.addVideo(
-          projectId,
-          resolution,
-          (await SettingsUtil.loadWatermarkSetting(projectId.toString())).toString(),
-          (await DB.instance.getSettingValueByTitle('watermark_position')).toLowerCase(),
-          totalPhotoCount,
-          framerate,
+      try {
+        final String framesDir = path.join(stabilizedDirPath, projectOrientation);
+        final bool ok = await _encodeWindows(
+          framesDir: framesDir,
+          outputPath: videoOutputPath,
+          fps: framerate,
+          onProgress: setCurrentFrame,
         );
+        if (ok) {
+          final String resolution = await SettingsUtil.loadVideoResolution(projectId.toString());
+          await DB.instance.addVideo(
+            projectId,
+            resolution,
+            (await SettingsUtil.loadWatermarkSetting(projectId.toString())).toString(),
+            (await DB.instance.getSettingValueByTitle('watermark_position')).toLowerCase(),
+            totalPhotoCount,
+            framerate,
+          );
+        }
+
+        print(ok);
+
+        return ok;
+      } catch (e) {
+        print("error caught in branch333");
+        print(e);
+        return false;
       }
-      return ok;
     }
 
     final bool watermarkEnabled = await SettingsUtil.loadWatermarkSetting(projectId.toString());
@@ -233,6 +242,9 @@ class VideoUtils {
   static const String _winMarkerName = 'ffmpeg.version';
 
   static Future<String> _ensureBundledFfmpeg() async {
+    if (!Platform.isWindows) {
+      return '';
+    }
     final dir = await getApplicationSupportDirectory();
     final binDir = Directory(path.join(dir.path, 'bin'));
     if (!await binDir.exists()) {
@@ -250,12 +262,16 @@ class VideoUtils {
   }
 
   static Future<String> _findFfmpegOnPath() async {
+    final cmd = Platform.isWindows ? 'where' : 'which';
     try {
-      final result = await Process.run('where', ['ffmpeg'], runInShell: true);
+      final result = await Process.run(cmd, ['ffmpeg'], runInShell: true);
       if (result.exitCode == 0) {
-        final out = (result.stdout as String).trim().split(RegExp(r'\r?\n')).first;
-        if (out.isNotEmpty && await File(out).exists()) {
-          return out;
+        final lines = (result.stdout as String).trim().split(RegExp(r'\r?\n'));
+        for (final line in lines) {
+          final p = line.trim();
+          if (p.isNotEmpty && await File(p).exists()) {
+            return p;
+          }
         }
       }
     } catch (_) {}
@@ -263,14 +279,23 @@ class VideoUtils {
   }
 
   static Future<String> _resolveFfmpegPath() async {
-    try {
-      final bundled = await _ensureBundledFfmpeg();
-      if (await File(bundled).exists()) return bundled;
-    } catch (_) {}
-    final onPath = await _findFfmpegOnPath();
-    if (onPath.isNotEmpty) return onPath;
-    return 'ffmpeg';
+    if (Platform.isWindows) {
+      try {
+        final bundled = await _ensureBundledFfmpeg();
+        if (bundled.isNotEmpty && await File(bundled).exists()) {
+          return bundled;
+        }
+      } catch (_) {}
+      final onPathWin = await _findFfmpegOnPath();
+      if (onPathWin.isNotEmpty) return onPathWin;
+      return 'ffmpeg';
+    } else {
+      final onPath = await _findFfmpegOnPath();
+      if (onPath.isNotEmpty) return onPath;
+      return 'ffmpeg';
+    }
   }
+
 
   static Future<void> _ensureOutDir(String outputPath) async {
     final outDir = Directory(path.dirname(outputPath));
