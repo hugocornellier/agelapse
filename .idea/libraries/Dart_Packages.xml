@@ -243,7 +243,7 @@
         <entry key="face_detection_tflite">
           <value>
             <list>
-              <option value="$USER_HOME$/.pub-cache/git/face_detection_tflite-10aca656fd720d0fa4494d9872dcb40fb72f4af2//lib" />
+              <option value="$USER_HOME$/.pub-cache/git/face_detection_tflite-3d1124fc9b87c18dbfd2bee1d44f58f926f48b1d//lib" />
             </list>
           </value>
         </entry>
@@ -1398,7 +1398,7 @@
       </option>
     </properties>
     <CLASSES>
-      <root url="file://$USER_HOME$/.pub-cache/git/face_detection_tflite-10aca656fd720d0fa4494d9872dcb40fb72f4af2//lib" />
+      <root url="file://$USER_HOME$/.pub-cache/git/face_detection_tflite-3d1124fc9b87c18dbfd2bee1d44f58f926f48b1d//lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/animated_bottom_navigation_bar-1.4.0/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/ansicolor-2.0.3/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/apple_vision_commons-0.0.3/lib" />

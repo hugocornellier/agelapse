@@ -46,6 +46,7 @@
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/url_launcher_web-2.4.0" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/async_zip-0.1.0" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/file_picker-10.3.3" />
+      <root url="file://$USER_HOME$/.pub-cache/git/face_detection_tflite-f8aea308acff521dcfe2147a3d2ea612403a3208" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/url_launcher_macos-3.2.2" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/vibration-3.1.4" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/file_selector_android-0.5.1+15" />
@@ -71,7 +72,6 @@
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/path_provider_windows-2.3.0" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/heif_converter-1.0.1" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/flutter_native_splash-2.4.6" />
-      <root url="file://$USER_HOME$/.pub-cache/git/face_detection_tflite-10aca656fd720d0fa4494d9872dcb40fb72f4af2" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />

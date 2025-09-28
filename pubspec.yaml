@@ -23,7 +23,7 @@ dependencies:
   face_detection_tflite:
     git:
       url: https://github.com/hugocornellier/face_detection_tflite.git
-      ref: 10aca656fd720d0fa4494d9872dcb40fb72f4af2
+      ref: f8aea308acff521dcfe2147a3d2ea612403a3208
   ffmpeg_kit_flutter_new: ^3.2.0
   file_picker: ^10.3.3
   file_selector: ^1.0.4
@@ -78,13 +78,6 @@ flutter:
     - assets/images/
     - assets/ghost-custom.svg
     - assets/relax.svg
-    - assets/models/face_detection_front.tflite
-    - assets/models/face_detection_back.tflite
-    - assets/models/face_detection_short_range.tflite
-    - assets/models/face_detection_full_range.tflite
-    - assets/models/face_detection_full_range_sparse.tflite
-    - assets/models/face_landmark.tflite
-    - assets/models/iris_landmark.tflite
     - assets/ffmpeg/windows/ffmpeg.exe
     - assets/ffmpeg/windows/LICENSE
 

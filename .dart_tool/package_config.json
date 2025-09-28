@@ -207,7 +207,7 @@
     },
     {
       "name": "face_detection_tflite",
-      "rootUri": "file:///Users/hugocornellier/.pub-cache/git/face_detection_tflite-10aca656fd720d0fa4494d9872dcb40fb72f4af2/",
+      "rootUri": "file:///Users/hugocornellier/.pub-cache/git/face_detection_tflite-f8aea308acff521dcfe2147a3d2ea612403a3208/",
       "packageUri": "lib/",
       "languageVersion": "3.6"
     },
