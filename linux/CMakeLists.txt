@@ -36,7 +36,6 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK REQUIRED IMPORTED_TARGET gtk+-3.0)
 
 set(FLUTTER_ASSET_DIR_NAME "flutter_assets")
-set(TFLITE_SO_FROM_ASSET "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}/packages/face_detection_tflite/assets/bin/libtensorflowlite_c-linux.so")
 add_subdirectory("runner")
 
 add_dependencies(${BINARY_NAME} flutter_assemble)
@@ -76,10 +75,3 @@ install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}" DESTINATION "
 if(NOT CMAKE_BUILD_TYPE MATCHES "Debug")
   install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}" COMPONENT Runtime)
 endif()
-
-install(CODE "
-  if(NOT EXISTS \"${TFLITE_SO_FROM_ASSET}\")
-    message(FATAL_ERROR \"Missing TFLite .so at: ${TFLITE_SO_FROM_ASSET}\")
-  endif()
-")
-install(FILES "${TFLITE_SO_FROM_ASSET}" DESTINATION "${INSTALL_BUNDLE_BLOBS_DIR}" COMPONENT Runtime)

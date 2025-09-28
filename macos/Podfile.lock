@@ -168,7 +168,7 @@ SPEC CHECKSUMS:
   camera_macos: 9fd766915a6c236c8b3fd902f7ccd215636cd07a
   desktop_drop: 248706031734554504f939cab1ad4c5fbc9c9c72
   device_info_plus: 4fb280989f669696856f8b129e4a5e3cd6c48f76
-  face_detection_tflite: d11ad7167abc06474dc2963698fce8682b55c3be
+  face_detection_tflite: 2e848ccb3ee51fbd993a2dadd9f2d916478a5ab6
   ffmpeg_kit_flutter_new: 4eb1908463948e877ff5c4f2c7bb28f2a5dfd11b
   file_picker: 7584aae6fa07a041af2b36a2655122d42f578c1a
   file_selector_macos: 6280b52b459ae6c590af5d78fc35c7267a3c4b31

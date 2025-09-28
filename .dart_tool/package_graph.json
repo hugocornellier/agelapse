@@ -136,6 +136,13 @@
       ]
     },
     {
+      "name": "media_kit_libs_linux",
+      "version": "1.2.1",
+      "dependencies": [
+        "flutter"
+      ]
+    },
+    {
       "name": "video_player_media_kit",
       "version": "1.0.6",
       "dependencies": [
@@ -1843,13 +1850,6 @@
         "flutter",
         "meta",
         "plugin_platform_interface"
-      ]
-    },
-    {
-      "name": "media_kit_libs_linux",
-      "version": "1.2.1",
-      "dependencies": [
-        "flutter"
       ]
     }
   ],

@@ -243,7 +243,7 @@
         <entry key="face_detection_tflite">
           <value>
             <list>
-              <option value="$USER_HOME$/.pub-cache/git/face_detection_tflite-b680e80039087b393d23d420bcbbb9ebb067dd7d//lib" />
+              <option value="$USER_HOME$/.pub-cache/git/face_detection_tflite-10aca656fd720d0fa4494d9872dcb40fb72f4af2//lib" />
             </list>
           </value>
         </entry>
@@ -671,6 +671,13 @@
           <value>
             <list>
               <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/media_kit-1.2.0/lib" />
+            </list>
+          </value>
+        </entry>
+        <entry key="media_kit_libs_linux">
+          <value>
+            <list>
+              <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/media_kit_libs_linux-1.2.1/lib" />
             </list>
           </value>
         </entry>
@@ -1391,7 +1398,7 @@
       </option>
     </properties>
     <CLASSES>
-      <root url="file://$USER_HOME$/.pub-cache/git/face_detection_tflite-b680e80039087b393d23d420bcbbb9ebb067dd7d//lib" />
+      <root url="file://$USER_HOME$/.pub-cache/git/face_detection_tflite-10aca656fd720d0fa4494d9872dcb40fb72f4af2//lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/animated_bottom_navigation_bar-1.4.0/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/ansicolor-2.0.3/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/apple_vision_commons-0.0.3/lib" />
@@ -1483,6 +1490,7 @@
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/material_color_utilities-0.11.1/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/material_symbols_icons-4.2873.0/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/media_kit-1.2.0/lib" />
+      <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/media_kit_libs_linux-1.2.1/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/media_kit_video-1.3.0/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/meta-1.17.0/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/mime-2.0.0/lib" />

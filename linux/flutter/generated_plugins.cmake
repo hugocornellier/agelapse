@@ -4,6 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   desktop_drop
+  face_detection_tflite
   file_selector_linux
   flutter_timezone
   media_kit_libs_linux
