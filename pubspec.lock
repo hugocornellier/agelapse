@@ -277,8 +277,8 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: f8aea308acff521dcfe2147a3d2ea612403a3208
-      resolved-ref: f8aea308acff521dcfe2147a3d2ea612403a3208
+      ref: fa1e005e0edf3f97721661db5953965611c7fa7d
+      resolved-ref: fa1e005e0edf3f97721661db5953965611c7fa7d
       url: "https://github.com/hugocornellier/face_detection_tflite.git"
     source: git
     version: "0.1.0+1"
@@ -1244,12 +1244,13 @@ packages:
     source: hosted
     version: "0.7.7"
   tflite_flutter:
-    dependency: "direct main"
+    dependency: transitive
     description:
-      name: tflite_flutter
-      sha256: "48e6fde2ad97162bb66a16a142f4c4698add9e8cd397ce9d1cc7451b55537ac1"
-      url: "https://pub.dev"
-    source: hosted
+      path: "."
+      ref: "3ce480cd12b910758b6b97224c54d7b8c5c1e949"
+      resolved-ref: "3ce480cd12b910758b6b97224c54d7b8c5c1e949"
+      url: "https://github.com/hugocornellier/flutter-tflite.git"
+    source: git
     version: "0.11.0"
   timezone:
     dependency: transitive

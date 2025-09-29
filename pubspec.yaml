@@ -2,7 +2,7 @@ name: agelapse
 description: A powerful tool for creating stabilized aging timelapses.
 publish_to: 'none'
 
-version: 2.0.1+28
+version: 2.0.2+29
 
 environment:
   sdk: ">=3.1.0 <4.0.0"
@@ -23,7 +23,7 @@ dependencies:
   face_detection_tflite:
     git:
       url: https://github.com/hugocornellier/face_detection_tflite.git
-      ref: f8aea308acff521dcfe2147a3d2ea612403a3208
+      ref: e2ba8c2b8235e2793c5a54262fb56676ceae2a96
   ffmpeg_kit_flutter_new: ^3.2.0
   file_picker: ^10.3.3
   file_selector: ^1.0.4
@@ -53,7 +53,6 @@ dependencies:
   sqflite: ^2.4.2
   sqflite_common_ffi: ^2.3.6
   sqlite3_flutter_libs: ^0.5.24
-  tflite_flutter: ^0.11.0
   url_launcher: ^6.3.2
   vibration: ^3.1.4
   video_player: ^2.10.0
@@ -92,4 +91,3 @@ flutter_native_splash:
   android_12:
     color: "#2b2b2b"
     image: assets/images/splash/logo-android.png
-

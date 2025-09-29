@@ -5,7 +5,7 @@
   "packages": [
     {
       "name": "agelapse",
-      "version": "2.0.1+28",
+      "version": "2.0.2+29",
       "dependencies": [
         "animated_bottom_navigation_bar",
         "apple_vision_face",
@@ -48,7 +48,6 @@
         "sqflite",
         "sqflite_common_ffi",
         "sqlite3_flutter_libs",
-        "tflite_flutter",
         "url_launcher",
         "vibration",
         "video_player",
@@ -195,17 +194,6 @@
         "url_launcher_platform_interface",
         "url_launcher_web",
         "url_launcher_windows"
-      ]
-    },
-    {
-      "name": "tflite_flutter",
-      "version": "0.11.0",
-      "dependencies": [
-        "ffi",
-        "flutter",
-        "path",
-        "plugin_platform_interface",
-        "quiver"
       ]
     },
     {
@@ -516,10 +504,8 @@
       "version": "0.1.0+1",
       "dependencies": [
         "cupertino_icons",
-        "file_selector",
         "flutter",
         "image",
-        "image_picker",
         "tflite_flutter"
       ]
     },
@@ -974,18 +960,6 @@
       ]
     },
     {
-      "name": "ffi",
-      "version": "2.1.4",
-      "dependencies": []
-    },
-    {
-      "name": "quiver",
-      "version": "3.2.2",
-      "dependencies": [
-        "matcher"
-      ]
-    },
-    {
       "name": "synchronized",
       "version": "3.3.1",
       "dependencies": []
@@ -1042,6 +1016,11 @@
         "sqflite_common",
         "sqflite_platform_interface"
       ]
+    },
+    {
+      "name": "ffi",
+      "version": "2.1.4",
+      "dependencies": []
     },
     {
       "name": "file",
@@ -1519,6 +1498,17 @@
       ]
     },
     {
+      "name": "tflite_flutter",
+      "version": "0.11.0",
+      "dependencies": [
+        "ffi",
+        "flutter",
+        "path",
+        "plugin_platform_interface",
+        "quiver"
+      ]
+    },
+    {
       "name": "sprintf",
       "version": "7.0.0",
       "dependencies": []
@@ -1815,6 +1805,13 @@
         "source_span",
         "string_scanner",
         "typed_data"
+      ]
+    },
+    {
+      "name": "quiver",
+      "version": "3.2.2",
+      "dependencies": [
+        "matcher"
       ]
     },
     {

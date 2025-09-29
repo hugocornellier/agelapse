@@ -243,7 +243,7 @@
         <entry key="face_detection_tflite">
           <value>
             <list>
-              <option value="$USER_HOME$/.pub-cache/git/face_detection_tflite-3d1124fc9b87c18dbfd2bee1d44f58f926f48b1d//lib" />
+              <option value="$USER_HOME$/.pub-cache/git/face_detection_tflite-fa1e005e0edf3f97721661db5953965611c7fa7d//lib" />
             </list>
           </value>
         </entry>
@@ -1104,7 +1104,7 @@
         <entry key="tflite_flutter">
           <value>
             <list>
-              <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/tflite_flutter-0.11.0/lib" />
+              <option value="$USER_HOME$/.pub-cache/git/flutter-tflite-3ce480cd12b910758b6b97224c54d7b8c5c1e949//lib" />
             </list>
           </value>
         </entry>
@@ -1398,7 +1398,8 @@
       </option>
     </properties>
     <CLASSES>
-      <root url="file://$USER_HOME$/.pub-cache/git/face_detection_tflite-3d1124fc9b87c18dbfd2bee1d44f58f926f48b1d//lib" />
+      <root url="file://$USER_HOME$/.pub-cache/git/face_detection_tflite-fa1e005e0edf3f97721661db5953965611c7fa7d//lib" />
+      <root url="file://$USER_HOME$/.pub-cache/git/flutter-tflite-3ce480cd12b910758b6b97224c54d7b8c5c1e949//lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/animated_bottom_navigation_bar-1.4.0/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/ansicolor-2.0.3/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/apple_vision_commons-0.0.3/lib" />
@@ -1550,7 +1551,6 @@
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/synchronized-3.3.1/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/term_glyph-1.2.2/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/test_api-0.7.7/lib" />
-      <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/tflite_flutter-0.11.0/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/timezone-0.10.0/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/typed_data-1.4.0/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/universal_io-2.2.2/lib" />
