@@ -52,11 +52,13 @@
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/file_selector_macos-0.9.4+4" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/permission_handler_html-0.1.3+5" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/flutter_email_sender-8.0.0" />
+      <root url="file://$USER_HOME$/.pub-cache/git/flutter-tflite-3ce480cd12b910758b6b97224c54d7b8c5c1e949" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/path_provider_foundation-2.4.1" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/url_launcher_windows-3.1.4" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/camera_android_camerax-0.6.7" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/image_picker-1.2.0" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/file_selector_web-0.9.4+2" />
+      <root url="file://$USER_HOME$/.pub-cache/git/face_detection_tflite-049f36a1492ae184b84e6bff7185d10e960510b2" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/photo_manager-3.6.4" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/path_provider-2.1.5" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/file_selector_ios-0.5.3+2" />
@@ -70,8 +72,6 @@
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/path_provider_windows-2.3.0" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/heif_converter-1.0.1" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/flutter_native_splash-2.4.6" />
-      <root url="file://$USER_HOME$/.pub-cache/git/flutter-tflite-3ce480cd12b910758b6b97224c54d7b8c5c1e949" />
-      <root url="file://$USER_HOME$/.pub-cache/git/face_detection_tflite-fa1e005e0edf3f97721661db5953965611c7fa7d" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />
