@@ -10,11 +10,6 @@ PODS:
     - FlutterMacOS
   - face_detection_tflite (0.0.1):
     - FlutterMacOS
-  - ffmpeg_kit_flutter_new (1.0.0):
-    - ffmpeg_kit_flutter_new/full-gpl (= 1.0.0)
-    - FlutterMacOS
-  - ffmpeg_kit_flutter_new/full-gpl (1.0.0):
-    - FlutterMacOS
   - file_picker (0.0.1):
     - FlutterMacOS
   - file_selector_macos (0.0.1):
@@ -86,7 +81,6 @@ DEPENDENCIES:
   - desktop_drop (from `Flutter/ephemeral/.symlinks/plugins/desktop_drop/macos`)
   - device_info_plus (from `Flutter/ephemeral/.symlinks/plugins/device_info_plus/macos`)
   - face_detection_tflite (from `Flutter/ephemeral/.symlinks/plugins/face_detection_tflite/macos`)
-  - ffmpeg_kit_flutter_new (from `Flutter/ephemeral/.symlinks/plugins/ffmpeg_kit_flutter_new/macos`)
   - file_picker (from `Flutter/ephemeral/.symlinks/plugins/file_picker/macos`)
   - file_selector_macos (from `Flutter/ephemeral/.symlinks/plugins/file_selector_macos/macos`)
   - flutter_local_notifications (from `Flutter/ephemeral/.symlinks/plugins/flutter_local_notifications/macos`)
@@ -122,8 +116,6 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/device_info_plus/macos
   face_detection_tflite:
     :path: Flutter/ephemeral/.symlinks/plugins/face_detection_tflite/macos
-  ffmpeg_kit_flutter_new:
-    :path: Flutter/ephemeral/.symlinks/plugins/ffmpeg_kit_flutter_new/macos
   file_picker:
     :path: Flutter/ephemeral/.symlinks/plugins/file_picker/macos
   file_selector_macos:
@@ -169,7 +161,6 @@ SPEC CHECKSUMS:
   desktop_drop: 248706031734554504f939cab1ad4c5fbc9c9c72
   device_info_plus: 4fb280989f669696856f8b129e4a5e3cd6c48f76
   face_detection_tflite: 2e848ccb3ee51fbd993a2dadd9f2d916478a5ab6
-  ffmpeg_kit_flutter_new: 4eb1908463948e877ff5c4f2c7bb28f2a5dfd11b
   file_picker: 7584aae6fa07a041af2b36a2655122d42f578c1a
   file_selector_macos: 6280b52b459ae6c590af5d78fc35c7267a3c4b31
   flutter_local_notifications: 4bf37a31afde695b56091b4ae3e4d9c7a7e6cda0

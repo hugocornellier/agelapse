@@ -20,6 +20,20 @@ import 'dir_utils.dart';
 class VideoUtils {
   static int currentFrame = 1;
 
+  static int pickBitrateKbps(String resolution) {
+    final m = RegExp(r'(\d+)x(\d+)').firstMatch(resolution);
+    if (m == null) return 12000; // safer default
+    final w = int.parse(m.group(1)!);
+    final h = int.parse(m.group(2)!);
+    final pixels = w * h;
+
+    if (pixels >= 3840 * 2160) return 50000; // 4K: 50 Mbps
+    if (pixels >= 2560 * 1440) return 20000; // 1440p: 20 Mbps
+    if (pixels >= 1920 * 1080) return 14000; // 1080p: 14 Mbps
+    if (pixels >= 1280 * 720)  return 8000;  // 720p: 8 Mbps
+    return 5000;                              // lower
+  }
+
   static Future<bool> createTimelapse(
     int projectId,
     framerate,
@@ -93,39 +107,69 @@ class VideoUtils {
     final String framesDir = path.join(stabilizedDirPath, projectOrientation);
     final String listPath = await _buildConcatListFromDir(framesDir, framerate);
 
+    final resolution = await SettingsUtil.loadVideoResolution(projectId.toString());
+    final kbps = pickBitrateKbps(resolution); // update ladder below
+    final vtRate = "-b:v ${kbps}k -maxrate ${ (kbps * 1.5).round() }k -bufsize ${ (kbps * 3).round() }k";
+
     String ffmpegCommand = "-y "
         "-f concat -safe 0 "
         "-i \"$listPath\" "
-        "-vsync cfr "
-        "-r 30 "
+        "-vsync cfr -r 30 "
         "$watermarkInputsAndFilter "
-        "-c:v libx264 -profile:v main -level 4.1 -movflags +faststart "
+        "-c:v h264_videotoolbox $vtRate "
+        "-realtime 0 -g 240 -movflags +faststart -tag:v avc1 "
         "-pix_fmt yuv420p "
         "\"$videoOutputPath\"";
 
     try {
-      print("2...");
-      kitcfg.FFmpegKitConfig.enableLogCallback((kitlog.Log log) {
-        final String output = log.getMessage();
-        parseFFmpegOutput(output, framerate, setCurrentFrame);
+      if (Platform.isMacOS) {
+        final exeDir = path.dirname(Platform.resolvedExecutable);
+        final resourcesDir = path.normalize(path.join(exeDir, '..', 'Resources'));
+        final ffmpegExe = path.join(resourcesDir, 'ffmpeg');
+        final cmd = '"$ffmpegExe" $ffmpegCommand';
 
-        print(output);
-      });
+        final proc = await Process.start('/bin/sh', ['-c', cmd], runInShell: false);
+        proc.stdout.transform(utf8.decoder).transform(const LineSplitter()).listen((line) {
+          print(line);
+        });
+        proc.stderr.transform(utf8.decoder).transform(const LineSplitter()).listen((line) {
+          print(line);
+          parseFFmpegOutput(line, framerate, setCurrentFrame);
+        });
 
-      final kitsession.FFmpegSession session = await kit.FFmpegKit.execute(ffmpegCommand);
-      if (kitrc.ReturnCode.isSuccess(await session.getReturnCode())) {
-        final String resolution = await SettingsUtil.loadVideoResolution(projectId.toString());
-        await DB.instance.addVideo(projectId, resolution, watermarkEnabled.toString(), watermarkPos, totalPhotoCount, framerate);
-        return true;
-      } else {
-        print("ffmpeg failure");
+        final code = await proc.exitCode;
+        try {
+          await File(listPath).delete();
+        } catch (_) {}
+        if (code == 0) {
+          final String resolution = await SettingsUtil.loadVideoResolution(projectId.toString());
+          await DB.instance.addVideo(projectId, resolution, watermarkEnabled.toString(), watermarkPos, totalPhotoCount, framerate);
+          return true;
+        }
         return false;
+      } else {
+        print("2...");
+        kitcfg.FFmpegKitConfig.enableLogCallback((kitlog.Log log) {
+          final String output = log.getMessage();
+          parseFFmpegOutput(output, framerate, setCurrentFrame);
+          print(output);
+        });
+
+        final kitsession.FFmpegSession session = await kit.FFmpegKit.execute(ffmpegCommand);
+        if (kitrc.ReturnCode.isSuccess(await session.getReturnCode())) {
+          final String resolution = await SettingsUtil.loadVideoResolution(projectId.toString());
+          await DB.instance.addVideo(projectId, resolution, watermarkEnabled.toString(), watermarkPos, totalPhotoCount, framerate);
+          return true;
+        } else {
+          print("ffmpeg failure");
+          return false;
+        }
       }
     } catch (e) {
       print(e);
-
       return false;
     }
+
   }
 
   static Future<bool> createTimelapseFromProjectId(

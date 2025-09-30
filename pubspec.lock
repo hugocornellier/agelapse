@@ -301,10 +301,11 @@ packages:
   ffmpeg_kit_flutter_new:
     dependency: "direct main"
     description:
-      name: ffmpeg_kit_flutter_new
-      sha256: a6f881b2a41c8900733afef1806e069f58ab48e395174552e98157eb10d8adc0
-      url: "https://pub.dev"
-    source: hosted
+      path: "."
+      ref: "2d57062b1d57e3ee5539eeb42a9c16192f84e2d5"
+      resolved-ref: "2d57062b1d57e3ee5539eeb42a9c16192f84e2d5"
+      url: "https://github.com/hugocornellier/ffmpeg_kit_flutter.git"
+    source: git
     version: "3.2.0"
   ffmpeg_kit_flutter_platform_interface:
     dependency: transitive
