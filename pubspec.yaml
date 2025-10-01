@@ -82,7 +82,6 @@ flutter:
     - assets/relax.svg
     - assets/ffmpeg/windows/ffmpeg.exe
     - assets/ffmpeg/windows/LICENSE
-    - assets/ffmpeg/mac/ffmpeg
 
 flutter_icons:
   android: true
