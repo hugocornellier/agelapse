@@ -270,8 +270,7 @@ class GalleryUtils {
     try {
       final archive = ZipDecoder().decodeStream(input);
 
-      final entries = archive.files
-          .where((f) {
+      final entries = archive.files.where((f) {
         if (!f.isFile) return false;
         final lowerName = path.basename(f.name).toLowerCase();
         if (lowerName == '.ds_store' || f.name.startsWith('__MACOSX/')) return false;
@@ -281,9 +280,10 @@ class GalleryUtils {
           '.tif', '.tiff', '.heic', '.heif', '.avif', '.gif'
         };
         final ext = path.extension(lowerName);
-        return allowed.contains(ext); // <-- no size check
-      })
-          .toList()
+        if (!allowed.contains(ext)) return false;
+
+        return f.size >= 10000;
+      }).toList()
         ..sort((a, b) => a.name.compareTo(b.name));
 
       increasePhotosImported(entries.length);
@@ -367,12 +367,16 @@ class GalleryUtils {
         );
       }
     } else if (Utils.isImage(file.path)) {
+      increasePhotosImported(1);
+
       await processPickedImage(
         file.path,
         projectId,
         activeProcessingDateNotifier,
         onImagesLoaded: onImagesLoaded,
+        increaseSuccessfulImportCount: increaseSuccessfulImportCount,
       );
+
       _tickBatchProgress(setProgressInMain);
     }
   }
