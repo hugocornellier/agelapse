@@ -501,12 +501,13 @@
     },
     {
       "name": "face_detection_tflite",
-      "version": "0.1.0+1",
+      "version": "0.1.4",
       "dependencies": [
         "cupertino_icons",
         "flutter",
         "image",
-        "tflite_flutter"
+        "path",
+        "tflite_flutter_custom"
       ]
     },
     {
@@ -1498,8 +1499,8 @@
       ]
     },
     {
-      "name": "tflite_flutter",
-      "version": "0.11.0",
+      "name": "tflite_flutter_custom",
+      "version": "1.0.0",
       "dependencies": [
         "ffi",
         "flutter",

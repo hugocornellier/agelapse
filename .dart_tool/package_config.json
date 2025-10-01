@@ -207,7 +207,7 @@
     },
     {
       "name": "face_detection_tflite",
-      "rootUri": "file:///Users/hugocornellier/.pub-cache/git/face_detection_tflite-b7b0b73f2b69b763dcd58a29b07faa22df50d35f/",
+      "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/face_detection_tflite-0.1.4",
       "packageUri": "lib/",
       "languageVersion": "3.6"
     },
@@ -944,8 +944,8 @@
       "languageVersion": "3.5"
     },
     {
-      "name": "tflite_flutter",
-      "rootUri": "file:///Users/hugocornellier/.pub-cache/git/flutter-tflite-3ce480cd12b910758b6b97224c54d7b8c5c1e949/",
+      "name": "tflite_flutter_custom",
+      "rootUri": "file:///Users/hugocornellier/.pub-cache/hosted/pub.dev/tflite_flutter_custom-1.0.0",
       "packageUri": "lib/",
       "languageVersion": "3.3"
     },

@@ -7,6 +7,8 @@
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/device_info_plus-11.3.3" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/flutter_timezone-4.1.1" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/media_kit_video-1.3.0" />
+      <root url="file://$USER_HOME$/.pub-cache/git/ffmpeg_kit_flutter-2d57062b1d57e3ee5539eeb42a9c16192f84e2d5" />
+      <root url="file://$USER_HOME$/.pub-cache/git/face_detection_tflite-b7b0b73f2b69b763dcd58a29b07faa22df50d35f" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/file_selector_linux-0.9.3+2" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/apple_vision_face-0.0.4" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/sqflite_android-2.4.1" />
@@ -58,7 +60,6 @@
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/camera_android_camerax-0.6.7" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/image_picker-1.2.0" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/file_selector_web-0.9.4+2" />
-      <root url="file://$USER_HOME$/.pub-cache/git/face_detection_tflite-049f36a1492ae184b84e6bff7185d10e960510b2" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/photo_manager-3.6.4" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/path_provider-2.1.5" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/file_selector_ios-0.5.3+2" />
@@ -68,7 +69,6 @@
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/window_manager-0.5.1" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/flutter_local_notifications_windows-1.0.3" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/path_provider_android-2.2.16" />
-      <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/ffmpeg_kit_flutter_new-3.2.0" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/path_provider_windows-2.3.0" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/heif_converter-1.0.1" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/flutter_native_splash-2.4.6" />

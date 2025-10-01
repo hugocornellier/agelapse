@@ -20,10 +20,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   desktop_drop: ^0.6.1
   exif: ^3.3.0
-  face_detection_tflite:
-    git:
-      url: https://github.com/hugocornellier/face_detection_tflite.git
-      ref: b7b0b73f2b69b763dcd58a29b07faa22df50d35f
+  face_detection_tflite: ^0.1.4
   ffmpeg_kit_flutter_new:
     git:
       url: https://github.com/hugocornellier/ffmpeg_kit_flutter.git

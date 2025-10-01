@@ -276,12 +276,11 @@ packages:
   face_detection_tflite:
     dependency: "direct main"
     description:
-      path: "."
-      ref: b7b0b73f2b69b763dcd58a29b07faa22df50d35f
-      resolved-ref: b7b0b73f2b69b763dcd58a29b07faa22df50d35f
-      url: "https://github.com/hugocornellier/face_detection_tflite.git"
-    source: git
-    version: "0.1.0+1"
+      name: face_detection_tflite
+      sha256: "9eded9dfb7ff67f4cd925f18f8779e0c7132fddf7065f101c9c982df7cd4bd8c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.4"
   fake_async:
     dependency: transitive
     description:
@@ -1244,15 +1243,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.7"
-  tflite_flutter:
+  tflite_flutter_custom:
     dependency: transitive
     description:
-      path: "."
-      ref: "3ce480cd12b910758b6b97224c54d7b8c5c1e949"
-      resolved-ref: "3ce480cd12b910758b6b97224c54d7b8c5c1e949"
-      url: "https://github.com/hugocornellier/flutter-tflite.git"
-    source: git
-    version: "0.11.0"
+      name: tflite_flutter_custom
+      sha256: "54a8022365cf394ce6bb6529ed89dc4682b01ab82aa60bc775a34825ef7deb4e"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
   timezone:
     dependency: transitive
     description:

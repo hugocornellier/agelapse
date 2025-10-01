@@ -2,5 +2,7 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
+    <mapping directory="$USER_HOME$/.pub-cache/git/face_detection_tflite-b7b0b73f2b69b763dcd58a29b07faa22df50d35f" vcs="Git" />
+    <mapping directory="$USER_HOME$/.pub-cache/git/flutter-tflite-3ce480cd12b910758b6b97224c54d7b8c5c1e949" vcs="Git" />
   </component>
 </project>
