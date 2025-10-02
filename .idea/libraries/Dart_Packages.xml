@@ -243,7 +243,7 @@
         <entry key="face_detection_tflite">
           <value>
             <list>
-              <option value="$USER_HOME$/.pub-cache/git/face_detection_tflite-b7b0b73f2b69b763dcd58a29b07faa22df50d35f//lib" />
+              <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/face_detection_tflite-0.1.4/lib" />
             </list>
           </value>
         </entry>
@@ -1101,10 +1101,10 @@
             </list>
           </value>
         </entry>
-        <entry key="tflite_flutter">
+        <entry key="tflite_flutter_custom">
           <value>
             <list>
-              <option value="$USER_HOME$/.pub-cache/git/flutter-tflite-3ce480cd12b910758b6b97224c54d7b8c5c1e949//lib" />
+              <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/tflite_flutter_custom-1.0.0/lib" />
             </list>
           </value>
         </entry>
@@ -1398,9 +1398,7 @@
       </option>
     </properties>
     <CLASSES>
-      <root url="file://$USER_HOME$/.pub-cache/git/face_detection_tflite-b7b0b73f2b69b763dcd58a29b07faa22df50d35f//lib" />
       <root url="file://$USER_HOME$/.pub-cache/git/ffmpeg_kit_flutter-2d57062b1d57e3ee5539eeb42a9c16192f84e2d5//lib" />
-      <root url="file://$USER_HOME$/.pub-cache/git/flutter-tflite-3ce480cd12b910758b6b97224c54d7b8c5c1e949//lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/animated_bottom_navigation_bar-1.4.0/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/ansicolor-2.0.3/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/apple_vision_commons-0.0.3/lib" />
@@ -1435,6 +1433,7 @@
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/exif-3.3.0/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/extended_image-9.1.0/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/extended_image_library-4.0.6/lib" />
+      <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/face_detection_tflite-0.1.4/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/fake_async-1.3.3/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/ffi-2.1.4/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/ffmpeg_kit_flutter_platform_interface-0.2.1/lib" />
@@ -1551,6 +1550,7 @@
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/synchronized-3.3.1/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/term_glyph-1.2.2/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/test_api-0.7.7/lib" />
+      <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/tflite_flutter_custom-1.0.0/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/timezone-0.10.0/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/typed_data-1.4.0/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/universal_io-2.2.2/lib" />

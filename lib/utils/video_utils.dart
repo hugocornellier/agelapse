@@ -117,16 +117,21 @@ class VideoUtils {
         "-vsync cfr -r 30 "
         "$watermarkInputsAndFilter "
         "-c:v h264_videotoolbox $vtRate "
-        "-realtime 0 -g 240 -movflags +faststart -tag:v avc1 "
+        "-g 240 -movflags +faststart -tag:v avc1 "
         "-pix_fmt yuv420p "
         "\"$videoOutputPath\"";
 
     try {
       if (Platform.isMacOS) {
+        print("Here1");
+
         final exeDir = path.dirname(Platform.resolvedExecutable);
         final resourcesDir = path.normalize(path.join(exeDir, '..', 'Resources'));
         final ffmpegExe = path.join(resourcesDir, 'ffmpeg');
         final cmd = '"$ffmpegExe" $ffmpegCommand';
+
+        print('FFMPEG_EXE=' + ffmpegExe);
+        print('FFMPEG_CMD=' + ffmpegCommand);
 
         final proc = await Process.start('/bin/sh', ['-c', cmd], runInShell: false);
         proc.stdout.transform(utf8.decoder).transform(const LineSplitter()).listen((line) {
@@ -138,9 +143,13 @@ class VideoUtils {
         });
 
         final code = await proc.exitCode;
+        print("code: " + code.toString());
+
         try {
           await File(listPath).delete();
-        } catch (_) {}
+        } catch (e) {
+          print(e);
+        }
         if (code == 0) {
           final String resolution = await SettingsUtil.loadVideoResolution(projectId.toString());
           await DB.instance.addVideo(projectId, resolution, watermarkEnabled.toString(), watermarkPos, totalPhotoCount, framerate);
