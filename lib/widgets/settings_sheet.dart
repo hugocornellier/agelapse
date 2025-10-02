@@ -21,10 +21,10 @@ import 'setting_list_tile.dart';
 class SettingsSheet extends StatefulWidget {
   final int projectId;
   final bool isDefaultProject;
-  final Future<void> Function() cancelStabCallback;
   final bool onlyShowVideoSettings;
   final bool onlyShowNotificationSettings;
   final Future<void> Function() stabCallback;
+  final Future<void> Function() cancelStabCallback;
   final void Function() refreshSettings;
   final void Function() clearRawAndStabPhotos;
 
@@ -32,10 +32,10 @@ class SettingsSheet extends StatefulWidget {
     super.key,
     required this.projectId,
     required this.isDefaultProject,
-    required this.cancelStabCallback,
     this.onlyShowVideoSettings = false,
     this.onlyShowNotificationSettings = false,
     required this.stabCallback,
+    required this.cancelStabCallback,
     required this.refreshSettings,
     required this.clearRawAndStabPhotos,
   });
@@ -615,6 +615,7 @@ class SettingsSheetState extends State<SettingsSheet> {
               widget.projectId.toString()
           );
           widget.refreshSettings();
+          widget.stabCallback();
         }
     );
   }

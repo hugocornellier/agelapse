@@ -27,7 +27,6 @@ void main() async {
   );
 
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-
     await DB.instance.createTablesIfNotExist();
     await windowManager.ensureInitialized();
 
@@ -35,7 +34,7 @@ void main() async {
     final bool hasProjects = projects.isNotEmpty;
 
     const Size minDefault = Size(840, 450);
-    const Size minIntro = Size(840, 750);
+    const Size minIntro   = Size(840, 750);
     final Size initialDefault = hasProjects ? const Size(1200, 750) : minIntro;
 
     final Size startSize = hasProjects

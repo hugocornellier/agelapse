@@ -5,7 +5,6 @@
 import FlutterMacOS
 import Foundation
 
-import apple_vision_face
 import camera_macos
 import desktop_drop
 import device_info_plus
@@ -29,7 +28,6 @@ import wakelock_plus
 import window_manager
 
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
-  AppleVisionFacePlugin.register(with: registry.registrar(forPlugin: "AppleVisionFacePlugin"))
   CameraMacosPlugin.register(with: registry.registrar(forPlugin: "CameraMacosPlugin"))
   DesktopDropPlugin.register(with: registry.registrar(forPlugin: "DesktopDropPlugin"))
   DeviceInfoPlusMacosPlugin.register(with: registry.registrar(forPlugin: "DeviceInfoPlusMacosPlugin"))

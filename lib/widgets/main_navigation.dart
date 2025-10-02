@@ -145,8 +145,6 @@ class MainNavigationState extends State<MainNavigation> {
   }
 
   void userRanOutOfSpaceCallback() {
-    print("I'm in the user ran out of space call back..");
-
     setState(() {
       _userRanOutOfSpace = true;
     });
@@ -247,6 +245,8 @@ class MainNavigationState extends State<MainNavigation> {
   }
 
   Future<void> _startStabilization() async {
+    print("_startStab called...");
+
     if (_inStabCall) return;
     _inStabCall = true;
 
@@ -262,8 +262,10 @@ class MainNavigationState extends State<MainNavigation> {
     while (_cancelStabilization && _stabilizingActive) {
       await Future.delayed(const Duration(seconds: 1));
     }
+    print("_startStab 1...");
 
     if (unstabilizedPhotos.isNotEmpty) {
+      print("_startStab if is true...");
       setState(() {
         _stabilizingActive = true;
         _unstabilizedPhotoCount = unstabilizedPhotos.length;
@@ -278,8 +280,11 @@ class MainNavigationState extends State<MainNavigation> {
       Stopwatch stopwatch = Stopwatch();
       stopwatch.start();
 
+      print("length is ${length}");
+
       for (Map<String, dynamic> photo in unstabilizedPhotos) {
         if (_cancelStabilization) {
+          print("cancelling");
           setState(() => _cancelStabilization = false);
           break;
         }
@@ -307,6 +312,8 @@ class MainNavigationState extends State<MainNavigation> {
       }
 
       stopwatch.stop();
+    } else {
+      print("_startStab if is flse...");
     }
 
     await _finalCheck(faceStabilizer);
@@ -465,12 +472,16 @@ class MainNavigationState extends State<MainNavigation> {
   }
 
   Future<void> _cancelStabilizationProcess() async {
-    setState(() {
+    print("_cancelStabilizationProcess called");
+
+    if (_stabilizingActive) {
+      setState(() {
       _cancelStabilization = true;
       _videoCreationActive = false;
       _photoIndex = 0;
       progressPercent = 0;
-    });
+      });
+    }
 
     while (_stabilizingActive) {
       await Future.delayed(const Duration(seconds: 1));

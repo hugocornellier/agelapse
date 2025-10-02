@@ -1,7 +1,4 @@
 PODS:
-  - apple_vision_face (0.0.4):
-    - Flutter
-    - FlutterMacOS
   - camera_macos (0.0.1):
     - FlutterMacOS
   - desktop_drop (0.0.1):
@@ -76,7 +73,6 @@ PODS:
     - FlutterMacOS
 
 DEPENDENCIES:
-  - apple_vision_face (from `Flutter/ephemeral/.symlinks/plugins/apple_vision_face/darwin`)
   - camera_macos (from `Flutter/ephemeral/.symlinks/plugins/camera_macos/macos`)
   - desktop_drop (from `Flutter/ephemeral/.symlinks/plugins/desktop_drop/macos`)
   - device_info_plus (from `Flutter/ephemeral/.symlinks/plugins/device_info_plus/macos`)
@@ -106,8 +102,6 @@ SPEC REPOS:
     - sqlite3
 
 EXTERNAL SOURCES:
-  apple_vision_face:
-    :path: Flutter/ephemeral/.symlinks/plugins/apple_vision_face/darwin
   camera_macos:
     :path: Flutter/ephemeral/.symlinks/plugins/camera_macos/macos
   desktop_drop:
@@ -156,7 +150,6 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/window_manager/macos
 
 SPEC CHECKSUMS:
-  apple_vision_face: 8019c1c98bc53b43a59ca921e68ebd2abae01c29
   camera_macos: 9fd766915a6c236c8b3fd902f7ccd215636cd07a
   desktop_drop: 248706031734554504f939cab1ad4c5fbc9c9c72
   device_info_plus: 4fb280989f669696856f8b129e4a5e3cd6c48f76

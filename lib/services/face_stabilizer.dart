@@ -995,12 +995,13 @@ class FaceStabilizer {
       await DirUtils.getRawPhotoPathFromTimestampAndProjectId(timestamp, projectId);
 
   Future<void> setPhotoStabilized(
-      String rawPhotoPath, {
-        double? translateX,
-        double? translateY,
-        double? rotationDegrees,
-        double? scaleFactor,
-      }) async {
+    String rawPhotoPath, {
+      double? translateX,
+      double? translateY,
+      double? rotationDegrees,
+      double? scaleFactor,
+    }
+  ) async {
     final String timestamp = path.basenameWithoutExtension(rawPhotoPath);
     await DB.instance.setPhotoStabilized(
       timestamp,
