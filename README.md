@@ -22,7 +22,7 @@
 
 ## Overview
 
-**AgeLapse** automates the process of aligning face pictures and creating stabilized aging time-lapses, i.e. "photo-a-day" videos. The application runs natively on mobile (iOS and Android) and on desktop (MacOS and Windows).
+**AgeLapse** automates the process of aligning face pictures and creating stabilized aging time-lapses, i.e. "photo-a-day" videos. The application runs natively on desktop (MacOS, Windows, Linux) and on mobile (iOS and Android).
 
 ## Installation
 
@@ -38,13 +38,17 @@ The face detection model used by AgeLapse is platform-dependent. On Mobile, Goog
 
 ## What's New
 
+### v2.1.0
+
+- Fix several bugs 
+
 ### v2.0.1
 
 - Update documentation URL 
 
 ### v2.0.0
 
-- Provide full MacOS and Windows support to the AgeLapse flutter build.
+- Provide full MacOS, Windows & Linux support to the AgeLapse flutter build.
 - Further improvements to the "manual stabilization" option for when AgeLapse fails to detect landmarks (eg: if the user is wearing sunglasses, the eyes are partially obstructed, etc.)
 - Massive improvements to the [AgeLapse Documentation](https://agelapse.com/docs/intro/) 
 

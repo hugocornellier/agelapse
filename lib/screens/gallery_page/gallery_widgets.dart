@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/painting.dart' as painting;
 import '../../utils/gallery_utils.dart';
 
 class FlashingBox extends StatefulWidget {
@@ -105,16 +106,16 @@ class StabilizedThumbnailState extends State<StabilizedThumbnail> {
         }
 
         if (snapshot.data == "success") {
-          if (File(widget.thumbnailPath).existsSync()) {
-            return Image.file(
-              File(widget.thumbnailPath),
-              fit: BoxFit.cover,
-              width: double.infinity,
-              height: double.infinity,
-              errorBuilder: (context, error, stack) => Container(color: Colors.black),
-            );
-          }
-          return Container(color: Colors.black);
+          final f = File(widget.thumbnailPath);
+          final provider = FileImage(f);
+          painting.imageCache.evict(provider);
+          return Image(
+            image: provider,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorBuilder: (context, error, stack) => Container(color: Colors.black),
+          );
         }
 
         return Container(color: Colors.black);

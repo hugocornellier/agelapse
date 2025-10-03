@@ -751,29 +751,32 @@ class GalleryUtils {
     }
   }
 
-  static Future<String> waitForThumbnail(String thumbnailPath, int projectId) async {
-    while (true) {
+  static Future<String> waitForThumbnail(String thumbnailPath, int projectId, {Duration timeout = const Duration(seconds: 30)}) async {
+    final sw = Stopwatch()..start();
+    int? lastLen;
+    while (sw.elapsed < timeout) {
       final String timestamp = path.basenameWithoutExtension(thumbnailPath);
-
-      Map<String, dynamic>? photo = await DB.instance.getPhotoByTimestamp(timestamp, projectId);
+      final photo = await DB.instance.getPhotoByTimestamp(timestamp, projectId);
       if (photo != null) {
-        try {
-          if (photo['noFacesFound'] == 1) {
-            return "no_faces_found";
-          } else if (photo['stabFailed'] == 1) {
-            return "stab_failed";
-          }
-        } catch (e) {
-          //print("Error: $e");
+        if (photo['noFacesFound'] == 1) return "no_faces_found";
+        if (photo['stabFailed'] == 1) return "stab_failed";
+      }
+      final f = File(thumbnailPath);
+      if (f.existsSync()) {
+        final len = f.lengthSync();
+        if (len > 0 && lastLen != null && len == lastLen) {
+          try {
+            final bytes = await f.readAsBytes();
+            final codec = await instantiateImageCodec(bytes);
+            await codec.getNextFrame();
+            return "success";
+          } catch (_) {}
         }
+        lastLen = len;
       }
-
-      if (await File(thumbnailPath).exists()) {
-        return "success";
-      }
-
-      await Future.delayed(const Duration(seconds: 1));
+      await Future.delayed(const Duration(milliseconds: 200));
     }
+    return "stab_failed";
   }
 }
 
