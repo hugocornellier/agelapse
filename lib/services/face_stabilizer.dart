@@ -129,7 +129,10 @@ class FaceStabilizer {
     String rawPhotoPath,
     bool cancelStabilization,
     void Function() userRanOutOfSpaceCallback,
-    { Face? targetFace, Rect? targetBoundingBox, }
+    {
+      Face? targetFace,
+      Rect? targetBoundingBox,
+    }
   ) async {
     try {
       await _ensureReady();
@@ -147,11 +150,11 @@ class FaceStabilizer {
       if (img == null) return false;
 
       (scaleFactor, rotationDegrees) = await _calculateRotationAndScale(
-          rawPhotoPath,
-          img,
-          targetFace,
-          targetBoundingBox,
-          userRanOutOfSpaceCallback
+        rawPhotoPath,
+        img,
+        targetFace,
+        targetBoundingBox,
+        userRanOutOfSpaceCallback
       );
       if (rotationDegrees == null || scaleFactor == null || cancelStabilization) return false;
 
@@ -167,12 +170,11 @@ class FaceStabilizer {
       stabilizedPhotoPath = _cleanUpPhotoPath(stabilizedPhotoPath);
       rawPhotoPath = _cleanUpPhotoPath(rawPhotoPath);
 
-      await StabUtils.writeImagesBytesToJpgFile(imageBytesStabilized, stabilizedPhotoPath);
       final bool result = await _finalizeStabilization(rawPhotoPath, stabilizedPhotoPath, img, translateX, translateY, rotationDegrees, scaleFactor, imageBytesStabilized);
 
       print("Result => '${result}'");
 
-      if (result) await createStabThumbnail(stabilizedPhotoPath.replaceAll('.jpg', '.png'));
+      if (result) { unawaited(createStabThumbnail(stabilizedPhotoPath.replaceAll('.jpg', '.png'))); }
 
       img.dispose();
       return result;
@@ -182,8 +184,18 @@ class FaceStabilizer {
     }
   }
 
-  Future<bool> _finalizeStabilization(String rawPhotoPath, String stabilizedJpgPhotoPath, ui.Image? img, double translateX, double translateY, double rotationDegrees, double scaleFactor, Uint8List imageBytesStabilized) async {
+  Future<bool> _finalizeStabilization(
+    String rawPhotoPath,
+    String stabilizedJpgPhotoPath,
+    ui.Image? img,
+    double translateX,
+    double translateY,
+    double rotationDegrees,
+    double scaleFactor,
+    Uint8List imageBytesStabilized
+  ) async {
     if (projectType != "face") {
+      await StabUtils.writeImagesBytesToJpgFile(imageBytesStabilized, stabilizedJpgPhotoPath);
       return await saveStabilizedImage(
         imageBytesStabilized,
         rawPhotoPath,
@@ -290,12 +302,13 @@ class FaceStabilizer {
   }
 
   List<Point<double>> _estimatedEyesAfterTransform(
-      ui.Image img,
-      double scale,
-      double rotationDegrees, {
-        double translateX = 0,
-        double translateY = 0,
-      }) {
+    ui.Image img,
+    double scale,
+    double rotationDegrees, {
+      double translateX = 0,
+      double translateY = 0,
+    }
+  ) {
     final Point<double> left0 = originalEyePositions![0]!;
     final Point<double> right0 = originalEyePositions![1]!;
 
@@ -350,6 +363,7 @@ class FaceStabilizer {
     = _calculateOvershots(eyes, goalLeftEye, goalRightEye);
 
     if (!correctionIsNeeded(score, overshotLeftX, overshotRightX, overshotLeftY, overshotRightY)) {
+      await StabUtils.writeImagesBytesToJpgFile(imageBytesStabilized, stabilizedJpgPhotoPath);
       successfulStabilization = await saveStabilizedImage(
         imageBytesStabilized,
         rawPhotoPath,
@@ -435,24 +449,17 @@ class FaceStabilizer {
   }
 
   Future<bool> saveStabilizedImage(
-      Uint8List imageBytes,
-      String rawPhotoPath,
-      String stabilizedPhotoPath,
-      double score, {
-        double? translateX,
-        double? translateY,
-        double? rotationDegrees,
-        double? scaleFactor,
-      }) async {
-    final imglib.Image? rawImage = await compute(imglib.decodeImage, imageBytes);
-
-    final imglib.Image blackBackground = imglib.Image(
-      width: rawImage!.width,
-      height: rawImage.height,
-    );
-    imglib.fill(blackBackground, color: imglib.ColorRgb8(0, 0, 0));
-    imglib.compositeImage(blackBackground, rawImage);
-    final Uint8List blackBackgroundBytes = imglib.encodePng(blackBackground);
+    Uint8List imageBytes,
+    String rawPhotoPath,
+    String stabilizedPhotoPath,
+    double score, {
+      double? translateX,
+      double? translateY,
+      double? rotationDegrees,
+      double? scaleFactor,
+    }
+  ) async {
+    final Uint8List blackBackgroundBytes = await StabUtils.compositeBlackPngBytes(imageBytes);
 
     final String result = await saveBytesToPngFileInIsolate(
       blackBackgroundBytes,
@@ -536,23 +543,7 @@ class FaceStabilizer {
     final String stabThumbnailPath = getStabThumbnailPath(stabilizedPhotoPath);
     await DirUtils.createDirectoryIfNotExists(stabThumbnailPath);
     final bytes = await CameraUtils.readBytesInIsolate(stabilizedPhotoPath);
-    final imglib.Image? rawImage = await compute(imglib.decodeImage, bytes!);
-
-    // Use .jpgs to store thumbnails to save space, but we also need to
-    // composite the transparency with a black background to ensure the thumbnails
-    // have a dark background in gallery
-    final imglib.Image blackBackground = imglib.Image(
-      width: rawImage!.width,
-      height: rawImage.height,
-      numChannels: 4,
-    );
-
-    imglib.fill(blackBackground, color: imglib.ColorRgb8(0, 0, 0));
-    imglib.compositeImage(blackBackground, rawImage);
-
-    final imglib.Image thumbnail = imglib.copyResize(blackBackground, width: 500);
-    final thumbnailBytes = imglib.encodeJpg(thumbnail);
-
+    final thumbnailBytes = await StabUtils.thumbnailJpgFromPngBytes(bytes!);
     await File(stabThumbnailPath).writeAsBytes(thumbnailBytes);
   }
 
@@ -586,12 +577,12 @@ class FaceStabilizer {
   }
 
   Future<(double?, double?)> _calculateRotationAngleAndScaleFace(
-      String rawPhotoPath,
-      ui.Image? img,
-      Face? targetFace,
-      Rect? targetBoundingBox,
-      userRanOutOfSpaceCallback
-      ) async {
+    String rawPhotoPath,
+    ui.Image? img,
+    Face? targetFace,
+    Rect? targetBoundingBox,
+    userRanOutOfSpaceCallback
+  ) async {
     List<Point<double>?> eyes;
 
     if (targetFace != null && !Platform.isMacOS) {
@@ -687,8 +678,6 @@ class FaceStabilizer {
       poses = await _poseDetector?.processImage(inputImage);
     } catch (e) {
       print("Error caught => $e");
-    } finally {
-      _poseDetector?.close();
     }
     if (poses!.isEmpty) return (null, null);
 
@@ -940,26 +929,21 @@ class FaceStabilizer {
     return horizontalDistance;
   }
 
-  Future<List<dynamic>?> getFacesFromRawPhotoPath(String rawPhotoPath, int width, {bool filterByFaceSize = true}) async {
+  Future<List<dynamic>?> getFacesFromRawPhotoPath(
+    String rawPhotoPath,
+    int width,
+    { bool filterByFaceSize = true }
+  ) async {
     await _ensureReady();
     await StabUtils.preparePNG(rawPhotoPath);
     final String pngPath = await DirUtils.getPngPathFromRawPhotoPath(rawPhotoPath);
 
-    if (Platform.isAndroid || Platform.isIOS) {
-      return await StabUtils.getFacesFromFilepath(
-        pngPath,
-        _faceDetector,
-        filterByFaceSize: filterByFaceSize,
-        imageWidth: width,
-      );
-    } else {
-      return await StabUtils.getFacesFromFilepath(
-        pngPath,
-        null,
-        filterByFaceSize: filterByFaceSize,
-        imageWidth: width,
-      );
-    }
+    return await StabUtils.getFacesFromFilepath(
+      pngPath,
+      Platform.isAndroid || Platform.isIOS ? _faceDetector : null,
+      filterByFaceSize: filterByFaceSize,
+      imageWidth: width,
+    );
   }
 
   List<Point<double>?> getEyesFromFaces(dynamic faces) {

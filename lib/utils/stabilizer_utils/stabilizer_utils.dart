@@ -90,6 +90,8 @@ class StabUtils {
       int? imageWidth,
     }
   ) async {
+    print("At the start of 'getFacesFromFilepath' call");
+
     final bool fileExists = File(imagePath).existsSync();
     if (!fileExists) {
       return null;
@@ -142,6 +144,8 @@ class StabUtils {
     } catch(e) {
       print("Error caught while fetching faces: $e");
       return [];
+    } finally {
+      print("At the end of 'getFacesFromFilepath' call...");
     }
   }
 
@@ -181,7 +185,7 @@ class StabUtils {
 
   static Future<void> performFileOperationInBackground(Map<String, dynamic> params) async {
     SendPort sendPort = params['sendPort'];
-    String filePath = params['filePath'];
+    String? filePath = params['filePath'];
     var operation = params['operation'];
     imglib.Image? bitmap = params['bitmap'];
     var bytes = params['bytes'];
@@ -189,7 +193,7 @@ class StabUtils {
     switch (operation) {
       case 'readJpg':
         try {
-          String extension = path.extension(filePath).toLowerCase();
+          String extension = path.extension(filePath!).toLowerCase();
           if (extension == ".jpg") {
             bytes = await File(filePath).readAsBytes();
             bitmap = imglib.JpegDecoder().decode(bytes);
@@ -207,7 +211,7 @@ class StabUtils {
         try {
           if (bitmap != null) {
             bytes = imglib.encodePng(bitmap);
-            await File(filePath).writeAsBytes(bytes!);
+            await File(filePath!).writeAsBytes(bytes!);
             sendPort.send('File written successfully');
           } else {
             sendPort.send('Bitmap is null');
@@ -222,7 +226,7 @@ class StabUtils {
             bitmap = imglib.PngDecoder().decode(bytes);
             if (bitmap != null) {
               bytes = imglib.encodeJpg(bitmap);
-              await File(filePath).writeAsBytes(bytes);
+              await File(filePath!).writeAsBytes(bytes);
               sendPort.send('File written successfully');
             } else {
               sendPort.send('Decoded bitmap is null');
@@ -231,7 +235,38 @@ class StabUtils {
             sendPort.send('Bytes are null');
           }
         } catch (e) {
-          sendPort.send('Error writing JPG: $e');
+          if (e is FileSystemException && e.osError?.errorCode == 28) {
+            sendPort.send('NoSpaceLeftError');
+          } else {
+            sendPort.send('Error writing JPG: $e');
+          }
+        }
+        break;
+      case 'compositeBlackPng':
+        try {
+          final input = bytes as Uint8List;
+          final decoded = imglib.decodePng(input);
+          final bg = imglib.Image(width: decoded!.width, height: decoded.height);
+          imglib.fill(bg, color: imglib.ColorRgb8(0, 0, 0));
+          imglib.compositeImage(bg, decoded);
+          final out = imglib.encodePng(bg);
+          sendPort.send(Uint8List.fromList(out));
+        } catch (e) {
+          sendPort.send('Error compositeBlackPng: $e');
+        }
+        break;
+      case 'thumbnailFromPng':
+        try {
+          final input = bytes as Uint8List;
+          final decoded = imglib.decodePng(input);
+          final bg = imglib.Image(width: decoded!.width, height: decoded.height, numChannels: 4);
+          imglib.fill(bg, color: imglib.ColorRgb8(0, 0, 0));
+          imglib.compositeImage(bg, decoded);
+          final thumb = imglib.copyResize(bg, width: 500);
+          final out = imglib.encodeJpg(thumb);
+          sendPort.send(Uint8List.fromList(out));
+        } catch (e) {
+          sendPort.send('Error thumbnailFromPng: $e');
         }
         break;
     }
@@ -267,6 +302,34 @@ class StabUtils {
     isolate.kill(priority: Isolate.immediate);
   }
 
+  static Future<Uint8List> compositeBlackPngBytes(Uint8List pngBytes) async {
+    ReceivePort receivePort = ReceivePort();
+    var params = {
+      'sendPort': receivePort.sendPort,
+      'bytes': pngBytes,
+      'operation': 'compositeBlackPng'
+    };
+    Isolate? isolate = await Isolate.spawn(performFileOperationInBackground, params);
+    final result = await receivePort.first as Uint8List;
+    receivePort.close();
+    isolate.kill(priority: Isolate.immediate);
+    return result;
+  }
+
+  static Future<Uint8List> thumbnailJpgFromPngBytes(Uint8List pngBytes) async {
+    ReceivePort receivePort = ReceivePort();
+    var params = {
+      'sendPort': receivePort.sendPort,
+      'bytes': pngBytes,
+      'operation': 'thumbnailFromPng'
+    };
+    Isolate? isolate = await Isolate.spawn(performFileOperationInBackground, params);
+    final result = await receivePort.first as Uint8List;
+    receivePort.close();
+    isolate.kill(priority: Isolate.immediate);
+    return result;
+  }
+
   static Future<void> writeBytesToJpgFileInIsolate(String filePath, List<int> bytes) async {
     ReceivePort receivePort = ReceivePort();
     var params = {
@@ -277,9 +340,12 @@ class StabUtils {
     };
 
     Isolate? isolate = await Isolate.spawn(performFileOperationInBackground, params);
-    await receivePort.first;
+    final result = await receivePort.first;
     receivePort.close();
     isolate.kill(priority: Isolate.immediate);
+    if (result == 'NoSpaceLeftError') {
+      throw const FileSystemException('NoSpaceLeftError');
+    }
   }
 
   static Future<bool> writeImagesBytesToJpgFile(Uint8List bytes, String imagePath) async {
@@ -293,7 +359,7 @@ class StabUtils {
     await DirUtils.createDirectoryIfNotExists(pngPath);
     final File pngFile = File(pngPath);
 
-    if ((File(imgPath).existsSync() && !pngFile.existsSync()) || await pngFile.length() == 0) {
+    if (((await File(imgPath).exists()) && !(await pngFile.exists())) || (await pngFile.length()) == 0) {
       bool conversionToJpgNeeded = false;
       String jpgImgPath = "";
 
@@ -394,24 +460,29 @@ class StabUtils {
   }
 
   static Future<ui.Image?> loadImageFromFile(File file) async {
-    try {
-      const int maxWaitTimeInSeconds = 10;
-      int elapsedSeconds = 0;
+    const int maxWaitSec = 10;
+    final Stopwatch sw = Stopwatch()..start();
 
-      while (!(await file.exists())) {
-        if (elapsedSeconds >= maxWaitTimeInSeconds) {
-          debugPrint("Error loading image: file not found within $maxWaitTimeInSeconds seconds");
+    while (!(await file.exists())) {
+      if (sw.elapsed.inSeconds >= maxWaitSec) {
+        debugPrint("Error loading image: file not found within $maxWaitSec seconds");
+        return null;
+      }
+      await Future.delayed(const Duration(milliseconds: 150));
+    }
+
+    while (true) {
+      try {
+        final Uint8List bytes = await file.readAsBytes();
+        final ui.Image img = await decodeImageFromList(bytes);
+        return img;
+      } catch (_) {
+        if (sw.elapsed.inSeconds >= maxWaitSec) {
+          debugPrint("Error loading image: not decodable within $maxWaitSec seconds");
           return null;
         }
-        await Future.delayed(const Duration(seconds: 1));
-        elapsedSeconds++;
+        await Future.delayed(const Duration(milliseconds: 150));
       }
-
-      final Uint8List bytes = await file.readAsBytes();
-      return await decodeImageFromList(bytes);
-    } catch (e) {
-      debugPrint("Error loading image: $e");
-      return null;
     }
   }
 

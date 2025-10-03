@@ -245,8 +245,6 @@ class MainNavigationState extends State<MainNavigation> {
   }
 
   Future<void> _startStabilization() async {
-    print("_startStab called...");
-
     if (_inStabCall) return;
     _inStabCall = true;
 
@@ -262,10 +260,8 @@ class MainNavigationState extends State<MainNavigation> {
     while (_cancelStabilization && _stabilizingActive) {
       await Future.delayed(const Duration(seconds: 1));
     }
-    print("_startStab 1...");
 
     if (unstabilizedPhotos.isNotEmpty) {
-      print("_startStab if is true...");
       setState(() {
         _stabilizingActive = true;
         _unstabilizedPhotoCount = unstabilizedPhotos.length;
@@ -280,11 +276,8 @@ class MainNavigationState extends State<MainNavigation> {
       Stopwatch stopwatch = Stopwatch();
       stopwatch.start();
 
-      print("length is ${length}");
-
       for (Map<String, dynamic> photo in unstabilizedPhotos) {
         if (_cancelStabilization) {
-          print("cancelling");
           setState(() => _cancelStabilization = false);
           break;
         }
@@ -312,8 +305,6 @@ class MainNavigationState extends State<MainNavigation> {
       }
 
       stopwatch.stop();
-    } else {
-      print("_startStab if is flse...");
     }
 
     await _finalCheck(faceStabilizer);
