@@ -210,7 +210,7 @@ class FaceStabilizer {
 
     rawPhotoPath = _cleanUpPhotoPath(rawPhotoPath);
 
-    if (Platform.isMacOS) {
+    if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
       final Point<double> goalLeftEye  = Point(leftEyeXGoal,  bothEyesYGoal);
       final Point<double> goalRightEye = Point(rightEyeXGoal, bothEyesYGoal);
 
