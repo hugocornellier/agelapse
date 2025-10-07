@@ -209,6 +209,7 @@ class FaceStabilizer {
     }
 
     rawPhotoPath = _cleanUpPhotoPath(rawPhotoPath);
+    await StabUtils.writeImagesBytesToJpgFile(imageBytesStabilized, stabilizedJpgPhotoPath);
 
     if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
       final Point<double> goalLeftEye  = Point(leftEyeXGoal,  bothEyesYGoal);
