@@ -38,6 +38,10 @@ The face detection model used by AgeLapse is platform-dependent. On Mobile, Goog
 
 ## What's New
 
+### v2.1.2
+
+- Fixed a bug where the "adjust output position" functionality would fail 
+
 ### v2.1.1
 
 - Smoother experience across the app, improving responsiveness/reduced stutter during stabilization.

@@ -46,7 +46,7 @@ void main() async {
       size: startSize,
       minimumSize: hasProjects ? minDefault : minIntro,
       center: true,
-      title: 'AgeLapse v2.1.1',
+      title: 'AgeLapse v2.1.2',
     );
 
     await windowManager.waitUntilReadyToShow(options, () async {

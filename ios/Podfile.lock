@@ -1,7 +1,4 @@
 PODS:
-  - apple_vision_face (0.0.4):
-    - Flutter
-    - FlutterMacOS
   - async_zip (0.0.1):
     - Flutter
   - camera_avfoundation (0.0.1):
@@ -103,6 +100,8 @@ PODS:
     - Flutter
   - image_picker_ios (0.0.1):
     - Flutter
+  - media_kit_video (0.0.1):
+    - Flutter
   - MLImage (1.0.0-beta6)
   - MLKitCommon (12.0.0):
     - GoogleDataTransport (~> 10.0)
@@ -162,6 +161,31 @@ PODS:
   - sqflite_darwin (0.0.4):
     - Flutter
     - FlutterMacOS
+  - sqlite3 (3.50.4):
+    - sqlite3/common (= 3.50.4)
+  - sqlite3/common (3.50.4)
+  - sqlite3/dbstatvtab (3.50.4):
+    - sqlite3/common
+  - sqlite3/fts5 (3.50.4):
+    - sqlite3/common
+  - sqlite3/math (3.50.4):
+    - sqlite3/common
+  - sqlite3/perf-threadsafe (3.50.4):
+    - sqlite3/common
+  - sqlite3/rtree (3.50.4):
+    - sqlite3/common
+  - sqlite3/session (3.50.4):
+    - sqlite3/common
+  - sqlite3_flutter_libs (0.0.1):
+    - Flutter
+    - FlutterMacOS
+    - sqlite3 (~> 3.50.4)
+    - sqlite3/dbstatvtab
+    - sqlite3/fts5
+    - sqlite3/math
+    - sqlite3/perf-threadsafe
+    - sqlite3/rtree
+    - sqlite3/session
   - SwiftyGif (5.4.5)
   - TensorFlowLiteC (2.12.0):
     - TensorFlowLiteC/Core (= 2.12.0)
@@ -180,7 +204,7 @@ PODS:
   - TensorFlowLiteSwift/Metal (2.12.0):
     - TensorFlowLiteC/Metal (= 2.12.0)
     - TensorFlowLiteSwift/Core (= 2.12.0)
-  - tflite_flutter (0.0.1):
+  - tflite_flutter_custom (0.0.1):
     - Flutter
     - TensorFlowLiteSwift (= 2.12.0)
     - TensorFlowLiteSwift/CoreML (= 2.12.0)
@@ -192,11 +216,12 @@ PODS:
   - video_player_avfoundation (0.0.1):
     - Flutter
     - FlutterMacOS
+  - volume_controller (0.0.1):
+    - Flutter
   - wakelock_plus (0.0.1):
     - Flutter
 
 DEPENDENCIES:
-  - apple_vision_face (from `.symlinks/plugins/apple_vision_face/darwin`)
   - async_zip (from `.symlinks/plugins/async_zip/ios`)
   - camera_avfoundation (from `.symlinks/plugins/camera_avfoundation/ios`)
   - device_info_plus (from `.symlinks/plugins/device_info_plus/ios`)
@@ -213,6 +238,7 @@ DEPENDENCIES:
   - google_mlkit_pose_detection (from `.symlinks/plugins/google_mlkit_pose_detection/ios`)
   - heif_converter (from `.symlinks/plugins/heif_converter/ios`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
+  - media_kit_video (from `.symlinks/plugins/media_kit_video/ios`)
   - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
   - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
@@ -221,10 +247,12 @@ DEPENDENCIES:
   - sensors_plus (from `.symlinks/plugins/sensors_plus/ios`)
   - share_plus (from `.symlinks/plugins/share_plus/ios`)
   - sqflite_darwin (from `.symlinks/plugins/sqflite_darwin/darwin`)
-  - tflite_flutter (from `.symlinks/plugins/tflite_flutter/ios`)
+  - sqlite3_flutter_libs (from `.symlinks/plugins/sqlite3_flutter_libs/darwin`)
+  - tflite_flutter_custom (from `.symlinks/plugins/tflite_flutter_custom/ios`)
   - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
   - vibration (from `.symlinks/plugins/vibration/ios`)
   - video_player_avfoundation (from `.symlinks/plugins/video_player_avfoundation/darwin`)
+  - volume_controller (from `.symlinks/plugins/volume_controller/ios`)
   - wakelock_plus (from `.symlinks/plugins/wakelock_plus/ios`)
 
 SPEC REPOS:
@@ -243,6 +271,7 @@ SPEC REPOS:
     - MLKitXenoCommon
     - nanopb
     - PromisesObjC
+    - sqlite3
     - SwiftyGif
     - TensorFlowLiteC
     - TensorFlowLiteSwift
@@ -253,8 +282,6 @@ SPEC REPOS:
     - SDWebImage
 
 EXTERNAL SOURCES:
-  apple_vision_face:
-    :path: ".symlinks/plugins/apple_vision_face/darwin"
   async_zip:
     :path: ".symlinks/plugins/async_zip/ios"
   camera_avfoundation:
@@ -287,6 +314,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/heif_converter/ios"
   image_picker_ios:
     :path: ".symlinks/plugins/image_picker_ios/ios"
+  media_kit_video:
+    :path: ".symlinks/plugins/media_kit_video/ios"
   package_info_plus:
     :path: ".symlinks/plugins/package_info_plus/ios"
   path_provider_foundation:
@@ -303,19 +332,22 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/share_plus/ios"
   sqflite_darwin:
     :path: ".symlinks/plugins/sqflite_darwin/darwin"
-  tflite_flutter:
-    :path: ".symlinks/plugins/tflite_flutter/ios"
+  sqlite3_flutter_libs:
+    :path: ".symlinks/plugins/sqlite3_flutter_libs/darwin"
+  tflite_flutter_custom:
+    :path: ".symlinks/plugins/tflite_flutter_custom/ios"
   url_launcher_ios:
     :path: ".symlinks/plugins/url_launcher_ios/ios"
   vibration:
     :path: ".symlinks/plugins/vibration/ios"
   video_player_avfoundation:
     :path: ".symlinks/plugins/video_player_avfoundation/darwin"
+  volume_controller:
+    :path: ".symlinks/plugins/volume_controller/ios"
   wakelock_plus:
     :path: ".symlinks/plugins/wakelock_plus/ios"
 
 SPEC CHECKSUMS:
-  apple_vision_face: 8019c1c98bc53b43a59ca921e68ebd2abae01c29
   async_zip: 1d6a4f059b13bd0f2c60eb2e32666d33166b96bd
   camera_avfoundation: 04b44aeb14070126c6529e5ab82cc7c9fca107cf
   device_info_plus: 21fcca2080fbcd348be798aa36c3e5ed849eefbe
@@ -339,6 +371,7 @@ SPEC CHECKSUMS:
   GTMSessionFetcher: 5aea5ba6bd522a239e236100971f10cb71b96ab6
   heif_converter: c99800312529d736276a6a75a2115b8f43a0bad1
   image_picker_ios: 7fe1ff8e34c1790d6fff70a32484959f563a928a
+  media_kit_video: f3b0d035d89def15cfbbcf7dc2ae278f201e2f83
   MLImage: 0ad1c5f50edd027672d8b26b0fee78a8b4a0fc56
   MLKitCommon: 07c2c33ae5640e5380beaaa6e4b9c249a205542d
   MLKitFaceDetection: 2a593db4837db503ad3426b565e7aab045cefea5
@@ -358,13 +391,16 @@ SPEC CHECKSUMS:
   sensors_plus: 6a11ed0c2e1d0bd0b20b4029d3bad27d96e0c65b
   share_plus: 50da8cb520a8f0f65671c6c6a99b3617ed10a58a
   sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
+  sqlite3: 73513155ec6979715d3904ef53a8d68892d4032b
+  sqlite3_flutter_libs: 83f8e9f5b6554077f1d93119fe20ebaa5f3a9ef1
   SwiftyGif: 706c60cf65fa2bc5ee0313beece843c8eb8194d4
   TensorFlowLiteC: 20785a69299185a379ba9852b6625f00afd7984a
   TensorFlowLiteSwift: 3a4928286e9e35bdd3e17970f48e53c80d25e793
-  tflite_flutter: 64b192e11352fe36943ab6656e1d49207f1a5595
+  tflite_flutter_custom: c9b7ec51def8824214660fe6db81c7bd6afcf6f9
   url_launcher_ios: 694010445543906933d732453a59da0a173ae33d
   vibration: 69774ad57825b11c951ee4c46155f455d7a592ce
   video_player_avfoundation: 2cef49524dd1f16c5300b9cd6efd9611ce03639b
+  volume_controller: 3657a1f65bedb98fa41ff7dc5793537919f31b12
   wakelock_plus: e29112ab3ef0b318e58cfa5c32326458be66b556
 
 PODFILE CHECKSUM: b595372de811b817b6ce00a128ceea1e2e871542

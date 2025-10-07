@@ -222,6 +222,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
     );
   }
 
+  // TO REPLACE WITH
   Widget _buildImageLayer(BuildContext context) {
     return Expanded(
       child: LayoutBuilder(
@@ -233,65 +234,62 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
             aspectRatioValue = outputImageLoader.projectOrientation == 'landscape' ? 9 / 16 : 16 / 9;
           }
 
-          final double width = constraints.maxWidth;
-          final double height = width * aspectRatioValue;
+          final double maxW = constraints.maxWidth;
+          final double maxH = constraints.maxHeight;
 
-          // Adjust width if height is too constrained
-          double adjustedWidth = width;
-          if (height > constraints.maxHeight) {
-            adjustedWidth = constraints.maxHeight / aspectRatioValue;
+          double adjustedWidth = maxW;
+          double adjustedHeight = adjustedWidth * aspectRatioValue;
+          if (adjustedHeight > maxH) {
+            adjustedHeight = maxH;
+            adjustedWidth = adjustedHeight / aspectRatioValue;
           }
 
-          final double topPadding = (constraints.maxHeight - height) / 2;
+          final double leftPad = (maxW - adjustedWidth) / 2;
+          final double topPad = (maxH - adjustedHeight) / 2;
 
           return Stack(
             children: [
               if (outputImageLoader.guideImage != null)
                 Positioned(
-                  left: (constraints.maxWidth - adjustedWidth) / 2,
-                  right: (constraints.maxWidth - adjustedWidth) / 2,
-                  top: topPadding,
+                  left: leftPad,
+                  right: leftPad,
+                  top: topPad,
                   child: SizedBox(
                     width: adjustedWidth,
-                    height: height,
+                    height: adjustedHeight,
                     child: GestureDetector(
                       key: _widgetKey,
                       onPanStart: (details) {
-                        _getWidgetHeight();
-
                         final dx = details.localPosition.dx;
                         final dy = details.localPosition.dy;
 
-                        final centerX = MediaQuery.of(context).size.width / 2;
-                        final leftX = centerX - _offsetX * MediaQuery.of(context).size.width;
-                        final rightX = centerX + _offsetX * MediaQuery.of(context).size.width;
-                        final centerY = _widgetHeight * _offsetY;
+                        final centerX = adjustedWidth / 2;
+                        final leftX = centerX - _offsetX * adjustedWidth;
+                        final rightX = centerX + _offsetX * adjustedWidth;
+                        final centerY = _offsetY * adjustedHeight;
 
                         final distanceToLeftX = (dx - leftX).abs();
                         final distanceToRightX = (dx - rightX).abs();
                         final distanceToHorizontalLine = (dy - centerY).abs();
 
-                        if (distanceToLeftX < 20 || distanceToRightX < 20) {
-                          _isDraggingVertical = true;
-                          _draggingRight = distanceToRightX < 20;
-                        } else if (distanceToHorizontalLine < 20) {
-                          _isDraggingHorizontal = true;
-                        }
+                        setState(() {
+                          _isDraggingVertical = (distanceToLeftX < 20 || distanceToRightX < 20);
+                          _draggingRight = distanceToRightX < distanceToLeftX;
+                          _isDraggingHorizontal = (!_isDraggingVertical && distanceToHorizontalLine < 20);
+                        });
                       },
                       onPanUpdate: (details) {
                         if (_isDraggingVertical) {
                           setState(() {
-                            if (_draggingRight) {
-                              _offsetX += details.delta.dx / MediaQuery.of(context).size.width;
-                            } else {
-                              _offsetX -= details.delta.dx / MediaQuery.of(context).size.width;
-                            }
+                            final delta = details.delta.dx / adjustedWidth;
+                            _offsetX += _draggingRight ? delta : -delta;
                             _offsetX = _offsetX.clamp(0.0, 1.0);
                             _hasUnsavedChanges = true;
                           });
                         } else if (_isDraggingHorizontal) {
                           setState(() {
-                            _offsetY += details.delta.dy / _widgetHeight;
+                            final delta = details.delta.dy / adjustedHeight;
+                            _offsetY += delta;
                             _offsetY = _offsetY.clamp(0.0, 1.0);
                             _hasUnsavedChanges = true;
                           });
@@ -301,20 +299,21 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                         _isDraggingVertical = false;
                         _isDraggingHorizontal = false;
                       },
-                      child: CustomPaint(
-                        painter: GridPainterSE(
-                          _offsetX,
-                          _offsetY,
-                          outputImageLoader.ghostImageOffsetX,
-                          outputImageLoader.ghostImageOffsetY,
-                          outputImageLoader.guideImage,
-                          outputImageLoader.aspectRatio!,
-                          outputImageLoader.projectOrientation!,
-                        ),
-                        child: Container(
-                          width: adjustedWidth,
-                          height: height,
-                          color: Colors.transparent,
+                      child: ClipRect(
+                        child: CustomPaint(
+                          painter: GridPainterSE(
+                            _offsetX,
+                            _offsetY,
+                            outputImageLoader.ghostImageOffsetX,
+                            outputImageLoader.ghostImageOffsetY,
+                            outputImageLoader.guideImage,
+                            outputImageLoader.aspectRatio!,
+                            outputImageLoader.projectOrientation!,
+                          ),
+                          child: SizedBox(
+                            width: adjustedWidth,
+                            height: adjustedHeight,
+                          ),
                         ),
                       ),
                     ),
