@@ -108,15 +108,16 @@ class VideoUtils {
     final String listPath = await _buildConcatListFromDir(framesDir, framerate);
 
     final resolution = await SettingsUtil.loadVideoResolution(projectId.toString());
-    final kbps = pickBitrateKbps(resolution); // update ladder below
+    final kbps = pickBitrateKbps(resolution);
     final vtRate = "-b:v ${kbps}k -maxrate ${ (kbps * 1.5).round() }k -bufsize ${ (kbps * 3).round() }k";
+    final vCodec = Platform.isAndroid ? 'libx264' : 'h264_videotoolbox';
 
     String ffmpegCommand = "-y "
         "-f concat -safe 0 "
         "-i \"$listPath\" "
         "-vsync cfr -r 30 "
         "$watermarkInputsAndFilter "
-        "-c:v h264_videotoolbox $vtRate "
+        "-c:v $vCodec $vtRate "
         "-g 240 -movflags +faststart -tag:v avc1 "
         "-pix_fmt yuv420p "
         "\"$videoOutputPath\"";
