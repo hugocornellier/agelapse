@@ -80,28 +80,56 @@ class GalleryUtils {
     }
   }
 
+  static String _normalizeOffset(String s) {
+    final t = s.trim();
+    if (RegExp(r'^[+-]\d{2}:\d{2}$').hasMatch(t)) return t;
+    if (RegExp(r'^[+-]\d{2}\d{2}$').hasMatch(t)) return '${t.substring(0,3)}:${t.substring(3)}';
+    if (RegExp(r'^[+-]\d{2}$').hasMatch(t)) return '${t}:00';
+    return t;
+  }
+
   static Future<(bool, int?)> parseExifDate(Map<String, IfdTag> exifData) async {
     try {
-      final String? dateTimeOriginalStr = exifData['EXIF DateTimeOriginal']?.toString();
-      if (dateTimeOriginalStr == null) return (true, null);
+      final String? dtStr =
+          exifData['EXIF DateTimeOriginal']?.toString() ??
+              exifData['Image DateTime']?.toString();
+      if (dtStr == null) return (true, null);
 
-      final String? offsetTimeStr = exifData['EXIF OffsetTime']?.toString();
-      DateTime dateTime = DateFormat("yyyy:MM:dd HH:mm:ss").parse(dateTimeOriginalStr, true);
+      final m = RegExp(r'^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})$').firstMatch(dtStr);
+      if (m == null) return (true, null);
 
-      if (offsetTimeStr != null) {
-        final offset = GalleryUtils.parseOffset(offsetTimeStr);
+      final y  = int.parse(m.group(1)!);
+      final mo = int.parse(m.group(2)!);
+      final d  = int.parse(m.group(3)!);
+      final h  = int.parse(m.group(4)!);
+      final mi = int.parse(m.group(5)!);
+      final s  = int.parse(m.group(6)!);
+
+      final DateTime wallUtc = DateTime.utc(y, mo, d, h, mi, s);
+
+      final String? rawOffset =
+          exifData['EXIF OffsetTimeOriginal']?.toString() ??
+              exifData['EXIF OffsetTime']?.toString() ??
+              exifData['EXIF OffsetTimeDigitized']?.toString() ??
+              exifData['Time Zone for Original Date']?.toString() ??
+              exifData['Time Zone for Digitized Date']?.toString() ??
+              exifData['Time Zone for Modification Date']?.toString();
+
+      if (rawOffset != null) {
+        final norm = _normalizeOffset(rawOffset);
+        final offset = GalleryUtils.parseOffset(norm);
         if (offset != null) {
-          return (false, dateTime.add(offset).millisecondsSinceEpoch);
+          final utcInstant = wallUtc.subtract(offset);
+          return (false, utcInstant.millisecondsSinceEpoch);
         }
-      } else {
-        return (false, dateTime.toLocal().millisecondsSinceEpoch);
       }
+
+      final local = DateTime(y, mo, d, h, mi, s);
+      return (false, local.millisecondsSinceEpoch);
     } catch (e) {
       print('Failed to parse EXIF date: $e');
       return (true, null);
     }
-
-    return (true, null);
   }
 
   static String formatDate(File image) {
@@ -597,7 +625,7 @@ class GalleryUtils {
           final ext  = path.extension(p);
           final ts = int.tryParse(base);
           final dt = ts != null
-              ? DateTime.fromMillisecondsSinceEpoch(ts, isUtc: true).toLocal()
+              ? DateTime.fromMillisecondsSinceEpoch(ts)
               : f.lastModifiedSync();
           final stamp = DateFormat('yyyy-MM-dd_HH-mm-ss').format(dt);
 

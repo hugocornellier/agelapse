@@ -10,7 +10,6 @@ import '../utils/utils.dart';
 import '../widgets/fancy_button.dart';
 import 'tutorial_page.dart';
 import 'faq_page.dart';
-import 'test_page.dart';
 
 class InfoPage extends StatefulWidget {
   final int projectId;

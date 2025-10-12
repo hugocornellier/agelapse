@@ -1,5 +1,5 @@
 #define MyAppName "AgeLapse"
-#define MyAppVersion "2.1.2"
+#define MyAppVersion "2.1.3"
 #define MyAppPublisher "Hugo Cornellier"
 #define MyAppExeName "agelapse.exe"
 #define MyAppURL "https://github.com/hugocornellier/agelapse"

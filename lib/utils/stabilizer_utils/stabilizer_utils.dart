@@ -101,8 +101,7 @@ class StabUtils {
       if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
         await _ensureFDLite();
         final bytes = await File(imagePath).readAsBytes();
-        final Size? origSize = await _fdLite!.getOriginalSize(bytes);
-        if (origSize == null) return [];
+        final Size origSize = await _fdLite!.getOriginalSize(bytes);
         final double w = origSize.width;
         final double h = origSize.height;
 
@@ -116,16 +115,13 @@ class StabUtils {
             d.bbox.ymax * h,
           );
 
-          final Offset? l = d.landmarks[fdl.FaceIndex.leftEye];
-          final Offset? r = d.landmarks[fdl.FaceIndex.rightEye];
-
-          final Point<double>? leftPt  = l == null ? null : Point<double>(l.dx.toDouble(), l.dy.toDouble());
-          final Point<double>? rightPt = r == null ? null : Point<double>(r.dx.toDouble(), r.dy.toDouble());
+          final Point<double>? l = d.landmarks[fdl.FaceIndex.leftEye];
+          final Point<double>? r = d.landmarks[fdl.FaceIndex.rightEye];
 
           faces.add(FaceLike(
             boundingBox: bbox,
-            leftEye: leftPt,
-            rightEye: rightPt,
+            leftEye: l,
+            rightEye: r,
           ));
         }
 
