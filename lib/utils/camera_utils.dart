@@ -176,29 +176,41 @@ class CameraUtils {
       String extension = path.extension(imgPath).toLowerCase();
       String heicPath = "";
 
-      if (extension == ".heic") {
-        extension = ".jpg";
-        heicPath = imgPath;
-        imgPath = heicPath.replaceAll(".heic", extension);
+      if (extension == ".heic" || extension == ".heif") {
+        final String heicPath = imgPath;
+        final String pngPath = path.setExtension(heicPath, ".png");
 
-        await HeifConverter.convert(
+        if (Platform.isMacOS) {
+          final result = await Process.run(
+            'sips',
+            ['-s', 'format', 'png', heicPath, '--out', pngPath],
+          );
+          if (result.exitCode != 0 || !File(pngPath).existsSync()) {
+            return false;
+          }
+        } else {
+          await HeifConverter.convert(
             heicPath,
-            output: imgPath,
-            format: 'jpeg'
-        );
+            output: pngPath,
+            format: 'png',
+          );
+          if (!File(pngPath).existsSync()) {
+            return false;
+          }
+        }
+
+        imgPath = pngPath;
+        extension = ".png";
       }
+
 
       bytes = await CameraUtils.readBytesInIsolate(imgPath);
       if (bytes == null) {
-        print("Returning false 2");
-
         return false;
       }
 
       imglib.Image? rawImage = await compute(imglib.decodeImage, bytes);
       if (rawImage == null) {
-        print("Returning false 3");
-
         return false;
       }
 

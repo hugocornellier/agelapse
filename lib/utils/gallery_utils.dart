@@ -90,6 +90,24 @@ class GalleryUtils {
 
   static Future<(bool, int?)> parseExifDate(Map<String, IfdTag> exifData) async {
     try {
+      final String? gpsDateStr = exifData['GPS GPSDateStamp']?.toString();
+      final String? gpsTimeStr = exifData['GPS GPSTimeStamp']?.toString();
+      if (gpsDateStr != null && gpsTimeStr != null) {
+        final dm = RegExp(r'^(\d{4})[:\-](\d{2})[:\-](\d{2})$').firstMatch(gpsDateStr);
+        final tm = RegExp(r'^(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?$').firstMatch(gpsTimeStr);
+        if (dm != null && tm != null) {
+          final y = int.parse(dm.group(1)!);
+          final mo = int.parse(dm.group(2)!);
+          final d = int.parse(dm.group(3)!);
+          final h = int.parse(tm.group(1)!);
+          final mi = int.parse(tm.group(2)!);
+          final s = int.parse(tm.group(3)!);
+          final ms = tm.group(4) != null ? int.parse(tm.group(4)!.padRight(3, '0')) : 0;
+          final utc = DateTime.utc(y, mo, d, h, mi, s, ms);
+          return (false, utc.millisecondsSinceEpoch);
+        }
+      }
+
       final String? dtStr =
           exifData['EXIF DateTimeOriginal']?.toString() ??
               exifData['Image DateTime']?.toString();
@@ -105,8 +123,6 @@ class GalleryUtils {
       final mi = int.parse(m.group(5)!);
       final s  = int.parse(m.group(6)!);
 
-      final DateTime wallUtc = DateTime.utc(y, mo, d, h, mi, s);
-
       final String? rawOffset =
           exifData['EXIF OffsetTimeOriginal']?.toString() ??
               exifData['EXIF OffsetTime']?.toString() ??
@@ -119,13 +135,16 @@ class GalleryUtils {
         final norm = _normalizeOffset(rawOffset);
         final offset = GalleryUtils.parseOffset(norm);
         if (offset != null) {
+          final wallUtc = DateTime.utc(y, mo, d, h, mi, s);
           final utcInstant = wallUtc.subtract(offset);
           return (false, utcInstant.millisecondsSinceEpoch);
         }
       }
 
       final local = DateTime(y, mo, d, h, mi, s);
-      return (false, local.millisecondsSinceEpoch);
+      final utcGuess = local.toUtc();
+      return (false, utcGuess.millisecondsSinceEpoch);
+
     } catch (e) {
       print('Failed to parse EXIF date: $e');
       return (true, null);
@@ -135,7 +154,7 @@ class GalleryUtils {
   static String formatDate(File image) {
     final String filename = path.basenameWithoutExtension(image.path);
     final int timestamp = int.tryParse(filename) ?? 0;
-    final DateTime dateTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
+    final DateTime dateTime = DateTime.fromMillisecondsSinceEpoch(timestamp, isUtc: true).toLocal();
     final int currentYear = DateTime.now().year;
 
     const List<String> monthNames = [
@@ -499,29 +518,78 @@ class GalleryUtils {
     try {
       int? imageTimestampFromExif;
       bool failedToParseDateMetadata = false;
+      int? captureOffsetMinutes;
 
       if (timestamp == null) {
-        failedToParseDateMetadata = true; // Assume we fail
+        failedToParseDateMetadata = true;
 
         bytes = await CameraUtils.readBytesInIsolate(file.path);
         final Map<String, IfdTag> data = await tryReadExifFromBytes(bytes!);
 
+        print('[import] EXIF keys: ${data.keys.toList()}');
+        print('[import] DateTimeOriginal: ${data['EXIF DateTimeOriginal']} CreateDate:${data['EXIF CreateDate']} ImageDateTime:${data['Image DateTime']}');
+        print('[import] OffsetTimeOriginal:${data['EXIF OffsetTimeOriginal']} OffsetTime:${data['EXIF OffsetTime']} OffsetTimeDigitized:${data['EXIF OffsetTimeDigitized']}');
+        print('[import] GPSDateStamp:${data['GPS GPSDateStamp']} GPSTimeStamp:${data['GPS GPSTimeStamp']}');
+
+
         if (data.isNotEmpty) {
           (failedToParseDateMetadata, imageTimestampFromExif) = await GalleryUtils.parseExifDate(data);
+
+          final String? gpsDateStr = data['GPS GPSDateStamp']?.toString();
+          final String? gpsTimeStr = data['GPS GPSTimeStamp']?.toString();
+          if (gpsDateStr != null && gpsTimeStr != null) {
+            captureOffsetMinutes = 0;
+          } else {
+            final String? rawOffset =
+                data['EXIF OffsetTimeOriginal']?.toString() ??
+                    data['EXIF OffsetTime']?.toString() ??
+                    data['EXIF OffsetTimeDigitized']?.toString() ??
+                    data['Time Zone for Original Date']?.toString() ??
+                    data['Time Zone for Digitized Date']?.toString() ??
+                    data['Time Zone for Modification Date']?.toString();
+            if (rawOffset != null) {
+              final norm = _normalizeOffset(rawOffset);
+              final off = GalleryUtils.parseOffset(norm);
+              if (off != null) {
+                captureOffsetMinutes = off.inMinutes;
+              }
+            }
+          }
         }
 
         if (imageTimestampFromExif == null) {
           final String basename = path.basenameWithoutExtension(file.path);
-          DateTime? dateTime = parseAndFormatDate(basename, activeProcessingDateNotifier);
-          if (dateTime != null) {
-            imageTimestampFromExif = dateTime.millisecondsSinceEpoch;
+          final DateTime? parsed = parseAndFormatDate(basename, activeProcessingDateNotifier);
+          if (parsed != null) {
+            final Duration nowOffset = DateTime.now().timeZoneOffset;
+            final int utcMidnightMs = DateTime.utc(parsed.year, parsed.month, parsed.day).millisecondsSinceEpoch - nowOffset.inMilliseconds;
+            imageTimestampFromExif = utcMidnightMs;
+            captureOffsetMinutes = nowOffset.inMinutes;
             failedToParseDateMetadata = false;
           }
+        }
+
+
+        if (imageTimestampFromExif == null) {
+          final DateTime lm = File(file.path).lastModifiedSync();
+          final Duration nowOffset = DateTime.now().timeZoneOffset;
+          final int utcMidnightMs = DateTime.utc(lm.year, lm.month, lm.day).millisecondsSinceEpoch - nowOffset.inMilliseconds;
+          imageTimestampFromExif = utcMidnightMs;
+          captureOffsetMinutes = nowOffset.inMinutes;
+          failedToParseDateMetadata = false;
+        }
+
+        if (captureOffsetMinutes == null) {
+          captureOffsetMinutes = DateTime.now().timeZoneOffset.inMinutes;
         }
       } else {
         imageTimestampFromExif = timestamp;
         bytes = await CameraUtils.readBytesInIsolate(file.path);
+        captureOffsetMinutes = DateTime.now().timeZoneOffset.inMinutes;
+        print('[import] External timestamp provided -> utcMs:${imageTimestampFromExif} offsetMin:${captureOffsetMinutes}');
       }
+
+      print('[import] FINAL -> utcMs:${imageTimestampFromExif} captureOffsetMin:${captureOffsetMinutes} failedToParse:${failedToParseDateMetadata}');
 
       final bool result = await CameraUtils.savePhoto(
         file,
@@ -532,6 +600,14 @@ class GalleryUtils {
         bytes: bytes,
         increaseSuccessfulImportCount: increaseSuccessfulImportCount,
       );
+
+      if (result && imageTimestampFromExif != null) {
+        await DB.instance.setCaptureOffsetMinutesByTimestamp(
+          imageTimestampFromExif.toString(),
+          projectId,
+          captureOffsetMinutes,
+        );
+      }
 
       return result;
     } catch (e) {
@@ -625,7 +701,7 @@ class GalleryUtils {
           final ext  = path.extension(p);
           final ts = int.tryParse(base);
           final dt = ts != null
-              ? DateTime.fromMillisecondsSinceEpoch(ts)
+              ? DateTime.fromMillisecondsSinceEpoch(ts, isUtc: true).toLocal()
               : f.lastModifiedSync();
           final stamp = DateFormat('yyyy-MM-dd_HH-mm-ss').format(dt);
 

@@ -34,20 +34,19 @@ class Utils {
     return formattedDate;
   }
 
-  static String formatUnixTimestamp2(int timestamp) {
-    DateTime date = DateTime.fromMillisecondsSinceEpoch(timestamp);
-    DateTime now = DateTime.now();
-
-    String formattedTime = DateFormat('h:mm a').format(date);
-    String formattedDate;
-
-    if (date.year == now.year) {
-      formattedDate = DateFormat('MMMM d').format(date);
-    } else {
-      formattedDate = DateFormat('MMMM d y').format(date);
-    }
-
-    return '$formattedDate, $formattedTime';
+  static String formatUnixTimestamp2(int timestamp, {int? captureOffsetMinutes}) {
+    final DateTime utc = DateTime.fromMillisecondsSinceEpoch(timestamp, isUtc: true);
+    final DateTime localLike = captureOffsetMinutes != null ? utc.add(Duration(minutes: captureOffsetMinutes)) : utc.toLocal();
+    final DateTime nowRef = DateTime.now();
+    final String formattedTime = DateFormat('h:mm a').format(localLike);
+    final String formattedDate = localLike.year == nowRef.year ? DateFormat('MMMM d').format(localLike) : DateFormat('MMMM d y').format(localLike);
+    final Duration tzOff = captureOffsetMinutes != null ? Duration(minutes: captureOffsetMinutes) : localLike.timeZoneOffset;
+    final String sign = tzOff.inMinutes >= 0 ? '+' : '-';
+    final int absMin = tzOff.inMinutes.abs();
+    final String hh = (absMin ~/ 60).toString().padLeft(2, '0');
+    final String mm = (absMin % 60).toString().padLeft(2, '0');
+    final String tzLabel = 'UTC$sign$hh:$mm';
+    return '$formattedDate, $formattedTime ($tzLabel)';
   }
 
   static void navigateToScreen(BuildContext context, Widget screen) =>

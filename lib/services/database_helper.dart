@@ -79,6 +79,7 @@ class DB {
           "stabFailed INTEGER NOT NULL, "
           "noFacesFound INTEGER NOT NULL, "
           "favorite INTEGER NOT NULL, "
+          "captureOffsetMinutes INTEGER, "
           "tempPath TEXT"
           ");",
       settingTable: "CREATE TABLE $settingTable("
@@ -428,18 +429,16 @@ class DB {
     final cols = await db.rawQuery('PRAGMA table_info($photoTable)');
     bool has(String name) => cols.any((c) => c['name'] == name);
 
-    // Column names follow your existing per-orientation pattern
     final toAdd = <String, String>{
-      // Portrait
       'stabilizedPortraitTranslateX': 'REAL DEFAULT 0',
       'stabilizedPortraitTranslateY': 'REAL DEFAULT 0',
       'stabilizedPortraitRotationDegrees': 'REAL DEFAULT 0',
       'stabilizedPortraitScaleFactor': 'REAL DEFAULT 1',
-      // Landscape
       'stabilizedLandscapeTranslateX': 'REAL DEFAULT 0',
       'stabilizedLandscapeTranslateY': 'REAL DEFAULT 0',
       'stabilizedLandscapeRotationDegrees': 'REAL DEFAULT 0',
       'stabilizedLandscapeScaleFactor': 'REAL DEFAULT 1',
+      'captureOffsetMinutes': 'INTEGER',
     };
 
     for (final entry in toAdd.entries) {
@@ -704,9 +703,9 @@ class DB {
     final String projectOrientation = await SettingsUtil.loadProjectOrientation(projectId.toString());
     final String stabilizedColumn = getStabilizedColumn(projectOrientation);
     return await db.query(
-      photoTable,
-      where: '$stabilizedColumn = ? AND projectID = ? AND ${stabilizedColumn}OffsetX = ?',
-      whereArgs: [1, projectId, offsetX.toString()]
+        photoTable,
+        where: '$stabilizedColumn = ? AND projectID = ? AND ${stabilizedColumn}OffsetX = ?',
+        whereArgs: [1, projectId, offsetX.toString()]
     );
   }
 
@@ -727,6 +726,16 @@ class DB {
       {'stabFailed': 1},
       where: 'timestamp = ?',
       whereArgs: [timestamp],
+    );
+  }
+
+  Future<void> setCaptureOffsetMinutesByTimestamp(String timestamp, int projectId, int? minutes) async {
+    final db = await database;
+    await db.update(
+      photoTable,
+      {'captureOffsetMinutes': minutes},
+      where: 'timestamp = ? AND projectID = ?',
+      whereArgs: [timestamp, projectId],
     );
   }
 

@@ -355,30 +355,59 @@ class StabUtils {
     await DirUtils.createDirectoryIfNotExists(pngPath);
     final File pngFile = File(pngPath);
 
-    if (((await File(imgPath).exists()) && !(await pngFile.exists())) || (await pngFile.length()) == 0) {
-      bool conversionToJpgNeeded = false;
-      String jpgImgPath = "";
+    final bool rawExists = await File(imgPath).exists();
+    if (!rawExists) {
+      return;
+    }
 
-      if (path.extension(imgPath).toLowerCase() == ".heic") {
-        conversionToJpgNeeded = true;
-        jpgImgPath = imgPath.replaceAll(".heic", ".jpg");
-        await HeifConverter.convert(
-            imgPath,
-            output: jpgImgPath,
-            format: 'jpeg'
-        );
-        imgPath = jpgImgPath;
-      }
-
-      final imglib.Image? bitmap = await getBitmapInIsolate(imgPath);
-
-      if (bitmap != null) await writeBitmapToPngFileInIsolate(pngPath, bitmap);
-
-      if (conversionToJpgNeeded) {
-        await ProjectUtils.deleteFile(File(jpgImgPath));
+    final bool pngExists = await pngFile.exists();
+    if (pngExists) {
+      final int len = await pngFile.length();
+      if (len > 0) {
+        return;
       }
     }
+
+    bool conversionToJpgNeeded = false;
+    String jpgImgPath = "";
+
+    final String lowerExt = path.extension(imgPath).toLowerCase();
+    if (lowerExt == ".heic" || lowerExt == ".heif") {
+      conversionToJpgNeeded = true;
+      jpgImgPath = path.setExtension(imgPath, ".jpg");
+
+      if (Platform.isMacOS) {
+        final result = await Process.run(
+          'sips',
+          ['-s', 'format', 'jpeg', imgPath, '--out', jpgImgPath],
+        );
+        if (result.exitCode != 0 || !File(jpgImgPath).existsSync()) {
+          return;
+        }
+      } else {
+        await HeifConverter.convert(
+          imgPath,
+          output: jpgImgPath,
+          format: 'jpeg',
+        );
+        if (!File(jpgImgPath).existsSync()) {
+          return;
+        }
+      }
+
+      imgPath = jpgImgPath;
+    }
+
+    final imglib.Image? bitmap = await getBitmapInIsolate(imgPath);
+    if (bitmap != null) {
+      await writeBitmapToPngFileInIsolate(pngPath, bitmap);
+    }
+
+    if (conversionToJpgNeeded) {
+      await ProjectUtils.deleteFile(File(jpgImgPath));
+    }
   }
+
 
   static Future<File> flipImageHorizontally(String imagePath) async {
     return await processImageInIsolate(imagePath, imglib.flipHorizontal, '_flipped.png');
