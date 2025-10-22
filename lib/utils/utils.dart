@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mime/mime.dart';
+import 'dart:io';
 import 'package:path/path.dart' as path;
 
 class Utils {
@@ -32,6 +33,27 @@ class Utils {
 
     final formattedDate = DateFormat("MMM d'$daySuffix' y").format(dateTime);
     return formattedDate;
+  }
+
+  static String formatUnixTimestampPlatformAware(
+    int timestamp, {
+      int? captureOffsetMinutes,
+    }
+  ) {
+    final utc = DateTime.fromMillisecondsSinceEpoch(timestamp, isUtc: true);
+    final wall = captureOffsetMinutes != null
+        ? utc.add(Duration(minutes: captureOffsetMinutes))
+        : utc.toLocal();
+    final pattern = (Platform.isAndroid || Platform.isIOS)
+        ? 'MMM d yyyy h:mm a'
+        : 'MMMM d yyyy h:mm a';
+    final fmt = DateFormat(pattern);
+    final offMin = captureOffsetMinutes ?? wall.timeZoneOffset.inMinutes;
+    final sign = offMin >= 0 ? '+' : '−';
+    final absMin = offMin.abs();
+    final hh = (absMin ~/ 60).toString().padLeft(2, '0');
+    final mm = (absMin % 60).toString().padLeft(2, '0');
+    return '${fmt.format(wall)} UTC$sign$hh:$mm';
   }
 
   static String formatUnixTimestamp2(int timestamp, {int? captureOffsetMinutes}) {
