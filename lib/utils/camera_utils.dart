@@ -178,29 +178,29 @@ class CameraUtils {
 
       if (extension == ".heic" || extension == ".heif") {
         final String heicPath = imgPath;
-        final String pngPath = path.setExtension(heicPath, ".png");
+        final String jpgPath = path.setExtension(heicPath, ".jpg");
 
         if (Platform.isMacOS) {
           final result = await Process.run(
             'sips',
-            ['-s', 'format', 'png', heicPath, '--out', pngPath],
+            ['-s', 'format', 'jpeg', heicPath, '--out', jpgPath],
           );
-          if (result.exitCode != 0 || !File(pngPath).existsSync()) {
+          if (result.exitCode != 0 || !File(jpgPath).existsSync()) {
             return false;
           }
         } else {
           await HeifConverter.convert(
             heicPath,
-            output: pngPath,
-            format: 'png',
+            output: jpgPath,
+            format: 'jpeg',
           );
-          if (!File(pngPath).existsSync()) {
+          if (!File(jpgPath).existsSync()) {
             return false;
           }
         }
 
-        imgPath = pngPath;
-        extension = ".png";
+        imgPath = jpgPath;
+        extension = ".jpg";
       }
 
 

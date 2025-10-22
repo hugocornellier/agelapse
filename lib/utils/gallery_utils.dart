@@ -225,7 +225,6 @@ class GalleryUtils {
     });
   }
 
-
   static Future<void> scrollToBottomInstantly(ScrollController scrollController) async {
     if (scrollController.hasClients) {
       scrollController.jumpTo(scrollController.position.maxScrollExtent);
@@ -282,15 +281,15 @@ class GalleryUtils {
   }
 
   static Future<void> processPickedImage(
-    String imagePath,
-    int projectId,
-    ValueNotifier<String> activeProcessingDateNotifier,
-    {
-      required Function onImagesLoaded,
-      int? timestamp,
-      VoidCallback? increaseSuccessfulImportCount
-    }
-  ) async {
+      String imagePath,
+      int projectId,
+      ValueNotifier<String> activeProcessingDateNotifier,
+      {
+        required Function onImagesLoaded,
+        int? timestamp,
+        VoidCallback? increaseSuccessfulImportCount
+      }
+      ) async {
     final imageProcessor = ImageProcessor(
         imagePath: imagePath,
         projectId: projectId,
@@ -429,14 +428,14 @@ class GalleryUtils {
   }
 
   static Future<void> processPickedZipFile(
-    File file,
-    int projectId,
-    ValueNotifier<String> activeProcessingDateNotifier,
-    Function onImagesLoaded,
-    Function(int p1) setProgressInMain,
-    void Function() increaseSuccessfulImportCount,
-    void Function(int value) increasePhotosImported,
-  ) async {
+      File file,
+      int projectId,
+      ValueNotifier<String> activeProcessingDateNotifier,
+      Function onImagesLoaded,
+      Function(int p1) setProgressInMain,
+      void Function() increaseSuccessfulImportCount,
+      void Function(int value) increasePhotosImported,
+      ) async {
     final reader = ZipFileReader();
     try {
       reader.open(File(file.path));
@@ -506,14 +505,14 @@ class GalleryUtils {
   }
 
   static Future<bool> importXFile(
-    XFile file,
-    int projectId,
-    ValueNotifier<String> activeProcessingDateNotifier,
-    {
-      int? timestamp,
-      VoidCallback? increaseSuccessfulImportCount
-    }
-  ) async {
+      XFile file,
+      int projectId,
+      ValueNotifier<String> activeProcessingDateNotifier,
+      {
+        int? timestamp,
+        VoidCallback? increaseSuccessfulImportCount
+      }
+      ) async {
     Uint8List? bytes;
     try {
       int? imageTimestampFromExif;
@@ -530,7 +529,6 @@ class GalleryUtils {
         print('[import] DateTimeOriginal: ${data['EXIF DateTimeOriginal']} CreateDate:${data['EXIF CreateDate']} ImageDateTime:${data['Image DateTime']}');
         print('[import] OffsetTimeOriginal:${data['EXIF OffsetTimeOriginal']} OffsetTime:${data['EXIF OffsetTime']} OffsetTimeDigitized:${data['EXIF OffsetTimeDigitized']}');
         print('[import] GPSDateStamp:${data['GPS GPSDateStamp']} GPSTimeStamp:${data['GPS GPSTimeStamp']}');
-
 
         if (data.isNotEmpty) {
           (failedToParseDateMetadata, imageTimestampFromExif) = await GalleryUtils.parseExifDate(data);
@@ -561,31 +559,31 @@ class GalleryUtils {
           final String basename = path.basenameWithoutExtension(file.path);
           final DateTime? parsed = parseAndFormatDate(basename, activeProcessingDateNotifier);
           if (parsed != null) {
-            final Duration nowOffset = DateTime.now().timeZoneOffset;
-            final int utcMidnightMs = DateTime.utc(parsed.year, parsed.month, parsed.day).millisecondsSinceEpoch - nowOffset.inMilliseconds;
+            final DateTime localMidnight = DateTime(parsed.year, parsed.month, parsed.day);
+            final int utcMidnightMs = localMidnight.toUtc().millisecondsSinceEpoch;
             imageTimestampFromExif = utcMidnightMs;
-            captureOffsetMinutes = nowOffset.inMinutes;
+            captureOffsetMinutes = localMidnight.timeZoneOffset.inMinutes;
             failedToParseDateMetadata = false;
           }
         }
 
-
         if (imageTimestampFromExif == null) {
           final DateTime lm = File(file.path).lastModifiedSync();
-          final Duration nowOffset = DateTime.now().timeZoneOffset;
-          final int utcMidnightMs = DateTime.utc(lm.year, lm.month, lm.day).millisecondsSinceEpoch - nowOffset.inMilliseconds;
+          final DateTime localMidnight = DateTime(lm.year, lm.month, lm.day);
+          final int utcMidnightMs = localMidnight.toUtc().millisecondsSinceEpoch;
           imageTimestampFromExif = utcMidnightMs;
-          captureOffsetMinutes = nowOffset.inMinutes;
+          captureOffsetMinutes = localMidnight.timeZoneOffset.inMinutes;
           failedToParseDateMetadata = false;
         }
 
-        if (captureOffsetMinutes == null) {
-          captureOffsetMinutes = DateTime.now().timeZoneOffset.inMinutes;
+        if (captureOffsetMinutes == null && imageTimestampFromExif != null) {
+          captureOffsetMinutes = DateTime.fromMillisecondsSinceEpoch(imageTimestampFromExif, isUtc: true).toLocal().timeZoneOffset.inMinutes;
+
         }
       } else {
         imageTimestampFromExif = timestamp;
         bytes = await CameraUtils.readBytesInIsolate(file.path);
-        captureOffsetMinutes = DateTime.now().timeZoneOffset.inMinutes;
+        captureOffsetMinutes = DateTime.fromMillisecondsSinceEpoch(timestamp, isUtc: true).toLocal().timeZoneOffset.inMinutes;
         print('[import] External timestamp provided -> utcMs:${imageTimestampFromExif} offsetMin:${captureOffsetMinutes}');
       }
 
