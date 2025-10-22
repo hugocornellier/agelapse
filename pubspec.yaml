@@ -19,6 +19,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   desktop_drop: ^0.6.1
   exif: ^3.3.0
+  exif_reader: ^3.16.1
   face_detection_tflite: ^1.0.0
   ffmpeg_kit_flutter_new:
     git:

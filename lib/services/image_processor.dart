@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:exif/exif.dart';
+import 'package:exif_reader/exif_reader.dart';
 import 'package:path/path.dart' as path;
 
 import '../utils/gallery_utils.dart';
@@ -35,7 +35,7 @@ class ImageProcessor {
         final Uint8List? avifBytes = await CameraUtils.readBytesInIsolate(imagePath!);
         int? overrideTs;
         if (avifBytes != null) {
-          final Map<String, IfdTag> exif = await GalleryUtils.tryReadExifFromBytes(avifBytes);
+          final Map<String, dynamic> exif = await GalleryUtils.tryReadExifFromBytes(avifBytes);
           if (exif.isNotEmpty) {
             final res = await GalleryUtils.parseExifDate(exif);
             overrideTs = res.$2;

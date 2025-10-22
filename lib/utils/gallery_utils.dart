@@ -7,7 +7,7 @@ import 'package:archive/archive_io.dart';
 import 'package:archive/archive.dart';
 import 'package:async_zip/async_zip.dart';
 import 'package:camera/camera.dart';
-import 'package:exif/exif.dart';
+import 'package:exif_reader/exif_reader.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as path;
@@ -88,7 +88,7 @@ class GalleryUtils {
     return t;
   }
 
-  static Future<(bool, int?)> parseExifDate(Map<String, IfdTag> exifData) async {
+  static Future<(bool, int?)> parseExifDate(Map<String, dynamic> exifData) async {
     try {
       final String? gpsDateStr = exifData['GPS GPSDateStamp']?.toString();
       final String? gpsTimeStr = exifData['GPS GPSTimeStamp']?.toString();
@@ -495,10 +495,10 @@ class GalleryUtils {
     }
   }
 
-  static Future<Map<String, IfdTag>> tryReadExifFromBytes(Uint8List bytes) async {
+  static Future<Map<String, dynamic>> tryReadExifFromBytes(Uint8List bytes) async {
     try {
-      final Map<String, IfdTag> data = await readExifFromBytes(bytes);
-      return data;
+      final data = await readExifFromBytes(bytes);
+      return Map<String, dynamic>.from(data);
     } catch (e) {
       return {};
     }
@@ -523,7 +523,7 @@ class GalleryUtils {
         failedToParseDateMetadata = true;
 
         bytes = await CameraUtils.readBytesInIsolate(file.path);
-        final Map<String, IfdTag> data = await tryReadExifFromBytes(bytes!);
+        final Map<String, dynamic> data = await tryReadExifFromBytes(bytes!);
 
         print('[import] EXIF keys: ${data.keys.toList()}');
         print('[import] DateTimeOriginal: ${data['EXIF DateTimeOriginal']} CreateDate:${data['EXIF CreateDate']} ImageDateTime:${data['Image DateTime']}');

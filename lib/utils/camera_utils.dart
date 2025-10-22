@@ -265,16 +265,14 @@ class CameraUtils {
 
       await CameraUtils.saveImageToFileSystem(XFile(imgPath), timestamp, projectId);
 
-      // Create thumbnail and save
       final String thumbnailPath = path.join(
         await DirUtils.getThumbnailDirPath(projectId),
         "$timestamp.jpg"
       );
       await DirUtils.createDirectoryIfNotExists(thumbnailPath);
 
-      bool result = await _createThumbnailForNewImage(extension, bytes, imgPath, thumbnailPath, rawImage);
+      bool result = await _createThumbnailForNewImage(thumbnailPath, rawImage);
       if (!result) {
-        print("Returning false 3");
         return false;
       }
 
@@ -289,13 +287,8 @@ class CameraUtils {
         increaseSuccessfulImportCount();
       }
 
-      print("Returning true");
-
       return true;
     } catch (e) {
-      print("error during savePhoto camera utils call: ");
-      print(e);
-
       return false;
     } finally {
       bytes = null;
@@ -303,9 +296,6 @@ class CameraUtils {
   }
 
   static Future<bool> _createThumbnailForNewImage(
-    String extension,
-    bytes,
-    String imgPath,
     String thumbnailPath,
     imglib.Image rawImage
   ) async {
