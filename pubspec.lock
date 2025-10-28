@@ -57,6 +57,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.2"
+  brotli:
+    dependency: transitive
+    description:
+      name: brotli
+      sha256: "7f891558ed779aab2bed874f0a36b8123f9ff3f19cf6efbee89e18ed294945ae"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.6.0"
   camera:
     dependency: "direct main"
     description:
@@ -213,10 +221,10 @@ packages:
     dependency: "direct main"
     description:
       name: desktop_drop
-      sha256: "927511f590ce01ee90d0d80f79bc71b9c919d8522d01e495e89a00c6f4a4fb5b"
+      sha256: e70b46b2d61f1af7a81a40d1f79b43c28a879e30a4ef31e87e9c27bea4d784e8
       url: "https://pub.dev"
     source: hosted
-    version: "0.6.1"
+    version: "0.7.0"
   device_info_plus:
     dependency: transitive
     description:
@@ -241,6 +249,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.3.0"
+  exif_reader:
+    dependency: "direct main"
+    description:
+      name: exif_reader
+      sha256: "548ccc25be936e508c6a20706ae5e2796687b55b9db851962db1cd20fe6abfd9"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.16.1"
   extended_image:
     dependency: transitive
     description:
@@ -261,10 +277,10 @@ packages:
     dependency: "direct main"
     description:
       name: face_detection_tflite
-      sha256: "8db08aaa13588fd7ae926995a67705227b8050aedaaedb0d3dbb1713244dce76"
+      sha256: "4f774fcada1163cf91ae543d9a212b9f22c5942d4d0ae4611d09d918c442830e"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.0"
+    version: "1.0.3"
   fake_async:
     dependency: transitive
     description:
@@ -498,10 +514,10 @@ packages:
     dependency: "direct main"
     description:
       name: font_awesome_flutter
-      sha256: "27af5982e6c510dec1ba038eff634fa284676ee84e3fd807225c80c4ad869177"
+      sha256: ef8e9591f6de2bf671c3b6f506f5ff85f03d34403084fccced62d3628fb086b9
       url: "https://pub.dev"
     source: hosted
-    version: "10.10.0"
+    version: "10.11.0"
   glob:
     dependency: transitive
     description:
@@ -654,6 +670,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.20.2"
+  iso_base_media:
+    dependency: transitive
+    description:
+      name: iso_base_media
+      sha256: "0a94fa4ff4ce7e6894d7afc96c1eee6911c12827f8cf184ca752ce3437a818a1"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.6.1"
   js:
     dependency: transitive
     description:
@@ -974,6 +998,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.2.2"
+  random_access_source:
+    dependency: transitive
+    description:
+      name: random_access_source
+      sha256: "26d1509a9fd935ab9c77102ab4c94b343d36216387d985975c380efe450b81b8"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.0.0"
   safe_local_storage:
     dependency: transitive
     description:
@@ -1231,10 +1263,10 @@ packages:
     dependency: transitive
     description:
       name: tflite_flutter_custom
-      sha256: "54a8022365cf394ce6bb6529ed89dc4682b01ab82aa60bc775a34825ef7deb4e"
+      sha256: d997dc34c7dc4051930c40c86ecc240608b0c0613fec06b80dfadcb93921f9a1
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.0"
+    version: "1.0.2"
   timezone:
     dependency: transitive
     description:

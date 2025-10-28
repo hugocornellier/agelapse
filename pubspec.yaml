@@ -17,10 +17,10 @@ dependencies:
   camera_macos: ^0.0.9
   chewie: ^1.13.0
   cupertino_icons: ^1.0.8
-  desktop_drop: ^0.6.1
+  desktop_drop: ^0.7.0
   exif: ^3.3.0
   exif_reader: ^3.16.1
-  face_detection_tflite: ^1.0.0
+  face_detection_tflite: ^1.0.3
   ffmpeg_kit_flutter_new:
     git:
       url: https://github.com/hugocornellier/ffmpeg_kit_flutter.git
@@ -35,7 +35,7 @@ dependencies:
   flutter_native_splash: ^2.4.6
   flutter_svg: ^2.2.1
   flutter_timezone: ^4.1.1
-  font_awesome_flutter: ^10.10.0
+  font_awesome_flutter: ^10.11.0
   google_mlkit_face_detection: ^0.13.1
   google_mlkit_pose_detection: ^0.14.0
   heif_converter: ^1.0.1
