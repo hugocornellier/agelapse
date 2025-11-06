@@ -13,6 +13,7 @@ import 'package:image/image.dart' as imglib;
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:face_detection_tflite/face_detection_tflite.dart' as fdl;
+import 'package:pose_detection_tflite/pose_detection_tflite.dart' as pdl;
 
 import '../../services/database_helper.dart';
 import '../camera_utils.dart';
@@ -46,6 +47,7 @@ class StabUtils {
       _fdLiteReady = true;
     }
   }
+
   static Future<List<Map<String, dynamic>>> getUnstabilizedPhotos(projectId) async {
     String projectOrientation = await SettingsUtil.loadProjectOrientation(projectId.toString());
     return await DB.instance.getUnstabilizedPhotos(projectId, projectOrientation);
@@ -84,12 +86,10 @@ class StabUtils {
 
   static Future<List<dynamic>?> getFacesFromFilepath(
     String imagePath,
-    FaceDetector? faceDetector,
-    {
-      bool filterByFaceSize = true,
-      int? imageWidth,
-    }
-  ) async {
+    FaceDetector? faceDetector, {
+    bool filterByFaceSize = true,
+    int? imageWidth,
+  }) async {
     print("At the start of 'getFacesFromFilepath' call");
 
     final bool fileExists = File(imagePath).existsSync();
@@ -276,14 +276,20 @@ class StabUtils {
       'operation': 'readJpg'
     };
 
-    Isolate? isolate = await Isolate.spawn(performFileOperationInBackground, params);
+    Isolate? isolate = await Isolate.spawn(
+      performFileOperationInBackground, 
+      params
+    );
     final result = await receivePort.first;
     receivePort.close();
     isolate.kill(priority: Isolate.immediate);
     return result as imglib.Image?;
   }
 
-  static Future<void> writeBitmapToPngFileInIsolate(String filepath, imglib.Image bitmap) async {
+  static Future<void> writeBitmapToPngFileInIsolate(
+    String filepath, 
+    imglib.Image bitmap
+  ) async {
     ReceivePort receivePort = ReceivePort();
     var params = {
       'sendPort': receivePort.sendPort,
@@ -292,7 +298,10 @@ class StabUtils {
       'operation': 'writePng'
     };
 
-    Isolate? isolate = await Isolate.spawn(performFileOperationInBackground, params);
+    Isolate? isolate = await Isolate.spawn(
+      performFileOperationInBackground, 
+      params
+    );
     await receivePort.first;
     receivePort.close();
     isolate.kill(priority: Isolate.immediate);
@@ -466,7 +475,10 @@ class StabUtils {
       'rootIsolateToken': rootIsolateToken
     };
 
-    Isolate? isolate = await Isolate.spawn(performImageProcessingInBackground, params);
+    Isolate? isolate = await Isolate.spawn(
+      performImageProcessingInBackground, 
+      params
+    );
     final result = await receivePort.first;
     receivePort.close();
     isolate.kill(priority: Isolate.immediate);
@@ -478,7 +490,11 @@ class StabUtils {
     }
   }
 
-  static Future<String> getStabilizedImagePath(String originalFilePath, int projectId, String? projectOrientation) async {
+  static Future<String> getStabilizedImagePath(
+    String originalFilePath, 
+    int projectId, 
+    String? projectOrientation
+  ) async {
     final stabilizedDirectoryPath = await DirUtils.getStabilizedDirPath(projectId);
     final String originalBasename = path.basenameWithoutExtension(originalFilePath);
     return path.join(stabilizedDirectoryPath, projectOrientation, '$originalBasename.jpg');
@@ -510,5 +526,4 @@ class StabUtils {
       }
     }
   }
-
 }

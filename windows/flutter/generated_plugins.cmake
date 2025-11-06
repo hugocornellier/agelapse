@@ -9,6 +9,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   flutter_timezone
   media_kit_video
   permission_handler_windows
+  pose_detection_tflite
   screen_retriever_windows
   share_plus
   sqlite3_flutter_libs

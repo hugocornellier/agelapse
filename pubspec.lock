@@ -974,6 +974,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.8"
+  pose_detection_tflite:
+    dependency: "direct main"
+    description:
+      name: pose_detection_tflite
+      sha256: d0bae7c16f2d3164ce373a59d7ad0ee00f024902491cb76672a13771f04951a7
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.1"
   posix:
     dependency: transitive
     description:
