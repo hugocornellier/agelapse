@@ -34,16 +34,16 @@ class FaceLike {
 }
 
 class StabUtils {
-  static fdl.FaceDetector? _fdLite;
+  static fdl.FaceDetector? _faceDetector;
   static bool _fdLiteReady = false;
 
   static Future<void> _ensureFDLite() async {
-    if (_fdLite == null) {
-      _fdLite = fdl.FaceDetector();
-      await _fdLite!.initialize(model: fdl.FaceDetectionModel.backCamera);
+    if (_faceDetector == null) {
+      _faceDetector = fdl.FaceDetector();
+      await _faceDetector!.initialize(model: fdl.FaceDetectionModel.backCamera);
       _fdLiteReady = true;
     } else if (!_fdLiteReady) {
-      await _fdLite!.initialize(model: fdl.FaceDetectionModel.backCamera);
+      await _faceDetector!.initialize(model: fdl.FaceDetectionModel.backCamera);
       _fdLiteReady = true;
     }
   }
@@ -90,8 +90,6 @@ class StabUtils {
     bool filterByFaceSize = true,
     int? imageWidth,
   }) async {
-    print("At the start of 'getFacesFromFilepath' call");
-
     final bool fileExists = File(imagePath).existsSync();
     if (!fileExists) {
       return null;
@@ -100,35 +98,45 @@ class StabUtils {
     try {
       if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
         await _ensureFDLite();
-        final bytes = await File(imagePath).readAsBytes();
-        final Size origSize = await _fdLite!.getOriginalSize(bytes);
-        final double w = origSize.width;
-        final double h = origSize.height;
 
-        final detections = await _fdLite!.getDetections(bytes);
+        final bytes = await File(imagePath).readAsBytes();
+        final imglib.Image? decodedImg = imglib.decodeImage(bytes);
+        if (decodedImg == null) {
+          return [];
+        }
+        final double w = decodedImg.width.toDouble();
+
+        final facesDetected = await _faceDetector!.detectFaces(bytes);
+
         final List<FaceLike> faces = [];
-        for (final d in detections) {
+        for (final face in facesDetected) {
+          final boundingBox = face.boundingBox;
           final Rect bbox = Rect.fromLTRB(
-            d.bbox.xmin * w,
-            d.bbox.ymin * h,
-            d.bbox.xmax * w,
-            d.bbox.ymax * h,
+            boundingBox.topLeft.x,
+            boundingBox.topLeft.y,
+            boundingBox.bottomRight.x,
+            boundingBox.bottomRight.y,
           );
 
-          final Point<double>? l = d.landmarks[fdl.FaceIndex.leftEye];
-          final Point<double>? r = d.landmarks[fdl.FaceIndex.rightEye];
+          final landmarks = face.landmarks;
+          final Point<double>? l = landmarks.leftEye;
+          final Point<double>? r = landmarks.rightEye;
 
-          faces.add(FaceLike(
-            boundingBox: bbox,
-            leftEye: l,
-            rightEye: r,
-          ));
+          faces.add(
+            FaceLike(
+              boundingBox: bbox,
+              leftEye: l,
+              rightEye: r,
+            ),
+          );
         }
 
         if (!filterByFaceSize || faces.isEmpty) return faces;
 
         const double minFaceSize = 0.1;
-        final filtered = faces.where((f) => (f.boundingBox.width / w) > minFaceSize).toList();
+        final filtered = faces
+            .where((f) => (f.boundingBox.width / w) > minFaceSize)
+            .toList();
         return filtered.isNotEmpty ? filtered : faces;
       } else {
         final List<Face> faces = await faceDetector!.processImage(
@@ -140,8 +148,6 @@ class StabUtils {
     } catch(e) {
       print("Error caught while fetching faces: $e");
       return [];
-    } finally {
-      print("At the end of 'getFacesFromFilepath' call...");
     }
   }
 
