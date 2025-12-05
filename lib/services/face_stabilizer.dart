@@ -209,14 +209,14 @@ class FaceStabilizer {
     }
 
     rawPhotoPath = _cleanUpPhotoPath(rawPhotoPath);
-    await StabUtils.writeImagesBytesToJpgFile(imageBytesStabilized, stabilizedJpgPhotoPath);
 
     if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
       final Point<double> goalLeftEye  = Point(leftEyeXGoal,  bothEyesYGoal);
       final Point<double> goalRightEye = Point(rightEyeXGoal, bothEyesYGoal);
 
-      final stabFaces = await StabUtils.getFacesFromFilepath(
-        stabilizedJpgPhotoPath,
+      // Detect faces directly from bytes (no intermediate file write)
+      final stabFaces = await StabUtils.getFacesFromBytes(
+        imageBytesStabilized,
         null,
         filterByFaceSize: false,
         imageWidth: canvasWidth,
@@ -266,8 +266,9 @@ class FaceStabilizer {
       );
     }
 
-    final stabFaces = await StabUtils.getFacesFromFilepath(
-      stabilizedJpgPhotoPath,
+    // Mobile path: Detect faces directly from bytes (no intermediate file write)
+    final stabFaces = await StabUtils.getFacesFromBytes(
+      imageBytesStabilized,
       _faceDetector,
       filterByFaceSize: false,
       imageWidth: canvasWidth,
@@ -364,7 +365,7 @@ class FaceStabilizer {
     = _calculateOvershots(eyes, goalLeftEye, goalRightEye);
 
     if (!correctionIsNeeded(score, overshotLeftX, overshotRightX, overshotLeftY, overshotRightY)) {
-      await StabUtils.writeImagesBytesToJpgFile(imageBytesStabilized, stabilizedJpgPhotoPath);
+      // No need to write JPG - saveStabilizedImage writes PNG and JPG gets deleted anyway
       successfulStabilization = await saveStabilizedImage(
         imageBytesStabilized,
         rawPhotoPath,
@@ -397,10 +398,9 @@ class FaceStabilizer {
       );
       if (newImageBytesStabilized == null) return false;
 
-      await StabUtils.writeImagesBytesToJpgFile(newImageBytesStabilized, stabilizedPhotoPath);
-
-      final newStabFaces = await StabUtils.getFacesFromFilepath(
-        stabilizedPhotoPath,
+      // Detect faces directly from bytes (no intermediate file write)
+      final newStabFaces = await StabUtils.getFacesFromBytes(
+        newImageBytesStabilized,
         _faceDetector,
         filterByFaceSize: false,
         imageWidth: canvasWidth,
@@ -441,7 +441,9 @@ class FaceStabilizer {
         );
       } else {
         print("STAB FAILURE. STAB SCORE: $newScore");
-        await _handleStabilizationFailure(rawPhotoPath, stabilizedJpgPhotoPath, toDelete);
+        // Write JPG for failure handling (needed for copyFile in _handleStabilizationFailure)
+        await StabUtils.writeImagesBytesToJpgFile(newImageBytesStabilized, stabilizedPhotoPath);
+        await _handleStabilizationFailure(rawPhotoPath, stabilizedPhotoPath, toDelete);
         successfulStabilization = false;
       }
     }

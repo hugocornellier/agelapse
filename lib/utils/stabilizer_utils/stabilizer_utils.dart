@@ -84,6 +84,92 @@ class StabUtils {
     return out;
   }
 
+  static Future<List<dynamic>?> getFacesFromBytes(
+    Uint8List bytes,
+    FaceDetector? faceDetector, {
+    bool filterByFaceSize = true,
+    int? imageWidth,
+  }) async {
+    try {
+      if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
+        await _ensureFDLite();
+
+        final imglib.Image? decodedImg = imglib.decodeImage(bytes);
+        if (decodedImg == null) {
+          return [];
+        }
+        final double w = decodedImg.width.toDouble();
+
+        final facesDetected = await _faceDetector!.detectFaces(bytes);
+
+        final List<FaceLike> faces = [];
+        for (final face in facesDetected) {
+          final boundingBox = face.boundingBox;
+          final Rect bbox = Rect.fromLTRB(
+            boundingBox.topLeft.x,
+            boundingBox.topLeft.y,
+            boundingBox.bottomRight.x,
+            boundingBox.bottomRight.y,
+          );
+
+          final landmarks = face.landmarks;
+          final Point<double>? l = landmarks.leftEye != null
+              ? Point(landmarks.leftEye!.x, landmarks.leftEye!.y)
+              : null;
+          final Point<double>? r = landmarks.rightEye != null
+              ? Point(landmarks.rightEye!.x, landmarks.rightEye!.y)
+              : null;
+
+          faces.add(
+            FaceLike(
+              boundingBox: bbox,
+              leftEye: l,
+              rightEye: r,
+            ),
+          );
+        }
+
+        if (!filterByFaceSize || faces.isEmpty) return faces;
+
+        const double minFaceSize = 0.1;
+        final filtered = faces
+            .where((f) => (f.boundingBox.width / w) > minFaceSize)
+            .toList();
+        return filtered.isNotEmpty ? filtered : faces;
+      } else {
+        // Mobile path: write to temp file for google_mlkit
+        final Directory tempDir = await getTemporaryDirectory();
+        final String tempPath = path.join(tempDir.path, 'temp_face_detection_${DateTime.now().millisecondsSinceEpoch}.png');
+        final File tempFile = File(tempPath);
+        await tempFile.writeAsBytes(bytes);
+
+        try {
+          final List<Face> faces = await faceDetector!.processImage(
+            InputImage.fromFilePath(tempPath),
+          );
+
+          if (!filterByFaceSize || faces.isEmpty) return faces;
+
+          // For mobile, we need to decode image to get width if not provided
+          if (imageWidth == null) {
+            final imglib.Image? img = imglib.decodeImage(bytes);
+            imageWidth = img?.width;
+          }
+
+          return await _filterFacesBySize(faces, imageWidth, tempPath);
+        } finally {
+          // Clean up temp file
+          if (await tempFile.exists()) {
+            await tempFile.delete();
+          }
+        }
+      }
+    } catch(e) {
+      print("Error caught while fetching faces from bytes: $e");
+      return [];
+    }
+  }
+
   static Future<List<dynamic>?> getFacesFromFilepath(
     String imagePath,
     FaceDetector? faceDetector, {
