@@ -277,10 +277,10 @@ packages:
     dependency: "direct main"
     description:
       name: face_detection_tflite
-      sha256: fffba4e323d5ccaa338502ed4604d21fa6f5f2086e590a147274e8571c4461b6
+      sha256: "7174d00dcd7e452d0785b7aab8264fe911eca358501d14abe422e8a1ba3cc815"
       url: "https://pub.dev"
     source: hosted
-    version: "3.0.0"
+    version: "4.0.0"
   fake_async:
     dependency: transitive
     description:
@@ -978,10 +978,10 @@ packages:
     dependency: "direct main"
     description:
       name: pose_detection_tflite
-      sha256: e377a7307dc9e076d3a7f4b8036950443a18a0d705f47dc6bb85ef1e1d5c57bd
+      sha256: cb7f2e3a8fd7c43888b60b1a4da29377adfffb7517c76f6afdc0f5552c3e9ba3
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.1"
+    version: "1.1.0"
   posix:
     dependency: transitive
     description:
@@ -1271,10 +1271,10 @@ packages:
     dependency: transitive
     description:
       name: tflite_flutter_custom
-      sha256: d1877cde1d12696a10959806cb2f949b2597f90ede061ed6bd2aa5fef4bb1260
+      sha256: "9645b8a9e0fb776abd4d1711d37f99548c4e1de2c9322328bcd9e0f2fe4fa300"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.3"
+    version: "1.1.0"
   timezone:
     dependency: transitive
     description:

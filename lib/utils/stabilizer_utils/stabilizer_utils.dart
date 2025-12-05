@@ -119,8 +119,12 @@ class StabUtils {
           );
 
           final landmarks = face.landmarks;
-          final Point<double>? l = landmarks.leftEye;
-          final Point<double>? r = landmarks.rightEye;
+          final Point<double>? l = landmarks.leftEye != null
+              ? Point(landmarks.leftEye!.x, landmarks.leftEye!.y)
+              : null;
+          final Point<double>? r = landmarks.rightEye != null
+              ? Point(landmarks.rightEye!.x, landmarks.rightEye!.y)
+              : null;
 
           faces.add(
             FaceLike(
