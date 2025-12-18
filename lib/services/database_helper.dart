@@ -115,6 +115,9 @@ class DB {
 
     await _ensurePhotoTransformColumns();
     await db.execute('CREATE INDEX IF NOT EXISTS idx_photos_project_ts ON $photoTable(projectID, timestamp);');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_photos_project_orientation ON $photoTable(projectID, originalOrientation);');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_photos_project_stabilized_portrait ON $photoTable(projectID, stabilizedPortrait);');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_photos_project_stabilized_landscape ON $photoTable(projectID, stabilizedLandscape);');
   }
 
   /* ┌──────────────────────┐
@@ -512,74 +515,51 @@ class DB {
 
   Future<String?> checkAllPhotoOrientations() async {
     final db = await database;
-    final List<Map<String, dynamic>> photos = await db.query(photoTable, columns: ['originalOrientation']);
+    final result = await db.rawQuery('''
+      SELECT
+        COUNT(*) AS totalNonNull,
+        SUM(CASE WHEN originalOrientation = 'portrait' THEN 1 ELSE 0 END) AS portraitCount,
+        SUM(CASE WHEN originalOrientation = 'landscape' THEN 1 ELSE 0 END) AS landscapeCount
+      FROM $photoTable
+      WHERE originalOrientation IS NOT NULL
+    ''');
 
-    if (photos.isEmpty) return null;
+    if (result.isEmpty) return null;
 
-    bool allPortrait = true;
-    bool allLandscape = true;
+    final row = result.first;
+    final int totalNonNull = row['totalNonNull'] as int? ?? 0;
+    if (totalNonNull == 0) return null;
 
-    for (var photo in photos) {
-      final String? orientation = photo['originalOrientation'] as String?;
+    final int portraitCount = row['portraitCount'] as int? ?? 0;
+    final int landscapeCount = row['landscapeCount'] as int? ?? 0;
 
-      if (orientation == null) {
-        continue;
-      }
-
-      if (orientation != 'portrait') {
-        allPortrait = false;
-      }
-      if (orientation != 'landscape') {
-        allLandscape = false;
-      }
-    }
-
-    if (allPortrait) {
-      return 'portrait';
-    } else if (allLandscape) {
-      return 'landscape';
-    } else {
-      return null;
-    }
+    if (portraitCount == totalNonNull) return 'portrait';
+    if (landscapeCount == totalNonNull) return 'landscape';
+    return null;
   }
 
   Future<String?> checkPhotoOrientationThreshold(int projectId) async {
     final db = await database;
-    final List<Map<String, dynamic>> photos = await db.query(
-      photoTable,
-      columns: ['originalOrientation'],
-      where: 'projectID = ?',
-      whereArgs: [projectId],
-    );
-    print("Debug: Retrieved ${photos.length} photos for projectId $projectId");
-    if (photos.isEmpty) return null;
-    int portraitCount = 0;
-    int landscapeCount = 0;
-    int totalCount = 0;
-    for (var photo in photos) {
-      final String? orientation = photo['originalOrientation'] as String?;
-      print("Debug: Processing photo with orientation: $orientation");
-      if (orientation == null) continue;
-      totalCount++;
-      if (orientation == 'portrait') {
-        portraitCount++;
-      } else if (orientation == 'landscape') {
-        landscapeCount++;
-      }
-    }
-    print("Debug: Total valid photos: $totalCount, Portrait: $portraitCount, Landscape: $landscapeCount");
-    if (totalCount == 0) return null;
-    double portraitRatio = portraitCount / totalCount;
-    double landscapeRatio = landscapeCount / totalCount;
-    print("Debug: Portrait ratio: $portraitRatio, Landscape ratio: $landscapeRatio");
+    final result = await db.rawQuery('''
+      SELECT
+        COUNT(*) AS totalCount,
+        SUM(CASE WHEN originalOrientation = 'portrait' THEN 1 ELSE 0 END) AS portraitCount,
+        SUM(CASE WHEN originalOrientation = 'landscape' THEN 1 ELSE 0 END) AS landscapeCount
+      FROM $photoTable
+      WHERE projectID = ? AND originalOrientation IS NOT NULL
+    ''', [projectId]);
 
-    if (landscapeRatio >= 0.5) {
-      print("Debug: Returning 'landscape'");
-      return 'landscape';
-    } else {
-      print("Debug: Returning 'portrait'");
-      return 'portrait';
-    }
+    if (result.isEmpty) return null;
+
+    final row = result.first;
+    final int totalCount = row['totalCount'] as int? ?? 0;
+    if (totalCount == 0) return null;
+
+    final int portraitCount = row['portraitCount'] as int? ?? 0;
+    final int landscapeCount = row['landscapeCount'] as int? ?? 0;
+
+    final double landscapeRatio = landscapeCount / totalCount;
+    return landscapeRatio >= 0.5 ? 'landscape' : 'portrait';
   }
 
   String getStabilizedColumn(String projectOrientation) {
@@ -818,9 +798,15 @@ class DB {
 
 
   Future<int> getStabilizedPhotoCountByProjectID(int projectId, String projectOrientation) async {
-    final List<Map<String, dynamic>> stabPhotos
-        = await getStabilizedPhotosByProjectID(projectId, projectOrientation);
-    return stabPhotos.length;
+    final db = await database;
+    final String stabilizedColumn = getStabilizedColumn(projectOrientation);
+
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) FROM $photoTable WHERE $stabilizedColumn = 1 AND projectID = ?',
+      [projectId],
+    );
+
+    return result.first.values.first as int? ?? 0;
   }
 
   Future<List<Map<String, dynamic>>> getPhotosByProjectIDNewestFirst(int projectID) async {

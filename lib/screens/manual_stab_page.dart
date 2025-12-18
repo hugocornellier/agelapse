@@ -54,6 +54,7 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
   double? _lastMult;
   double? _lastRot;
   ui.Image? _rawImage;
+  Uint8List? _rawImageBytes;
 
   final Map<String, Timer?> _holdTimers = {};
   final Map<String, bool> _recentlyHeld = {};
@@ -121,11 +122,16 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
       rawPhotoPath = localRawPath;
     });
 
-    _rawImage = await StabUtils.loadImageFromFile(File(localRawPath));
-    if (_rawImage != null) {
-      final double defaultScale = canvasWidth / _rawImage!.width.toDouble();
-      _baseScale = defaultScale;
-      _inputController3.text = '1';
+    final File rawFile = File(localRawPath);
+    if (await rawFile.exists()) {
+      _rawImageBytes = await rawFile.readAsBytes();
+      // Decode to get dimensions for default scale calculation
+      _rawImage = await decodeImageFromList(_rawImageBytes!);
+      if (_rawImage != null) {
+        final double defaultScale = canvasWidth / _rawImage!.width.toDouble();
+        _baseScale = defaultScale;
+        _inputController3.text = '1';
+      }
     }
 
     faceStabilizer = FaceStabilizer(widget.projectId, () => print("Test"));
@@ -407,17 +413,18 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
       _isProcessing = true;
     });
     try {
-      final ui.Image? img = _rawImage;
-      if (img == null) {
+      if (_rawImageBytes == null) {
         return;
       }
 
-      final Uint8List? imageBytesStabilized = await faceStabilizer.generateStabilizedImageBytes(
-        img,
-        rotationDegrees,
-        scaleFactor,
-        translateX,
-        translateY,
+      final Uint8List? imageBytesStabilized = await StabUtils.generateStabilizedImageBytesCVAsync(
+        _rawImageBytes!,
+        rotationDegrees ?? 0,
+        scaleFactor ?? 1,
+        translateX ?? 0,
+        translateY ?? 0,
+        this.canvasWidth,
+        this.canvasHeight,
       );
       if (imageBytesStabilized == null) {
         return;

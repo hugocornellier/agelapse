@@ -5,12 +5,13 @@ import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:heif_converter/heif_converter.dart';
 import 'package:path/path.dart' as path;
-import 'package:image/image.dart' as imglib;
+import 'package:opencv_dart/opencv_dart.dart' as cv;
 import 'package:saver_gallery/saver_gallery.dart';
 import 'package:vibration/vibration.dart';
 
 import '../services/database_helper.dart';
 import 'dir_utils.dart';
+import 'image_utils.dart';
 
 class CameraUtils {
   static Future<bool> loadSaveToCameraRollSetting() async {
@@ -209,37 +210,51 @@ class CameraUtils {
         return false;
       }
 
-      imglib.Image? rawImage = await compute(imglib.decodeImage, bytes);
-      if (rawImage == null) {
+      cv.Mat rawImage = cv.imdecode(bytes, cv.IMREAD_COLOR);
+      if (rawImage.isEmpty) {
+        rawImage.dispose();
         return false;
       }
 
       if (deviceOrientation != null) {
+        cv.Mat rotated;
         if (deviceOrientation == "Landscape Left") {
-          rawImage = imglib.copyRotate(rawImage, angle: 90); // rotate 90° clockwise
+          rotated = cv.rotate(rawImage, cv.ROTATE_90_CLOCKWISE);
         } else if (deviceOrientation == "Landscape Right") {
-          rawImage = imglib.copyRotate(rawImage, angle: -90); // rotate 90° counter-clockwise
+          rotated = cv.rotate(rawImage, cv.ROTATE_90_COUNTERCLOCKWISE);
+        } else {
+          rotated = rawImage;
+        }
+        if (rotated != rawImage) {
+          rawImage.dispose();
+          rawImage = rotated;
         }
         if (extension == ".png") {
-          bytes = imglib.encodePng(rawImage);
+          final (success, encoded) = cv.imencode('.png', rawImage);
+          if (success) bytes = encoded;
         } else {
-          bytes = imglib.encodeJpg(rawImage);
+          final (success, encoded) = cv.imencode('.jpg', rawImage);
+          if (success) bytes = encoded;
         }
         await File(imgPath).writeAsBytes(bytes);
       }
 
       if (applyMirroring) {
-        rawImage = imglib.flipHorizontal(rawImage);
+        final flipped = cv.flip(rawImage, 1); // 1 = horizontal flip
+        rawImage.dispose();
+        rawImage = flipped;
         if (extension == ".png") {
-          bytes = imglib.encodePng(rawImage);
+          final (success, encoded) = cv.imencode('.png', rawImage);
+          if (success) bytes = encoded;
         } else {
-          bytes = imglib.encodeJpg(rawImage);
+          final (success, encoded) = cv.imencode('.jpg', rawImage);
+          if (success) bytes = encoded;
         }
         await File(imgPath).writeAsBytes(bytes);
       }
 
-      int? importedImageWidth = rawImage.width;
-      int? importedImageHeight = rawImage.height;
+      int? importedImageWidth = rawImage.cols;
+      int? importedImageHeight = rawImage.rows;
 
       double aspectRatio = (importedImageWidth ?? 1) / (importedImageHeight ?? 1);
       aspectRatio = aspectRatio > 1 ? aspectRatio : 1 / aspectRatio;
@@ -272,6 +287,7 @@ class CameraUtils {
       await DirUtils.createDirectoryIfNotExists(thumbnailPath);
 
       bool result = await _createThumbnailForNewImage(thumbnailPath, rawImage);
+      rawImage.dispose();
       if (!result) {
         return false;
       }
@@ -297,25 +313,23 @@ class CameraUtils {
 
   static Future<bool> _createThumbnailForNewImage(
     String thumbnailPath,
-    imglib.Image rawImage
+    cv.Mat rawImage
   ) async {
     return _createThumbnailFromRawImage(rawImage, thumbnailPath);
   }
 
-  static Future<bool> _createThumbnailFromRawImage(imglib.Image rawImage, String thumbnailPath) async {
-    final imglib.Image thumbnail = imglib.copyResize(rawImage, width: 500);
-    final File thumbnailFile = File(thumbnailPath);
-    Uint8List? encodedJpgBytes = encodeJpg(thumbnail);
-    await thumbnailFile.writeAsBytes(encodedJpgBytes!);
-    return true;
-  }
+  static Future<bool> _createThumbnailFromRawImage(cv.Mat rawImage, String thumbnailPath) async {
+    // Resize to 500px width maintaining aspect ratio
+    final aspectRatio = rawImage.rows / rawImage.cols;
+    final height = (500 * aspectRatio).round();
+    final thumbnail = cv.resize(rawImage, (500, height));
 
-  static Uint8List? encodeJpg(imglib.Image thumbnail) {
-    try {
-      var data = imglib.encodeJpg(thumbnail);
-      return data;
-    } catch(_) {
-      return null;
-    }
+    final File thumbnailFile = File(thumbnailPath);
+    final (success, encodedJpgBytes) = cv.imencode('.jpg', thumbnail, params: cv.VecI32.fromList([cv.IMWRITE_JPEG_QUALITY, 90]));
+    thumbnail.dispose();
+
+    if (!success) return false;
+    await thumbnailFile.writeAsBytes(encodedJpgBytes);
+    return true;
   }
 }

@@ -14,13 +14,27 @@ import '../services/settings_cache.dart';
 import '../screens/projects_page.dart';
 import '../services/database_helper.dart';
 import '../services/theme_provider.dart';
+import '../services/log_service.dart';
 import '../widgets/main_navigation.dart';
 import '../theme/theme.dart';
 import '../services/database_import_ffi.dart';
+import '../utils/dir_utils.dart';
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await LogService.instance.initialize();
+
+  LogService.runWithLogging(() async {
+    await _main();
+  });
+}
+
+Future<void> _main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   initDatabase();
+
+  // Clean up orphaned temp files from previous sessions
+  await DirUtils.clearStabilizationTempFiles();
 
   VideoPlayerMediaKit.ensureInitialized(
     linux: true,
@@ -46,7 +60,7 @@ void main() async {
       size: startSize,
       minimumSize: hasProjects ? minDefault : minIntro,
       center: true,
-      title: 'AgeLapse v2.1.3',
+      title: 'AgeLapse v2.2.0',
     );
 
     await windowManager.waitUntilReadyToShow(options, () async {

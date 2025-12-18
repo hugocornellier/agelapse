@@ -9,10 +9,10 @@ import 'package:flutter/services.dart';
 import 'package:heif_converter/heif_converter.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:flutter/material.dart';
-import 'package:image/image.dart' as imglib;
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:face_detection_tflite/face_detection_tflite.dart' as fdl;
+import 'package:opencv_dart/opencv_dart.dart' as cv;
 import 'package:pose_detection_tflite/pose_detection_tflite.dart' as pdl;
 
 import '../../services/database_helper.dart';
@@ -94,13 +94,16 @@ class StabUtils {
       if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
         await _ensureFDLite();
 
-        final imglib.Image? decodedImg = imglib.decodeImage(bytes);
-        if (decodedImg == null) {
+        // Decode image (this runs on main thread but is needed for face detector)
+        final cv.Mat mat = cv.imdecode(bytes, cv.IMREAD_COLOR);
+        if (mat.isEmpty) {
           return [];
         }
-        final double w = decodedImg.width.toDouble();
+        final double w = mat.cols.toDouble();
 
-        final facesDetected = await _faceDetector!.detectFaces(bytes);
+        // Face detection must run on main thread (TFLite thread affinity)
+        final facesDetected = await _faceDetector!.detectFacesFromMat(mat);
+        mat.dispose();
 
         final List<FaceLike> faces = [];
         for (final face in facesDetected) {
@@ -150,10 +153,11 @@ class StabUtils {
 
           if (!filterByFaceSize || faces.isEmpty) return faces;
 
-          // For mobile, we need to decode image to get width if not provided
+          // For mobile, use opencv to get width if not provided
           if (imageWidth == null) {
-            final imglib.Image? img = imglib.decodeImage(bytes);
-            imageWidth = img?.width;
+            final mat = cv.imdecode(bytes, cv.IMREAD_COLOR);
+            imageWidth = mat.cols;
+            mat.dispose();
           }
 
           return await _filterFacesBySize(faces, imageWidth, tempPath);
@@ -186,13 +190,17 @@ class StabUtils {
         await _ensureFDLite();
 
         final bytes = await File(imagePath).readAsBytes();
-        final imglib.Image? decodedImg = imglib.decodeImage(bytes);
-        if (decodedImg == null) {
+
+        // Decode image (runs on main thread, needed for face detector)
+        final cv.Mat mat = cv.imdecode(bytes, cv.IMREAD_COLOR);
+        if (mat.isEmpty) {
           return [];
         }
-        final double w = decodedImg.width.toDouble();
+        final double w = mat.cols.toDouble();
 
-        final facesDetected = await _faceDetector!.detectFaces(bytes);
+        // Face detection must run on main thread (TFLite thread affinity)
+        final facesDetected = await _faceDetector!.detectFacesFromMat(mat);
+        mat.dispose();
 
         final List<FaceLike> faces = [];
         for (final face in facesDetected) {
@@ -266,62 +274,72 @@ class StabUtils {
 
   static Future<(int, int)> getImageDimensions(String imagePath) async {
     final bytes = await CameraUtils.readBytesInIsolate(imagePath);
-    final imglib.Image? image = await compute(imglib.decodeImage, bytes!);
+    if (bytes == null) {
+      throw Exception('Unable to read image file');
+    }
 
-    if (image == null) {
+    final dims = await getImageDimensionsFromBytesAsync(bytes);
+    if (dims == null) {
       throw Exception('Unable to decode image');
     }
 
-    return (image.width, image.height);
+    return dims;
   }
 
   static Future<void> performFileOperationInBackground(Map<String, dynamic> params) async {
     SendPort sendPort = params['sendPort'];
     String? filePath = params['filePath'];
     var operation = params['operation'];
-    imglib.Image? bitmap = params['bitmap'];
     var bytes = params['bytes'];
 
     switch (operation) {
-      case 'readJpg':
+      case 'readToPng':
+        // Read any image format and return PNG bytes
         try {
-          String extension = path.extension(filePath!).toLowerCase();
-          if (extension == ".jpg") {
-            bytes = await File(filePath).readAsBytes();
-            bitmap = imglib.JpegDecoder().decode(bytes);
-          } else {
-            bytes = await File(filePath).readAsBytes();
-            bitmap = imglib.decodeImage(bytes);
+          final fileBytes = await File(filePath!).readAsBytes();
+          final mat = cv.imdecode(fileBytes, cv.IMREAD_COLOR);
+          if (mat.isEmpty) {
+            mat.dispose();
+            sendPort.send(null);
+            return;
           }
+          final (success, pngBytes) = cv.imencode('.png', mat);
+          mat.dispose();
+          sendPort.send(success ? pngBytes : null);
         } catch (e) {
-          bitmap = null;
-        } finally {
-          sendPort.send(bitmap);
+          sendPort.send(null);
         }
         break;
-      case 'writePng':
+      case 'writePngFromBytes':
+        // Write bytes directly as PNG file
         try {
-          if (bitmap != null) {
-            bytes = imglib.encodePng(bitmap);
-            await File(filePath!).writeAsBytes(bytes!);
+          if (bytes != null) {
+            await File(filePath!).writeAsBytes(bytes as Uint8List);
             sendPort.send('File written successfully');
           } else {
-            sendPort.send('Bitmap is null');
+            sendPort.send('Bytes are null');
           }
         } catch (e) {
           sendPort.send('Error writing PNG: $e');
         }
         break;
       case 'writeJpg':
+        // Convert PNG bytes to JPG and write
         try {
           if (bytes != null) {
-            bitmap = imglib.PngDecoder().decode(bytes);
-            if (bitmap != null) {
-              bytes = imglib.encodeJpg(bitmap);
-              await File(filePath!).writeAsBytes(bytes);
+            final mat = cv.imdecode(bytes as Uint8List, cv.IMREAD_COLOR);
+            if (mat.isEmpty) {
+              mat.dispose();
+              sendPort.send('Decoded mat is empty');
+              return;
+            }
+            final (success, jpgBytes) = cv.imencode('.jpg', mat, params: cv.VecI32.fromList([cv.IMWRITE_JPEG_QUALITY, 90]));
+            mat.dispose();
+            if (success) {
+              await File(filePath!).writeAsBytes(jpgBytes);
               sendPort.send('File written successfully');
             } else {
-              sendPort.send('Decoded bitmap is null');
+              sendPort.send('Failed to encode JPG');
             }
           } else {
             sendPort.send('Bytes are null');
@@ -335,28 +353,79 @@ class StabUtils {
         }
         break;
       case 'compositeBlackPng':
+        // Composite PNG on black background
         try {
           final input = bytes as Uint8List;
-          final decoded = imglib.decodePng(input);
-          final bg = imglib.Image(width: decoded!.width, height: decoded.height);
-          imglib.fill(bg, color: imglib.ColorRgb8(0, 0, 0));
-          imglib.compositeImage(bg, decoded);
-          final out = imglib.encodePng(bg);
-          sendPort.send(Uint8List.fromList(out));
+          final mat = cv.imdecode(input, cv.IMREAD_UNCHANGED);
+          if (mat.isEmpty) {
+            mat.dispose();
+            sendPort.send('Error compositeBlackPng: empty mat');
+            return;
+          }
+
+          cv.Mat result;
+          if (mat.channels == 4) {
+            // Has alpha channel - composite on black
+            final bg = cv.Mat.zeros(mat.rows, mat.cols, cv.MatType.CV_8UC3);
+            final channels = cv.split(mat);
+            final bgr = cv.merge(cv.VecMat.fromList([channels[0], channels[1], channels[2]]));
+            final alpha = channels[3];
+            bgr.copyTo(bg, mask: alpha);
+            for (final ch in channels) {
+              ch.dispose();
+            }
+            bgr.dispose();
+            result = bg;
+          } else {
+            result = mat.clone();
+          }
+          mat.dispose();
+
+          final (success, pngBytes) = cv.imencode('.png', result);
+          result.dispose();
+          sendPort.send(success ? pngBytes : 'Error compositeBlackPng: encode failed');
         } catch (e) {
           sendPort.send('Error compositeBlackPng: $e');
         }
         break;
       case 'thumbnailFromPng':
+        // Create thumbnail from PNG with black background composite
         try {
           final input = bytes as Uint8List;
-          final decoded = imglib.decodePng(input);
-          final bg = imglib.Image(width: decoded!.width, height: decoded.height, numChannels: 4);
-          imglib.fill(bg, color: imglib.ColorRgb8(0, 0, 0));
-          imglib.compositeImage(bg, decoded);
-          final thumb = imglib.copyResize(bg, width: 500);
-          final out = imglib.encodeJpg(thumb);
-          sendPort.send(Uint8List.fromList(out));
+          final mat = cv.imdecode(input, cv.IMREAD_UNCHANGED);
+          if (mat.isEmpty) {
+            mat.dispose();
+            sendPort.send('Error thumbnailFromPng: empty mat');
+            return;
+          }
+
+          cv.Mat composited;
+          if (mat.channels == 4) {
+            // Has alpha channel - composite on black
+            final bg = cv.Mat.zeros(mat.rows, mat.cols, cv.MatType.CV_8UC3);
+            final channels = cv.split(mat);
+            final bgr = cv.merge(cv.VecMat.fromList([channels[0], channels[1], channels[2]]));
+            final alpha = channels[3];
+            bgr.copyTo(bg, mask: alpha);
+            for (final ch in channels) {
+              ch.dispose();
+            }
+            bgr.dispose();
+            composited = bg;
+          } else {
+            composited = mat.clone();
+          }
+          mat.dispose();
+
+          // Resize to 500px width
+          final aspectRatio = composited.rows / composited.cols;
+          final height = (500 * aspectRatio).round();
+          final thumb = cv.resize(composited, (500, height));
+          composited.dispose();
+
+          final (success, jpgBytes) = cv.imencode('.jpg', thumb, params: cv.VecI32.fromList([cv.IMWRITE_JPEG_QUALITY, 90]));
+          thumb.dispose();
+          sendPort.send(success ? jpgBytes : 'Error thumbnailFromPng: encode failed');
         } catch (e) {
           sendPort.send('Error thumbnailFromPng: $e');
         }
@@ -364,38 +433,40 @@ class StabUtils {
     }
   }
 
-  static Future<imglib.Image?> getBitmapInIsolate(String filePath) async {
+  /// Read any image file and return PNG bytes (using opencv for fast native decoding)
+  static Future<Uint8List?> readImageAsPngBytesInIsolate(String filePath) async {
     ReceivePort receivePort = ReceivePort();
     var params = {
       'sendPort': receivePort.sendPort,
       'filePath': filePath,
-      'operation': 'readJpg'
+      'operation': 'readToPng'
     };
 
     Isolate? isolate = await Isolate.spawn(
-      performFileOperationInBackground, 
+      performFileOperationInBackground,
       params
     );
     final result = await receivePort.first;
     receivePort.close();
     isolate.kill(priority: Isolate.immediate);
-    return result as imglib.Image?;
+    return result as Uint8List?;
   }
 
-  static Future<void> writeBitmapToPngFileInIsolate(
-    String filepath, 
-    imglib.Image bitmap
+  /// Write PNG bytes to file
+  static Future<void> writePngBytesToFileInIsolate(
+    String filepath,
+    Uint8List pngBytes
   ) async {
     ReceivePort receivePort = ReceivePort();
     var params = {
       'sendPort': receivePort.sendPort,
       'filePath': filepath,
-      'bitmap': bitmap,
-      'operation': 'writePng'
+      'bytes': pngBytes,
+      'operation': 'writePngFromBytes'
     };
 
     Isolate? isolate = await Isolate.spawn(
-      performFileOperationInBackground, 
+      performFileOperationInBackground,
       params
     );
     await receivePort.first;
@@ -503,9 +574,9 @@ class StabUtils {
       imgPath = jpgImgPath;
     }
 
-    final imglib.Image? bitmap = await getBitmapInIsolate(imgPath);
-    if (bitmap != null) {
-      await writeBitmapToPngFileInIsolate(pngPath, bitmap);
+    final Uint8List? pngBytes = await readImageAsPngBytesInIsolate(imgPath);
+    if (pngBytes != null) {
+      await writePngBytesToFileInIsolate(pngPath, pngBytes);
     }
 
     if (conversionToJpgNeeded) {
@@ -515,17 +586,17 @@ class StabUtils {
 
 
   static Future<File> flipImageHorizontally(String imagePath) async {
-    return await processImageInIsolate(imagePath, imglib.flipHorizontal, '_flipped.png');
+    return await processImageInIsolate(imagePath, 'flip_horizontal', '_flipped.png');
   }
 
   // Rotate Image 90 Degrees Clockwise
   static Future<File> rotateImageClockwise(String imagePath) async {
-    return await processImageInIsolate(imagePath, (image) => imglib.copyRotate(image, angle: 90), '_rotated_clockwise.png');
+    return await processImageInIsolate(imagePath, 'rotate_clockwise', '_rotated_clockwise.png');
   }
 
   // Rotate Image 90 Degrees Counter-Clockwise
   static Future<File> rotateImageCounterClockwise(String imagePath) async {
-    return await processImageInIsolate(imagePath, (image) => imglib.copyRotate(image, angle: -90), '_rotated_counter_clockwise.png');
+    return await processImageInIsolate(imagePath, 'rotate_counter_clockwise', '_rotated_counter_clockwise.png');
   }
 
   static Future<void> performImageProcessingInBackground(Map<String, dynamic> params) async {
@@ -535,44 +606,67 @@ class StabUtils {
     SendPort sendPort = params['sendPort'];
     String filePath = params['filePath'];
     String suffix = params['suffix'];
-    imglib.Image Function(imglib.Image) operationFunction = params['operationFunction'];
+    String operation = params['operation'];
 
     try {
       final Uint8List imageBytes = await File(filePath).readAsBytes();
-      final imglib.Image? image = imglib.decodeImage(imageBytes);
+      final mat = cv.imdecode(imageBytes, cv.IMREAD_COLOR);
 
-      if (image == null) {
+      if (mat.isEmpty) {
+        mat.dispose();
         throw Exception('Failed to decode image');
       }
 
-      final imglib.Image processedImage = operationFunction(image);
+      cv.Mat processedMat;
+      switch (operation) {
+        case 'flip_horizontal':
+          processedMat = cv.flip(mat, 1); // 1 = horizontal
+          break;
+        case 'rotate_clockwise':
+          processedMat = cv.rotate(mat, cv.ROTATE_90_CLOCKWISE);
+          break;
+        case 'rotate_counter_clockwise':
+          processedMat = cv.rotate(mat, cv.ROTATE_90_COUNTERCLOCKWISE);
+          break;
+        default:
+          processedMat = mat.clone();
+      }
+      mat.dispose();
+
       final Directory tempDir = await getTemporaryDirectory();
       final String name = path.basenameWithoutExtension(filePath);
 
       final String newName = '$name$suffix';
       final String newPath = path.join(tempDir.path, newName);
       final File processedImageFile = File(newPath);
-      await processedImageFile.writeAsBytes(imglib.encodePng(processedImage));
 
+      final (success, pngBytes) = cv.imencode('.png', processedMat);
+      processedMat.dispose();
+
+      if (!success) {
+        throw Exception('Failed to encode PNG');
+      }
+
+      await processedImageFile.writeAsBytes(pngBytes);
       sendPort.send(processedImageFile);
     } catch (e) {
       sendPort.send(e);
     }
   }
 
-  static Future<File> processImageInIsolate(String imagePath, imglib.Image Function(imglib.Image) operation, String suffix) async {
+  static Future<File> processImageInIsolate(String imagePath, String operation, String suffix) async {
     ReceivePort receivePort = ReceivePort();
     final rootIsolateToken = RootIsolateToken.instance;
     var params = {
       'sendPort': receivePort.sendPort,
       'filePath': imagePath,
-      'operationFunction': operation,
+      'operation': operation,
       'suffix': suffix,
       'rootIsolateToken': rootIsolateToken
     };
 
     Isolate? isolate = await Isolate.spawn(
-      performImageProcessingInBackground, 
+      performImageProcessingInBackground,
       params
     );
     final result = await receivePort.first;
@@ -621,5 +715,178 @@ class StabUtils {
         await Future.delayed(const Duration(milliseconds: 150));
       }
     }
+  }
+
+  /// Load image as cv.Mat from PNG file path (desktop only)
+  /// Returns the raw bytes so caller can decode to Mat synchronously after async read
+  static Future<Uint8List?> loadPngBytesAsync(String pngPath) async {
+    if (!await File(pngPath).exists()) return null;
+    return await File(pngPath).readAsBytes();
+  }
+
+  /// Isolate entry point for getting image dimensions
+  static void _getImageDimensionsIsolate(Map<String, dynamic> params) {
+    final SendPort sendPort = params['sendPort'];
+    final Uint8List bytes = params['bytes'];
+
+    try {
+      final mat = cv.imdecode(bytes, cv.IMREAD_COLOR);
+      if (mat.isEmpty) {
+        mat.dispose();
+        sendPort.send(null);
+        return;
+      }
+      final dims = (mat.cols, mat.rows);
+      mat.dispose();
+      sendPort.send(dims);
+    } catch (e) {
+      sendPort.send(null);
+    }
+  }
+
+  /// Get image dimensions from bytes asynchronously (runs decode in isolate)
+  static Future<(int, int)?> getImageDimensionsFromBytesAsync(Uint8List bytes) async {
+    final ReceivePort receivePort = ReceivePort();
+    final params = {
+      'sendPort': receivePort.sendPort,
+      'bytes': bytes,
+    };
+
+    final isolate = await Isolate.spawn(_getImageDimensionsIsolate, params);
+    final result = await receivePort.first;
+    receivePort.close();
+    isolate.kill(priority: Isolate.immediate);
+
+    return result as (int, int)?;
+  }
+
+  /// Generate stabilized image bytes using OpenCV warpAffine (desktop only)
+  /// This is faster than Flutter's Canvas-based approach due to SIMD optimization
+  static Uint8List? generateStabilizedImageBytesCV(
+    cv.Mat srcMat,
+    double rotationDegrees,
+    double scaleFactor,
+    double translateX,
+    double translateY,
+    int canvasWidth,
+    int canvasHeight,
+  ) {
+    final int iw = srcMat.cols;
+    final int ih = srcMat.rows;
+
+    // Create rotation matrix centered at image center
+    // Negate angle to match Flutter Canvas rotation convention
+    final cv.Mat rotMat = cv.getRotationMatrix2D(
+      cv.Point2f(iw / 2.0, ih / 2.0),
+      -rotationDegrees,
+      scaleFactor,
+    );
+
+    // Adjust translation to center scaled image in canvas + apply user translation
+    final double offsetX = (canvasWidth - iw) / 2.0 + translateX;
+    final double offsetY = (canvasHeight - ih) / 2.0 + translateY;
+    rotMat.set<double>(0, 2, rotMat.at<double>(0, 2) + offsetX);
+    rotMat.set<double>(1, 2, rotMat.at<double>(1, 2) + offsetY);
+
+    // Apply affine transformation
+    final cv.Mat dst = cv.warpAffine(
+      srcMat,
+      rotMat,
+      (canvasWidth, canvasHeight),
+      borderMode: cv.BORDER_CONSTANT,
+      borderValue: cv.Scalar.black,
+    );
+
+    // Encode to PNG
+    final (bool success, Uint8List bytes) = cv.imencode('.png', dst);
+
+    // Cleanup
+    rotMat.dispose();
+    dst.dispose();
+
+    return success ? bytes : null;
+  }
+
+  /// Isolate entry point for CV stabilization
+  static void _stabilizeCVIsolate(Map<String, dynamic> params) {
+    final SendPort sendPort = params['sendPort'];
+    final Uint8List srcBytes = params['srcBytes'];
+    final double rotationDegrees = params['rotationDegrees'];
+    final double scaleFactor = params['scaleFactor'];
+    final double translateX = params['translateX'];
+    final double translateY = params['translateY'];
+    final int canvasWidth = params['canvasWidth'];
+    final int canvasHeight = params['canvasHeight'];
+
+    try {
+      final cv.Mat srcMat = cv.imdecode(srcBytes, cv.IMREAD_COLOR);
+      if (srcMat.isEmpty) {
+        srcMat.dispose();
+        sendPort.send(null);
+        return;
+      }
+
+      final int iw = srcMat.cols;
+      final int ih = srcMat.rows;
+
+      final cv.Mat rotMat = cv.getRotationMatrix2D(
+        cv.Point2f(iw / 2.0, ih / 2.0),
+        -rotationDegrees,
+        scaleFactor,
+      );
+
+      final double offsetX = (canvasWidth - iw) / 2.0 + translateX;
+      final double offsetY = (canvasHeight - ih) / 2.0 + translateY;
+      rotMat.set<double>(0, 2, rotMat.at<double>(0, 2) + offsetX);
+      rotMat.set<double>(1, 2, rotMat.at<double>(1, 2) + offsetY);
+
+      final cv.Mat dst = cv.warpAffine(
+        srcMat,
+        rotMat,
+        (canvasWidth, canvasHeight),
+        borderMode: cv.BORDER_CONSTANT,
+        borderValue: cv.Scalar.black,
+      );
+
+      final (bool success, Uint8List bytes) = cv.imencode('.png', dst);
+
+      rotMat.dispose();
+      dst.dispose();
+      srcMat.dispose();
+
+      sendPort.send(success ? bytes : null);
+    } catch (e) {
+      sendPort.send(null);
+    }
+  }
+
+  /// Async version that runs CV stabilization in an isolate to avoid blocking UI
+  static Future<Uint8List?> generateStabilizedImageBytesCVAsync(
+    Uint8List srcBytes,
+    double rotationDegrees,
+    double scaleFactor,
+    double translateX,
+    double translateY,
+    int canvasWidth,
+    int canvasHeight,
+  ) async {
+    final ReceivePort receivePort = ReceivePort();
+    final params = {
+      'sendPort': receivePort.sendPort,
+      'srcBytes': srcBytes,
+      'rotationDegrees': rotationDegrees,
+      'scaleFactor': scaleFactor,
+      'translateX': translateX,
+      'translateY': translateY,
+      'canvasWidth': canvasWidth,
+      'canvasHeight': canvasHeight,
+    };
+
+    final isolate = await Isolate.spawn(_stabilizeCVIsolate, params);
+    final result = await receivePort.first;
+    receivePort.close();
+    isolate.kill(priority: Isolate.immediate);
+
+    return result as Uint8List?;
   }
 }

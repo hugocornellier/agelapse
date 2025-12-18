@@ -28,7 +28,7 @@ class ProgressWidget extends StatelessWidget {
     String progressPercentAsStr = "${progressPercent > 100 ? 100 : progressPercent}%";
 
     String minutesRemainingDisplay = (minutesRemaining != null && minutesRemaining!.isNotEmpty)
-        ? " ($minutesRemaining)"
+        ? "$minutesRemaining"
         : "";
 
     return Column(
@@ -45,7 +45,7 @@ class ProgressWidget extends StatelessWidget {
           ),
         ] else if (stabilizingRunningInMain && selectedIndex != 3) ...[
           InProgress(
-            message: "Stabilizing... $progressPercentAsStr",
+            message: "Stabilizing... • $progressPercentAsStr • $minutesRemainingDisplay",
             goToPage: goToPage,
           ),
         ] else if (videoCreationActiveInMain && selectedIndex != 3) ...[

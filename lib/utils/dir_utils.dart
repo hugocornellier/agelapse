@@ -232,6 +232,44 @@ class DirUtils {
     }
   }
 
+  /// Clears temporary files created during stabilization.
+  /// Safe to call on app startup - all temp files are regenerable.
+  /// Targets only app-specific temp subdirectories to avoid affecting other processes.
+  static Future<void> clearStabilizationTempFiles() async {
+    try {
+      // Clear PNG conversion directory
+      final pngDir = Directory(await getRawPhotoPngDirPath());
+      if (await pngDir.exists()) {
+        await pngDir.delete(recursive: true);
+      }
+
+      // Clear WIP directory
+      final wipDir = Directory(await getStabilizedWIPDirPath());
+      if (await wipDir.exists()) {
+        await wipDir.delete(recursive: true);
+      }
+
+      // Clear flipped/rotated temp images from temp directory root
+      final tempDir = Directory(await getTemporaryDirPath());
+      if (await tempDir.exists()) {
+        await for (final entity in tempDir.list()) {
+          if (entity is File) {
+            final name = path.basename(entity.path);
+            if (name.contains('_flipped') ||
+                name.contains('_rotated_clockwise') ||
+                name.contains('_rotated_counter_clockwise')) {
+              try {
+                await entity.delete();
+              } catch (_) {}
+            }
+          }
+        }
+      }
+    } catch (_) {
+      // Best-effort cleanup - ignore errors
+    }
+  }
+
   static Future<String> getGuideImagePath(int projectId, Map<String, Object?>? guidePhoto) async {
     if (guidePhoto == null) {
       return "";

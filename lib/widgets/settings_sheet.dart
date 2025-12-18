@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:image/image.dart' as imglib;
+import 'package:opencv_dart/opencv_dart.dart' as cv;
 import '../screens/set_eye_position_page.dart';
 import '../services/database_helper.dart';
 import '../styles/styles.dart';
@@ -583,7 +583,7 @@ class SettingsSheetState extends State<SettingsSheet> {
             final bool shouldProceed
             = await Utils.showConfirmChangeDialog(context, "project orientation");
             if (shouldProceed) {
-              widget.cancelStabCallback();
+              await widget.cancelStabCallback();
 
               setState(() => projectOrientation = value);
               DB.instance.setSettingByTitle(
@@ -845,16 +845,25 @@ class ImagePickerWidgetState extends State<ImagePickerWidget> {
       String imagePath = result.files.single.path!;
       File file = File(imagePath);
       Uint8List bytes = await file.readAsBytes();
-      imglib.Image? bitmap = imglib.decodeImage(bytes);
 
-      if (bitmap != null) {
+      // Decode and re-encode as PNG using opencv
+      final mat = cv.imdecode(bytes, cv.IMREAD_COLOR);
+      if (!mat.isEmpty) {
         try {
-          await DirUtils.createDirectoryIfNotExists(watermarkFilePath);
-          await StabUtils.writeBitmapToPngFileInIsolate(watermarkFilePath, bitmap);
+          final (success, pngBytes) = cv.imencode('.png', mat);
+          mat.dispose();
+          if (success) {
+            await DirUtils.createDirectoryIfNotExists(watermarkFilePath);
+            await StabUtils.writePngBytesToFileInIsolate(watermarkFilePath, pngBytes);
+          }
           setState(() => uploading = false);
         } catch (e) {
+          mat.dispose();
           setState(() => uploading = false);
         }
+      } else {
+        mat.dispose();
+        setState(() => uploading = false);
       }
     }
   }

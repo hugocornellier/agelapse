@@ -248,98 +248,182 @@ class MainNavigationState extends State<MainNavigation> {
     if (_inStabCall) return;
     _inStabCall = true;
 
-    WakelockPlus.enable();
+    FaceStabilizer? faceStabilizer;
 
-    final FaceStabilizer faceStabilizer = FaceStabilizer(widget.projectId, userRanOutOfSpaceCallback);
-    final List<Map<String, dynamic>> unstabilizedPhotos = await StabUtils.getUnstabilizedPhotos(widget.projectId);
-    _totalPhotoCountForProgress = (await DB.instance.getPhotosByProjectID(widget.projectId)).length;
-    _stabilizedAtStart = await getStabilizedPhotoCount();
-    _successfullyStabilizedPhotos = 0;
+    try {
+      await WakelockPlus.enable();
 
-    // Wait for previous stabilization cycle to cancel
-    while (_cancelStabilization && _stabilizingActive) {
-      await Future.delayed(const Duration(seconds: 1));
-    }
+      faceStabilizer = FaceStabilizer(widget.projectId, userRanOutOfSpaceCallback);
+      final List<Map<String, dynamic>> unstabilizedPhotos = await StabUtils.getUnstabilizedPhotos(widget.projectId);
+      _totalPhotoCountForProgress = (await DB.instance.getPhotosByProjectID(widget.projectId)).length;
+      _stabilizedAtStart = await getStabilizedPhotoCount();
+      _successfullyStabilizedPhotos = 0;
 
-    if (unstabilizedPhotos.isNotEmpty) {
-      setState(() {
-        _stabilizingActive = true;
-        _unstabilizedPhotoCount = unstabilizedPhotos.length;
-      });
-
-      while (_isImporting) {
+      // Wait for previous stabilization cycle to cancel
+      while (_cancelStabilization && _stabilizingActive) {
         await Future.delayed(const Duration(seconds: 1));
       }
 
-      int photosDone = 0;
-      int length = unstabilizedPhotos.length;
-      Stopwatch stopwatch = Stopwatch();
-      stopwatch.start();
+      // Lists to collect scores for mean calculation
+      List<double> preScores = [];
+      List<double> twoPassScores = [];
+      List<double> threePassScores = [];
+      List<double> fourPassScores = [];
 
-      for (Map<String, dynamic> photo in unstabilizedPhotos) {
-        if (_cancelStabilization) {
-          setState(() => _cancelStabilization = false);
-          break;
+      if (unstabilizedPhotos.isNotEmpty) {
+        if (mounted) {
+          setState(() {
+            _stabilizingActive = true;
+            _unstabilizedPhotoCount = unstabilizedPhotos.length;
+          });
         }
 
-        Stopwatch loopStopwatch = Stopwatch();
-        loopStopwatch.start();
+        while (_isImporting) {
+          await Future.delayed(const Duration(seconds: 1));
+        }
 
-        print("\nStabilizing new photo...:");
+        int photosDone = 0;
+        int length = unstabilizedPhotos.length;
+        Stopwatch stopwatch = Stopwatch();
+        stopwatch.start();
 
-        await _stabilizePhoto(faceStabilizer, photo);
+        for (Map<String, dynamic> photo in unstabilizedPhotos) {
+          if (_cancelStabilization) {
+            if (mounted) {
+              setState(() => _cancelStabilization = false);
+            }
+            break;
+          }
 
-        loopStopwatch.stop();
+          Stopwatch loopStopwatch = Stopwatch();
+          loopStopwatch.start();
 
-        photosDone++;
-        double averageTimePerLoop = stopwatch.elapsedMilliseconds / photosDone;
-        int remainingPhotos = length - photosDone;
-        double estimatedTimeRemaining = averageTimePerLoop * remainingPhotos;
+          print("\nStabilizing new photo...:");
 
-        int hours = (estimatedTimeRemaining ~/ (1000 * 60 * 60)).toInt();
-        int minutes = ((estimatedTimeRemaining % (1000 * 60 * 60)) ~/ (1000 * 60)).toInt();
-        int seconds = ((estimatedTimeRemaining % (1000 * 60)) ~/ 1000).toInt();
+          final StabilizationResult result = await _stabilizePhoto(faceStabilizer, photo);
 
-        setState(() => minutesRemaining = "${minutes}m");
-        print("Estimated time remaining: ${hours}h $minutesRemaining ${seconds}s");
+          // Collect scores for mean calculation
+          if (result.preScore != null) {
+            preScores.add(result.preScore!);
+          }
+          if (result.twoPassScore != null) {
+            twoPassScores.add(result.twoPassScore!);
+          }
+          if (result.threePassScore != null) {
+            threePassScores.add(result.threePassScore!);
+          }
+          if (result.fourPassScore != null) {
+            fourPassScores.add(result.fourPassScore!);
+          }
+
+          loopStopwatch.stop();
+
+          photosDone++;
+          double averageTimePerLoop = stopwatch.elapsedMilliseconds / photosDone;
+          int remainingPhotos = length - photosDone;
+          double estimatedTimeRemaining = averageTimePerLoop * remainingPhotos;
+
+          int hours = (estimatedTimeRemaining ~/ (1000 * 60 * 60)).toInt();
+          int minutes = ((estimatedTimeRemaining % (1000 * 60 * 60)) ~/ (1000 * 60)).toInt();
+          int seconds = ((estimatedTimeRemaining % (1000 * 60)) ~/ 1000).toInt();
+
+          String timeDisplay = hours > 0
+              ? "${hours}h ${minutes}m ${seconds}s"
+              : "${minutes}m ${seconds}s";
+          if (mounted) {
+            setState(() => minutesRemaining = timeDisplay);
+          }
+          print("Estimated time remaining: $timeDisplay");
+        }
+
+        stopwatch.stop();
+
+        // Print mean scores at end of stabilization
+        _printMeanScores(preScores, twoPassScores, threePassScores, fourPassScores);
       }
 
-      stopwatch.stop();
+      await _finalCheck(faceStabilizer);
+
+      if (mounted) {
+        setState(() {
+          _photoIndex = 0;
+          _stabilizingActive = false;
+          progressPercent = 0;
+        });
+      }
+
+      if (!_cancelStabilization) {
+        await _createTimelapse(faceStabilizer);
+      }
+
+      if (mounted) {
+        setState(() => _cancelStabilization = false);
+      }
+    } finally {
+      await faceStabilizer?.dispose();
+      await WakelockPlus.disable();
+      _inStabCall = false;
     }
-
-    await _finalCheck(faceStabilizer);
-
-    setState(() {
-      _photoIndex = 0;
-      _stabilizingActive = false;
-      progressPercent = 0;
-    });
-
-    if (!_cancelStabilization) {
-      await _createTimelapse(faceStabilizer);
-    }
-
-    setState(() => _cancelStabilization = false);
-
-    WakelockPlus.disable();
-
-    _inStabCall = false;
   }
 
-  Future<bool> _stabilizePhoto(FaceStabilizer faceStabilizer, Map<String, dynamic> photo) async {
+  void _printMeanScores(List<double> preScores, List<double> twoPassScores, List<double> threePassScores, List<double> fourPassScores) {
+    if (preScores.isEmpty) {
+      print("\n========== STABILIZATION SCORE SUMMARY ==========");
+      print("No scores collected (no photos stabilized or non-face project)");
+      print("==================================================\n");
+      return;
+    }
+
+    final double preMean = preScores.reduce((a, b) => a + b) / preScores.length;
+
+    print("\n========== STABILIZATION SCORE SUMMARY ==========");
+    print("First-pass mean score:  ${preMean.toStringAsFixed(3)} (n=${preScores.length})");
+
+    if (twoPassScores.isNotEmpty) {
+      final double twoPassMean = twoPassScores.reduce((a, b) => a + b) / twoPassScores.length;
+      print("Two-pass mean score:    ${twoPassMean.toStringAsFixed(3)} (n=${twoPassScores.length})");
+      print("  -> Improvement from first: ${(preMean - twoPassMean).toStringAsFixed(3)} (${((preMean - twoPassMean) / preMean * 100).toStringAsFixed(1)}%)");
+
+      if (threePassScores.isNotEmpty) {
+        final double threePassMean = threePassScores.reduce((a, b) => a + b) / threePassScores.length;
+        print("Three-pass mean score:  ${threePassMean.toStringAsFixed(3)} (n=${threePassScores.length})");
+        print("  -> Improvement from two-pass: ${(twoPassMean - threePassMean).toStringAsFixed(3)} (${((twoPassMean - threePassMean) / twoPassMean * 100).toStringAsFixed(1)}%)");
+
+        if (fourPassScores.isNotEmpty) {
+          final double fourPassMean = fourPassScores.reduce((a, b) => a + b) / fourPassScores.length;
+          print("Four-pass mean score:   ${fourPassMean.toStringAsFixed(3)} (n=${fourPassScores.length})");
+          print("  -> Improvement from three-pass: ${(threePassMean - fourPassMean).toStringAsFixed(3)} (${((threePassMean - fourPassMean) / threePassMean * 100).toStringAsFixed(1)}%)");
+          print("  -> Total improvement: ${(preMean - fourPassMean).toStringAsFixed(3)} (${((preMean - fourPassMean) / preMean * 100).toStringAsFixed(1)}%)");
+        } else {
+          print("Four-pass mean score:   N/A (no four-pass corrections needed)");
+          print("  -> Total improvement: ${(preMean - threePassMean).toStringAsFixed(3)} (${((preMean - threePassMean) / preMean * 100).toStringAsFixed(1)}%)");
+        }
+      } else {
+        print("Three-pass mean score:  N/A (no three-pass corrections needed)");
+        print("Four-pass mean score:   N/A (no four-pass corrections needed)");
+      }
+    } else {
+      print("Two-pass mean score:    N/A (no two-pass corrections needed)");
+      print("Three-pass mean score:  N/A (no three-pass corrections needed)");
+      print("Four-pass mean score:   N/A (no four-pass corrections needed)");
+    }
+    print("==================================================\n");
+  }
+
+  Future<StabilizationResult> _stabilizePhoto(FaceStabilizer faceStabilizer, Map<String, dynamic> photo) async {
     try {
       final String rawPhotoPath = await _getRawPhotoPathFromTimestamp(photo['timestamp']);
-      final bool result = await faceStabilizer.stabilize(
+      final StabilizationResult result = await faceStabilizer.stabilize(
           rawPhotoPath,
           _cancelStabilization,
           userRanOutOfSpaceCallback
       );
 
-      if (result) setState(() => _successfullyStabilizedPhotos++);
+      if (result.success) setState(() => _successfullyStabilizedPhotos++);
 
       return result;
     } catch (e) {
-      return false;
+      return StabilizationResult(success: false);
     } finally {
       if (mounted) {
         setState(() => _photoIndex++);
@@ -366,14 +450,14 @@ class MainNavigationState extends State<MainNavigation> {
 
   Future<void> _finalCheck(FaceStabilizer faceStabilizer) async {
     final projectOrientation = await SettingsUtil.loadProjectOrientation(projectIdStr);
+    final offsetX = await SettingsUtil.loadOffsetXCurrentOrientation(projectIdStr);
     final allPhotos = await DB.instance.getStabilizedPhotosByProjectID(widget.projectId, projectOrientation);
 
-    for (var photo in allPhotos) {
-      final offsetX = await SettingsUtil.loadOffsetXCurrentOrientation(projectIdStr);
-      final columnName = projectOrientation == 'portrait'
-          ? "stabilizedPortraitOffsetX"
-          : "stabilizedLandscapeOffsetX";
+    final columnName = projectOrientation == 'portrait'
+        ? "stabilizedPortraitOffsetX"
+        : "stabilizedLandscapeOffsetX";
 
+    for (var photo in allPhotos) {
       if (photo[columnName] != offsetX) {
         await _reStabilizePhoto(faceStabilizer, photo);
       }
@@ -390,8 +474,8 @@ class MainNavigationState extends State<MainNavigation> {
         await DirUtils.getRawPhotoDirPath(widget.projectId),
         "${photo['timestamp']}${photo['fileExtension']}",
       );
-      await faceStabilizer.stabilize(rawPhotoPath, _cancelStabilization, userRanOutOfSpaceCallback);
-      setState(() => _successfullyStabilizedPhotos++);
+      final result = await faceStabilizer.stabilize(rawPhotoPath, _cancelStabilization, userRanOutOfSpaceCallback);
+      if (result.success) setState(() => _successfullyStabilizedPhotos++);
     } catch (e) {
       // Handle error if needed
     }

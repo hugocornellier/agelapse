@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import '../services/database_helper.dart';
 import '../services/face_stabilizer.dart';
+import '../utils/camera_utils.dart';
 import '../utils/dir_utils.dart';
+import '../utils/stabilizer_utils/stabilizer_utils.dart';
 
 class StabDiffFacePage extends StatefulWidget {
   final int projectId;
@@ -49,15 +51,31 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
     faceStabilizer = FaceStabilizer(widget.projectId, widget.userRanOutOfSpaceCallback);
     await faceStabilizer.init();
 
-    final image = await decodeImageFromList(File(rawImagePath).readAsBytesSync());
+    final bytes = await CameraUtils.readBytesInIsolate(rawImagePath);
+    if (bytes == null) {
+      setState(() {
+        loadingStatus = "Failed to load image.";
+      });
+      return;
+    }
+
+    final dims = await StabUtils.getImageDimensionsFromBytesAsync(bytes);
+    if (dims == null) {
+      setState(() {
+        loadingStatus = "Failed to decode image.";
+      });
+      return;
+    }
+
+    final imageWidth = dims.$1;
     setState(() {
-      originalImageSize = Size(image.width.toDouble(), image.height.toDouble());
+      originalImageSize = Size(imageWidth.toDouble(), dims.$2.toDouble());
       loadingStatus = "Detecting faces...";
     });
 
     List<dynamic>? facesRaw = await faceStabilizer.getFacesFromRawPhotoPath(
         rawImagePath,
-        image.width,
+        imageWidth,
         filterByFaceSize: false
     );
 
@@ -92,13 +110,14 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
 
       final Rect targetBox = (tappedFace as dynamic).boundingBox as Rect;
 
-      final bool successful = await faceStabilizer.stabilize(
+      final result = await faceStabilizer.stabilize(
         rawImagePath,
         false,
         userRanOutOfSpaceCallback,
         targetFace: (Platform.isAndroid || Platform.isIOS) ? tappedFace : null,
         targetBoundingBox: targetBox,
       );
+      final bool successful = result.success;
 
       final String loadStatus = successful ? "Stabilization successful" : "Stabilization failed";
 

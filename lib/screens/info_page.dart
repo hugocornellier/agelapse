@@ -5,6 +5,7 @@ import 'package:flutter_email_sender/flutter_email_sender.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../services/log_service.dart';
 import '../styles/styles.dart';
 import '../utils/utils.dart';
 import '../widgets/fancy_button.dart';
@@ -81,6 +82,17 @@ class InfoPageState extends State<InfoPage> with SingleTickerProviderStateMixin 
     }
   }
 
+  Future<void> _exportLogs() async {
+    try {
+      await LogService.instance.exportLogs();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not export logs')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -139,6 +151,14 @@ class InfoPageState extends State<InfoPage> with SingleTickerProviderStateMixin 
                           icon: Icons.info_outline,
                           color: AppColors.lessDarkGrey,
                           onPressed: () => _sendEmail('agelapse+features@gmail.com', 'Feature Suggestion'),
+                        ),
+                        const SizedBox(height: 20.0),
+                        FancyButton.buildElevatedButton(
+                          context,
+                          text: 'Export Logs',
+                          icon: Icons.description_outlined,
+                          color: AppColors.lessDarkGrey,
+                          onPressed: _exportLogs,
                         ),
                       ],
                     ),

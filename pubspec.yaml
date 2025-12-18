@@ -2,7 +2,7 @@ name: agelapse
 description: A powerful tool for creating stabilized aging timelapses.
 publish_to: 'none'
 
-version: 2.1.3+33
+version: 2.2.0+33
 
 environment:
   sdk: ">=3.1.0 <4.0.0"
@@ -18,9 +18,10 @@ dependencies:
   chewie: ^1.13.0
   cupertino_icons: ^1.0.8
   desktop_drop: ^0.7.0
+  device_info_plus: ^11.2.0
   exif: ^3.3.0
   exif_reader: ^3.16.1
-  face_detection_tflite: ^4.0.0
+  face_detection_tflite: ^4.1.0
   ffmpeg_kit_flutter_new:
     git:
       url: https://github.com/hugocornellier/ffmpeg_kit_flutter.git
@@ -39,10 +40,11 @@ dependencies:
   google_mlkit_face_detection: ^0.13.1
   google_mlkit_pose_detection: ^0.14.0
   heif_converter: ^1.0.1
-  image: ^4.5.4
   image_picker: ^1.2.0
   intl: ^0.20.2
   material_symbols_icons: ^4.2873.0
+  opencv_dart: ^2.1.0
+  package_info_plus: ^9.0.0
   path_provider: ^2.1.5
   permission_handler: ^12.0.1
   pose_detection_tflite: ^1.1.0

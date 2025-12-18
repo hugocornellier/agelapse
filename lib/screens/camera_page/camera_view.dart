@@ -1074,7 +1074,7 @@ class CameraGridOverlayState extends State<CameraGridOverlay> {
   Future<void> _loadImage(String path, String timestamp) async {
     final data = await rootBundle.load(path);
     final bytes = data.buffer.asUint8List();
-    final codec = await ui.instantiateImageCodec(bytes);
+    final codec = await ui.instantiateImageCodec(bytes, targetWidth: 800);
     final frameInfo = await codec.getNextFrame();
     setState(() {
       guideImage = frameInfo.image;
