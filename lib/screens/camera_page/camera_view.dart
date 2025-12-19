@@ -91,6 +91,7 @@ class _CameraViewState extends State<CameraView> {
   double _maxAvailableExposureOffset = 0.0;
   double _currentExposureOffset = 0.0;
   bool _changingCameraLens = false;
+  StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
   bool _showFlash = false;
   bool backIndexSet = false;
   bool closingCamera = false;
@@ -119,7 +120,7 @@ class _CameraViewState extends State<CameraView> {
     super.initState();
     _initialize();
 
-    accelerometerEventStream().listen((AccelerometerEvent event) {
+    _accelerometerSubscription = accelerometerEventStream().listen((AccelerometerEvent event) {
       final potentialOrientation = event.x.abs() > event.y.abs()
           ? (event.x > 0 ? "Landscape Left" : "Landscape Right")
           : (event.y > 0 ? "Portrait Up" : "Portrait Down");
@@ -266,6 +267,7 @@ class _CameraViewState extends State<CameraView> {
   void dispose() {
     _stopLiveFeed();
     _timer?.cancel();
+    _accelerometerSubscription?.cancel();
     super.dispose();
   }
 
@@ -992,7 +994,11 @@ class _GridPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _GridPainter oldDelegate) {
+    return offsetX != oldDelegate.offsetX ||
+        offsetY != oldDelegate.offsetY ||
+        orientation != oldDelegate.orientation;
+  }
 }
 
 class CameraGridOverlay extends StatefulWidget {
@@ -1075,13 +1081,30 @@ class CameraGridOverlayState extends State<CameraGridOverlay> {
   }
 
   Future<void> _loadImage(String path, String timestamp) async {
-    final data = await rootBundle.load(path);
-    final bytes = data.buffer.asUint8List();
-    final codec = await ui.instantiateImageCodec(bytes, targetWidth: 800);
-    final frameInfo = await codec.getNextFrame();
-    setState(() {
-      guideImage = frameInfo.image;
-    });
+    try {
+      final data = await rootBundle.load(path);
+      final bytes = data.buffer.asUint8List();
+      final codec = await ui.instantiateImageCodec(bytes, targetWidth: 800);
+      final frameInfo = await codec.getNextFrame();
+      codec.dispose();
+      if (mounted) {
+        final oldImage = guideImage;
+        setState(() {
+          guideImage = frameInfo.image;
+        });
+        oldImage?.dispose();
+      } else {
+        frameInfo.image.dispose();
+      }
+    } catch (e) {
+      debugPrint('Error loading guide image: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    guideImage?.dispose();
+    super.dispose();
   }
 
   Future<String> getRawPhotoPathFromTimestamp(String timestamp) async =>
@@ -1223,5 +1246,13 @@ class _CameraGridPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _CameraGridPainter oldDelegate) {
+    return offsetX != oldDelegate.offsetX ||
+        offsetY != oldDelegate.offsetY ||
+        ghostImageOffsetX != oldDelegate.ghostImageOffsetX ||
+        ghostImageOffsetY != oldDelegate.ghostImageOffsetY ||
+        guideImage != oldDelegate.guideImage ||
+        gridMode != oldDelegate.gridMode ||
+        orientation != oldDelegate.orientation;
+  }
 }

@@ -298,7 +298,9 @@ class FaceContourPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return true;
+  bool shouldRepaint(covariant FaceContourPainter oldDelegate) {
+    return faces != oldDelegate.faces ||
+        originalImageSize != oldDelegate.originalImageSize ||
+        displaySize != oldDelegate.displaySize;
   }
 }

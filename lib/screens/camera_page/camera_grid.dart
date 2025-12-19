@@ -69,14 +69,25 @@ class CameraGridOverlayState extends State<CameraGridOverlay> {
       // Use a smaller target width for the guide overlay to reduce decode time
       final codec = await ui.instantiateImageCodec(bytes, targetWidth: 800);
       final frameInfo = await codec.getNextFrame();
+      codec.dispose();
       if (mounted) {
+        final oldImage = guideImage;
         setState(() {
           guideImage = frameInfo.image;
         });
+        oldImage?.dispose();
+      } else {
+        frameInfo.image.dispose();
       }
     } catch (e) {
       debugPrint('Error loading guide image: $e');
     }
+  }
+
+  @override
+  void dispose() {
+    guideImage?.dispose();
+    super.dispose();
   }
 
   Future<String> getRawPhotoPathFromTimestamp(String timestamp) async =>
@@ -165,5 +176,12 @@ class _GridPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _GridPainter oldDelegate) {
+    return offsetX != oldDelegate.offsetX ||
+        offsetY != oldDelegate.offsetY ||
+        ghostImageOffsetX != oldDelegate.ghostImageOffsetX ||
+        ghostImageOffsetY != oldDelegate.ghostImageOffsetY ||
+        guideImage != oldDelegate.guideImage ||
+        gridMode != oldDelegate.gridMode;
+  }
 }

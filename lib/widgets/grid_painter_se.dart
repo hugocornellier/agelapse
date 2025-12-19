@@ -113,6 +113,7 @@ class GridPainterSE extends CustomPainter {
 
       // Draw text on top of the rectangle
       textPainter.paint(canvas, const Offset(10 + textPadding, 10 + textPadding));
+      textPainter.dispose();
     }
   }
 
@@ -121,5 +122,14 @@ class GridPainterSE extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+  bool shouldRepaint(covariant GridPainterSE oldDelegate) {
+    return offsetX != oldDelegate.offsetX ||
+        offsetY != oldDelegate.offsetY ||
+        ghostImageOffsetX != oldDelegate.ghostImageOffsetX ||
+        ghostImageOffsetY != oldDelegate.ghostImageOffsetY ||
+        guideImage != oldDelegate.guideImage ||
+        aspectRatio != oldDelegate.aspectRatio ||
+        projectOrientation != oldDelegate.projectOrientation ||
+        hideToolTip != oldDelegate.hideToolTip;
+  }
 }
