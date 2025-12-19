@@ -121,6 +121,8 @@ class VideoUtils {
           framesDir: framesDir,
           outputPath: videoOutputPath,
           fps: framerate,
+          projectId: projectId,
+          orientation: projectOrientation,
           onLog: (line) => print("[FFMPEG] $line"),
           onProgress: setCurrentFrame,
         );
@@ -159,7 +161,7 @@ class VideoUtils {
     }
 
     final String framesDir = path.join(stabilizedDirPath, projectOrientation);
-    final String listPath = await _buildConcatListFromDir(framesDir, framerate);
+    final String listPath = await _buildConcatListFromDir(framesDir, framerate, projectId: projectId, orientation: projectOrientation);
 
     final resolution = await SettingsUtil.loadVideoResolution(projectId.toString());
     final kbps = pickBitrateKbps(resolution);
@@ -458,18 +460,57 @@ class VideoUtils {
     }
   }
 
-  static Future<String> _buildConcatListFromDir(String framesDir, int fps) async {
+  /// Returns a set of valid timestamps from the database for the given project and orientation.
+  /// Used to validate filesystem files against the database to prevent orphaned files from appearing in videos.
+  static Future<Set<int>> _getValidTimestampsFromDB(int projectId, String orientation) async {
+    final photos = await DB.instance.getStabilizedPhotosByProjectID(projectId, orientation);
+    final Set<int> timestamps = {};
+    for (final photo in photos) {
+      final ts = int.tryParse(photo['timestamp']?.toString() ?? '');
+      if (ts != null) {
+        timestamps.add(ts);
+      }
+    }
+    return timestamps;
+  }
+
+  static Future<String> _buildConcatListFromDir(String framesDir, int fps, {int? projectId, String? orientation}) async {
     print("[VIDEO] Building concat list from directory: $framesDir");
     final dir = Directory(framesDir);
     if (!await dir.exists()) {
       print("[VIDEO] ERROR: Image directory does not exist: $framesDir");
       throw FileSystemException('image directory not found', framesDir);
     }
-    final files = await dir
+    var files = await dir
         .list()
         .where((e) => e is File && e.path.toLowerCase().endsWith('.png'))
         .map((e) => e.path)
         .toList();
+
+    // Validate files against database and clean up orphans
+    if (projectId != null && orientation != null) {
+      final validTimestamps = await _getValidTimestampsFromDB(projectId, orientation);
+      final int originalFileCount = files.length;
+      final List<String> validFiles = [];
+      for (final filePath in files) {
+        final filename = path.basenameWithoutExtension(filePath);
+        final timestamp = int.tryParse(filename);
+        if (timestamp != null && validTimestamps.contains(timestamp)) {
+          validFiles.add(filePath);
+        } else {
+          // Orphaned file: exists in filesystem but not in DB - delete it
+          print("[VIDEO] Cleaning up orphaned file (not in DB): $filePath");
+          try {
+            await File(filePath).delete();
+          } catch (e) {
+            print("[VIDEO] Failed to delete orphaned file: $e");
+          }
+        }
+      }
+      final int orphansRemoved = originalFileCount - validFiles.length;
+      files = validFiles;
+      print("[VIDEO] After DB validation: ${files.length} valid files (removed $orphansRemoved orphans)");
+    }
 
     files.sort((a, b) => path.basename(a).compareTo(path.basename(b)));
     print("[VIDEO] Found ${files.length} PNG files for concat list");
@@ -501,6 +542,8 @@ class VideoUtils {
     required String framesDir,
     required String outputPath,
     required int fps,
+    required int projectId,
+    required String orientation,
     void Function(String line)? onLog,
     void Function(int frameIndex)? onProgress,
   }) async {
@@ -519,7 +562,7 @@ class VideoUtils {
     }
 
     await _ensureOutDir(outputPath);
-    final listPath = await _buildConcatListFromDir(framesDir, fps);
+    final listPath = await _buildConcatListFromDir(framesDir, fps, projectId: projectId, orientation: orientation);
 
     final args = <String>[
       '-y',

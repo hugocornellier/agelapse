@@ -35,16 +35,42 @@ class ProjectUtils {
   static Future<void> deleteFile(File file) async => await file.delete();
 
   static Future<bool> deleteImage(File image, int projectId) async {
+    // Delete from database FIRST - this is the source of truth.
+    // If DB deletion fails, return false so the image stays in the gallery
+    // and the user can retry the deletion.
     try {
-      await deletePngFileIfExists(image);
-      await deleteStabilizedFileIfExists(image, projectId);
-      await deleteFile(image);
-      await deletePhotoFromDatabase(image.path);
-      return true;
+      final int rowsDeleted = await deletePhotoFromDatabaseAndReturnCount(image.path);
+      if (rowsDeleted == 0) {
+        print("Failed to delete image from database (no rows affected): ${image.path}");
+        return false;
+      }
     } catch (e) {
-      print("Failed to delete image: ${image.path}, Error: $e");
+      print("Failed to delete image from database: ${image.path}, Error: $e");
       return false;
     }
+
+    // DB deletion succeeded. Now try to delete files.
+    // If file deletion fails, that's OK - orphaned files will be cleaned up
+    // during video export when we validate against the database.
+    try {
+      await deletePngFileIfExists(image);
+    } catch (e) {
+      print("Failed to delete PNG file (will be cleaned up later): ${image.path}, Error: $e");
+    }
+
+    try {
+      await deleteStabilizedFileIfExists(image, projectId);
+    } catch (e) {
+      print("Failed to delete stabilized files (will be cleaned up later): ${image.path}, Error: $e");
+    }
+
+    try {
+      await deleteFile(image);
+    } catch (e) {
+      print("Failed to delete raw image file (will be cleaned up later): ${image.path}, Error: $e");
+    }
+
+    return true;
   }
 
   static Future<void> deletePngFileIfExists(File image) async {
@@ -98,6 +124,11 @@ class ProjectUtils {
   static Future<void> deletePhotoFromDatabase(String path) async {
     final timestamp = parseTimestampFromFilename(path);
     await DB.instance.deletePhoto(timestamp);
+  }
+
+  static Future<int> deletePhotoFromDatabaseAndReturnCount(String path) async {
+    final timestamp = parseTimestampFromFilename(path);
+    return await DB.instance.deletePhoto(timestamp);
   }
 
   static List<String> getUniquePhotoDates(List<Map<String, dynamic>> photos) {
