@@ -46,10 +46,13 @@ class OutputImageLoader {
         final stabilizedColumn = DB.instance.getStabilizedColumn(projectOrientation!);
         final stabColOffsetX = "${stabilizedColumn}OffsetX";
         final stabColOffsetY = "${stabilizedColumn}OffsetY";
-        final offsetXDataRaw = await DB.instance.getPhotoColumnValueByTimestamp(guidePhoto['timestamp'].toString(), stabColOffsetX);
-        final offsetYDataRaw = await DB.instance.getPhotoColumnValueByTimestamp(guidePhoto['timestamp'].toString(), stabColOffsetY);
-        final offsetXData = double.tryParse(offsetXDataRaw);
-        final offsetYData = double.tryParse(offsetYDataRaw);
+
+        // Use values directly from guidePhoto instead of making another DB query
+        // (the old DB query didn't filter by projectID, causing cross-project data leakage)
+        final rawOffsetX = guidePhoto[stabColOffsetX];
+        final rawOffsetY = guidePhoto[stabColOffsetY];
+        final offsetXData = rawOffsetX is double ? rawOffsetX : double.tryParse(rawOffsetX?.toString() ?? '');
+        final offsetYData = rawOffsetY is double ? rawOffsetY : double.tryParse(rawOffsetY?.toString() ?? '');
 
         ghostImageOffsetX = offsetXData;
         ghostImageOffsetY = offsetYData;
