@@ -37,6 +37,12 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
     _getProjects();
   }
 
+  @override
+  void dispose() {
+    _editProjectNameController.dispose();
+    super.dispose();
+  }
+
   Future<void> _getProjects() async {
     final List<Map<String, dynamic>> projects = await DB.instance.getAllProjects();
     setState(() => _projects = projects);
@@ -51,7 +57,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
     final String activeProjectOrientation = await SettingsUtil.loadProjectOrientation(projectId.toString());
     final String videoOutputPath = await DirUtils.getVideoOutputPath(projectId, activeProjectOrientation);
     final String gifPath = videoOutputPath.replaceAll(path.extension(videoOutputPath), ".gif");
-    if (File(gifPath).existsSync()) return gifPath;
+    if (await File(gifPath).exists()) return gifPath;
 
     final String stabilizedDirActivePath = path.join(stabilizedDirPath, activeProjectOrientation);
     String? pngPath = await checkForStabilizedImage(stabilizedDirActivePath);
@@ -69,15 +75,15 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
     final bool dirExists = await rawPhotoDir.exists();
     if (!dirExists) return "";
 
-    final files = rawPhotoDir.listSync();
+    final files = await rawPhotoDir.list().toList();
     return files.firstWhere((file) => file is File && Utils.isImage(file.path), orElse: () => File('')).path;
   }
 
-  static Future<String?>? checkForStabilizedImage(dirPath) async {
+  static Future<String?> checkForStabilizedImage(dirPath) async {
     final directory = Directory(dirPath);
-    if (directory.existsSync()) {
+    if (await directory.exists()) {
       try {
-        final pngFiles = directory.listSync().where((item) => item.path.endsWith('.png') && item is File).toList();
+        final pngFiles = await directory.list().where((item) => item.path.endsWith('.png') && item is File).toList();
         if (pngFiles.isNotEmpty) {
           return pngFiles.first.path;
         }

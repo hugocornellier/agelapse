@@ -280,9 +280,11 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
     });
 
     Future.delayed(const Duration(seconds: 1), () {
-      setState(() {
-        showOverlayIcon = false;
-      });
+      if (mounted) {
+        setState(() {
+          showOverlayIcon = false;
+        });
+      }
     });
   }
 
@@ -522,7 +524,9 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
       }
 
       final File dest = File(targetPath);
-      dest.parent.createSync(recursive: true);
+      if (!await dest.parent.exists()) {
+        await dest.parent.create(recursive: true);
+      }
 
       if (await dest.exists()) {
         await dest.delete();

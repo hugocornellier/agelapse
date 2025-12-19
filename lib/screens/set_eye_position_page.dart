@@ -43,12 +43,19 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
   double _widgetHeight = 0.0;
   late OutputImageLoader outputImageLoader;
   bool _isInfoWidgetVisible = true;
+  Timer? _checkmarkTimer;
 
   @override
   void initState() {
     super.initState();
     outputImageLoader = OutputImageLoader(widget.projectId);
     _init();
+  }
+
+  @override
+  void dispose() {
+    _checkmarkTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _init() async {
@@ -87,7 +94,8 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
       _showCheckmark = true;
     });
 
-    Timer(const Duration(seconds: 2), () {
+    _checkmarkTimer?.cancel();
+    _checkmarkTimer = Timer(const Duration(seconds: 2), () {
       if (mounted) {
         setState(() {
           _showCheckmark = false;

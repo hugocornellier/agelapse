@@ -1,5 +1,6 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../services/database_helper.dart';
 import '../../utils/dir_utils.dart';
 import '../../utils/settings_utils.dart';
@@ -59,14 +60,23 @@ class CameraGridOverlayState extends State<CameraGridOverlay> {
     }
   }
 
-  Future<void> _loadImage(String path, String timestamp) async {
-    final data = await rootBundle.load(path);
-    final bytes = data.buffer.asUint8List();
-    final codec = await ui.instantiateImageCodec(bytes, targetWidth: 800);
-    final frameInfo = await codec.getNextFrame();
-    setState(() {
-      guideImage = frameInfo.image;
-    });
+  Future<void> _loadImage(String imagePath, String timestamp) async {
+    try {
+      final file = File(imagePath);
+      if (!await file.exists()) return;
+      final bytes = await file.readAsBytes();
+      // Image codec instantiation is async but decoding happens on main thread
+      // Use a smaller target width for the guide overlay to reduce decode time
+      final codec = await ui.instantiateImageCodec(bytes, targetWidth: 800);
+      final frameInfo = await codec.getNextFrame();
+      if (mounted) {
+        setState(() {
+          guideImage = frameInfo.image;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading guide image: $e');
+    }
   }
 
   Future<String> getRawPhotoPathFromTimestamp(String timestamp) async =>

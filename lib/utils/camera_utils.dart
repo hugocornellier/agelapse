@@ -186,7 +186,7 @@ class CameraUtils {
             'sips',
             ['-s', 'format', 'jpeg', heicPath, '--out', jpgPath],
           );
-          if (result.exitCode != 0 || !File(jpgPath).existsSync()) {
+          if (result.exitCode != 0 || !await File(jpgPath).exists()) {
             return false;
           }
         } else {
@@ -195,7 +195,7 @@ class CameraUtils {
             output: jpgPath,
             format: 'jpeg',
           );
-          if (!File(jpgPath).existsSync()) {
+          if (!await File(jpgPath).exists()) {
             return false;
           }
         }

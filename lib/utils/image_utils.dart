@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:opencv_dart/opencv_dart.dart' as cv;
 
 /// Unified image processing utilities using opencv_dart for fast native operations.
@@ -156,5 +158,81 @@ class ImageUtils {
     final dims = (mat.cols, mat.rows);
     mat.dispose();
     return dims;
+  }
+
+  /// Validate an image file in an isolate (non-blocking)
+  /// Returns true if the image can be decoded successfully
+  static Future<bool> validateImageInIsolate(String filePath) async {
+    return await compute(_validateImageFromPath, filePath);
+  }
+
+  /// Validate image bytes in an isolate (non-blocking)
+  /// Returns true if the image can be decoded successfully
+  static Future<bool> validateImageBytesInIsolate(Uint8List bytes) async {
+    return await compute(_validateImageFromBytes, bytes);
+  }
+
+  static bool _validateImageFromPath(String filePath) {
+    try {
+      final file = File(filePath);
+      if (!file.existsSync()) return false;
+      final bytes = file.readAsBytesSync();
+      return _validateImageFromBytes(bytes);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static bool _validateImageFromBytes(Uint8List bytes) {
+    try {
+      final mat = cv.imdecode(bytes, cv.IMREAD_COLOR);
+      final valid = !mat.isEmpty;
+      mat.dispose();
+      return valid;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Convert image bytes to PNG in an isolate (non-blocking)
+  /// Useful for AVIF/HEIC to PNG conversion
+  static Future<Uint8List?> convertToPngInIsolate(Uint8List bytes) async {
+    return await compute(_convertToPng, bytes);
+  }
+
+  static Uint8List? _convertToPng(Uint8List bytes) {
+    try {
+      final mat = cv.imdecode(bytes, cv.IMREAD_UNCHANGED);
+      if (mat.isEmpty) {
+        mat.dispose();
+        return null;
+      }
+      final result = encodePng(mat);
+      mat.dispose();
+      return result;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Get image dimensions in an isolate (non-blocking)
+  /// Returns (width, height) or null if decoding fails
+  static Future<(int, int)?> getImageDimensionsInIsolate(Uint8List bytes) async {
+    return await compute(_getImageDimensions, bytes);
+  }
+
+  static (int, int)? _getImageDimensions(Uint8List bytes) {
+    try {
+      final mat = cv.imdecode(bytes, cv.IMREAD_COLOR);
+      if (mat.isEmpty) {
+        mat.dispose();
+        return null;
+      }
+      final dims = (mat.cols, mat.rows);
+      mat.dispose();
+      return dims;
+    } catch (_) {
+      return null;
+    }
   }
 }

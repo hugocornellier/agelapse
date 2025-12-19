@@ -80,8 +80,8 @@ class VideoUtils {
 
     List<String> pngFiles;
     try {
-      pngFiles = dir
-          .listSync()
+      pngFiles = await dir
+          .list()
           .where((f) => f.path.endsWith('.png'))
           .map((f) => f.path)
           .toList()

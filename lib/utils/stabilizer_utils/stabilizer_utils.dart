@@ -34,17 +34,13 @@ class FaceLike {
 }
 
 class StabUtils {
-  static fdl.FaceDetector? _faceDetector;
-  static bool _fdLiteReady = false;
+  static fdl.FaceDetectorIsolate? _faceDetectorIsolate;
 
   static Future<void> _ensureFDLite() async {
-    if (_faceDetector == null) {
-      _faceDetector = fdl.FaceDetector();
-      await _faceDetector!.initialize(model: fdl.FaceDetectionModel.backCamera);
-      _fdLiteReady = true;
-    } else if (!_fdLiteReady) {
-      await _faceDetector!.initialize(model: fdl.FaceDetectionModel.backCamera);
-      _fdLiteReady = true;
+    if (_faceDetectorIsolate == null || !_faceDetectorIsolate!.isReady) {
+      _faceDetectorIsolate = await fdl.FaceDetectorIsolate.spawn(
+        model: fdl.FaceDetectionModel.backCamera,
+      );
     }
   }
 
@@ -94,16 +90,18 @@ class StabUtils {
       if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
         await _ensureFDLite();
 
-        // Decode image (this runs on main thread but is needed for face detector)
-        final cv.Mat mat = cv.imdecode(bytes, cv.IMREAD_COLOR);
-        if (mat.isEmpty) {
+        // Face detection runs entirely in background isolate - UI never blocked
+        final facesDetected = await _faceDetectorIsolate!.detectFaces(
+          bytes,
+          mode: fdl.FaceDetectionMode.full,
+        );
+
+        if (facesDetected.isEmpty) {
           return [];
         }
-        final double w = mat.cols.toDouble();
 
-        // Face detection must run on main thread (TFLite thread affinity)
-        final facesDetected = await _faceDetector!.detectFacesFromMat(mat);
-        mat.dispose();
+        // Get image width from first detected face's originalSize
+        final double w = facesDetected.first.originalSize.width;
 
         final List<FaceLike> faces = [];
         for (final face in facesDetected) {
@@ -180,7 +178,7 @@ class StabUtils {
     bool filterByFaceSize = true,
     int? imageWidth,
   }) async {
-    final bool fileExists = File(imagePath).existsSync();
+    final bool fileExists = await File(imagePath).exists();
     if (!fileExists) {
       return null;
     }
@@ -191,16 +189,18 @@ class StabUtils {
 
         final bytes = await File(imagePath).readAsBytes();
 
-        // Decode image (runs on main thread, needed for face detector)
-        final cv.Mat mat = cv.imdecode(bytes, cv.IMREAD_COLOR);
-        if (mat.isEmpty) {
+        // Face detection runs entirely in background isolate - UI never blocked
+        final facesDetected = await _faceDetectorIsolate!.detectFaces(
+          bytes,
+          mode: fdl.FaceDetectionMode.full,
+        );
+
+        if (facesDetected.isEmpty) {
           return [];
         }
-        final double w = mat.cols.toDouble();
 
-        // Face detection must run on main thread (TFLite thread affinity)
-        final facesDetected = await _faceDetector!.detectFacesFromMat(mat);
-        mat.dispose();
+        // Get image width from first detected face's originalSize
+        final double w = facesDetected.first.originalSize.width;
 
         final List<FaceLike> faces = [];
         for (final face in facesDetected) {
@@ -557,7 +557,7 @@ class StabUtils {
           'sips',
           ['-s', 'format', 'jpeg', imgPath, '--out', jpgImgPath],
         );
-        if (result.exitCode != 0 || !File(jpgImgPath).existsSync()) {
+        if (result.exitCode != 0 || !await File(jpgImgPath).exists()) {
           return;
         }
       } else {
@@ -566,7 +566,7 @@ class StabUtils {
           output: jpgImgPath,
           format: 'jpeg',
         );
-        if (!File(jpgImgPath).existsSync()) {
+        if (!await File(jpgImgPath).exists()) {
           return;
         }
       }

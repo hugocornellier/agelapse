@@ -37,11 +37,11 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
     _defaultSettingsCache = await SettingsCache.initializeWithDefaults();
   }
 
-  static Future<String?>? checkForStabilizedImage(dirPath) async {
+  static Future<String?> checkForStabilizedImage(dirPath) async {
     final directory = Directory(dirPath);
-    if (directory.existsSync()) {
+    if (await directory.exists()) {
       try {
-        final pngFiles = directory.listSync().where((item) => item.path.endsWith('.png') && item is File).toList();
+        final pngFiles = await directory.list().where((item) => item.path.endsWith('.png') && item is File).toList();
         if (pngFiles.isNotEmpty) {
           return pngFiles.first.path;
         }

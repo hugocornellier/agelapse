@@ -18,6 +18,7 @@ import '../services/database_helper.dart';
 import '../services/image_processor.dart';
 import 'camera_utils.dart';
 import 'dir_utils.dart';
+import 'image_utils.dart';
 import 'settings_utils.dart';
 import 'utils.dart';
 
@@ -46,14 +47,12 @@ class GalleryUtils {
   static Future<void> convertAvifToPng(String avifFilePath, String pngFilePath) async {
     try {
       final avifBytes = await File(avifFilePath).readAsBytes();
-      final codec = await instantiateImageCodec(avifBytes);
-      final frame = await codec.getNextFrame();
-      final image = frame.image;
-      final pngBytes = await image.toByteData(format: ImageByteFormat.png);
+      // Convert in isolate to avoid blocking UI
+      final pngBytes = await ImageUtils.convertToPngInIsolate(avifBytes);
 
       if (pngBytes != null) {
         final pngFile = File(pngFilePath);
-        await pngFile.writeAsBytes(pngBytes.buffer.asUint8List());
+        await pngFile.writeAsBytes(pngBytes);
       } else {
         throw Exception('Failed to convert AVIF to PNG');
       }
@@ -197,7 +196,6 @@ class GalleryUtils {
     required String projectIdStr,
     required Function(List<String>, List<String>) onImagesLoaded,
     required VoidCallback onShowInfoDialog,
-    required ScrollController stabilizedScrollController,
   }) async {
     final List<Object> results = await Future.wait([
       getAllRawImagePaths(projectId),
@@ -218,11 +216,6 @@ class GalleryUtils {
     stabImagePaths.sort((b, a) => b.split('/').last.compareTo(a.split('/').last));
 
     await onImagesLoaded(rawImagePaths, stabImagePaths);
-
-    // Scroll to bottom after images are loaded
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      scrollToBottomInstantly(stabilizedScrollController);
-    });
   }
 
   static Future<void> scrollToBottomInstantly(ScrollController scrollController) async {
@@ -568,7 +561,7 @@ class GalleryUtils {
         }
 
         if (imageTimestampFromExif == null) {
-          final DateTime lm = File(file.path).lastModifiedSync();
+          final DateTime lm = await File(file.path).lastModified();
           final DateTime localMidnight = DateTime(lm.year, lm.month, lm.day);
           final int utcMidnightMs = localMidnight.toUtc().millisecondsSinceEpoch;
           imageTimestampFromExif = utcMidnightMs;
@@ -775,8 +768,8 @@ class GalleryUtils {
       if (Platform.isAndroid || Platform.isIOS) {
         zipWorkPath = await DirUtils.getZipFileExportPath(projectId, projectName);
         final exportsDir = File(zipWorkPath).parent;
-        if (!exportsDir.existsSync()) {
-          exportsDir.createSync(recursive: true);
+        if (!await exportsDir.exists()) {
+          await exportsDir.create(recursive: true);
         }
         zipTargetPath = zipWorkPath;
       } else {
@@ -784,8 +777,8 @@ class GalleryUtils {
         final tmpName = '${projectName.isEmpty ? "Export" : projectName}-AgeLapse-Export-${DateTime.now().millisecondsSinceEpoch}.zip';
         zipWorkPath = path.join(tmpDir, tmpName);
         final workDir = File(zipWorkPath).parent;
-        if (!workDir.existsSync()) {
-          workDir.createSync(recursive: true);
+        if (!await workDir.exists()) {
+          await workDir.create(recursive: true);
         }
         zipTargetPath = '';
       }
@@ -840,8 +833,8 @@ class GalleryUtils {
         }
         zipTargetPath = location.path.toLowerCase().endsWith('.zip') ? location.path : '${location.path}.zip';
         final targetDir = File(zipTargetPath).parent;
-        if (!targetDir.existsSync()) {
-          targetDir.createSync(recursive: true);
+        if (!await targetDir.exists()) {
+          await targetDir.create(recursive: true);
         }
         await File(zipWorkPath).copy(zipTargetPath);
         try { File(zipWorkPath).deleteSync(); } catch (_) {}
@@ -864,15 +857,12 @@ class GalleryUtils {
         if (photo['stabFailed'] == 1) return "stab_failed";
       }
       final f = File(thumbnailPath);
-      if (f.existsSync()) {
-        final len = f.lengthSync();
+      if (await f.exists()) {
+        final len = await f.length();
         if (len > 0 && lastLen != null && len == lastLen) {
-          try {
-            final bytes = await f.readAsBytes();
-            final codec = await instantiateImageCodec(bytes);
-            await codec.getNextFrame();
-            return "success";
-          } catch (_) {}
+          // Validate image in isolate to avoid blocking UI
+          final valid = await ImageUtils.validateImageInIsolate(thumbnailPath);
+          if (valid) return "success";
         }
         lastLen = len;
       }

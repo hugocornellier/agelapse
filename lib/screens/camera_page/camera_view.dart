@@ -874,6 +874,7 @@ class _CameraViewState extends State<CameraView> {
 
       _controller?.lockCaptureOrientation(DeviceOrientation.portraitUp);
       _controller?.startImageStream(_processCameraImage).then((value) {
+        if (!mounted) return;
         if (widget.onCameraFeedReady != null) {
           widget.onCameraFeedReady!();
         }
@@ -885,12 +886,14 @@ class _CameraViewState extends State<CameraView> {
       _controller?.getMaxZoomLevel().then((value) {});
       _currentExposureOffset = 0.0;
       _controller?.getMinExposureOffset().then((value) {
+        if (!mounted) return;
         _minAvailableExposureOffset = value;
       });
       _controller?.getMaxExposureOffset().then((value) {
+        if (!mounted) return;
         _maxAvailableExposureOffset = value;
       });
-      setState(() {});
+      if (mounted) setState(() {});
     });
   }
 

@@ -34,11 +34,22 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
   void initState() {
     super.initState();
     _initialize();
-    _pageController.addListener(() {
+    _pageController.addListener(_onPageChanged);
+  }
+
+  @override
+  void dispose() {
+    _pageController.removeListener(_onPageChanged);
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _onPageChanged() {
+    if (mounted) {
       setState(() {
         _currentPage = _pageController.page!.round();
       });
-    });
+    }
   }
 
   void _initialize() async {

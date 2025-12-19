@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import '../services/face_stabilizer.dart';
 import '../services/database_helper.dart';
 import '../utils/dir_utils.dart';
+import '../utils/image_utils.dart';
 import '../utils/settings_utils.dart';
 import '../utils/stabilizer_utils/stabilizer_utils.dart';
 import '../widgets/grid_painter_se.dart';
@@ -29,7 +29,7 @@ class ManualStabilizationPage extends StatefulWidget {
 class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
   String rawPhotoPath = "";
   Uint8List? _stabilizedImageBytes;
-  late FaceStabilizer faceStabilizer;
+  FaceStabilizer? _faceStabilizer;
   int? _canvasWidth;
   int? _canvasHeight;
   double? _leftEyeXGoal;
@@ -53,8 +53,8 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
   double? _lastTy;
   double? _lastMult;
   double? _lastRot;
-  ui.Image? _rawImage;
   Uint8List? _rawImageBytes;
+  int? _rawImageWidth;
 
   final Map<String, Timer?> _holdTimers = {};
   final Map<String, bool> _recentlyHeld = {};
@@ -88,11 +88,15 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
       t?.cancel();
     }
     _holdTimers.clear();
-    _rawImage?.dispose();
+    _inputController1.removeListener(_onParamChanged);
+    _inputController2.removeListener(_onParamChanged);
+    _inputController3.removeListener(_onParamChanged);
+    _inputController4.removeListener(_onParamChanged);
     _inputController1.dispose();
     _inputController2.dispose();
     _inputController3.dispose();
     _inputController4.dispose();
+    _faceStabilizer?.dispose();
     super.dispose();
   }
 
@@ -125,17 +129,18 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
     final File rawFile = File(localRawPath);
     if (await rawFile.exists()) {
       _rawImageBytes = await rawFile.readAsBytes();
-      // Decode to get dimensions for default scale calculation
-      _rawImage = await decodeImageFromList(_rawImageBytes!);
-      if (_rawImage != null) {
-        final double defaultScale = canvasWidth / _rawImage!.width.toDouble();
+      // Get dimensions in isolate to avoid blocking UI
+      final dims = await ImageUtils.getImageDimensionsInIsolate(_rawImageBytes!);
+      if (dims != null) {
+        _rawImageWidth = dims.$1;
+        final double defaultScale = canvasWidth / _rawImageWidth!.toDouble();
         _baseScale = defaultScale;
         _inputController3.text = '1';
       }
     }
 
-    faceStabilizer = FaceStabilizer(widget.projectId, () => print("Test"));
-    await faceStabilizer.init();
+    _faceStabilizer = FaceStabilizer(widget.projectId, () => print("Test"));
+    await _faceStabilizer!.init();
 
     await _loadSavedTransformAndBootPreview();
   }
@@ -409,9 +414,11 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
 
   Future<void> processRequest(double? translateX, double? translateY, double? scaleFactor, double? rotationDegrees, {bool save = false}) async {
     final int requestId = ++_currentRequestId;
-    setState(() {
-      _isProcessing = true;
-    });
+    if (mounted) {
+      setState(() {
+        _isProcessing = true;
+      });
+    }
     try {
       if (_rawImageBytes == null) {
         return;
@@ -430,7 +437,7 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
         return;
       }
 
-      if (requestId != _currentRequestId) {
+      if (requestId != _currentRequestId || !mounted) {
         return;
       }
 
@@ -438,7 +445,7 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
         _stabilizedImageBytes = imageBytesStabilized;
       });
 
-      if (save) {
+      if (save && _faceStabilizer != null) {
         final String projectOrientation =
         await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
         final String stabilizedPhotoPath =
@@ -450,7 +457,7 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
         if (await stabImageFile.exists()) await stabImageFile.delete();
         if (await stabThumbFile.exists()) await stabThumbFile.delete();
 
-        await faceStabilizer.saveStabilizedImage(
+        await _faceStabilizer!.saveStabilizedImage(
           imageBytesStabilized,
           rawPhotoPath,
           stabilizedPhotoPath,
@@ -460,18 +467,18 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
           rotationDegrees: rotationDegrees,
           scaleFactor: scaleFactor,
         );
-        await faceStabilizer.createStabThumbnail(stabilizedPhotoPath.replaceAll('.jpg', '.png'));
+        await _faceStabilizer!.createStabThumbnail(stabilizedPhotoPath.replaceAll('.jpg', '.png'));
       }
 
-      if (requestId != _currentRequestId) {
+      if (requestId != _currentRequestId || !mounted || _faceStabilizer == null) {
         return;
       }
 
-      final int canvasHeight = faceStabilizer.canvasHeight;
-      final int canvasWidth = faceStabilizer.canvasWidth;
-      final double leftEyeXGoal = faceStabilizer.leftEyeXGoal;
-      final double rightEyeXGoal = faceStabilizer.rightEyeXGoal;
-      final double bothEyesYGoal = faceStabilizer.bothEyesYGoal;
+      final int canvasHeight = _faceStabilizer!.canvasHeight;
+      final int canvasWidth = _faceStabilizer!.canvasWidth;
+      final double leftEyeXGoal = _faceStabilizer!.leftEyeXGoal;
+      final double rightEyeXGoal = _faceStabilizer!.rightEyeXGoal;
+      final double bothEyesYGoal = _faceStabilizer!.bothEyesYGoal;
 
       setState(() {
         _canvasWidth = canvasWidth;

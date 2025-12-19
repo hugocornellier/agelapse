@@ -75,6 +75,10 @@ class MainNavigationState extends State<MainNavigation> {
   int _totalPhotoCountForProgress = 0;
   int _stabilizedAtStart = 0;
 
+  /// Stream controller to notify GalleryPage when stabilization count changes.
+  /// This replaces the 2-second polling loop in GalleryPage.
+  final StreamController<int> _stabUpdateController = StreamController<int>.broadcast();
+
   @override
   void initState() {
     super.initState();
@@ -94,6 +98,12 @@ class MainNavigationState extends State<MainNavigation> {
     }
 
     initPhotoCount();
+  }
+
+  @override
+  void dispose() {
+    _stabUpdateController.close();
+    super.dispose();
   }
 
   Future<void> _initPhotosThenStabilize() async {
@@ -419,7 +429,15 @@ class MainNavigationState extends State<MainNavigation> {
           userRanOutOfSpaceCallback
       );
 
-      if (result.success) setState(() => _successfullyStabilizedPhotos++);
+      if (result.success) {
+        if (mounted) {
+          setState(() => _successfullyStabilizedPhotos++);
+        } else {
+          _successfullyStabilizedPhotos++;
+        }
+        // Notify listeners (GalleryPage) that a new photo was stabilized
+        _stabUpdateController.add(_stabilizedAtStart + _successfullyStabilizedPhotos);
+      }
 
       return result;
     } catch (e) {
@@ -475,7 +493,14 @@ class MainNavigationState extends State<MainNavigation> {
         "${photo['timestamp']}${photo['fileExtension']}",
       );
       final result = await faceStabilizer.stabilize(rawPhotoPath, _cancelStabilization, userRanOutOfSpaceCallback);
-      if (result.success) setState(() => _successfullyStabilizedPhotos++);
+      if (result.success) {
+        if (mounted) {
+          setState(() => _successfullyStabilizedPhotos++);
+        } else {
+          _successfullyStabilizedPhotos++;
+        }
+        _stabUpdateController.add(_stabilizedAtStart + _successfullyStabilizedPhotos);
+      }
     } catch (e) {
       // Handle error if needed
     }
@@ -601,6 +626,7 @@ class MainNavigationState extends State<MainNavigation> {
       settingsCache: _settingsCache,
       refreshSettings: refreshSettings,
       userRanOutOfSpace: _userRanOutOfSpace,
+      stabUpdateStream: _stabUpdateController.stream,
     ),
     CameraPage(
       projectId: widget.projectId,
