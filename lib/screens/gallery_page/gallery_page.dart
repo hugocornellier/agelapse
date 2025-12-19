@@ -118,6 +118,7 @@ class GalleryPageState extends State<GalleryPage>
   final ScrollController _stabilizedScrollController = ScrollController();
   final ScrollController _rawScrollController = ScrollController();
   StreamSubscription<int>? _stabUpdateSubscription;
+  Timer? _loadImagesDebounce;
   bool _stickyBottomEnabled = true;
   bool _isAutoScrolling = false;
 
@@ -466,7 +467,12 @@ class GalleryPageState extends State<GalleryPage>
         if (!_isMounted) return;
         if (newCount != _stabCount) {
           _stabCount = newCount;
-          _loadImages();
+          // Debounce: cancel pending reload, schedule new one after 500ms
+          // This prevents O(n²) DB queries when stabilizing many photos
+          _loadImagesDebounce?.cancel();
+          _loadImagesDebounce = Timer(const Duration(milliseconds: 500), () {
+            if (_isMounted) _loadImages();
+          });
         }
       });
     }
@@ -474,6 +480,7 @@ class GalleryPageState extends State<GalleryPage>
 
   @override
   void dispose() {
+    _loadImagesDebounce?.cancel();
     _stabUpdateSubscription?.cancel();
     _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
@@ -1463,6 +1470,7 @@ class GalleryPageState extends State<GalleryPage>
 
   final Set<String> _retryingPhotoTimestamps = {};
   final Map<String, Future<bool>> _rawThumbnailFutures = {};
+  Future<Map<String, dynamic>?>? _previewPhotoFuture;
 
   Widget _buildStabilizedThumbnail(String filepath) {
     final String timestamp = path.basenameWithoutExtension(filepath);
@@ -1490,6 +1498,10 @@ class GalleryPageState extends State<GalleryPage>
       {required bool isStabilized}) async {
     final String timestamp = path.basenameWithoutExtension(imageFile.path);
     final bool isRaw = !isStabilized;
+
+    // Cache the future once before opening dialog to prevent recreation on rebuilds
+    _previewPhotoFuture = DB.instance.getPhotoByTimestamp(timestamp, projectId);
+
     setState(() {
       activeImagePreviewPath = imageFile.path;
       activeButton = isRaw ? 'raw' : projectOrientation!.toLowerCase();
@@ -1516,8 +1528,7 @@ class GalleryPageState extends State<GalleryPage>
                       const Icon(Icons.access_time_outlined),
                       const SizedBox(width: 8),
                       FutureBuilder<Map<String, dynamic>?>(
-                        future: DB.instance
-                            .getPhotoByTimestamp(timestamp, projectId),
+                        future: _previewPhotoFuture,
                         builder: (context, snap) {
                           final int? off = snap.data != null &&
                                   snap.data!['captureOffsetMinutes'] is int
@@ -1887,6 +1898,12 @@ class GalleryPageState extends State<GalleryPage>
       );
       _rawThumbnailFutures.remove(thumbnailPath);
       _loadImages();
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('There was an error. Please try again.')),
+        );
+      }
     }
   }
 }

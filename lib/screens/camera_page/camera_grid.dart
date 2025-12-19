@@ -41,7 +41,6 @@ class CameraGridOverlayState extends State<CameraGridOverlay> {
       final rawPhotoPath = await getRawPhotoPathFromTimestamp(timestamp);
       final stabilizedPath = await DirUtils.getStabilizedImagePath(rawPhotoPath, widget.projectId);
 
-      final projectOrientation = await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
       final stabilizedColumn = DB.instance.getStabilizedColumn(projectOrientation);
       final stabColOffsetX = "${stabilizedColumn}OffsetX";
       final stabColOffsetY = "${stabilizedColumn}OffsetY";
