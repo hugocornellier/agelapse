@@ -32,7 +32,8 @@ class InfoPage extends StatefulWidget {
   InfoPageState createState() => InfoPageState();
 }
 
-class InfoPageState extends State<InfoPage> with SingleTickerProviderStateMixin {
+class InfoPageState extends State<InfoPage>
+    with SingleTickerProviderStateMixin {
   bool noPhotos = false;
   bool? isLightTheme;
   bool hasTakenMoreThanOnePhoto = false;
@@ -124,7 +125,8 @@ class InfoPageState extends State<InfoPage> with SingleTickerProviderStateMixin 
                           text: 'Tutorials',
                           icon: Icons.menu_book_outlined,
                           color: AppColors.lessDarkGrey,
-                          onPressed: () => Utils.navigateToScreen(context, const TutorialPage()),
+                          onPressed: () => Utils.navigateToScreen(
+                              context, const TutorialPage()),
                         ),
                         const SizedBox(height: 20),
                         FancyButton.buildElevatedButton(
@@ -132,7 +134,8 @@ class InfoPageState extends State<InfoPage> with SingleTickerProviderStateMixin 
                           text: 'F.A.Q.',
                           icon: Icons.question_mark,
                           color: AppColors.lessDarkGrey,
-                          onPressed: () => Utils.navigateToScreen(context, FAQPage()),
+                          onPressed: () =>
+                              Utils.navigateToScreen(context, FAQPage()),
                         ),
                         const SizedBox(height: 50),
                         _buildSectionTitle('Contact Us', ""),
@@ -142,7 +145,8 @@ class InfoPageState extends State<InfoPage> with SingleTickerProviderStateMixin 
                           text: 'Report Bugs',
                           icon: Icons.bug_report_sharp,
                           color: AppColors.lessDarkGrey,
-                          onPressed: () => _sendEmail('agelapse+bugs@gmail.com', 'Bug Report'),
+                          onPressed: () => _sendEmail(
+                              'agelapse+bugs@gmail.com', 'Bug Report'),
                         ),
                         const SizedBox(height: 20.0),
                         FancyButton.buildElevatedButton(
@@ -150,7 +154,9 @@ class InfoPageState extends State<InfoPage> with SingleTickerProviderStateMixin 
                           text: 'Suggest Features',
                           icon: Icons.info_outline,
                           color: AppColors.lessDarkGrey,
-                          onPressed: () => _sendEmail('agelapse+features@gmail.com', 'Feature Suggestion'),
+                          onPressed: () => _sendEmail(
+                              'agelapse+features@gmail.com',
+                              'Feature Suggestion'),
                         ),
                         const SizedBox(height: 20.0),
                         FancyButton.buildElevatedButton(

@@ -72,24 +72,28 @@ class TipsPageState extends State<TipsPage> {
             Expanded(child: Container()),
             const CustomWidget(
               title: "Look At Camera Lens",
-              description: "For best results, face your camera directly and look at the lens.",
+              description:
+                  "For best results, face your camera directly and look at the lens.",
               icon: Icons.tips_and_updates,
             ),
             const SizedBox(height: 16),
             const CustomWidget(
               title: "Consistent Facial Expression",
-              description: "To emphasize the gradual changes, maintain a consistent expression.",
+              description:
+                  "To emphasize the gradual changes, maintain a consistent expression.",
               icon: Icons.balance,
             ),
             const SizedBox(height: 16),
             CustomWidget(
               title: "Let Us Handle the Heavy Lifting",
-              description: "No need to be perfect: sit back as your photos are auto-stabilized.",
+              description:
+                  "No need to be perfect: sit back as your photos are auto-stabilized.",
               svgIcon: SvgPicture.asset(
                 'assets/relax.svg',
                 width: 24,
                 height: 24,
-                colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                colorFilter:
+                    const ColorFilter.mode(Colors.white, BlendMode.srcIn),
               ),
             ),
             Expanded(child: Container()),
@@ -116,7 +120,8 @@ class TipsPageState extends State<TipsPage> {
         ),
         child: Text(
           text.toUpperCase(),
-          style: const TextStyle(fontSize: 15, color: Colors.white, fontWeight: FontWeight.bold),
+          style: const TextStyle(
+              fontSize: 15, color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
     );
@@ -144,7 +149,8 @@ class CustomWidget extends StatelessWidget {
     required this.description,
     this.icon,
     this.svgIcon,
-  }) : assert(icon != null || svgIcon != null, 'Either icon or svgIcon must be provided');
+  }) : assert(icon != null || svgIcon != null,
+            'Either icon or svgIcon must be provided');
 
   @override
   Widget build(BuildContext context) {

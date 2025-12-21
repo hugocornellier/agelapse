@@ -1,6 +1,5 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 import 'camera_view.dart';
 
@@ -29,29 +28,11 @@ class CameraPage extends StatefulWidget {
 }
 
 class _CameraPageState extends State<CameraPage> {
-  final FaceDetector _faceDetector = FaceDetector(
-    options: FaceDetectorOptions(
-      enableContours: true,
-      enableLandmarks: true,
-    ),
-  );
-  CustomPaint? _customPaint;
-  String? _text;
   var _cameraLensDirection = CameraLensDirection.front;
-
-  @override
-  void dispose() {
-    _faceDetector.close();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     return DetectorView(
-      title: 'Face Detector',
-      customPaint: _customPaint,
-      text: _text,
-      onImage: processImage,
       initialCameraLensDirection: _cameraLensDirection,
       onCameraLensDirectionChanged: (value) => _cameraLensDirection = value,
       projectId: widget.projectId,
@@ -60,12 +41,8 @@ class _CameraPageState extends State<CameraPage> {
       forceGridModeEnum: widget.forceGridModeEnum,
       openGallery: widget.openGallery,
       refreshSettings: widget.refreshSettings,
-      goToPage: widget.goToPage
+      goToPage: widget.goToPage,
     );
-  }
-
-  Future<List<Face>?> processImage(InputImage inputImage) async {
-    return null;
   }
 }
 
@@ -74,12 +51,8 @@ enum DetectorViewMode { liveFeed, gallery }
 class DetectorView extends StatefulWidget {
   const DetectorView({
     super.key,
-    required this.title,
-    required this.onImage,
     required this.projectId,
     required this.projectName,
-    this.customPaint,
-    this.text,
     this.initialDetectionMode = DetectorViewMode.liveFeed,
     this.initialCameraLensDirection = CameraLensDirection.front,
     this.onCameraFeedReady,
@@ -92,11 +65,7 @@ class DetectorView extends StatefulWidget {
     required this.goToPage,
   });
 
-  final String title;
-  final CustomPaint? customPaint;
-  final String? text;
   final DetectorViewMode initialDetectionMode;
-  final Function(InputImage inputImage) onImage;
   final Function()? onCameraFeedReady;
   final Function(DetectorViewMode mode)? onDetectorViewModeChanged;
   final Function(CameraLensDirection direction)? onCameraLensDirectionChanged;
@@ -125,7 +94,6 @@ class _DetectorViewState extends State<DetectorView> {
   @override
   Widget build(BuildContext context) {
     return CameraView(
-      customPaint: widget.customPaint,
       onCameraFeedReady: widget.onCameraFeedReady,
       onDetectorViewModeChanged: _onDetectorViewModeChanged,
       initialCameraLensDirection: widget.initialCameraLensDirection,
@@ -136,7 +104,7 @@ class _DetectorViewState extends State<DetectorView> {
       forceGridModeEnum: widget.forceGridModeEnum,
       openGallery: widget.openGallery,
       refreshSettings: widget.refreshSettings,
-      goToPage: widget.goToPage
+      goToPage: widget.goToPage,
     );
   }
 
@@ -152,4 +120,3 @@ class _DetectorViewState extends State<DetectorView> {
     setState(() {});
   }
 }
-

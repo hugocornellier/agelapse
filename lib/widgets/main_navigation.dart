@@ -77,7 +77,8 @@ class MainNavigationState extends State<MainNavigation> {
 
   /// Stream controller to notify GalleryPage when stabilization count changes.
   /// This replaces the 2-second polling loop in GalleryPage.
-  final StreamController<int> _stabUpdateController = StreamController<int>.broadcast();
+  final StreamController<int> _stabUpdateController =
+      StreamController<int>.broadcast();
 
   @override
   void initState() {
@@ -120,9 +121,7 @@ class MainNavigationState extends State<MainNavigation> {
     ]);
 
     setRawAndStabPhotoStates(
-      results[0] as List<String>,
-      results[1] as List<String>
-    );
+        results[0] as List<String>, results[1] as List<String>);
   }
 
   void _checkPhotoTakenToday() {
@@ -140,7 +139,8 @@ class MainNavigationState extends State<MainNavigation> {
     });
   }
 
-  void setRawAndStabPhotoStates(List<String> imageFiles, List<String> stabilizedImageFiles) {
+  void setRawAndStabPhotoStates(
+      List<String> imageFiles, List<String> stabilizedImageFiles) {
     setState(() {
       _imageFiles = imageFiles;
       _stabilizedImageFiles = stabilizedImageFiles;
@@ -162,7 +162,8 @@ class MainNavigationState extends State<MainNavigation> {
   }
 
   Future<void> _refreshSettingsCache() async {
-    SettingsCache settingsCache = await SettingsCache.initialize(widget.projectId);
+    SettingsCache settingsCache =
+        await SettingsCache.initialize(widget.projectId);
     setState(() => _settingsCache = settingsCache);
   }
 
@@ -172,7 +173,8 @@ class MainNavigationState extends State<MainNavigation> {
   }
 
   Future<void> initPhotoCount() async {
-    final List<Map<String, dynamic>> rawPhotos = await DB.instance.getPhotosByProjectID(widget.projectId);
+    final List<Map<String, dynamic>> rawPhotos =
+        await DB.instance.getPhotosByProjectID(widget.projectId);
     photoCount = rawPhotos.length;
   }
 
@@ -195,10 +197,8 @@ class MainNavigationState extends State<MainNavigation> {
     });
   }
 
-  Future<void> processPickedFiles(
-    FilePickerResult? pickedFiles,
-    Future<void> Function(dynamic file) processFileCallback
-  ) async {
+  Future<void> processPickedFiles(FilePickerResult? pickedFiles,
+      Future<void> Function(dynamic file) processFileCallback) async {
     if (pickedFiles == null) return;
 
     setState(() {
@@ -207,10 +207,12 @@ class MainNavigationState extends State<MainNavigation> {
 
     _importMaxProgress = 0;
 
-    final List<String> allPhotosBefore = await DB.instance.getAllPhotoPathsByProjectID(widget.projectId);
+    final List<String> allPhotosBefore =
+        await DB.instance.getAllPhotoPathsByProjectID(widget.projectId);
     final int photoCountBeforeImport = allPhotosBefore.length;
 
-    final List<File> files = pickedFiles.paths.map((path) => File(path!)).toList();
+    final List<File> files =
+        pickedFiles.paths.map((path) => File(path!)).toList();
     for (File file in files) {
       await processFileCallback(file);
     }
@@ -218,14 +220,18 @@ class MainNavigationState extends State<MainNavigation> {
     if (photoCountBeforeImport == 0) {
       print("[processPickedFiles] photoCountBeforeImport == 0 is true");
 
-      String? importedPhotosOrientation = await DB.instance.checkPhotoOrientationThreshold(widget.projectId);
+      String? importedPhotosOrientation =
+          await DB.instance.checkPhotoOrientationThreshold(widget.projectId);
       if (importedPhotosOrientation == 'landscape') {
-        print("[processPickedFiles] importedPhotosOrientation == 'landscape' is true");
+        print(
+            "[processPickedFiles] importedPhotosOrientation == 'landscape' is true");
 
-        DB.instance.setSettingByTitle("project_orientation", 'landscape', projectIdStr);
+        DB.instance.setSettingByTitle(
+            "project_orientation", 'landscape', projectIdStr);
         DB.instance.setSettingByTitle("aspect_ratio", "4:3", projectIdStr);
       } else {
-        print("[processPickedFiles] importedPhotosOrientation == 'landscape' NOT true. importedPhotosOrientation = ${importedPhotosOrientation}");
+        print(
+            "[processPickedFiles] importedPhotosOrientation == 'landscape' NOT true. importedPhotosOrientation = ${importedPhotosOrientation}");
       }
     }
 
@@ -263,9 +269,12 @@ class MainNavigationState extends State<MainNavigation> {
     try {
       await WakelockPlus.enable();
 
-      faceStabilizer = FaceStabilizer(widget.projectId, userRanOutOfSpaceCallback);
-      final List<Map<String, dynamic>> unstabilizedPhotos = await StabUtils.getUnstabilizedPhotos(widget.projectId);
-      _totalPhotoCountForProgress = (await DB.instance.getPhotosByProjectID(widget.projectId)).length;
+      faceStabilizer =
+          FaceStabilizer(widget.projectId, userRanOutOfSpaceCallback);
+      final List<Map<String, dynamic>> unstabilizedPhotos =
+          await StabUtils.getUnstabilizedPhotos(widget.projectId);
+      _totalPhotoCountForProgress =
+          (await DB.instance.getPhotosByProjectID(widget.projectId)).length;
       _stabilizedAtStart = await getStabilizedPhotoCount();
       _successfullyStabilizedPhotos = 0;
 
@@ -310,7 +319,8 @@ class MainNavigationState extends State<MainNavigation> {
 
           print("\nStabilizing new photo...:");
 
-          final StabilizationResult result = await _stabilizePhoto(faceStabilizer, photo);
+          final StabilizationResult result =
+              await _stabilizePhoto(faceStabilizer, photo);
 
           // Collect scores for mean calculation
           if (result.preScore != null) {
@@ -329,13 +339,17 @@ class MainNavigationState extends State<MainNavigation> {
           loopStopwatch.stop();
 
           photosDone++;
-          double averageTimePerLoop = stopwatch.elapsedMilliseconds / photosDone;
+          double averageTimePerLoop =
+              stopwatch.elapsedMilliseconds / photosDone;
           int remainingPhotos = length - photosDone;
           double estimatedTimeRemaining = averageTimePerLoop * remainingPhotos;
 
           int hours = (estimatedTimeRemaining ~/ (1000 * 60 * 60)).toInt();
-          int minutes = ((estimatedTimeRemaining % (1000 * 60 * 60)) ~/ (1000 * 60)).toInt();
-          int seconds = ((estimatedTimeRemaining % (1000 * 60)) ~/ 1000).toInt();
+          int minutes =
+              ((estimatedTimeRemaining % (1000 * 60 * 60)) ~/ (1000 * 60))
+                  .toInt();
+          int seconds =
+              ((estimatedTimeRemaining % (1000 * 60)) ~/ 1000).toInt();
 
           String timeDisplay = hours > 0
               ? "${hours}h ${minutes}m ${seconds}s"
@@ -349,7 +363,8 @@ class MainNavigationState extends State<MainNavigation> {
         stopwatch.stop();
 
         // Print mean scores at end of stabilization
-        _printMeanScores(preScores, twoPassScores, threePassScores, fourPassScores);
+        _printMeanScores(
+            preScores, twoPassScores, threePassScores, fourPassScores);
       }
 
       await _finalCheck(faceStabilizer);
@@ -376,7 +391,8 @@ class MainNavigationState extends State<MainNavigation> {
     }
   }
 
-  void _printMeanScores(List<double> preScores, List<double> twoPassScores, List<double> threePassScores, List<double> fourPassScores) {
+  void _printMeanScores(List<double> preScores, List<double> twoPassScores,
+      List<double> threePassScores, List<double> fourPassScores) {
     if (preScores.isEmpty) {
       print("\n========== STABILIZATION SCORE SUMMARY ==========");
       print("No scores collected (no photos stabilized or non-face project)");
@@ -387,26 +403,39 @@ class MainNavigationState extends State<MainNavigation> {
     final double preMean = preScores.reduce((a, b) => a + b) / preScores.length;
 
     print("\n========== STABILIZATION SCORE SUMMARY ==========");
-    print("First-pass mean score:  ${preMean.toStringAsFixed(3)} (n=${preScores.length})");
+    print(
+        "First-pass mean score:  ${preMean.toStringAsFixed(3)} (n=${preScores.length})");
 
     if (twoPassScores.isNotEmpty) {
-      final double twoPassMean = twoPassScores.reduce((a, b) => a + b) / twoPassScores.length;
-      print("Two-pass mean score:    ${twoPassMean.toStringAsFixed(3)} (n=${twoPassScores.length})");
-      print("  -> Improvement from first: ${(preMean - twoPassMean).toStringAsFixed(3)} (${((preMean - twoPassMean) / preMean * 100).toStringAsFixed(1)}%)");
+      final double twoPassMean =
+          twoPassScores.reduce((a, b) => a + b) / twoPassScores.length;
+      print(
+          "Two-pass mean score:    ${twoPassMean.toStringAsFixed(3)} (n=${twoPassScores.length})");
+      print(
+          "  -> Improvement from first: ${(preMean - twoPassMean).toStringAsFixed(3)} (${((preMean - twoPassMean) / preMean * 100).toStringAsFixed(1)}%)");
 
       if (threePassScores.isNotEmpty) {
-        final double threePassMean = threePassScores.reduce((a, b) => a + b) / threePassScores.length;
-        print("Three-pass mean score:  ${threePassMean.toStringAsFixed(3)} (n=${threePassScores.length})");
-        print("  -> Improvement from two-pass: ${(twoPassMean - threePassMean).toStringAsFixed(3)} (${((twoPassMean - threePassMean) / twoPassMean * 100).toStringAsFixed(1)}%)");
+        final double threePassMean =
+            threePassScores.reduce((a, b) => a + b) / threePassScores.length;
+        print(
+            "Three-pass mean score:  ${threePassMean.toStringAsFixed(3)} (n=${threePassScores.length})");
+        print(
+            "  -> Improvement from two-pass: ${(twoPassMean - threePassMean).toStringAsFixed(3)} (${((twoPassMean - threePassMean) / twoPassMean * 100).toStringAsFixed(1)}%)");
 
         if (fourPassScores.isNotEmpty) {
-          final double fourPassMean = fourPassScores.reduce((a, b) => a + b) / fourPassScores.length;
-          print("Four-pass mean score:   ${fourPassMean.toStringAsFixed(3)} (n=${fourPassScores.length})");
-          print("  -> Improvement from three-pass: ${(threePassMean - fourPassMean).toStringAsFixed(3)} (${((threePassMean - fourPassMean) / threePassMean * 100).toStringAsFixed(1)}%)");
-          print("  -> Total improvement: ${(preMean - fourPassMean).toStringAsFixed(3)} (${((preMean - fourPassMean) / preMean * 100).toStringAsFixed(1)}%)");
+          final double fourPassMean =
+              fourPassScores.reduce((a, b) => a + b) / fourPassScores.length;
+          print(
+              "Four-pass mean score:   ${fourPassMean.toStringAsFixed(3)} (n=${fourPassScores.length})");
+          print(
+              "  -> Improvement from three-pass: ${(threePassMean - fourPassMean).toStringAsFixed(3)} (${((threePassMean - fourPassMean) / threePassMean * 100).toStringAsFixed(1)}%)");
+          print(
+              "  -> Total improvement: ${(preMean - fourPassMean).toStringAsFixed(3)} (${((preMean - fourPassMean) / preMean * 100).toStringAsFixed(1)}%)");
         } else {
-          print("Four-pass mean score:   N/A (no four-pass corrections needed)");
-          print("  -> Total improvement: ${(preMean - threePassMean).toStringAsFixed(3)} (${((preMean - threePassMean) / preMean * 100).toStringAsFixed(1)}%)");
+          print(
+              "Four-pass mean score:   N/A (no four-pass corrections needed)");
+          print(
+              "  -> Total improvement: ${(preMean - threePassMean).toStringAsFixed(3)} (${((preMean - threePassMean) / preMean * 100).toStringAsFixed(1)}%)");
         }
       } else {
         print("Three-pass mean score:  N/A (no three-pass corrections needed)");
@@ -420,14 +449,13 @@ class MainNavigationState extends State<MainNavigation> {
     print("==================================================\n");
   }
 
-  Future<StabilizationResult> _stabilizePhoto(FaceStabilizer faceStabilizer, Map<String, dynamic> photo) async {
+  Future<StabilizationResult> _stabilizePhoto(
+      FaceStabilizer faceStabilizer, Map<String, dynamic> photo) async {
     try {
-      final String rawPhotoPath = await _getRawPhotoPathFromTimestamp(photo['timestamp']);
+      final String rawPhotoPath =
+          await _getRawPhotoPathFromTimestamp(photo['timestamp']);
       final StabilizationResult result = await faceStabilizer.stabilize(
-          rawPhotoPath,
-          _cancelStabilization,
-          userRanOutOfSpaceCallback
-      );
+          rawPhotoPath, _cancelStabilization, userRanOutOfSpaceCallback);
 
       if (result.success) {
         if (mounted) {
@@ -436,7 +464,8 @@ class MainNavigationState extends State<MainNavigation> {
           _successfullyStabilizedPhotos++;
         }
         // Notify listeners (GalleryPage) that a new photo was stabilized
-        _stabUpdateController.add(_stabilizedAtStart + _successfullyStabilizedPhotos);
+        _stabUpdateController
+            .add(_stabilizedAtStart + _successfullyStabilizedPhotos);
       }
 
       return result;
@@ -463,13 +492,17 @@ class MainNavigationState extends State<MainNavigation> {
   }
 
   Future<String> _getRawPhotoPathFromTimestamp(String timestamp) async {
-    return await DirUtils.getRawPhotoPathFromTimestampAndProjectId(timestamp, widget.projectId);
+    return await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
+        timestamp, widget.projectId);
   }
 
   Future<void> _finalCheck(FaceStabilizer faceStabilizer) async {
-    final projectOrientation = await SettingsUtil.loadProjectOrientation(projectIdStr);
-    final offsetX = await SettingsUtil.loadOffsetXCurrentOrientation(projectIdStr);
-    final allPhotos = await DB.instance.getStabilizedPhotosByProjectID(widget.projectId, projectOrientation);
+    final projectOrientation =
+        await SettingsUtil.loadProjectOrientation(projectIdStr);
+    final offsetX =
+        await SettingsUtil.loadOffsetXCurrentOrientation(projectIdStr);
+    final allPhotos = await DB.instance
+        .getStabilizedPhotosByProjectID(widget.projectId, projectOrientation);
 
     final columnName = projectOrientation == 'portrait'
         ? "stabilizedPortraitOffsetX"
@@ -482,7 +515,8 @@ class MainNavigationState extends State<MainNavigation> {
     }
   }
 
-  Future<void> _reStabilizePhoto(FaceStabilizer faceStabilizer, Map<String, dynamic> photo) async {
+  Future<void> _reStabilizePhoto(
+      FaceStabilizer faceStabilizer, Map<String, dynamic> photo) async {
     await DB.instance.resetStabilizedColumnByTimestamp(
       await SettingsUtil.loadProjectOrientation(projectIdStr),
       photo['timestamp'],
@@ -492,14 +526,16 @@ class MainNavigationState extends State<MainNavigation> {
         await DirUtils.getRawPhotoDirPath(widget.projectId),
         "${photo['timestamp']}${photo['fileExtension']}",
       );
-      final result = await faceStabilizer.stabilize(rawPhotoPath, _cancelStabilization, userRanOutOfSpaceCallback);
+      final result = await faceStabilizer.stabilize(
+          rawPhotoPath, _cancelStabilization, userRanOutOfSpaceCallback);
       if (result.success) {
         if (mounted) {
           setState(() => _successfullyStabilizedPhotos++);
         } else {
           _successfullyStabilizedPhotos++;
         }
-        _stabUpdateController.add(_stabilizedAtStart + _successfullyStabilizedPhotos);
+        _stabUpdateController
+            .add(_stabilizedAtStart + _successfullyStabilizedPhotos);
       }
     } catch (e) {
       // Handle error if needed
@@ -507,26 +543,33 @@ class MainNavigationState extends State<MainNavigation> {
   }
 
   Future<int> getStabilizedPhotoCount() async {
-    String projectOrientation = await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
-    return (await DB.instance.getStabilizedPhotosByProjectID(widget.projectId, projectOrientation)).length;
+    String projectOrientation =
+        await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
+    return (await DB.instance.getStabilizedPhotosByProjectID(
+            widget.projectId, projectOrientation))
+        .length;
   }
 
   Future<bool> _createTimelapse(FaceStabilizer faceStabilizer) async {
     try {
-      final newestVideo = await DB.instance.getNewestVideoByProjectId(widget.projectId);
+      final newestVideo =
+          await DB.instance.getNewestVideoByProjectId(widget.projectId);
       final bool videoIsNull = newestVideo == null;
-      final bool settingsHaveChanged = await faceStabilizer.videoSettingsChanged();
+      final bool settingsHaveChanged =
+          await faceStabilizer.videoSettingsChanged();
       final bool newPhotosStabilized = _successfullyStabilizedPhotos > 0;
       final int stabPhotoCount = await getStabilizedPhotoCount();
-      final int? newVideoNeededRaw = await DB.instance.getNewVideoNeeded(widget.projectId);
+      final int? newVideoNeededRaw =
+          await DB.instance.getNewVideoNeeded(widget.projectId);
       final bool newVideoNeeded = newVideoNeededRaw == 1;
 
-      if (newVideoNeeded || ((videoIsNull || settingsHaveChanged || newPhotosStabilized) && stabPhotoCount > 1)) {
+      if (newVideoNeeded ||
+          ((videoIsNull || settingsHaveChanged || newPhotosStabilized) &&
+              stabPhotoCount > 1)) {
         setState(() => _videoCreationActive = true);
-        final bool videoCreationRes = await VideoUtils.createTimelapseFromProjectId(
-          widget.projectId,
-          _setCurrentFrame
-        );
+        final bool videoCreationRes =
+            await VideoUtils.createTimelapseFromProjectId(
+                widget.projectId, _setCurrentFrame);
 
         if (newVideoNeeded) {
           DB.instance.setNewVideoNotNeeded(widget.projectId);
@@ -562,7 +605,7 @@ class MainNavigationState extends State<MainNavigation> {
       setState(() {
         progressPercent = percentUnrounded.toInt();
       });
-    } catch(_) {
+    } catch (_) {
       print("Error caught during updateProgressPercent");
     }
   }
@@ -576,10 +619,10 @@ class MainNavigationState extends State<MainNavigation> {
 
     if (_stabilizingActive) {
       setState(() {
-      _cancelStabilization = true;
-      _videoCreationActive = false;
-      _photoIndex = 0;
-      progressPercent = 0;
+        _cancelStabilization = true;
+        _videoCreationActive = false;
+        _photoIndex = 0;
+        progressPercent = 0;
       });
     }
 
@@ -589,79 +632,79 @@ class MainNavigationState extends State<MainNavigation> {
   }
 
   List<Widget> get _widgetOptions => [
-    ProjectPage(
-      projectId: widget.projectId,
-      projectName: widget.projectName,
-      stabilizingRunningInMain: _stabilizingActive,
-      stabCallback: _startStabilization,
-      cancelStabCallback: _cancelStabilizationProcess,
-      goToPage: _onItemTapped,
-      setUserOnImportTutorialTrue: setUserOnImportTutorialTrue,
-      settingsCache: _settingsCache,
-      refreshSettings: refreshSettings,
-      clearRawAndStabPhotos: clearRawAndStabPhotos,
-      photoTakenToday: _photoTakenToday,
-    ),
-    GalleryPage(
-      projectId: widget.projectId,
-      projectName: widget.projectName,
-      stabCallback: _startStabilization,
-      userRanOutOfSpaceCallback: userRanOutOfSpaceCallback,
-      cancelStabCallback: _cancelStabilizationProcess,
-      processPickedFiles: processPickedFiles,
-      stabilizingRunningInMain: _stabilizingActive,
-      videoCreationActiveInMain: _videoCreationActive,
-      showFlashingCircle: _showFlashingCircle,
-      hideFlashingCircle: _hideFlashingCircle,
-      goToPage: _onItemTapped,
-      progressPercent: progressPercent,
-      minutesRemaining: minutesRemaining,
-      userOnImportTutorial: userOnImportTutorial,
-      setUserOnImportTutorialFalse: setUserOnImportTutorialFalse,
-      importRunningInMain: _isImporting,
-      setProgressInMain: setProgressInMain,
-      imageFilesStr: _imageFiles,
-      stabilizedImageFilesStr: _stabilizedImageFiles,
-      setRawAndStabPhotoStates: setRawAndStabPhotoStates,
-      settingsCache: _settingsCache,
-      refreshSettings: refreshSettings,
-      userRanOutOfSpace: _userRanOutOfSpace,
-      stabUpdateStream: _stabUpdateController.stream,
-    ),
-    CameraPage(
-      projectId: widget.projectId,
-      projectName: widget.projectName,
-      takingGuidePhoto: widget.takingGuidePhoto,
-      openGallery: openGallery,
-      refreshSettings: refreshSettings,
-      goToPage: _onItemTapped,
-    ),
-    CreatePage(
-      projectId: widget.projectId,
-      projectName: widget.projectName,
-      stabilizingRunningInMain: _stabilizingActive,
-      videoCreationActiveInMain: _videoCreationActive,
-      currentFrame: _currentFrame,
-      unstabilizedPhotoCount: _unstabilizedPhotoCount,
-      photoIndex: _photoIndex,
-      stabCallback: _startStabilization,
-      cancelStabCallback: _cancelStabilizationProcess,
-      goToPage: _onItemTapped,
-      hideNavBar: hideNavBar,
-      prevIndex: _prevIndex,
-      progressPercent: progressPercent,
-      refreshSettings: refreshSettings,
-      clearRawAndStabPhotos: clearRawAndStabPhotos,
-      settingsCache: _settingsCache,
-    ),
-    InfoPage(
-      projectId: widget.projectId,
-      projectName: widget.projectName,
-      cancelStabCallback: _cancelStabilizationProcess,
-      goToPage: _onItemTapped,
-      stabilizingRunningInMain: _stabilizingActive,
-    ),
-  ];
+        ProjectPage(
+          projectId: widget.projectId,
+          projectName: widget.projectName,
+          stabilizingRunningInMain: _stabilizingActive,
+          stabCallback: _startStabilization,
+          cancelStabCallback: _cancelStabilizationProcess,
+          goToPage: _onItemTapped,
+          setUserOnImportTutorialTrue: setUserOnImportTutorialTrue,
+          settingsCache: _settingsCache,
+          refreshSettings: refreshSettings,
+          clearRawAndStabPhotos: clearRawAndStabPhotos,
+          photoTakenToday: _photoTakenToday,
+        ),
+        GalleryPage(
+          projectId: widget.projectId,
+          projectName: widget.projectName,
+          stabCallback: _startStabilization,
+          userRanOutOfSpaceCallback: userRanOutOfSpaceCallback,
+          cancelStabCallback: _cancelStabilizationProcess,
+          processPickedFiles: processPickedFiles,
+          stabilizingRunningInMain: _stabilizingActive,
+          videoCreationActiveInMain: _videoCreationActive,
+          showFlashingCircle: _showFlashingCircle,
+          hideFlashingCircle: _hideFlashingCircle,
+          goToPage: _onItemTapped,
+          progressPercent: progressPercent,
+          minutesRemaining: minutesRemaining,
+          userOnImportTutorial: userOnImportTutorial,
+          setUserOnImportTutorialFalse: setUserOnImportTutorialFalse,
+          importRunningInMain: _isImporting,
+          setProgressInMain: setProgressInMain,
+          imageFilesStr: _imageFiles,
+          stabilizedImageFilesStr: _stabilizedImageFiles,
+          setRawAndStabPhotoStates: setRawAndStabPhotoStates,
+          settingsCache: _settingsCache,
+          refreshSettings: refreshSettings,
+          userRanOutOfSpace: _userRanOutOfSpace,
+          stabUpdateStream: _stabUpdateController.stream,
+        ),
+        CameraPage(
+          projectId: widget.projectId,
+          projectName: widget.projectName,
+          takingGuidePhoto: widget.takingGuidePhoto,
+          openGallery: openGallery,
+          refreshSettings: refreshSettings,
+          goToPage: _onItemTapped,
+        ),
+        CreatePage(
+          projectId: widget.projectId,
+          projectName: widget.projectName,
+          stabilizingRunningInMain: _stabilizingActive,
+          videoCreationActiveInMain: _videoCreationActive,
+          currentFrame: _currentFrame,
+          unstabilizedPhotoCount: _unstabilizedPhotoCount,
+          photoIndex: _photoIndex,
+          stabCallback: _startStabilization,
+          cancelStabCallback: _cancelStabilizationProcess,
+          goToPage: _onItemTapped,
+          hideNavBar: hideNavBar,
+          prevIndex: _prevIndex,
+          progressPercent: progressPercent,
+          refreshSettings: refreshSettings,
+          clearRawAndStabPhotos: clearRawAndStabPhotos,
+          settingsCache: _settingsCache,
+        ),
+        InfoPage(
+          projectId: widget.projectId,
+          projectName: widget.projectName,
+          cancelStabCallback: _cancelStabilizationProcess,
+          goToPage: _onItemTapped,
+          stabilizingRunningInMain: _stabilizingActive,
+        ),
+      ];
 
   void _onItemTapped(int index) {
     int selectedIndex = _selectedIndex;
@@ -701,27 +744,33 @@ class MainNavigationState extends State<MainNavigation> {
     ];
 
     Widget? appBar;
-    if (_selectedIndex == 0 || _selectedIndex == 4 || onCreatePageDuringLoading()) {
+    if (_selectedIndex == 0 ||
+        _selectedIndex == 4 ||
+        onCreatePageDuringLoading()) {
       appBar = CustomAppBar(
-          projectId: widget.projectId,
-          goToPage: _onItemTapped,
-          progressPercent: progressPercent,
-          stabilizingRunningInMain: _stabilizingActive,
-          videoCreationActiveInMain: _videoCreationActive,
-          selectedIndex: _selectedIndex,
-          stabCallback: _startStabilization,
-          cancelStabCallback: _cancelStabilizationProcess,
-          importRunningInMain: _isImporting,
-          settingsCache: _settingsCache,
-          refreshSettings: refreshSettings,
-          clearRawAndStabPhotos: clearRawAndStabPhotos,
-          minutesRemaining: minutesRemaining,
-          userRanOutOfSpace: _userRanOutOfSpace,
+        projectId: widget.projectId,
+        goToPage: _onItemTapped,
+        progressPercent: progressPercent,
+        stabilizingRunningInMain: _stabilizingActive,
+        videoCreationActiveInMain: _videoCreationActive,
+        selectedIndex: _selectedIndex,
+        stabCallback: _startStabilization,
+        cancelStabCallback: _cancelStabilizationProcess,
+        importRunningInMain: _isImporting,
+        settingsCache: _settingsCache,
+        refreshSettings: refreshSettings,
+        clearRawAndStabPhotos: clearRawAndStabPhotos,
+        minutesRemaining: minutesRemaining,
+        userRanOutOfSpace: _userRanOutOfSpace,
       );
     }
 
     bool navbarShouldBeHidden() {
-      return _selectedIndex == 3 && _hideNavBar && !_stabilizingActive && !_videoCreationActive && photoCount > 1;
+      return _selectedIndex == 3 &&
+          _hideNavBar &&
+          !_stabilizingActive &&
+          !_videoCreationActive &&
+          photoCount > 1;
     }
 
     return Scaffold(
@@ -736,38 +785,39 @@ class MainNavigationState extends State<MainNavigation> {
       bottomNavigationBar: navbarShouldBeHidden()
           ? null
           : Container(
-        decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(
-              color: Colors.grey.shade800,
-              width: 0.7,
-            ),
-          ),
-        ),
-        child: AnimatedBottomNavigationBar.builder(
-          itemCount: iconList.length,
-          tabBuilder: (int index, bool isActive) {
-            final color = isActive ? AppColors.lightBlue : Colors.grey[300];
-            return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  iconList[index],
-                  size: 24,
-                  color: color,
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(
+                    color: Colors.grey.shade800,
+                    width: 0.7,
+                  ),
                 ),
-              ],
-            );
-          },
-          height: 60,
-          gapLocation: GapLocation.none,
-          notchSmoothness: NotchSmoothness.defaultEdge,
-          splashColor: Colors.transparent,
-          activeIndex: _selectedIndex,
-          onTap: _onItemTapped,
-          backgroundColor: const Color(0xff0F0F0F),
-        ),
-      ),
+              ),
+              child: AnimatedBottomNavigationBar.builder(
+                itemCount: iconList.length,
+                tabBuilder: (int index, bool isActive) {
+                  final color =
+                      isActive ? AppColors.lightBlue : Colors.grey[300];
+                  return Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        iconList[index],
+                        size: 24,
+                        color: color,
+                      ),
+                    ],
+                  );
+                },
+                height: 60,
+                gapLocation: GapLocation.none,
+                notchSmoothness: NotchSmoothness.defaultEdge,
+                splashColor: Colors.transparent,
+                activeIndex: _selectedIndex,
+                onTap: _onItemTapped,
+                backgroundColor: const Color(0xff0F0F0F),
+              ),
+            ),
     );
   }
 }

@@ -63,7 +63,7 @@ class TookFirstPhotoPageState extends State<TookFirstPhotoPage> {
             const SizedBox(height: 32),
             const Text(
               "Photos are stored in your Gallery. View the "
-                "original and/or stabilized version.",
+              "original and/or stabilized version.",
               style: TextStyle(fontSize: 14),
               textAlign: TextAlign.center,
             ),
@@ -114,10 +114,7 @@ class TookFirstPhotoPageState extends State<TookFirstPhotoPage> {
         child: Text(
           text.toUpperCase(),
           style: const TextStyle(
-              fontSize: 15,
-              color: Colors.white,
-              fontWeight: FontWeight.bold
-          ),
+              fontSize: 15, color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
     );

@@ -62,7 +62,8 @@ class SettingsSheetState extends State<SettingsSheet> {
   late String aspectRatio;
   late int gridCount;
   late int _gridModeIndex;
-  final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
 
   @override
   void initState() {
@@ -100,7 +101,8 @@ class SettingsSheetState extends State<SettingsSheet> {
         _selectedTime = const TimeOfDay(hour: 17, minute: 0);
       } else {
         final int timestamp = int.parse(dailyNotificationTime);
-        final DateTime dateTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
+        final DateTime dateTime =
+            DateTime.fromMillisecondsSinceEpoch(timestamp);
         _selectedTime = TimeOfDay.fromDateTime(dateTime);
       }
 
@@ -109,36 +111,40 @@ class SettingsSheetState extends State<SettingsSheet> {
         'saveToCameraRoll': results[1] as bool,
         'cameraMirror': results[5] as bool,
       };
-
     } catch (e) {
       throw Exception('Failed to load settings: $e');
     }
   }
 
   Future<void> _initializeVideoSettings() async {
-    resolution = await SettingsUtil.loadVideoResolution(widget.projectId.toString());
-    aspectRatio = await SettingsUtil.loadAspectRatio(widget.projectId.toString());
+    resolution =
+        await SettingsUtil.loadVideoResolution(widget.projectId.toString());
+    aspectRatio =
+        await SettingsUtil.loadAspectRatio(widget.projectId.toString());
     framerate = await SettingsUtil.loadFramerate(widget.projectId.toString());
 
-    String poSetting = await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
-    projectOrientation = poSetting[0].toUpperCase() + poSetting.substring(1).toLowerCase();
+    String poSetting =
+        await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
+    projectOrientation =
+        poSetting[0].toUpperCase() + poSetting.substring(1).toLowerCase();
 
     setState(() {});
   }
 
   Future<void> _initializeWatermarkSettings() async {
-    enableWatermark = await SettingsUtil.loadWatermarkSetting(widget.projectId.toString());
+    enableWatermark =
+        await SettingsUtil.loadWatermarkSetting(widget.projectId.toString());
     watermarkPosition = await SettingsUtil.loadWatermarkPosition();
     watermarkOpacity = await SettingsUtil.loadWatermarkOpacity();
     setState(() {});
   }
 
   Future<int> _initializeGridCount() async {
-    gridCount = await SettingsUtil.loadGridAxisCount(widget.projectId.toString());
+    gridCount =
+        await SettingsUtil.loadGridAxisCount(widget.projectId.toString());
     setState(() {});
     return gridCount;
   }
-
 
   void _updateSetting(String title, bool value) {
     DB.instance.setSettingByTitle(title, value.toString().toLowerCase());
@@ -164,11 +170,8 @@ class SettingsSheetState extends State<SettingsSheet> {
       final selectedDateTimestamp = selectedDateTime.millisecondsSinceEpoch;
       dailyNotificationTime = selectedDateTimestamp.toString();
 
-      await DB.instance.setSettingByTitle(
-        'daily_notification_time',
-        dailyNotificationTime,
-        widget.projectId.toString()
-      );
+      await DB.instance.setSettingByTitle('daily_notification_time',
+          dailyNotificationTime, widget.projectId.toString());
       widget.refreshSettings();
 
       await _scheduleDailyNotification();
@@ -176,7 +179,8 @@ class SettingsSheetState extends State<SettingsSheet> {
   }
 
   Future<void> _scheduleDailyNotification() async {
-    NotificationUtil.scheduleDailyNotification(widget.projectId, dailyNotificationTime);
+    NotificationUtil.scheduleDailyNotification(
+        widget.projectId, dailyNotificationTime);
   }
 
   @override
@@ -205,12 +209,14 @@ class SettingsSheetState extends State<SettingsSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (!widget.onlyShowVideoSettings && !widget.onlyShowNotificationSettings)
+                    if (!widget.onlyShowVideoSettings &&
+                        !widget.onlyShowNotificationSettings)
                       _buildSettingsSection(
                         'Projects',
                         _buildProjectSettings,
                       ),
-                    if (!widget.onlyShowVideoSettings && !widget.onlyShowNotificationSettings)
+                    if (!widget.onlyShowVideoSettings &&
+                        !widget.onlyShowNotificationSettings)
                       _buildSettingsSection(
                         'Camera Settings',
                         _buildCameraSettings,
@@ -220,7 +226,8 @@ class SettingsSheetState extends State<SettingsSheet> {
                         'Notifications',
                         _buildNotificationSettings,
                       ),
-                    if (!widget.onlyShowVideoSettings && !widget.onlyShowNotificationSettings)
+                    if (!widget.onlyShowVideoSettings &&
+                        !widget.onlyShowNotificationSettings)
                       _buildSettingsSection(
                         'Gallery Settings',
                         _buildGallerySettings,
@@ -252,7 +259,11 @@ class SettingsSheetState extends State<SettingsSheet> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Settings', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+                        const Text('Settings',
+                            style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white)),
                         _buildIconButton(),
                       ],
                     ),
@@ -267,7 +278,6 @@ class SettingsSheetState extends State<SettingsSheet> {
     );
   }
 
-
   Widget _buildIconButton() {
     return IconButton(
       icon: Icon(
@@ -278,11 +288,13 @@ class SettingsSheetState extends State<SettingsSheet> {
         Navigator.of(context).pop();
 
         if (widget.onlyShowNotificationSettings) {
-          Utils.navigateToScreenReplaceNoAnim(context, MainNavigation(
-            projectId: widget.projectId,
-            projectName: "",
-            showFlashingCircle: false,
-          ));
+          Utils.navigateToScreenReplaceNoAnim(
+              context,
+              MainNavigation(
+                projectId: widget.projectId,
+                projectName: "",
+                showFlashingCircle: false,
+              ));
         }
       },
     );
@@ -338,9 +350,11 @@ class SettingsSheetState extends State<SettingsSheet> {
           title: 'Set project as default',
           initialValue: widget.isDefaultProject,
           showInfo: true,
-          infoContent: "If you set this project as your default, it will be selected automatically on launch.",
+          infoContent:
+              "If you set this project as your default, it will be selected automatically on launch.",
           onChanged: (bool value) {
-            DB.instance.setSettingByTitle('default_project', value ? widget.projectId.toString() : 'none');
+            DB.instance.setSettingByTitle('default_project',
+                value ? widget.projectId.toString() : 'none');
           },
         ),
         const SizedBox(height: 20),
@@ -358,7 +372,8 @@ class SettingsSheetState extends State<SettingsSheet> {
             setState(() {
               notificationsEnabled = value;
             });
-            await DB.instance.setSettingByTitle('enable_notifications', value.toString());
+            await DB.instance
+                .setSettingByTitle('enable_notifications', value.toString());
             widget.refreshSettings();
             if (value) {
               _scheduleDailyNotification();
@@ -406,7 +421,9 @@ class SettingsSheetState extends State<SettingsSheet> {
               } else if (snapshot.hasData) {
                 return StatefulBuilder(
                   builder: (context, setState) {
-                    final bool isDesktop = Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+                    final bool isDesktop = Platform.isMacOS ||
+                        Platform.isWindows ||
+                        Platform.isLinux;
                     final int maxSteps = isDesktop ? 12 : 5;
 
                     return CustomDropdownButton<int>(
@@ -511,7 +528,8 @@ class SettingsSheetState extends State<SettingsSheet> {
 
             print("Setting camera_mirror to ${value.toString()}");
 
-            await DB.instance.setSettingByTitle('camera_mirror', value.toString(), widget.projectId.toString());
+            await DB.instance.setSettingByTitle(
+                'camera_mirror', value.toString(), widget.projectId.toString());
             widget.refreshSettings();
           },
         ),
@@ -557,7 +575,6 @@ class SettingsSheetState extends State<SettingsSheet> {
     );
   }
 
-
   Widget _buildSaveToCameraRollSwitch(bool saveToCameraRoll) {
     return BoolSettingSwitch(
       title: 'Save photos to camera roll',
@@ -576,21 +593,19 @@ class SettingsSheetState extends State<SettingsSheet> {
         value: projectOrientation,
         items: const [
           DropdownMenuItem<String>(value: "Portrait", child: Text("Portrait")),
-          DropdownMenuItem<String>(value: "Landscape", child: Text("Landscape")),
+          DropdownMenuItem<String>(
+              value: "Landscape", child: Text("Landscape")),
         ],
         onChanged: (String? value) async {
           if (value != null) {
-            final bool shouldProceed
-            = await Utils.showConfirmChangeDialog(context, "project orientation");
+            final bool shouldProceed = await Utils.showConfirmChangeDialog(
+                context, "project orientation");
             if (shouldProceed) {
               await widget.cancelStabCallback();
 
               setState(() => projectOrientation = value);
-              DB.instance.setSettingByTitle(
-                  'project_orientation',
-                  value.toLowerCase(),
-                  widget.projectId.toString()
-              );
+              DB.instance.setSettingByTitle('project_orientation',
+                  value.toLowerCase(), widget.projectId.toString());
               widget.refreshSettings();
 
               await resetStabStatusAndRestartStabilization();
@@ -610,18 +625,15 @@ class SettingsSheetState extends State<SettingsSheet> {
         initialValue: framerate,
         onChanged: (newValue) async {
           await DB.instance.setSettingByTitle(
-              'framerate',
-              newValue.toString(),
-              widget.projectId.toString()
-          );
+              'framerate', newValue.toString(), widget.projectId.toString());
           widget.refreshSettings();
           widget.stabCallback();
-        }
-    );
+        });
   }
 
   Future<void> resetStabStatusAndRestartStabilization() async {
-    await DB.instance.resetStabilizationStatusForProject(widget.projectId, projectOrientation);
+    await DB.instance.resetStabilizationStatusForProject(
+        widget.projectId, projectOrientation);
 
     // Clear cache
     PaintingBinding.instance.imageCache.clear();
@@ -639,13 +651,15 @@ class SettingsSheetState extends State<SettingsSheet> {
         items: _getResolutionDropdownItems(),
         onChanged: (String? value) async {
           if (value != null) {
-            bool shouldProceed = await Utils.showConfirmChangeDialog(context, "resolution");
+            bool shouldProceed =
+                await Utils.showConfirmChangeDialog(context, "resolution");
 
             if (shouldProceed) {
               setState(() => resolution = value);
 
               await widget.cancelStabCallback();
-              await DB.instance.setSettingByTitle('video_resolution', value, widget.projectId.toString());
+              await DB.instance.setSettingByTitle(
+                  'video_resolution', value, widget.projectId.toString());
               widget.refreshSettings();
 
               await resetStabStatusAndRestartStabilization();
@@ -678,11 +692,13 @@ class SettingsSheetState extends State<SettingsSheet> {
         ],
         onChanged: (String? value) async {
           if (value != null) {
-            bool shouldProceed = await Utils.showConfirmChangeDialog(context, "aspect ratio");
+            bool shouldProceed =
+                await Utils.showConfirmChangeDialog(context, "aspect ratio");
 
             if (shouldProceed) {
               setState(() => aspectRatio = value);
-              await DB.instance.setSettingByTitle('aspect_ratio', value, widget.projectId.toString());
+              await DB.instance.setSettingByTitle(
+                  'aspect_ratio', value, widget.projectId.toString());
 
               await widget.cancelStabCallback();
               widget.refreshSettings();
@@ -731,10 +747,7 @@ class SettingsSheetState extends State<SettingsSheet> {
       onChanged: (bool value) async {
         setState(() => enableWatermark = value);
         await DB.instance.setSettingByTitle(
-            'enable_watermark',
-            value.toString(),
-            widget.projectId.toString()
-        );
+            'enable_watermark', value.toString(), widget.projectId.toString());
 
         widget.refreshSettings();
       },
@@ -744,11 +757,11 @@ class SettingsSheetState extends State<SettingsSheet> {
   Widget _buildWatermarkImageInput() {
     return SettingListTile(
         title: 'Watermark image',
-        contentWidget: ImagePickerWidget(disabled: !enableWatermark, projectId: widget.projectId),
+        contentWidget: ImagePickerWidget(
+            disabled: !enableWatermark, projectId: widget.projectId),
         infoContent: '',
         showInfo: false,
-        disabled: !enableWatermark
-    );
+        disabled: !enableWatermark);
   }
 
   Widget _buildWatermarkPositionDropdown() {
@@ -757,19 +770,26 @@ class SettingsSheetState extends State<SettingsSheet> {
       contentWidget: CustomDropdownButton<String>(
         value: watermarkPosition,
         items: const [
-          DropdownMenuItem<String>(value: "Upper left", child: Text("Upper left")),
-          DropdownMenuItem<String>(value: "Upper right", child: Text("Upper right")),
-          DropdownMenuItem<String>(value: "Lower left", child: Text("Lower left")),
-          DropdownMenuItem<String>(value: "Lower right", child: Text("Lower right")),
+          DropdownMenuItem<String>(
+              value: "Upper left", child: Text("Upper left")),
+          DropdownMenuItem<String>(
+              value: "Upper right", child: Text("Upper right")),
+          DropdownMenuItem<String>(
+              value: "Lower left", child: Text("Lower left")),
+          DropdownMenuItem<String>(
+              value: "Lower right", child: Text("Lower right")),
         ],
-        onChanged: enableWatermark ? (String? value) async {
-          if (value != null) {
-            setState(() => watermarkPosition = value);
-            await DB.instance.setSettingByTitle('watermark_position', value);
+        onChanged: enableWatermark
+            ? (String? value) async {
+                if (value != null) {
+                  setState(() => watermarkPosition = value);
+                  await DB.instance
+                      .setSettingByTitle('watermark_position', value);
 
-            widget.refreshSettings();
-          }
-        } : null,
+                  widget.refreshSettings();
+                }
+              }
+            : null,
       ),
       infoContent: '',
       showInfo: false,
@@ -809,7 +829,8 @@ class ImagePickerWidget extends StatefulWidget {
   final bool disabled;
   final int projectId;
 
-  const ImagePickerWidget({super.key, required this.disabled, required this.projectId});
+  const ImagePickerWidget(
+      {super.key, required this.disabled, required this.projectId});
 
   @override
   ImagePickerWidgetState createState() => ImagePickerWidgetState();
@@ -854,7 +875,8 @@ class ImagePickerWidgetState extends State<ImagePickerWidget> {
           mat.dispose();
           if (success) {
             await DirUtils.createDirectoryIfNotExists(watermarkFilePath);
-            await StabUtils.writePngBytesToFileInIsolate(watermarkFilePath, pngBytes);
+            await StabUtils.writePngBytesToFileInIsolate(
+                watermarkFilePath, pngBytes);
           }
           setState(() => uploading = false);
         } catch (e) {

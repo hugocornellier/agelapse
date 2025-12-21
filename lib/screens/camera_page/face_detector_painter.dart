@@ -4,12 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 class FaceDetectorPainter extends CustomPainter {
-  FaceDetectorPainter(
-      this.faces,
-      this.imageSize,
-      this.rotation,
-      this.cameraLensDirection,
-      this.projectId);
+  FaceDetectorPainter(this.faces, this.imageSize, this.rotation,
+      this.cameraLensDirection, this.projectId);
 
   final List<Face> faces;
   final Size imageSize;
@@ -47,7 +43,8 @@ class FaceDetectorPainter extends CustomPainter {
     return iconPainter;
   }
 
-  void drawTranslucentBox(Canvas canvas, Size size, IconData iconData, String text) {
+  void drawTranslucentBox(
+      Canvas canvas, Size size, IconData iconData, String text) {
     final Paint boxPaint = Paint()
       ..color = Colors.black.withAlpha(179) // Equivalent to opacity 0.7
       ..style = PaintingStyle.fill;
@@ -97,13 +94,21 @@ class FaceDetectorPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    (int? x, int? y) getLandmarkPosition(Face face, FaceLandmarkType landmarkType) =>
-        (face.landmarks[landmarkType]?.position.x, face.landmarks[landmarkType]?.position.y);
+    (int? x, int? y) getLandmarkPosition(
+            Face face, FaceLandmarkType landmarkType) =>
+        (
+          face.landmarks[landmarkType]?.position.x,
+          face.landmarks[landmarkType]?.position.y
+        );
 
-    var (rightEarXPos, rightEarYPos) = getLandmarkPosition(faces[0], FaceLandmarkType.rightEar);
-    var (rightEyeXPos, rightEyeYPos) = getLandmarkPosition(faces[0], FaceLandmarkType.rightEye);
-    var (leftEarXPos, leftEarYPos) = getLandmarkPosition(faces[0], FaceLandmarkType.leftEar);
-    var (leftEyeXPos, leftEyeYPos) = getLandmarkPosition(faces[0], FaceLandmarkType.leftEye);
+    var (rightEarXPos, rightEarYPos) =
+        getLandmarkPosition(faces[0], FaceLandmarkType.rightEar);
+    var (rightEyeXPos, rightEyeYPos) =
+        getLandmarkPosition(faces[0], FaceLandmarkType.rightEye);
+    var (leftEarXPos, leftEarYPos) =
+        getLandmarkPosition(faces[0], FaceLandmarkType.leftEar);
+    var (leftEyeXPos, leftEyeYPos) =
+        getLandmarkPosition(faces[0], FaceLandmarkType.leftEye);
 
     // Scale the landmark positions to match the canvas size
     double scaleX = size.width / imageSize.width;
@@ -118,12 +123,16 @@ class FaceDetectorPainter extends CustomPainter {
     leftEyeXPos = (leftEyeXPos! * scaleX).toInt();
     leftEyeYPos = (leftEyeYPos! * scaleY).toInt();
 
-    double rightEarToEyeDistance = calculateDistance(rightEarXPos, rightEyeXPos, rightEarYPos, rightEyeYPos);
-    double leftEarToEyeDistance = calculateDistance(leftEarXPos, leftEyeXPos, leftEarYPos, leftEyeYPos);
+    double rightEarToEyeDistance = calculateDistance(
+        rightEarXPos, rightEyeXPos, rightEarYPos, rightEyeYPos);
+    double leftEarToEyeDistance =
+        calculateDistance(leftEarXPos, leftEyeXPos, leftEarYPos, leftEyeYPos);
 
     final int verticalDistance = (rightEyeYPos - leftEyeYPos).abs();
     final int horizontalDistance = (rightEyeXPos - leftEyeXPos).abs();
-    double rotationDegrees = atan2(verticalDistance, horizontalDistance) * (180 / pi) * (rightEyeYPos > leftEyeYPos ? -1 : 1);
+    double rotationDegrees = atan2(verticalDistance, horizontalDistance) *
+        (180 / pi) *
+        (rightEyeYPos > leftEyeYPos ? -1 : 1);
 
     const double turnedHeadThreshold = 1.5;
     double ratio = leftEarToEyeDistance / rightEarToEyeDistance;
@@ -135,8 +144,10 @@ class FaceDetectorPainter extends CustomPainter {
     final double centerX = size.width / 2;
     double leftEyeToCenterDistance = (leftEyeXPos - centerX).abs();
     double rightEyeToCenterDistance = (rightEyeXPos - centerX).abs();
-    double distanceDifference = (leftEyeToCenterDistance - rightEyeToCenterDistance).abs();
-    double distanceDifferencePercentage = (distanceDifference / size.width) * 100;
+    double distanceDifference =
+        (leftEyeToCenterDistance - rightEyeToCenterDistance).abs();
+    double distanceDifferencePercentage =
+        (distanceDifference / size.width) * 100;
 
     if (isLeftTurned && !translucentBoxActive) {
       translucentBoxActive = true;
@@ -155,11 +166,15 @@ class FaceDetectorPainter extends CustomPainter {
     final bool headNotCentered = distanceDifferencePercentage > 10;
     if (headNotCentered && !translucentBoxActive) {
       translucentBoxActive = true;
-      drawTranslucentBox(canvas, size, Icons.center_focus_strong, "Center head ");
+      drawTranslucentBox(
+          canvas, size, Icons.center_focus_strong, "Center head ");
     }
 
     // If no issues, don't show the warning/tips box
-    if (!isLeftTurned && !isRightTurned && !headOverRotated && !headNotCentered) {
+    if (!isLeftTurned &&
+        !isRightTurned &&
+        !headOverRotated &&
+        !headNotCentered) {
       translucentBoxActive = false;
     }
   }

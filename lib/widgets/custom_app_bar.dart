@@ -57,7 +57,8 @@ class _CustomAppBarState extends State<CustomAppBar> {
   }
 
   Future<void> _loadProjectImage() async {
-    String imagePath = await ProjectSelectionSheetState.getProjectImage(widget.projectId);
+    String imagePath =
+        await ProjectSelectionSheetState.getProjectImage(widget.projectId);
 
     if (path.dirname(imagePath).contains(DirUtils.stabilizedDirname)) {
       imagePath = FaceStabilizer.getStabThumbnailPath(imagePath);
@@ -69,14 +70,13 @@ class _CustomAppBarState extends State<CustomAppBar> {
   }
 
   static void showSettingsModal(
-    BuildContext context,
-    int projectId,
-    Future<void> Function() stabCallback,
-    Future<void> Function() cancelStabCallback,
-    void Function() refreshSettingsIn,
-    void Function() clearRawAndStabPhotos,
-    SettingsCache? settingsCache
-  ) async {
+      BuildContext context,
+      int projectId,
+      Future<void> Function() stabCallback,
+      Future<void> Function() cancelStabCallback,
+      void Function() refreshSettingsIn,
+      void Function() clearRawAndStabPhotos,
+      SettingsCache? settingsCache) async {
     final bool isDefaultProject = await _isDefaultProject(projectId);
 
     showModalBottomSheet(
@@ -115,8 +115,7 @@ class _CustomAppBarState extends State<CustomAppBar> {
       builder: (context) {
         return ProjectSelectionSheet(
             isDefaultProject: isDefaultProject,
-            cancelStabCallback: widget.cancelStabCallback
-        );
+            cancelStabCallback: widget.cancelStabCallback);
       },
     );
   }
@@ -159,12 +158,14 @@ class _CustomAppBarState extends State<CustomAppBar> {
                   ),
                   Expanded(child: Container()),
                   InkWell(
-                    onTap: () => _showProjectSelectionModal(context, widget.projectId),
+                    onTap: () =>
+                        _showProjectSelectionModal(context, widget.projectId),
                     child: CircleAvatar(
                       backgroundImage: projectImagePath.isNotEmpty
                           ? FileImage(File(projectImagePath))
                           : null,
-                      backgroundColor: projectImagePath.isEmpty ? Colors.grey : null,
+                      backgroundColor:
+                          projectImagePath.isEmpty ? Colors.grey : null,
                       radius: 13.5,
                       child: projectImagePath.isEmpty
                           ? const Icon(Icons.person, color: Colors.white)

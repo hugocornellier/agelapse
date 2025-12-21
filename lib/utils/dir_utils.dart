@@ -16,7 +16,7 @@ class DirUtils {
   static const String thumbnailDirname = 'thumbnails';
   static const String failureDirname = 'failure';
   static const String testDirname = 'test';
-  
+
   static Future<String> getProjectDirPath(int projectId) async =>
       join(await getAppDocumentsDirPath(), projectId.toString());
 
@@ -48,76 +48,74 @@ class DirUtils {
       join(await getTemporaryDirPath(), stabilizedWIPDirname);
 
   static Future<String> getPngPathFromRawPhotoPath(String rawPhotoPath) async =>
-      join(await getRawPhotoPngDirPath(), '${path.basenameWithoutExtension(rawPhotoPath)}.png');
+      join(await getRawPhotoPngDirPath(),
+          '${path.basenameWithoutExtension(rawPhotoPath)}.png');
 
-  static Future<String> getStabilizedWIPPathFromRawPhotoPath(String rawPhotoPath) async =>
-      join(await getStabilizedWIPDirPath(), '${path.basenameWithoutExtension(rawPhotoPath)}.jpg');
+  static Future<String> getStabilizedWIPPathFromRawPhotoPath(
+          String rawPhotoPath) async =>
+      join(await getStabilizedWIPDirPath(),
+          '${path.basenameWithoutExtension(rawPhotoPath)}.jpg');
 
-  static Future<String> getVideoOutputPath(int projectId, String projectOrientation) async =>
-      join(await getProjectDirPath(projectId), 'videos', projectOrientation, 'agelapse.mp4');
+  static Future<String> getVideoOutputPath(
+          int projectId, String projectOrientation) async =>
+      join(await getProjectDirPath(projectId), 'videos', projectOrientation,
+          'agelapse.mp4');
 
   static Future<String> getWatermarkFilePath(int projectId) async =>
       join(await getWatermarkDirPath(projectId), 'watermark.png');
 
-  static Future<String> getZipFileExportPath(int projectId, String projectName) async =>
-      path.join(await getExportsDirPath(projectId), "$projectName-AgeLapse-Export.zip");
+  static Future<String> getZipFileExportPath(
+          int projectId, String projectName) async =>
+      path.join(await getExportsDirPath(projectId),
+          "$projectName-AgeLapse-Export.zip");
 
-  static Future<String> getRawPhotoPathFromTimestampAndProjectId(String timestamp, int projectId, {String? fileExtension}) async {
-    fileExtension ??= await DB.instance.getPhotoExtensionByTimestampAndProjectId(timestamp, projectId);
+  static Future<String> getRawPhotoPathFromTimestampAndProjectId(
+      String timestamp, int projectId,
+      {String? fileExtension}) async {
+    fileExtension ??= await DB.instance
+        .getPhotoExtensionByTimestampAndProjectId(timestamp, projectId);
 
     return join(
-      await getRawPhotoDirPath(projectId),
-      '$timestamp$fileExtension'
-    );
+        await getRawPhotoDirPath(projectId), '$timestamp$fileExtension');
   }
 
-  static Future<String> getStabilizedImagePath(String rawImagePath, int projectId) async {
+  static Future<String> getStabilizedImagePath(
+      String rawImagePath, int projectId) async {
     return getStabilizedImagePathFromRawPathAndProjectOrientation(
-      projectId,
-      rawImagePath,
-      await SettingsUtil.loadProjectOrientation(projectId.toString())
-    );
+        projectId,
+        rawImagePath,
+        await SettingsUtil.loadProjectOrientation(projectId.toString()));
   }
 
   static Future<String> getStabilizedDirPathFromProjectIdAndOrientation(
-    int projectId,
-    String projectOrientation
-  ) async {
-    return path.join(
-      await getStabilizedDirPath(projectId),
-      projectOrientation.toLowerCase()
-    );
+      int projectId, String projectOrientation) async {
+    return path.join(await getStabilizedDirPath(projectId),
+        projectOrientation.toLowerCase());
   }
 
   static Future<String> getStabilizedImagePathFromRawPathAndProjectOrientation(
-    int projectId,
-    String rawImagePath,
-    String projectOrientation
-  ) async {
+      int projectId, String rawImagePath, String projectOrientation) async {
     if (projectOrientation == 'portrait') {
       return getStabilizedPortraitImagePathFromRawPath(rawImagePath, projectId);
     } else {
-      return getStabilizedLandscapeImagePathFromRawPath(rawImagePath, projectId);
+      return getStabilizedLandscapeImagePathFromRawPath(
+          rawImagePath, projectId);
     }
   }
 
-  static Future<String> getStabilizedPortraitImagePathFromRawPath(String rawImagePath, int projectId) async {
-    return path.join(
-      await getStabilizedDirPath(projectId),
-      'portrait',
-      "${path.basenameWithoutExtension(rawImagePath)}.png"
-    );
+  static Future<String> getStabilizedPortraitImagePathFromRawPath(
+      String rawImagePath, int projectId) async {
+    return path.join(await getStabilizedDirPath(projectId), 'portrait',
+        "${path.basenameWithoutExtension(rawImagePath)}.png");
   }
 
-  static Future<String> getStabilizedLandscapeImagePathFromRawPath(String rawImagePath, int projectId) async {
-    return path.join(
-      await getStabilizedDirPath(projectId),
-      'landscape',
-      "${path.basenameWithoutExtension(rawImagePath)}.png"
-    );
+  static Future<String> getStabilizedLandscapeImagePathFromRawPath(
+      String rawImagePath, int projectId) async {
+    return path.join(await getStabilizedDirPath(projectId), 'landscape',
+        "${path.basenameWithoutExtension(rawImagePath)}.png");
   }
-  
-  // Cross-platform temp & permanent data directory path fetchers 
+
+  // Cross-platform temp & permanent data directory path fetchers
   static Future<String> getTemporaryDirPath() async =>
       (await getTemporaryDirectory()).path;
 
@@ -134,11 +132,13 @@ class DirUtils {
     }
   }
 
-  static Future<List<File>> getAllFilesInRawPhotoDirByExtension(int projectId, String extension) async {
+  static Future<List<File>> getAllFilesInRawPhotoDirByExtension(
+      int projectId, String extension) async {
     try {
       final String rawPhotoDirectoryPath = await getRawPhotoDirPath(projectId);
       final Directory directory = Directory(rawPhotoDirectoryPath);
-      final List<File> files = await directory.list()
+      final List<File> files = await directory
+          .list()
           .where((entity) => entity is File && Utils.isImage(entity.path))
           .cast<File>()
           .toList();
@@ -204,13 +204,10 @@ class DirUtils {
   }
 
   static deleteAllThumbnails(int projectId, String projectOrientation) async {
-    final String stabilizedDirPath = await DirUtils.getStabilizedDirPath(projectId);
-    final String thumbnailDir = join(
-        stabilizedDirPath,
-        projectOrientation,
-        DirUtils.thumbnailDirname,
-        "thumbnail.jpg"
-    );
+    final String stabilizedDirPath =
+        await DirUtils.getStabilizedDirPath(projectId);
+    final String thumbnailDir = join(stabilizedDirPath, projectOrientation,
+        DirUtils.thumbnailDirname, "thumbnail.jpg");
 
     final bool isValidDirectory = await _isValidDirectory(thumbnailDir);
     if (isValidDirectory) {
@@ -270,7 +267,8 @@ class DirUtils {
     }
   }
 
-  static Future<String> getGuideImagePath(int projectId, Map<String, Object?>? guidePhoto) async {
+  static Future<String> getGuideImagePath(
+      int projectId, Map<String, Object?>? guidePhoto) async {
     if (guidePhoto == null) {
       return "";
     }
@@ -285,16 +283,16 @@ class DirUtils {
     final String directoryPath = results[0];
     final String projectOrientation = results[1];
     final String stabDirPath = path.join(directoryPath, projectOrientation);
-    final String guideImagePath = path.join(stabDirPath, "${guidePhoto['timestamp']}.png");
+    final String guideImagePath =
+        path.join(stabDirPath, "${guidePhoto['timestamp']}.png");
 
     return guideImagePath;
   }
 
-  static Future<Map<String, Object?>?> getGuidePhoto(double offsetX, int projectId) async {
-    List<Map<String, Object?>> validGuidePhotos = await DB.instance.getSetEyePhoto(
-      offsetX,
-      projectId
-    );
+  static Future<Map<String, Object?>?> getGuidePhoto(
+      double offsetX, int projectId) async {
+    List<Map<String, Object?>> validGuidePhotos =
+        await DB.instance.getSetEyePhoto(offsetX, projectId);
 
     if (validGuidePhotos.isEmpty) {
       return null;

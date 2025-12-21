@@ -105,9 +105,9 @@ class ProjectPageState extends State<ProjectPage> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
                       child: cache.noPhotos ||
-                          !cache.hasOpenedNonEmptyGallery ||
-                          !cache.hasTakenMoreThanOnePhoto ||
-                          !cache.hasViewedFirstVideo
+                              !cache.hasOpenedNonEmptyGallery ||
+                              !cache.hasTakenMoreThanOnePhoto ||
+                              !cache.hasViewedFirstVideo
                           ? _buildNoPhotosContent(context, includeOutput: true)
                           : _buildDashboardContent(),
                     ),
@@ -125,10 +125,10 @@ class ProjectPageState extends State<ProjectPage> {
       body: LayoutBuilder(
         builder: (context, constraints) {
           final double rightPaneWidth =
-          (constraints.maxWidth * 0.42).clamp(480.0, 840.0);
+              (constraints.maxWidth * 0.42).clamp(480.0, 840.0);
 
           final double leftMaxWidth =
-          (constraints.maxWidth - rightPaneWidth - 1).clamp(800.0, 1160.0);
+              (constraints.maxWidth - rightPaneWidth - 1).clamp(800.0, 1160.0);
 
           return Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,10 +141,11 @@ class ProjectPageState extends State<ProjectPage> {
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16.0),
                         child: cache.noPhotos ||
-                            !cache.hasOpenedNonEmptyGallery ||
-                            !cache.hasTakenMoreThanOnePhoto ||
-                            !cache.hasViewedFirstVideo
-                            ? _buildNoPhotosContent(context, includeOutput: false)
+                                !cache.hasOpenedNonEmptyGallery ||
+                                !cache.hasTakenMoreThanOnePhoto ||
+                                !cache.hasViewedFirstVideo
+                            ? _buildNoPhotosContent(context,
+                                includeOutput: false)
                             : _buildDashboardSection(includeOutput: false),
                       ),
                     ),
@@ -175,7 +176,8 @@ class ProjectPageState extends State<ProjectPage> {
     );
   }
 
-  Widget _buildNoPhotosContent(BuildContext context, {bool includeOutput = true}) {
+  Widget _buildNoPhotosContent(BuildContext context,
+      {bool includeOutput = true}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -342,7 +344,8 @@ class ProjectPageState extends State<ProjectPage> {
   }
 
   void _openSettings(BuildContext context) async {
-    final bool isDefaultProject = await ProjectUtils.isDefaultProject(widget.projectId);
+    final bool isDefaultProject =
+        await ProjectUtils.isDefaultProject(widget.projectId);
 
     showModalBottomSheet(
       context: context,
@@ -365,9 +368,7 @@ class ProjectPageState extends State<ProjectPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (!widget.settingsCache!.noPhotos) ...[
-          const SizedBox(height: 30)
-        ],
+        if (!widget.settingsCache!.noPhotos) ...[const SizedBox(height: 30)],
         _buildSectionTitle('Dashboard', ''),
         const SizedBox(height: 21),
         dashboardWidget(),
@@ -381,9 +382,7 @@ class ProjectPageState extends State<ProjectPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (!widget.settingsCache!.noPhotos) ...[
-          const SizedBox(height: 30)
-        ],
+        if (!widget.settingsCache!.noPhotos) ...[const SizedBox(height: 30)],
         _buildSectionTitle('Output', ''),
         const SizedBox(height: 21),
         _buildOutputContentForWidth(availableWidth),
@@ -428,9 +427,7 @@ class ProjectPageState extends State<ProjectPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.start,
       children: [
-        if (!widget.settingsCache!.noPhotos) ...[
-          const SizedBox(height: 30)
-        ],
+        if (!widget.settingsCache!.noPhotos) ...[const SizedBox(height: 30)],
         _buildSectionTitle('Output', ''),
         const SizedBox(height: 21),
         _buildOutputContent(),
@@ -485,7 +482,8 @@ class ProjectPageState extends State<ProjectPage> {
     return Column(
       children: [
         CustomPaint(
-          size: Size(sideLength, aspectRatios[outputImageLoader.aspectRatio]! * sideLength),
+          size: Size(sideLength,
+              aspectRatios[outputImageLoader.aspectRatio]! * sideLength),
           painter: outputImageLoader.guideImage == null
               ? null
               : GridPainterSE(
@@ -496,8 +494,7 @@ class ProjectPageState extends State<ProjectPage> {
                   outputImageLoader.guideImage,
                   outputImageLoader.aspectRatio!,
                   outputImageLoader.projectOrientation!,
-                  hideToolTip: true
-                ),
+                  hideToolTip: true),
         ),
         const SizedBox(height: 12.0),
         Row(
@@ -526,7 +523,8 @@ class ProjectPageState extends State<ProjectPage> {
     int maxDecimalPlaces = 1,
     double fontSize = 17.5,
   }) {
-    final String roundedOffset = (value * 100).toStringAsFixed(maxDecimalPlaces);
+    final String roundedOffset =
+        (value * 100).toStringAsFixed(maxDecimalPlaces);
 
     return SizedBox(
       width: width,
@@ -558,7 +556,9 @@ class ProjectPageState extends State<ProjectPage> {
                     ),
                   ),
                   Text(
-                    title == "Inter-Eye\nDistance" ? 'of image width' : 'of image height',
+                    title == "Inter-Eye\nDistance"
+                        ? 'of image width'
+                        : 'of image height',
                     style: const TextStyle(
                       color: Colors.grey, // Change this line
                       fontSize: 7, // Very tiny text
@@ -576,7 +576,8 @@ class ProjectPageState extends State<ProjectPage> {
   int _determineStep() {
     if (widget.settingsCache!.noPhotos) return 1;
     if (!widget.settingsCache!.hasOpenedNonEmptyGallery) return 2;
-    if (!widget.settingsCache!.hasSeenGuideModeTut && widget.settingsCache!.hasTakenFirstPhoto) return 3;
+    if (!widget.settingsCache!.hasSeenGuideModeTut &&
+        widget.settingsCache!.hasTakenFirstPhoto) return 3;
     if (!widget.settingsCache!.hasTakenMoreThanOnePhoto) return 4;
     if (!widget.settingsCache!.hasViewedFirstVideo) return 5;
     return 0;
@@ -626,7 +627,6 @@ class ProjectPageState extends State<ProjectPage> {
     );
   }
 }
-
 
 extension DateTimeExtension on DateTime {
   bool isSameDate(DateTime other) {
@@ -691,11 +691,12 @@ class TextRowBuilder extends StatelessWidget {
           children: [
             Text(
               value,
-              style: valueTextStyle ?? const TextStyle(
-                color: Colors.white,
-                fontSize: 24.0,
-                fontWeight: FontWeight.bold,
-              ),
+              style: valueTextStyle ??
+                  const TextStyle(
+                    color: Colors.white,
+                    fontSize: 24.0,
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
           ],
         ),
@@ -745,7 +746,8 @@ class SpecialCard extends StatelessWidget {
       children: [
         _buildTextRow("Framerate", "$framerate FPS"),
         const SizedBox(height: 24),
-        _buildTextRow("Orientation", _capitalizeFirstLetter(projectOrientation)),
+        _buildTextRow(
+            "Orientation", _capitalizeFirstLetter(projectOrientation)),
         const SizedBox(height: 24),
         _buildTextRow("Resolution", resolution),
         const SizedBox(height: 24),

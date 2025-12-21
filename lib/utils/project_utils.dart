@@ -15,11 +15,14 @@ class ProjectUtils {
     return _calculatePhotoStreak(photos);
   }
 
-  static String convertExtensionToPng(String path) => path.replaceAll(RegExp(r'\.jpg$'), '.png');
+  static String convertExtensionToPng(String path) =>
+      path.replaceAll(RegExp(r'\.jpg$'), '.png');
 
-  static int getTimeDiff(DateTime startTime, DateTime endTime) => endTime.difference(startTime).inDays;
+  static int getTimeDiff(DateTime startTime, DateTime endTime) =>
+      endTime.difference(startTime).inDays;
 
-  static int parseTimestampFromFilename(String filepath) => int.tryParse(path.basenameWithoutExtension(filepath)) ?? 0;
+  static int parseTimestampFromFilename(String filepath) =>
+      int.tryParse(path.basenameWithoutExtension(filepath)) ?? 0;
 
   static Future<bool> isDefaultProject(int projectId) async {
     final data = await DB.instance.getSettingByTitle('default_project');
@@ -39,9 +42,11 @@ class ProjectUtils {
     // If DB deletion fails, return false so the image stays in the gallery
     // and the user can retry the deletion.
     try {
-      final int rowsDeleted = await deletePhotoFromDatabaseAndReturnCount(image.path);
+      final int rowsDeleted =
+          await deletePhotoFromDatabaseAndReturnCount(image.path);
       if (rowsDeleted == 0) {
-        print("Failed to delete image from database (no rows affected): ${image.path}");
+        print(
+            "Failed to delete image from database (no rows affected): ${image.path}");
         return false;
       }
     } catch (e) {
@@ -55,19 +60,22 @@ class ProjectUtils {
     try {
       await deletePngFileIfExists(image);
     } catch (e) {
-      print("Failed to delete PNG file (will be cleaned up later): ${image.path}, Error: $e");
+      print(
+          "Failed to delete PNG file (will be cleaned up later): ${image.path}, Error: $e");
     }
 
     try {
       await deleteStabilizedFileIfExists(image, projectId);
     } catch (e) {
-      print("Failed to delete stabilized files (will be cleaned up later): ${image.path}, Error: $e");
+      print(
+          "Failed to delete stabilized files (will be cleaned up later): ${image.path}, Error: $e");
     }
 
     try {
       await deleteFile(image);
     } catch (e) {
-      print("Failed to delete raw image file (will be cleaned up later): ${image.path}, Error: $e");
+      print(
+          "Failed to delete raw image file (will be cleaned up later): ${image.path}, Error: $e");
     }
 
     return true;
@@ -99,26 +107,27 @@ class ProjectUtils {
     return end.difference(start);
   }
 
-  static Future<void> deleteStabilizedFileIfExists(File image, int projectId) async {
-    final String stabilizedDirPath = await DirUtils.getStabilizedDirPath(projectId);
-    final String stabilizedPngPath = "${path.basenameWithoutExtension(image.path)}.png";
+  static Future<void> deleteStabilizedFileIfExists(
+      File image, int projectId) async {
+    final String stabilizedDirPath =
+        await DirUtils.getStabilizedDirPath(projectId);
+    final String stabilizedPngPath =
+        "${path.basenameWithoutExtension(image.path)}.png";
 
-    final String stabilizedImagePathPngPortrait = path.join(
-      stabilizedDirPath,
-      'portrait',
-      stabilizedPngPath
-    );
-    final String stabilizedImagePathPngLandscape = path.join(
-      stabilizedDirPath,
-      'landscape',
-      stabilizedPngPath
-    );
+    final String stabilizedImagePathPngPortrait =
+        path.join(stabilizedDirPath, 'portrait', stabilizedPngPath);
+    final String stabilizedImagePathPngLandscape =
+        path.join(stabilizedDirPath, 'landscape', stabilizedPngPath);
 
-    final File stabilizedImagePngPortrait = File(stabilizedImagePathPngPortrait);
-    final File stabilizedImagePngLandscape = File(stabilizedImagePathPngLandscape);
+    final File stabilizedImagePngPortrait =
+        File(stabilizedImagePathPngPortrait);
+    final File stabilizedImagePngLandscape =
+        File(stabilizedImagePathPngLandscape);
 
-    if (await stabilizedImagePngPortrait.exists()) await deleteFile(stabilizedImagePngPortrait);
-    if (await stabilizedImagePngLandscape.exists()) await deleteFile(stabilizedImagePngLandscape);
+    if (await stabilizedImagePngPortrait.exists())
+      await deleteFile(stabilizedImagePngPortrait);
+    if (await stabilizedImagePngLandscape.exists())
+      await deleteFile(stabilizedImagePngLandscape);
   }
 
   static Future<void> deletePhotoFromDatabase(String path) async {
@@ -137,13 +146,19 @@ class ProjectUtils {
     for (var photo in photos) {
       final int ts = int.tryParse(photo['timestamp'] ?? '0') ?? 0;
       final DateTime utc = DateTime.fromMillisecondsSinceEpoch(ts, isUtc: true);
-      final int? offsetMin = photo['captureOffsetMinutes'] is int ? photo['captureOffsetMinutes'] as int : null;
-      final DateTime localLike = offsetMin != null ? utc.add(Duration(minutes: offsetMin)) : utc.toLocal();
-      final DateTime dayOnly = DateTime(localLike.year, localLike.month, localLike.day);
+      final int? offsetMin = photo['captureOffsetMinutes'] is int
+          ? photo['captureOffsetMinutes'] as int
+          : null;
+      final DateTime localLike = offsetMin != null
+          ? utc.add(Duration(minutes: offsetMin))
+          : utc.toLocal();
+      final DateTime dayOnly =
+          DateTime(localLike.year, localLike.month, localLike.day);
       uniqueDays.add(dayOnly);
     }
 
-    final List<DateTime> days = uniqueDays.toList()..sort((a, b) => b.compareTo(a));
+    final List<DateTime> days = uniqueDays.toList()
+      ..sort((a, b) => b.compareTo(a));
     return days.map((d) => d.toString()).toList();
   }
 
@@ -159,10 +174,16 @@ class ProjectUtils {
     for (final p in photos) {
       final int ts = int.tryParse(p['timestamp'] ?? '0') ?? 0;
       final DateTime utc = DateTime.fromMillisecondsSinceEpoch(ts, isUtc: true);
-      final int? off = p['captureOffsetMinutes'] is int ? p['captureOffsetMinutes'] as int : null;
-      final DateTime captureLocal = off != null ? utc.add(Duration(minutes: off)) : utc.toLocal();
-      final DateTime capDay = DateTime(captureLocal.year, captureLocal.month, captureLocal.day);
-      if (capDay.year == latestPhotoDate.year && capDay.month == latestPhotoDate.month && capDay.day == latestPhotoDate.day) {
+      final int? off = p['captureOffsetMinutes'] is int
+          ? p['captureOffsetMinutes'] as int
+          : null;
+      final DateTime captureLocal =
+          off != null ? utc.add(Duration(minutes: off)) : utc.toLocal();
+      final DateTime capDay =
+          DateTime(captureLocal.year, captureLocal.month, captureLocal.day);
+      if (capDay.year == latestPhotoDate.year &&
+          capDay.month == latestPhotoDate.month &&
+          capDay.day == latestPhotoDate.day) {
         latestOffset = off;
         break;
       }
@@ -175,7 +196,8 @@ class ProjectUtils {
     } else {
       nowRef = DateTime.now();
     }
-    final DateTime todayLocalLike = DateTime(nowRef.year, nowRef.month, nowRef.day);
+    final DateTime todayLocalLike =
+        DateTime(nowRef.year, nowRef.month, nowRef.day);
 
     final int headDiff = getTimeDiff(latestPhotoDate, todayLocalLike);
     if (headDiff > 1) return 0;
@@ -195,7 +217,8 @@ class ProjectUtils {
   }
 
   static DateTime _getDateTimeFromTimestamp(String? timestamp) =>
-      DateTime.fromMillisecondsSinceEpoch(int.tryParse(timestamp ?? '0') ?? 0, isUtc: true);
+      DateTime.fromMillisecondsSinceEpoch(int.tryParse(timestamp ?? '0') ?? 0,
+          isUtc: true);
 
   static Future<ui.Image> loadImageData(String imagePath) async {
     final data = await rootBundle.load(imagePath);

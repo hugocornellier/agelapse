@@ -8,19 +8,20 @@ class DropdownWithCustomTextField extends StatefulWidget {
   final int initialValue;
   final ValueChanged<int> onChanged;
 
-  const DropdownWithCustomTextField({
-    super.key,
-    required this.projectId,
-    required this.title,
-    required this.initialValue,
-    required this.onChanged
-  });
+  const DropdownWithCustomTextField(
+      {super.key,
+      required this.projectId,
+      required this.title,
+      required this.initialValue,
+      required this.onChanged});
 
   @override
-  DropdownWithCustomTextFieldState createState() => DropdownWithCustomTextFieldState();
+  DropdownWithCustomTextFieldState createState() =>
+      DropdownWithCustomTextFieldState();
 }
 
-class DropdownWithCustomTextFieldState extends State<DropdownWithCustomTextField> {
+class DropdownWithCustomTextFieldState
+    extends State<DropdownWithCustomTextField> {
   late int currentValue;
   late bool isCustom;
   TextEditingController? _controller;
@@ -80,17 +81,17 @@ class DropdownWithCustomTextFieldState extends State<DropdownWithCustomTextField
   }
 
   void _updateSetting(int newValue) {
-    DB.instance.setSettingByTitle('framerate', newValue.toString(), widget.projectId.toString());
+    DB.instance.setSettingByTitle(
+        'framerate', newValue.toString(), widget.projectId.toString());
   }
 
   @override
   Widget build(BuildContext context) {
     return SettingListTile(
-      title: widget.title,
-      infoContent: "",
-      contentWidget: isCustom ? _buildCustomTextField() : _buildDropdown(),
-      showInfo: false
-    );
+        title: widget.title,
+        infoContent: "",
+        contentWidget: isCustom ? _buildCustomTextField() : _buildDropdown(),
+        showInfo: false);
   }
 
   Widget _buildCustomTextField() {
@@ -115,10 +116,12 @@ class DropdownWithCustomTextFieldState extends State<DropdownWithCustomTextField
     return DropdownButton<int>(
       value: isCustom ? -1 : currentValue,
       onChanged: _handleDropdownChanged,
-      items: defaultValues.map<DropdownMenuItem<int>>((int value) => DropdownMenuItem<int>(
-        value: value,
-        child: Text(value.toString()),
-      )).toList()
+      items: defaultValues
+          .map<DropdownMenuItem<int>>((int value) => DropdownMenuItem<int>(
+                value: value,
+                child: Text(value.toString()),
+              ))
+          .toList()
         ..add(const DropdownMenuItem<int>(
           value: -1,
           child: Text('Custom'),

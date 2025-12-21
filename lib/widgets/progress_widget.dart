@@ -25,11 +25,13 @@ class ProgressWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    String progressPercentAsStr = "${progressPercent > 100 ? 100 : progressPercent}%";
+    String progressPercentAsStr =
+        "${progressPercent > 100 ? 100 : progressPercent}%";
 
-    String minutesRemainingDisplay = (minutesRemaining != null && minutesRemaining!.isNotEmpty)
-        ? "$minutesRemaining"
-        : "";
+    String minutesRemainingDisplay =
+        (minutesRemaining != null && minutesRemaining!.isNotEmpty)
+            ? "$minutesRemaining"
+            : "";
 
     return Column(
       children: [
@@ -45,7 +47,8 @@ class ProgressWidget extends StatelessWidget {
           ),
         ] else if (stabilizingRunningInMain && selectedIndex != 3) ...[
           InProgress(
-            message: "Stabilizing... • $progressPercentAsStr • $minutesRemainingDisplay",
+            message:
+                "Stabilizing... • $progressPercentAsStr • $minutesRemainingDisplay",
             goToPage: goToPage,
           ),
         ] else if (videoCreationActiveInMain && selectedIndex != 3) ...[

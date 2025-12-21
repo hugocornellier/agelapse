@@ -18,6 +18,7 @@ import 'package:pose_detection_tflite/pose_detection_tflite.dart' as pdl;
 import '../../services/database_helper.dart';
 import '../camera_utils.dart';
 import '../dir_utils.dart';
+import '../heic_utils.dart';
 import '../project_utils.dart';
 import '../settings_utils.dart';
 
@@ -44,9 +45,12 @@ class StabUtils {
     }
   }
 
-  static Future<List<Map<String, dynamic>>> getUnstabilizedPhotos(projectId) async {
-    String projectOrientation = await SettingsUtil.loadProjectOrientation(projectId.toString());
-    return await DB.instance.getUnstabilizedPhotos(projectId, projectOrientation);
+  static Future<List<Map<String, dynamic>>> getUnstabilizedPhotos(
+      projectId) async {
+    String projectOrientation =
+        await SettingsUtil.loadProjectOrientation(projectId.toString());
+    return await DB.instance
+        .getUnstabilizedPhotos(projectId, projectOrientation);
   }
 
   static double? getShortSide(String resolution) {
@@ -74,8 +78,14 @@ class StabUtils {
       if (l == null || r == null) continue;
       var a = Point(l.position.x.toDouble(), l.position.y.toDouble());
       var b = Point(r.position.x.toDouble(), r.position.y.toDouble());
-      if (a.x > b.x) { final t = a; a = b; b = t; }
-      out..add(a)..add(b);
+      if (a.x > b.x) {
+        final t = a;
+        a = b;
+        b = t;
+      }
+      out
+        ..add(a)
+        ..add(b);
     }
     return out;
   }
@@ -140,7 +150,8 @@ class StabUtils {
       } else {
         // Mobile path: write to temp file for google_mlkit
         final Directory tempDir = await getTemporaryDirectory();
-        final String tempPath = path.join(tempDir.path, 'temp_face_detection_${DateTime.now().millisecondsSinceEpoch}.png');
+        final String tempPath = path.join(tempDir.path,
+            'temp_face_detection_${DateTime.now().millisecondsSinceEpoch}.png');
         final File tempFile = File(tempPath);
         await tempFile.writeAsBytes(bytes);
 
@@ -166,7 +177,7 @@ class StabUtils {
           }
         }
       }
-    } catch(e) {
+    } catch (e) {
       print("Error caught while fetching faces from bytes: $e");
       return [];
     }
@@ -243,17 +254,14 @@ class StabUtils {
         if (!filterByFaceSize || faces.isEmpty) return faces;
         return await _filterFacesBySize(faces, imageWidth, imagePath);
       }
-    } catch(e) {
+    } catch (e) {
       print("Error caught while fetching faces: $e");
       return [];
     }
   }
 
   static Future<List<Face>> _filterFacesBySize(
-    List<Face> faces,
-    int? imageWidth,
-    String imagePath
-  ) async {
+      List<Face> faces, int? imageWidth, String imagePath) async {
     const double minFaceSize = 0.1;
 
     try {
@@ -286,7 +294,8 @@ class StabUtils {
     return dims;
   }
 
-  static Future<void> performFileOperationInBackground(Map<String, dynamic> params) async {
+  static Future<void> performFileOperationInBackground(
+      Map<String, dynamic> params) async {
     SendPort sendPort = params['sendPort'];
     String? filePath = params['filePath'];
     var operation = params['operation'];
@@ -333,7 +342,8 @@ class StabUtils {
               sendPort.send('Decoded mat is empty');
               return;
             }
-            final (success, jpgBytes) = cv.imencode('.jpg', mat, params: cv.VecI32.fromList([cv.IMWRITE_JPEG_QUALITY, 90]));
+            final (success, jpgBytes) = cv.imencode('.jpg', mat,
+                params: cv.VecI32.fromList([cv.IMWRITE_JPEG_QUALITY, 90]));
             mat.dispose();
             if (success) {
               await File(filePath!).writeAsBytes(jpgBytes);
@@ -368,7 +378,8 @@ class StabUtils {
             // Has alpha channel - composite on black
             final bg = cv.Mat.zeros(mat.rows, mat.cols, cv.MatType.CV_8UC3);
             final channels = cv.split(mat);
-            final bgr = cv.merge(cv.VecMat.fromList([channels[0], channels[1], channels[2]]));
+            final bgr = cv.merge(
+                cv.VecMat.fromList([channels[0], channels[1], channels[2]]));
             final alpha = channels[3];
             bgr.copyTo(bg, mask: alpha);
             for (final ch in channels) {
@@ -383,7 +394,8 @@ class StabUtils {
 
           final (success, pngBytes) = cv.imencode('.png', result);
           result.dispose();
-          sendPort.send(success ? pngBytes : 'Error compositeBlackPng: encode failed');
+          sendPort.send(
+              success ? pngBytes : 'Error compositeBlackPng: encode failed');
         } catch (e) {
           sendPort.send('Error compositeBlackPng: $e');
         }
@@ -404,7 +416,8 @@ class StabUtils {
             // Has alpha channel - composite on black
             final bg = cv.Mat.zeros(mat.rows, mat.cols, cv.MatType.CV_8UC3);
             final channels = cv.split(mat);
-            final bgr = cv.merge(cv.VecMat.fromList([channels[0], channels[1], channels[2]]));
+            final bgr = cv.merge(
+                cv.VecMat.fromList([channels[0], channels[1], channels[2]]));
             final alpha = channels[3];
             bgr.copyTo(bg, mask: alpha);
             for (final ch in channels) {
@@ -423,9 +436,11 @@ class StabUtils {
           final thumb = cv.resize(composited, (500, height));
           composited.dispose();
 
-          final (success, jpgBytes) = cv.imencode('.jpg', thumb, params: cv.VecI32.fromList([cv.IMWRITE_JPEG_QUALITY, 90]));
+          final (success, jpgBytes) = cv.imencode('.jpg', thumb,
+              params: cv.VecI32.fromList([cv.IMWRITE_JPEG_QUALITY, 90]));
           thumb.dispose();
-          sendPort.send(success ? jpgBytes : 'Error thumbnailFromPng: encode failed');
+          sendPort.send(
+              success ? jpgBytes : 'Error thumbnailFromPng: encode failed');
         } catch (e) {
           sendPort.send('Error thumbnailFromPng: $e');
         }
@@ -434,7 +449,8 @@ class StabUtils {
   }
 
   /// Read any image file and return PNG bytes (using opencv for fast native decoding)
-  static Future<Uint8List?> readImageAsPngBytesInIsolate(String filePath) async {
+  static Future<Uint8List?> readImageAsPngBytesInIsolate(
+      String filePath) async {
     ReceivePort receivePort = ReceivePort();
     var params = {
       'sendPort': receivePort.sendPort,
@@ -442,10 +458,8 @@ class StabUtils {
       'operation': 'readToPng'
     };
 
-    Isolate? isolate = await Isolate.spawn(
-      performFileOperationInBackground,
-      params
-    );
+    Isolate? isolate =
+        await Isolate.spawn(performFileOperationInBackground, params);
     final result = await receivePort.first;
     receivePort.close();
     isolate.kill(priority: Isolate.immediate);
@@ -454,9 +468,7 @@ class StabUtils {
 
   /// Write PNG bytes to file
   static Future<void> writePngBytesToFileInIsolate(
-    String filepath,
-    Uint8List pngBytes
-  ) async {
+      String filepath, Uint8List pngBytes) async {
     ReceivePort receivePort = ReceivePort();
     var params = {
       'sendPort': receivePort.sendPort,
@@ -465,10 +477,8 @@ class StabUtils {
       'operation': 'writePngFromBytes'
     };
 
-    Isolate? isolate = await Isolate.spawn(
-      performFileOperationInBackground,
-      params
-    );
+    Isolate? isolate =
+        await Isolate.spawn(performFileOperationInBackground, params);
     await receivePort.first;
     receivePort.close();
     isolate.kill(priority: Isolate.immediate);
@@ -481,7 +491,8 @@ class StabUtils {
       'bytes': pngBytes,
       'operation': 'compositeBlackPng'
     };
-    Isolate? isolate = await Isolate.spawn(performFileOperationInBackground, params);
+    Isolate? isolate =
+        await Isolate.spawn(performFileOperationInBackground, params);
     final result = await receivePort.first as Uint8List;
     receivePort.close();
     isolate.kill(priority: Isolate.immediate);
@@ -495,14 +506,16 @@ class StabUtils {
       'bytes': pngBytes,
       'operation': 'thumbnailFromPng'
     };
-    Isolate? isolate = await Isolate.spawn(performFileOperationInBackground, params);
+    Isolate? isolate =
+        await Isolate.spawn(performFileOperationInBackground, params);
     final result = await receivePort.first as Uint8List;
     receivePort.close();
     isolate.kill(priority: Isolate.immediate);
     return result;
   }
 
-  static Future<void> writeBytesToJpgFileInIsolate(String filePath, List<int> bytes) async {
+  static Future<void> writeBytesToJpgFileInIsolate(
+      String filePath, List<int> bytes) async {
     ReceivePort receivePort = ReceivePort();
     var params = {
       'sendPort': receivePort.sendPort,
@@ -511,7 +524,8 @@ class StabUtils {
       'operation': 'writeJpg'
     };
 
-    Isolate? isolate = await Isolate.spawn(performFileOperationInBackground, params);
+    Isolate? isolate =
+        await Isolate.spawn(performFileOperationInBackground, params);
     final result = await receivePort.first;
     receivePort.close();
     isolate.kill(priority: Isolate.immediate);
@@ -520,7 +534,8 @@ class StabUtils {
     }
   }
 
-  static Future<bool> writeImagesBytesToJpgFile(Uint8List bytes, String imagePath) async {
+  static Future<bool> writeImagesBytesToJpgFile(
+      Uint8List bytes, String imagePath) async {
     await DirUtils.createDirectoryIfNotExists(imagePath);
     await writeBytesToJpgFileInIsolate(imagePath, bytes);
     return true;
@@ -560,7 +575,13 @@ class StabUtils {
         if (result.exitCode != 0 || !await File(jpgImgPath).exists()) {
           return;
         }
+      } else if (Platform.isWindows) {
+        final success = await HeicUtils.convertHeicToJpgAt(imgPath, jpgImgPath);
+        if (!success) {
+          return;
+        }
       } else {
+        // iOS/Android - use heif_converter package
         await HeifConverter.convert(
           imgPath,
           output: jpgImgPath,
@@ -584,22 +605,25 @@ class StabUtils {
     }
   }
 
-
   static Future<File> flipImageHorizontally(String imagePath) async {
-    return await processImageInIsolate(imagePath, 'flip_horizontal', '_flipped.png');
+    return await processImageInIsolate(
+        imagePath, 'flip_horizontal', '_flipped.png');
   }
 
   // Rotate Image 90 Degrees Clockwise
   static Future<File> rotateImageClockwise(String imagePath) async {
-    return await processImageInIsolate(imagePath, 'rotate_clockwise', '_rotated_clockwise.png');
+    return await processImageInIsolate(
+        imagePath, 'rotate_clockwise', '_rotated_clockwise.png');
   }
 
   // Rotate Image 90 Degrees Counter-Clockwise
   static Future<File> rotateImageCounterClockwise(String imagePath) async {
-    return await processImageInIsolate(imagePath, 'rotate_counter_clockwise', '_rotated_counter_clockwise.png');
+    return await processImageInIsolate(imagePath, 'rotate_counter_clockwise',
+        '_rotated_counter_clockwise.png');
   }
 
-  static Future<void> performImageProcessingInBackground(Map<String, dynamic> params) async {
+  static Future<void> performImageProcessingInBackground(
+      Map<String, dynamic> params) async {
     final rootIsolateToken = params['rootIsolateToken'] as RootIsolateToken;
     BackgroundIsolateBinaryMessenger.ensureInitialized(rootIsolateToken);
 
@@ -654,7 +678,8 @@ class StabUtils {
     }
   }
 
-  static Future<File> processImageInIsolate(String imagePath, String operation, String suffix) async {
+  static Future<File> processImageInIsolate(
+      String imagePath, String operation, String suffix) async {
     ReceivePort receivePort = ReceivePort();
     final rootIsolateToken = RootIsolateToken.instance;
     var params = {
@@ -665,10 +690,8 @@ class StabUtils {
       'rootIsolateToken': rootIsolateToken
     };
 
-    Isolate? isolate = await Isolate.spawn(
-      performImageProcessingInBackground,
-      params
-    );
+    Isolate? isolate =
+        await Isolate.spawn(performImageProcessingInBackground, params);
     final result = await receivePort.first;
     receivePort.close();
     isolate.kill(priority: Isolate.immediate);
@@ -680,14 +703,14 @@ class StabUtils {
     }
   }
 
-  static Future<String> getStabilizedImagePath(
-    String originalFilePath, 
-    int projectId, 
-    String? projectOrientation
-  ) async {
-    final stabilizedDirectoryPath = await DirUtils.getStabilizedDirPath(projectId);
-    final String originalBasename = path.basenameWithoutExtension(originalFilePath);
-    return path.join(stabilizedDirectoryPath, projectOrientation, '$originalBasename.jpg');
+  static Future<String> getStabilizedImagePath(String originalFilePath,
+      int projectId, String? projectOrientation) async {
+    final stabilizedDirectoryPath =
+        await DirUtils.getStabilizedDirPath(projectId);
+    final String originalBasename =
+        path.basenameWithoutExtension(originalFilePath);
+    return path.join(
+        stabilizedDirectoryPath, projectOrientation, '$originalBasename.jpg');
   }
 
   static Future<ui.Image?> loadImageFromFile(File file) async {
@@ -696,7 +719,8 @@ class StabUtils {
 
     while (!(await file.exists())) {
       if (sw.elapsed.inSeconds >= maxWaitSec) {
-        debugPrint("Error loading image: file not found within $maxWaitSec seconds");
+        debugPrint(
+            "Error loading image: file not found within $maxWaitSec seconds");
         return null;
       }
       await Future.delayed(const Duration(milliseconds: 150));
@@ -709,7 +733,8 @@ class StabUtils {
         return img;
       } catch (_) {
         if (sw.elapsed.inSeconds >= maxWaitSec) {
-          debugPrint("Error loading image: not decodable within $maxWaitSec seconds");
+          debugPrint(
+              "Error loading image: not decodable within $maxWaitSec seconds");
           return null;
         }
         await Future.delayed(const Duration(milliseconds: 150));
@@ -745,7 +770,8 @@ class StabUtils {
   }
 
   /// Get image dimensions from bytes asynchronously (runs decode in isolate)
-  static Future<(int, int)?> getImageDimensionsFromBytesAsync(Uint8List bytes) async {
+  static Future<(int, int)?> getImageDimensionsFromBytesAsync(
+      Uint8List bytes) async {
     final ReceivePort receivePort = ReceivePort();
     final params = {
       'sendPort': receivePort.sendPort,

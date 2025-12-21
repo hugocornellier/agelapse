@@ -45,15 +45,12 @@ class DB {
         version: _version,
       );
     }
-
   }
 
   Future<void> createTablesIfNotExist() async {
     final db = await database;
     List<String> existingTables = (await db.query('sqlite_master',
-        columns: ['name'],
-        where: 'type = ?',
-        whereArgs: ['table']))
+            columns: ['name'], where: 'type = ?', whereArgs: ['table']))
         .map((row) => row['name'] as String)
         .toList();
 
@@ -114,10 +111,14 @@ class DB {
     }
 
     await _ensurePhotoTransformColumns();
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_photos_project_ts ON $photoTable(projectID, timestamp);');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_photos_project_orientation ON $photoTable(projectID, originalOrientation);');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_photos_project_stabilized_portrait ON $photoTable(projectID, stabilizedPortrait);');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_photos_project_stabilized_landscape ON $photoTable(projectID, stabilizedLandscape);');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_photos_project_ts ON $photoTable(projectID, timestamp);');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_photos_project_orientation ON $photoTable(projectID, originalOrientation);');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_photos_project_stabilized_portrait ON $photoTable(projectID, stabilizedPortrait);');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_photos_project_stabilized_landscape ON $photoTable(projectID, stabilizedLandscape);');
   }
 
   /* ┌──────────────────────┐
@@ -153,18 +154,15 @@ class DB {
 
   Future<Map<String, dynamic>?> getProject(int id) async {
     final db = await database;
-    final results = await db.query(
-        projectTable,
-        where: 'id = ?',
-        whereArgs: [id],
-        limit: 1
-    );
+    final results = await db.query(projectTable,
+        where: 'id = ?', whereArgs: [id], limit: 1);
     return results.isNotEmpty ? results.first : null;
   }
 
   Future<Map<String, dynamic>?> getFirstProjectByName(String name) async {
     final db = await database;
-    final results = await db.query(projectTable, where: 'name = ?', whereArgs: [name], limit: 1);
+    final results = await db.query(projectTable,
+        where: 'name = ?', whereArgs: [name], limit: 1);
     return results.isNotEmpty ? results.first : null;
   }
 
@@ -191,13 +189,8 @@ class DB {
 
   Future<String?> getProjectTypeByProjectId(int projectId) async {
     final db = await database;
-    final results = await db.query(
-        projectTable,
-        columns: ['type'],
-        where: 'id = ?',
-        whereArgs: [projectId],
-        limit: 1
-    );
+    final results = await db.query(projectTable,
+        columns: ['type'], where: 'id = ?', whereArgs: [projectId], limit: 1);
 
     if (results.isNotEmpty) {
       return results.first['type'] as String;
@@ -243,7 +236,6 @@ class DB {
     }
   }
 
-
   /* ┌──────────────────────┐
      │                      │
      │       Settings       │
@@ -253,44 +245,42 @@ class DB {
   // Default setting values
   static const String globalSettingFlag = 'global';
   static const defaultValues = {
-    'theme'                   : 'dark',
-    'framerate'               : '14',
-    'enable_grid'             : 'true',
-    'save_to_camera_roll'     : 'false',
-    'camera_mirror'           : 'true',
-    'default_project'         : 'none',
-    'enable_notifications'    : 'true',
-    'framerate_is_default'    : 'true',
-    'enable_watermark'        : 'false',
-    'watermark_position'      : 'lower left',
-    'daily_notification_time' : 'not set',
-    'opened_nonempty_gallery' : 'false',
-    'has_taken_first_photo'   : 'false',
-    'has_viewed_first_video'  : 'false',
-    'has_opened_notif_page'   : 'false',
-    'has_seen_guide_mode_tut' : 'false',
-    'watermark_opacity'       : '0.7',
-    'camera_flash'            : 'auto',
-    'grid_mode_index'         : '0',
-    'project_orientation'     : 'landscape',
-    'eyeOffsetXPortrait'      : '0.065',
-    'eyeOffsetXLandscape'     : '0.035',
-    'eyeOffsetYPortrait'      : '0.421875',
-    'eyeOffsetYLandscape'     : '0.421875',
-    'guideOffsetXPortrait'    : '0.09',
-    'guideOffsetXLandscape'   : '0.045',
-    'guideOffsetYPortrait'    : '0.421875',
-    'guideOffsetYLandscape'   : '0.421875',
-    'gridAxisCount'           : '5',
-    'video_resolution'        : '1080p',
-    'aspect_ratio'            : '16:9',
-    'selected_guide_photo'    : 'not set',
+    'theme': 'dark',
+    'framerate': '14',
+    'enable_grid': 'true',
+    'save_to_camera_roll': 'false',
+    'camera_mirror': 'true',
+    'default_project': 'none',
+    'enable_notifications': 'true',
+    'framerate_is_default': 'true',
+    'enable_watermark': 'false',
+    'watermark_position': 'lower left',
+    'daily_notification_time': 'not set',
+    'opened_nonempty_gallery': 'false',
+    'has_taken_first_photo': 'false',
+    'has_viewed_first_video': 'false',
+    'has_opened_notif_page': 'false',
+    'has_seen_guide_mode_tut': 'false',
+    'watermark_opacity': '0.7',
+    'camera_flash': 'auto',
+    'grid_mode_index': '0',
+    'project_orientation': 'landscape',
+    'eyeOffsetXPortrait': '0.065',
+    'eyeOffsetXLandscape': '0.035',
+    'eyeOffsetYPortrait': '0.421875',
+    'eyeOffsetYLandscape': '0.421875',
+    'guideOffsetXPortrait': '0.09',
+    'guideOffsetXLandscape': '0.045',
+    'guideOffsetYPortrait': '0.421875',
+    'guideOffsetYLandscape': '0.421875',
+    'gridAxisCount': '5',
+    'video_resolution': '1080p',
+    'aspect_ratio': '16:9',
+    'selected_guide_photo': 'not set',
   };
 
-  Future<Map<String, dynamic>?> getSettingByTitle(
-    String title,
-    [String projectId = globalSettingFlag]
-  ) async {
+  Future<Map<String, dynamic>?> getSettingByTitle(String title,
+      [String projectId = globalSettingFlag]) async {
     final db = await database;
     final results = await db.query(
       settingTable,
@@ -308,20 +298,15 @@ class DB {
     }
 
     final defaultSetting = Setting(
-        title: title,
-        value: defaultValues[title]!,
-        projectId: projectId
-    );
+        title: title, value: defaultValues[title]!, projectId: projectId);
 
     await addSetting(defaultSetting);
 
     return defaultSetting.toJson();
   }
 
-  Future<String> getSettingValueByTitle(
-    String title,
-    [String? projectId = globalSettingFlag]
-  ) async {
+  Future<String> getSettingValueByTitle(String title,
+      [String? projectId = globalSettingFlag]) async {
     final Map<String, dynamic>? settingData;
     settingData = await getSettingByTitle(title, projectId!);
     var settingValue = settingData?['value'];
@@ -349,11 +334,8 @@ class DB {
     return fivePM.millisecondsSinceEpoch.toString();
   }
 
-  Future<int> setSettingByTitle(
-    String title,
-    String value,
-    [String? projectId = globalSettingFlag]
-  ) async {
+  Future<int> setSettingByTitle(String title, String value,
+      [String? projectId = globalSettingFlag]) async {
     final db = await database;
 
     if (title == 'framerate') {
@@ -371,27 +353,22 @@ class DB {
 
   Future<int> addSetting(Setting setting) async {
     final db = await database;
-    return await db.insert(
-      settingTable,
-      setting.toJson(),
-      conflictAlgorithm: ConflictAlgorithm.replace
-    );
+    return await db.insert(settingTable, setting.toJson(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<int> updateSetting(Setting setting) async {
     final db = await database;
-    return await db.update(
-      settingTable,
-      setting.toJson(),
-      where: 'id = ?',
-      whereArgs: [setting.id],
-      conflictAlgorithm: ConflictAlgorithm.replace
-    );
+    return await db.update(settingTable, setting.toJson(),
+        where: 'id = ?',
+        whereArgs: [setting.id],
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<int> deleteSetting(Setting setting) async {
     final db = await database;
-    return await db.delete(settingTable, where: 'id = ?', whereArgs: [setting.id]);
+    return await db
+        .delete(settingTable, where: 'id = ?', whereArgs: [setting.id]);
   }
 
   Future<List<Setting>> getAllSettings() async {
@@ -406,7 +383,8 @@ class DB {
      │                      │
      └──────────────────────┘ */
 
-  Future<void> addPhoto(String timestamp, int projectID, String fileExtension, int imageLength, String originalFilename, String orientation) async {
+  Future<void> addPhoto(String timestamp, int projectID, String fileExtension,
+      int imageLength, String originalFilename, String orientation) async {
     final db = await database;
     try {
       await db.insert(photoTable, {
@@ -415,16 +393,14 @@ class DB {
         'fileExtension': fileExtension,
         'imageLength': imageLength,
         'originalFilename': originalFilename,
-        'originalOrientation' : orientation,
+        'originalOrientation': orientation,
         'stabilizedPortrait': 0,
         'stabilizedLandscape': 0,
         'stabFailed': 0,
         'noFacesFound': 0,
         'favorite': 0
       });
-    } catch (e) {
-
-    }
+    } catch (e) {}
   }
 
   Future<void> _ensurePhotoTransformColumns() async {
@@ -446,7 +422,8 @@ class DB {
 
     for (final entry in toAdd.entries) {
       if (!has(entry.key)) {
-        await db.execute('ALTER TABLE $photoTable ADD COLUMN ${entry.key} ${entry.value};');
+        await db.execute(
+            'ALTER TABLE $photoTable ADD COLUMN ${entry.key} ${entry.value};');
       }
     }
   }
@@ -468,7 +445,8 @@ class DB {
     }
   }
 
-  Future<int?> updatePhotoTimestamp(String oldTimestamp, String newTimestamp, int projectId) async {
+  Future<int?> updatePhotoTimestamp(
+      String oldTimestamp, String newTimestamp, int projectId) async {
     final db = await database;
 
     final photoData = await getPhotoByTimestamp(oldTimestamp, projectId);
@@ -500,7 +478,8 @@ class DB {
 
   Future<int> deletePhoto(int timestamp) async {
     final db = await database;
-    return await db.delete(photoTable, where: 'timestamp = ?', whereArgs: [timestamp]);
+    return await db
+        .delete(photoTable, where: 'timestamp = ?', whereArgs: [timestamp]);
   }
 
   Future<int> deleteAllPhotos() async {
@@ -577,7 +556,8 @@ class DB {
     );
   }
 
-  Future<void> resetStabilizedColumnByTimestamp(String projectOrientation, String timestamp) async {
+  Future<void> resetStabilizedColumnByTimestamp(
+      String projectOrientation, String timestamp) async {
     final db = await database;
     final String stabilizedColumn = getStabilizedColumn(projectOrientation);
     await db.update(
@@ -588,7 +568,8 @@ class DB {
     );
   }
 
-  Future<String?> getPhotoExtensionByTimestampAndProjectId(String timestamp, int projectId) async {
+  Future<String?> getPhotoExtensionByTimestampAndProjectId(
+      String timestamp, int projectId) async {
     final db = await database;
     final results = await db.query(
       photoTable,
@@ -606,32 +587,29 @@ class DB {
   }
 
   Future<List<Map<String, dynamic>>> getUnstabilizedPhotos(
-    int projectId,
-    String projectOrientation
-  ) async {
+      int projectId, String projectOrientation) async {
     final db = await database;
     final String stabilizedColumn = getStabilizedColumn(projectOrientation);
-    return await db.query(
-      photoTable,
-      where: '$stabilizedColumn = ? AND noFacesFound = ? AND stabFailed = ? AND projectID = ?',
-      whereArgs: [0, 0, 0, projectId],
-      orderBy: 'timestamp ASC'
-    );
+    return await db.query(photoTable,
+        where:
+            '$stabilizedColumn = ? AND noFacesFound = ? AND stabFailed = ? AND projectID = ?',
+        whereArgs: [0, 0, 0, projectId],
+        orderBy: 'timestamp ASC');
   }
 
   Future<void> setPhotoStabilized(
-      String timestamp,
-      int projectId,
-      String projectOrientation,
-      String aspectRatio,
-      String resolution,
-      double offsetX,
-      double offsetY, {
-        double? translateX,
-        double? translateY,
-        double? rotationDegrees,
-        double? scaleFactor,
-      }) async {
+    String timestamp,
+    int projectId,
+    String projectOrientation,
+    String aspectRatio,
+    String resolution,
+    double offsetX,
+    double offsetY, {
+    double? translateX,
+    double? translateY,
+    double? rotationDegrees,
+    double? scaleFactor,
+  }) async {
     final db = await database;
     final String stabilizedColumn = getStabilizedColumn(projectOrientation);
 
@@ -647,8 +625,10 @@ class DB {
 
     if (translateX != null) data["${stabilizedColumn}TranslateX"] = translateX;
     if (translateY != null) data["${stabilizedColumn}TranslateY"] = translateY;
-    if (rotationDegrees != null) data["${stabilizedColumn}RotationDegrees"] = rotationDegrees;
-    if (scaleFactor != null) data["${stabilizedColumn}ScaleFactor"] = scaleFactor;
+    if (rotationDegrees != null)
+      data["${stabilizedColumn}RotationDegrees"] = rotationDegrees;
+    if (scaleFactor != null)
+      data["${stabilizedColumn}ScaleFactor"] = scaleFactor;
 
     await db.update(
       photoTable,
@@ -658,7 +638,8 @@ class DB {
     );
   }
 
-  Future<dynamic> getPhotoColumnValueByTimestamp(String timestamp, String columnName) async {
+  Future<dynamic> getPhotoColumnValueByTimestamp(
+      String timestamp, String columnName) async {
     final db = await database;
     final results = await db.query(
       photoTable,
@@ -676,17 +657,15 @@ class DB {
   }
 
   Future<List<Map<String, Object?>>> getSetEyePhoto(
-    double offsetX,
-    int projectId
-  ) async {
+      double offsetX, int projectId) async {
     final db = await database;
-    final String projectOrientation = await SettingsUtil.loadProjectOrientation(projectId.toString());
+    final String projectOrientation =
+        await SettingsUtil.loadProjectOrientation(projectId.toString());
     final String stabilizedColumn = getStabilizedColumn(projectOrientation);
-    return await db.query(
-        photoTable,
-        where: '$stabilizedColumn = ? AND projectID = ? AND ${stabilizedColumn}OffsetX = ?',
-        whereArgs: [1, projectId, offsetX.toString()]
-    );
+    return await db.query(photoTable,
+        where:
+            '$stabilizedColumn = ? AND projectID = ? AND ${stabilizedColumn}OffsetX = ?',
+        whereArgs: [1, projectId, offsetX.toString()]);
   }
 
   Future<void> setPhotoNoFacesFound(String timestamp) async {
@@ -709,7 +688,8 @@ class DB {
     );
   }
 
-  Future<void> setCaptureOffsetMinutesByTimestamp(String timestamp, int projectId, int? minutes) async {
+  Future<void> setCaptureOffsetMinutesByTimestamp(
+      String timestamp, int projectId, int? minutes) async {
     final db = await database;
     await db.update(
       photoTable,
@@ -719,7 +699,8 @@ class DB {
     );
   }
 
-  Future<bool> doesPhotoExistByTimestamp(String timestamp, int projectId) async {
+  Future<bool> doesPhotoExistByTimestamp(
+      String timestamp, int projectId) async {
     final db = await database;
     final results = await db.query(
       photoTable,
@@ -732,23 +713,25 @@ class DB {
     return results.isNotEmpty;
   }
 
-  Future<List<Map<String, dynamic>>> getPhotosByTimestamp(String timestamp, int projectId) async {
+  Future<List<Map<String, dynamic>>> getPhotosByTimestamp(
+      String timestamp, int projectId) async {
     final db = await database;
-    return await db.query(
-      photoTable,
-      where: 'timestamp = ? AND projectID = ?',
-      whereArgs: [timestamp, projectId]
-    );
+    return await db.query(photoTable,
+        where: 'timestamp = ? AND projectID = ?',
+        whereArgs: [timestamp, projectId]);
   }
 
-  Future<Map<String, dynamic>?> getPhotoByTimestamp(String timestamp, int projectId) async {
-    List<Map<String, dynamic>> photos = await getPhotosByTimestamp(timestamp, projectId);
+  Future<Map<String, dynamic>?> getPhotoByTimestamp(
+      String timestamp, int projectId) async {
+    List<Map<String, dynamic>> photos =
+        await getPhotosByTimestamp(timestamp, projectId);
     return photos.firstOrNull;
   }
 
   Future<List<Map<String, dynamic>>> getPhotosByProjectID(int projectID) async {
     final db = await database;
-    return await db.query(photoTable, where: 'projectID = ?', whereArgs: [projectID]);
+    return await db
+        .query(photoTable, where: 'projectID = ?', whereArgs: [projectID]);
   }
 
   Future<List<String>> getAllPhotoPathsByProjectID(int projectId) async {
@@ -764,10 +747,8 @@ class DB {
     List<Future<String>> futurePaths = photos.map((photo) async {
       final String timestamp = photo['timestamp'];
       return await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-        timestamp,
-        projectId,
-        fileExtension: photo['fileExtension']
-      );
+          timestamp, projectId,
+          fileExtension: photo['fileExtension']);
     }).toList();
 
     List<String> rawImagePaths = await Future.wait(futurePaths);
@@ -775,7 +756,8 @@ class DB {
     return rawImagePaths;
   }
 
-  Future<List<Map<String, dynamic>>> getStabilizedPhotosByProjectID(int projectId, String projectOrientation) async {
+  Future<List<Map<String, dynamic>>> getStabilizedPhotosByProjectID(
+      int projectId, String projectOrientation) async {
     final db = await database;
     final String stabilizedColumn = getStabilizedColumn(projectOrientation);
     return await db.query(
@@ -785,19 +767,21 @@ class DB {
     );
   }
 
-  Future<List<Map<String, dynamic>>> getStabilizedAndFailedPhotosByProjectID(int projectId, String projectOrientation) async {
+  Future<List<Map<String, dynamic>>> getStabilizedAndFailedPhotosByProjectID(
+      int projectId, String projectOrientation) async {
     final db = await database;
     final String stabilizedColumn = getStabilizedColumn(projectOrientation);
 
     return await db.query(
       photoTable,
-      where: '($stabilizedColumn = ? OR stabFailed = ? OR noFacesFound = ?) AND projectID = ?',
+      where:
+          '($stabilizedColumn = ? OR stabFailed = ? OR noFacesFound = ?) AND projectID = ?',
       whereArgs: [1, 1, 1, projectId],
     );
   }
 
-
-  Future<int> getStabilizedPhotoCountByProjectID(int projectId, String projectOrientation) async {
+  Future<int> getStabilizedPhotoCountByProjectID(
+      int projectId, String projectOrientation) async {
     final db = await database;
     final String stabilizedColumn = getStabilizedColumn(projectOrientation);
 
@@ -809,41 +793,40 @@ class DB {
     return result.first.values.first as int? ?? 0;
   }
 
-  Future<List<Map<String, dynamic>>> getPhotosByProjectIDNewestFirst(int projectID) async {
+  Future<List<Map<String, dynamic>>> getPhotosByProjectIDNewestFirst(
+      int projectID) async {
     final db = await database;
-    return await db.query(
-      photoTable,
-      where: 'projectID = ?',
-      whereArgs: [projectID],
-      orderBy: 'timestamp DESC'
-    );
+    return await db.query(photoTable,
+        where: 'projectID = ?',
+        whereArgs: [projectID],
+        orderBy: 'timestamp DESC');
   }
 
   Future<void> resetStabilizationStatusForProject(
-    int projectId,
-    String projectOrientation
-  ) async {
+      int projectId, String projectOrientation) async {
     final db = await database;
 
-    String inactiveProjectOrientation = projectOrientation.toLowerCase() == "landscape"
-        ? "portrait"
-        : "landscape";
+    String inactiveProjectOrientation =
+        projectOrientation.toLowerCase() == "landscape"
+            ? "portrait"
+            : "landscape";
 
     String activePOColumn = getStabilizedColumn(projectOrientation);
     String inactivePOColumn = getStabilizedColumn(inactiveProjectOrientation);
 
     await db.update(
-      photoTable, {
-        activePOColumn: 0,
-        inactivePOColumn: 0,
-        "noFacesFound": 0,
-        "stabFailed": 0
-      },
-      where: 'projectID = ?',
-      whereArgs: [projectId]
-    );
+        photoTable,
+        {
+          activePOColumn: 0,
+          inactivePOColumn: 0,
+          "noFacesFound": 0,
+          "stabFailed": 0
+        },
+        where: 'projectID = ?',
+        whereArgs: [projectId]);
 
-    final String stabilizedDirPath = await DirUtils.getStabilizedDirPath(projectId);
+    final String stabilizedDirPath =
+        await DirUtils.getStabilizedDirPath(projectId);
     final Directory stabilizedDir = Directory(stabilizedDirPath);
     await DirUtils.deleteDirectoryContents(stabilizedDir);
   }
@@ -881,38 +864,35 @@ class DB {
      └──────────────────────┘ */
 
   Future<int> addVideo(
-    int projectId,
-    String resolution,
-    String watermarkEnabled,
-    String watermarkPos,
-    int photoCount,
-    int framerate
-  ) async {
+      int projectId,
+      String resolution,
+      String watermarkEnabled,
+      String watermarkPos,
+      int photoCount,
+      int framerate) async {
     final db = await database;
     final timestampCreated = DateTime.now().millisecondsSinceEpoch;
     return await db.insert(
-      videoTable, {
-        'projectID': projectId,
-        'resolution': resolution,
-        'watermarkEnabled': watermarkEnabled,
-        'watermarkPos': watermarkPos,
-        'photoCount': photoCount,
-        'framerate': framerate,
-        'timestampCreated': timestampCreated
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace
-    );
+        videoTable,
+        {
+          'projectID': projectId,
+          'resolution': resolution,
+          'watermarkEnabled': watermarkEnabled,
+          'watermarkPos': watermarkPos,
+          'photoCount': photoCount,
+          'framerate': framerate,
+          'timestampCreated': timestampCreated
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<Map<String, dynamic>?> getNewestVideoByProjectId(int projectId) async {
     final db = await database;
-    final List<Map<String, dynamic>> results = await db.query(
-      videoTable,
-      where: 'projectID = ?',
-      whereArgs: [projectId],
-      orderBy: 'timestampCreated DESC',
-      limit: 1
-    );
+    final List<Map<String, dynamic>> results = await db.query(videoTable,
+        where: 'projectID = ?',
+        whereArgs: [projectId],
+        orderBy: 'timestampCreated DESC',
+        limit: 1);
     return results.isNotEmpty ? results.first : null;
   }
 }

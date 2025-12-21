@@ -1901,7 +1901,8 @@ class GalleryPageState extends State<GalleryPage>
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('There was an error. Please try again.')),
+          const SnackBar(
+              content: Text('There was an error. Please try again.')),
         );
       }
     }

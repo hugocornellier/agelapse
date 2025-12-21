@@ -60,7 +60,8 @@ class CreatePage extends StatefulWidget {
   CreatePageState createState() => CreatePageState();
 }
 
-class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+class CreatePageState extends State<CreatePage>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   VideoPlayerController? _videoPlayerController;
   ChewieController? _chewieController;
   bool stabilizingActive = true;
@@ -89,7 +90,8 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
       duration: const Duration(seconds: 1),
       vsync: this,
     );
-    _opacityAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(_animationController);
+    _opacityAnimation =
+        Tween<double>(begin: 1.0, end: 0.0).animate(_animationController);
 
     WidgetsBinding.instance.addObserver(this);
   }
@@ -110,7 +112,8 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
   }
 
   waitForMain() async {
-    final List<Map<String, dynamic>> rawPhotos = await DB.instance.getPhotosByProjectID(widget.projectId);
+    final List<Map<String, dynamic>> rawPhotos =
+        await DB.instance.getPhotosByProjectID(widget.projectId);
 
     // Check if there are no photos
     if (rawPhotos.length < 2) {
@@ -121,7 +124,8 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
       return;
     }
 
-    while (widget.stabilizingRunningInMain || widget.videoCreationActiveInMain) {
+    while (
+        widget.stabilizingRunningInMain || widget.videoCreationActiveInMain) {
       await Future.delayed(const Duration(milliseconds: 300));
       photoCount = await getStabilizedPhotoCount();
       final double percentUnrounded = widget.currentFrame / photoCount! * 100;
@@ -136,9 +140,9 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
 
   Future<void> _maybeEncodeWindowsVideo() async {
     final String projectOrientation =
-    await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
+        await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
     final String videoPath =
-    await DirUtils.getVideoOutputPath(widget.projectId, projectOrientation);
+        await DirUtils.getVideoOutputPath(widget.projectId, projectOrientation);
     final File outFile = File(videoPath);
 
     if (await outFile.exists() && await outFile.length() > 0) return;
@@ -158,8 +162,10 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
   Future<void> setupVideoPlayer() async {
     await _maybeEncodeWindowsVideo();
 
-    String projectOrientation = await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
-    final String videoPath = await DirUtils.getVideoOutputPath(widget.projectId, projectOrientation);
+    String projectOrientation =
+        await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
+    final String videoPath =
+        await DirUtils.getVideoOutputPath(widget.projectId, projectOrientation);
     final File videoFile = File(videoPath);
 
     if (!await videoFile.exists() || await videoFile.length() == 0) {
@@ -193,15 +199,18 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
     );
 
     setResolution();
-    aspectRatio = await SettingsUtil.loadAspectRatio(widget.projectId.toString());
+    aspectRatio =
+        await SettingsUtil.loadAspectRatio(widget.projectId.toString());
     videoFps = await SettingsUtil.loadFramerate(widget.projectId.toString());
 
     await widget.hideNavBar();
     playVideo();
 
-    final bool hasViewedFirstVideo = await SettingsUtil.hasSeenFirstVideo(widget.projectId.toString());
+    final bool hasViewedFirstVideo =
+        await SettingsUtil.hasSeenFirstVideo(widget.projectId.toString());
     if (!hasViewedFirstVideo) {
-      await SettingsUtil.setHasSeenFirstVideoToTrue(widget.projectId.toString());
+      await SettingsUtil.setHasSeenFirstVideoToTrue(
+          widget.projectId.toString());
       widget.refreshSettings();
     }
   }
@@ -240,7 +249,8 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
   double getSmallerSide(width, height) => width < height ? width : height;
 
   Future<String> getRawPhotoPathFromTimestamp(String timestamp) async =>
-      await DirUtils.getRawPhotoPathFromTimestampAndProjectId(timestamp, widget.projectId);
+      await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
+          timestamp, widget.projectId);
 
   void togglePlaybackSpeed() {
     setState(() {
@@ -312,7 +322,11 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
               }
             },
             child: Transform.translate(
-              offset: Offset(0, (dragCurrentY - dragStartY) > 0 ? dragCurrentY - dragStartY : 0),
+              offset: Offset(
+                  0,
+                  (dragCurrentY - dragStartY) > 0
+                      ? dragCurrentY - dragStartY
+                      : 0),
               child: _readyToShowVideoPlayer()
                   ? _buildVideoPlayerSection()
                   : buildLoadingView(),
@@ -324,10 +338,11 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
   }
 
   bool _readyToShowVideoPlayer() {
-    return (loadingComplete && (lessThan2Photos || (_chewieController != null
-        && _chewieController!.videoPlayerController.value.isInitialized)));
+    return (loadingComplete &&
+        (lessThan2Photos ||
+            (_chewieController != null &&
+                _chewieController!.videoPlayerController.value.isInitialized)));
   }
-
 
   Widget buildLoadingView() {
     if (lessThan2Photos) {
@@ -349,10 +364,12 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
             const SizedBox(height: 8),
             Text(
               "${widget.progressPercent}%",
-              style: const TextStyle(fontSize: 24.0, fontWeight: FontWeight.bold, color: Colors.white),
+              style: const TextStyle(
+                  fontSize: 24.0,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white),
             )
-          ]
-          else ...[
+          ] else ...[
             const CircularProgressIndicator(),
             const SizedBox(height: 30),
             Text(loadingText)
@@ -384,7 +401,8 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
                 children: [
                   InkWell(
                     onTap: () => goBackToPreviousPage(),
-                    child: const Icon(Icons.keyboard_arrow_down_rounded, size: 35),
+                    child:
+                        const Icon(Icons.keyboard_arrow_down_rounded, size: 35),
                   ),
                   const SizedBox(width: 20)
                 ],
@@ -412,7 +430,8 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
                               width: 80,
                               height: 80,
                               decoration: BoxDecoration(
-                                color: Colors.black.withAlpha(128), // Equivalent to opacity 0.5
+                                color: Colors.black.withAlpha(
+                                    128), // Equivalent to opacity 0.5
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
@@ -459,7 +478,8 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
   Widget _buildNoPhotosMessage() {
     return const Center(
       child: YellowTipBar(
-        message: "You need at least 2 photos in your gallery to create a video.",
+        message:
+            "You need at least 2 photos in your gallery to create a video.",
       ),
     );
   }
@@ -474,7 +494,8 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
   }
 
   void _openSettings(BuildContext context) async {
-    final bool isDefaultProject = await ProjectUtils.isDefaultProject(widget.projectId);
+    final bool isDefaultProject =
+        await ProjectUtils.isDefaultProject(widget.projectId);
 
     showModalBottomSheet(
       context: context,
@@ -506,8 +527,8 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
       }
 
       final String suggestedBase =
-      (widget.projectName.isEmpty ? 'AgeLapse' : widget.projectName)
-          .replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+          (widget.projectName.isEmpty ? 'AgeLapse' : widget.projectName)
+              .replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
       final String suggestedName = '$suggestedBase.mp4';
 
       final FileSaveLocation? location = await getSaveLocation(
@@ -547,9 +568,9 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
 
   void _shareVideo() async {
     final String projectOrientation =
-    await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
+        await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
     final String videoOutputPath =
-    await DirUtils.getVideoOutputPath(widget.projectId, projectOrientation);
+        await DirUtils.getVideoOutputPath(widget.projectId, projectOrientation);
 
     if (Platform.isAndroid || Platform.isIOS) {
       final result = await SharePlus.instance.share(
@@ -565,11 +586,15 @@ class CreatePageState extends State<CreatePage> with SingleTickerProviderStateMi
   }
 
   Future<bool> videoSettingsChanged(newestVideo) async =>
-      await VideoUtils.videoOutputSettingsChanged(widget.projectId, newestVideo);
+      await VideoUtils.videoOutputSettingsChanged(
+          widget.projectId, newestVideo);
 
   Future<int> getStabilizedPhotoCount() async {
-    String projectOrientation = await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
-    return (await DB.instance.getStabilizedPhotosByProjectID(widget.projectId, projectOrientation)).length;
+    String projectOrientation =
+        await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
+    return (await DB.instance.getStabilizedPhotosByProjectID(
+            widget.projectId, projectOrientation))
+        .length;
   }
 }
 
@@ -580,7 +605,8 @@ class FadeInOutIcon extends StatefulWidget {
   FadeInOutIconState createState() => FadeInOutIconState();
 }
 
-class FadeInOutIconState extends State<FadeInOutIcon> with SingleTickerProviderStateMixin {
+class FadeInOutIconState extends State<FadeInOutIcon>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
 
@@ -634,7 +660,8 @@ class AnimatedIconDemo extends StatefulWidget {
   AnimatedIconDemoState createState() => AnimatedIconDemoState();
 }
 
-class AnimatedIconDemoState extends State<AnimatedIconDemo> with SingleTickerProviderStateMixin {
+class AnimatedIconDemoState extends State<AnimatedIconDemo>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
 
@@ -671,8 +698,7 @@ class AnimatedIconDemoState extends State<AnimatedIconDemo> with SingleTickerPro
                 color: Colors.grey.shade700,
                 width: 14.0,
               ),
-              borderRadius: BorderRadius.circular(16)
-          ),
+              borderRadius: BorderRadius.circular(16)),
         ),
         AnimatedBuilder(
           animation: _animation,

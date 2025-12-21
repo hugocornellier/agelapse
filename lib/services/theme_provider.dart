@@ -17,7 +17,8 @@ class ThemeProvider extends ChangeNotifier {
 
   bool get isLightMode {
     if (_themeMode == 'system') {
-      var brightness = SchedulerBinding.instance.platformDispatcher.platformBrightness;
+      var brightness =
+          SchedulerBinding.instance.platformDispatcher.platformBrightness;
       return brightness == Brightness.light;
     }
     return _themeMode == 'light';

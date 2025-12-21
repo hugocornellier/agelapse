@@ -30,220 +30,280 @@ class VideoUtils {
     if (pixels >= 3840 * 2160) return 50000; // 4K: 50 Mbps
     if (pixels >= 2560 * 1440) return 20000; // 1440p: 20 Mbps
     if (pixels >= 1920 * 1080) return 14000; // 1080p: 14 Mbps
-    if (pixels >= 1280 * 720)  return 8000;  // 720p: 8 Mbps
-    return 5000;                              // lower
+    if (pixels >= 1280 * 720) return 8000; // 720p: 8 Mbps
+    return 5000; // lower
   }
 
-  static Future<bool> createTimelapse(
-    int projectId,
-    framerate,
-    totalPhotoCount,
-    Function(int currentFrame)? setCurrentFrame
-  ) async {
+  static Future<bool> createTimelapse(int projectId, framerate, totalPhotoCount,
+      Function(int currentFrame)? setCurrentFrame) async {
     try {
-    print("[VIDEO] createTimelapse called - projectId: $projectId, framerate: $framerate, totalPhotoCount: $totalPhotoCount");
-    print("[VIDEO] Platform: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}");
+      print(
+          "[VIDEO] createTimelapse called - projectId: $projectId, framerate: $framerate, totalPhotoCount: $totalPhotoCount");
+      print(
+          "[VIDEO] Platform: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}");
 
-    String projectOrientation = await SettingsUtil.loadProjectOrientation(projectId.toString());
-    final String stabilizedDirPath = await DirUtils.getStabilizedDirPath(projectId);
-    final String videoOutputPath = await DirUtils.getVideoOutputPath(projectId, projectOrientation);
-    print("[VIDEO] orientation: $projectOrientation");
-    print("[VIDEO] stabilizedDirPath: $stabilizedDirPath");
-    print("[VIDEO] videoOutputPath: $videoOutputPath");
+      String projectOrientation =
+          await SettingsUtil.loadProjectOrientation(projectId.toString());
+      final String stabilizedDirPath =
+          await DirUtils.getStabilizedDirPath(projectId);
+      final String videoOutputPath =
+          await DirUtils.getVideoOutputPath(projectId, projectOrientation);
+      print("[VIDEO] orientation: $projectOrientation");
+      print("[VIDEO] stabilizedDirPath: $stabilizedDirPath");
+      print("[VIDEO] videoOutputPath: $videoOutputPath");
 
-    // Check available disk space
-    try {
-      final outputDir = Directory(path.dirname(videoOutputPath));
-      if (await outputDir.exists()) {
-        if (Platform.isWindows) {
-          final result = await Process.run('wmic', ['logicaldisk', 'where', 'DeviceID="${path.rootPrefix(videoOutputPath).replaceAll('\\', '')}"', 'get', 'FreeSpace', '/value'], runInShell: true);
-          print("[VIDEO] Disk space check: ${result.stdout.toString().trim()}");
-        } else if (Platform.isLinux || Platform.isMacOS) {
-          final result = await Process.run('df', ['-h', videoOutputPath]);
-          print("[VIDEO] Disk space check:\n${result.stdout}");
-        }
-      }
-    } catch (e) {
-      print("[VIDEO] Could not check disk space: $e");
-    }
-
-    await DirUtils.createDirectoryIfNotExists(videoOutputPath);
-
-    final Directory dir = Directory(path.join(stabilizedDirPath, projectOrientation));
-    print("[VIDEO] Listing PNG files from: ${dir.path}");
-
-    // Check if directory exists
-    if (!await dir.exists()) {
-      print("[VIDEO] ERROR: Stabilized directory does not exist: ${dir.path}");
-      return false;
-    }
-
-    List<String> pngFiles;
-    try {
-      pngFiles = await dir
-          .list()
-          .where((f) => f.path.endsWith('.png'))
-          .map((f) => f.path)
-          .toList()
-        ..sort();
-    } catch (e, stackTrace) {
-      print("[VIDEO] ERROR: Failed to list directory contents: $e");
-      print("[VIDEO] Stack trace: $stackTrace");
-      return false;
-    }
-
-    print("[VIDEO] Found ${pngFiles.length} PNG files in ${dir.path}");
-
-    // Log sample PNG paths for debugging
-    if (pngFiles.isNotEmpty) {
-      final sampleCount = pngFiles.length < 3 ? pngFiles.length : 3;
-      print("[VIDEO] Sample PNG files (first $sampleCount):");
-      for (int i = 0; i < sampleCount; i++) {
-        final file = File(pngFiles[i]);
-        final exists = await file.exists();
-        final size = exists ? await file.length() : 0;
-        print("[VIDEO]   ${i + 1}. ${pngFiles[i]} (exists: $exists, size: ${(size / 1024).toStringAsFixed(1)} KB)");
-      }
-    }
-
-    final bool framerateIsDefault = await SettingsUtil.loadFramerateIsDefault(projectId.toString());
-    if (framerateIsDefault) {
-      framerate = await getOptimalFramerateFromStabPhotoCount(projectId);
-      DB.instance.setSettingByTitle('framerate', framerate.toString(), projectId.toString());
-      print("[VIDEO] Using optimal framerate: $framerate");
-    }
-
-    if (Platform.isWindows || Platform.isLinux) {
-      print("[VIDEO] Using Windows/Linux encoding path");
+      // Check available disk space
       try {
-        final String framesDir = path.join(stabilizedDirPath, projectOrientation);
-        final bool ok = await _encodeWindows(
-          framesDir: framesDir,
-          outputPath: videoOutputPath,
-          fps: framerate,
-          projectId: projectId,
-          orientation: projectOrientation,
-          onLog: (line) => print("[FFMPEG] $line"),
-          onProgress: setCurrentFrame,
-        );
-        print("[VIDEO] _encodeWindows returned: $ok");
-        if (ok) {
-          final String resolution = await SettingsUtil.loadVideoResolution(projectId.toString());
-          await DB.instance.addVideo(
-            projectId,
-            resolution,
-            (await SettingsUtil.loadWatermarkSetting(projectId.toString())).toString(),
-            (await DB.instance.getSettingValueByTitle('watermark_position')).toLowerCase(),
-            totalPhotoCount,
-            framerate,
-          );
-          print("[VIDEO] Video record added to database");
+        final outputDir = Directory(path.dirname(videoOutputPath));
+        if (await outputDir.exists()) {
+          if (Platform.isWindows) {
+            final result = await Process.run(
+                'wmic',
+                [
+                  'logicaldisk',
+                  'where',
+                  'DeviceID="${path.rootPrefix(videoOutputPath).replaceAll('\\', '')}"',
+                  'get',
+                  'FreeSpace',
+                  '/value'
+                ],
+                runInShell: true);
+            print(
+                "[VIDEO] Disk space check: ${result.stdout.toString().trim()}");
+          } else if (Platform.isLinux || Platform.isMacOS) {
+            final result = await Process.run('df', ['-h', videoOutputPath]);
+            print("[VIDEO] Disk space check:\n${result.stdout}");
+          }
         }
+      } catch (e) {
+        print("[VIDEO] Could not check disk space: $e");
+      }
 
-        return ok;
+      await DirUtils.createDirectoryIfNotExists(videoOutputPath);
+
+      final Directory dir =
+          Directory(path.join(stabilizedDirPath, projectOrientation));
+      print("[VIDEO] Listing PNG files from: ${dir.path}");
+
+      // Check if directory exists
+      if (!await dir.exists()) {
+        print(
+            "[VIDEO] ERROR: Stabilized directory does not exist: ${dir.path}");
+        return false;
+      }
+
+      List<String> pngFiles;
+      try {
+        pngFiles = await dir
+            .list()
+            .where((f) => f.path.endsWith('.png'))
+            .map((f) => f.path)
+            .toList()
+          ..sort();
       } catch (e, stackTrace) {
-        print("[VIDEO] ERROR in Windows/Linux encoding: $e");
+        print("[VIDEO] ERROR: Failed to list directory contents: $e");
         print("[VIDEO] Stack trace: $stackTrace");
         return false;
       }
-    }
 
-    final bool watermarkEnabled = await SettingsUtil.loadWatermarkSetting(projectId.toString());
-    final String watermarkPos = (await DB.instance.getSettingValueByTitle('watermark_position')).toLowerCase();
-    final String watermarkFilePath = await DirUtils.getWatermarkFilePath(projectId);
+      print("[VIDEO] Found ${pngFiles.length} PNG files in ${dir.path}");
 
-    String watermarkInputsAndFilter = "";
-    if (watermarkEnabled && Utils.isImage(watermarkFilePath) && await File(watermarkFilePath).exists()) {
-      final String watermarkOpacitySettingVal = await DB.instance.getSettingValueByTitle('watermark_opacity');
-      final double watermarkOpacity = double.tryParse(watermarkOpacitySettingVal) ?? 0.8;
-      final String watermarkFilter = getWatermarkFilter(watermarkOpacity, watermarkPos, 10);
-      watermarkInputsAndFilter = "-i \"$watermarkFilePath\" -filter_complex \"$watermarkFilter\"";
-    }
+      // Log sample PNG paths for debugging
+      if (pngFiles.isNotEmpty) {
+        final sampleCount = pngFiles.length < 3 ? pngFiles.length : 3;
+        print("[VIDEO] Sample PNG files (first $sampleCount):");
+        for (int i = 0; i < sampleCount; i++) {
+          final file = File(pngFiles[i]);
+          final exists = await file.exists();
+          final size = exists ? await file.length() : 0;
+          print(
+              "[VIDEO]   ${i + 1}. ${pngFiles[i]} (exists: $exists, size: ${(size / 1024).toStringAsFixed(1)} KB)");
+        }
+      }
 
-    final String framesDir = path.join(stabilizedDirPath, projectOrientation);
-    final String listPath = await _buildConcatListFromDir(framesDir, framerate, projectId: projectId, orientation: projectOrientation);
+      final bool framerateIsDefault =
+          await SettingsUtil.loadFramerateIsDefault(projectId.toString());
+      if (framerateIsDefault) {
+        framerate = await getOptimalFramerateFromStabPhotoCount(projectId);
+        DB.instance.setSettingByTitle(
+            'framerate', framerate.toString(), projectId.toString());
+        print("[VIDEO] Using optimal framerate: $framerate");
+      }
 
-    final resolution = await SettingsUtil.loadVideoResolution(projectId.toString());
-    final kbps = pickBitrateKbps(resolution);
-    final vtRate = "-b:v ${kbps}k -maxrate ${ (kbps * 1.5).round() }k -bufsize ${ (kbps * 3).round() }k";
-    final vCodec = Platform.isAndroid ? 'libx264' : 'h264_videotoolbox';
-
-    String ffmpegCommand = "-y "
-        "-f concat -safe 0 "
-        "-i \"$listPath\" "
-        "-vsync cfr -r 30 "
-        "$watermarkInputsAndFilter "
-        "-c:v $vCodec $vtRate "
-        "-g 240 -movflags +faststart -tag:v avc1 "
-        "-pix_fmt yuv420p "
-        "\"$videoOutputPath\"";
-
-    try {
-      if (Platform.isMacOS) {
-        print("[VIDEO] Using macOS encoding path");
-
-        final exeDir = path.dirname(Platform.resolvedExecutable);
-        final resourcesDir = path.normalize(path.join(exeDir, '..', 'Resources'));
-        final ffmpegExe = path.join(resourcesDir, 'ffmpeg');
-        final cmd = '"$ffmpegExe" $ffmpegCommand';
-
-        print('[VIDEO] ffmpeg executable: $ffmpegExe');
-        print('[VIDEO] ffmpeg command: $ffmpegCommand');
-
-        final proc = await Process.start('/bin/sh', ['-c', cmd], runInShell: false);
-        proc.stdout.transform(utf8.decoder).transform(const LineSplitter()).listen((line) {
-          print("[FFMPEG] $line");
-        });
-        proc.stderr.transform(utf8.decoder).transform(const LineSplitter()).listen((line) {
-          print("[FFMPEG] $line");
-          parseFFmpegOutput(line, framerate, setCurrentFrame);
-        });
-
-        final code = await proc.exitCode;
-        print("[VIDEO] ffmpeg exit code: $code");
-
+      if (Platform.isWindows || Platform.isLinux) {
+        print("[VIDEO] Using Windows/Linux encoding path");
         try {
-          await File(listPath).delete();
-        } catch (e) {
-          print("[VIDEO] Failed to delete concat list: $e");
-        }
-        if (code == 0) {
-          final String resolution = await SettingsUtil.loadVideoResolution(projectId.toString());
-          await DB.instance.addVideo(projectId, resolution, watermarkEnabled.toString(), watermarkPos, totalPhotoCount, framerate);
-          print("[VIDEO] Video compilation successful, record added to database");
-          return true;
-        }
-        print("[VIDEO] ffmpeg failed with exit code: $code");
-        return false;
-      } else {
-        print("[VIDEO] Using mobile (FFmpegKit) encoding path");
-        kitcfg.FFmpegKitConfig.enableLogCallback((kitlog.Log log) {
-          final String output = log.getMessage();
-          parseFFmpegOutput(output, framerate, setCurrentFrame);
-          print("[FFMPEG] $output");
-        });
+          final String framesDir =
+              path.join(stabilizedDirPath, projectOrientation);
+          final bool ok = await _encodeWindows(
+            framesDir: framesDir,
+            outputPath: videoOutputPath,
+            fps: framerate,
+            projectId: projectId,
+            orientation: projectOrientation,
+            onLog: (line) => print("[FFMPEG] $line"),
+            onProgress: setCurrentFrame,
+          );
+          print("[VIDEO] _encodeWindows returned: $ok");
+          if (ok) {
+            final String resolution =
+                await SettingsUtil.loadVideoResolution(projectId.toString());
+            await DB.instance.addVideo(
+              projectId,
+              resolution,
+              (await SettingsUtil.loadWatermarkSetting(projectId.toString()))
+                  .toString(),
+              (await DB.instance.getSettingValueByTitle('watermark_position'))
+                  .toLowerCase(),
+              totalPhotoCount,
+              framerate,
+            );
+            print("[VIDEO] Video record added to database");
+          }
 
-        print("[VIDEO] Executing ffmpeg command: $ffmpegCommand");
-        final kitsession.FFmpegSession session = await kit.FFmpegKit.execute(ffmpegCommand);
-        final returnCode = await session.getReturnCode();
-        print("[VIDEO] FFmpegKit return code: ${returnCode?.getValue()}");
-
-        if (kitrc.ReturnCode.isSuccess(returnCode)) {
-          final String resolution = await SettingsUtil.loadVideoResolution(projectId.toString());
-          await DB.instance.addVideo(projectId, resolution, watermarkEnabled.toString(), watermarkPos, totalPhotoCount, framerate);
-          print("[VIDEO] Video compilation successful, record added to database");
-          return true;
-        } else {
-          final logs = await session.getAllLogsAsString();
-          print("[VIDEO] FFmpegKit failed. Full logs: $logs");
+          return ok;
+        } catch (e, stackTrace) {
+          print("[VIDEO] ERROR in Windows/Linux encoding: $e");
+          print("[VIDEO] Stack trace: $stackTrace");
           return false;
         }
       }
-    } catch (e, stackTrace) {
-      print("[VIDEO] ERROR in video compilation: $e");
-      print("[VIDEO] Stack trace: $stackTrace");
-      return false;
-    }
+
+      final bool watermarkEnabled =
+          await SettingsUtil.loadWatermarkSetting(projectId.toString());
+      final String watermarkPos =
+          (await DB.instance.getSettingValueByTitle('watermark_position'))
+              .toLowerCase();
+      final String watermarkFilePath =
+          await DirUtils.getWatermarkFilePath(projectId);
+
+      String watermarkInputsAndFilter = "";
+      if (watermarkEnabled &&
+          Utils.isImage(watermarkFilePath) &&
+          await File(watermarkFilePath).exists()) {
+        final String watermarkOpacitySettingVal =
+            await DB.instance.getSettingValueByTitle('watermark_opacity');
+        final double watermarkOpacity =
+            double.tryParse(watermarkOpacitySettingVal) ?? 0.8;
+        final String watermarkFilter =
+            getWatermarkFilter(watermarkOpacity, watermarkPos, 10);
+        watermarkInputsAndFilter =
+            "-i \"$watermarkFilePath\" -filter_complex \"$watermarkFilter\"";
+      }
+
+      final String framesDir = path.join(stabilizedDirPath, projectOrientation);
+      final String listPath = await _buildConcatListFromDir(
+          framesDir, framerate,
+          projectId: projectId, orientation: projectOrientation);
+
+      final resolution =
+          await SettingsUtil.loadVideoResolution(projectId.toString());
+      final kbps = pickBitrateKbps(resolution);
+      final vtRate =
+          "-b:v ${kbps}k -maxrate ${(kbps * 1.5).round()}k -bufsize ${(kbps * 3).round()}k";
+      final vCodec = Platform.isAndroid ? 'libx264' : 'h264_videotoolbox';
+
+      String ffmpegCommand = "-y "
+          "-f concat -safe 0 "
+          "-i \"$listPath\" "
+          "-vsync cfr -r 30 "
+          "$watermarkInputsAndFilter "
+          "-c:v $vCodec $vtRate "
+          "-g 240 -movflags +faststart -tag:v avc1 "
+          "-pix_fmt yuv420p "
+          "\"$videoOutputPath\"";
+
+      try {
+        if (Platform.isMacOS) {
+          print("[VIDEO] Using macOS encoding path");
+
+          final exeDir = path.dirname(Platform.resolvedExecutable);
+          final resourcesDir =
+              path.normalize(path.join(exeDir, '..', 'Resources'));
+          final ffmpegExe = path.join(resourcesDir, 'ffmpeg');
+          final cmd = '"$ffmpegExe" $ffmpegCommand';
+
+          print('[VIDEO] ffmpeg executable: $ffmpegExe');
+          print('[VIDEO] ffmpeg command: $ffmpegCommand');
+
+          final proc =
+              await Process.start('/bin/sh', ['-c', cmd], runInShell: false);
+          proc.stdout
+              .transform(utf8.decoder)
+              .transform(const LineSplitter())
+              .listen((line) {
+            print("[FFMPEG] $line");
+          });
+          proc.stderr
+              .transform(utf8.decoder)
+              .transform(const LineSplitter())
+              .listen((line) {
+            print("[FFMPEG] $line");
+            parseFFmpegOutput(line, framerate, setCurrentFrame);
+          });
+
+          final code = await proc.exitCode;
+          print("[VIDEO] ffmpeg exit code: $code");
+
+          try {
+            await File(listPath).delete();
+          } catch (e) {
+            print("[VIDEO] Failed to delete concat list: $e");
+          }
+          if (code == 0) {
+            final String resolution =
+                await SettingsUtil.loadVideoResolution(projectId.toString());
+            await DB.instance.addVideo(
+                projectId,
+                resolution,
+                watermarkEnabled.toString(),
+                watermarkPos,
+                totalPhotoCount,
+                framerate);
+            print(
+                "[VIDEO] Video compilation successful, record added to database");
+            return true;
+          }
+          print("[VIDEO] ffmpeg failed with exit code: $code");
+          return false;
+        } else {
+          print("[VIDEO] Using mobile (FFmpegKit) encoding path");
+          kitcfg.FFmpegKitConfig.enableLogCallback((kitlog.Log log) {
+            final String output = log.getMessage();
+            parseFFmpegOutput(output, framerate, setCurrentFrame);
+            print("[FFMPEG] $output");
+          });
+
+          print("[VIDEO] Executing ffmpeg command: $ffmpegCommand");
+          final kitsession.FFmpegSession session =
+              await kit.FFmpegKit.execute(ffmpegCommand);
+          final returnCode = await session.getReturnCode();
+          print("[VIDEO] FFmpegKit return code: ${returnCode?.getValue()}");
+
+          if (kitrc.ReturnCode.isSuccess(returnCode)) {
+            final String resolution =
+                await SettingsUtil.loadVideoResolution(projectId.toString());
+            await DB.instance.addVideo(
+                projectId,
+                resolution,
+                watermarkEnabled.toString(),
+                watermarkPos,
+                totalPhotoCount,
+                framerate);
+            print(
+                "[VIDEO] Video compilation successful, record added to database");
+            return true;
+          } else {
+            final logs = await session.getAllLogsAsString();
+            print("[VIDEO] FFmpegKit failed. Full logs: $logs");
+            return false;
+          }
+        }
+      } catch (e, stackTrace) {
+        print("[VIDEO] ERROR in video compilation: $e");
+        print("[VIDEO] Stack trace: $stackTrace");
+        return false;
+      }
     } catch (e, stackTrace) {
       print("[VIDEO] ERROR in createTimelapse: $e");
       print("[VIDEO] Stack trace: $stackTrace");
@@ -252,23 +312,27 @@ class VideoUtils {
   }
 
   static Future<bool> createTimelapseFromProjectId(
-    int projectId,
-    Function(int currentFrame)? setCurrentFrame
-  ) async {
-    print("[VIDEO] createTimelapseFromProjectId called - projectId: $projectId");
+      int projectId, Function(int currentFrame)? setCurrentFrame) async {
+    print(
+        "[VIDEO] createTimelapseFromProjectId called - projectId: $projectId");
     try {
-      String projectOrientation = await SettingsUtil.loadProjectOrientation(projectId.toString());
-      final List<Map<String, dynamic>> stabilizedPhotos = await DB.instance.getStabilizedPhotosByProjectID(projectId, projectOrientation);
-      print("[VIDEO] Found ${stabilizedPhotos.length} stabilized photos for orientation: $projectOrientation");
+      String projectOrientation =
+          await SettingsUtil.loadProjectOrientation(projectId.toString());
+      final List<Map<String, dynamic>> stabilizedPhotos = await DB.instance
+          .getStabilizedPhotosByProjectID(projectId, projectOrientation);
+      print(
+          "[VIDEO] Found ${stabilizedPhotos.length} stabilized photos for orientation: $projectOrientation");
       if (stabilizedPhotos.isEmpty) {
         print("[VIDEO] No stabilized photos found, aborting");
         return false;
       }
 
-      final int framerate = await SettingsUtil.loadFramerate(projectId.toString());
+      final int framerate =
+          await SettingsUtil.loadFramerate(projectId.toString());
       print("[VIDEO] Loaded framerate: $framerate");
 
-      return await createTimelapse(projectId, framerate, stabilizedPhotos.length, setCurrentFrame);
+      return await createTimelapse(
+          projectId, framerate, stabilizedPhotos.length, setCurrentFrame);
     } catch (e, stackTrace) {
       print("[VIDEO] ERROR in createTimelapseFromProjectId: $e");
       print("[VIDEO] Stack trace: $stackTrace");
@@ -276,7 +340,8 @@ class VideoUtils {
     }
   }
 
-  static Future<int> getOptimalFramerateFromStabPhotoCount(int projectId) async {
+  static Future<int> getOptimalFramerateFromStabPhotoCount(
+      int projectId) async {
     final int stabPhotoCount = await getStabilizedPhotoCount(projectId);
     const List<int> thresholds = [2, 4, 6, 8, 12, 16];
     const List<int> framerates = [2, 3, 4, 6, 8, 10, 14];
@@ -289,9 +354,12 @@ class VideoUtils {
     return framerates.last;
   }
 
-  static void parseFFmpegOutput(String output, int framerate, Function(int currentFrame)? setCurrentFrame) {
+  static void parseFFmpegOutput(String output, int framerate,
+      Function(int currentFrame)? setCurrentFrame) {
     final RegExp frameRegex = RegExp(r'frame=\s*(\d+)');
-    final match = frameRegex.allMatches(output).isNotEmpty ? frameRegex.allMatches(output).last : null;
+    final match = frameRegex.allMatches(output).isNotEmpty
+        ? frameRegex.allMatches(output).last
+        : null;
     if (match == null || setCurrentFrame == null) return;
     final int videoFrame = int.parse(match.group(1)!);
     final int currFrame = videoFrame ~/ (30 / framerate);
@@ -300,20 +368,25 @@ class VideoUtils {
   }
 
   static Future<int> getStabilizedPhotoCount(int projectId) async {
-    String projectOrientation = await SettingsUtil.loadProjectOrientation(projectId.toString());
-    return (await DB.instance.getStabilizedPhotosByProjectID(projectId, projectOrientation)).length;
+    String projectOrientation =
+        await SettingsUtil.loadProjectOrientation(projectId.toString());
+    return (await DB.instance
+            .getStabilizedPhotosByProjectID(projectId, projectOrientation))
+        .length;
   }
 
   static createGif(videoOutputPath, framerate) async {
     if (Platform.isWindows) return;
-    final String gifPath = videoOutputPath.replaceAll(path.extension(videoOutputPath), ".gif");
+    final String gifPath =
+        videoOutputPath.replaceAll(path.extension(videoOutputPath), ".gif");
     await kit.FFmpegKit.execute('-i $videoOutputPath $gifPath');
   }
 
   static Future<bool> videoOutputSettingsChanged(projectId, newestVideo) async {
     if (newestVideo == null) return false;
 
-    final bool newPhotos = newestVideo['photoCount'] != await _getTotalPhotoCountByProjectId(projectId);
+    final bool newPhotos = newestVideo['photoCount'] !=
+        await _getTotalPhotoCountByProjectId(projectId);
     if (newPhotos) {
       return true;
     }
@@ -324,12 +397,16 @@ class VideoUtils {
       return true;
     }
 
-    final String watermarkEnabled = (await SettingsUtil.loadWatermarkSetting(projectId.toString())).toString();
+    final String watermarkEnabled =
+        (await SettingsUtil.loadWatermarkSetting(projectId.toString()))
+            .toString();
     if (newestVideo['watermarkEnabled'] != watermarkEnabled) {
       return true;
     }
 
-    final String watermarkPos = (await DB.instance.getSettingValueByTitle('watermark_position')).toLowerCase();
+    final String watermarkPos =
+        (await DB.instance.getSettingValueByTitle('watermark_position'))
+            .toLowerCase();
     if (newestVideo['watermarkPos'] != watermarkPos) {
       return true;
     }
@@ -338,15 +415,20 @@ class VideoUtils {
   }
 
   static Future<int> _getTotalPhotoCountByProjectId(int projectId) async {
-    String projectOrientation = await SettingsUtil.loadProjectOrientation(projectId.toString());
-    List<Map<String, dynamic>> allStabilizedPhotos = await DB.instance.getStabilizedPhotosByProjectID(projectId, projectOrientation);
+    String projectOrientation =
+        await SettingsUtil.loadProjectOrientation(projectId.toString());
+    List<Map<String, dynamic>> allStabilizedPhotos = await DB.instance
+        .getStabilizedPhotosByProjectID(projectId, projectOrientation);
     return allStabilizedPhotos.length;
   }
 
-  static Future<int> _getFramerate(projectId) async => await SettingsUtil.loadFramerate(projectId.toString());
+  static Future<int> _getFramerate(projectId) async =>
+      await SettingsUtil.loadFramerate(projectId.toString());
 
-  static String getWatermarkFilter(double opacity, String watermarkPos, int offset) {
-    String watermarkFilter = "[1:v]format=rgba,colorchannelmixer=aa=$opacity[watermark];[0:v][watermark]overlay=";
+  static String getWatermarkFilter(
+      double opacity, String watermarkPos, int offset) {
+    String watermarkFilter =
+        "[1:v]format=rgba,colorchannelmixer=aa=$opacity[watermark];[0:v][watermark]overlay=";
 
     switch (watermarkPos) {
       case "lower left":
@@ -388,12 +470,14 @@ class VideoUtils {
     final exeExists = await File(exePath).exists();
     final markerExists = await File(markerPath).exists();
     final needsWrite = !exeExists || !markerExists;
-    print("[VIDEO] ffmpeg.exe exists: $exeExists, marker exists: $markerExists, needs extraction: $needsWrite");
+    print(
+        "[VIDEO] ffmpeg.exe exists: $exeExists, marker exists: $markerExists, needs extraction: $needsWrite");
     if (needsWrite) {
       print("[VIDEO] Extracting bundled ffmpeg from assets...");
       try {
         final bytes = await rootBundle.load(_winFfmpegAssetPath);
-        await File(exePath).writeAsBytes(bytes.buffer.asUint8List(), flush: true);
+        await File(exePath)
+            .writeAsBytes(bytes.buffer.asUint8List(), flush: true);
         await File(markerPath).writeAsString('1', flush: true);
         print("[VIDEO] Bundled ffmpeg extracted successfully to: $exePath");
       } catch (e) {
@@ -443,7 +527,8 @@ class VideoUtils {
         print("[VIDEO] Using ffmpeg from PATH: $onPathWin");
         return onPathWin;
       }
-      print("[VIDEO] WARNING: No ffmpeg found, falling back to 'ffmpeg' command");
+      print(
+          "[VIDEO] WARNING: No ffmpeg found, falling back to 'ffmpeg' command");
       return 'ffmpeg';
     } else {
       final onPath = await _findFfmpegOnPath();
@@ -451,7 +536,6 @@ class VideoUtils {
       return 'ffmpeg';
     }
   }
-
 
   static Future<void> _ensureOutDir(String outputPath) async {
     final outDir = Directory(path.dirname(outputPath));
@@ -462,8 +546,10 @@ class VideoUtils {
 
   /// Returns a set of valid timestamps from the database for the given project and orientation.
   /// Used to validate filesystem files against the database to prevent orphaned files from appearing in videos.
-  static Future<Set<int>> _getValidTimestampsFromDB(int projectId, String orientation) async {
-    final photos = await DB.instance.getStabilizedPhotosByProjectID(projectId, orientation);
+  static Future<Set<int>> _getValidTimestampsFromDB(
+      int projectId, String orientation) async {
+    final photos = await DB.instance
+        .getStabilizedPhotosByProjectID(projectId, orientation);
     final Set<int> timestamps = {};
     for (final photo in photos) {
       final ts = int.tryParse(photo['timestamp']?.toString() ?? '');
@@ -474,7 +560,8 @@ class VideoUtils {
     return timestamps;
   }
 
-  static Future<String> _buildConcatListFromDir(String framesDir, int fps, {int? projectId, String? orientation}) async {
+  static Future<String> _buildConcatListFromDir(String framesDir, int fps,
+      {int? projectId, String? orientation}) async {
     print("[VIDEO] Building concat list from directory: $framesDir");
     final dir = Directory(framesDir);
     if (!await dir.exists()) {
@@ -489,7 +576,8 @@ class VideoUtils {
 
     // Validate files against database and clean up orphans
     if (projectId != null && orientation != null) {
-      final validTimestamps = await _getValidTimestampsFromDB(projectId, orientation);
+      final validTimestamps =
+          await _getValidTimestampsFromDB(projectId, orientation);
       final int originalFileCount = files.length;
       final List<String> validFiles = [];
       for (final filePath in files) {
@@ -509,7 +597,8 @@ class VideoUtils {
       }
       final int orphansRemoved = originalFileCount - validFiles.length;
       files = validFiles;
-      print("[VIDEO] After DB validation: ${files.length} valid files (removed $orphansRemoved orphans)");
+      print(
+          "[VIDEO] After DB validation: ${files.length} valid files (removed $orphansRemoved orphans)");
     }
 
     files.sort((a, b) => path.basename(a).compareTo(path.basename(b)));
@@ -519,7 +608,8 @@ class VideoUtils {
       throw StateError('no .png files found in $framesDir');
     }
 
-    final tmpPath = path.join(Directory.systemTemp.path, 'ffconcat_${DateTime.now().millisecondsSinceEpoch}.txt');
+    final tmpPath = path.join(Directory.systemTemp.path,
+        'ffconcat_${DateTime.now().millisecondsSinceEpoch}.txt');
     final f = File(tmpPath);
     final perFrame = 1.0 / fps;
     print("[VIDEO] Frame duration: ${perFrame}s (fps: $fps)");
@@ -558,24 +648,36 @@ class VideoUtils {
     // Verify ffmpeg exists
     final exeFile = File(exe);
     if (!exe.contains(path.separator) || !await exeFile.exists()) {
-      print("[VIDEO] WARNING: ffmpeg path '$exe' may not exist as a file (might be a PATH command)");
+      print(
+          "[VIDEO] WARNING: ffmpeg path '$exe' may not exist as a file (might be a PATH command)");
     }
 
     await _ensureOutDir(outputPath);
-    final listPath = await _buildConcatListFromDir(framesDir, fps, projectId: projectId, orientation: orientation);
+    final listPath = await _buildConcatListFromDir(framesDir, fps,
+        projectId: projectId, orientation: orientation);
 
     final args = <String>[
       '-y',
-      '-f', 'concat',
-      '-safe', '0',
-      '-i', listPath,
-      '-vsync', 'cfr',
-      '-r', '$fps',
-      '-pix_fmt', 'yuv420p',
-      '-c:v', 'libx264',
-      '-profile:v', 'main',
-      '-level', '4.1',
-      '-movflags', '+faststart',
+      '-f',
+      'concat',
+      '-safe',
+      '0',
+      '-i',
+      listPath,
+      '-vsync',
+      'cfr',
+      '-r',
+      '$fps',
+      '-pix_fmt',
+      'yuv420p',
+      '-c:v',
+      'libx264',
+      '-profile:v',
+      'main',
+      '-level',
+      '4.1',
+      '-movflags',
+      '+faststart',
       outputPath,
     ];
 
@@ -586,10 +688,16 @@ class VideoUtils {
       final proc = await Process.start(exe, args, runInShell: false);
       print("[VIDEO] ffmpeg process started with PID: ${proc.pid}");
 
-      proc.stdout.transform(utf8.decoder).transform(const LineSplitter()).listen((line) {
+      proc.stdout
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen((line) {
         if (onLog != null) onLog(line);
       });
-      proc.stderr.transform(utf8.decoder).transform(const LineSplitter()).listen((line) {
+      proc.stderr
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen((line) {
         if (onLog != null) onLog(line);
         final m = RegExp(r'frame=\s*(\d+)').firstMatch(line);
         if (m != null && onProgress != null) {
@@ -612,7 +720,8 @@ class VideoUtils {
       final outputFile = File(outputPath);
       if (await outputFile.exists()) {
         final size = await outputFile.length();
-        print("[VIDEO] Output file created: $outputPath (${(size / 1024 / 1024).toStringAsFixed(2)} MB)");
+        print(
+            "[VIDEO] Output file created: $outputPath (${(size / 1024 / 1024).toStringAsFixed(2)} MB)");
       } else {
         print("[VIDEO] WARNING: Output file was not created: $outputPath");
       }

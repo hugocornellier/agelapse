@@ -11,12 +11,14 @@ import 'package:vibration/vibration.dart';
 
 import '../services/database_helper.dart';
 import 'dir_utils.dart';
+import 'heic_utils.dart';
 import 'image_utils.dart';
 
 class CameraUtils {
   static Future<bool> loadSaveToCameraRollSetting() async {
     try {
-      String saveToCameraRollStr = await DB.instance.getSettingValueByTitle('save_to_camera_roll');
+      String saveToCameraRollStr =
+          await DB.instance.getSettingValueByTitle('save_to_camera_roll');
       return bool.tryParse(saveToCameraRollStr) ?? false;
     } catch (e) {
       debugPrint('Failed to load watermark setting: $e');
@@ -51,14 +53,15 @@ class CameraUtils {
       receivePort.close();
       isolate.kill(priority: Isolate.immediate);
       return bytes;
-    } catch(_) {
+    } catch (_) {
       return null;
     } finally {
       bytes = null;
     }
   }
 
-  static Future<String> saveImageToFileSystemInIsolate(String saveToPath, String xFilePath) async {
+  static Future<String> saveImageToFileSystemInIsolate(
+      String saveToPath, String xFilePath) async {
     Future<void> saveImageIsolateOperation(Map<String, dynamic> params) async {
       SendPort sendPort = params['sendPort'];
       String saveToPath = params['saveToPath'];
@@ -84,9 +87,11 @@ class CameraUtils {
     return result;
   }
 
-  static Future<String> saveImageToFileSystem(XFile image, String timestamp, int projectId) async {
+  static Future<String> saveImageToFileSystem(
+      XFile image, String timestamp, int projectId) async {
     final String rawPhotoDirPath = await DirUtils.getRawPhotoDirPath(projectId);
-    final String imagePath = path.join(rawPhotoDirPath, "$timestamp${path.extension(image.path)}");
+    final String imagePath =
+        path.join(rawPhotoDirPath, "$timestamp${path.extension(image.path)}");
     await DirUtils.createDirectoryIfNotExists(imagePath);
 
     await saveImageToFileSystemInIsolate(imagePath, image.path);
@@ -100,9 +105,8 @@ class CameraUtils {
 
   static Future<void> saveImageToGallery(String filePath) async {
     try {
-      String name = path.basename(filePath).isEmpty
-          ? "image"
-          : path.basename(filePath);
+      String name =
+          path.basename(filePath).isEmpty ? "image" : path.basename(filePath);
 
       final SaveResult result = await SaverGallery.saveFile(
         fileName: path.basename(filePath),
@@ -137,15 +141,13 @@ class CameraUtils {
     int projectId,
     bool import,
     int? imageTimestampFromExif,
-    bool failedToParseDateMetadata,
-    {
-      Uint8List? bytes,
-      VoidCallback? increaseSuccessfulImportCount,
-      VoidCallback? refreshSettings,
-      bool applyMirroring = false,
-      String? deviceOrientation,
-    }
-  ) async {
+    bool failedToParseDateMetadata, {
+    Uint8List? bytes,
+    VoidCallback? increaseSuccessfulImportCount,
+    VoidCallback? refreshSettings,
+    bool applyMirroring = false,
+    String? deviceOrientation,
+  }) async {
     String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
     try {
       print("Attempting to save photo");
@@ -158,9 +160,12 @@ class CameraUtils {
 
       if (imageTimestampFromExif != null) {
         timestamp = imageTimestampFromExif.toString();
-        bool photoExists = await DB.instance.doesPhotoExistByTimestamp(timestamp, projectId);
+        bool photoExists =
+            await DB.instance.doesPhotoExistByTimestamp(timestamp, projectId);
         while (photoExists) {
-          final Map<String, dynamic> existingPhoto = (await DB.instance.getPhotosByTimestamp(timestamp, projectId)).first;
+          final Map<String, dynamic> existingPhoto =
+              (await DB.instance.getPhotosByTimestamp(timestamp, projectId))
+                  .first;
           if (newPhotoLength == existingPhoto['imageLength']) {
             print("Returning false 1");
 
@@ -169,7 +174,8 @@ class CameraUtils {
 
           final int timestampPlusPlus = int.parse(timestamp) + 1;
           timestamp = timestampPlusPlus.toString();
-          photoExists = await DB.instance.doesPhotoExistByTimestamp(timestamp, projectId);
+          photoExists =
+              await DB.instance.doesPhotoExistByTimestamp(timestamp, projectId);
         }
       }
 
@@ -189,7 +195,13 @@ class CameraUtils {
           if (result.exitCode != 0 || !await File(jpgPath).exists()) {
             return false;
           }
+        } else if (Platform.isWindows) {
+          final success = await HeicUtils.convertHeicToJpgAt(heicPath, jpgPath);
+          if (!success) {
+            return false;
+          }
         } else {
+          // iOS/Android - use heif_converter package
           await HeifConverter.convert(
             heicPath,
             output: jpgPath,
@@ -203,7 +215,6 @@ class CameraUtils {
         imgPath = jpgPath;
         extension = ".jpg";
       }
-
 
       bytes = await CameraUtils.readBytesInIsolate(imgPath);
       if (bytes == null) {
@@ -256,34 +267,28 @@ class CameraUtils {
       int? importedImageWidth = rawImage.cols;
       int? importedImageHeight = rawImage.rows;
 
-      double aspectRatio = (importedImageWidth ?? 1) / (importedImageHeight ?? 1);
+      double aspectRatio =
+          (importedImageWidth ?? 1) / (importedImageHeight ?? 1);
       aspectRatio = aspectRatio > 1 ? aspectRatio : 1 / aspectRatio;
 
       String orientation = importedImageHeight > importedImageWidth
           ? "portrait"
           : importedImageHeight < importedImageWidth
-          ? "landscape"
-          : "square";
+              ? "landscape"
+              : "square";
 
-      await DB.instance.addPhoto(
-        timestamp,
-        projectId,
-        extension,
-        newPhotoLength,
-        path.basename(imgPath),
-        orientation
-      );
+      await DB.instance.addPhoto(timestamp, projectId, extension,
+          newPhotoLength, path.basename(imgPath), orientation);
 
       if (refreshSettings != null) {
         refreshSettings();
       }
 
-      await CameraUtils.saveImageToFileSystem(XFile(imgPath), timestamp, projectId);
+      await CameraUtils.saveImageToFileSystem(
+          XFile(imgPath), timestamp, projectId);
 
       final String thumbnailPath = path.join(
-        await DirUtils.getThumbnailDirPath(projectId),
-        "$timestamp.jpg"
-      );
+          await DirUtils.getThumbnailDirPath(projectId), "$timestamp.jpg");
       await DirUtils.createDirectoryIfNotExists(thumbnailPath);
 
       bool result = await _createThumbnailForNewImage(thumbnailPath, rawImage);
@@ -312,20 +317,20 @@ class CameraUtils {
   }
 
   static Future<bool> _createThumbnailForNewImage(
-    String thumbnailPath,
-    cv.Mat rawImage
-  ) async {
+      String thumbnailPath, cv.Mat rawImage) async {
     return _createThumbnailFromRawImage(rawImage, thumbnailPath);
   }
 
-  static Future<bool> _createThumbnailFromRawImage(cv.Mat rawImage, String thumbnailPath) async {
+  static Future<bool> _createThumbnailFromRawImage(
+      cv.Mat rawImage, String thumbnailPath) async {
     // Resize to 500px width maintaining aspect ratio
     final aspectRatio = rawImage.rows / rawImage.cols;
     final height = (500 * aspectRatio).round();
     final thumbnail = cv.resize(rawImage, (500, height));
 
     final File thumbnailFile = File(thumbnailPath);
-    final (success, encodedJpgBytes) = cv.imencode('.jpg', thumbnail, params: cv.VecI32.fromList([cv.IMWRITE_JPEG_QUALITY, 90]));
+    final (success, encodedJpgBytes) = cv.imencode('.jpg', thumbnail,
+        params: cv.VecI32.fromList([cv.IMWRITE_JPEG_QUALITY, 90]));
     thumbnail.dispose();
 
     if (!success) return false;

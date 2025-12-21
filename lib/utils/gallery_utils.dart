@@ -44,7 +44,8 @@ class GalleryUtils {
     }
   }
 
-  static Future<void> convertAvifToPng(String avifFilePath, String pngFilePath) async {
+  static Future<void> convertAvifToPng(
+      String avifFilePath, String pngFilePath) async {
     try {
       final avifBytes = await File(avifFilePath).readAsBytes();
       // Convert in isolate to avoid blocking UI
@@ -82,18 +83,22 @@ class GalleryUtils {
   static String _normalizeOffset(String s) {
     final t = s.trim();
     if (RegExp(r'^[+-]\d{2}:\d{2}$').hasMatch(t)) return t;
-    if (RegExp(r'^[+-]\d{2}\d{2}$').hasMatch(t)) return '${t.substring(0,3)}:${t.substring(3)}';
+    if (RegExp(r'^[+-]\d{2}\d{2}$').hasMatch(t))
+      return '${t.substring(0, 3)}:${t.substring(3)}';
     if (RegExp(r'^[+-]\d{2}$').hasMatch(t)) return '${t}:00';
     return t;
   }
 
-  static Future<(bool, int?)> parseExifDate(Map<String, dynamic> exifData) async {
+  static Future<(bool, int?)> parseExifDate(
+      Map<String, dynamic> exifData) async {
     try {
       final String? gpsDateStr = exifData['GPS GPSDateStamp']?.toString();
       final String? gpsTimeStr = exifData['GPS GPSTimeStamp']?.toString();
       if (gpsDateStr != null && gpsTimeStr != null) {
-        final dm = RegExp(r'^(\d{4})[:\-](\d{2})[:\-](\d{2})$').firstMatch(gpsDateStr);
-        final tm = RegExp(r'^(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?$').firstMatch(gpsTimeStr);
+        final dm =
+            RegExp(r'^(\d{4})[:\-](\d{2})[:\-](\d{2})$').firstMatch(gpsDateStr);
+        final tm = RegExp(r'^(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?$')
+            .firstMatch(gpsTimeStr);
         if (dm != null && tm != null) {
           final y = int.parse(dm.group(1)!);
           final mo = int.parse(dm.group(2)!);
@@ -101,26 +106,28 @@ class GalleryUtils {
           final h = int.parse(tm.group(1)!);
           final mi = int.parse(tm.group(2)!);
           final s = int.parse(tm.group(3)!);
-          final ms = tm.group(4) != null ? int.parse(tm.group(4)!.padRight(3, '0')) : 0;
+          final ms = tm.group(4) != null
+              ? int.parse(tm.group(4)!.padRight(3, '0'))
+              : 0;
           final utc = DateTime.utc(y, mo, d, h, mi, s, ms);
           return (false, utc.millisecondsSinceEpoch);
         }
       }
 
-      final String? dtStr =
-          exifData['EXIF DateTimeOriginal']?.toString() ??
-              exifData['Image DateTime']?.toString();
+      final String? dtStr = exifData['EXIF DateTimeOriginal']?.toString() ??
+          exifData['Image DateTime']?.toString();
       if (dtStr == null) return (true, null);
 
-      final m = RegExp(r'^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})$').firstMatch(dtStr);
+      final m = RegExp(r'^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})$')
+          .firstMatch(dtStr);
       if (m == null) return (true, null);
 
-      final y  = int.parse(m.group(1)!);
+      final y = int.parse(m.group(1)!);
       final mo = int.parse(m.group(2)!);
-      final d  = int.parse(m.group(3)!);
-      final h  = int.parse(m.group(4)!);
+      final d = int.parse(m.group(3)!);
+      final h = int.parse(m.group(4)!);
       final mi = int.parse(m.group(5)!);
-      final s  = int.parse(m.group(6)!);
+      final s = int.parse(m.group(6)!);
 
       final String? rawOffset =
           exifData['EXIF OffsetTimeOriginal']?.toString() ??
@@ -143,7 +150,6 @@ class GalleryUtils {
       final local = DateTime(y, mo, d, h, mi, s);
       final utcGuess = local.toUtc();
       return (false, utcGuess.millisecondsSinceEpoch);
-
     } catch (e) {
       print('Failed to parse EXIF date: $e');
       return (true, null);
@@ -153,12 +159,23 @@ class GalleryUtils {
   static String formatDate(File image) {
     final String filename = path.basenameWithoutExtension(image.path);
     final int timestamp = int.tryParse(filename) ?? 0;
-    final DateTime dateTime = DateTime.fromMillisecondsSinceEpoch(timestamp, isUtc: true).toLocal();
+    final DateTime dateTime =
+        DateTime.fromMillisecondsSinceEpoch(timestamp, isUtc: true).toLocal();
     final int currentYear = DateTime.now().year;
 
     const List<String> monthNames = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
     ];
 
     final String month = monthNames[dateTime.month - 1];
@@ -171,13 +188,17 @@ class GalleryUtils {
     }
   }
 
-  static Future<List<String>> getAllStabAndFailedImagePaths(int projectId) async {
-    final String projectOrientation = await SettingsUtil.loadProjectOrientation(projectId.toString());
-    final List<Map<String, dynamic>> stabPhotos = await DB.instance.getStabilizedAndFailedPhotosByProjectID(projectId, projectOrientation);
+  static Future<List<String>> getAllStabAndFailedImagePaths(
+      int projectId) async {
+    final String projectOrientation =
+        await SettingsUtil.loadProjectOrientation(projectId.toString());
+    final List<Map<String, dynamic>> stabPhotos = await DB.instance
+        .getStabilizedAndFailedPhotosByProjectID(projectId, projectOrientation);
 
     List<Future<String>> futurePaths = stabPhotos.map((stabilizedPhoto) async {
       final String timestamp = stabilizedPhoto['timestamp'];
-      final rawPhotoPath = await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
+      final rawPhotoPath =
+          await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
         timestamp,
         projectId,
       );
@@ -212,13 +233,16 @@ class GalleryUtils {
       onShowInfoDialog();
     }
 
-    rawImagePaths.sort((b, a) => b.split('/').last.compareTo(a.split('/').last));
-    stabImagePaths.sort((b, a) => b.split('/').last.compareTo(a.split('/').last));
+    rawImagePaths
+        .sort((b, a) => b.split('/').last.compareTo(a.split('/').last));
+    stabImagePaths
+        .sort((b, a) => b.split('/').last.compareTo(a.split('/').last));
 
     await onImagesLoaded(rawImagePaths, stabImagePaths);
   }
 
-  static Future<void> scrollToBottomInstantly(ScrollController scrollController) async {
+  static Future<void> scrollToBottomInstantly(
+      ScrollController scrollController) async {
     if (scrollController.hasClients) {
       scrollController.jumpTo(scrollController.position.maxScrollExtent);
     } else {
@@ -232,7 +256,8 @@ class GalleryUtils {
     }
   }
 
-  static Future<String> processZipInIsolate(String zipFileExportPath, List<File> imageFiles) async {
+  static Future<String> processZipInIsolate(
+      String zipFileExportPath, List<File> imageFiles) async {
     final List<String> filePaths = imageFiles.map((f) => f.path).toList();
 
     final receivePort = ReceivePort();
@@ -242,7 +267,8 @@ class GalleryUtils {
       'filePaths': filePaths,
     };
 
-    final isolate = await Isolate.spawn(GalleryUtils._galleryIsolateOperation, params);
+    final isolate =
+        await Isolate.spawn(GalleryUtils._galleryIsolateOperation, params);
     final res = await receivePort.first;
     receivePort.close();
     isolate.kill(priority: Isolate.immediate);
@@ -273,38 +299,32 @@ class GalleryUtils {
     }
   }
 
-  static Future<void> processPickedImage(
-      String imagePath,
-      int projectId,
+  static Future<void> processPickedImage(String imagePath, int projectId,
       ValueNotifier<String> activeProcessingDateNotifier,
-      {
-        required Function onImagesLoaded,
-        int? timestamp,
-        VoidCallback? increaseSuccessfulImportCount
-      }
-      ) async {
+      {required Function onImagesLoaded,
+      int? timestamp,
+      VoidCallback? increaseSuccessfulImportCount}) async {
     final imageProcessor = ImageProcessor(
         imagePath: imagePath,
         projectId: projectId,
         activeProcessingDateNotifier: activeProcessingDateNotifier,
         onImagesLoaded: onImagesLoaded,
         timestamp: timestamp,
-        increaseSuccessfulImportCount: increaseSuccessfulImportCount
-    );
+        increaseSuccessfulImportCount: increaseSuccessfulImportCount);
 
     await imageProcessor.process();
     imageProcessor.dispose();
   }
 
   static Future<void> processPickedZipFileDesktop(
-      File file,
-      int projectId,
-      ValueNotifier<String> activeProcessingDateNotifier,
-      Function onImagesLoaded,
-      Function(int p1) setProgressInMain,
-      void Function() increaseSuccessfulImportCount,
-      void Function(int value) increasePhotosImported,
-      ) async {
+    File file,
+    int projectId,
+    ValueNotifier<String> activeProcessingDateNotifier,
+    Function onImagesLoaded,
+    Function(int p1) setProgressInMain,
+    void Function() increaseSuccessfulImportCount,
+    void Function(int value) increasePhotosImported,
+  ) async {
     final input = InputFileStream(file.path);
     try {
       final archive = ZipDecoder().decodeStream(input);
@@ -312,11 +332,21 @@ class GalleryUtils {
       final entries = archive.files.where((f) {
         if (!f.isFile) return false;
         final lowerName = path.basename(f.name).toLowerCase();
-        if (lowerName == '.ds_store' || f.name.startsWith('__MACOSX/')) return false;
+        if (lowerName == '.ds_store' || f.name.startsWith('__MACOSX/'))
+          return false;
 
         const allowed = {
-          '.jpg', '.jpeg', '.png', '.webp', '.bmp',
-          '.tif', '.tiff', '.heic', '.heif', '.avif', '.gif'
+          '.jpg',
+          '.jpeg',
+          '.png',
+          '.webp',
+          '.bmp',
+          '.tif',
+          '.tiff',
+          '.heic',
+          '.heif',
+          '.avif',
+          '.gif'
         };
         final ext = path.extension(lowerName);
         if (!allowed.contains(ext)) return false;
@@ -331,7 +361,8 @@ class GalleryUtils {
         return;
       }
 
-      debugPrint('[unzip] total in zip: ${archive.files.length}'); // or the async_zip entries list length
+      debugPrint(
+          '[unzip] total in zip: ${archive.files.length}'); // or the async_zip entries list length
       debugPrint('[unzip] usable images: ${entries.length}');
       if (entries.isEmpty) {
         for (final f in archive.files) {
@@ -374,15 +405,14 @@ class GalleryUtils {
   }
 
   static Future<void> processPickedFile(
-      File file,
-      int projectId,
-      ValueNotifier<String> activeProcessingDateNotifier, {
-        required Function onImagesLoaded,
-        required Function(int p1) setProgressInMain,
-        required void Function() increaseSuccessfulImportCount,
-        required void Function(int value) increasePhotosImported,
-      }
-      ) async {
+    File file,
+    int projectId,
+    ValueNotifier<String> activeProcessingDateNotifier, {
+    required Function onImagesLoaded,
+    required Function(int p1) setProgressInMain,
+    required void Function() increaseSuccessfulImportCount,
+    required void Function(int value) increasePhotosImported,
+  }) async {
     if (path.extension(file.path).toLowerCase() == ".zip") {
       if (Platform.isAndroid || Platform.isIOS) {
         await processPickedZipFile(
@@ -392,8 +422,7 @@ class GalleryUtils {
             onImagesLoaded,
             setProgressInMain,
             increaseSuccessfulImportCount,
-            increasePhotosImported
-        );
+            increasePhotosImported);
       } else {
         await processPickedZipFileDesktop(
             file,
@@ -402,8 +431,7 @@ class GalleryUtils {
             onImagesLoaded,
             setProgressInMain,
             increaseSuccessfulImportCount,
-            increasePhotosImported
-        );
+            increasePhotosImported);
       }
     } else if (Utils.isImage(file.path)) {
       increasePhotosImported(1);
@@ -421,23 +449,23 @@ class GalleryUtils {
   }
 
   static Future<void> processPickedZipFile(
-      File file,
-      int projectId,
-      ValueNotifier<String> activeProcessingDateNotifier,
-      Function onImagesLoaded,
-      Function(int p1) setProgressInMain,
-      void Function() increaseSuccessfulImportCount,
-      void Function(int value) increasePhotosImported,
-      ) async {
+    File file,
+    int projectId,
+    ValueNotifier<String> activeProcessingDateNotifier,
+    Function onImagesLoaded,
+    Function(int p1) setProgressInMain,
+    void Function() increaseSuccessfulImportCount,
+    void Function(int value) increasePhotosImported,
+  ) async {
     final reader = ZipFileReader();
     try {
       reader.open(File(file.path));
-      List<ZipEntry> entries = (await reader.entries())
-          .where((entry) {
+      List<ZipEntry> entries = (await reader.entries()).where((entry) {
         final String basenameOnly = path.basename(entry.name);
-        return entry.size >= 10000 && Utils.isImage(basenameOnly) && !entry.isDir;
-      })
-          .toList()
+        return entry.size >= 10000 &&
+            Utils.isImage(basenameOnly) &&
+            !entry.isDir;
+      }).toList()
         ..sort((a, b) => a.name.compareTo(b.name));
 
       increasePhotosImported(entries.length);
@@ -488,7 +516,8 @@ class GalleryUtils {
     }
   }
 
-  static Future<Map<String, dynamic>> tryReadExifFromBytes(Uint8List bytes) async {
+  static Future<Map<String, dynamic>> tryReadExifFromBytes(
+      Uint8List bytes) async {
     try {
       final data = await readExifFromBytes(bytes);
       return Map<String, dynamic>.from(data);
@@ -497,15 +526,9 @@ class GalleryUtils {
     }
   }
 
-  static Future<bool> importXFile(
-      XFile file,
-      int projectId,
+  static Future<bool> importXFile(XFile file, int projectId,
       ValueNotifier<String> activeProcessingDateNotifier,
-      {
-        int? timestamp,
-        VoidCallback? increaseSuccessfulImportCount
-      }
-      ) async {
+      {int? timestamp, VoidCallback? increaseSuccessfulImportCount}) async {
     Uint8List? bytes;
     try {
       int? imageTimestampFromExif;
@@ -519,12 +542,16 @@ class GalleryUtils {
         final Map<String, dynamic> data = await tryReadExifFromBytes(bytes!);
 
         print('[import] EXIF keys: ${data.keys.toList()}');
-        print('[import] DateTimeOriginal: ${data['EXIF DateTimeOriginal']} CreateDate:${data['EXIF CreateDate']} ImageDateTime:${data['Image DateTime']}');
-        print('[import] OffsetTimeOriginal:${data['EXIF OffsetTimeOriginal']} OffsetTime:${data['EXIF OffsetTime']} OffsetTimeDigitized:${data['EXIF OffsetTimeDigitized']}');
-        print('[import] GPSDateStamp:${data['GPS GPSDateStamp']} GPSTimeStamp:${data['GPS GPSTimeStamp']}');
+        print(
+            '[import] DateTimeOriginal: ${data['EXIF DateTimeOriginal']} CreateDate:${data['EXIF CreateDate']} ImageDateTime:${data['Image DateTime']}');
+        print(
+            '[import] OffsetTimeOriginal:${data['EXIF OffsetTimeOriginal']} OffsetTime:${data['EXIF OffsetTime']} OffsetTimeDigitized:${data['EXIF OffsetTimeDigitized']}');
+        print(
+            '[import] GPSDateStamp:${data['GPS GPSDateStamp']} GPSTimeStamp:${data['GPS GPSTimeStamp']}');
 
         if (data.isNotEmpty) {
-          (failedToParseDateMetadata, imageTimestampFromExif) = await GalleryUtils.parseExifDate(data);
+          (failedToParseDateMetadata, imageTimestampFromExif) =
+              await GalleryUtils.parseExifDate(data);
 
           final String? gpsDateStr = data['GPS GPSDateStamp']?.toString();
           final String? gpsTimeStr = data['GPS GPSTimeStamp']?.toString();
@@ -550,10 +577,13 @@ class GalleryUtils {
 
         if (imageTimestampFromExif == null) {
           final String basename = path.basenameWithoutExtension(file.path);
-          final DateTime? parsed = parseAndFormatDate(basename, activeProcessingDateNotifier);
+          final DateTime? parsed =
+              parseAndFormatDate(basename, activeProcessingDateNotifier);
           if (parsed != null) {
-            final DateTime localMidnight = DateTime(parsed.year, parsed.month, parsed.day);
-            final int utcMidnightMs = localMidnight.toUtc().millisecondsSinceEpoch;
+            final DateTime localMidnight =
+                DateTime(parsed.year, parsed.month, parsed.day);
+            final int utcMidnightMs =
+                localMidnight.toUtc().millisecondsSinceEpoch;
             imageTimestampFromExif = utcMidnightMs;
             captureOffsetMinutes = localMidnight.timeZoneOffset.inMinutes;
             failedToParseDateMetadata = false;
@@ -563,24 +593,35 @@ class GalleryUtils {
         if (imageTimestampFromExif == null) {
           final DateTime lm = await File(file.path).lastModified();
           final DateTime localMidnight = DateTime(lm.year, lm.month, lm.day);
-          final int utcMidnightMs = localMidnight.toUtc().millisecondsSinceEpoch;
+          final int utcMidnightMs =
+              localMidnight.toUtc().millisecondsSinceEpoch;
           imageTimestampFromExif = utcMidnightMs;
           captureOffsetMinutes = localMidnight.timeZoneOffset.inMinutes;
           failedToParseDateMetadata = false;
         }
 
         if (captureOffsetMinutes == null && imageTimestampFromExif != null) {
-          captureOffsetMinutes = DateTime.fromMillisecondsSinceEpoch(imageTimestampFromExif, isUtc: true).toLocal().timeZoneOffset.inMinutes;
-
+          captureOffsetMinutes = DateTime.fromMillisecondsSinceEpoch(
+                  imageTimestampFromExif,
+                  isUtc: true)
+              .toLocal()
+              .timeZoneOffset
+              .inMinutes;
         }
       } else {
         imageTimestampFromExif = timestamp;
         bytes = await CameraUtils.readBytesInIsolate(file.path);
-        captureOffsetMinutes = DateTime.fromMillisecondsSinceEpoch(timestamp, isUtc: true).toLocal().timeZoneOffset.inMinutes;
-        print('[import] External timestamp provided -> utcMs:${imageTimestampFromExif} offsetMin:${captureOffsetMinutes}');
+        captureOffsetMinutes =
+            DateTime.fromMillisecondsSinceEpoch(timestamp, isUtc: true)
+                .toLocal()
+                .timeZoneOffset
+                .inMinutes;
+        print(
+            '[import] External timestamp provided -> utcMs:${imageTimestampFromExif} offsetMin:${captureOffsetMinutes}');
       }
 
-      print('[import] FINAL -> utcMs:${imageTimestampFromExif} captureOffsetMin:${captureOffsetMinutes} failedToParse:${failedToParseDateMetadata}');
+      print(
+          '[import] FINAL -> utcMs:${imageTimestampFromExif} captureOffsetMin:${captureOffsetMinutes} failedToParse:${failedToParseDateMetadata}');
 
       final bool result = await CameraUtils.savePhoto(
         file,
@@ -609,7 +650,8 @@ class GalleryUtils {
     }
   }
 
-  static DateTime? parseAndFormatDate(String input, ValueNotifier<String> activeProcessingDateNotifier) {
+  static DateTime? parseAndFormatDate(
+      String input, ValueNotifier<String> activeProcessingDateNotifier) {
     var pattern = RegExp(
       r'\b(\d{4})[-/](\d{1,2})[-/](\d{1,2})|(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})|(\d{1,2})(?:st|nd|rd|th)?\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{2,4})|(\d{1,2})(?:st|nd|rd|th)?\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{2,4})\b',
       caseSensitive: false,
@@ -624,10 +666,16 @@ class GalleryUtils {
     } else if (match.group(4) != null) {
       var year = int.parse(match.group(6)!);
       year = year < 100 ? (year + 2000) : year;
-      testForm = '$year-${match.group(5)?.padLeft(2, '0')}-${match.group(4)?.padLeft(2, '0')}';
+      testForm =
+          '$year-${match.group(5)?.padLeft(2, '0')}-${match.group(4)?.padLeft(2, '0')}';
     } else if (match.group(7) != null) {
-      var month = DateFormat.MMM().parse(match.group(8)!).month.toString().padLeft(2, '0');
-      testForm = '${match.group(9)}-$month-${match.group(7)?.replaceAll(RegExp(r'[a-z]+'), '').padLeft(2, '0')}';
+      var month = DateFormat.MMM()
+          .parse(match.group(8)!)
+          .month
+          .toString()
+          .padLeft(2, '0');
+      testForm =
+          '${match.group(9)}-$month-${match.group(7)?.replaceAll(RegExp(r'[a-z]+'), '').padLeft(2, '0')}';
     }
 
     if (testForm == null) return null;
@@ -653,7 +701,9 @@ class GalleryUtils {
     }
 
     if (outFile.existsSync()) {
-      try { outFile.deleteSync(); } catch (e) {
+      try {
+        outFile.deleteSync();
+      } catch (e) {
         log('Cannot delete pre-existing zip: $e');
         send.send('error');
         return;
@@ -675,8 +725,8 @@ class GalleryUtils {
     }
 
     try {
-      final Map<String,int> rawCounts = {};
-      final Map<String,int> stabCounts = {};
+      final Map<String, int> rawCounts = {};
+      final Map<String, int> stabCounts = {};
       final items = <({File file, String arcPath, int len})>[];
 
       for (final entry in params.filesToExport.entries) {
@@ -686,10 +736,13 @@ class GalleryUtils {
 
         for (final p in files) {
           final f = File(p);
-          if (!f.existsSync()) { missing++; continue; }
+          if (!f.existsSync()) {
+            missing++;
+            continue;
+          }
 
           final base = path.basenameWithoutExtension(p);
-          final ext  = path.extension(p);
+          final ext = path.extension(p);
           final ts = int.tryParse(base);
           final dt = ts != null
               ? DateTime.fromMillisecondsSinceEpoch(ts, isUtc: true).toLocal()
@@ -714,7 +767,12 @@ class GalleryUtils {
 
       if (items.isEmpty) {
         log('No files to add (missing=$missing, badname=$badname)');
-        send.send({'type': 'summary', 'added': added, 'missing': missing, 'badname': badname});
+        send.send({
+          'type': 'summary',
+          'added': added,
+          'missing': missing,
+          'badname': badname
+        });
         send.send('error');
         return;
       }
@@ -749,24 +807,36 @@ class GalleryUtils {
       ok = false;
       log('zipFiles crashed: $e\n$st');
     } finally {
-      send.send({'type': 'summary', 'added': added, 'missing': missing, 'badname': badname});
+      send.send({
+        'type': 'summary',
+        'added': added,
+        'missing': missing,
+        'badname': badname
+      });
       if (ok) {
         send.send(100.0);
         send.send('success');
       } else {
-        try { if (outFile.existsSync()) outFile.deleteSync(); } catch (_) {}
+        try {
+          if (outFile.existsSync()) outFile.deleteSync();
+        } catch (_) {}
         send.send('error');
       }
     }
   }
 
-  static Future<String> exportZipFile(int projectId, String projectName, Map<String, List<String>> filesToExport, void Function(double exportProgressIn) setExportProgress) async {
+  static Future<String> exportZipFile(
+      int projectId,
+      String projectName,
+      Map<String, List<String>> filesToExport,
+      void Function(double exportProgressIn) setExportProgress) async {
     try {
       String zipTargetPath;
       String zipWorkPath;
 
       if (Platform.isAndroid || Platform.isIOS) {
-        zipWorkPath = await DirUtils.getZipFileExportPath(projectId, projectName);
+        zipWorkPath =
+            await DirUtils.getZipFileExportPath(projectId, projectName);
         final exportsDir = File(zipWorkPath).parent;
         if (!await exportsDir.exists()) {
           await exportsDir.create(recursive: true);
@@ -774,7 +844,8 @@ class GalleryUtils {
         zipTargetPath = zipWorkPath;
       } else {
         final tmpDir = await DirUtils.getTemporaryDirPath();
-        final tmpName = '${projectName.isEmpty ? "Export" : projectName}-AgeLapse-Export-${DateTime.now().millisecondsSinceEpoch}.zip';
+        final tmpName =
+            '${projectName.isEmpty ? "Export" : projectName}-AgeLapse-Export-${DateTime.now().millisecondsSinceEpoch}.zip';
         zipWorkPath = path.join(tmpDir, tmpName);
         final workDir = File(zipWorkPath).parent;
         if (!await workDir.exists()) {
@@ -786,7 +857,8 @@ class GalleryUtils {
       final receivePort = ReceivePort();
       await Isolate.spawn(
         zipFiles,
-        ZipIsolateParams(receivePort.sendPort, projectId, projectName, filesToExport, zipWorkPath),
+        ZipIsolateParams(receivePort.sendPort, projectId, projectName,
+            filesToExport, zipWorkPath),
       );
 
       String result = 'error';
@@ -801,7 +873,8 @@ class GalleryUtils {
           continue;
         }
         if (message is Map && message['type'] == 'summary') {
-          debugPrint('[zip] summary added=${message['added']} missing=${message['missing']} badname=${message['badname']}');
+          debugPrint(
+              '[zip] summary added=${message['added']} missing=${message['missing']} badname=${message['badname']}');
           if ((message['added'] ?? 0) == 0) {
             debugPrint('[zip] WARNING: 0 files added');
           }
@@ -822,22 +895,31 @@ class GalleryUtils {
       }
 
       if (!(Platform.isAndroid || Platform.isIOS) && result == 'success') {
-        final suggested = '${projectName.isEmpty ? "Export" : projectName}-AgeLapse-Export.zip';
+        final suggested =
+            '${projectName.isEmpty ? "Export" : projectName}-AgeLapse-Export.zip';
         final location = await getSaveLocation(
           suggestedName: suggested,
-          acceptedTypeGroups: const [XTypeGroup(label: 'zip', extensions: ['zip'])],
+          acceptedTypeGroups: const [
+            XTypeGroup(label: 'zip', extensions: ['zip'])
+          ],
         );
         if (location == null) {
-          try { File(zipWorkPath).deleteSync(); } catch (_) {}
+          try {
+            File(zipWorkPath).deleteSync();
+          } catch (_) {}
           return 'error';
         }
-        zipTargetPath = location.path.toLowerCase().endsWith('.zip') ? location.path : '${location.path}.zip';
+        zipTargetPath = location.path.toLowerCase().endsWith('.zip')
+            ? location.path
+            : '${location.path}.zip';
         final targetDir = File(zipTargetPath).parent;
         if (!await targetDir.exists()) {
           await targetDir.create(recursive: true);
         }
         await File(zipWorkPath).copy(zipTargetPath);
-        try { File(zipWorkPath).deleteSync(); } catch (_) {}
+        try {
+          File(zipWorkPath).deleteSync();
+        } catch (_) {}
       }
 
       return result;
@@ -846,7 +928,8 @@ class GalleryUtils {
     }
   }
 
-  static Future<String> waitForThumbnail(String thumbnailPath, int projectId, {Duration timeout = const Duration(seconds: 30)}) async {
+  static Future<String> waitForThumbnail(String thumbnailPath, int projectId,
+      {Duration timeout = const Duration(seconds: 30)}) async {
     final sw = Stopwatch()..start();
     int? lastLen;
     while (sw.elapsed < timeout) {
@@ -879,5 +962,6 @@ class ZipIsolateParams {
   final Map<String, List<String>> filesToExport;
   final String zipFilePath;
 
-  ZipIsolateParams(this.sendPort, this.projectId, this.projectName, this.filesToExport, this.zipFilePath);
+  ZipIsolateParams(this.sendPort, this.projectId, this.projectName,
+      this.filesToExport, this.zipFilePath);
 }

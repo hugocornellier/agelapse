@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import '../../styles/styles.dart';
 import 'create_project_page.dart';
@@ -55,7 +54,10 @@ class WelcomePagePartTwoState extends State<WelcomePagePartTwo> {
               textAlign: TextAlign.center,
               text: TextSpan(
                 text: 'Advanced\n',
-                style: const TextStyle(fontSize: 26, color: Colors.white, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                    fontSize: 26,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold),
                 children: <InlineSpan>[
                   WidgetSpan(
                     child: GradientText(
@@ -103,21 +105,15 @@ class WelcomePagePartTwoState extends State<WelcomePagePartTwo> {
         child: Text(
           text.toUpperCase(),
           style: const TextStyle(
-              fontSize: 15,
-              color: Colors.white,
-              fontWeight: FontWeight.bold
-          ),
+              fontSize: 15, color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
     );
   }
 
   void navigateToNextPage({bool? takingGuidePhoto}) {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => const CreateProjectPage(
-        showCloseButton: false
-      ))
-    );
+    Navigator.of(context).pushReplacement(MaterialPageRoute(
+        builder: (context) => const CreateProjectPage(showCloseButton: false)));
   }
 }
 

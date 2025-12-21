@@ -23,7 +23,8 @@ class ManualStabilizationPage extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _ManualStabilizationPageState createState() => _ManualStabilizationPageState();
+  _ManualStabilizationPageState createState() =>
+      _ManualStabilizationPageState();
 }
 
 class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
@@ -65,13 +66,11 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
 
   @override
   void initState() {
-
     super.initState();
     _inputController1.text = '0';
     _inputController2.text = '0';
     _inputController3.text = '1';
     _inputController4.text = '0';
-
 
     _inputController1.addListener(_onParamChanged);
     _inputController2.addListener(_onParamChanged);
@@ -101,9 +100,12 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
   }
 
   Future<void> init() async {
-    projectOrientation = await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
-    String resolution = await SettingsUtil.loadVideoResolution(widget.projectId.toString());
-    aspectRatio = await SettingsUtil.loadAspectRatio(widget.projectId.toString());
+    projectOrientation =
+        await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
+    String resolution =
+        await SettingsUtil.loadVideoResolution(widget.projectId.toString());
+    aspectRatio =
+        await SettingsUtil.loadAspectRatio(widget.projectId.toString());
     double? aspectRatioDecimal = StabUtils.getAspectRatioAsDecimal(aspectRatio);
 
     final double? shortSideDouble = StabUtils.getShortSide(resolution);
@@ -114,7 +116,8 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
     canvasHeight = projectOrientation == "landscape" ? shortSide : longSide;
 
     String localRawPath;
-    if (widget.imagePath.contains('/stabilized/') || widget.imagePath.contains('\\stabilized\\')) {
+    if (widget.imagePath.contains('/stabilized/') ||
+        widget.imagePath.contains('\\stabilized\\')) {
       localRawPath = await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
         p.basenameWithoutExtension(widget.imagePath),
         widget.projectId,
@@ -130,7 +133,8 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
     if (await rawFile.exists()) {
       _rawImageBytes = await rawFile.readAsBytes();
       // Get dimensions in isolate to avoid blocking UI
-      final dims = await ImageUtils.getImageDimensionsInIsolate(_rawImageBytes!);
+      final dims =
+          await ImageUtils.getImageDimensionsInIsolate(_rawImageBytes!);
       if (dims != null) {
         _rawImageWidth = dims.$1;
         final double defaultScale = canvasWidth / _rawImageWidth!.toDouble();
@@ -148,7 +152,7 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBody: true,           // let the body draw underneath the bottom bar
+      extendBody: true, // let the body draw underneath the bottom bar
       appBar: AppBar(
         toolbarHeight: 48,
         elevation: 0,
@@ -175,11 +179,11 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
                   content: const SingleChildScrollView(
                     child: Text(
                       '• Goal: Center each pupil on its vertical line and place both pupils exactly on the horizontal line.\n'
-                          '• Horiz. Offset (whole number, ±): Shifts the image left/right. Increase to move the face right, decrease to move left.\n'
-                          '• Vert. Offset (whole number, ±): Shifts the image up/down. Increase to move the face up, decrease to move down.\n'
-                          '• Scale Factor (positive decimal): Zooms in or out. Values > 1 enlarge, values between 0 and 1 shrink.\n'
-                          '• Rotation (decimal, ±): Tilts the image. Positive values rotate clockwise, negative counter-clockwise.\n\n'
-                          'Use the toolbar arrows or type exact numbers. Keep adjusting until the pupils touch all three guides.',
+                      '• Horiz. Offset (whole number, ±): Shifts the image left/right. Increase to move the face right, decrease to move left.\n'
+                      '• Vert. Offset (whole number, ±): Shifts the image up/down. Increase to move the face up, decrease to move down.\n'
+                      '• Scale Factor (positive decimal): Zooms in or out. Values > 1 enlarge, values between 0 and 1 shrink.\n'
+                      '• Rotation (decimal, ±): Tilts the image. Positive values rotate clockwise, negative counter-clockwise.\n\n'
+                      'Use the toolbar arrows or type exact numbers. Keep adjusting until the pupils touch all three guides.',
                     ),
                   ),
                   actions: [
@@ -215,7 +219,8 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
                   Expanded(
                     child: TextField(
                       controller: _inputController1,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true, signed: true),
                       onEditingComplete: _validateInputs,
                       decoration: const InputDecoration(
                         labelText: 'Horiz. Offset',
@@ -229,7 +234,8 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
                   Expanded(
                     child: TextField(
                       controller: _inputController2,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true, signed: true),
                       onEditingComplete: _validateInputs,
                       decoration: const InputDecoration(
                         labelText: 'Vert. Offset',
@@ -247,7 +253,8 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
                   Expanded(
                     child: TextField(
                       controller: _inputController3,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       onEditingComplete: _validateInputs,
                       decoration: const InputDecoration(
                         labelText: 'Scale Factor',
@@ -261,7 +268,8 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
                   Expanded(
                     child: TextField(
                       controller: _inputController4,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true, signed: true),
                       onEditingComplete: _validateInputs,
                       decoration: const InputDecoration(
                         labelText: 'Rotation (Deg)',
@@ -283,8 +291,10 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
                 Builder(builder: (context) {
                   final double fullWidth = MediaQuery.of(context).size.width;
                   final bool isPortrait = projectOrientation == 'portrait';
-                  final double previewWidth = isPortrait ? fullWidth * 0.8 : fullWidth;
-                  final double previewHeight = previewWidth * _canvasHeight! / _canvasWidth!;
+                  final double previewWidth =
+                      isPortrait ? fullWidth * 0.8 : fullWidth;
+                  final double previewHeight =
+                      previewWidth * _canvasHeight! / _canvasWidth!;
                   return Center(
                     child: Stack(
                       children: [
@@ -296,15 +306,15 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
                         ),
                         CustomPaint(
                           painter: GridPainterSE(
-                              (_rightEyeXGoal! - _leftEyeXGoal!) / (2 * _canvasWidth!),
+                              (_rightEyeXGoal! - _leftEyeXGoal!) /
+                                  (2 * _canvasWidth!),
                               _bothEyesYGoal! / _canvasHeight!,
                               null,
                               null,
                               null,
                               aspectRatio,
                               projectOrientation,
-                              hideToolTip: true
-                          ),
+                              hideToolTip: true),
                           child: SizedBox(
                             width: previewWidth,
                             height: previewHeight,
@@ -334,7 +344,8 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
   }
 
   bool _isWholeNumber(String s) => RegExp(r'^-?\d+$').hasMatch(s);
-  bool _isPositiveDecimal(String s) => RegExp(r'^\d+(\.\d+)?$').hasMatch(s) && double.parse(s) > 0;
+  bool _isPositiveDecimal(String s) =>
+      RegExp(r'^\d+(\.\d+)?$').hasMatch(s) && double.parse(s) > 0;
   bool _isSignedDecimal(String s) => RegExp(r'^-?\d+(\.\d+)?$').hasMatch(s);
 
   void _showInvalidInputDialog(List<String> fields) {
@@ -345,9 +356,9 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
           title: const Text('Invalid input'),
           content: Text(
             'Please check these fields:\n• ${fields.join('\n• ')}\n\n'
-                'Horiz./Vert. Offset: whole numbers like -10 or 25\n'
-                'Scale Factor: positive numbers like 1 or 2.5\n'
-                'Rotation: any number like -1.5 or 30',
+            'Horiz./Vert. Offset: whole numbers like -10 or 25\n'
+            'Scale Factor: positive numbers like 1 or 2.5\n'
+            'Rotation: any number like -1.5 or 30',
           ),
           actions: [
             TextButton(
@@ -362,7 +373,8 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
 
   Future<void> _loadSavedTransformAndBootPreview() async {
     final String timestamp = p.basenameWithoutExtension(rawPhotoPath);
-    final Map<String, dynamic>? row = await DB.instance.getPhotoByTimestamp(timestamp, widget.projectId);
+    final Map<String, dynamic>? row =
+        await DB.instance.getPhotoByTimestamp(timestamp, widget.projectId);
     final String prefix = DB.instance.getStabilizedColumn(projectOrientation);
 
     double tx = 0;
@@ -405,14 +417,17 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
     final List<String> invalid = [];
     if (!_isWholeNumber(_inputController1.text)) invalid.add('Horiz. Offset');
     if (!_isWholeNumber(_inputController2.text)) invalid.add('Vert. Offset');
-    if (!_isPositiveDecimal(_inputController3.text)) invalid.add('Scale Factor');
+    if (!_isPositiveDecimal(_inputController3.text))
+      invalid.add('Scale Factor');
     if (!_isSignedDecimal(_inputController4.text)) invalid.add('Rotation');
     if (invalid.isNotEmpty) {
       _showInvalidInputDialog(invalid);
     }
   }
 
-  Future<void> processRequest(double? translateX, double? translateY, double? scaleFactor, double? rotationDegrees, {bool save = false}) async {
+  Future<void> processRequest(double? translateX, double? translateY,
+      double? scaleFactor, double? rotationDegrees,
+      {bool save = false}) async {
     final int requestId = ++_currentRequestId;
     if (mounted) {
       setState(() {
@@ -424,7 +439,8 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
         return;
       }
 
-      final Uint8List? imageBytesStabilized = await StabUtils.generateStabilizedImageBytesCVAsync(
+      final Uint8List? imageBytesStabilized =
+          await StabUtils.generateStabilizedImageBytesCVAsync(
         _rawImageBytes!,
         rotationDegrees ?? 0,
         scaleFactor ?? 1,
@@ -447,10 +463,13 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
 
       if (save && _faceStabilizer != null) {
         final String projectOrientation =
-        await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
+            await SettingsUtil.loadProjectOrientation(
+                widget.projectId.toString());
         final String stabilizedPhotoPath =
-        await StabUtils.getStabilizedImagePath(rawPhotoPath, widget.projectId, projectOrientation);
-        final String stabThumbPath = FaceStabilizer.getStabThumbnailPath(stabilizedPhotoPath);
+            await StabUtils.getStabilizedImagePath(
+                rawPhotoPath, widget.projectId, projectOrientation);
+        final String stabThumbPath =
+            FaceStabilizer.getStabThumbnailPath(stabilizedPhotoPath);
 
         final File stabImageFile = File(stabilizedPhotoPath);
         final File stabThumbFile = File(stabThumbPath);
@@ -467,10 +486,13 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
           rotationDegrees: rotationDegrees,
           scaleFactor: scaleFactor,
         );
-        await _faceStabilizer!.createStabThumbnail(stabilizedPhotoPath.replaceAll('.jpg', '.png'));
+        await _faceStabilizer!.createStabThumbnail(
+            stabilizedPhotoPath.replaceAll('.jpg', '.png'));
       }
 
-      if (requestId != _currentRequestId || !mounted || _faceStabilizer == null) {
+      if (requestId != _currentRequestId ||
+          !mounted ||
+          _faceStabilizer == null) {
         return;
       }
 
@@ -491,7 +513,8 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
         _lastMult = scaleFactor == null ? null : scaleFactor / _baseScale;
         _lastRot = rotationDegrees;
       });
-    } catch (_) {} finally {
+    } catch (_) {
+    } finally {
       if (mounted && requestId == _currentRequestId) {
         setState(() {
           _isProcessing = false;
@@ -509,7 +532,8 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
     _suppressListener = false;
 
     final now = DateTime.now();
-    if (_lastApplyAt == null || now.difference(_lastApplyAt!) >= _applyThrottle) {
+    if (_lastApplyAt == null ||
+        now.difference(_lastApplyAt!) >= _applyThrottle) {
       _lastApplyAt = now;
       double? tx = double.tryParse(_inputController1.text);
       double? ty = double.tryParse(_inputController2.text);
@@ -530,10 +554,11 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
       double sc = _baseScale * mult;
 
       const double tolerance = 0.0001;
-      bool changed = (_lastTx == null || (_lastTx! - (tx ?? 0)).abs() > tolerance) ||
-          (_lastTy == null || (_lastTy! - (ty ?? 0)).abs() > tolerance) ||
-          (_lastMult == null || (_lastMult! - mult).abs() > tolerance) ||
-          (_lastRot == null || (_lastRot! - (rot ?? 0)).abs() > tolerance);
+      bool changed =
+          (_lastTx == null || (_lastTx! - (tx ?? 0)).abs() > tolerance) ||
+              (_lastTy == null || (_lastTy! - (ty ?? 0)).abs() > tolerance) ||
+              (_lastMult == null || (_lastMult! - mult).abs() > tolerance) ||
+              (_lastRot == null || (_lastRot! - (rot ?? 0)).abs() > tolerance);
 
       if (changed) {
         processRequest(tx, ty, sc, rot, save: true);
@@ -554,7 +579,8 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
     _suppressListener = false;
 
     final now = DateTime.now();
-    if (_lastApplyAt == null || now.difference(_lastApplyAt!) >= _applyThrottle) {
+    if (_lastApplyAt == null ||
+        now.difference(_lastApplyAt!) >= _applyThrottle) {
       _lastApplyAt = now;
       double mult = double.tryParse(_inputController3.text) ?? 1.0;
       double? rot = double.tryParse(_inputController4.text);
@@ -568,7 +594,9 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
 
     void _forceApplyNow() {
       final now = DateTime.now();
-      if (_lastApplyAt != null && now.difference(_lastApplyAt!) < const Duration(milliseconds: 50)) return;
+      if (_lastApplyAt != null &&
+          now.difference(_lastApplyAt!) < const Duration(milliseconds: 50))
+        return;
       _lastApplyAt = now;
       double? tx = double.tryParse(_inputController1.text);
       double? ty = double.tryParse(_inputController2.text);
@@ -608,7 +636,8 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
             children: [
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTapDown: (_) => _startHold('scaleMinus', () => _adjustScale(-0.01)),
+                onTapDown: (_) =>
+                    _startHold('scaleMinus', () => _adjustScale(-0.01)),
                 onTapUp: (_) => _stopHold('scaleMinus'),
                 onTapCancel: () => _stopHold('scaleMinus'),
                 onPanEnd: (_) => _stopHold('scaleMinus'),
@@ -627,7 +656,8 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
               ),
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTapDown: (_) => _startHold('scalePlus', () => _adjustScale(0.01)),
+                onTapDown: (_) =>
+                    _startHold('scalePlus', () => _adjustScale(0.01)),
                 onTapUp: (_) => _stopHold('scalePlus'),
                 onTapCancel: () => _stopHold('scalePlus'),
                 onPanEnd: (_) => _stopHold('scalePlus'),
@@ -646,7 +676,8 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
               ),
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTapDown: (_) => _startHold('left', () => _adjustOffsets(dx: -1)),
+                onTapDown: (_) =>
+                    _startHold('left', () => _adjustOffsets(dx: -1)),
                 onTapUp: (_) => _stopHold('left'),
                 onTapCancel: () => _stopHold('left'),
                 onPanEnd: (_) => _stopHold('left'),
@@ -665,7 +696,8 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
               ),
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTapDown: (_) => _startHold('right', () => _adjustOffsets(dx: 1)),
+                onTapDown: (_) =>
+                    _startHold('right', () => _adjustOffsets(dx: 1)),
                 onTapUp: (_) => _stopHold('right'),
                 onTapCancel: () => _stopHold('right'),
                 onPanEnd: (_) => _stopHold('right'),
@@ -684,7 +716,8 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
               ),
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTapDown: (_) => _startHold('up', () => _adjustOffsets(dy: -1)),
+                onTapDown: (_) =>
+                    _startHold('up', () => _adjustOffsets(dy: -1)),
                 onTapUp: (_) => _stopHold('up'),
                 onTapCancel: () => _stopHold('up'),
                 onPanEnd: (_) => _stopHold('up'),
@@ -703,7 +736,8 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
               ),
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTapDown: (_) => _startHold('down', () => _adjustOffsets(dy: 1)),
+                onTapDown: (_) =>
+                    _startHold('down', () => _adjustOffsets(dy: 1)),
                 onTapUp: (_) => _stopHold('down'),
                 onTapCancel: () => _stopHold('down'),
                 onPanEnd: (_) => _stopHold('down'),

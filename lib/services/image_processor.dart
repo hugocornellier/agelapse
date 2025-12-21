@@ -32,10 +32,12 @@ class ImageProcessor {
 
       final String extension = path.extension(imagePath!).toLowerCase();
       if (extension == ".avif") {
-        final Uint8List? avifBytes = await CameraUtils.readBytesInIsolate(imagePath!);
+        final Uint8List? avifBytes =
+            await CameraUtils.readBytesInIsolate(imagePath!);
         int? overrideTs;
         if (avifBytes != null) {
-          final Map<String, dynamic> exif = await GalleryUtils.tryReadExifFromBytes(avifBytes);
+          final Map<String, dynamic> exif =
+              await GalleryUtils.tryReadExifFromBytes(avifBytes);
           if (exif.isNotEmpty) {
             final res = await GalleryUtils.parseExifDate(exif);
             overrideTs = res.$2;

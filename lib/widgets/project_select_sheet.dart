@@ -29,7 +29,8 @@ class ProjectSelectionSheet extends StatefulWidget {
 
 class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
   List<Map<String, dynamic>> _projects = [];
-  final TextEditingController _editProjectNameController = TextEditingController();
+  final TextEditingController _editProjectNameController =
+      TextEditingController();
 
   @override
   void initState() {
@@ -44,29 +45,34 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
   }
 
   Future<void> _getProjects() async {
-    final List<Map<String, dynamic>> projects = await DB.instance.getAllProjects();
+    final List<Map<String, dynamic>> projects =
+        await DB.instance.getAllProjects();
     setState(() => _projects = projects);
   }
 
   Future<void> _onNewButtonTapped() async {
-    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (context) => const CreateProjectPage()));
+    Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const CreateProjectPage()));
   }
 
   static Future<String> getProjectImage(int projectId) async {
-    final String stabilizedDirPath = await DirUtils.getStabilizedDirPath(projectId);
-    final String activeProjectOrientation = await SettingsUtil.loadProjectOrientation(projectId.toString());
-    final String videoOutputPath = await DirUtils.getVideoOutputPath(projectId, activeProjectOrientation);
-    final String gifPath = videoOutputPath.replaceAll(path.extension(videoOutputPath), ".gif");
+    final String stabilizedDirPath =
+        await DirUtils.getStabilizedDirPath(projectId);
+    final String activeProjectOrientation =
+        await SettingsUtil.loadProjectOrientation(projectId.toString());
+    final String videoOutputPath =
+        await DirUtils.getVideoOutputPath(projectId, activeProjectOrientation);
+    final String gifPath =
+        videoOutputPath.replaceAll(path.extension(videoOutputPath), ".gif");
     if (await File(gifPath).exists()) return gifPath;
 
-    final String stabilizedDirActivePath = path.join(stabilizedDirPath, activeProjectOrientation);
+    final String stabilizedDirActivePath =
+        path.join(stabilizedDirPath, activeProjectOrientation);
     String? pngPath = await checkForStabilizedImage(stabilizedDirActivePath);
     if (pngPath != null) return pngPath;
 
-    final String stabilizedDirInactivePath = path.join(
-        stabilizedDirPath,
-        activeProjectOrientation == "portrait" ? "landscape" : "portrait"
-    );
+    final String stabilizedDirInactivePath = path.join(stabilizedDirPath,
+        activeProjectOrientation == "portrait" ? "landscape" : "portrait");
     pngPath = await checkForStabilizedImage(stabilizedDirInactivePath);
     if (pngPath != null) return pngPath;
 
@@ -76,14 +82,20 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
     if (!dirExists) return "";
 
     final files = await rawPhotoDir.list().toList();
-    return files.firstWhere((file) => file is File && Utils.isImage(file.path), orElse: () => File('')).path;
+    return files
+        .firstWhere((file) => file is File && Utils.isImage(file.path),
+            orElse: () => File(''))
+        .path;
   }
 
   static Future<String?> checkForStabilizedImage(dirPath) async {
     final directory = Directory(dirPath);
     if (await directory.exists()) {
       try {
-        final pngFiles = await directory.list().where((item) => item.path.endsWith('.png') && item is File).toList();
+        final pngFiles = await directory
+            .list()
+            .where((item) => item.path.endsWith('.png') && item is File)
+            .toList();
         if (pngFiles.isNotEmpty) {
           return pngFiles.first.path;
         }
@@ -117,7 +129,9 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: _projects.map((project) => _buildProjectItem(project)).toList(),
+                children: _projects
+                    .map((project) => _buildProjectItem(project))
+                    .toList(),
               ),
             ),
           ),
@@ -134,7 +148,11 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                     children: [
                       Row(
                         children: [
-                          const Text('Projects', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+                          const Text('Projects',
+                              style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white)),
                           const SizedBox(width: 12.0),
                           GestureDetector(
                             onTap: _onNewButtonTapped,
@@ -179,14 +197,17 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
       Navigator.of(context).pop();
     }
 
-    Utils.navigateToScreenReplaceNoAnim(context, MainNavigation(
-      projectId: project['id'],
-      projectName: project['name'],
-      showFlashingCircle: false,
-    ));
+    Utils.navigateToScreenReplaceNoAnim(
+        context,
+        MainNavigation(
+          projectId: project['id'],
+          projectName: project['name'],
+          showFlashingCircle: false,
+        ));
   }
 
-  void _showProjectOptionsPopup(BuildContext context, Map<String, dynamic> project) {
+  void _showProjectOptionsPopup(
+      BuildContext context, Map<String, dynamic> project) {
     showModalBottomSheet(
       context: context,
       builder: (context) {
@@ -215,7 +236,8 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
     );
   }
 
-  void _showEditProjectNamePopup(BuildContext context, Map<String, dynamic> project) {
+  void _showEditProjectNamePopup(
+      BuildContext context, Map<String, dynamic> project) {
     _editProjectNameController.text = project['name'];
     showDialog(
       context: context,
@@ -224,7 +246,8 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
           title: const Text('Edit Project Name'),
           content: TextField(
             controller: _editProjectNameController,
-            decoration: const InputDecoration(hintText: 'Enter new project name'),
+            decoration:
+                const InputDecoration(hintText: 'Enter new project name'),
           ),
           actions: [
             TextButton(
@@ -250,7 +273,8 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
     );
   }
 
-  void _showDeleteProjectPopup(BuildContext context, Map<String, dynamic> project) {
+  void _showDeleteProjectPopup(
+      BuildContext context, Map<String, dynamic> project) {
     showDialog(
       context: context,
       builder: (context) {
@@ -278,7 +302,8 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
   }
 
   Future<void> _deleteProject(int projectId, context) async {
-    final String defaultProject = await DB.instance.getSettingValueByTitle('default_project');
+    final String defaultProject =
+        await DB.instance.getSettingValueByTitle('default_project');
     if (defaultProject == projectId.toString()) {
       DB.instance.setSettingByTitle('default_project', 'none');
     }
@@ -322,16 +347,18 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
               onLongPress: () => _showProjectOptionsPopup(context, project),
               onSecondaryTap: () => _showProjectOptionsPopup(context, project),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 0.0),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 8.0, horizontal: 0.0),
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(8.0),
                   child: Row(
                     children: [
                       CircleAvatar(
-                        backgroundImage: snapshot.hasData && snapshot.data!.isNotEmpty
-                            ? FileImage(File(snapshot.data!))
-                            : null,
+                        backgroundImage:
+                            snapshot.hasData && snapshot.data!.isNotEmpty
+                                ? FileImage(File(snapshot.data!))
+                                : null,
                         backgroundColor: Colors.grey,
                         radius: 24.0,
                         child: snapshot.hasData && snapshot.data!.isNotEmpty
@@ -344,7 +371,8 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                         children: [
                           Text(
                             project['name'],
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 16),
                           ),
                           Row(
                             children: [
@@ -352,13 +380,17 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                                 width: 5.0,
                                 height: 5.0,
                                 decoration: BoxDecoration(
-                                  color: takenToday ? Colors.greenAccent : Colors.orange,
+                                  color: takenToday
+                                      ? Colors.greenAccent
+                                      : Colors.orange,
                                   shape: BoxShape.circle,
                                 ),
                               ),
                               const SizedBox(width: 8.0),
                               Text(
-                                takenToday ? 'Photo taken today' : 'Photo not taken',
+                                takenToday
+                                    ? 'Photo taken today'
+                                    : 'Photo not taken',
                                 style: TextStyle(color: Colors.grey[600]),
                               ),
                             ],
@@ -375,7 +407,6 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
       },
     );
   }
-
 }
 
 class _DeleteProjectDialog extends StatefulWidget {
@@ -421,7 +452,8 @@ class __DeleteProjectDialogState extends State<_DeleteProjectDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text("Are you sure you want to delete this project? Type the project name (${widget.projectName}) to confirm."),
+          Text(
+              "Are you sure you want to delete this project? Type the project name (${widget.projectName}) to confirm."),
           const SizedBox(height: 8),
           TextField(
             controller: _controller,

@@ -79,12 +79,19 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
     widget.cancelStabCallback();
 
     final projectOrientation = outputImageLoader.projectOrientation!;
-    offSetXColName = projectOrientation == 'landscape' ? "eyeOffsetXLandscape" : "eyeOffsetXPortrait";
-    offSetYColName = projectOrientation == 'landscape' ? "eyeOffsetYLandscape" : "eyeOffsetYPortrait";
+    offSetXColName = projectOrientation == 'landscape'
+        ? "eyeOffsetXLandscape"
+        : "eyeOffsetXPortrait";
+    offSetYColName = projectOrientation == 'landscape'
+        ? "eyeOffsetYLandscape"
+        : "eyeOffsetYPortrait";
 
-    await DB.instance.setSettingByTitle(offSetXColName!, _offsetX.toString(), widget.projectId.toString());
-    await DB.instance.setSettingByTitle(offSetYColName!, _offsetY.toString(), widget.projectId.toString());
-    await DB.instance.resetStabilizationStatusForProject(widget.projectId, projectOrientation);
+    await DB.instance.setSettingByTitle(
+        offSetXColName!, _offsetX.toString(), widget.projectId.toString());
+    await DB.instance.setSettingByTitle(
+        offSetYColName!, _offsetY.toString(), widget.projectId.toString());
+    await DB.instance.resetStabilizationStatusForProject(
+        widget.projectId, projectOrientation);
     widget.refreshSettings();
     await DirUtils.deleteDirectoryContents(Directory(stabDirPath!));
 
@@ -105,7 +112,8 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
   }
 
   void _getWidgetHeight() {
-    final RenderBox renderBox = _widgetKey.currentContext!.findRenderObject() as RenderBox;
+    final RenderBox renderBox =
+        _widgetKey.currentContext!.findRenderObject() as RenderBox;
     setState(() {
       _widgetHeight = renderBox.size.height;
     });
@@ -115,54 +123,55 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
   Widget build(BuildContext context) {
     return PopScope(
       canPop: !_hasUnsavedChanges,
-        onPopInvokedWithResult: (didPop, result) async {
-          if (didPop) return;
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
 
-          if (_hasUnsavedChanges) {
-            bool? saveChanges = await showDialog<bool>(
-              context: context,
-              builder: (BuildContext context) {
-                return AlertDialog(
-                  title: const Text('Unsaved Changes'),
-                  content: const Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text('You have unsaved changes. Do you want to save them before leaving?'),
-                      SizedBox(height: 16.0),
-                      Text(
-                        '⚠️ WARNING: ',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      Text('All photos will need to be re-stabilized.'),
-                    ],
-                  ),
-                  actions: <Widget>[
-                    TextButton(
-                      child: const Text('Cancel'),
-                      onPressed: () => Navigator.of(context).pop(false),
+        if (_hasUnsavedChanges) {
+          bool? saveChanges = await showDialog<bool>(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text('Unsaved Changes'),
+                content: const Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                        'You have unsaved changes. Do you want to save them before leaving?'),
+                    SizedBox(height: 16.0),
+                    Text(
+                      '⚠️ WARNING: ',
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    TextButton(
-                      child: const Text('Save'),
-                      onPressed: () => Navigator.of(context).pop(true),
-                    ),
+                    Text('All photos will need to be re-stabilized.'),
                   ],
-                );
-              },
-            );
+                ),
+                actions: <Widget>[
+                  TextButton(
+                    child: const Text('Cancel'),
+                    onPressed: () => Navigator.of(context).pop(false),
+                  ),
+                  TextButton(
+                    child: const Text('Save'),
+                    onPressed: () => Navigator.of(context).pop(true),
+                  ),
+                ],
+              );
+            },
+          );
 
-            if (saveChanges == true) {
-              await _saveChanges();
-              if (context.mounted) {
-                Navigator.of(context).pop();
-              }
-            } else if (saveChanges == false) {
-              if (context.mounted) {
-                Navigator.of(context).pop();
-              }
+          if (saveChanges == true) {
+            await _saveChanges();
+            if (context.mounted) {
+              Navigator.of(context).pop();
+            }
+          } else if (saveChanges == false) {
+            if (context.mounted) {
+              Navigator.of(context).pop();
             }
           }
-        },
+        }
+      },
       child: Scaffold(
         appBar: AppBar(
           title: const Text("Output Position"),
@@ -172,14 +181,16 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                 icon: _isSaving
                     ? const CircularProgressIndicator(color: Colors.white)
                     : (_showCheckmark
-                    ? const Icon(Icons.check_circle, color: Colors.green)
-                    : const Icon(Icons.playlist_add_check_circle)),
+                        ? const Icon(Icons.check_circle, color: Colors.green)
+                        : const Icon(Icons.playlist_add_check_circle)),
                 onPressed: _isSaving
                     ? null
                     : () async {
-                  final bool shouldProceed = await Utils.showConfirmChangeDialog(context, "eye position");
-                  if (shouldProceed) await _saveChanges();
-                },
+                        final bool shouldProceed =
+                            await Utils.showConfirmChangeDialog(
+                                context, "eye position");
+                        if (shouldProceed) await _saveChanges();
+                      },
               ),
           ],
         ),
@@ -198,22 +209,25 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                   padding: const EdgeInsets.all(12),
                   margin: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
-                    color: Colors.black.withAlpha(230), // Equivalent to opacity 0.9
-                    borderRadius: BorderRadius.circular(16), // More rounded corners
+                    color: Colors.black
+                        .withAlpha(230), // Equivalent to opacity 0.9
+                    borderRadius:
+                        BorderRadius.circular(16), // More rounded corners
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Text(
                         "Drag guide lines to optimal position. Tap\n"
-                            "checkmark to save changes. Note: Camera guide\n"
-                            "lines don't affect output guide lines.",
+                        "checkmark to save changes. Note: Camera guide\n"
+                        "lines don't affect output guide lines.",
                         style: TextStyle(color: Colors.white, fontSize: 12),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(width: 8),
                       GestureDetector(
-                        onTap: () => setState(() => _isInfoWidgetVisible = false),
+                        onTap: () =>
+                            setState(() => _isInfoWidgetVisible = false),
                         child: const Icon(
                           Icons.close,
                           color: Colors.white,
@@ -237,9 +251,15 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
         builder: (BuildContext context, BoxConstraints constraints) {
           double aspectRatioValue;
           if (outputImageLoader.aspectRatio == '4:3') {
-            aspectRatioValue = outputImageLoader.projectOrientation == 'landscape' ? 3 / 4 : 4 / 3;
+            aspectRatioValue =
+                outputImageLoader.projectOrientation == 'landscape'
+                    ? 3 / 4
+                    : 4 / 3;
           } else {
-            aspectRatioValue = outputImageLoader.projectOrientation == 'landscape' ? 9 / 16 : 16 / 9;
+            aspectRatioValue =
+                outputImageLoader.projectOrientation == 'landscape'
+                    ? 9 / 16
+                    : 16 / 9;
           }
 
           final double maxW = constraints.maxWidth;
@@ -281,9 +301,11 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                         final distanceToHorizontalLine = (dy - centerY).abs();
 
                         setState(() {
-                          _isDraggingVertical = (distanceToLeftX < 20 || distanceToRightX < 20);
+                          _isDraggingVertical =
+                              (distanceToLeftX < 20 || distanceToRightX < 20);
                           _draggingRight = distanceToRightX < distanceToLeftX;
-                          _isDraggingHorizontal = (!_isDraggingVertical && distanceToHorizontalLine < 20);
+                          _isDraggingHorizontal = (!_isDraggingVertical &&
+                              distanceToHorizontalLine < 20);
                         });
                       },
                       onPanUpdate: (details) {

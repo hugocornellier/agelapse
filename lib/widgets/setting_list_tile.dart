@@ -7,7 +7,13 @@ class SettingListTile extends StatelessWidget {
   final bool? showInfo;
   final bool? disabled;
 
-  const SettingListTile({super.key, required this.title, required this.infoContent, required this.contentWidget, required this.showInfo, this.disabled});
+  const SettingListTile(
+      {super.key,
+      required this.title,
+      required this.infoContent,
+      required this.contentWidget,
+      required this.showInfo,
+      this.disabled});
 
   void _showInfoDialog(BuildContext context) {
     showDialog(

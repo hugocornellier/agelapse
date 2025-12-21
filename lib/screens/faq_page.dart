@@ -14,18 +14,21 @@ class FAQPage extends StatelessWidget {
           children: const [
             FAQItem(
               question: "Does AgeLapse store or collect my data?",
-              answer: "AgeLapse does not collect or store any data. As AgeLapse runs locally on"
+              answer:
+                  "AgeLapse does not collect or store any data. As AgeLapse runs locally on"
                   " your device, your data is never transmitted over a network. ",
             ),
             FAQItem(
               question: "Is AgeLapse open-source?",
-              answer: "Yes! We are proud to be 100% open-source and free, forever. The "
+              answer:
+                  "Yes! We are proud to be 100% open-source and free, forever. The "
                   "source code can be viewed at: github.com/hugocornellier/agelapse \n\nA note to developers: We"
                   " welcome PRs, bug reports or feature suggestions. Get in touch! ",
             ),
             FAQItem(
               question: "How does facial detection and stabilization work?",
-              answer: "Our app uses Google MLKit to detect facial landmarks such as the eyes, nose, and mouth. "
+              answer:
+                  "Our app uses Google MLKit to detect facial landmarks such as the eyes, nose, and mouth. "
                   "By identifying these key points, we can ensure that they remain in the same position "
                   "relative to each other across all photos. This process of stabilization aligns the landmarks "
                   "consistently, resulting in a smooth and cohesive time-lapse video.",
@@ -55,10 +58,8 @@ class FAQItem extends StatelessWidget {
           children: [
             Text(
               question,
-              style: const TextStyle(
-                  fontSize: 15.0,
-                  fontWeight: FontWeight.bold
-              ),
+              style:
+                  const TextStyle(fontSize: 15.0, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8.0),
             Text(

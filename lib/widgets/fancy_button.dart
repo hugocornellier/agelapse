@@ -3,13 +3,12 @@ import 'package:flutter/material.dart';
 class FancyButton {
   static Widget buildElevatedButton(
     BuildContext context, {
-      required String text,
-      required IconData icon,
-      required Color color,
-      required VoidCallback onPressed,
-      Color? backgroundColor,
-    }
-  ) {
+    required String text,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onPressed,
+    Color? backgroundColor,
+  }) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
         backgroundColor: backgroundColor ?? const Color(0xff212121),

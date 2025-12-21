@@ -8,7 +8,8 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import '../services/database_helper.dart';
 
 class NotificationUtil {
-  static final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  static final FlutterLocalNotificationsPlugin
+      _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
   static Future<void> cancelNotification(int projectId) async {
     await _flutterLocalNotificationsPlugin.cancel(projectId);
@@ -43,12 +44,13 @@ class NotificationUtil {
       );
 
       await _flutterLocalNotificationsPlugin
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
           ?.createNotificationChannel(channel);
     }
 
     const initializationSettingsAndroid =
-    AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('@mipmap/ic_launcher');
     final initializationSettingsDarwin = DarwinInitializationSettings();
 
     final initializationSettings = InitializationSettings(
@@ -89,7 +91,8 @@ class NotificationUtil {
     );
   }
 
-  static Future<void> scheduleDailyNotification(int projectId, String dailyNotificationTime) async {
+  static Future<void> scheduleDailyNotification(
+      int projectId, String dailyNotificationTime) async {
     final now = DateTime.now();
     final int timestamp = int.parse(dailyNotificationTime);
     final DateTime dateTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
@@ -98,7 +101,8 @@ class NotificationUtil {
     final String? projectName = await DB.instance.getProjectNameById(projectId);
     print("projectName => ${projectName}");
 
-    final tz.TZDateTime scheduledDate = _calculateScheduledDate(now, selectedTime);
+    final tz.TZDateTime scheduledDate =
+        _calculateScheduledDate(now, selectedTime);
 
     const androidDetails = AndroidNotificationDetails(
       'daily_notification_channel_id',
@@ -125,10 +129,11 @@ class NotificationUtil {
     );
 
     final List<PendingNotificationRequest> pendingNotifications =
-    await _flutterLocalNotificationsPlugin.pendingNotificationRequests();
+        await _flutterLocalNotificationsPlugin.pendingNotificationRequests();
   }
 
-  static tz.TZDateTime _calculateScheduledDate(DateTime now, TimeOfDay selectedTime) {
+  static tz.TZDateTime _calculateScheduledDate(
+      DateTime now, TimeOfDay selectedTime) {
     final tz.TZDateTime scheduledDate = tz.TZDateTime(
       tz.local,
       now.year,
@@ -137,7 +142,9 @@ class NotificationUtil {
       selectedTime.hour,
       selectedTime.minute,
     );
-    return scheduledDate.isBefore(now) ? scheduledDate.add(const Duration(days: 1)) : scheduledDate;
+    return scheduledDate.isBefore(now)
+        ? scheduledDate.add(const Duration(days: 1))
+        : scheduledDate;
   }
 
   static DateTime getFivePMLocalTime() {

@@ -48,7 +48,8 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
     });
 
     rawImagePath = await _getRawPhotoPath();
-    faceStabilizer = FaceStabilizer(widget.projectId, widget.userRanOutOfSpaceCallback);
+    faceStabilizer =
+        FaceStabilizer(widget.projectId, widget.userRanOutOfSpaceCallback);
     await faceStabilizer.init();
 
     final bytes = await CameraUtils.readBytesInIsolate(rawImagePath);
@@ -74,10 +75,8 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
     });
 
     List<dynamic>? facesRaw = await faceStabilizer.getFacesFromRawPhotoPath(
-        rawImagePath,
-        imageWidth,
-        filterByFaceSize: false
-    );
+        rawImagePath, imageWidth,
+        filterByFaceSize: false);
 
     if (facesRaw == null) {
       setState(() {
@@ -100,7 +99,8 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
     );
   }
 
-  void _handleContourTapped(dynamic tappedFace, VoidCallback userRanOutOfSpaceCallback) async {
+  void _handleContourTapped(
+      dynamic tappedFace, VoidCallback userRanOutOfSpaceCallback) async {
     final bool? userConfirmed = await _showConfirmationDialog();
     if (userConfirmed!) {
       setState(() {
@@ -119,7 +119,8 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
       );
       final bool successful = result.success;
 
-      final String loadStatus = successful ? "Stabilization successful" : "Stabilization failed";
+      final String loadStatus =
+          successful ? "Stabilization successful" : "Stabilization failed";
 
       await DB.instance.setNewVideoNeeded(widget.projectId);
       widget.reloadImagesInGallery();
@@ -171,43 +172,46 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
       body: Center(
         child: stabCompletedSuccessfully == null
             ? !isLoading
-            ? LayoutBuilder(
-          builder: (context, constraints) {
-            return _buildImageWithContours(constraints, widget.userRanOutOfSpaceCallback);
-          },
-        )
-            : Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 20),
-            Text(loadingStatus),
-          ],
-        )
+                ? LayoutBuilder(
+                    builder: (context, constraints) {
+                      return _buildImageWithContours(
+                          constraints, widget.userRanOutOfSpaceCallback);
+                    },
+                  )
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const CircularProgressIndicator(),
+                      const SizedBox(height: 20),
+                      Text(loadingStatus),
+                    ],
+                  )
             : stabCompletedSuccessfully!
-            ? Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.check, color: Colors.green),
-            const SizedBox(height: 20),
-            Text(loadingStatus),
-          ],
-        )
-            : Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, color: Colors.red),
-            const SizedBox(height: 20),
-            Text(loadingStatus),
-          ],
-        ),
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.check, color: Colors.green),
+                      const SizedBox(height: 20),
+                      Text(loadingStatus),
+                    ],
+                  )
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline, color: Colors.red),
+                      const SizedBox(height: 20),
+                      Text(loadingStatus),
+                    ],
+                  ),
       ),
     );
   }
 
-  Widget _buildImageWithContours(BoxConstraints constraints, VoidCallback userRanOutOfSpaceCallback) {
+  Widget _buildImageWithContours(
+      BoxConstraints constraints, VoidCallback userRanOutOfSpaceCallback) {
     final displaySize = _calculateDisplaySize(constraints);
-    final contourRects = FaceContourPainter.calculateContours(faces, originalImageSize, displaySize);
+    final contourRects = FaceContourPainter.calculateContours(
+        faces, originalImageSize, displaySize);
 
     faceContours = faces
         .asMap()
@@ -229,7 +233,8 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
             painter: FaceContourPainter(faces, originalImageSize, displaySize),
             size: displaySize,
           ),
-          ...faceContours.map((entry) => _buildContourRect(entry.value, entry.key, userRanOutOfSpaceCallback)),
+          ...faceContours.map((entry) => _buildContourRect(
+              entry.value, entry.key, userRanOutOfSpaceCallback)),
         ],
       ),
     );
@@ -240,13 +245,16 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
     final displayAspectRatio = constraints.maxWidth / constraints.maxHeight;
 
     if (imageAspectRatio > displayAspectRatio) {
-      return Size(constraints.maxWidth, constraints.maxWidth / imageAspectRatio);
+      return Size(
+          constraints.maxWidth, constraints.maxWidth / imageAspectRatio);
     } else {
-      return Size(constraints.maxHeight * imageAspectRatio, constraints.maxHeight);
+      return Size(
+          constraints.maxHeight * imageAspectRatio, constraints.maxHeight);
     }
   }
 
-  Widget _buildContourRect(Rect rect, dynamic face, VoidCallback userRanOutOfSpaceCallback) {
+  Widget _buildContourRect(
+      Rect rect, dynamic face, VoidCallback userRanOutOfSpaceCallback) {
     return Positioned(
       left: rect.left,
       top: rect.top,
@@ -269,7 +277,8 @@ class FaceContourPainter extends CustomPainter {
 
   FaceContourPainter(this.faces, this.originalImageSize, this.displaySize);
 
-  static List<Rect> calculateContours(List<dynamic> faces, Size originalImageSize, Size displaySize) {
+  static List<Rect> calculateContours(
+      List<dynamic> faces, Size originalImageSize, Size displaySize) {
     final double scaleX = displaySize.width / originalImageSize.width;
     final double scaleY = displaySize.height / originalImageSize.height;
     return faces.map((face) {

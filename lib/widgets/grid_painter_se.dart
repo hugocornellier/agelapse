@@ -12,20 +12,22 @@ class GridPainterSE extends CustomPainter {
   final bool hideToolTip;
 
   GridPainterSE(
-    this.offsetX,
-    this.offsetY,
-    this.ghostImageOffsetX,
-    this.ghostImageOffsetY,
-    this.guideImage,
-    this.aspectRatio,
-    this.projectOrientation,
-    {this.hideToolTip = false}
-  );
+      this.offsetX,
+      this.offsetY,
+      this.ghostImageOffsetX,
+      this.ghostImageOffsetY,
+      this.guideImage,
+      this.aspectRatio,
+      this.projectOrientation,
+      {this.hideToolTip = false});
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (guideImage != null && ghostImageOffsetX != null && ghostImageOffsetY != null) {
-      final imagePaint = Paint()..color = Colors.white.withAlpha(242); // Equivalent to opacity 0.95
+    if (guideImage != null &&
+        ghostImageOffsetX != null &&
+        ghostImageOffsetY != null) {
+      final imagePaint = Paint()
+        ..color = Colors.white.withAlpha(242); // Equivalent to opacity 0.95
       final imageWidth = guideImage!.width.toDouble();
       final imageHeight = guideImage!.height.toDouble();
       final scale = _calculateImageScale(size.width, imageWidth, imageHeight);
@@ -33,20 +35,24 @@ class GridPainterSE extends CustomPainter {
       final scaledWidth = imageWidth * scale;
       final scaledHeight = imageHeight * scale;
 
-      final eyeOffsetFromCenterInGhostPhoto = (0.5 - ghostImageOffsetY!) * scaledHeight;
+      final eyeOffsetFromCenterInGhostPhoto =
+          (0.5 - ghostImageOffsetY!) * scaledHeight;
       final eyeOffsetFromCenterGuideLines = (0.5 - offsetY) * size.height;
-      final difference = eyeOffsetFromCenterGuideLines - eyeOffsetFromCenterInGhostPhoto;
+      final difference =
+          eyeOffsetFromCenterGuideLines - eyeOffsetFromCenterInGhostPhoto;
 
       final rect = Rect.fromCenter(
         center: Offset(size.width / 2, (size.height / 2) - difference),
         width: scaledWidth,
         height: scaledHeight,
       );
-      canvas.drawImageRect(guideImage!, Offset.zero & Size(imageWidth, imageHeight), rect, imagePaint);
+      canvas.drawImageRect(guideImage!,
+          Offset.zero & Size(imageWidth, imageHeight), rect, imagePaint);
     }
 
     final paint = Paint()
-      ..color = Colors.lightBlueAccent.withAlpha(128) // Equivalent to opacity 0.5
+      ..color =
+          Colors.lightBlueAccent.withAlpha(128) // Equivalent to opacity 0.5
       ..strokeWidth = 2;
 
     final offsetXInPixels = size.width * offsetX;
@@ -71,12 +77,18 @@ class GridPainterSE extends CustomPainter {
 
     canvas.drawLine(const Offset(0, 0), Offset(0, lineLength), cornerPaint);
     canvas.drawLine(const Offset(0, 0), Offset(lineLength, 0), cornerPaint);
-    canvas.drawLine(Offset(size.width, 0), Offset(size.width, lineLength), cornerPaint);
-    canvas.drawLine(Offset(size.width, 0), Offset(size.width - lineLength, 0), cornerPaint);
-    canvas.drawLine(Offset(0, size.height), Offset(0, size.height - lineLength), cornerPaint);
-    canvas.drawLine(Offset(0, size.height), Offset(lineLength, size.height), cornerPaint);
-    canvas.drawLine(Offset(size.width, size.height), Offset(size.width, size.height - lineLength), cornerPaint);
-    canvas.drawLine(Offset(size.width, size.height), Offset(size.width - lineLength, size.height), cornerPaint);
+    canvas.drawLine(
+        Offset(size.width, 0), Offset(size.width, lineLength), cornerPaint);
+    canvas.drawLine(
+        Offset(size.width, 0), Offset(size.width - lineLength, 0), cornerPaint);
+    canvas.drawLine(Offset(0, size.height), Offset(0, size.height - lineLength),
+        cornerPaint);
+    canvas.drawLine(
+        Offset(0, size.height), Offset(lineLength, size.height), cornerPaint);
+    canvas.drawLine(Offset(size.width, size.height),
+        Offset(size.width, size.height - lineLength), cornerPaint);
+    canvas.drawLine(Offset(size.width, size.height),
+        Offset(size.width - lineLength, size.height), cornerPaint);
 
     if (!hideToolTip) {
       // Draw text background rectangle
@@ -85,7 +97,8 @@ class GridPainterSE extends CustomPainter {
         ..style = PaintingStyle.fill;
 
       const textPadding = 8.0;
-      final text = 'Inter-Eye Distance: ${(offsetX * 2 * 100).toStringAsFixed(2)} %\n'
+      final text =
+          'Inter-Eye Distance: ${(offsetX * 2 * 100).toStringAsFixed(2)} %\n'
           'Vertical Offset: ${(offsetY * 100).toStringAsFixed(2)} %';
 
       final textPainter = TextPainter(
@@ -112,12 +125,14 @@ class GridPainterSE extends CustomPainter {
       canvas.drawRRect(rrect, textBackgroundPaint);
 
       // Draw text on top of the rectangle
-      textPainter.paint(canvas, const Offset(10 + textPadding, 10 + textPadding));
+      textPainter.paint(
+          canvas, const Offset(10 + textPadding, 10 + textPadding));
       textPainter.dispose();
     }
   }
 
-  double _calculateImageScale(double canvasWidth, double imageWidth, double imageHeight) {
+  double _calculateImageScale(
+      double canvasWidth, double imageWidth, double imageHeight) {
     return (canvasWidth * offsetX) / (imageWidth * ghostImageOffsetX!);
   }
 

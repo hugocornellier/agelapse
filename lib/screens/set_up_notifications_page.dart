@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import '../services/settings_cache.dart';
 import '../styles/styles.dart';
@@ -110,7 +109,9 @@ class SetUpNotificationsPageState extends State<SetUpNotificationsPage> {
       child: ElevatedButton(
         onPressed: () => index == 1 ? navigateToSettings() : close(),
         style: ElevatedButton.styleFrom(
-          backgroundColor: text == "Later" ? Colors.grey.shade800 : AppColors.darkerLightBlue,
+          backgroundColor: text == "Later"
+              ? Colors.grey.shade800
+              : AppColors.darkerLightBlue,
           minimumSize: const Size(double.infinity, 50),
           padding: const EdgeInsets.symmetric(vertical: 18.0),
           shape: RoundedRectangleBorder(
@@ -120,10 +121,7 @@ class SetUpNotificationsPageState extends State<SetUpNotificationsPage> {
         child: Text(
           text.toUpperCase(),
           style: const TextStyle(
-              fontSize: 15,
-              color: Colors.white,
-              fontWeight: FontWeight.bold
-          ),
+              fontSize: 15, color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
     );
@@ -132,7 +130,8 @@ class SetUpNotificationsPageState extends State<SetUpNotificationsPage> {
   void navigateToSettings() async {
     SettingsUtil.setHasOpenedNotifPageToTrue(widget.projectId.toString());
 
-    final bool isDefaultProject = await ProjectUtils.isDefaultProject(widget.projectId);
+    final bool isDefaultProject =
+        await ProjectUtils.isDefaultProject(widget.projectId);
 
     showModalBottomSheet(
       context: context,

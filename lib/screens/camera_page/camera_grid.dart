@@ -13,7 +13,9 @@ class CameraGridOverlay extends StatefulWidget {
   final double offsetX;
   final double offsetY;
 
-  const CameraGridOverlay(this.projectId, this.gridMode, this.offsetX, this.offsetY, {super.key});
+  const CameraGridOverlay(
+      this.projectId, this.gridMode, this.offsetX, this.offsetY,
+      {super.key});
 
   @override
   CameraGridOverlayState createState() => CameraGridOverlayState();
@@ -32,20 +34,26 @@ class CameraGridOverlayState extends State<CameraGridOverlay> {
   }
 
   Future<void> _initGuidePhoto() async {
-    final projectOrientation = await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
-    final stabPhotos = await DB.instance.getStabilizedPhotosByProjectID(widget.projectId, projectOrientation);
+    final projectOrientation =
+        await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
+    final stabPhotos = await DB.instance
+        .getStabilizedPhotosByProjectID(widget.projectId, projectOrientation);
 
     if (stabPhotos.isNotEmpty) {
       final guidePhoto = stabPhotos.first;
       final timestamp = guidePhoto['timestamp'].toString();
       final rawPhotoPath = await getRawPhotoPathFromTimestamp(timestamp);
-      final stabilizedPath = await DirUtils.getStabilizedImagePath(rawPhotoPath, widget.projectId);
+      final stabilizedPath =
+          await DirUtils.getStabilizedImagePath(rawPhotoPath, widget.projectId);
 
-      final stabilizedColumn = DB.instance.getStabilizedColumn(projectOrientation);
+      final stabilizedColumn =
+          DB.instance.getStabilizedColumn(projectOrientation);
       final stabColOffsetX = "${stabilizedColumn}OffsetX";
       final stabColOffsetY = "${stabilizedColumn}OffsetY";
-      final offsetXDataRaw = await DB.instance.getPhotoColumnValueByTimestamp(timestamp, stabColOffsetX);
-      final offsetYDataRaw = await DB.instance.getPhotoColumnValueByTimestamp(timestamp, stabColOffsetY);
+      final offsetXDataRaw = await DB.instance
+          .getPhotoColumnValueByTimestamp(timestamp, stabColOffsetX);
+      final offsetYDataRaw = await DB.instance
+          .getPhotoColumnValueByTimestamp(timestamp, stabColOffsetY);
       final offsetXData = double.tryParse(offsetXDataRaw);
       final offsetYData = double.tryParse(offsetYDataRaw);
 
@@ -90,14 +98,16 @@ class CameraGridOverlayState extends State<CameraGridOverlay> {
   }
 
   Future<String> getRawPhotoPathFromTimestamp(String timestamp) async =>
-      await DirUtils.getRawPhotoPathFromTimestampAndProjectId(timestamp, widget.projectId);
+      await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
+          timestamp, widget.projectId);
 
   @override
   Widget build(BuildContext context) {
     return IgnorePointer(
       ignoring: true,
       child: CustomPaint(
-        painter: _GridPainter(widget.offsetX, widget.offsetY, ghostImageOffsetX, ghostImageOffsetY, guideImage, widget.projectId, widget.gridMode),
+        painter: _GridPainter(widget.offsetX, widget.offsetY, ghostImageOffsetX,
+            ghostImageOffsetY, guideImage, widget.projectId, widget.gridMode),
       ),
     );
   }
@@ -112,7 +122,8 @@ class _GridPainter extends CustomPainter {
   final int projectId;
   final GridMode gridMode;
 
-  _GridPainter(this.offsetX, this.offsetY, this.ghostImageOffsetX, this.ghostImageOffsetY, this.guideImage, this.projectId, this.gridMode);
+  _GridPainter(this.offsetX, this.offsetY, this.ghostImageOffsetX,
+      this.ghostImageOffsetY, this.guideImage, this.projectId, this.gridMode);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -127,7 +138,8 @@ class _GridPainter extends CustomPainter {
       _drawHorizontalLine(canvas, size, paint);
     }
 
-    if (gridMode == GridMode.ghostOnly || gridMode == GridMode.doubleGhostGrid) {
+    if (gridMode == GridMode.ghostOnly ||
+        gridMode == GridMode.doubleGhostGrid) {
       _drawGuideImage(canvas, size);
     }
   }
@@ -148,8 +160,11 @@ class _GridPainter extends CustomPainter {
   }
 
   void _drawGuideImage(Canvas canvas, Size size) {
-    if (guideImage != null && ghostImageOffsetX != null && ghostImageOffsetY != null) {
-      final imagePaint = Paint()..color = Colors.white.withAlpha(128); // Equivalent to opacity 0.5
+    if (guideImage != null &&
+        ghostImageOffsetX != null &&
+        ghostImageOffsetY != null) {
+      final imagePaint = Paint()
+        ..color = Colors.white.withAlpha(128); // Equivalent to opacity 0.5
       final imageWidth = guideImage!.width.toDouble();
       final imageHeight = guideImage!.height.toDouble();
       final scale = _calculateImageScale(size.width, imageWidth, imageHeight);
@@ -157,20 +172,24 @@ class _GridPainter extends CustomPainter {
       final scaledWidth = imageWidth * scale;
       final scaledHeight = imageHeight * scale;
 
-      final eyeOffsetFromCenterInGhostPhoto = (0.5 - ghostImageOffsetY!) * scaledHeight;
+      final eyeOffsetFromCenterInGhostPhoto =
+          (0.5 - ghostImageOffsetY!) * scaledHeight;
       final eyeOffsetFromCenterGuideLines = (0.5 - offsetY) * size.height;
-      final difference = eyeOffsetFromCenterGuideLines - eyeOffsetFromCenterInGhostPhoto;
+      final difference =
+          eyeOffsetFromCenterGuideLines - eyeOffsetFromCenterInGhostPhoto;
 
       final rect = Rect.fromCenter(
         center: Offset(size.width / 2, (size.height / 2) - difference),
         width: scaledWidth,
         height: scaledHeight,
       );
-      canvas.drawImageRect(guideImage!, Offset.zero & Size(imageWidth, imageHeight), rect, imagePaint);
+      canvas.drawImageRect(guideImage!,
+          Offset.zero & Size(imageWidth, imageHeight), rect, imagePaint);
     }
   }
 
-  double _calculateImageScale(double canvasWidth, double imageWidth, double imageHeight) {
+  double _calculateImageScale(
+      double canvasWidth, double imageWidth, double imageHeight) {
     return (canvasWidth * offsetX) / (imageWidth * ghostImageOffsetX!);
   }
 

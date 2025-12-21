@@ -41,7 +41,10 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
     final directory = Directory(dirPath);
     if (await directory.exists()) {
       try {
-        final pngFiles = await directory.list().where((item) => item.path.endsWith('.png') && item is File).toList();
+        final pngFiles = await directory
+            .list()
+            .where((item) => item.path.endsWith('.png') && item is File)
+            .toList();
         if (pngFiles.isNotEmpty) {
           return pngFiles.first.path;
         }
@@ -104,7 +107,11 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
                     children: [
                       const Row(
                         children: [
-                          Text('Create New Project', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+                          Text('Create New Project',
+                              style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white)),
                         ],
                       ),
                       if (widget.showCloseButton)
@@ -140,7 +147,8 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
             'assets/images/face.png', // proj type = face
             width: 100,
             height: 100,
-            color: _selectedImage == 'assets/images/face.png' ? Colors.blue : null,
+            color:
+                _selectedImage == 'assets/images/face.png' ? Colors.blue : null,
           ),
         ),
         GestureDetector(
@@ -153,7 +161,8 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
             'assets/images/musc.png', // proj type = body
             width: 100,
             height: 100,
-            color: _selectedImage == 'assets/images/musc.png' ? Colors.blue : null,
+            color:
+                _selectedImage == 'assets/images/musc.png' ? Colors.blue : null,
           ),
         ),
         GestureDetector(
@@ -166,7 +175,8 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
             'assets/images/preg.png', // proj type = body
             width: 100,
             height: 100,
-            color: _selectedImage == 'assets/images/preg.png' ? Colors.blue : null,
+            color:
+                _selectedImage == 'assets/images/preg.png' ? Colors.blue : null,
           ),
         ),
       ],
@@ -195,7 +205,8 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
               borderRadius: BorderRadius.circular(6.0),
               borderSide: BorderSide.none,
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
           ),
         ),
       ),
@@ -231,9 +242,11 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
     );
 
     try {
-      final String defaultProject = await DB.instance.getSettingValueByTitle('default_project');
+      final String defaultProject =
+          await DB.instance.getSettingValueByTitle('default_project');
       if (defaultProject == "none") {
-        await DB.instance.setSettingByTitle('default_project', projectId.toString());
+        await DB.instance
+            .setSettingByTitle('default_project', projectId.toString());
       }
     } catch (e) {
       print("Error while setting new default project: $e");
@@ -241,11 +254,14 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
 
     try {
       DateTime fivePMLocalTime = NotificationUtil.getFivePMLocalTime();
-      final dailyNotificationTime = fivePMLocalTime.millisecondsSinceEpoch.toString();
+      final dailyNotificationTime =
+          fivePMLocalTime.millisecondsSinceEpoch.toString();
 
-      await DB.instance.setSettingByTitle('daily_notification_time', dailyNotificationTime, projectId.toString());
+      await DB.instance.setSettingByTitle('daily_notification_time',
+          dailyNotificationTime, projectId.toString());
       await NotificationUtil.initializeNotifications();
-      await NotificationUtil.scheduleDailyNotification(projectId, dailyNotificationTime);
+      await NotificationUtil.scheduleDailyNotification(
+          projectId, dailyNotificationTime);
     } catch (e) {
       print("Error while setting up notifications: $e");
     }
@@ -266,8 +282,7 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
     return FractionallySizedBox(
       widthFactor: 1.0,
       child: ElevatedButton(
-          onPressed: _createProject,
-
+        onPressed: _createProject,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.darkerLightBlue,
           minimumSize: const Size(double.infinity, 50),
@@ -279,10 +294,7 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
         child: const Text(
           "CREATE",
           style: TextStyle(
-              fontSize: 15,
-              color: Colors.white,
-              fontWeight: FontWeight.bold
-          ),
+              fontSize: 15, color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
     );

@@ -24,7 +24,8 @@ class ProjectsPageState extends State<ProjectsPage> {
   @override
   void initState() {
     super.initState();
-    final bool isDesktop = !kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
+    final bool isDesktop =
+        !kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
     if (!isDesktop) {
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.portraitUp,
@@ -34,21 +35,26 @@ class ProjectsPageState extends State<ProjectsPage> {
   }
 
   Future<void> _getProjects() async {
-    final List<Map<String, dynamic>> projects = await DB.instance.getAllProjects();
+    final List<Map<String, dynamic>> projects =
+        await DB.instance.getAllProjects();
     setState(() => _projects = projects);
   }
 
   @override
   Widget build(BuildContext context) {
-    final bool isDesktop = !kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
+    final bool isDesktop =
+        !kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
 
     Widget bodyContents = isDesktop
-        ? (_projects.isEmpty ? _buildWelcomePageDesktop() : _buildProjectSelectScreenDesktop())
-        : (_projects.isEmpty ? _buildWelcomePage() : _buildProjectSelectScreen());
+        ? (_projects.isEmpty
+            ? _buildWelcomePageDesktop()
+            : _buildProjectSelectScreenDesktop())
+        : (_projects.isEmpty
+            ? _buildWelcomePage()
+            : _buildProjectSelectScreen());
 
-    final Color backgroundColor = _projects.isEmpty
-        ? const Color(0xff151517)
-        : Colors.black;
+    final Color backgroundColor =
+        _projects.isEmpty ? const Color(0xff151517) : Colors.black;
 
     return Scaffold(
       appBar: AppBar(
@@ -66,13 +72,12 @@ class ProjectsPageState extends State<ProjectsPage> {
         ProjectSelectionSheet(
           isDefaultProject: false,
           showCloseButton: false,
-          cancelStabCallback: () {  } ,
+          cancelStabCallback: () {},
         ),
         Expanded(
             child: Container(
-              color: const Color(0xff121212),
-            )
-        )
+          color: const Color(0xff121212),
+        ))
       ],
     );
   }
@@ -120,8 +125,8 @@ class ProjectsPageState extends State<ProjectsPage> {
               padding: EdgeInsets.symmetric(horizontal: 16.0),
               child: Text(
                 'The most powerful tool for creating aging timelapses.'
-                    '\n\n'
-                    '100% free, forever.',
+                '\n\n'
+                '100% free, forever.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
@@ -158,10 +163,7 @@ class ProjectsPageState extends State<ProjectsPage> {
         child: Text(
           text.toUpperCase(),
           style: const TextStyle(
-              fontSize: 15,
-              color: Colors.white,
-              fontWeight: FontWeight.bold
-          ),
+              fontSize: 15, color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
     );
@@ -208,8 +210,8 @@ class ProjectsPageState extends State<ProjectsPage> {
               padding: EdgeInsets.symmetric(horizontal: 16.0),
               child: Text(
                 'The most powerful tool for creating aging timelapses.'
-                    '\n\n'
-                    '100% free, forever.',
+                '\n\n'
+                '100% free, forever.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,

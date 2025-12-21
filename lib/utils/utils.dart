@@ -37,9 +37,8 @@ class Utils {
 
   static String formatUnixTimestampPlatformAware(
     int timestamp, {
-      int? captureOffsetMinutes,
-    }
-  ) {
+    int? captureOffsetMinutes,
+  }) {
     final utc = DateTime.fromMillisecondsSinceEpoch(timestamp, isUtc: true);
     final wall = captureOffsetMinutes != null
         ? utc.add(Duration(minutes: captureOffsetMinutes))
@@ -56,13 +55,21 @@ class Utils {
     return '${fmt.format(wall)} UTC$sign$hh:$mm';
   }
 
-  static String formatUnixTimestamp2(int timestamp, {int? captureOffsetMinutes}) {
-    final DateTime utc = DateTime.fromMillisecondsSinceEpoch(timestamp, isUtc: true);
-    final DateTime localLike = captureOffsetMinutes != null ? utc.add(Duration(minutes: captureOffsetMinutes)) : utc.toLocal();
+  static String formatUnixTimestamp2(int timestamp,
+      {int? captureOffsetMinutes}) {
+    final DateTime utc =
+        DateTime.fromMillisecondsSinceEpoch(timestamp, isUtc: true);
+    final DateTime localLike = captureOffsetMinutes != null
+        ? utc.add(Duration(minutes: captureOffsetMinutes))
+        : utc.toLocal();
     final DateTime nowRef = DateTime.now();
     final String formattedTime = DateFormat('h:mm a').format(localLike);
-    final String formattedDate = localLike.year == nowRef.year ? DateFormat('MMMM d').format(localLike) : DateFormat('MMMM d y').format(localLike);
-    final Duration tzOff = captureOffsetMinutes != null ? Duration(minutes: captureOffsetMinutes) : localLike.timeZoneOffset;
+    final String formattedDate = localLike.year == nowRef.year
+        ? DateFormat('MMMM d').format(localLike)
+        : DateFormat('MMMM d y').format(localLike);
+    final Duration tzOff = captureOffsetMinutes != null
+        ? Duration(minutes: captureOffsetMinutes)
+        : localLike.timeZoneOffset;
     final String sign = tzOff.inMinutes >= 0 ? '+' : '-';
     final int absMin = tzOff.inMinutes.abs();
     final String hh = (absMin ~/ 60).toString().padLeft(2, '0');
@@ -86,9 +93,11 @@ class Utils {
   }
 
   static void navigateToScreenReplace(BuildContext context, Widget screen) =>
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => screen));
+      Navigator.pushReplacement(
+          context, MaterialPageRoute(builder: (_) => screen));
 
-  static void navigateToScreenReplaceNoAnim(BuildContext context, Widget screen) {
+  static void navigateToScreenReplaceNoAnim(
+      BuildContext context, Widget screen) {
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
@@ -110,8 +119,21 @@ class Utils {
     final String extension = path.extension(filepath).toLowerCase();
     if (extension == ".pdf") return false;
 
-    var validExtensions = {".heic", ".heif", ".jpg", ".jpeg", ".jfif", ".pjpeg",
-      ".pjp", ".png", ".apng", ".tiff", ".bmp", ".webp", ".avif"};
+    var validExtensions = {
+      ".heic",
+      ".heif",
+      ".jpg",
+      ".jpeg",
+      ".jfif",
+      ".pjpeg",
+      ".pjp",
+      ".png",
+      ".apng",
+      ".tiff",
+      ".bmp",
+      ".webp",
+      ".avif"
+    };
     if (validExtensions.contains(extension)) return true;
 
     final String? mimeType = lookupMimeType(filepath);
@@ -122,32 +144,32 @@ class Utils {
     return false;
   }
 
-  static Future<bool> showConfirmChangeDialog(BuildContext context, String toChange) async {
+  static Future<bool> showConfirmChangeDialog(
+      BuildContext context, String toChange) async {
     return await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Confirm Change'),
-          content: Text(
-            'Are you sure you want to change the $toChange? '
-            'This will require re-stabilizing all photos.'
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop(false);
-              },
-            ),
-            TextButton(
-              child: const Text('Proceed'),
-              onPressed: () {
-                Navigator.of(context).pop(true);
-              },
-            ),
-          ],
-        );
-      },
-    ) ?? false;
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Confirm Change'),
+              content: Text('Are you sure you want to change the $toChange? '
+                  'This will require re-stabilizing all photos.'),
+              actions: <Widget>[
+                TextButton(
+                  child: const Text('Cancel'),
+                  onPressed: () {
+                    Navigator.of(context).pop(false);
+                  },
+                ),
+                TextButton(
+                  child: const Text('Proceed'),
+                  onPressed: () {
+                    Navigator.of(context).pop(true);
+                  },
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
   }
 }

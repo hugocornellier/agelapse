@@ -71,9 +71,12 @@ class SettingsCache {
       SettingsUtil.hasTakenFirstPhoto(projectId.toString()),
     ]);
 
-    final List<Map<String, dynamic>> allPhotos = settings[2] as List<Map<String, dynamic>>;
-    final int? firstPhotoTimestamp = settings[5] != null ? int.tryParse(settings[5] as String) : null;
-    final int? latestPhotoTimestamp = settings[6] != null ? int.tryParse(settings[6] as String) : null;
+    final List<Map<String, dynamic>> allPhotos =
+        settings[2] as List<Map<String, dynamic>>;
+    final int? firstPhotoTimestamp =
+        settings[5] != null ? int.tryParse(settings[5] as String) : null;
+    final int? latestPhotoTimestamp =
+        settings[6] != null ? int.tryParse(settings[6] as String) : null;
     final int? streak = settings[7] as int?;
 
     return SettingsCache(
@@ -87,10 +90,17 @@ class SettingsCache {
       hasTakenFirstPhoto: settings[16] as bool? ?? false,
       streak: streak ?? 0,
       photoCount: allPhotos.length,
-      firstPhotoDate: firstPhotoTimestamp != null ? Utils.formatUnixTimestamp(firstPhotoTimestamp) : '',
-      lastPhotoDate: latestPhotoTimestamp != null ? Utils.formatUnixTimestamp(latestPhotoTimestamp) : '',
+      firstPhotoDate: firstPhotoTimestamp != null
+          ? Utils.formatUnixTimestamp(firstPhotoTimestamp)
+          : '',
+      lastPhotoDate: latestPhotoTimestamp != null
+          ? Utils.formatUnixTimestamp(latestPhotoTimestamp)
+          : '',
       lengthInDays: firstPhotoTimestamp != null && latestPhotoTimestamp != null
-          ? ProjectUtils.calculateDateDifference(firstPhotoTimestamp, latestPhotoTimestamp).inDays + 1
+          ? ProjectUtils.calculateDateDifference(
+                      firstPhotoTimestamp, latestPhotoTimestamp)
+                  .inDays +
+              1
           : 0,
       projectOrientation: settings[8] as String,
       aspectRatio: settings[9] as String,

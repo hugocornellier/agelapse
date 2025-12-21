@@ -129,10 +129,7 @@ class ImportPageState extends State<ImportPage> {
         child: Text(
           text.toUpperCase(),
           style: const TextStyle(
-              fontSize: 16,
-              color: Colors.white,
-              fontWeight: FontWeight.bold
-          ),
+              fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
     );

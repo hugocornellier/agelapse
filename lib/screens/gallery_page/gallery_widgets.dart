@@ -10,7 +10,8 @@ class FlashingBox extends StatefulWidget {
   FlashingBoxState createState() => FlashingBoxState();
 }
 
-class FlashingBoxState extends State<FlashingBox> with SingleTickerProviderStateMixin {
+class FlashingBoxState extends State<FlashingBox>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
@@ -76,7 +77,8 @@ class StabilizedThumbnailState extends State<StabilizedThumbnail> {
 
   Future<String> _loadThumbnail() async {
     if (_cachedResult != null) return _cachedResult!;
-    final result = await GalleryUtils.waitForThumbnail(widget.thumbnailPath, widget.projectId);
+    final result = await GalleryUtils.waitForThumbnail(
+        widget.thumbnailPath, widget.projectId);
     _cachedResult = result;
     return result;
   }
@@ -86,11 +88,13 @@ class StabilizedThumbnailState extends State<StabilizedThumbnail> {
     return FutureBuilder<String>(
       future: _thumbnailFuture,
       builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting || !snapshot.hasData) {
+        if (snapshot.connectionState == ConnectionState.waiting ||
+            !snapshot.hasData) {
           return const FlashingBox();
         }
 
-        if (snapshot.data == "no_faces_found" || snapshot.data == "stab_failed") {
+        if (snapshot.data == "no_faces_found" ||
+            snapshot.data == "stab_failed") {
           return Container(
             color: Colors.transparent,
             child: const Stack(
@@ -114,7 +118,8 @@ class StabilizedThumbnailState extends State<StabilizedThumbnail> {
             fit: BoxFit.cover,
             width: double.infinity,
             height: double.infinity,
-            errorBuilder: (context, error, stack) => Container(color: Colors.black),
+            errorBuilder: (context, error, stack) =>
+                Container(color: Colors.black),
           );
         }
 

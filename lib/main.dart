@@ -44,17 +44,21 @@ Future<void> _main() async {
     await DB.instance.createTablesIfNotExist();
     await windowManager.ensureInitialized();
 
-    final List<Map<String, dynamic>> projects = await DB.instance.getAllProjects();
+    final List<Map<String, dynamic>> projects =
+        await DB.instance.getAllProjects();
     final bool hasProjects = projects.isNotEmpty;
 
     const Size minDefault = Size(840, 450);
-    const Size minIntro   = Size(840, 750);
+    const Size minIntro = Size(840, 750);
     final Size initialDefault = hasProjects ? const Size(1200, 750) : minIntro;
 
     final Size startSize = hasProjects
         ? initialDefault
-        : Size(initialDefault.width,
-        initialDefault.height < minIntro.height ? minIntro.height : initialDefault.height);
+        : Size(
+            initialDefault.width,
+            initialDefault.height < minIntro.height
+                ? minIntro.height
+                : initialDefault.height);
 
     final options = WindowOptions(
       size: startSize,
@@ -101,10 +105,13 @@ Future<void> _initializeApp() async {
 }
 
 Future<void> initializeNotifications() async {
-  FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
 
-  const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
-  final DarwinInitializationSettings initializationSettingsDarwin = DarwinInitializationSettings();
+  const AndroidInitializationSettings initializationSettingsAndroid =
+      AndroidInitializationSettings('@mipmap/ic_launcher');
+  final DarwinInitializationSettings initializationSettingsDarwin =
+      DarwinInitializationSettings();
   final InitializationSettings initializationSettings = InitializationSettings(
     android: initializationSettingsAndroid,
     iOS: initializationSettingsDarwin,
@@ -112,7 +119,8 @@ Future<void> initializeNotifications() async {
 
   await flutterLocalNotificationsPlugin.initialize(
     initializationSettings,
-    onDidReceiveNotificationResponse: (NotificationResponse notificationResponse) async {
+    onDidReceiveNotificationResponse:
+        (NotificationResponse notificationResponse) async {
       if (notificationResponse.payload != null) {
         // In the future, need to handle notification tapped logic here
       }
@@ -125,7 +133,8 @@ Future<Widget> _getHomePage() async {
     //return DesktopHomePage();
   }
 
-  final String defaultProject = await DB.instance.getSettingValueByTitle('default_project');
+  final String defaultProject =
+      await DB.instance.getSettingValueByTitle('default_project');
 
   if (defaultProject != "none") {
     final int projectId = int.parse(defaultProject);
@@ -158,8 +167,7 @@ class AgeLapse extends StatelessWidget {
         } else {
           return const MaterialApp(
               home: Scaffold(body: Center(child: CircularProgressIndicator())),
-              debugShowCheckedModeBanner: false
-          );
+              debugShowCheckedModeBanner: false);
         }
       },
     );
@@ -171,7 +179,7 @@ class AgeLapse extends StatelessWidget {
   }
 
   Widget _buildApp(BuildContext context, Widget homePage, String theme) {
-    MaterialTheme materialTheme = const MaterialTheme(TextTheme()); 
+    MaterialTheme materialTheme = const MaterialTheme(TextTheme());
     return ChangeNotifierProvider(
       create: (_) => ThemeProvider(theme, materialTheme),
       child: Consumer<ThemeProvider>(
@@ -179,8 +187,7 @@ class AgeLapse extends StatelessWidget {
             title: 'AgeLapse',
             theme: themeProvider.themeData,
             home: homePage,
-            debugShowCheckedModeBanner: false
-        ),
+            debugShowCheckedModeBanner: false),
       ),
     );
   }

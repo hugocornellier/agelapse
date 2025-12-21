@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import '../services/database_helper.dart';
@@ -90,8 +89,12 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
           text: const TextSpan(
             style: TextStyle(fontSize: 13.5),
             children: [
-              TextSpan(text: 'Ghost Mode: ', style: TextStyle(fontWeight: FontWeight.bold)),
-              TextSpan(text: 'Overlay a faint, stabilized photo. Align your face with the ghost image.'),
+              TextSpan(
+                  text: 'Ghost Mode: ',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              TextSpan(
+                  text:
+                      'Overlay a faint, stabilized photo. Align your face with the ghost image.'),
             ],
           ),
         );
@@ -102,8 +105,12 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
           text: const TextSpan(
             style: TextStyle(fontSize: 13.5),
             children: [
-              TextSpan(text: 'Grid Mode: ', style: TextStyle(fontWeight: FontWeight.bold)),
-              TextSpan(text: 'Align eyes on intersecting points. Tap "Modify Grid" to customize.'),
+              TextSpan(
+                  text: 'Grid Mode: ',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              TextSpan(
+                  text:
+                      'Align eyes on intersecting points. Tap "Modify Grid" to customize.'),
             ],
           ),
         );
@@ -114,8 +121,12 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
           text: const TextSpan(
             style: TextStyle(fontSize: 13.5),
             children: [
-              TextSpan(text: 'Grid Mode (Ghost): ', style: TextStyle(fontWeight: FontWeight.bold)),
-              TextSpan(text: 'combines grid lines with a ghost image for precise alignment.'),
+              TextSpan(
+                  text: 'Grid Mode (Ghost): ',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              TextSpan(
+                  text:
+                      'combines grid lines with a ghost image for precise alignment.'),
             ],
           ),
         );
@@ -148,7 +159,8 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
               child: Container(
                 color: const Color(0xff212121),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0, vertical: 8.0),
                   child: Column(
                     children: [
                       const SizedBox(height: 16),

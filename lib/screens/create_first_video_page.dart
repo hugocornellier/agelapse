@@ -38,7 +38,6 @@ class CreateFirstVideoPageState extends State<CreateFirstVideoPage> {
     );
   }
 
-
   Container _buildBody() {
     return Container(
       color: appBarColor,
@@ -106,10 +105,7 @@ class CreateFirstVideoPageState extends State<CreateFirstVideoPage> {
         child: Text(
           text.toUpperCase(),
           style: const TextStyle(
-              fontSize: 15,
-              color: Colors.white,
-              fontWeight: FontWeight.bold
-          ),
+              fontSize: 15, color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
     );

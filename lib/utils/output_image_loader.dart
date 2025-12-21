@@ -27,10 +27,13 @@ class OutputImageLoader {
   }
 
   Future<void> _loadSettings() async {
-    final String offsetXSettingVal = await SettingsUtil.loadOffsetXCurrentOrientation(projectId.toString());
-    final String offsetYSettingVal = await SettingsUtil.loadOffsetYCurrentOrientation(projectId.toString());
+    final String offsetXSettingVal =
+        await SettingsUtil.loadOffsetXCurrentOrientation(projectId.toString());
+    final String offsetYSettingVal =
+        await SettingsUtil.loadOffsetYCurrentOrientation(projectId.toString());
 
-    projectOrientation = await SettingsUtil.loadProjectOrientation(projectId.toString());
+    projectOrientation =
+        await SettingsUtil.loadProjectOrientation(projectId.toString());
     aspectRatio = await SettingsUtil.loadAspectRatio(projectId.toString());
 
     offsetX = double.parse(offsetXSettingVal);
@@ -39,11 +42,14 @@ class OutputImageLoader {
 
   Future<void> _initializeImageDirectory() async {
     try {
-      final Map<String, Object?>? guidePhoto = await DirUtils.getGuidePhoto(offsetX, projectId);
-      final String guideImagePath = await DirUtils.getGuideImagePath(projectId, guidePhoto);
+      final Map<String, Object?>? guidePhoto =
+          await DirUtils.getGuidePhoto(offsetX, projectId);
+      final String guideImagePath =
+          await DirUtils.getGuideImagePath(projectId, guidePhoto);
 
       if (guidePhoto != null) {
-        final stabilizedColumn = DB.instance.getStabilizedColumn(projectOrientation!);
+        final stabilizedColumn =
+            DB.instance.getStabilizedColumn(projectOrientation!);
         final stabColOffsetX = "${stabilizedColumn}OffsetX";
         final stabColOffsetY = "${stabilizedColumn}OffsetY";
 
@@ -51,22 +57,28 @@ class OutputImageLoader {
         // (the old DB query didn't filter by projectID, causing cross-project data leakage)
         final rawOffsetX = guidePhoto[stabColOffsetX];
         final rawOffsetY = guidePhoto[stabColOffsetY];
-        final offsetXData = rawOffsetX is double ? rawOffsetX : double.tryParse(rawOffsetX?.toString() ?? '');
-        final offsetYData = rawOffsetY is double ? rawOffsetY : double.tryParse(rawOffsetY?.toString() ?? '');
+        final offsetXData = rawOffsetX is double
+            ? rawOffsetX
+            : double.tryParse(rawOffsetX?.toString() ?? '');
+        final offsetYData = rawOffsetY is double
+            ? rawOffsetY
+            : double.tryParse(rawOffsetY?.toString() ?? '');
 
         ghostImageOffsetX = offsetXData;
         ghostImageOffsetY = offsetYData;
 
         try {
           guideImage = await StabUtils.loadImageFromFile(File(guideImagePath));
-        } catch(e) {
+        } catch (e) {
           print("Error caught $e, setting ghostImage to persongrey");
-          guideImage = await ProjectUtils.loadImage('assets/images/person-grey.png');
+          guideImage =
+              await ProjectUtils.loadImage('assets/images/person-grey.png');
           ghostImageOffsetX = 0.105;
           ghostImageOffsetY = 0.241;
         }
       } else {
-        guideImage = await ProjectUtils.loadImage('assets/images/person-grey.png');
+        guideImage =
+            await ProjectUtils.loadImage('assets/images/person-grey.png');
         ghostImageOffsetX = 0.105;
         ghostImageOffsetY = 0.241;
       }

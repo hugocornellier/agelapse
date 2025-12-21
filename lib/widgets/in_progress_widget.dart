@@ -14,9 +14,11 @@ class InProgress extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: goToPage != null ? () {
-        // goToPage!(3);
-      } : null,
+      onTap: goToPage != null
+          ? () {
+              // goToPage!(3);
+            }
+          : null,
       child: Container(
         width: double.infinity,
         color: message == "No storage space on device."
