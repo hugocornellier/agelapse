@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as path;
 import 'package:share_plus/share_plus.dart';
@@ -102,21 +104,37 @@ class LogService {
     if (await file.exists()) {
       final deviceInfo = await _getDeviceInfo();
       final logContent = await file.readAsString();
+      final exportContent = '$deviceInfo\n$logContent';
 
-      // Create temp file with device info prepended
-      final exportPath = path.join(
-        Directory.systemTemp.path,
-        'agelapse_logs_${DateTime.now().millisecondsSinceEpoch}.log',
-      );
-      final exportFile = File(exportPath);
-      await exportFile.writeAsString('$deviceInfo\n$logContent');
+      if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+        // Desktop: Native save dialog
+        final dateStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+        final result = await FilePicker.platform.saveFile(
+          dialogTitle: 'Save AgeLapse Logs',
+          fileName: 'agelapse_logs_$dateStr.log',
+          type: FileType.custom,
+          allowedExtensions: ['log', 'txt'],
+        );
 
-      await SharePlus.instance.share(
-        ShareParams(
-          files: [XFile(exportPath)],
-          subject: 'AgeLapse Logs',
-        ),
-      );
+        if (result != null) {
+          await File(result).writeAsString(exportContent);
+        }
+      } else {
+        // Mobile: Share dialog
+        final exportPath = path.join(
+          Directory.systemTemp.path,
+          'agelapse_logs_${DateTime.now().millisecondsSinceEpoch}.log',
+        );
+        final exportFile = File(exportPath);
+        await exportFile.writeAsString(exportContent);
+
+        await SharePlus.instance.share(
+          ShareParams(
+            files: [XFile(exportPath)],
+            subject: 'AgeLapse Logs',
+          ),
+        );
+      }
     }
   }
 

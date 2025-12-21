@@ -309,10 +309,10 @@ packages:
     dependency: "direct main"
     description:
       name: face_detection_tflite
-      sha256: "87118296ebc751de04fbe2808e5ba6bbc645b461f78711285bc10ff778ad4648"
+      sha256: d0559398560f28c66481d0bff2484d0e29404a5c8de91ba477e385bd09e8f0ae
       url: "https://pub.dev"
     source: hosted
-    version: "4.2.0"
+    version: "4.2.1"
   fake_async:
     dependency: transitive
     description:
@@ -814,6 +814,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.2.1"
+  media_kit_libs_windows_video:
+    dependency: "direct main"
+    description:
+      name: media_kit_libs_windows_video
+      sha256: dff76da2778729ab650229e6b4ec6ec111eb5151431002cbd7ea304ff1f112ab
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.11"
   media_kit_video:
     dependency: transitive
     description:
