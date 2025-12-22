@@ -13,9 +13,9 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:face_detection_tflite/face_detection_tflite.dart' as fdl;
 import 'package:opencv_dart/opencv_dart.dart' as cv;
-import 'package:pose_detection_tflite/pose_detection_tflite.dart' as pdl;
 
 import '../../services/database_helper.dart';
+import '../../services/log_service.dart';
 import '../camera_utils.dart';
 import '../dir_utils.dart';
 import '../heic_utils.dart';
@@ -46,7 +46,7 @@ class StabUtils {
   }
 
   static Future<List<Map<String, dynamic>>> getUnstabilizedPhotos(
-      projectId) async {
+      int projectId) async {
     String projectOrientation =
         await SettingsUtil.loadProjectOrientation(projectId.toString());
     return await DB.instance
@@ -178,7 +178,8 @@ class StabUtils {
         }
       }
     } catch (e) {
-      print("Error caught while fetching faces from bytes: $e");
+      LogService.instance
+          .log("Error caught while fetching faces from bytes: $e");
       return [];
     }
   }
@@ -255,7 +256,7 @@ class StabUtils {
         return await _filterFacesBySize(faces, imageWidth, imagePath);
       }
     } catch (e) {
-      print("Error caught while fetching faces: $e");
+      LogService.instance.log("Error caught while fetching faces: $e");
       return [];
     }
   }

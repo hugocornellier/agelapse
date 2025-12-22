@@ -47,10 +47,10 @@ class StabilizedThumbnail extends StatefulWidget {
   final int projectId;
 
   const StabilizedThumbnail({
-    Key? key,
+    super.key,
     required this.thumbnailPath,
     required this.projectId,
-  }) : super(key: key);
+  });
 
   @override
   StabilizedThumbnailState createState() => StabilizedThumbnailState();

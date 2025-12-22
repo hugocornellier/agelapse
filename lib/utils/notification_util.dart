@@ -6,6 +6,7 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
 import '../services/database_helper.dart';
+import '../services/log_service.dart';
 
 class NotificationUtil {
   static final FlutterLocalNotificationsPlugin
@@ -99,7 +100,7 @@ class NotificationUtil {
     final TimeOfDay selectedTime = TimeOfDay.fromDateTime(dateTime);
 
     final String? projectName = await DB.instance.getProjectNameById(projectId);
-    print("projectName => ${projectName}");
+    LogService.instance.log("projectName => $projectName");
 
     final tz.TZDateTime scheduledDate =
         _calculateScheduledDate(now, selectedTime);
@@ -119,17 +120,14 @@ class NotificationUtil {
 
     await _flutterLocalNotificationsPlugin.zonedSchedule(
       projectId,
-      'AgeLapse - ${projectName}',
-      '${projectName}: Don\'t forget to take your photo!',
+      'AgeLapse - $projectName',
+      '$projectName: Don\'t forget to take your photo!',
       scheduledDate,
       platformDetails,
       payload: 'date: ${scheduledDate.toString()}',
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
     );
-
-    final List<PendingNotificationRequest> pendingNotifications =
-        await _flutterLocalNotificationsPlugin.pendingNotificationRequests();
   }
 
   static tz.TZDateTime _calculateScheduledDate(

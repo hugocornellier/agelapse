@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
+import '../services/log_service.dart';
 
 class HeicUtils {
   static const String _winHeicConverterAssetPath =
@@ -44,15 +45,17 @@ class HeicUtils {
     }
 
     if (needsExtraction) {
-      print('[HEIC] Extracting bundled heicConverter.exe...');
+      LogService.instance.log('[HEIC] Extracting bundled heicConverter.exe...');
       try {
         final bytes = await rootBundle.load(_winHeicConverterAssetPath);
         await File(exePath)
             .writeAsBytes(bytes.buffer.asUint8List(), flush: true);
         await File(markerPath).writeAsString(_currentVersion, flush: true);
-        print('[HEIC] heicConverter.exe extracted to: $exePath');
+        LogService.instance
+            .log('[HEIC] heicConverter.exe extracted to: $exePath');
       } catch (e) {
-        print('[HEIC] ERROR extracting heicConverter.exe: $e');
+        LogService.instance
+            .log('[HEIC] ERROR extracting heicConverter.exe: $e');
         return '';
       }
     }
@@ -71,19 +74,28 @@ class HeicUtils {
     if (exePath.isEmpty) return null;
 
     // heicConverter names output based on input filename
-    final outputName = path.basenameWithoutExtension(heicPath) + '.jpg';
+    final outputName = '${path.basenameWithoutExtension(heicPath)}.jpg';
     final outputPath = path.join(targetDir, outputName);
 
     final result = await Process.run(
       exePath,
-      ['--files', heicPath, '-t', targetDir, '-q', quality.toString(), '--not-recursive', '--skip-prompt'],
+      [
+        '--files',
+        heicPath,
+        '-t',
+        targetDir,
+        '-q',
+        quality.toString(),
+        '--not-recursive',
+        '--skip-prompt'
+      ],
     );
 
     if (result.exitCode == 0 && await File(outputPath).exists()) {
       return outputPath;
     }
 
-    print(
+    LogService.instance.log(
         '[HEIC] Conversion failed (exit code ${result.exitCode}): ${result.stderr}');
     return null;
   }
@@ -101,7 +113,8 @@ class HeicUtils {
     final targetDir = path.dirname(outputJpgPath);
     final desiredName = path.basename(outputJpgPath);
 
-    final convertedPath = await _convertHeic(heicPath, targetDir, quality: quality);
+    final convertedPath =
+        await _convertHeic(heicPath, targetDir, quality: quality);
     if (convertedPath == null) return false;
 
     // Rename if the desired filename differs from what heicConverter produced
@@ -109,7 +122,7 @@ class HeicUtils {
       try {
         await File(convertedPath).rename(outputJpgPath);
       } catch (e) {
-        print('[HEIC] Failed to rename converted file: $e');
+        LogService.instance.log('[HEIC] Failed to rename converted file: $e');
         return false;
       }
     }

@@ -133,6 +133,7 @@ class SetUpNotificationsPageState extends State<SetUpNotificationsPage> {
     final bool isDefaultProject =
         await ProjectUtils.isDefaultProject(widget.projectId);
 
+    if (!mounted) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,

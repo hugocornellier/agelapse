@@ -106,12 +106,7 @@ class CreatePageState extends State<CreatePage>
     super.dispose();
   }
 
-  @override
-  void didChangeMetrics() {
-    super.didChangeMetrics();
-  }
-
-  waitForMain() async {
+  Future<void> waitForMain() async {
     final List<Map<String, dynamic>> rawPhotos =
         await DB.instance.getPhotosByProjectID(widget.projectId);
 
@@ -246,7 +241,8 @@ class CreatePageState extends State<CreatePage>
     return (size.width, size.height);
   }
 
-  double getSmallerSide(width, height) => width < height ? width : height;
+  double getSmallerSide(double width, double height) =>
+      width < height ? width : height;
 
   Future<String> getRawPhotoPathFromTimestamp(String timestamp) async =>
       await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
@@ -497,6 +493,7 @@ class CreatePageState extends State<CreatePage>
     final bool isDefaultProject =
         await ProjectUtils.isDefaultProject(widget.projectId);
 
+    if (!context.mounted) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -585,7 +582,7 @@ class CreatePageState extends State<CreatePage>
     await _saveVideoDesktop(videoOutputPath);
   }
 
-  Future<bool> videoSettingsChanged(newestVideo) async =>
+  Future<bool> videoSettingsChanged(Map<String, dynamic>? newestVideo) async =>
       await VideoUtils.videoOutputSettingsChanged(
           widget.projectId, newestVideo);
 

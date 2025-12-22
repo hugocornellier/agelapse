@@ -6,6 +6,7 @@ import 'package:path/path.dart' as path;
 import 'dart:ui' as ui;
 
 import '../services/database_helper.dart';
+import '../services/log_service.dart';
 import 'dir_utils.dart';
 
 class ProjectUtils {
@@ -45,12 +46,13 @@ class ProjectUtils {
       final int rowsDeleted =
           await deletePhotoFromDatabaseAndReturnCount(image.path);
       if (rowsDeleted == 0) {
-        print(
+        LogService.instance.log(
             "Failed to delete image from database (no rows affected): ${image.path}");
         return false;
       }
     } catch (e) {
-      print("Failed to delete image from database: ${image.path}, Error: $e");
+      LogService.instance.log(
+          "Failed to delete image from database: ${image.path}, Error: $e");
       return false;
     }
 
@@ -60,21 +62,21 @@ class ProjectUtils {
     try {
       await deletePngFileIfExists(image);
     } catch (e) {
-      print(
+      LogService.instance.log(
           "Failed to delete PNG file (will be cleaned up later): ${image.path}, Error: $e");
     }
 
     try {
       await deleteStabilizedFileIfExists(image, projectId);
     } catch (e) {
-      print(
+      LogService.instance.log(
           "Failed to delete stabilized files (will be cleaned up later): ${image.path}, Error: $e");
     }
 
     try {
       await deleteFile(image);
     } catch (e) {
-      print(
+      LogService.instance.log(
           "Failed to delete raw image file (will be cleaned up later): ${image.path}, Error: $e");
     }
 
@@ -124,10 +126,12 @@ class ProjectUtils {
     final File stabilizedImagePngLandscape =
         File(stabilizedImagePathPngLandscape);
 
-    if (await stabilizedImagePngPortrait.exists())
+    if (await stabilizedImagePngPortrait.exists()) {
       await deleteFile(stabilizedImagePngPortrait);
-    if (await stabilizedImagePngLandscape.exists())
+    }
+    if (await stabilizedImagePngLandscape.exists()) {
       await deleteFile(stabilizedImagePngLandscape);
+    }
   }
 
   static Future<void> deletePhotoFromDatabase(String path) async {
@@ -215,10 +219,6 @@ class ProjectUtils {
 
     return streak;
   }
-
-  static DateTime _getDateTimeFromTimestamp(String? timestamp) =>
-      DateTime.fromMillisecondsSinceEpoch(int.tryParse(timestamp ?? '0') ?? 0,
-          isUtc: true);
 
   static Future<ui.Image> loadImageData(String imagePath) async {
     final data = await rootBundle.load(imagePath);

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:animated_bottom_navigation_bar/animated_bottom_navigation_bar.dart';
 import 'package:flutter/services.dart';
 import '../screens/create_page.dart';
+import '../services/log_service.dart';
 import '../screens/gallery_page/gallery_page.dart';
 import '../screens/project_page.dart';
 import '../screens/info_page.dart';
@@ -168,7 +169,7 @@ class MainNavigationState extends State<MainNavigation> {
   }
 
   void refreshSettings() async {
-    print("Settings are being refreshed...");
+    LogService.instance.log("Settings are being refreshed...");
     await _refreshSettingsCache();
   }
 
@@ -218,20 +219,21 @@ class MainNavigationState extends State<MainNavigation> {
     }
 
     if (photoCountBeforeImport == 0) {
-      print("[processPickedFiles] photoCountBeforeImport == 0 is true");
+      LogService.instance
+          .log("[processPickedFiles] photoCountBeforeImport == 0 is true");
 
       String? importedPhotosOrientation =
           await DB.instance.checkPhotoOrientationThreshold(widget.projectId);
       if (importedPhotosOrientation == 'landscape') {
-        print(
+        LogService.instance.log(
             "[processPickedFiles] importedPhotosOrientation == 'landscape' is true");
 
         DB.instance.setSettingByTitle(
             "project_orientation", 'landscape', projectIdStr);
         DB.instance.setSettingByTitle("aspect_ratio", "4:3", projectIdStr);
       } else {
-        print(
-            "[processPickedFiles] importedPhotosOrientation == 'landscape' NOT true. importedPhotosOrientation = ${importedPhotosOrientation}");
+        LogService.instance.log(
+            "[processPickedFiles] importedPhotosOrientation == 'landscape' NOT true. importedPhotosOrientation = $importedPhotosOrientation");
       }
     }
 
@@ -317,7 +319,7 @@ class MainNavigationState extends State<MainNavigation> {
           Stopwatch loopStopwatch = Stopwatch();
           loopStopwatch.start();
 
-          print("\nStabilizing new photo...:");
+          LogService.instance.log("\nStabilizing new photo...:");
 
           final StabilizationResult result =
               await _stabilizePhoto(faceStabilizer, photo);
@@ -357,7 +359,7 @@ class MainNavigationState extends State<MainNavigation> {
           if (mounted) {
             setState(() => minutesRemaining = timeDisplay);
           }
-          print("Estimated time remaining: $timeDisplay");
+          LogService.instance.log("Estimated time remaining: $timeDisplay");
         }
 
         stopwatch.stop();
@@ -394,59 +396,69 @@ class MainNavigationState extends State<MainNavigation> {
   void _printMeanScores(List<double> preScores, List<double> twoPassScores,
       List<double> threePassScores, List<double> fourPassScores) {
     if (preScores.isEmpty) {
-      print("\n========== STABILIZATION SCORE SUMMARY ==========");
-      print("No scores collected (no photos stabilized or non-face project)");
-      print("==================================================\n");
+      LogService.instance
+          .log("\n========== STABILIZATION SCORE SUMMARY ==========");
+      LogService.instance.log(
+          "No scores collected (no photos stabilized or non-face project)");
+      LogService.instance
+          .log("==================================================\n");
       return;
     }
 
     final double preMean = preScores.reduce((a, b) => a + b) / preScores.length;
 
-    print("\n========== STABILIZATION SCORE SUMMARY ==========");
-    print(
+    LogService.instance
+        .log("\n========== STABILIZATION SCORE SUMMARY ==========");
+    LogService.instance.log(
         "First-pass mean score:  ${preMean.toStringAsFixed(3)} (n=${preScores.length})");
 
     if (twoPassScores.isNotEmpty) {
       final double twoPassMean =
           twoPassScores.reduce((a, b) => a + b) / twoPassScores.length;
-      print(
+      LogService.instance.log(
           "Two-pass mean score:    ${twoPassMean.toStringAsFixed(3)} (n=${twoPassScores.length})");
-      print(
+      LogService.instance.log(
           "  -> Improvement from first: ${(preMean - twoPassMean).toStringAsFixed(3)} (${((preMean - twoPassMean) / preMean * 100).toStringAsFixed(1)}%)");
 
       if (threePassScores.isNotEmpty) {
         final double threePassMean =
             threePassScores.reduce((a, b) => a + b) / threePassScores.length;
-        print(
+        LogService.instance.log(
             "Three-pass mean score:  ${threePassMean.toStringAsFixed(3)} (n=${threePassScores.length})");
-        print(
+        LogService.instance.log(
             "  -> Improvement from two-pass: ${(twoPassMean - threePassMean).toStringAsFixed(3)} (${((twoPassMean - threePassMean) / twoPassMean * 100).toStringAsFixed(1)}%)");
 
         if (fourPassScores.isNotEmpty) {
           final double fourPassMean =
               fourPassScores.reduce((a, b) => a + b) / fourPassScores.length;
-          print(
+          LogService.instance.log(
               "Four-pass mean score:   ${fourPassMean.toStringAsFixed(3)} (n=${fourPassScores.length})");
-          print(
+          LogService.instance.log(
               "  -> Improvement from three-pass: ${(threePassMean - fourPassMean).toStringAsFixed(3)} (${((threePassMean - fourPassMean) / threePassMean * 100).toStringAsFixed(1)}%)");
-          print(
+          LogService.instance.log(
               "  -> Total improvement: ${(preMean - fourPassMean).toStringAsFixed(3)} (${((preMean - fourPassMean) / preMean * 100).toStringAsFixed(1)}%)");
         } else {
-          print(
+          LogService.instance.log(
               "Four-pass mean score:   N/A (no four-pass corrections needed)");
-          print(
+          LogService.instance.log(
               "  -> Total improvement: ${(preMean - threePassMean).toStringAsFixed(3)} (${((preMean - threePassMean) / preMean * 100).toStringAsFixed(1)}%)");
         }
       } else {
-        print("Three-pass mean score:  N/A (no three-pass corrections needed)");
-        print("Four-pass mean score:   N/A (no four-pass corrections needed)");
+        LogService.instance.log(
+            "Three-pass mean score:  N/A (no three-pass corrections needed)");
+        LogService.instance.log(
+            "Four-pass mean score:   N/A (no four-pass corrections needed)");
       }
     } else {
-      print("Two-pass mean score:    N/A (no two-pass corrections needed)");
-      print("Three-pass mean score:  N/A (no three-pass corrections needed)");
-      print("Four-pass mean score:   N/A (no four-pass corrections needed)");
+      LogService.instance
+          .log("Two-pass mean score:    N/A (no two-pass corrections needed)");
+      LogService.instance.log(
+          "Three-pass mean score:  N/A (no three-pass corrections needed)");
+      LogService.instance
+          .log("Four-pass mean score:   N/A (no four-pass corrections needed)");
     }
-    print("==================================================\n");
+    LogService.instance
+        .log("==================================================\n");
   }
 
   Future<StabilizationResult> _stabilizePhoto(
@@ -606,7 +618,7 @@ class MainNavigationState extends State<MainNavigation> {
         progressPercent = percentUnrounded.toInt();
       });
     } catch (_) {
-      print("Error caught during updateProgressPercent");
+      LogService.instance.log("Error caught during updateProgressPercent");
     }
   }
 
@@ -615,7 +627,7 @@ class MainNavigationState extends State<MainNavigation> {
   }
 
   Future<void> _cancelStabilizationProcess() async {
-    print("_cancelStabilizationProcess called");
+    LogService.instance.log("_cancelStabilizationProcess called");
 
     if (_stabilizingActive) {
       setState(() {

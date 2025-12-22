@@ -40,7 +40,6 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
   bool _draggingRight = false;
   bool _isDraggingHorizontal = false;
   final GlobalKey _widgetKey = GlobalKey();
-  double _widgetHeight = 0.0;
   late OutputImageLoader outputImageLoader;
   bool _isInfoWidgetVisible = true;
   Timer? _checkmarkTimer;
@@ -108,14 +107,6 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
           _showCheckmark = false;
         });
       }
-    });
-  }
-
-  void _getWidgetHeight() {
-    final RenderBox renderBox =
-        _widgetKey.currentContext!.findRenderObject() as RenderBox;
-    setState(() {
-      _widgetHeight = renderBox.size.height;
     });
   }
 

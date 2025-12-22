@@ -2,10 +2,9 @@ import 'dart:io';
 import '../screens/project_page.dart';
 import 'package:flutter/material.dart';
 import '../services/database_helper.dart';
-import '../services/settings_cache.dart';
+import '../services/log_service.dart';
 import '../styles/styles.dart';
 import '../utils/notification_util.dart';
-import '../utils/settings_utils.dart';
 import 'main_navigation.dart';
 
 class CreateProjectSheet extends StatefulWidget {
@@ -25,19 +24,8 @@ class CreateProjectSheet extends StatefulWidget {
 class CreateProjectSheetState extends State<CreateProjectSheet> {
   final TextEditingController _nameController = TextEditingController();
   String _selectedImage = 'assets/images/face.png';
-  SettingsCache? _defaultSettingsCache;
 
-  @override
-  void initState() {
-    super.initState();
-    _initializeSettingsCache();
-  }
-
-  void _initializeSettingsCache() async {
-    _defaultSettingsCache = await SettingsCache.initializeWithDefaults();
-  }
-
-  static Future<String?> checkForStabilizedImage(dirPath) async {
+  static Future<String?> checkForStabilizedImage(String dirPath) async {
     final directory = Directory(dirPath);
     if (await directory.exists()) {
       try {
@@ -249,7 +237,7 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
             .setSettingByTitle('default_project', projectId.toString());
       }
     } catch (e) {
-      print("Error while setting new default project: $e");
+      LogService.instance.log("Error while setting new default project: $e");
     }
 
     try {
@@ -263,9 +251,10 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
       await NotificationUtil.scheduleDailyNotification(
           projectId, dailyNotificationTime);
     } catch (e) {
-      print("Error while setting up notifications: $e");
+      LogService.instance.log("Error while setting up notifications: $e");
     }
 
+    if (!mounted) return;
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(

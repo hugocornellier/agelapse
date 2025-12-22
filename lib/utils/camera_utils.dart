@@ -10,9 +10,9 @@ import 'package:saver_gallery/saver_gallery.dart';
 import 'package:vibration/vibration.dart';
 
 import '../services/database_helper.dart';
+import '../services/log_service.dart';
 import 'dir_utils.dart';
 import 'heic_utils.dart';
-import 'image_utils.dart';
 
 class CameraUtils {
   static Future<bool> loadSaveToCameraRollSetting() async {
@@ -105,9 +105,6 @@ class CameraUtils {
 
   static Future<void> saveImageToGallery(String filePath) async {
     try {
-      String name =
-          path.basename(filePath).isEmpty ? "image" : path.basename(filePath);
-
       final SaveResult result = await SaverGallery.saveFile(
         fileName: path.basename(filePath),
         filePath: filePath,
@@ -116,22 +113,22 @@ class CameraUtils {
       );
 
       if (result.isSuccess) {
-        print('Image saved to gallery: $result');
+        LogService.instance.log('Image saved to gallery: $result');
       } else {
-        print('Failed to save image to gallery');
+        LogService.instance.log('Failed to save image to gallery');
       }
     } catch (e) {
-      print('Error saving image to gallery: $e');
+      LogService.instance.log('Error saving image to gallery: $e');
     }
   }
 
   static Future<void> flashAndVibrate() async {
     var hasVibrator = await Vibration.hasVibrator();
     if (hasVibrator) {
-      print("vibrating");
+      LogService.instance.log("vibrating");
       Vibration.vibrate(duration: 500, amplitude: 155);
     } else {
-      print("no vibrate");
+      LogService.instance.log("no vibrate");
     }
     await Future.delayed(const Duration(milliseconds: 50));
   }
@@ -150,11 +147,11 @@ class CameraUtils {
   }) async {
     String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
     try {
-      print("Attempting to save photo");
+      LogService.instance.log("Attempting to save photo");
 
       final int? newPhotoLength = await image?.length();
       if (newPhotoLength == null) {
-        print("Returning false 0");
+        LogService.instance.log("Returning false 0");
         return false;
       }
 
@@ -167,7 +164,7 @@ class CameraUtils {
               (await DB.instance.getPhotosByTimestamp(timestamp, projectId))
                   .first;
           if (newPhotoLength == existingPhoto['imageLength']) {
-            print("Returning false 1");
+            LogService.instance.log("Returning false 1");
 
             return false;
           }
@@ -181,7 +178,6 @@ class CameraUtils {
 
       String imgPath = image!.path;
       String extension = path.extension(imgPath).toLowerCase();
-      String heicPath = "";
 
       if (extension == ".heic" || extension == ".heif") {
         final String heicPath = imgPath;
@@ -264,11 +260,10 @@ class CameraUtils {
         await File(imgPath).writeAsBytes(bytes);
       }
 
-      int? importedImageWidth = rawImage.cols;
-      int? importedImageHeight = rawImage.rows;
+      int importedImageWidth = rawImage.cols;
+      int importedImageHeight = rawImage.rows;
 
-      double aspectRatio =
-          (importedImageWidth ?? 1) / (importedImageHeight ?? 1);
+      double aspectRatio = importedImageWidth / importedImageHeight;
       aspectRatio = aspectRatio > 1 ? aspectRatio : 1 / aspectRatio;
 
       String orientation = importedImageHeight > importedImageWidth

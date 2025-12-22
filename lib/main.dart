@@ -8,7 +8,6 @@ import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'dart:io' show Platform;
-import 'dart:ui';
 
 import '../services/settings_cache.dart';
 import '../screens/projects_page.dart';
@@ -20,12 +19,10 @@ import '../theme/theme.dart';
 import '../services/database_import_ffi.dart';
 import '../utils/dir_utils.dart';
 
-void main() {
-  LogService.runWithLogging(() async {
-    WidgetsFlutterBinding.ensureInitialized();
-    await LogService.instance.initialize();
-    await _main();
-  });
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await LogService.instance.initialize();
+  await _main();
 }
 
 Future<void> _main() async {

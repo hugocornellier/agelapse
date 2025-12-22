@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:opencv_dart/opencv_dart.dart' as cv;
 import '../screens/set_eye_position_page.dart';
 import '../services/database_helper.dart';
+import '../services/log_service.dart';
 import '../styles/styles.dart';
 import '../utils/dir_utils.dart';
 import '../utils/notification_util.dart';
@@ -526,7 +527,8 @@ class SettingsSheetState extends State<SettingsSheet> {
               cameraMirror = value;
             });
 
-            print("Setting camera_mirror to ${value.toString()}");
+            LogService.instance
+                .log("Setting camera_mirror to ${value.toString()}");
 
             await DB.instance.setSettingByTitle(
                 'camera_mirror', value.toString(), widget.projectId.toString());
@@ -904,8 +906,8 @@ class ImagePickerWidgetState extends State<ImagePickerWidget> {
     return ElevatedButton(
       onPressed: widget.disabled || uploading ? null : _pickImage,
       style: ButtonStyle(
-        backgroundColor: MaterialStateProperty.all<Color>(Colors.transparent),
-        shape: MaterialStateProperty.all<OutlinedBorder>(
+        backgroundColor: WidgetStateProperty.all<Color>(Colors.transparent),
+        shape: WidgetStateProperty.all<OutlinedBorder>(
           const RoundedRectangleBorder(
             borderRadius: BorderRadius.zero,
           ),

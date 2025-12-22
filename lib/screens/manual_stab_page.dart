@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import '../services/face_stabilizer.dart';
 import '../services/database_helper.dart';
+import '../services/log_service.dart';
 import '../utils/dir_utils.dart';
 import '../utils/image_utils.dart';
 import '../utils/settings_utils.dart';
@@ -17,17 +18,16 @@ class ManualStabilizationPage extends StatefulWidget {
   final int projectId;
 
   const ManualStabilizationPage({
-    Key? key,
+    super.key,
     required this.imagePath,
     required this.projectId,
-  }) : super(key: key);
+  });
 
   @override
-  _ManualStabilizationPageState createState() =>
-      _ManualStabilizationPageState();
+  ManualStabilizationPageState createState() => ManualStabilizationPageState();
 }
 
-class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
+class ManualStabilizationPageState extends State<ManualStabilizationPage> {
   String rawPhotoPath = "";
   Uint8List? _stabilizedImageBytes;
   FaceStabilizer? _faceStabilizer;
@@ -143,7 +143,8 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
       }
     }
 
-    _faceStabilizer = FaceStabilizer(widget.projectId, () => print("Test"));
+    _faceStabilizer =
+        FaceStabilizer(widget.projectId, () => LogService.instance.log("Test"));
     await _faceStabilizer!.init();
 
     await _loadSavedTransformAndBootPreview();
@@ -201,7 +202,7 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
           preferredSize: const Size.fromHeight(0.5),
           child: Container(
             height: 0.5,
-            color: Colors.grey.shade700.withOpacity(0.5),
+            color: Colors.grey.shade700.withValues(alpha: 0.5),
           ),
         ),
       ),
@@ -417,8 +418,9 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
     final List<String> invalid = [];
     if (!_isWholeNumber(_inputController1.text)) invalid.add('Horiz. Offset');
     if (!_isWholeNumber(_inputController2.text)) invalid.add('Vert. Offset');
-    if (!_isPositiveDecimal(_inputController3.text))
+    if (!_isPositiveDecimal(_inputController3.text)) {
       invalid.add('Scale Factor');
+    }
     if (!_isSignedDecimal(_inputController4.text)) invalid.add('Rotation');
     if (invalid.isNotEmpty) {
       _showInvalidInputDialog(invalid);
@@ -592,11 +594,12 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
   Widget _buildToolbar(BuildContext context) {
     final Color barColor = Colors.black.withAlpha((0.75 * 255).round());
 
-    void _forceApplyNow() {
+    void forceApplyNow() {
       final now = DateTime.now();
       if (_lastApplyAt != null &&
-          now.difference(_lastApplyAt!) < const Duration(milliseconds: 50))
+          now.difference(_lastApplyAt!) < const Duration(milliseconds: 50)) {
         return;
+      }
       _lastApplyAt = now;
       double? tx = double.tryParse(_inputController1.text);
       double? ty = double.tryParse(_inputController2.text);
@@ -606,7 +609,7 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
       processRequest(tx, ty, sc, rot, save: true);
     }
 
-    void _startHold(String key, VoidCallback onTick) {
+    void startHold(String key, VoidCallback onTick) {
       _recentlyHeld[key] = false;
       _holdTimers[key]?.cancel();
       _holdTimers[key] = Timer.periodic(_repeatInterval, (t) {
@@ -617,10 +620,10 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
       });
     }
 
-    void _stopHold(String key) {
+    void stopHold(String key) {
       _holdTimers[key]?.cancel();
       _holdTimers.remove(key);
-      _forceApplyNow();
+      forceApplyNow();
     }
 
     return ColoredBox(
@@ -637,11 +640,11 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTapDown: (_) =>
-                    _startHold('scaleMinus', () => _adjustScale(-0.01)),
-                onTapUp: (_) => _stopHold('scaleMinus'),
-                onTapCancel: () => _stopHold('scaleMinus'),
-                onPanEnd: (_) => _stopHold('scaleMinus'),
-                onPanCancel: () => _stopHold('scaleMinus'),
+                    startHold('scaleMinus', () => _adjustScale(-0.01)),
+                onTapUp: (_) => stopHold('scaleMinus'),
+                onTapCancel: () => stopHold('scaleMinus'),
+                onPanEnd: (_) => stopHold('scaleMinus'),
+                onPanCancel: () => stopHold('scaleMinus'),
                 child: IconButton(
                   icon: const Icon(Icons.remove),
                   onPressed: () {
@@ -650,18 +653,18 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
                       return;
                     }
                     _adjustScale(-0.01);
-                    _forceApplyNow();
+                    forceApplyNow();
                   },
                 ),
               ),
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTapDown: (_) =>
-                    _startHold('scalePlus', () => _adjustScale(0.01)),
-                onTapUp: (_) => _stopHold('scalePlus'),
-                onTapCancel: () => _stopHold('scalePlus'),
-                onPanEnd: (_) => _stopHold('scalePlus'),
-                onPanCancel: () => _stopHold('scalePlus'),
+                    startHold('scalePlus', () => _adjustScale(0.01)),
+                onTapUp: (_) => stopHold('scalePlus'),
+                onTapCancel: () => stopHold('scalePlus'),
+                onPanEnd: (_) => stopHold('scalePlus'),
+                onPanCancel: () => stopHold('scalePlus'),
                 child: IconButton(
                   icon: const Icon(Icons.add),
                   onPressed: () {
@@ -670,18 +673,18 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
                       return;
                     }
                     _adjustScale(0.01);
-                    _forceApplyNow();
+                    forceApplyNow();
                   },
                 ),
               ),
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTapDown: (_) =>
-                    _startHold('left', () => _adjustOffsets(dx: -1)),
-                onTapUp: (_) => _stopHold('left'),
-                onTapCancel: () => _stopHold('left'),
-                onPanEnd: (_) => _stopHold('left'),
-                onPanCancel: () => _stopHold('left'),
+                    startHold('left', () => _adjustOffsets(dx: -1)),
+                onTapUp: (_) => stopHold('left'),
+                onTapCancel: () => stopHold('left'),
+                onPanEnd: (_) => stopHold('left'),
+                onPanCancel: () => stopHold('left'),
                 child: IconButton(
                   icon: const Icon(Icons.arrow_left),
                   onPressed: () {
@@ -690,18 +693,18 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
                       return;
                     }
                     _adjustOffsets(dx: -1);
-                    _forceApplyNow();
+                    forceApplyNow();
                   },
                 ),
               ),
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTapDown: (_) =>
-                    _startHold('right', () => _adjustOffsets(dx: 1)),
-                onTapUp: (_) => _stopHold('right'),
-                onTapCancel: () => _stopHold('right'),
-                onPanEnd: (_) => _stopHold('right'),
-                onPanCancel: () => _stopHold('right'),
+                    startHold('right', () => _adjustOffsets(dx: 1)),
+                onTapUp: (_) => stopHold('right'),
+                onTapCancel: () => stopHold('right'),
+                onPanEnd: (_) => stopHold('right'),
+                onPanCancel: () => stopHold('right'),
                 child: IconButton(
                   icon: const Icon(Icons.arrow_right),
                   onPressed: () {
@@ -710,18 +713,17 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
                       return;
                     }
                     _adjustOffsets(dx: 1);
-                    _forceApplyNow();
+                    forceApplyNow();
                   },
                 ),
               ),
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTapDown: (_) =>
-                    _startHold('up', () => _adjustOffsets(dy: -1)),
-                onTapUp: (_) => _stopHold('up'),
-                onTapCancel: () => _stopHold('up'),
-                onPanEnd: (_) => _stopHold('up'),
-                onPanCancel: () => _stopHold('up'),
+                onTapDown: (_) => startHold('up', () => _adjustOffsets(dy: -1)),
+                onTapUp: (_) => stopHold('up'),
+                onTapCancel: () => stopHold('up'),
+                onPanEnd: (_) => stopHold('up'),
+                onPanCancel: () => stopHold('up'),
                 child: IconButton(
                   icon: const Icon(Icons.arrow_upward),
                   onPressed: () {
@@ -730,18 +732,18 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
                       return;
                     }
                     _adjustOffsets(dy: -1);
-                    _forceApplyNow();
+                    forceApplyNow();
                   },
                 ),
               ),
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTapDown: (_) =>
-                    _startHold('down', () => _adjustOffsets(dy: 1)),
-                onTapUp: (_) => _stopHold('down'),
-                onTapCancel: () => _stopHold('down'),
-                onPanEnd: (_) => _stopHold('down'),
-                onPanCancel: () => _stopHold('down'),
+                    startHold('down', () => _adjustOffsets(dy: 1)),
+                onTapUp: (_) => stopHold('down'),
+                onTapCancel: () => stopHold('down'),
+                onPanEnd: (_) => stopHold('down'),
+                onPanCancel: () => stopHold('down'),
                 child: IconButton(
                   icon: const Icon(Icons.arrow_downward),
                   onPressed: () {
@@ -750,7 +752,7 @@ class _ManualStabilizationPageState extends State<ManualStabilizationPage> {
                       return;
                     }
                     _adjustOffsets(dy: 1);
-                    _forceApplyNow();
+                    forceApplyNow();
                   },
                 ),
               ),

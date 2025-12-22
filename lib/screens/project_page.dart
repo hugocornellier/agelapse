@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -347,6 +346,7 @@ class ProjectPageState extends State<ProjectPage> {
     final bool isDefaultProject =
         await ProjectUtils.isDefaultProject(widget.projectId);
 
+    if (!context.mounted) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -577,7 +577,9 @@ class ProjectPageState extends State<ProjectPage> {
     if (widget.settingsCache!.noPhotos) return 1;
     if (!widget.settingsCache!.hasOpenedNonEmptyGallery) return 2;
     if (!widget.settingsCache!.hasSeenGuideModeTut &&
-        widget.settingsCache!.hasTakenFirstPhoto) return 3;
+        widget.settingsCache!.hasTakenFirstPhoto) {
+      return 3;
+    }
     if (!widget.settingsCache!.hasTakenMoreThanOnePhoto) return 4;
     if (!widget.settingsCache!.hasViewedFirstVideo) return 5;
     return 0;

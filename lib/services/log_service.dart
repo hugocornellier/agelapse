@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as path;
@@ -10,7 +11,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../utils/dir_utils.dart';
 
-// ignore_for_file: depend_on_referenced_packages
+// ignore_for_file: depend_on_referenced_packages, avoid_print
 
 class LogService {
   static final LogService _instance = LogService._internal();
@@ -66,10 +67,18 @@ class LogService {
   }
 
   void log(String message) {
-    if (!_initialized || _sink == null) return;
-
     final timestamp = DateTime.now().toIso8601String();
-    _sink!.writeln('[$timestamp] $message');
+    final formattedMessage = '[$timestamp] $message';
+
+    // Print to console in debug mode only (bypasses zone to avoid recursion)
+    if (kDebugMode) {
+      Zone.root.print(formattedMessage);
+    }
+
+    // Always write to file if initialized
+    if (_initialized && _sink != null) {
+      _sink!.writeln(formattedMessage);
+    }
   }
 
   /// Called when app is closing

@@ -13,6 +13,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../services/database_helper.dart';
+import '../../services/log_service.dart';
 import '../../services/face_stabilizer.dart';
 import '../../services/settings_cache.dart';
 import '../../styles/styles.dart';
@@ -121,6 +122,8 @@ class GalleryPageState extends State<GalleryPage>
   Timer? _loadImagesDebounce;
   bool _stickyBottomEnabled = true;
   bool _isAutoScrolling = false;
+  bool _isSelectionMode = false;
+  Set<String> _selectedPhotos = {};
 
   bool _isAtBottom() {
     if (!_stabilizedScrollController.hasClients) return true;
@@ -219,6 +222,7 @@ class GalleryPageState extends State<GalleryPage>
       lastDate: DateTime.now(),
     );
     if (newDate == null) return;
+    if (!mounted) return;
     TimeOfDay initialTime = TimeOfDay.fromDateTime(initialDate);
     TimeOfDay? newTime = await showTimePicker(
       context: context,
@@ -390,7 +394,8 @@ class GalleryPageState extends State<GalleryPage>
             }
           }
         } catch (e) {
-          print('No stabilized file found for $orientation: $e');
+          LogService.instance
+              .log('No stabilized file found for $orientation: $e');
         }
       }
       final oldPhotoRecord =
@@ -416,7 +421,8 @@ class GalleryPageState extends State<GalleryPage>
       await _loadImages();
       await DB.instance.setNewVideoNeeded(projectId);
     } catch (e) {
-      print('Error changing photo date: $e');
+      LogService.instance.log('Error changing photo date: $e');
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to change photo date: $e')));
     } finally {
@@ -456,7 +462,7 @@ class GalleryPageState extends State<GalleryPage>
     });
     if (widget.userOnImportTutorial) {
       widget.setUserOnImportTutorialFalse();
-      _showImportOptionsBottomSheet(context);
+      if (mounted) _showImportOptionsBottomSheet(context);
     }
 
     // Subscribe to stabilization updates from MainNavigation instead of polling.
@@ -510,6 +516,7 @@ class GalleryPageState extends State<GalleryPage>
   Future<void> _pickFromGallery() async {
     try {
       await checkAndRequestPermissions();
+      if (!mounted) return;
       final List<AssetEntity>? result = await AssetPicker.pickAssets(
         context,
         pickerConfig: const AssetPickerConfig(
@@ -517,8 +524,9 @@ class GalleryPageState extends State<GalleryPage>
           requestType: RequestType.image,
         ),
       );
-      if (result == null)
+      if (result == null) {
         return; // for reference this means switching to the raw tab in the gallery
+      }
       setState(() {
         _tabController.index = 1;
       });
@@ -531,7 +539,7 @@ class GalleryPageState extends State<GalleryPage>
       _loadImages();
       widget.stabCallback();
     } catch (e) {
-      print("Error picking images: $e");
+      LogService.instance.log("Error picking images: $e");
     }
   }
 
@@ -610,67 +618,85 @@ class GalleryPageState extends State<GalleryPage>
                   (!isImporting && !widget.importRunningInMain)
                       ? _buildTabBarView()
                       : _buildLoadingView(),
-                  Positioned(
-                    top: 7,
-                    right: 8,
-                    child: Row(
-                      children: [
-                        RawMaterialButton(
-                          onPressed: () =>
-                              _showExportOptionsBottomSheet(context),
-                          elevation: 2.0,
-                          fillColor: Theme.of(context).primaryColor,
-                          constraints: const BoxConstraints.tightFor(
-                              width: 44, height: 44),
-                          shape: const CircleBorder(),
-                          child: const Icon(Icons.download, size: 20.0),
+                  if (!_isSelectionMode)
+                    Positioned(
+                      top: 7,
+                      right: 8,
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).primaryColor,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.3),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 12),
-                        RawMaterialButton(
-                          onPressed: isImporting
-                              ? _showImportingDialog
-                              : () => _showImportOptionsBottomSheet(context),
-                          elevation: 2.0,
-                          fillColor: Theme.of(context).primaryColor,
-                          constraints: const BoxConstraints.tightFor(
-                              width: 44, height: 44),
-                          shape: const CircleBorder(),
-                          child: const Icon(Icons.upload, size: 20.0),
+                        child: PopupMenuButton<String>(
+                          icon: const Icon(Icons.more_vert, size: 20.0),
+                          padding: EdgeInsets.zero,
+                          onSelected: (value) {
+                            switch (value) {
+                              case 'import':
+                                if (isImporting) {
+                                  _showImportingDialog();
+                                } else {
+                                  _showImportOptionsBottomSheet(context);
+                                }
+                                break;
+                              case 'export':
+                                _showExportOptionsBottomSheet(context);
+                                break;
+                              case 'select':
+                                setState(() => _isSelectionMode = true);
+                                break;
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            const PopupMenuItem(
+                              value: 'import',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.upload, size: 20),
+                                  SizedBox(width: 12),
+                                  Text('Import'),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuItem(
+                              value: 'export',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.download, size: 20),
+                                  SizedBox(width: 12),
+                                  Text('Export'),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuItem(
+                              value: 'select',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.check_circle_outline, size: 20),
+                                  SizedBox(width: 12),
+                                  Text('Select'),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
           ),
+          if (_isSelectionMode) _buildSelectionActionBar(),
         ],
-      ),
-    );
-  }
-
-  Widget _buildFloatingActionButton(
-    BuildContext context, {
-    required double right,
-    required IconData icon,
-    required VoidCallback onPressed,
-  }) {
-    return Positioned(
-      top: 7,
-      right: right,
-      child: Opacity(
-        opacity: widget.imageFilesStr.length > 2 ? 0.85 : 1,
-        child: RawMaterialButton(
-          onPressed: onPressed,
-          elevation: 2.0,
-          fillColor: Theme.of(context).primaryColor,
-          padding: const EdgeInsets.all(10.0),
-          shape: const CircleBorder(),
-          child: Icon(
-            icon,
-            size: 20.0,
-          ),
-        ),
       ),
     );
   }
@@ -836,7 +862,7 @@ class GalleryPageState extends State<GalleryPage>
       try {
         pickedFiles = await FilePicker.platform.pickFiles(allowMultiple: true);
       } catch (e) {
-        print(e);
+        LogService.instance.log(e.toString());
         return;
       }
       if (pickedFiles == null) return;
@@ -858,11 +884,11 @@ class GalleryPageState extends State<GalleryPage>
       _showImportCompleteDialog(
           successfullyImported, photosImported - successfullyImported);
     } catch (e) {
-      print("ERROR CAUGHT IN PICK FILES");
+      LogService.instance.log("ERROR CAUGHT IN PICK FILES");
     }
   }
 
-  Future<void> processPickedFile(file) async {
+  Future<void> processPickedFile(dynamic file) async {
     await GalleryUtils.processPickedFile(
         file, projectId, activeProcessingDateNotifier,
         onImagesLoaded: _loadImages,
@@ -1006,7 +1032,7 @@ class GalleryPageState extends State<GalleryPage>
                     try {
                       _pickFromGallery();
                     } catch (e) {
-                      print(e);
+                      LogService.instance.log(e.toString());
                     }
                   },
           ),
@@ -1183,7 +1209,7 @@ class GalleryPageState extends State<GalleryPage>
                             }
                           }
                         } catch (e) {
-                          print(e);
+                          LogService.instance.log(e.toString());
                         } finally {
                           setState(() => localExportingToZip = false);
                         }
@@ -1228,7 +1254,7 @@ class GalleryPageState extends State<GalleryPage>
     final params = ShareParams(files: [XFile(zipFileExportPath)]);
     final result = await SharePlus.instance.share(params);
     if (result.status == ShareResultStatus.success) {
-      // print('Share success.');
+      // LogService.instance.log('Share success.');
     }
   }
 
@@ -1247,11 +1273,351 @@ class GalleryPageState extends State<GalleryPage>
 
   Widget _buildImageTile(String imagePath) {
     final bool isRawPhoto = imagePath.contains(DirUtils.photosRawDirname);
+    Widget tile;
     if (isRawPhoto) {
-      return _buildRawThumbnail(imagePath);
+      tile = _buildRawThumbnail(imagePath);
     } else {
-      return _buildStabilizedThumbnail(imagePath);
+      tile = _buildStabilizedThumbnail(imagePath);
     }
+
+    if (_isSelectionMode) {
+      return _buildSelectableTile(imagePath, tile);
+    }
+    return tile;
+  }
+
+  Widget _buildSelectableTile(String imagePath, Widget tile) {
+    final isSelected = _selectedPhotos.contains(imagePath);
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          if (isSelected) {
+            _selectedPhotos.remove(imagePath);
+          } else {
+            _selectedPhotos.add(imagePath);
+          }
+        });
+      },
+      child: Stack(
+        children: [
+          Positioned.fill(child: AbsorbPointer(child: tile)),
+          if (isSelected)
+            Positioned.fill(
+              child: Container(
+                color: Colors.blue.withValues(alpha: 0.3),
+              ),
+            ),
+          Positioned(
+            top: 4,
+            right: 4,
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isSelected ? Colors.blue : Colors.black54,
+              ),
+              padding: const EdgeInsets.all(2),
+              child: Icon(
+                isSelected ? Icons.check : Icons.circle_outlined,
+                color: Colors.white,
+                size: 18,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _exitSelectionMode() {
+    setState(() {
+      _isSelectionMode = false;
+      _selectedPhotos.clear();
+    });
+  }
+
+  void _selectAllPhotos() {
+    final bool isStabilizedTab = _tabController.index == 0;
+    final List<String> currentFiles =
+        isStabilizedTab ? widget.stabilizedImageFilesStr : widget.imageFilesStr;
+    setState(() {
+      if (_selectedPhotos.length == currentFiles.length) {
+        _selectedPhotos.clear();
+      } else {
+        _selectedPhotos = currentFiles.toSet();
+      }
+    });
+  }
+
+  Widget _buildSelectionActionBar() {
+    final bool isStabilizedTab = _tabController.index == 0;
+    final List<String> currentFiles =
+        isStabilizedTab ? widget.stabilizedImageFilesStr : widget.imageFilesStr;
+    final bool allSelected = _selectedPhotos.length == currentFiles.length &&
+        currentFiles.isNotEmpty;
+
+    return Container(
+      color: const Color(0xff1e1e1e),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            TextButton.icon(
+              onPressed: _exitSelectionMode,
+              icon: const Icon(Icons.close, size: 20),
+              label: const Text('Cancel'),
+            ),
+            const Spacer(),
+            Text(
+              '${_selectedPhotos.length} selected',
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+              ),
+            ),
+            const Spacer(),
+            IconButton(
+              icon: Icon(
+                allSelected ? Icons.deselect : Icons.select_all,
+                color: Colors.white,
+              ),
+              tooltip: allSelected ? 'Deselect All' : 'Select All',
+              onPressed: _selectAllPhotos,
+            ),
+            IconButton(
+              icon: const Icon(Icons.download, color: Colors.white),
+              tooltip: 'Export Selected',
+              onPressed: _selectedPhotos.isEmpty ? null : _exportSelectedPhotos,
+            ),
+            IconButton(
+              icon: Icon(
+                Icons.delete,
+                color: _selectedPhotos.isEmpty ? Colors.grey : Colors.red,
+              ),
+              tooltip: 'Delete Selected',
+              onPressed: _selectedPhotos.isEmpty ? null : _deleteSelectedPhotos,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _deleteSelectedPhotos() async {
+    final int count = _selectedPhotos.length;
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Photos?'),
+        content: Text(
+          'Are you sure you want to delete $count photo${count == 1 ? '' : 's'}? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => isImporting = true);
+
+    int deleted = 0;
+    int failed = 0;
+    final List<String> photosToDelete = _selectedPhotos.toList();
+
+    for (final imagePath in photosToDelete) {
+      try {
+        // For stabilized images, we need to get the raw path first
+        final bool isStabilizedImage =
+            imagePath.toLowerCase().contains('stabilized');
+        File toDelete;
+        if (isStabilizedImage) {
+          final String timestamp = path.basenameWithoutExtension(imagePath);
+          final String rawPhotoPath =
+              await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
+                  timestamp, projectId);
+          toDelete = File(rawPhotoPath);
+        } else {
+          toDelete = File(imagePath);
+        }
+
+        final bool success =
+            await ProjectUtils.deleteImage(toDelete, projectId);
+        if (success) {
+          deleted++;
+          // Clear thumbnail cache
+          final String switched = toDelete.path.replaceAll(
+            DirUtils.photosRawDirname,
+            DirUtils.thumbnailDirname,
+          );
+          final String thumbnailPath = path.join(
+            path.dirname(switched),
+            "${path.basenameWithoutExtension(toDelete.path)}.jpg",
+          );
+          _rawThumbnailFutures.remove(thumbnailPath);
+        } else {
+          failed++;
+        }
+      } catch (e) {
+        failed++;
+        LogService.instance.log('Error deleting image: $e');
+      }
+    }
+
+    await _loadImages();
+    _exitSelectionMode();
+
+    setState(() => isImporting = false);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            failed == 0
+                ? 'Deleted $deleted photo${deleted == 1 ? '' : 's'}'
+                : 'Deleted $deleted, failed to delete $failed',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _exportSelectedPhotos() async {
+    if (_selectedPhotos.isEmpty) return;
+
+    // Categorize selected photos by type based on their path
+    final List<String> selectedStabilized = [];
+    final List<String> selectedRaw = [];
+
+    for (final photoPath in _selectedPhotos) {
+      if (photoPath.toLowerCase().contains('stabilized')) {
+        selectedStabilized.add(photoPath);
+      } else {
+        selectedRaw.add(photoPath);
+      }
+    }
+
+    final int stabCount = selectedStabilized.length;
+    final int rawCount = selectedRaw.length;
+
+    // Build description text
+    String descriptionText;
+    if (stabCount > 0 && rawCount > 0) {
+      descriptionText =
+          'Export $stabCount stabilized and $rawCount raw photo${stabCount + rawCount == 1 ? '' : 's'}?';
+    } else if (stabCount > 0) {
+      descriptionText =
+          'Export $stabCount stabilized photo${stabCount == 1 ? '' : 's'}?';
+    } else {
+      descriptionText =
+          'Export $rawCount raw photo${rawCount == 1 ? '' : 's'}?';
+    }
+
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        bool localExportingToZip = false;
+        bool exportSuccessful = false;
+        double exportProgressPercent = 0;
+
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            void setExportProgress(double exportProgressIn) {
+              setState(() {
+                exportProgressPercent = (exportProgressIn * 10).round() / 10;
+              });
+            }
+
+            List<Widget> content = [
+              if (!localExportingToZip && !exportSuccessful) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                  child: Text(
+                    descriptionText,
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: FractionallySizedBox(
+                    widthFactor: 1.0,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        setState(() {
+                          localExportingToZip = true;
+                        });
+                        try {
+                          Map<String, List<String>> filesToExport = {
+                            'Raw': selectedRaw,
+                            'Stabilized': selectedStabilized,
+                          };
+
+                          String res = await GalleryUtils.exportZipFile(
+                            widget.projectId,
+                            widget.projectName,
+                            filesToExport,
+                            setExportProgress,
+                          );
+
+                          if (res == 'success') {
+                            setState(() => exportSuccessful = true);
+                            if (Platform.isAndroid || Platform.isIOS) {
+                              _shareZipFile();
+                            }
+                          }
+                        } catch (e) {
+                          LogService.instance.log(e.toString());
+                        } finally {
+                          setState(() => localExportingToZip = false);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.darkerLightBlue,
+                        minimumSize: const Size(double.infinity, 50),
+                        padding: const EdgeInsets.symmetric(vertical: 18.0),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6.0),
+                        ),
+                      ),
+                      child: Text(
+                        'Export'.toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+              if (localExportingToZip) ...[
+                const CircularProgressIndicator(),
+                Text("Exporting... $exportProgressPercent %"),
+              ],
+              if (!localExportingToZip && exportSuccessful) ...[
+                const Text("Export successful!")
+              ],
+            ];
+
+            return _buildOptionsBottomSheet(
+              context,
+              'Export Selected Photos',
+              content,
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _retryStabilization() async {
@@ -1279,6 +1645,7 @@ class GalleryPageState extends State<GalleryPage>
     }
     await DB.instance
         .resetStabilizedColumnByTimestamp(projectOrientation, timestamp);
+    if (!mounted) return;
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text('Retrying stabilization...')));
     widget.stabCallback(); // Navigator.of(context).pop();
@@ -1353,6 +1720,7 @@ class GalleryPageState extends State<GalleryPage>
                   if (photoRecord != null) {
                     await DB.instance.setSettingByTitle("selected_guide_photo",
                         photoRecord['id'].toString(), projectId.toString());
+                    if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('Guide photo updated')));
                   }
@@ -1771,7 +2139,9 @@ class GalleryPageState extends State<GalleryPage>
           PermissionStatus audioStatus = await Permission.audio.request();
           if (imagesStatus.isGranted &&
               videosStatus.isGranted &&
-              audioStatus.isGranted) return;
+              audioStatus.isGranted) {
+            return;
+          }
           if (imagesStatus.isPermanentlyDenied ||
               videosStatus.isPermanentlyDenied ||
               audioStatus.isPermanentlyDenied) {
@@ -1785,7 +2155,7 @@ class GalleryPageState extends State<GalleryPage>
           }
         }
       } catch (e) {
-        print('Error checking permissions: $e');
+        LogService.instance.log('Error checking permissions: $e');
       }
     }
   }

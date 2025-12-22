@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 class FAQPage extends StatelessWidget {
+  const FAQPage({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -44,7 +46,7 @@ class FAQItem extends StatelessWidget {
   final String question;
   final String answer;
 
-  const FAQItem({required this.question, required this.answer});
+  const FAQItem({super.key, required this.question, required this.answer});
 
   @override
   Widget build(BuildContext context) {

@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/cupertino.dart';
 
 import '../services/database_helper.dart';
+import '../services/log_service.dart';
 import '../utils/dir_utils.dart';
 import '../utils/project_utils.dart';
 import '../utils/settings_utils.dart';
@@ -70,7 +71,8 @@ class OutputImageLoader {
         try {
           guideImage = await StabUtils.loadImageFromFile(File(guideImagePath));
         } catch (e) {
-          print("Error caught $e, setting ghostImage to persongrey");
+          LogService.instance
+              .log("Error caught $e, setting ghostImage to persongrey");
           guideImage =
               await ProjectUtils.loadImage('assets/images/person-grey.png');
           ghostImageOffsetX = 0.105;

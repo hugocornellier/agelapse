@@ -37,31 +37,20 @@ The face detection model used by AgeLapse is platform-dependent. On Mobile, Goog
 
 ## What's New
 
-### v2.1.3
+### v2.2.0
 
-- Fixes #20. Thanks @Syumza.
+#### Improvements
+- Massive performance improvements. Stabilization pipeline is 2-4x faster (platform-dependant).
 
-### v2.1.2
+#### New Features
+- .HEIC support on Windows devices. Thanks to the user who wrote in and suggested this.
+- Bulk image selection in the gallery. 3-dot menu in the upper right -> Select.
 
-- Fixed a bug where the "adjust output position" functionality would fail 
-
-### v2.1.1
-
-- Smoother experience across the app, improving responsiveness/reduced stutter during stabilization.
-
-### v2.1.0
-
-- Fix several bugs 
-
-### v2.0.1
-
-- Update documentation URL 
-
-### v2.0.0
-
-- Provide full MacOS, Windows & Linux support to the AgeLapse flutter build.
-- Further improvements to the "manual stabilization" option for when AgeLapse fails to detect landmarks (eg: if the user is wearing sunglasses, the eyes are partially obstructed, etc.)
-- Massive improvements to the [AgeLapse Documentation](https://agelapse.com/docs/intro/) 
+#### Bug Fixes
+- Fixes #11: deleted photos could remain stuck in the generated video. Thanks @agnosticlines.
+- Fixes #16 + #20: incorrect timezone and date metadata, could result in incorrectly broken streaks. Thanks @thelittlekatie
+and @Syumza.
+- Fixes #23: the built-in camera could fail to initialize on Windows. Thanks @COHEJH.
 
 ## Platform Support
 
@@ -79,9 +68,10 @@ The face detection model used by AgeLapse is platform-dependent. On Mobile, Goog
 
 ## Resources
 
-- **Documentation**: https://agelapse.com/docs/intro/
-- **Demo Video:** [https://www.youtube.com/watch?v=vMOWSAHdwhA](https://www.youtube.com/watch?v=vMOWSAHdwhA)
-- **Support:** For suggestions, feature requests or bugs, please contact agelapse@gmail.com
+- **Documentation** - https://agelapse.com/docs/intro/
+- **Demo Video** - [https://www.youtube.com/watch?v=vMOWSAHdwhA](https://www.youtube.com/watch?v=vMOWSAHdwhA)
+- **Contact** - For suggestions, feature requests or bug reports: 
+  - Email **agelapse@gmail.com**, or open an [issue](https://github.com/hugocornellier/agelapse/issues) on GitHub.
 
 ## Contributions
 

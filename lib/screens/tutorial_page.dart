@@ -206,10 +206,10 @@ class TutorialSection extends StatefulWidget {
   final List<Widget> steps;
 
   @override
-  _TutorialSectionState createState() => _TutorialSectionState();
+  TutorialSectionState createState() => TutorialSectionState();
 }
 
-class _TutorialSectionState extends State<TutorialSection> {
+class TutorialSectionState extends State<TutorialSection> {
   bool _isExpanded = false;
 
   @override

@@ -5,7 +5,7 @@ import '../styles/styles.dart';
 class YellowTipBar extends StatelessWidget {
   final String message;
 
-  const YellowTipBar({Key? key, required this.message}) : super(key: key);
+  const YellowTipBar({super.key, required this.message});
 
   @override
   Widget build(BuildContext context) {

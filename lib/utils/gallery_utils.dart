@@ -1,12 +1,8 @@
 import 'dart:io';
 import 'dart:isolate';
-import 'dart:ui';
-import 'dart:typed_data';
 
 import 'package:archive/archive_io.dart';
-import 'package:archive/archive.dart';
 import 'package:async_zip/async_zip.dart';
-import 'package:camera/camera.dart';
 import 'package:exif_reader/exif_reader.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
@@ -15,6 +11,7 @@ import 'package:flutter/services.dart';
 import 'package:file_selector/file_selector.dart';
 
 import '../services/database_helper.dart';
+import '../services/log_service.dart';
 import '../services/image_processor.dart';
 import 'camera_utils.dart';
 import 'dir_utils.dart';
@@ -58,7 +55,7 @@ class GalleryUtils {
         throw Exception('Failed to convert AVIF to PNG');
       }
     } catch (e) {
-      //print('Error converting AVIF to PNG: $e');
+      //LogService.instance.log('Error converting AVIF to PNG: $e');
     }
   }
 
@@ -75,7 +72,7 @@ class GalleryUtils {
       }
       return offset;
     } catch (e) {
-      print('Failed to parse offset: $e');
+      LogService.instance.log('Failed to parse offset: $e');
       return null;
     }
   }
@@ -83,9 +80,10 @@ class GalleryUtils {
   static String _normalizeOffset(String s) {
     final t = s.trim();
     if (RegExp(r'^[+-]\d{2}:\d{2}$').hasMatch(t)) return t;
-    if (RegExp(r'^[+-]\d{2}\d{2}$').hasMatch(t))
+    if (RegExp(r'^[+-]\d{2}\d{2}$').hasMatch(t)) {
       return '${t.substring(0, 3)}:${t.substring(3)}';
-    if (RegExp(r'^[+-]\d{2}$').hasMatch(t)) return '${t}:00';
+    }
+    if (RegExp(r'^[+-]\d{2}$').hasMatch(t)) return '$t:00';
     return t;
   }
 
@@ -116,11 +114,15 @@ class GalleryUtils {
 
       final String? dtStr = exifData['EXIF DateTimeOriginal']?.toString() ??
           exifData['Image DateTime']?.toString();
+      LogService.instance.log('[parseExifDate] dtStr=$dtStr');
       if (dtStr == null) return (true, null);
 
       final m = RegExp(r'^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})$')
           .firstMatch(dtStr);
-      if (m == null) return (true, null);
+      if (m == null) {
+        LogService.instance.log('[parseExifDate] regex did not match dtStr');
+        return (true, null);
+      }
 
       final y = int.parse(m.group(1)!);
       final mo = int.parse(m.group(2)!);
@@ -128,6 +130,14 @@ class GalleryUtils {
       final h = int.parse(m.group(4)!);
       final mi = int.parse(m.group(5)!);
       final s = int.parse(m.group(6)!);
+      LogService.instance
+          .log('[parseExifDate] parsed y=$y mo=$mo d=$d h=$h mi=$mi s=$s');
+
+      if (y < 1900 || mo < 1 || mo > 12 || d < 1 || d > 31) {
+        LogService.instance
+            .log('[parseExifDate] invalid date values, rejecting');
+        return (true, null);
+      }
 
       final String? rawOffset =
           exifData['EXIF OffsetTimeOriginal']?.toString() ??
@@ -136,6 +146,7 @@ class GalleryUtils {
               exifData['Time Zone for Original Date']?.toString() ??
               exifData['Time Zone for Digitized Date']?.toString() ??
               exifData['Time Zone for Modification Date']?.toString();
+      LogService.instance.log('[parseExifDate] rawOffset=$rawOffset');
 
       if (rawOffset != null) {
         final norm = _normalizeOffset(rawOffset);
@@ -143,15 +154,19 @@ class GalleryUtils {
         if (offset != null) {
           final wallUtc = DateTime.utc(y, mo, d, h, mi, s);
           final utcInstant = wallUtc.subtract(offset);
+          LogService.instance.log(
+              '[parseExifDate] with offset: wallUtc=$wallUtc utcInstant=$utcInstant ms=${utcInstant.millisecondsSinceEpoch}');
           return (false, utcInstant.millisecondsSinceEpoch);
         }
       }
 
       final local = DateTime(y, mo, d, h, mi, s);
       final utcGuess = local.toUtc();
+      LogService.instance.log(
+          '[parseExifDate] no offset fallback: local=$local utcGuess=$utcGuess ms=${utcGuess.millisecondsSinceEpoch}');
       return (false, utcGuess.millisecondsSinceEpoch);
     } catch (e) {
-      print('Failed to parse EXIF date: $e');
+      LogService.instance.log('Failed to parse EXIF date: $e');
       return (true, null);
     }
   }
@@ -332,8 +347,9 @@ class GalleryUtils {
       final entries = archive.files.where((f) {
         if (!f.isFile) return false;
         final lowerName = path.basename(f.name).toLowerCase();
-        if (lowerName == '.ds_store' || f.name.startsWith('__MACOSX/'))
+        if (lowerName == '.ds_store' || f.name.startsWith('__MACOSX/')) {
           return false;
+        }
 
         const allowed = {
           '.jpg',
@@ -541,12 +557,12 @@ class GalleryUtils {
         bytes = await CameraUtils.readBytesInIsolate(file.path);
         final Map<String, dynamic> data = await tryReadExifFromBytes(bytes!);
 
-        print('[import] EXIF keys: ${data.keys.toList()}');
-        print(
+        LogService.instance.log('[import] EXIF keys: ${data.keys.toList()}');
+        LogService.instance.log(
             '[import] DateTimeOriginal: ${data['EXIF DateTimeOriginal']} CreateDate:${data['EXIF CreateDate']} ImageDateTime:${data['Image DateTime']}');
-        print(
+        LogService.instance.log(
             '[import] OffsetTimeOriginal:${data['EXIF OffsetTimeOriginal']} OffsetTime:${data['EXIF OffsetTime']} OffsetTimeDigitized:${data['EXIF OffsetTimeDigitized']}');
-        print(
+        LogService.instance.log(
             '[import] GPSDateStamp:${data['GPS GPSDateStamp']} GPSTimeStamp:${data['GPS GPSTimeStamp']}');
 
         if (data.isNotEmpty) {
@@ -600,14 +616,12 @@ class GalleryUtils {
           failedToParseDateMetadata = false;
         }
 
-        if (captureOffsetMinutes == null && imageTimestampFromExif != null) {
-          captureOffsetMinutes = DateTime.fromMillisecondsSinceEpoch(
-                  imageTimestampFromExif,
-                  isUtc: true)
-              .toLocal()
-              .timeZoneOffset
-              .inMinutes;
-        }
+        captureOffsetMinutes ??= DateTime.fromMillisecondsSinceEpoch(
+                imageTimestampFromExif,
+                isUtc: true)
+            .toLocal()
+            .timeZoneOffset
+            .inMinutes;
       } else {
         imageTimestampFromExif = timestamp;
         bytes = await CameraUtils.readBytesInIsolate(file.path);
@@ -616,12 +630,12 @@ class GalleryUtils {
                 .toLocal()
                 .timeZoneOffset
                 .inMinutes;
-        print(
-            '[import] External timestamp provided -> utcMs:${imageTimestampFromExif} offsetMin:${captureOffsetMinutes}');
+        LogService.instance.log(
+            '[import] External timestamp provided -> utcMs:$imageTimestampFromExif offsetMin:$captureOffsetMinutes');
       }
 
-      print(
-          '[import] FINAL -> utcMs:${imageTimestampFromExif} captureOffsetMin:${captureOffsetMinutes} failedToParse:${failedToParseDateMetadata}');
+      LogService.instance.log(
+          '[import] FINAL -> utcMs:$imageTimestampFromExif captureOffsetMin:$captureOffsetMinutes failedToParse:$failedToParseDateMetadata');
 
       final bool result = await CameraUtils.savePhoto(
         file,
@@ -633,7 +647,7 @@ class GalleryUtils {
         increaseSuccessfulImportCount: increaseSuccessfulImportCount,
       );
 
-      if (result && imageTimestampFromExif != null) {
+      if (result) {
         await DB.instance.setCaptureOffsetMinutesByTimestamp(
           imageTimestampFromExif.toString(),
           projectId,
@@ -643,7 +657,7 @@ class GalleryUtils {
 
       return result;
     } catch (e) {
-      print("Error caught $e");
+      LogService.instance.log("Error caught $e");
       return false;
     } finally {
       bytes = null;

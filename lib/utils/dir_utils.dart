@@ -7,6 +7,7 @@ import '../utils/settings_utils.dart';
 import '../utils/utils.dart';
 
 import '../services/database_helper.dart';
+import '../services/log_service.dart';
 
 class DirUtils {
   static const String photosRawDirname = 'photos_raw';
@@ -186,7 +187,7 @@ class DirUtils {
         await file.delete();
       }
     } catch (e) {
-      // print('An error occurred while deleting the file: $e');
+      // LogService.instance.log('An error occurred while deleting the file: $e');
     }
   }
 
@@ -203,7 +204,8 @@ class DirUtils {
     }
   }
 
-  static deleteAllThumbnails(int projectId, String projectOrientation) async {
+  static Future<void> deleteAllThumbnails(
+      int projectId, String projectOrientation) async {
     final String stabilizedDirPath =
         await DirUtils.getStabilizedDirPath(projectId);
     final String thumbnailDir = join(stabilizedDirPath, projectOrientation,
@@ -213,7 +215,8 @@ class DirUtils {
     if (isValidDirectory) {
       await deleteDirectory(thumbnailDir);
     } else {
-      print('Directory does not exist or is not a valid directory.');
+      LogService.instance
+          .log('Directory does not exist or is not a valid directory.');
     }
   }
 

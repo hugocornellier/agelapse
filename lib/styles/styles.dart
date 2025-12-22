@@ -20,7 +20,7 @@ ButtonStyle takePhotoRoundStyle() {
 }
 
 class AppColors {
-  static Color darkOverlay = const Color(0xFF232121).withOpacity(0.5);
+  static Color darkOverlay = const Color(0xFF232121).withValues(alpha: 0.5);
   static const Color lightGrey = Color(0xffb4b0b0);
   static const Color lightBlue = Color(0xff66aacc);
   static const Color darkerLightBlue = Color(0xff3285af);

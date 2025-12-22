@@ -44,10 +44,10 @@ class CustomAppBar extends StatefulWidget {
   });
 
   @override
-  _CustomAppBarState createState() => _CustomAppBarState();
+  CustomAppBarState createState() => CustomAppBarState();
 }
 
-class _CustomAppBarState extends State<CustomAppBar> {
+class CustomAppBarState extends State<CustomAppBar> {
   String projectImagePath = '';
 
   @override
@@ -79,6 +79,7 @@ class _CustomAppBarState extends State<CustomAppBar> {
       SettingsCache? settingsCache) async {
     final bool isDefaultProject = await _isDefaultProject(projectId);
 
+    if (!context.mounted) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -109,6 +110,7 @@ class _CustomAppBarState extends State<CustomAppBar> {
   void _showProjectSelectionModal(BuildContext context, int projectId) async {
     final bool isDefaultProject = await _isDefaultProject(projectId);
 
+    if (!context.mounted) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,

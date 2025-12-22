@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart' as kit;
+import '../services/log_service.dart';
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit_config.dart' as kitcfg;
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_session.dart' as kitsession;
 import 'package:ffmpeg_kit_flutter_new/log.dart' as kitlog;
@@ -37,9 +38,9 @@ class VideoUtils {
   static Future<bool> createTimelapse(int projectId, framerate, totalPhotoCount,
       Function(int currentFrame)? setCurrentFrame) async {
     try {
-      print(
+      LogService.instance.log(
           "[VIDEO] createTimelapse called - projectId: $projectId, framerate: $framerate, totalPhotoCount: $totalPhotoCount");
-      print(
+      LogService.instance.log(
           "[VIDEO] Platform: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}");
 
       String projectOrientation =
@@ -48,9 +49,9 @@ class VideoUtils {
           await DirUtils.getStabilizedDirPath(projectId);
       final String videoOutputPath =
           await DirUtils.getVideoOutputPath(projectId, projectOrientation);
-      print("[VIDEO] orientation: $projectOrientation");
-      print("[VIDEO] stabilizedDirPath: $stabilizedDirPath");
-      print("[VIDEO] videoOutputPath: $videoOutputPath");
+      LogService.instance.log("[VIDEO] orientation: $projectOrientation");
+      LogService.instance.log("[VIDEO] stabilizedDirPath: $stabilizedDirPath");
+      LogService.instance.log("[VIDEO] videoOutputPath: $videoOutputPath");
 
       // Check available disk space
       try {
@@ -68,26 +69,27 @@ class VideoUtils {
                   '/value'
                 ],
                 runInShell: true);
-            print(
+            LogService.instance.log(
                 "[VIDEO] Disk space check: ${result.stdout.toString().trim()}");
           } else if (Platform.isLinux || Platform.isMacOS) {
             final result = await Process.run('df', ['-h', videoOutputPath]);
-            print("[VIDEO] Disk space check:\n${result.stdout}");
+            LogService.instance
+                .log("[VIDEO] Disk space check:\n${result.stdout}");
           }
         }
       } catch (e) {
-        print("[VIDEO] Could not check disk space: $e");
+        LogService.instance.log("[VIDEO] Could not check disk space: $e");
       }
 
       await DirUtils.createDirectoryIfNotExists(videoOutputPath);
 
       final Directory dir =
           Directory(path.join(stabilizedDirPath, projectOrientation));
-      print("[VIDEO] Listing PNG files from: ${dir.path}");
+      LogService.instance.log("[VIDEO] Listing PNG files from: ${dir.path}");
 
       // Check if directory exists
       if (!await dir.exists()) {
-        print(
+        LogService.instance.log(
             "[VIDEO] ERROR: Stabilized directory does not exist: ${dir.path}");
         return false;
       }
@@ -101,22 +103,25 @@ class VideoUtils {
             .toList()
           ..sort();
       } catch (e, stackTrace) {
-        print("[VIDEO] ERROR: Failed to list directory contents: $e");
-        print("[VIDEO] Stack trace: $stackTrace");
+        LogService.instance
+            .log("[VIDEO] ERROR: Failed to list directory contents: $e");
+        LogService.instance.log("[VIDEO] Stack trace: $stackTrace");
         return false;
       }
 
-      print("[VIDEO] Found ${pngFiles.length} PNG files in ${dir.path}");
+      LogService.instance
+          .log("[VIDEO] Found ${pngFiles.length} PNG files in ${dir.path}");
 
       // Log sample PNG paths for debugging
       if (pngFiles.isNotEmpty) {
         final sampleCount = pngFiles.length < 3 ? pngFiles.length : 3;
-        print("[VIDEO] Sample PNG files (first $sampleCount):");
+        LogService.instance
+            .log("[VIDEO] Sample PNG files (first $sampleCount):");
         for (int i = 0; i < sampleCount; i++) {
           final file = File(pngFiles[i]);
           final exists = await file.exists();
           final size = exists ? await file.length() : 0;
-          print(
+          LogService.instance.log(
               "[VIDEO]   ${i + 1}. ${pngFiles[i]} (exists: $exists, size: ${(size / 1024).toStringAsFixed(1)} KB)");
         }
       }
@@ -127,11 +132,11 @@ class VideoUtils {
         framerate = await getOptimalFramerateFromStabPhotoCount(projectId);
         DB.instance.setSettingByTitle(
             'framerate', framerate.toString(), projectId.toString());
-        print("[VIDEO] Using optimal framerate: $framerate");
+        LogService.instance.log("[VIDEO] Using optimal framerate: $framerate");
       }
 
       if (Platform.isWindows || Platform.isLinux) {
-        print("[VIDEO] Using Windows/Linux encoding path");
+        LogService.instance.log("[VIDEO] Using Windows/Linux encoding path");
         try {
           final String framesDir =
               path.join(stabilizedDirPath, projectOrientation);
@@ -141,10 +146,10 @@ class VideoUtils {
             fps: framerate,
             projectId: projectId,
             orientation: projectOrientation,
-            onLog: (line) => print("[FFMPEG] $line"),
+            onLog: (line) => LogService.instance.log("[FFMPEG] $line"),
             onProgress: setCurrentFrame,
           );
-          print("[VIDEO] _encodeWindows returned: $ok");
+          LogService.instance.log("[VIDEO] _encodeWindows returned: $ok");
           if (ok) {
             final String resolution =
                 await SettingsUtil.loadVideoResolution(projectId.toString());
@@ -158,13 +163,14 @@ class VideoUtils {
               totalPhotoCount,
               framerate,
             );
-            print("[VIDEO] Video record added to database");
+            LogService.instance.log("[VIDEO] Video record added to database");
           }
 
           return ok;
         } catch (e, stackTrace) {
-          print("[VIDEO] ERROR in Windows/Linux encoding: $e");
-          print("[VIDEO] Stack trace: $stackTrace");
+          LogService.instance
+              .log("[VIDEO] ERROR in Windows/Linux encoding: $e");
+          LogService.instance.log("[VIDEO] Stack trace: $stackTrace");
           return false;
         }
       }
@@ -215,7 +221,7 @@ class VideoUtils {
 
       try {
         if (Platform.isMacOS) {
-          print("[VIDEO] Using macOS encoding path");
+          LogService.instance.log("[VIDEO] Using macOS encoding path");
 
           final exeDir = path.dirname(Platform.resolvedExecutable);
           final resourcesDir =
@@ -223,8 +229,8 @@ class VideoUtils {
           final ffmpegExe = path.join(resourcesDir, 'ffmpeg');
           final cmd = '"$ffmpegExe" $ffmpegCommand';
 
-          print('[VIDEO] ffmpeg executable: $ffmpegExe');
-          print('[VIDEO] ffmpeg command: $ffmpegCommand');
+          LogService.instance.log('[VIDEO] ffmpeg executable: $ffmpegExe');
+          LogService.instance.log('[VIDEO] ffmpeg command: $ffmpegCommand');
 
           final proc =
               await Process.start('/bin/sh', ['-c', cmd], runInShell: false);
@@ -232,23 +238,23 @@ class VideoUtils {
               .transform(utf8.decoder)
               .transform(const LineSplitter())
               .listen((line) {
-            print("[FFMPEG] $line");
+            LogService.instance.log("[FFMPEG] $line");
           });
           proc.stderr
               .transform(utf8.decoder)
               .transform(const LineSplitter())
               .listen((line) {
-            print("[FFMPEG] $line");
+            LogService.instance.log("[FFMPEG] $line");
             parseFFmpegOutput(line, framerate, setCurrentFrame);
           });
 
           final code = await proc.exitCode;
-          print("[VIDEO] ffmpeg exit code: $code");
+          LogService.instance.log("[VIDEO] ffmpeg exit code: $code");
 
           try {
             await File(listPath).delete();
           } catch (e) {
-            print("[VIDEO] Failed to delete concat list: $e");
+            LogService.instance.log("[VIDEO] Failed to delete concat list: $e");
           }
           if (code == 0) {
             final String resolution =
@@ -260,25 +266,29 @@ class VideoUtils {
                 watermarkPos,
                 totalPhotoCount,
                 framerate);
-            print(
+            LogService.instance.log(
                 "[VIDEO] Video compilation successful, record added to database");
             return true;
           }
-          print("[VIDEO] ffmpeg failed with exit code: $code");
+          LogService.instance
+              .log("[VIDEO] ffmpeg failed with exit code: $code");
           return false;
         } else {
-          print("[VIDEO] Using mobile (FFmpegKit) encoding path");
+          LogService.instance
+              .log("[VIDEO] Using mobile (FFmpegKit) encoding path");
           kitcfg.FFmpegKitConfig.enableLogCallback((kitlog.Log log) {
             final String output = log.getMessage();
             parseFFmpegOutput(output, framerate, setCurrentFrame);
-            print("[FFMPEG] $output");
+            LogService.instance.log("[FFMPEG] $output");
           });
 
-          print("[VIDEO] Executing ffmpeg command: $ffmpegCommand");
+          LogService.instance
+              .log("[VIDEO] Executing ffmpeg command: $ffmpegCommand");
           final kitsession.FFmpegSession session =
               await kit.FFmpegKit.execute(ffmpegCommand);
           final returnCode = await session.getReturnCode();
-          print("[VIDEO] FFmpegKit return code: ${returnCode?.getValue()}");
+          LogService.instance
+              .log("[VIDEO] FFmpegKit return code: ${returnCode?.getValue()}");
 
           if (kitrc.ReturnCode.isSuccess(returnCode)) {
             final String resolution =
@@ -290,52 +300,54 @@ class VideoUtils {
                 watermarkPos,
                 totalPhotoCount,
                 framerate);
-            print(
+            LogService.instance.log(
                 "[VIDEO] Video compilation successful, record added to database");
             return true;
           } else {
             final logs = await session.getAllLogsAsString();
-            print("[VIDEO] FFmpegKit failed. Full logs: $logs");
+            LogService.instance
+                .log("[VIDEO] FFmpegKit failed. Full logs: $logs");
             return false;
           }
         }
       } catch (e, stackTrace) {
-        print("[VIDEO] ERROR in video compilation: $e");
-        print("[VIDEO] Stack trace: $stackTrace");
+        LogService.instance.log("[VIDEO] ERROR in video compilation: $e");
+        LogService.instance.log("[VIDEO] Stack trace: $stackTrace");
         return false;
       }
     } catch (e, stackTrace) {
-      print("[VIDEO] ERROR in createTimelapse: $e");
-      print("[VIDEO] Stack trace: $stackTrace");
+      LogService.instance.log("[VIDEO] ERROR in createTimelapse: $e");
+      LogService.instance.log("[VIDEO] Stack trace: $stackTrace");
       return false;
     }
   }
 
   static Future<bool> createTimelapseFromProjectId(
       int projectId, Function(int currentFrame)? setCurrentFrame) async {
-    print(
+    LogService.instance.log(
         "[VIDEO] createTimelapseFromProjectId called - projectId: $projectId");
     try {
       String projectOrientation =
           await SettingsUtil.loadProjectOrientation(projectId.toString());
       final List<Map<String, dynamic>> stabilizedPhotos = await DB.instance
           .getStabilizedPhotosByProjectID(projectId, projectOrientation);
-      print(
+      LogService.instance.log(
           "[VIDEO] Found ${stabilizedPhotos.length} stabilized photos for orientation: $projectOrientation");
       if (stabilizedPhotos.isEmpty) {
-        print("[VIDEO] No stabilized photos found, aborting");
+        LogService.instance.log("[VIDEO] No stabilized photos found, aborting");
         return false;
       }
 
       final int framerate =
           await SettingsUtil.loadFramerate(projectId.toString());
-      print("[VIDEO] Loaded framerate: $framerate");
+      LogService.instance.log("[VIDEO] Loaded framerate: $framerate");
 
       return await createTimelapse(
           projectId, framerate, stabilizedPhotos.length, setCurrentFrame);
     } catch (e, stackTrace) {
-      print("[VIDEO] ERROR in createTimelapseFromProjectId: $e");
-      print("[VIDEO] Stack trace: $stackTrace");
+      LogService.instance
+          .log("[VIDEO] ERROR in createTimelapseFromProjectId: $e");
+      LogService.instance.log("[VIDEO] Stack trace: $stackTrace");
       return false;
     }
   }
@@ -375,14 +387,15 @@ class VideoUtils {
         .length;
   }
 
-  static createGif(videoOutputPath, framerate) async {
+  static Future<void> createGif(String videoOutputPath, int framerate) async {
     if (Platform.isWindows) return;
     final String gifPath =
         videoOutputPath.replaceAll(path.extension(videoOutputPath), ".gif");
     await kit.FFmpegKit.execute('-i $videoOutputPath $gifPath');
   }
 
-  static Future<bool> videoOutputSettingsChanged(projectId, newestVideo) async {
+  static Future<bool> videoOutputSettingsChanged(
+      int projectId, Map<String, dynamic>? newestVideo) async {
     if (newestVideo == null) return false;
 
     final bool newPhotos = newestVideo['photoCount'] !=
@@ -422,7 +435,7 @@ class VideoUtils {
     return allStabilizedPhotos.length;
   }
 
-  static Future<int> _getFramerate(projectId) async =>
+  static Future<int> _getFramerate(int projectId) async =>
       await SettingsUtil.loadFramerate(projectId.toString());
 
   static String getWatermarkFilter(
@@ -458,11 +471,11 @@ class VideoUtils {
     if (!Platform.isWindows) {
       return '';
     }
-    print("[VIDEO] Ensuring bundled ffmpeg is extracted...");
+    LogService.instance.log("[VIDEO] Ensuring bundled ffmpeg is extracted...");
     final dir = await getApplicationSupportDirectory();
     final binDir = Directory(path.join(dir.path, 'bin'));
     if (!await binDir.exists()) {
-      print("[VIDEO] Creating bin directory: ${binDir.path}");
+      LogService.instance.log("[VIDEO] Creating bin directory: ${binDir.path}");
       await binDir.create(recursive: true);
     }
     final exePath = path.join(binDir.path, 'ffmpeg.exe');
@@ -470,18 +483,20 @@ class VideoUtils {
     final exeExists = await File(exePath).exists();
     final markerExists = await File(markerPath).exists();
     final needsWrite = !exeExists || !markerExists;
-    print(
+    LogService.instance.log(
         "[VIDEO] ffmpeg.exe exists: $exeExists, marker exists: $markerExists, needs extraction: $needsWrite");
     if (needsWrite) {
-      print("[VIDEO] Extracting bundled ffmpeg from assets...");
+      LogService.instance
+          .log("[VIDEO] Extracting bundled ffmpeg from assets...");
       try {
         final bytes = await rootBundle.load(_winFfmpegAssetPath);
         await File(exePath)
             .writeAsBytes(bytes.buffer.asUint8List(), flush: true);
         await File(markerPath).writeAsString('1', flush: true);
-        print("[VIDEO] Bundled ffmpeg extracted successfully to: $exePath");
+        LogService.instance
+            .log("[VIDEO] Bundled ffmpeg extracted successfully to: $exePath");
       } catch (e) {
-        print("[VIDEO] ERROR extracting bundled ffmpeg: $e");
+        LogService.instance.log("[VIDEO] ERROR extracting bundled ffmpeg: $e");
         rethrow;
       }
     }
@@ -490,7 +505,8 @@ class VideoUtils {
 
   static Future<String> _findFfmpegOnPath() async {
     final cmd = Platform.isWindows ? 'where' : 'which';
-    print("[VIDEO] Searching for ffmpeg on PATH using '$cmd'...");
+    LogService.instance
+        .log("[VIDEO] Searching for ffmpeg on PATH using '$cmd'...");
     try {
       final result = await Process.run(cmd, ['ffmpeg'], runInShell: true);
       if (result.exitCode == 0) {
@@ -498,36 +514,37 @@ class VideoUtils {
         for (final line in lines) {
           final p = line.trim();
           if (p.isNotEmpty && await File(p).exists()) {
-            print("[VIDEO] Found ffmpeg on PATH: $p");
+            LogService.instance.log("[VIDEO] Found ffmpeg on PATH: $p");
             return p;
           }
         }
       }
-      print("[VIDEO] ffmpeg not found on PATH (exit code: ${result.exitCode})");
+      LogService.instance.log(
+          "[VIDEO] ffmpeg not found on PATH (exit code: ${result.exitCode})");
     } catch (e) {
-      print("[VIDEO] Error searching PATH for ffmpeg: $e");
+      LogService.instance.log("[VIDEO] Error searching PATH for ffmpeg: $e");
     }
     return '';
   }
 
   static Future<String> _resolveFfmpegPath() async {
-    print("[VIDEO] Resolving ffmpeg path...");
+    LogService.instance.log("[VIDEO] Resolving ffmpeg path...");
     if (Platform.isWindows) {
       try {
         final bundled = await _ensureBundledFfmpeg();
         if (bundled.isNotEmpty && await File(bundled).exists()) {
-          print("[VIDEO] Using bundled ffmpeg: $bundled");
+          LogService.instance.log("[VIDEO] Using bundled ffmpeg: $bundled");
           return bundled;
         }
       } catch (e) {
-        print("[VIDEO] Failed to use bundled ffmpeg: $e");
+        LogService.instance.log("[VIDEO] Failed to use bundled ffmpeg: $e");
       }
       final onPathWin = await _findFfmpegOnPath();
       if (onPathWin.isNotEmpty) {
-        print("[VIDEO] Using ffmpeg from PATH: $onPathWin");
+        LogService.instance.log("[VIDEO] Using ffmpeg from PATH: $onPathWin");
         return onPathWin;
       }
-      print(
+      LogService.instance.log(
           "[VIDEO] WARNING: No ffmpeg found, falling back to 'ffmpeg' command");
       return 'ffmpeg';
     } else {
@@ -562,10 +579,12 @@ class VideoUtils {
 
   static Future<String> _buildConcatListFromDir(String framesDir, int fps,
       {int? projectId, String? orientation}) async {
-    print("[VIDEO] Building concat list from directory: $framesDir");
+    LogService.instance
+        .log("[VIDEO] Building concat list from directory: $framesDir");
     final dir = Directory(framesDir);
     if (!await dir.exists()) {
-      print("[VIDEO] ERROR: Image directory does not exist: $framesDir");
+      LogService.instance
+          .log("[VIDEO] ERROR: Image directory does not exist: $framesDir");
       throw FileSystemException('image directory not found', framesDir);
     }
     var files = await dir
@@ -587,24 +606,28 @@ class VideoUtils {
           validFiles.add(filePath);
         } else {
           // Orphaned file: exists in filesystem but not in DB - delete it
-          print("[VIDEO] Cleaning up orphaned file (not in DB): $filePath");
+          LogService.instance
+              .log("[VIDEO] Cleaning up orphaned file (not in DB): $filePath");
           try {
             await File(filePath).delete();
           } catch (e) {
-            print("[VIDEO] Failed to delete orphaned file: $e");
+            LogService.instance
+                .log("[VIDEO] Failed to delete orphaned file: $e");
           }
         }
       }
       final int orphansRemoved = originalFileCount - validFiles.length;
       files = validFiles;
-      print(
+      LogService.instance.log(
           "[VIDEO] After DB validation: ${files.length} valid files (removed $orphansRemoved orphans)");
     }
 
     files.sort((a, b) => path.basename(a).compareTo(path.basename(b)));
-    print("[VIDEO] Found ${files.length} PNG files for concat list");
+    LogService.instance
+        .log("[VIDEO] Found ${files.length} PNG files for concat list");
     if (files.isEmpty) {
-      print("[VIDEO] ERROR: No .png files found in $framesDir");
+      LogService.instance
+          .log("[VIDEO] ERROR: No .png files found in $framesDir");
       throw StateError('no .png files found in $framesDir');
     }
 
@@ -612,7 +635,7 @@ class VideoUtils {
         'ffconcat_${DateTime.now().millisecondsSinceEpoch}.txt');
     final f = File(tmpPath);
     final perFrame = 1.0 / fps;
-    print("[VIDEO] Frame duration: ${perFrame}s (fps: $fps)");
+    LogService.instance.log("[VIDEO] Frame duration: ${perFrame}s (fps: $fps)");
 
     final sb = StringBuffer();
     for (final fp in files) {
@@ -624,7 +647,7 @@ class VideoUtils {
     sb.writeln('duration $perFrame');
 
     await f.writeAsString(sb.toString(), flush: true);
-    print("[VIDEO] Concat list written to: $tmpPath");
+    LogService.instance.log("[VIDEO] Concat list written to: $tmpPath");
     return tmpPath;
   }
 
@@ -637,18 +660,18 @@ class VideoUtils {
     void Function(String line)? onLog,
     void Function(int frameIndex)? onProgress,
   }) async {
-    print("[VIDEO] _encodeWindows started");
-    print("[VIDEO] framesDir: $framesDir");
-    print("[VIDEO] outputPath: $outputPath");
-    print("[VIDEO] fps: $fps");
+    LogService.instance.log("[VIDEO] _encodeWindows started");
+    LogService.instance.log("[VIDEO] framesDir: $framesDir");
+    LogService.instance.log("[VIDEO] outputPath: $outputPath");
+    LogService.instance.log("[VIDEO] fps: $fps");
 
     final exe = await _resolveFfmpegPath();
-    print("[VIDEO] Resolved ffmpeg executable: $exe");
+    LogService.instance.log("[VIDEO] Resolved ffmpeg executable: $exe");
 
     // Verify ffmpeg exists
     final exeFile = File(exe);
     if (!exe.contains(path.separator) || !await exeFile.exists()) {
-      print(
+      LogService.instance.log(
           "[VIDEO] WARNING: ffmpeg path '$exe' may not exist as a file (might be a PATH command)");
     }
 
@@ -681,12 +704,13 @@ class VideoUtils {
       outputPath,
     ];
 
-    print("[VIDEO] ffmpeg arguments: ${args.join(' ')}");
-    print("[VIDEO] Starting ffmpeg process...");
+    LogService.instance.log("[VIDEO] ffmpeg arguments: ${args.join(' ')}");
+    LogService.instance.log("[VIDEO] Starting ffmpeg process...");
 
     try {
       final proc = await Process.start(exe, args, runInShell: false);
-      print("[VIDEO] ffmpeg process started with PID: ${proc.pid}");
+      LogService.instance
+          .log("[VIDEO] ffmpeg process started with PID: ${proc.pid}");
 
       proc.stdout
           .transform(utf8.decoder)
@@ -707,29 +731,30 @@ class VideoUtils {
       });
 
       final code = await proc.exitCode;
-      print("[VIDEO] ffmpeg process exited with code: $code");
+      LogService.instance.log("[VIDEO] ffmpeg process exited with code: $code");
 
       try {
         await File(listPath).delete();
-        print("[VIDEO] Cleaned up concat list file");
+        LogService.instance.log("[VIDEO] Cleaned up concat list file");
       } catch (e) {
-        print("[VIDEO] Failed to clean up concat list: $e");
+        LogService.instance.log("[VIDEO] Failed to clean up concat list: $e");
       }
 
       // Check if output file was created
       final outputFile = File(outputPath);
       if (await outputFile.exists()) {
         final size = await outputFile.length();
-        print(
+        LogService.instance.log(
             "[VIDEO] Output file created: $outputPath (${(size / 1024 / 1024).toStringAsFixed(2)} MB)");
       } else {
-        print("[VIDEO] WARNING: Output file was not created: $outputPath");
+        LogService.instance
+            .log("[VIDEO] WARNING: Output file was not created: $outputPath");
       }
 
       return code == 0;
     } catch (e, stackTrace) {
-      print("[VIDEO] ERROR starting ffmpeg process: $e");
-      print("[VIDEO] Stack trace: $stackTrace");
+      LogService.instance.log("[VIDEO] ERROR starting ffmpeg process: $e");
+      LogService.instance.log("[VIDEO] Stack trace: $stackTrace");
       return false;
     }
   }

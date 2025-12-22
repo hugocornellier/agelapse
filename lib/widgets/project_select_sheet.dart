@@ -88,7 +88,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
         .path;
   }
 
-  static Future<String?> checkForStabilizedImage(dirPath) async {
+  static Future<String?> checkForStabilizedImage(String dirPath) async {
     final directory = Directory(dirPath);
     if (await directory.exists()) {
       try {
@@ -263,6 +263,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
 
                 // Refresh the project list
                 _getProjects();
+                if (!context.mounted) return;
                 Navigator.pop(context);
               },
               child: const Text('Submit'),

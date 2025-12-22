@@ -2,11 +2,11 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:math';
-import 'dart:ui' as ui;
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+import 'log_service.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import 'package:heif_converter/heif_converter.dart';
 import 'package:path/path.dart' as path;
@@ -261,7 +261,7 @@ class FaceStabilizer {
           imageBytesStabilized,
           srcBytes);
 
-      print("Result => '${result}'");
+      LogService.instance.log("Result => '$result'");
 
       if (result) {
         unawaited(createStabThumbnail(
@@ -275,7 +275,7 @@ class FaceStabilizer {
           threePassScore: threePassScore,
           fourPassScore: fourPassScore);
     } catch (e) {
-      print("Caught error: $e");
+      LogService.instance.log("Caught error: $e");
       return StabilizationResult(success: false);
     }
   }
@@ -385,8 +385,8 @@ class FaceStabilizer {
       return (success, score, null, null, null); // No multi-pass for fallback
     }
 
-    print("EYE POS GOALS: $goalLeftEye $goalRightEye");
-    print("POST-STAB POS: ${eyes[0]} ${eyes[1]}");
+    LogService.instance.log("EYE POS GOALS: $goalLeftEye $goalRightEye");
+    LogService.instance.log("POST-STAB POS: ${eyes[0]} ${eyes[1]}");
 
     List<String> toDelete = [
       await DirUtils.getPngPathFromRawPhotoPath(rawPhotoPath),
@@ -530,7 +530,7 @@ class FaceStabilizer {
     double currentTY = translateY;
 
     // === TWO-PASS ===
-    print(
+    LogService.instance.log(
         "Attempting two-pass correction. First-pass score = $firstPassScore...");
 
     var (double ovLX, double ovLY, double ovRX, double ovRY) =
@@ -575,14 +575,14 @@ class FaceStabilizer {
 
     // === THREE-PASS (only if two-pass improved) ===
     if (usedTwoPass &&
-        currentEyes!.length >= 2 &&
+        currentEyes.length >= 2 &&
         currentEyes[0] != null &&
         currentEyes[1] != null) {
       (ovLX, ovLY, ovRX, ovRY) =
           _calculateOvershots(currentEyes, goalLeftEye, goalRightEye);
 
       if (correctionIsNeeded(bestScore, ovLX, ovRX, ovLY, ovRY)) {
-        print(
+        LogService.instance.log(
             "Attempting three-pass correction. Two-pass score = $twoPassScore...");
 
         final (double threePassTX, double threePassTY) =
@@ -632,14 +632,14 @@ class FaceStabilizer {
 
     // === FOUR-PASS (only if three-pass improved) ===
     if (usedThreePass &&
-        currentEyes!.length >= 2 &&
+        currentEyes.length >= 2 &&
         currentEyes[0] != null &&
         currentEyes[1] != null) {
       (ovLX, ovLY, ovRX, ovRY) =
           _calculateOvershots(currentEyes, goalLeftEye, goalRightEye);
 
       if (correctionIsNeeded(bestScore, ovLX, ovRX, ovLY, ovRY)) {
-        print(
+        LogService.instance.log(
             "Attempting four-pass correction. Three-pass score = $threePassScore...");
 
         final (double fourPassTX, double fourPassTY) =
@@ -697,7 +697,7 @@ class FaceStabilizer {
         scaleFactor: scaleFactor,
       );
     } else {
-      print("STAB FAILURE. STAB SCORE: $bestScore");
+      LogService.instance.log("STAB FAILURE. STAB SCORE: $bestScore");
       await StabUtils.writeImagesBytesToJpgFile(bestBytes, stabilizedPhotoPath);
       await _handleStabilizationFailure(
           rawPhotoPath, stabilizedPhotoPath, toDelete);
@@ -733,7 +733,7 @@ class FaceStabilizer {
 
     if (result != "success") {
       if (result == "NoSpaceLeftError") {
-        print("User is out of space...");
+        LogService.instance.log("User is out of space...");
         userRanOutOfSpaceCallbackIn();
       }
       return false;
@@ -752,8 +752,9 @@ class FaceStabilizer {
       scaleFactor: sc,
     );
 
-    print("SUCCESS! STAB SCORE: $score (closer to 0 is better)");
-    print(
+    LogService.instance
+        .log("SUCCESS! STAB SCORE: $score (closer to 0 is better)");
+    LogService.instance.log(
         "FINAL TRANSFORM -> translateX: $tx, translateY: $ty, rotationDegrees: $rot, scaleFactor: $sc");
 
     return true;
@@ -802,7 +803,8 @@ class FaceStabilizer {
 
   Future<bool> tryRotation(
       String rawPhotoPath, void Function() userRanOutOfSpaceCallback) async {
-    print("Tried mirroring, but faces were still not found. Trying rotation.");
+    LogService.instance.log(
+        "Tried mirroring, but faces were still not found. Trying rotation.");
     final String timestamp = path.basenameWithoutExtension(
         rawPhotoPath.replaceAll("_flipped_flipped", ""));
     rawPhotoPath = await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
@@ -835,7 +837,7 @@ class FaceStabilizer {
       final thumbnailBytes = await StabUtils.thumbnailJpgFromPngBytes(bytes);
       await File(stabThumbnailPath).writeAsBytes(thumbnailBytes);
     } catch (e) {
-      print("createStabThumbnail error (non-fatal): $e");
+      LogService.instance.log("createStabThumbnail error (non-fatal): $e");
     }
   }
 
@@ -863,7 +865,7 @@ class FaceStabilizer {
         return (null, null);
       }
     } catch (e) {
-      print("Error caught: $e");
+      LogService.instance.log("Error caught: $e");
       return (null, null);
     }
   }
@@ -887,7 +889,7 @@ class FaceStabilizer {
         filterByFaceSize: !noFaceSizeFilter,
       );
       if (faces == null || faces.isEmpty) {
-        print("No faces found. Attempting to flip...");
+        LogService.instance.log("No faces found. Attempting to flip...");
         await flipAndTryAgain(rawPhotoPath, userRanOutOfSpaceCallback);
         return (null, null);
       }
@@ -972,7 +974,7 @@ class FaceStabilizer {
       final InputImage inputImage = InputImage.fromFilePath(pngPath);
       poses = await _poseDetector?.processImage(inputImage);
     } catch (e) {
-      print("Error caught => $e");
+      LogService.instance.log("Error caught => $e");
     }
     if (poses == null || poses.isEmpty) return (null, null);
 
@@ -1009,7 +1011,7 @@ class FaceStabilizer {
       final InputImage inputImage = InputImage.fromFilePath(pngPath);
       poses = await _poseDetector?.processImage(inputImage);
     } catch (e) {
-      print("Error caught => $e");
+      LogService.instance.log("Error caught => $e");
     }
     if (poses == null || poses.isEmpty) return (null, null);
 
@@ -1059,7 +1061,7 @@ class FaceStabilizer {
   }
 
   (double?, double?) _calculateTranslateData(
-      scaleFactor, rotationDegrees, int imgWidth, int imgHeight) {
+      double scaleFactor, double rotationDegrees, int imgWidth, int imgHeight) {
     num goalX;
     num goalY;
     if (projectType == "face") {
@@ -1091,10 +1093,10 @@ class FaceStabilizer {
       } catch (e) {
         if (e is FileSystemException && e.osError?.errorCode == 28) {
           // If user runs out of space...
-          print("No space left on device error caught => $e");
+          LogService.instance.log("No space left on device error caught => $e");
           sendPort.send("NoSpaceLeftError");
         } else {
-          print("Error caught => $e");
+          LogService.instance.log("Error caught => $e");
           sendPort.send("Error");
         }
       }
@@ -1179,7 +1181,7 @@ class FaceStabilizer {
     List<Point<double>> centeredEyes = [];
 
     if (Platform.isAndroid || Platform.isIOS) {
-      final List<Face> faceList = (faces as List).cast<Face>();
+      final List<Face> faceList = faces.cast<Face>();
       faces = faceList.where((face) {
         final bool rightEyeNotNull =
             face.landmarks[FaceLandmarkType.rightEye] != null;
@@ -1347,7 +1349,7 @@ class FaceStabilizer {
         await file.copy(destinationPath);
       }
     } catch (e) {
-      print('Error copying file: $e');
+      LogService.instance.log('Error copying file: $e');
     }
   }
 

@@ -3,7 +3,6 @@ import 'dart:io';
 import '../models/setting_model.dart';
 import 'database_import_ffi.dart';
 import 'package:path/path.dart';
-import 'package:path_provider/path_provider.dart';
 
 import '../utils/dir_utils.dart';
 import '../utils/notification_util.dart';
@@ -400,7 +399,9 @@ class DB {
         'noFacesFound': 0,
         'favorite': 0
       });
-    } catch (e) {}
+    } catch (e) {
+      // Ignore duplicate photo insertion errors
+    }
   }
 
   Future<void> _ensurePhotoTransformColumns() async {
@@ -534,7 +535,6 @@ class DB {
     final int totalCount = row['totalCount'] as int? ?? 0;
     if (totalCount == 0) return null;
 
-    final int portraitCount = row['portraitCount'] as int? ?? 0;
     final int landscapeCount = row['landscapeCount'] as int? ?? 0;
 
     final double landscapeRatio = landscapeCount / totalCount;
@@ -623,12 +623,18 @@ class DB {
       "noFacesFound": 0,
     };
 
-    if (translateX != null) data["${stabilizedColumn}TranslateX"] = translateX;
-    if (translateY != null) data["${stabilizedColumn}TranslateY"] = translateY;
-    if (rotationDegrees != null)
+    if (translateX != null) {
+      data["${stabilizedColumn}TranslateX"] = translateX;
+    }
+    if (translateY != null) {
+      data["${stabilizedColumn}TranslateY"] = translateY;
+    }
+    if (rotationDegrees != null) {
       data["${stabilizedColumn}RotationDegrees"] = rotationDegrees;
-    if (scaleFactor != null)
+    }
+    if (scaleFactor != null) {
       data["${stabilizedColumn}ScaleFactor"] = scaleFactor;
+    }
 
     await db.update(
       photoTable,

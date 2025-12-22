@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../services/database_helper.dart';
+import '../../services/log_service.dart';
 import '../../styles/styles.dart';
 import '../../utils/camera_utils.dart';
 import '../../utils/dir_utils.dart';
@@ -25,12 +26,11 @@ class RotatingIconButton extends StatelessWidget {
   final VoidCallback onPressed;
   final Duration duration;
   const RotatingIconButton(
-      {Key? key,
+      {super.key,
       required this.child,
       required this.rotationTurns,
       required this.onPressed,
-      this.duration = const Duration(milliseconds: 300)})
-      : super(key: key);
+      this.duration = const Duration(milliseconds: 300)});
   @override
   Widget build(BuildContext context) {
     return AnimatedRotation(
@@ -91,9 +91,6 @@ class _CameraViewState extends State<CameraView> {
   int _cameraIndex = -1;
   int? frontFacingLensIndex;
   int? backFacingLensIndex;
-  double _minAvailableExposureOffset = 0.0;
-  double _maxAvailableExposureOffset = 0.0;
-  double _currentExposureOffset = 0.0;
   bool _changingCameraLens = false;
   StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
   bool _showFlash = false;
@@ -209,6 +206,7 @@ class _CameraViewState extends State<CameraView> {
     }
 
     if (hasTakenFirstPhoto && !hasSeenGuideModeTut) {
+      if (!mounted) return;
       Utils.navigateToScreenNoAnim(
         context,
         GuideModeTutorialPage(
@@ -323,18 +321,18 @@ class _CameraViewState extends State<CameraView> {
     try {
       if (Platform.isMacOS) {
         try {
-          print('macOS: taking picture...');
+          LogService.instance.log('macOS: taking picture...');
           final photo = await _macController?.takePicture();
           final Uint8List? bytes = photo?.bytes;
           if (bytes == null) {
-            print('macOS: photo bytes are null');
+            LogService.instance.log('macOS: photo bytes are null');
             return;
           }
           final String debugPath =
               '${Directory.systemTemp.path}/camera_debug_${DateTime.now().millisecondsSinceEpoch}.jpg';
           await File(debugPath).writeAsBytes(bytes, flush: true);
           final bool exists = await File(debugPath).exists();
-          print(
+          LogService.instance.log(
               'macOS: wrote debug image to $debugPath, exists=$exists, length=${bytes.length}');
 
           final XFile xImage = XFile(debugPath);
@@ -348,10 +346,10 @@ class _CameraViewState extends State<CameraView> {
             deviceOrientation: _orientation,
             refreshSettings: widget.refreshSettings,
           );
-          print('macOS: CameraUtils.savePhoto completed');
+          LogService.instance.log('macOS: CameraUtils.savePhoto completed');
         } catch (e, st) {
-          print('macOS: save failed: $e');
-          print(st);
+          LogService.instance.log('macOS: save failed: $e');
+          LogService.instance.log(st.toString());
         }
       } else {
         final XFile image = await _controller!.takePicture();
@@ -374,6 +372,7 @@ class _CameraViewState extends State<CameraView> {
       if (!hasTakenFirstPhoto) {
         await SettingsUtil.setHasTakenFirstPhotoToTrue(
             widget.projectId.toString());
+        if (!mounted) return;
         Utils.navigateToScreenNoAnim(
           context,
           TookFirstPhotoPage(
@@ -451,10 +450,10 @@ class _CameraViewState extends State<CameraView> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: RotatingIconButton(
-                  child: Icon(flashEnabled ? Icons.flash_auto : Icons.flash_off,
-                      size: 24, color: Colors.white),
                   rotationTurns: getRotation(_orientation),
                   onPressed: toggleFlash,
+                  child: Icon(flashEnabled ? Icons.flash_auto : Icons.flash_off,
+                      size: 24, color: Colors.white),
                 ),
               ),
             if (!Platform.isMacOS && !Platform.isWindows && !Platform.isLinux)
@@ -466,9 +465,9 @@ class _CameraViewState extends State<CameraView> {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: RotatingIconButton(
-                child: _buildIcon(),
                 rotationTurns: getRotation(_orientation),
                 onPressed: _toggleGrid,
+                child: _buildIcon(),
               ),
             ),
           ],
@@ -492,6 +491,8 @@ class _CameraViewState extends State<CameraView> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: RotatingIconButton(
+                      rotationTurns: getRotation(_orientation),
+                      onPressed: _switchLiveCamera,
                       child: Icon(
                         Platform.isIOS
                             ? Icons.flip_camera_ios_outlined
@@ -499,8 +500,6 @@ class _CameraViewState extends State<CameraView> {
                         color: Colors.white,
                         size: 27,
                       ),
-                      rotationTurns: getRotation(_orientation),
-                      onPressed: _switchLiveCamera,
                     ),
                   ),
                 ],
@@ -577,7 +576,7 @@ class _CameraViewState extends State<CameraView> {
                             child: Transform(
                               alignment: Alignment.center,
                               transform: Matrix4.identity()
-                                ..scale(1.0, 1.0, 1.0),
+                                ..setEntry(3, 3, 1.0),
                               child: CameraPreview(
                                 _controller!,
                                 child: null,
@@ -673,23 +672,6 @@ class _CameraViewState extends State<CameraView> {
         ),
       );
 
-  Widget _switchLiveCameraToggle() {
-    return Positioned(
-      bottom: 21,
-      right: 16,
-      child: _buildButton(
-        _switchLiveCamera,
-        Icon(
-          Platform.isIOS
-              ? Icons.flip_camera_ios_outlined
-              : Icons.flip_camera_android_outlined,
-          color: Colors.white,
-          size: 27,
-        ),
-      ),
-    );
-  }
-
   Widget _cameraControl() {
     return Positioned(
       bottom: 21 - 4,
@@ -734,6 +716,8 @@ class _CameraViewState extends State<CameraView> {
         bottom: 75,
         left: 16,
         child: RotatingIconButton(
+          rotationTurns: getRotation(_orientation),
+          onPressed: _toggleModifyGridMode,
           child: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -746,8 +730,6 @@ class _CameraViewState extends State<CameraView> {
               style: TextStyle(fontSize: 12),
             ),
           ),
-          rotationTurns: getRotation(_orientation),
-          onPressed: _toggleModifyGridMode,
         ),
       );
 
@@ -887,7 +869,8 @@ class _CameraViewState extends State<CameraView> {
         .setSettingByTitle('camera_flash', 'off', widget.projectId.toString());
   }
 
-  Widget _buildButton(onTap, child, {Color color = Colors.black54}) {
+  Widget _buildButton(VoidCallback onTap, Widget child,
+      {Color color = Colors.black54}) {
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -900,51 +883,6 @@ class _CameraViewState extends State<CameraView> {
       ),
     );
   }
-
-  Widget _exposureControl() => ConstrainedBox(
-        constraints: const BoxConstraints(
-          maxHeight: 250,
-        ),
-        child: Column(children: [
-          Container(
-            width: 55,
-            decoration: BoxDecoration(
-              color: Colors.black54,
-              borderRadius: BorderRadius.circular(10.0),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Center(
-                child: Text(
-                  '${_currentExposureOffset.toStringAsFixed(1)}x',
-                  style: const TextStyle(color: Colors.white),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: RotatedBox(
-              quarterTurns: 3,
-              child: SizedBox(
-                height: 30,
-                child: Slider(
-                  value: _currentExposureOffset,
-                  min: _minAvailableExposureOffset,
-                  max: _maxAvailableExposureOffset,
-                  activeColor: Colors.white,
-                  inactiveColor: Colors.white30,
-                  onChanged: (value) async {
-                    setState(() {
-                      _currentExposureOffset = value;
-                    });
-                    await _controller?.setExposureOffset(value);
-                  },
-                ),
-              ),
-            ),
-          )
-        ]),
-      );
 
   Future _startLiveFeed() async {
     final camera = _cameras[_cameraIndex];
@@ -982,15 +920,6 @@ class _CameraViewState extends State<CameraView> {
       }
       _controller?.getMinZoomLevel().then((value) {});
       _controller?.getMaxZoomLevel().then((value) {});
-      _currentExposureOffset = 0.0;
-      _controller?.getMinExposureOffset().then((value) {
-        if (!mounted) return;
-        _minAvailableExposureOffset = value;
-      });
-      _controller?.getMaxExposureOffset().then((value) {
-        if (!mounted) return;
-        _maxAvailableExposureOffset = value;
-      });
       if (mounted) setState(() {});
     });
   }
@@ -1146,7 +1075,7 @@ class CameraGridOverlayState extends State<CameraGridOverlay> {
           await SettingsUtil.loadSelectedGuidePhoto(
               widget.projectId.toString());
       if (selectedGuidePhoto == "not set") {
-        print("not set");
+        LogService.instance.log("not set");
 
         guidePhoto = stabPhotos.first;
         timestamp = guidePhoto['timestamp'].toString();
@@ -1154,8 +1083,8 @@ class CameraGridOverlayState extends State<CameraGridOverlay> {
         final guidePhotoRecord = await DB.instance
             .getPhotoById(selectedGuidePhoto, widget.projectId);
 
-        print("guidePhotoRecord");
-        print(guidePhotoRecord);
+        LogService.instance.log("guidePhotoRecord");
+        LogService.instance.log(guidePhotoRecord.toString());
 
         if (guidePhotoRecord != null) {
           guidePhoto = guidePhotoRecord;
