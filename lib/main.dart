@@ -20,11 +20,10 @@ import '../theme/theme.dart';
 import '../services/database_import_ffi.dart';
 import '../utils/dir_utils.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await LogService.instance.initialize();
-
+void main() {
   LogService.runWithLogging(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    await LogService.instance.initialize();
     await _main();
   });
 }

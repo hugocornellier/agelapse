@@ -62,24 +62,25 @@ class HeicUtils {
   }
 
   /// Converts HEIC to JPG on Windows using bundled HeicConverter.exe.
-  /// Returns the output JPG path, or null if conversion failed.
-  static Future<String?> convertHeicToJpg(String heicPath,
+  /// Outputs directly to targetDir, returns the output JPG path or null if failed.
+  static Future<String?> _convertHeic(String heicPath, String targetDir,
       {int quality = 95}) async {
     if (!Platform.isWindows) return null;
 
     final exePath = await _ensureBundledHeicConverter();
     if (exePath.isEmpty) return null;
 
-    final jpgPath = path.setExtension(heicPath, '.jpg');
+    // heicConverter names output based on input filename
+    final outputName = path.basenameWithoutExtension(heicPath) + '.jpg';
+    final outputPath = path.join(targetDir, outputName);
 
-    // HeicConverter outputs JPG next to the original file by default
     final result = await Process.run(
       exePath,
-      ['-q', quality.toString(), '--not-recursive', heicPath],
+      ['--files', heicPath, '-t', targetDir, '-q', quality.toString(), '--not-recursive', '--skip-prompt'],
     );
 
-    if (result.exitCode == 0 && await File(jpgPath).exists()) {
-      return jpgPath;
+    if (result.exitCode == 0 && await File(outputPath).exists()) {
+      return outputPath;
     }
 
     print(
@@ -87,19 +88,28 @@ class HeicUtils {
     return null;
   }
 
-  /// Converts HEIC to JPG with custom output path.
+  /// Converts HEIC to JPG, outputting next to the original file.
+  /// Returns the output JPG path, or null if conversion failed.
+  static Future<String?> convertHeicToJpg(String heicPath,
+      {int quality = 95}) async {
+    return _convertHeic(heicPath, path.dirname(heicPath), quality: quality);
+  }
+
+  /// Converts HEIC to JPG at a specific output path.
   static Future<bool> convertHeicToJpgAt(String heicPath, String outputJpgPath,
       {int quality = 95}) async {
-    final tempResult = await convertHeicToJpg(heicPath, quality: quality);
-    if (tempResult == null) return false;
+    final targetDir = path.dirname(outputJpgPath);
+    final desiredName = path.basename(outputJpgPath);
 
-    // If output path differs, move the file
-    if (tempResult != outputJpgPath) {
+    final convertedPath = await _convertHeic(heicPath, targetDir, quality: quality);
+    if (convertedPath == null) return false;
+
+    // Rename if the desired filename differs from what heicConverter produced
+    if (path.basename(convertedPath) != desiredName) {
       try {
-        await File(tempResult).copy(outputJpgPath);
-        await File(tempResult).delete();
+        await File(convertedPath).rename(outputJpgPath);
       } catch (e) {
-        print('[HEIC] Failed to move converted file: $e');
+        print('[HEIC] Failed to rename converted file: $e');
         return false;
       }
     }

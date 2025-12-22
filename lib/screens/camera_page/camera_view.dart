@@ -124,26 +124,28 @@ class _CameraViewState extends State<CameraView> {
     super.initState();
     _initialize();
 
-    _accelerometerSubscription =
-        accelerometerEventStream().listen((AccelerometerEvent event) {
-      final potentialOrientation = event.x.abs() > event.y.abs()
-          ? (event.x > 0 ? "Landscape Left" : "Landscape Right")
-          : (event.y > 0 ? "Portrait Up" : "Portrait Down");
+    if (Platform.isAndroid || Platform.isIOS) {
+      _accelerometerSubscription =
+          accelerometerEventStream().listen((AccelerometerEvent event) {
+        final potentialOrientation = event.x.abs() > event.y.abs()
+            ? (event.x > 0 ? "Landscape Left" : "Landscape Right")
+            : (event.y > 0 ? "Portrait Up" : "Portrait Down");
 
-      if (potentialOrientation == "Portrait Down" &&
-          (_orientation == "Landscape Left" ||
-              _orientation == "Landscape Right")) {
-        return;
-      }
+        if (potentialOrientation == "Portrait Down" &&
+            (_orientation == "Landscape Left" ||
+                _orientation == "Landscape Right")) {
+          return;
+        }
 
-      if (potentialOrientation != _orientation) {
-        setState(() {
-          _orientation = potentialOrientation;
-        });
+        if (potentialOrientation != _orientation) {
+          setState(() {
+            _orientation = potentialOrientation;
+          });
 
-        resetOffsetValues(potentialOrientation);
-      }
-    });
+          resetOffsetValues(potentialOrientation);
+        }
+      });
+    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _getWidgetHeight();
@@ -232,6 +234,28 @@ class _CameraViewState extends State<CameraView> {
     if (stabPhotos.isNotEmpty) {
       setState(() {
         showGuidePhoto = true;
+      });
+    }
+
+    // On desktop platforms, load grid offsets based on project orientation
+    // (mobile uses accelerometer to detect orientation and load offsets)
+    if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+      // projectOrientation is lowercase ("landscape" or "portrait") from loadProjectOrientation()
+      final customOrientation = projectOrientation.toLowerCase() == "landscape"
+          ? "landscape"
+          : "portrait";
+      final offsetXStr = await SettingsUtil.loadGuideOffsetXCustomOrientation(
+        widget.projectId.toString(),
+        customOrientation,
+      );
+      final offsetYStr = await SettingsUtil.loadGuideOffsetYCustomOrientation(
+        widget.projectId.toString(),
+        customOrientation,
+      );
+      setState(() {
+        _orientation = projectOrientation;
+        offsetX = double.parse(offsetXStr);
+        offsetY = double.parse(offsetYStr);
       });
     }
 
@@ -371,12 +395,15 @@ class _CameraViewState extends State<CameraView> {
   }
 
   void _saveGridOffsets() async {
-    final String guideOffSetXColName = _orientation == 'Portrait Up'
-        ? "guideOffsetXPortrait"
-        : "guideOffsetXLandscape";
-    final String guideOffSetYColName = _orientation == 'Portrait Up'
-        ? "guideOffsetYPortrait"
-        : "guideOffsetYLandscape";
+    // Handle both mobile orientations ("Landscape Left"/"Landscape Right")
+    // and desktop orientations ("landscape" lowercase from project settings)
+    final bool isLandscape = _orientation == "Landscape Left" ||
+        _orientation == "Landscape Right" ||
+        _orientation.toLowerCase() == "landscape";
+    final String guideOffSetXColName =
+        isLandscape ? "guideOffsetXLandscape" : "guideOffsetXPortrait";
+    final String guideOffSetYColName =
+        isLandscape ? "guideOffsetYLandscape" : "guideOffsetYPortrait";
 
     await DB.instance.setSettingByTitle(
         guideOffSetXColName, offsetX.toString(), widget.projectId.toString());
@@ -416,7 +443,7 @@ class _CameraViewState extends State<CameraView> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (!Platform.isMacOS)
+            if (!Platform.isMacOS && !Platform.isWindows && !Platform.isLinux)
               Container(
                 padding: const EdgeInsets.all(0),
                 decoration: BoxDecoration(
@@ -430,7 +457,8 @@ class _CameraViewState extends State<CameraView> {
                   onPressed: toggleFlash,
                 ),
               ),
-            if (!Platform.isMacOS) const SizedBox(width: 16),
+            if (!Platform.isMacOS && !Platform.isWindows && !Platform.isLinux)
+              const SizedBox(width: 16),
             Container(
               padding: const EdgeInsets.all(0),
               decoration: BoxDecoration(
@@ -447,36 +475,37 @@ class _CameraViewState extends State<CameraView> {
         ),
       );
 
-  Widget _rightSideControls() => Platform.isMacOS
-      ? const SizedBox.shrink()
-      : Positioned(
-          bottom: 21,
-          right: 16,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(width: 16),
-              Container(
-                padding: const EdgeInsets.all(0),
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: RotatingIconButton(
-                  child: Icon(
-                    Platform.isIOS
-                        ? Icons.flip_camera_ios_outlined
-                        : Icons.flip_camera_android_outlined,
-                    color: Colors.white,
-                    size: 27,
+  Widget _rightSideControls() =>
+      (Platform.isMacOS || Platform.isWindows || Platform.isLinux)
+          ? const SizedBox.shrink()
+          : Positioned(
+              bottom: 21,
+              right: 16,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(width: 16),
+                  Container(
+                    padding: const EdgeInsets.all(0),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: RotatingIconButton(
+                      child: Icon(
+                        Platform.isIOS
+                            ? Icons.flip_camera_ios_outlined
+                            : Icons.flip_camera_android_outlined,
+                        color: Colors.white,
+                        size: 27,
+                      ),
+                      rotationTurns: getRotation(_orientation),
+                      onPressed: _switchLiveCamera,
+                    ),
                   ),
-                  rotationTurns: getRotation(_orientation),
-                  onPressed: _switchLiveCamera,
-                ),
+                ],
               ),
-            ],
-          ),
-        );
+            );
 
   void _toggleGrid() {
     setState(() {
@@ -514,6 +543,8 @@ class _CameraViewState extends State<CameraView> {
 
     final camera = _controller!.value;
     final size = MediaQuery.of(context).size;
+
+    // Mobile: use "cover" logic - fill screen, crop edges
     double scale = size.aspectRatio * camera.aspectRatio;
     if (scale < 1) scale = 1 / scale;
 
@@ -531,19 +562,29 @@ class _CameraViewState extends State<CameraView> {
             Center(
               child: _changingCameraLens
                   ? const Center(child: CircularProgressIndicator())
-                  : Transform.scale(
-                      scale: scale,
-                      child: Center(
-                        child: Transform(
-                          alignment: Alignment.center,
-                          transform: Matrix4.identity()..scale(1.0, 1.0, 1.0),
+                  : Platform.isWindows
+                      // Windows: use FittedBox.contain - show full frame, letterbox as needed
+                      ? AspectRatio(
+                          aspectRatio: camera.aspectRatio,
                           child: CameraPreview(
                             _controller!,
                             child: null,
                           ),
+                        )
+                      : Transform.scale(
+                          scale: scale,
+                          child: Center(
+                            child: Transform(
+                              alignment: Alignment.center,
+                              transform: Matrix4.identity()
+                                ..scale(1.0, 1.0, 1.0),
+                              child: CameraPreview(
+                                _controller!,
+                                child: null,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
             ),
             if (_gridMode != GridMode.none)
               CameraGridOverlay(
@@ -919,15 +960,26 @@ class _CameraViewState extends State<CameraView> {
       }
 
       _controller?.lockCaptureOrientation(DeviceOrientation.portraitUp);
-      _controller?.startImageStream(_processCameraImage).then((value) {
-        if (!mounted) return;
+
+      // Windows doesn't support image streaming, so skip it
+      if (Platform.isWindows) {
         if (widget.onCameraFeedReady != null) {
           widget.onCameraFeedReady!();
         }
         if (widget.onCameraLensDirectionChanged != null) {
           widget.onCameraLensDirectionChanged!(camera.lensDirection);
         }
-      });
+      } else {
+        _controller?.startImageStream(_processCameraImage).then((value) {
+          if (!mounted) return;
+          if (widget.onCameraFeedReady != null) {
+            widget.onCameraFeedReady!();
+          }
+          if (widget.onCameraLensDirectionChanged != null) {
+            widget.onCameraLensDirectionChanged!(camera.lensDirection);
+          }
+        });
+      }
       _controller?.getMinZoomLevel().then((value) {});
       _controller?.getMaxZoomLevel().then((value) {});
       _currentExposureOffset = 0.0;
@@ -947,7 +999,10 @@ class _CameraViewState extends State<CameraView> {
     if (_pictureTakingCompleter != null) {
       await _pictureTakingCompleter!.future;
     }
-    await _controller?.stopImageStream();
+    // Windows doesn't use image streaming
+    if (!Platform.isWindows) {
+      await _controller?.stopImageStream();
+    }
     await _controller?.dispose();
     _controller = null;
   }
@@ -1140,8 +1195,12 @@ class CameraGridOverlayState extends State<CameraGridOverlay> {
 
   Future<void> _loadImage(String path, String timestamp) async {
     try {
-      final data = await rootBundle.load(path);
-      final bytes = data.buffer.asUint8List();
+      final file = File(path);
+      if (!await file.exists()) {
+        debugPrint('Guide image file does not exist: $path');
+        return;
+      }
+      final bytes = await file.readAsBytes();
       final codec = await ui.instantiateImageCodec(bytes, targetWidth: 800);
       final frameInfo = await codec.getNextFrame();
       codec.dispose();

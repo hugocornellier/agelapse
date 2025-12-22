@@ -12,10 +12,11 @@ class CameraGridOverlay extends StatefulWidget {
   final GridMode gridMode;
   final double offsetX;
   final double offsetY;
+  final String? orientation;
 
   const CameraGridOverlay(
       this.projectId, this.gridMode, this.offsetX, this.offsetY,
-      {super.key});
+      {super.key, this.orientation});
 
   @override
   CameraGridOverlayState createState() => CameraGridOverlayState();

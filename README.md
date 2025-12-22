@@ -19,7 +19,6 @@
   />
 </p> 
 
-
 ## Overview
 
 **AgeLapse** automates the process of aligning face pictures and creating stabilized aging time-lapses, i.e. "photo-a-day" videos. The application runs natively on desktop (MacOS, Windows, Linux) and on mobile (iOS and Android).
