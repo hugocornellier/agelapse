@@ -7,6 +7,7 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'log_service.dart';
+import 'thumbnail_service.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import 'package:heif_converter/heif_converter.dart';
 import 'package:path/path.dart' as path;
@@ -333,6 +334,7 @@ class FaceStabilizer {
       if (stabFaces != null && stabFaces.isEmpty) {
         await DB.instance
             .setPhotoNoFacesFound(path.basenameWithoutExtension(rawPhotoPath));
+        unawaited(_emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.noFacesFound));
       }
       // Fall back to estimated eyes for scoring
       final eyesXY = _estimatedEyesAfterTransform(
@@ -362,6 +364,7 @@ class FaceStabilizer {
     if (eyes.length < 2 || eyes[0] == null || eyes[1] == null) {
       await DB.instance
           .setPhotoNoFacesFound(path.basenameWithoutExtension(rawPhotoPath));
+      unawaited(_emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.noFacesFound));
       // Fall back to estimated eyes for scoring
       final eyesXY = _estimatedEyesAfterTransform(
         imgWidth,
@@ -764,6 +767,7 @@ class FaceStabilizer {
       String stabilizedJpgPhotoPath, List<String> toDelete) async {
     final String timestamp = path.basenameWithoutExtension(rawPhotoPath);
     await DB.instance.setPhotoStabFailed(timestamp);
+    unawaited(_emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.stabFailed));
 
     final String failureDir = await DirUtils.getFailureDirPath(projectId);
     final String failureImgPath =
@@ -824,21 +828,65 @@ class FaceStabilizer {
     if (result2.success) return true;
 
     await DB.instance.setPhotoNoFacesFound(timestamp);
+    unawaited(_emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.noFacesFound));
     return false;
   }
 
   Future<void> createStabThumbnail(String stabilizedPhotoPath) async {
+    final String stabThumbnailPath = getStabThumbnailPath(stabilizedPhotoPath);
+    final String timestamp = path.basenameWithoutExtension(stabilizedPhotoPath);
     try {
-      final String stabThumbnailPath =
-          getStabThumbnailPath(stabilizedPhotoPath);
       await DirUtils.createDirectoryIfNotExists(stabThumbnailPath);
       final bytes = await CameraUtils.readBytesInIsolate(stabilizedPhotoPath);
-      if (bytes == null) return;
+      if (bytes == null) {
+        LogService.instance.log("createStabThumbnail: bytes null for $stabilizedPhotoPath");
+        // Still emit success - widget will fall back to full image
+        ThumbnailService.instance.emit(ThumbnailEvent(
+          thumbnailPath: stabThumbnailPath,
+          status: ThumbnailStatus.success,
+          projectId: projectId,
+          timestamp: timestamp,
+        ));
+        return;
+      }
       final thumbnailBytes = await StabUtils.thumbnailJpgFromPngBytes(bytes);
       await File(stabThumbnailPath).writeAsBytes(thumbnailBytes);
+
+      ThumbnailService.instance.emit(ThumbnailEvent(
+        thumbnailPath: stabThumbnailPath,
+        status: ThumbnailStatus.success,
+        projectId: projectId,
+        timestamp: timestamp,
+      ));
     } catch (e) {
       LogService.instance.log("createStabThumbnail error (non-fatal): $e");
+      // Still emit success so widget doesn't stay stuck - it will fall back to full image
+      ThumbnailService.instance.emit(ThumbnailEvent(
+        thumbnailPath: stabThumbnailPath,
+        status: ThumbnailStatus.success,
+        projectId: projectId,
+        timestamp: timestamp,
+      ));
     }
+  }
+
+  Future<void> _emitThumbnailFailure(
+      String rawPhotoPath, ThumbnailStatus status) async {
+    final String timestamp = path.basenameWithoutExtension(rawPhotoPath)
+        .replaceAll('_flipped', '')
+        .replaceAll('_rotated_counter_clockwise', '')
+        .replaceAll('_rotated_clockwise', '');
+    final String stabilizedPath = await StabUtils.getStabilizedImagePath(
+        rawPhotoPath, projectId, projectOrientation);
+    final String thumbnailPath =
+        getStabThumbnailPath(stabilizedPath.replaceAll('.jpg', '.png'));
+
+    ThumbnailService.instance.emit(ThumbnailEvent(
+      thumbnailPath: thumbnailPath,
+      status: status,
+      projectId: projectId,
+      timestamp: timestamp,
+    ));
   }
 
   Future<(double?, double?)> _calculateRotationAndScale(
@@ -912,6 +960,7 @@ class FaceStabilizer {
     if (eyes.length < 2 || eyes[0] == null || eyes[1] == null) {
       await DB.instance
           .setPhotoNoFacesFound(path.basenameWithoutExtension(rawPhotoPath));
+      unawaited(_emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.noFacesFound));
       return (null, null);
     }
 

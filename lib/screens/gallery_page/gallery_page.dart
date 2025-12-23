@@ -16,12 +16,12 @@ import '../../services/database_helper.dart';
 import '../../services/log_service.dart';
 import '../../services/face_stabilizer.dart';
 import '../../services/settings_cache.dart';
+import '../../services/thumbnail_service.dart';
 import '../../styles/styles.dart';
 import '../../utils/project_utils.dart';
 import '../../utils/camera_utils.dart';
 import '../../utils/dir_utils.dart';
 import '../../utils/gallery_utils.dart';
-import '../../utils/image_utils.dart';
 import '../../utils/settings_utils.dart';
 import '../../utils/utils.dart';
 import '../../widgets/progress_widget.dart';
@@ -175,6 +175,7 @@ class GalleryPageState extends State<GalleryPage>
     _isMounted = true;
     projectId = widget.projectId;
     projectIdStr = widget.projectId.toString();
+    ThumbnailService.instance.clearAllCache();
     _initializeFromCache();
     _init();
     _tabController = TabController(length: 2, vsync: this);
@@ -1462,7 +1463,7 @@ class GalleryPageState extends State<GalleryPage>
             path.dirname(switched),
             "${path.basenameWithoutExtension(toDelete.path)}.jpg",
           );
-          _rawThumbnailFutures.remove(thumbnailPath);
+          ThumbnailService.instance.clearCache(thumbnailPath);
         } else {
           failed++;
         }
@@ -1787,57 +1788,18 @@ class GalleryPageState extends State<GalleryPage>
       path.dirname(switched),
       "${path.basenameWithoutExtension(filepath)}.jpg",
     );
-    final File file = File(thumbnailPath);
-    _rawThumbnailFutures[thumbnailPath] ??= _waitForThumbnail(file);
-    return FutureBuilder<bool>(
-      future: _rawThumbnailFutures[thumbnailPath],
-      builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting ||
-            snapshot.data == null) {
-          return const FlashingBox();
-        }
-        if (snapshot.data == false) {
-          return Container(color: Colors.black);
-        }
-        return _buildThumbnailContent(
-          imageWidget: Image.file(
-            File(thumbnailPath),
-            fit: BoxFit.cover,
-            width: double.infinity,
-            height: double.infinity,
-            errorBuilder: (context, error, stack) =>
-                Container(color: Colors.black),
-          ),
-          filepath: filepath,
-          onTap: () =>
-              _showImagePreviewDialog(File(filepath), isStabilized: false),
-          onLongPress: () => _showImageOptionsMenu(File(filepath)),
-        );
-      },
+    return _buildThumbnailContent(
+      imageWidget: RawThumbnail(
+        thumbnailPath: thumbnailPath,
+        projectId: widget.projectId,
+      ),
+      filepath: filepath,
+      onTap: () => _showImagePreviewDialog(File(filepath), isStabilized: false),
+      onLongPress: () => _showImageOptionsMenu(File(filepath)),
     );
   }
 
-  Future<bool> _waitForThumbnail(File file,
-      {Duration timeout = const Duration(seconds: 15)}) async {
-    final sw = Stopwatch()..start();
-    int? lastLen;
-    while (sw.elapsed < timeout) {
-      if (await file.exists()) {
-        final len = await file.length();
-        if (len > 0 && lastLen != null && len == lastLen) {
-          // Validate image in isolate to avoid blocking UI
-          final valid = await ImageUtils.validateImageInIsolate(file.path);
-          if (valid) return true;
-        }
-        lastLen = len;
-      }
-      await Future.delayed(const Duration(milliseconds: 200));
-    }
-    return false;
-  }
-
   final Set<String> _retryingPhotoTimestamps = {};
-  final Map<String, Future<bool>> _rawThumbnailFutures = {};
   Future<Map<String, dynamic>?>? _previewPhotoFuture;
 
   Widget _buildStabilizedThumbnail(String filepath) {
@@ -1943,69 +1905,12 @@ class GalleryPageState extends State<GalleryPage>
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (isStabilized && activeButton != 'raw')
-                  FutureBuilder<String>(
-                    future: GalleryUtils.waitForThumbnail(
+                  StabilizedImagePreview(
+                    thumbnailPath:
                         FaceStabilizer.getStabThumbnailPath(imageFile.path),
-                        widget.projectId),
-                    builder:
-                        (BuildContext context, AsyncSnapshot<String> snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting ||
-                          !snapshot.hasData) {
-                        return const Padding(
-                          padding: EdgeInsets.symmetric(
-                              vertical: 32.0, horizontal: 20.0),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                "Image being stabilized. Please wait...",
-                                style: TextStyle(color: Colors.white),
-                              ),
-                              SizedBox(height: 10),
-                              Text('View raw photo by tapping "RAW"')
-                            ],
-                          ),
-                        );
-                      } else if (snapshot.data == "no_faces_found" ||
-                          snapshot.data == "stab_failed") {
-                        var text = snapshot.data == "no_faces_found"
-                            ? "Stabilization failed. No faces found. Try the 'manual stabilization' option."
-                            : "Stabilization failed. We were unable to stabilize facial landmarks. Try the 'manual stabilization' option.";
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 32.0, horizontal: 20.0),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.error,
-                                  color: Colors.red, size: 50.0),
-                              const SizedBox(height: 10),
-                              Text(
-                                text,
-                                style: const TextStyle(color: Colors.white),
-                              ),
-                            ],
-                          ),
-                        );
-                      } else if (snapshot.data == "success") {
-                        return _buildResizableImage(
-                            File(activeImagePreviewPath!));
-                      } else {
-                        return const Padding(
-                          padding: EdgeInsets.symmetric(
-                              vertical: 32.0, horizontal: 20.0),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                "Unknown error occurred.",
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-                    },
+                    imagePath: activeImagePreviewPath!,
+                    projectId: widget.projectId,
+                    buildImage: _buildResizableImage,
                   )
                 else
                   _buildResizableImage(File(activeImagePreviewPath!)),
@@ -2266,7 +2171,7 @@ class GalleryPageState extends State<GalleryPage>
         path.dirname(switched),
         "${path.basenameWithoutExtension(image.path)}.jpg",
       );
-      _rawThumbnailFutures.remove(thumbnailPath);
+      ThumbnailService.instance.clearCache(thumbnailPath);
       _loadImages();
     } else {
       if (mounted) {

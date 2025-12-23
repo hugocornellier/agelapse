@@ -35,7 +35,7 @@ AgeLapse takes a raw photo, detects a set of landmarks on the person (eyes for f
 
 The face detection model used by AgeLapse is platform-dependent. On Mobile, Google MLKit is used. On MacOS, Apple Vision is used.
 
-## What's New
+## What's New / Changelog
 
 ### v2.2.0
 

@@ -11,6 +11,7 @@ import 'package:vibration/vibration.dart';
 
 import '../services/database_helper.dart';
 import '../services/log_service.dart';
+import '../services/thumbnail_service.dart';
 import 'dir_utils.dart';
 import 'heic_utils.dart';
 
@@ -291,6 +292,13 @@ class CameraUtils {
       if (!result) {
         return false;
       }
+
+      ThumbnailService.instance.emit(ThumbnailEvent(
+        thumbnailPath: thumbnailPath,
+        status: ThumbnailStatus.success,
+        projectId: projectId,
+        timestamp: timestamp.toString(),
+      ));
 
       bytes = null;
 

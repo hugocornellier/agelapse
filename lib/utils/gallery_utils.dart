@@ -942,6 +942,7 @@ class GalleryUtils {
     }
   }
 
+  @Deprecated('Use ThumbnailService stream-based approach instead')
   static Future<String> waitForThumbnail(String thumbnailPath, int projectId,
       {Duration timeout = const Duration(seconds: 30)}) async {
     final sw = Stopwatch()..start();

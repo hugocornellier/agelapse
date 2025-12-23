@@ -61,12 +61,20 @@ class CustomAppBarState extends State<CustomAppBar> {
         await ProjectSelectionSheetState.getProjectImage(widget.projectId);
 
     if (path.dirname(imagePath).contains(DirUtils.stabilizedDirname)) {
-      imagePath = FaceStabilizer.getStabThumbnailPath(imagePath);
+      // Try thumbnail first
+      final thumbnailPath = FaceStabilizer.getStabThumbnailPath(imagePath);
+      if (await File(thumbnailPath).exists()) {
+        imagePath = thumbnailPath;
+      }
+      // Otherwise keep the full stabilized image path
     }
 
-    setState(() {
-      projectImagePath = imagePath;
-    });
+    // Verify file exists before setting
+    if (imagePath.isNotEmpty && await File(imagePath).exists()) {
+      setState(() {
+        projectImagePath = imagePath;
+      });
+    }
   }
 
   static void showSettingsModal(
