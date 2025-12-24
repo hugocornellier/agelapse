@@ -57,7 +57,8 @@ class SettingsSheetState extends State<SettingsSheet> {
   Future<Map<String, bool>> get _settingsFuture => _settingsCompleter.future;
   Future<void> get _notificationInitialization => _notificationCompleter.future;
   Future<void> get _videoSettingsFuture => _videoSettingsCompleter.future;
-  Future<void> get _watermarkSettingsFuture => _watermarkSettingsCompleter.future;
+  Future<void> get _watermarkSettingsFuture =>
+      _watermarkSettingsCompleter.future;
   Future<int> get _gridCountFuture => _gridCountCompleter.future;
   Future<void> get _projectSettingsFuture => _projectSettingsCompleter.future;
 
@@ -82,21 +83,12 @@ class SettingsSheetState extends State<SettingsSheet> {
     return _flutterLocalNotificationsPlugin!;
   }
 
-  static final _creationStopwatch = Stopwatch();
-  static bool _stopwatchStarted = false;
-
   @override
   void initState() {
     super.initState();
-    if (!_stopwatchStarted) {
-      _creationStopwatch.start();
-      _stopwatchStarted = true;
-    }
-    print('DEBUG [${_creationStopwatch.elapsedMilliseconds}ms] SettingsSheet.initState called');
     // Defer initialization until after the first frame to allow
     // the modal animation to start smoothly
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      print('DEBUG [${_creationStopwatch.elapsedMilliseconds}ms] postFrameCallback fired - calling _init');
       _init();
     });
   }
@@ -258,14 +250,8 @@ class SettingsSheetState extends State<SettingsSheet> {
         widget.projectId, dailyNotificationTime);
   }
 
-  static bool _firstBuild = true;
-
   @override
   Widget build(BuildContext context) {
-    if (_firstBuild) {
-      print('DEBUG [${_creationStopwatch.elapsedMilliseconds}ms] SettingsSheet.build called (first build)');
-      _firstBuild = false;
-    }
     return GestureDetector(
       onTap: () {
         FocusScope.of(context).unfocus();

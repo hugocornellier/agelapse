@@ -356,12 +356,13 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                   child: Row(
                     children: [
                       CircleAvatar(
-                        backgroundImage:
-                            snapshot.hasData && snapshot.data!.isNotEmpty
-                                ? FileImage(File(snapshot.data!)) as ImageProvider
-                                : const AssetImage('assets/images/person-grey.png'),
+                        backgroundImage: snapshot.hasData &&
+                                snapshot.data!.isNotEmpty &&
+                                File(snapshot.data!).existsSync()
+                            ? FileImage(File(snapshot.data!)) as ImageProvider
+                            : const AssetImage('assets/images/person-grey.png'),
                         onBackgroundImageError: (exception, stackTrace) {
-                          print('DEBUG Project list avatar load error: $exception');
+                          // File was deleted between existsSync check and load
                         },
                         backgroundColor: Colors.transparent,
                         radius: 24.0,

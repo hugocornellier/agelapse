@@ -60,13 +60,10 @@ class CustomAppBarState extends State<CustomAppBar> {
     String imagePath =
         await ProjectSelectionSheetState.getProjectImage(widget.projectId);
 
-    print('DEBUG _loadProjectImage: getProjectImage returned: $imagePath');
-
     if (path.dirname(imagePath).contains(DirUtils.stabilizedDirname)) {
       // Try thumbnail first
       final thumbnailPath = FaceStabilizer.getStabThumbnailPath(imagePath);
       final thumbnailExists = await File(thumbnailPath).exists();
-      print('DEBUG _loadProjectImage: thumbnail path: $thumbnailPath, exists: $thumbnailExists');
       if (thumbnailExists) {
         imagePath = thumbnailPath;
       }
@@ -75,13 +72,10 @@ class CustomAppBarState extends State<CustomAppBar> {
 
     // Verify file exists before setting
     final fileExists = imagePath.isNotEmpty && await File(imagePath).exists();
-    print('DEBUG _loadProjectImage: final path: $imagePath, exists: $fileExists');
     if (fileExists) {
       setState(() {
         projectImagePath = imagePath;
       });
-    } else {
-      print('DEBUG _loadProjectImage: NOT setting projectImagePath because file does not exist');
     }
   }
 
@@ -93,9 +87,6 @@ class CustomAppBarState extends State<CustomAppBar> {
       void Function() refreshSettingsIn,
       void Function() clearRawAndStabPhotos,
       SettingsCache? settingsCache) {
-    final stopwatch = Stopwatch()..start();
-    print('DEBUG SETTINGS [${stopwatch.elapsedMilliseconds}ms] showSettingsModal called');
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -105,7 +96,6 @@ class CustomAppBarState extends State<CustomAppBar> {
         vsync: Navigator.of(context),
       ),
       builder: (context) {
-        print('DEBUG SETTINGS [${stopwatch.elapsedMilliseconds}ms] builder called');
         return SettingsSheet(
           projectId: projectId,
           stabCallback: stabCallback,
@@ -115,7 +105,6 @@ class CustomAppBarState extends State<CustomAppBar> {
         );
       },
     );
-    print('DEBUG SETTINGS [${stopwatch.elapsedMilliseconds}ms] showModalBottomSheet returned');
   }
 
   static Future<bool> _isDefaultProject(int projectId) async {
@@ -185,13 +174,12 @@ class CustomAppBarState extends State<CustomAppBar> {
                     onTap: () =>
                         _showProjectSelectionModal(context, widget.projectId),
                     child: CircleAvatar(
-                      backgroundImage: projectImagePath.isNotEmpty
+                      backgroundImage: projectImagePath.isNotEmpty &&
+                              File(projectImagePath).existsSync()
                           ? FileImage(File(projectImagePath)) as ImageProvider
                           : const AssetImage('assets/images/person-grey.png'),
                       onBackgroundImageError: (exception, stackTrace) {
-                        print('DEBUG CircleAvatar image load error: $exception');
-                        print('DEBUG CircleAvatar path was: $projectImagePath');
-                        // Reset path to show fallback on next rebuild
+                        // File was deleted between existsSync check and load - use fallback
                         if (projectImagePath.isNotEmpty) {
                           WidgetsBinding.instance.addPostFrameCallback((_) {
                             if (mounted) {

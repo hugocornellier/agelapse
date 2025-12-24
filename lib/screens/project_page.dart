@@ -83,7 +83,8 @@ class ProjectPageState extends State<ProjectPage> {
     framerate = await SettingsUtil.loadFramerate(widget.projectId.toString());
   }
 
-  Future<bool> _waitForCache({Duration timeout = const Duration(seconds: 30)}) async {
+  Future<bool> _waitForCache(
+      {Duration timeout = const Duration(seconds: 30)}) async {
     if (widget.settingsCache != null) return true;
 
     final deadline = DateTime.now().add(timeout);

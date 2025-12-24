@@ -27,7 +27,8 @@ import 'log_service.dart';
 class FFmpegProcessManager {
   FFmpegProcessManager._internal();
 
-  static final FFmpegProcessManager _instance = FFmpegProcessManager._internal();
+  static final FFmpegProcessManager _instance =
+      FFmpegProcessManager._internal();
 
   /// The singleton instance.
   static FFmpegProcessManager get instance => _instance;

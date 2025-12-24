@@ -76,12 +76,15 @@ class MainNavigationState extends State<MainNavigation> {
   int _importProgressPercent = 0;
 
   // Derived getters for compatibility with child widgets
-  bool get _stabilizingActive => _stabProgress.state == StabilizationState.stabilizing ||
+  bool get _stabilizingActive =>
+      _stabProgress.state == StabilizationState.stabilizing ||
       _stabProgress.state == StabilizationState.preparing ||
       _stabProgress.state == StabilizationState.cancelling;
-  bool get _videoCreationActive => _stabProgress.state == StabilizationState.compilingVideo ||
+  bool get _videoCreationActive =>
+      _stabProgress.state == StabilizationState.compilingVideo ||
       _stabProgress.state == StabilizationState.cancellingVideo;
-  int get progressPercent => _isImporting ? _importProgressPercent : _stabProgress.progressPercent;
+  int get progressPercent =>
+      _isImporting ? _importProgressPercent : _stabProgress.progressPercent;
   String get minutesRemaining => _stabProgress.eta ?? "";
   int get _photoIndex => _stabProgress.currentPhoto;
   int get _unstabilizedPhotoCount => _stabProgress.totalPhotos;
@@ -95,7 +98,8 @@ class MainNavigationState extends State<MainNavigation> {
     _showFlashingCircle = widget.showFlashingCircle;
 
     // Subscribe to stabilization progress stream for reactive UI updates
-    _stabSubscription = StabilizationService.instance.progressStream.listen((progress) {
+    _stabSubscription =
+        StabilizationService.instance.progressStream.listen((progress) {
       if (mounted) {
         setState(() => _stabProgress = progress);
 

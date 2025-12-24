@@ -29,7 +29,8 @@ class ThumbnailService {
   // Cache for widgets that mount after event fires
   final Map<String, ThumbnailStatus> _statusCache = {};
 
-  ThumbnailStatus? getStatus(String thumbnailPath) => _statusCache[thumbnailPath];
+  ThumbnailStatus? getStatus(String thumbnailPath) =>
+      _statusCache[thumbnailPath];
 
   void emit(ThumbnailEvent event) {
     _statusCache[event.thumbnailPath] = event.status;

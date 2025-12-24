@@ -7,7 +7,6 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:heif_converter/heif_converter.dart';
-import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
@@ -72,113 +71,60 @@ class StabUtils {
     return dividend / divisor;
   }
 
-  static List<Point<double>?> extractEyePositions(List<Face> faces) {
-    final out = <Point<double>?>[];
-    for (final face in faces) {
-      final l = face.landmarks[FaceLandmarkType.leftEye];
-      final r = face.landmarks[FaceLandmarkType.rightEye];
-      if (l == null || r == null) continue;
-      var a = Point(l.position.x.toDouble(), l.position.y.toDouble());
-      var b = Point(r.position.x.toDouble(), r.position.y.toDouble());
-      if (a.x > b.x) {
-        final t = a;
-        a = b;
-        b = t;
-      }
-      out
-        ..add(a)
-        ..add(b);
-    }
-    return out;
-  }
-
-  static Future<List<dynamic>?> getFacesFromBytes(
-    Uint8List bytes,
-    FaceDetector? faceDetector, {
+  static Future<List<FaceLike>?> getFacesFromBytes(
+    Uint8List bytes, {
     bool filterByFaceSize = true,
     int? imageWidth,
   }) async {
     try {
-      if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
-        await _ensureFDLite();
+      await _ensureFDLite();
 
-        // Face detection runs entirely in background isolate - UI never blocked
-        final facesDetected = await _faceDetectorIsolate!.detectFaces(
-          bytes,
-          mode: fdl.FaceDetectionMode.full,
+      // Face detection runs entirely in background isolate - UI never blocked
+      final facesDetected = await _faceDetectorIsolate!.detectFaces(
+        bytes,
+        mode: fdl.FaceDetectionMode.full,
+      );
+
+      if (facesDetected.isEmpty) {
+        return [];
+      }
+
+      // Get image width from first detected face's originalSize
+      final double w = facesDetected.first.originalSize.width;
+
+      final List<FaceLike> faces = [];
+      for (final face in facesDetected) {
+        final boundingBox = face.boundingBox;
+        final Rect bbox = Rect.fromLTRB(
+          boundingBox.topLeft.x,
+          boundingBox.topLeft.y,
+          boundingBox.bottomRight.x,
+          boundingBox.bottomRight.y,
         );
 
-        if (facesDetected.isEmpty) {
-          return [];
-        }
+        final landmarks = face.landmarks;
+        final Point<double>? l = landmarks.leftEye != null
+            ? Point(landmarks.leftEye!.x, landmarks.leftEye!.y)
+            : null;
+        final Point<double>? r = landmarks.rightEye != null
+            ? Point(landmarks.rightEye!.x, landmarks.rightEye!.y)
+            : null;
 
-        // Get image width from first detected face's originalSize
-        final double w = facesDetected.first.originalSize.width;
-
-        final List<FaceLike> faces = [];
-        for (final face in facesDetected) {
-          final boundingBox = face.boundingBox;
-          final Rect bbox = Rect.fromLTRB(
-            boundingBox.topLeft.x,
-            boundingBox.topLeft.y,
-            boundingBox.bottomRight.x,
-            boundingBox.bottomRight.y,
-          );
-
-          final landmarks = face.landmarks;
-          final Point<double>? l = landmarks.leftEye != null
-              ? Point(landmarks.leftEye!.x, landmarks.leftEye!.y)
-              : null;
-          final Point<double>? r = landmarks.rightEye != null
-              ? Point(landmarks.rightEye!.x, landmarks.rightEye!.y)
-              : null;
-
-          faces.add(
-            FaceLike(
-              boundingBox: bbox,
-              leftEye: l,
-              rightEye: r,
-            ),
-          );
-        }
-
-        if (!filterByFaceSize || faces.isEmpty) return faces;
-
-        const double minFaceSize = 0.1;
-        final filtered = faces
-            .where((f) => (f.boundingBox.width / w) > minFaceSize)
-            .toList();
-        return filtered.isNotEmpty ? filtered : faces;
-      } else {
-        // Mobile path: write to temp file for google_mlkit
-        final Directory tempDir = await getTemporaryDirectory();
-        final String tempPath = path.join(tempDir.path,
-            'temp_face_detection_${DateTime.now().millisecondsSinceEpoch}.png');
-        final File tempFile = File(tempPath);
-        await tempFile.writeAsBytes(bytes);
-
-        try {
-          final List<Face> faces = await faceDetector!.processImage(
-            InputImage.fromFilePath(tempPath),
-          );
-
-          if (!filterByFaceSize || faces.isEmpty) return faces;
-
-          // For mobile, use opencv to get width if not provided
-          if (imageWidth == null) {
-            final mat = cv.imdecode(bytes, cv.IMREAD_COLOR);
-            imageWidth = mat.cols;
-            mat.dispose();
-          }
-
-          return await _filterFacesBySize(faces, imageWidth, tempPath);
-        } finally {
-          // Clean up temp file
-          if (await tempFile.exists()) {
-            await tempFile.delete();
-          }
-        }
+        faces.add(
+          FaceLike(
+            boundingBox: bbox,
+            leftEye: l,
+            rightEye: r,
+          ),
+        );
       }
+
+      if (!filterByFaceSize || faces.isEmpty) return faces;
+
+      const double minFaceSize = 0.1;
+      final filtered =
+          faces.where((f) => (f.boundingBox.width / w) > minFaceSize).toList();
+      return filtered.isNotEmpty ? filtered : faces;
     } catch (e) {
       LogService.instance
           .log("Error caught while fetching faces from bytes: $e");
@@ -186,9 +132,8 @@ class StabUtils {
     }
   }
 
-  static Future<List<dynamic>?> getFacesFromFilepath(
-    String imagePath,
-    FaceDetector? faceDetector, {
+  static Future<List<FaceLike>?> getFacesFromFilepath(
+    String imagePath, {
     bool filterByFaceSize = true,
     int? imageWidth,
   }) async {
@@ -198,89 +143,176 @@ class StabUtils {
     }
 
     try {
-      if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
-        await _ensureFDLite();
+      await _ensureFDLite();
 
-        final bytes = await File(imagePath).readAsBytes();
+      final bytes = await File(imagePath).readAsBytes();
 
-        // Face detection runs entirely in background isolate - UI never blocked
-        final facesDetected = await _faceDetectorIsolate!.detectFaces(
-          bytes,
-          mode: fdl.FaceDetectionMode.full,
-        );
+      // Face detection runs entirely in background isolate - UI never blocked
+      final facesDetected = await _faceDetectorIsolate!.detectFaces(
+        bytes,
+        mode: fdl.FaceDetectionMode.full,
+      );
 
-        if (facesDetected.isEmpty) {
-          return [];
-        }
-
-        // Get image width from first detected face's originalSize
-        final double w = facesDetected.first.originalSize.width;
-
-        final List<FaceLike> faces = [];
-        for (final face in facesDetected) {
-          final boundingBox = face.boundingBox;
-          final Rect bbox = Rect.fromLTRB(
-            boundingBox.topLeft.x,
-            boundingBox.topLeft.y,
-            boundingBox.bottomRight.x,
-            boundingBox.bottomRight.y,
-          );
-
-          final landmarks = face.landmarks;
-          final Point<double>? l = landmarks.leftEye != null
-              ? Point(landmarks.leftEye!.x, landmarks.leftEye!.y)
-              : null;
-          final Point<double>? r = landmarks.rightEye != null
-              ? Point(landmarks.rightEye!.x, landmarks.rightEye!.y)
-              : null;
-
-          faces.add(
-            FaceLike(
-              boundingBox: bbox,
-              leftEye: l,
-              rightEye: r,
-            ),
-          );
-        }
-
-        if (!filterByFaceSize || faces.isEmpty) return faces;
-
-        const double minFaceSize = 0.1;
-        final filtered = faces
-            .where((f) => (f.boundingBox.width / w) > minFaceSize)
-            .toList();
-        return filtered.isNotEmpty ? filtered : faces;
-      } else {
-        final List<Face> faces = await faceDetector!.processImage(
-          InputImage.fromFilePath(imagePath),
-        );
-        if (!filterByFaceSize || faces.isEmpty) return faces;
-        return await _filterFacesBySize(faces, imageWidth, imagePath);
+      if (facesDetected.isEmpty) {
+        return [];
       }
+
+      // Get image width from first detected face's originalSize
+      final double w = facesDetected.first.originalSize.width;
+
+      final List<FaceLike> faces = [];
+      for (final face in facesDetected) {
+        final boundingBox = face.boundingBox;
+        final Rect bbox = Rect.fromLTRB(
+          boundingBox.topLeft.x,
+          boundingBox.topLeft.y,
+          boundingBox.bottomRight.x,
+          boundingBox.bottomRight.y,
+        );
+
+        final landmarks = face.landmarks;
+        final Point<double>? l = landmarks.leftEye != null
+            ? Point(landmarks.leftEye!.x, landmarks.leftEye!.y)
+            : null;
+        final Point<double>? r = landmarks.rightEye != null
+            ? Point(landmarks.rightEye!.x, landmarks.rightEye!.y)
+            : null;
+
+        faces.add(
+          FaceLike(
+            boundingBox: bbox,
+            leftEye: l,
+            rightEye: r,
+          ),
+        );
+      }
+
+      if (!filterByFaceSize || faces.isEmpty) return faces;
+
+      const double minFaceSize = 0.1;
+      final filtered =
+          faces.where((f) => (f.boundingBox.width / w) > minFaceSize).toList();
+      return filtered.isNotEmpty ? filtered : faces;
     } catch (e) {
       LogService.instance.log("Error caught while fetching faces: $e");
       return [];
     }
   }
 
-  static Future<List<Face>> _filterFacesBySize(
-      List<Face> faces, int? imageWidth, String imagePath) async {
-    const double minFaceSize = 0.1;
+  // ============================================================
+  // Face Embedding Methods for identity-based face matching
+  // ============================================================
 
+  /// Gets face embedding for the first detected face in the image.
+  /// Used for single-face photos to store reference embeddings.
+  /// Returns null if no faces detected or embedding extraction fails.
+  static Future<Float32List?> getFaceEmbeddingFromBytes(Uint8List bytes) async {
     try {
-      if (imageWidth == null) {
-        (imageWidth, _) = await getImageDimensions(imagePath);
-      }
+      await _ensureFDLite();
 
-      List<Face> filteredFaces = faces.where((face) {
-        final double faceWidth = face.boundingBox.right - face.boundingBox.left;
-        return faceWidth / imageWidth! > minFaceSize;
-      }).toList();
+      final faces = await _faceDetectorIsolate!.detectFaces(
+        bytes,
+        mode: fdl.FaceDetectionMode.fast,
+      );
 
-      return filteredFaces.isNotEmpty ? filteredFaces : faces;
-    } catch (_) {
+      if (faces.isEmpty) return null;
+
+      final embedding = await _faceDetectorIsolate!.getFaceEmbedding(
+        faces.first,
+        bytes,
+      );
+
+      return embedding;
+    } catch (e) {
+      LogService.instance.log("Error extracting face embedding: $e");
+      return null;
+    }
+  }
+
+  /// Gets face embeddings for all detected faces in the image.
+  /// Returns a list of embeddings (may contain nulls for faces where extraction failed).
+  static Future<List<Float32List?>> getFaceEmbeddingsFromBytes(
+      Uint8List bytes) async {
+    try {
+      await _ensureFDLite();
+
+      final faces = await _faceDetectorIsolate!.detectFaces(
+        bytes,
+        mode: fdl.FaceDetectionMode.fast,
+      );
+
+      if (faces.isEmpty) return [];
+
+      final embeddings = await _faceDetectorIsolate!.getFaceEmbeddings(
+        faces,
+        bytes,
+      );
+
+      return embeddings;
+    } catch (e) {
+      LogService.instance.log("Error extracting face embeddings: $e");
       return [];
     }
+  }
+
+  /// Picks the face index with highest similarity to the reference embedding.
+  /// Returns -1 if no match found above threshold, or falls back to first face.
+  /// [referenceEmbedding] is the 192-dim embedding from a single-face photo.
+  /// [imageBytes] is the raw image bytes to detect and compare faces.
+  static Future<int> pickFaceIndexByEmbedding(
+    Float32List referenceEmbedding,
+    Uint8List imageBytes,
+  ) async {
+    try {
+      await _ensureFDLite();
+
+      final faces = await _faceDetectorIsolate!.detectFaces(
+        imageBytes,
+        mode: fdl.FaceDetectionMode.fast,
+      );
+
+      if (faces.isEmpty) return -1;
+      if (faces.length == 1) return 0;
+
+      int bestIndex = 0;
+      double bestSimilarity = -1.0;
+
+      for (int i = 0; i < faces.length; i++) {
+        final embedding = await _faceDetectorIsolate!.getFaceEmbedding(
+          faces[i],
+          imageBytes,
+        );
+
+        final similarity =
+            fdl.FaceDetector.compareFaces(referenceEmbedding, embedding);
+
+        LogService.instance.log(
+            "Face $i embedding similarity: ${similarity.toStringAsFixed(3)}");
+
+        if (similarity > bestSimilarity) {
+          bestSimilarity = similarity;
+          bestIndex = i;
+        }
+      }
+
+      LogService.instance.log(
+          "Selected face $bestIndex with similarity ${bestSimilarity.toStringAsFixed(3)}");
+
+      return bestIndex;
+    } catch (e) {
+      LogService.instance.log("Error in embedding-based face selection: $e");
+      return 0; // Fallback to first face
+    }
+  }
+
+  /// Converts a Float32List embedding to Uint8List for database storage.
+  static Uint8List embeddingToBytes(Float32List embedding) {
+    return embedding.buffer.asUint8List();
+  }
+
+  /// Converts a Uint8List from database back to Float32List embedding.
+  static Float32List bytesToEmbedding(Uint8List bytes) {
+    return bytes.buffer.asFloat32List();
   }
 
   static Future<(int, int)> getImageDimensions(String imagePath) async {
@@ -452,8 +484,8 @@ class StabUtils {
   }
 
   /// Read any image file and return PNG bytes (using opencv for fast native decoding)
-  static Future<Uint8List?> readImageAsPngBytesInIsolate(
-      String filePath, {CancellationToken? token}) async {
+  static Future<Uint8List?> readImageAsPngBytesInIsolate(String filePath,
+      {CancellationToken? token}) async {
     token?.throwIfCancelled();
 
     ReceivePort receivePort = ReceivePort();
@@ -479,7 +511,8 @@ class StabUtils {
 
   /// Write PNG bytes to file
   static Future<void> writePngBytesToFileInIsolate(
-      String filepath, Uint8List pngBytes, {CancellationToken? token}) async {
+      String filepath, Uint8List pngBytes,
+      {CancellationToken? token}) async {
     token?.throwIfCancelled();
 
     ReceivePort receivePort = ReceivePort();
@@ -503,8 +536,8 @@ class StabUtils {
     }
   }
 
-  static Future<Uint8List> compositeBlackPngBytes(
-      Uint8List pngBytes, {CancellationToken? token}) async {
+  static Future<Uint8List> compositeBlackPngBytes(Uint8List pngBytes,
+      {CancellationToken? token}) async {
     token?.throwIfCancelled();
 
     ReceivePort receivePort = ReceivePort();
@@ -528,8 +561,8 @@ class StabUtils {
     }
   }
 
-  static Future<Uint8List> thumbnailJpgFromPngBytes(
-      Uint8List pngBytes, {CancellationToken? token}) async {
+  static Future<Uint8List> thumbnailJpgFromPngBytes(Uint8List pngBytes,
+      {CancellationToken? token}) async {
     token?.throwIfCancelled();
 
     ReceivePort receivePort = ReceivePort();
@@ -554,7 +587,8 @@ class StabUtils {
   }
 
   static Future<void> writeBytesToJpgFileInIsolate(
-      String filePath, List<int> bytes, {CancellationToken? token}) async {
+      String filePath, List<int> bytes,
+      {CancellationToken? token}) async {
     token?.throwIfCancelled();
 
     ReceivePort receivePort = ReceivePort();
@@ -825,8 +859,8 @@ class StabUtils {
   }
 
   /// Get image dimensions from bytes asynchronously (runs decode in isolate)
-  static Future<(int, int)?> getImageDimensionsFromBytesAsync(
-      Uint8List bytes, {CancellationToken? token}) async {
+  static Future<(int, int)?> getImageDimensionsFromBytesAsync(Uint8List bytes,
+      {CancellationToken? token}) async {
     token?.throwIfCancelled();
 
     final ReceivePort receivePort = ReceivePort();

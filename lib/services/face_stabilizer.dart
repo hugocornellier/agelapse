@@ -5,7 +5,6 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
-import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'cancellation_token.dart';
 import 'isolate_manager.dart';
 import 'log_service.dart';
@@ -41,9 +40,9 @@ class StabilizationResult {
 
   /// Creates a cancelled result.
   factory StabilizationResult.cancelled() => StabilizationResult(
-    success: false,
-    cancelled: true,
-  );
+        success: false,
+        cancelled: true,
+      );
 }
 
 class FaceStabilizer {
@@ -70,10 +69,13 @@ class FaceStabilizer {
   late int pregRightAnkleXGoal;
   late int muscRightHipYGoal;
   late int muscRightHipXGoal;
-  FaceDetector? _faceDetector;
   PoseDetector? _poseDetector;
   late double eyeOffsetX;
   late double eyeOffsetY;
+
+  // Face embedding tracking for identity-based face matching
+  int? _currentFaceCount;
+  Float32List? _currentEmbedding;
 
   final VoidCallback userRanOutOfSpaceCallbackIn;
 
@@ -81,16 +83,14 @@ class FaceStabilizer {
 
   bool _disposed = false;
 
-  /// Releases native resources held by the face/pose detectors.
+  /// Releases native resources held by the pose detector.
   /// Must be called when the stabilizer is no longer needed.
   /// Safe to call multiple times (idempotent).
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
 
-    await _faceDetector?.close();
     await _poseDetector?.close();
-    _faceDetector = null;
     _poseDetector = null;
 
     // Delete temp HEIC-to-JPG conversions created by this instance
@@ -130,19 +130,7 @@ class FaceStabilizer {
     aspectRatio = await SettingsUtil.loadAspectRatio(projectId.toString());
     aspectRatioDecimal = StabUtils.getAspectRatioAsDecimal(aspectRatio);
 
-    if (projectType == "face") {
-      if (Platform.isAndroid || Platform.isIOS) {
-        final FaceDetector faceDetector = FaceDetector(
-            options: FaceDetectorOptions(
-          enableLandmarks: true,
-          enableContours: true,
-          performanceMode: FaceDetectorMode.accurate,
-        ));
-        _faceDetector = faceDetector;
-      } else {
-        _faceDetector = null;
-      }
-    } else {
+    if (projectType != "face") {
       final PoseDetector poseDetector = PoseDetector(
           options: PoseDetectorOptions(
               mode: PoseDetectionMode.single,
@@ -184,7 +172,6 @@ class FaceStabilizer {
     String rawPhotoPath,
     CancellationToken? token,
     void Function() userRanOutOfSpaceCallback, {
-    Face? targetFace,
     Rect? targetBoundingBox,
   }) async {
     try {
@@ -214,7 +201,8 @@ class FaceStabilizer {
 
       // Get dimensions asynchronously (decode runs in isolate)
       token?.throwIfCancelled();
-      final dims = await StabUtils.getImageDimensionsFromBytesAsync(srcBytes, token: token);
+      final dims = await StabUtils.getImageDimensionsFromBytesAsync(srcBytes,
+          token: token);
       if (dims == null) return StabilizationResult(success: false);
       final (int imgWidth, int imgHeight) = dims;
 
@@ -223,7 +211,6 @@ class FaceStabilizer {
           rawPhotoPath,
           imgWidth,
           imgHeight,
-          targetFace,
           targetBoundingBox,
           userRanOutOfSpaceCallback);
       if (rotationDegrees == null || scaleFactor == null) {
@@ -343,10 +330,9 @@ class FaceStabilizer {
     final Point<double> goalLeftEye = Point(leftEyeXGoal, bothEyesYGoal);
     final Point<double> goalRightEye = Point(rightEyeXGoal, bothEyesYGoal);
 
-    // Detect faces directly from bytes using face_detection_tflite (works with cv.Mat on all platforms)
+    // Detect faces directly from bytes using face_detection_tflite (works on all platforms)
     final stabFaces = await StabUtils.getFacesFromBytes(
       imageBytesStabilized,
-      _faceDetector, // Pass faceDetector for mobile fallback if needed
       filterByFaceSize: false,
       imageWidth: canvasWidth,
     );
@@ -356,7 +342,8 @@ class FaceStabilizer {
       if (stabFaces != null && stabFaces.isEmpty) {
         await DB.instance
             .setPhotoNoFacesFound(path.basenameWithoutExtension(rawPhotoPath));
-        unawaited(_emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.noFacesFound));
+        unawaited(
+            _emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.noFacesFound));
       }
       // Fall back to estimated eyes for scoring
       final eyesXY = _estimatedEyesAfterTransform(
@@ -386,7 +373,8 @@ class FaceStabilizer {
     if (eyes.length < 2 || eyes[0] == null || eyes[1] == null) {
       await DB.instance
           .setPhotoNoFacesFound(path.basenameWithoutExtension(rawPhotoPath));
-      unawaited(_emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.noFacesFound));
+      unawaited(
+          _emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.noFacesFound));
       // Fall back to estimated eyes for scoring
       final eyesXY = _estimatedEyesAfterTransform(
         imgWidth,
@@ -579,8 +567,7 @@ class FaceStabilizer {
     );
     if (twoPassBytes == null) return (false, firstPassScore, null, null, null);
 
-    final twoPassFaces = await StabUtils.getFacesFromBytes(
-        twoPassBytes, _faceDetector,
+    final twoPassFaces = await StabUtils.getFacesFromBytes(twoPassBytes,
         filterByFaceSize: false, imageWidth: canvasWidth);
     if (twoPassFaces == null) return (false, firstPassScore, null, null, null);
 
@@ -633,8 +620,9 @@ class FaceStabilizer {
 
         if (threePassBytes != null) {
           final threePassFaces = await StabUtils.getFacesFromBytes(
-              threePassBytes, _faceDetector,
-              filterByFaceSize: false, imageWidth: canvasWidth);
+              threePassBytes,
+              filterByFaceSize: false,
+              imageWidth: canvasWidth);
 
           if (threePassFaces != null) {
             List<Point<double>?> threePassEyes =
@@ -691,8 +679,7 @@ class FaceStabilizer {
         );
 
         if (fourPassBytes != null) {
-          final fourPassFaces = await StabUtils.getFacesFromBytes(
-              fourPassBytes, _faceDetector,
+          final fourPassFaces = await StabUtils.getFacesFromBytes(fourPassBytes,
               filterByFaceSize: false, imageWidth: canvasWidth);
 
           if (fourPassFaces != null) {
@@ -785,6 +772,23 @@ class FaceStabilizer {
       scaleFactor: sc,
     );
 
+    // Store face count and embedding (if available) for future reference
+    if (_currentFaceCount != null) {
+      final String timestamp = path.basenameWithoutExtension(rawPhotoPath);
+      Uint8List? embeddingBytes;
+      if (_currentEmbedding != null) {
+        embeddingBytes = StabUtils.embeddingToBytes(_currentEmbedding!);
+      }
+      await DB.instance.setPhotoFaceData(
+        timestamp,
+        projectId,
+        _currentFaceCount!,
+        embedding: embeddingBytes,
+      );
+      LogService.instance.log(
+          "Stored face data: count=$_currentFaceCount, hasEmbedding=${embeddingBytes != null}");
+    }
+
     LogService.instance
         .log("SUCCESS! STAB SCORE: $score (closer to 0 is better)");
     LogService.instance.log(
@@ -836,7 +840,8 @@ class FaceStabilizer {
   }
 
   Future<bool> tryRotation(
-      String rawPhotoPath, void Function() userRanOutOfSpaceCallback,
+      String rawPhotoPath,
+      void Function() userRanOutOfSpaceCallback,
       CancellationToken? token) async {
     LogService.instance.log(
         "Tried mirroring, but faces were still not found. Trying rotation.");
@@ -863,7 +868,8 @@ class FaceStabilizer {
     if (result2.cancelled) return false;
 
     await DB.instance.setPhotoNoFacesFound(timestamp);
-    unawaited(_emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.noFacesFound));
+    unawaited(
+        _emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.noFacesFound));
     return false;
   }
 
@@ -874,7 +880,8 @@ class FaceStabilizer {
       await DirUtils.createDirectoryIfNotExists(stabThumbnailPath);
       final bytes = await CameraUtils.readBytesInIsolate(stabilizedPhotoPath);
       if (bytes == null) {
-        LogService.instance.log("createStabThumbnail: bytes null for $stabilizedPhotoPath");
+        LogService.instance
+            .log("createStabThumbnail: bytes null for $stabilizedPhotoPath");
         // Still emit success - widget will fall back to full image
         ThumbnailService.instance.emit(ThumbnailEvent(
           thumbnailPath: stabThumbnailPath,
@@ -907,7 +914,8 @@ class FaceStabilizer {
 
   Future<void> _emitThumbnailFailure(
       String rawPhotoPath, ThumbnailStatus status) async {
-    final String timestamp = path.basenameWithoutExtension(rawPhotoPath)
+    final String timestamp = path
+        .basenameWithoutExtension(rawPhotoPath)
         .replaceAll('_flipped', '')
         .replaceAll('_rotated_counter_clockwise', '')
         .replaceAll('_rotated_clockwise', '');
@@ -928,18 +936,12 @@ class FaceStabilizer {
       String rawPhotoPath,
       int imgWidth,
       int imgHeight,
-      Face? targetFace,
       Rect? targetBoundingBox,
       userRanOutOfSpaceCallback) async {
     try {
       if (projectType == "face") {
-        return await _calculateRotationAngleAndScaleFace(
-            rawPhotoPath,
-            imgWidth,
-            imgHeight,
-            targetFace,
-            targetBoundingBox,
-            userRanOutOfSpaceCallback);
+        return await _calculateRotationAngleAndScaleFace(rawPhotoPath, imgWidth,
+            imgHeight, targetBoundingBox, userRanOutOfSpaceCallback);
       } else if (projectType == "pregnancy") {
         return await _calculateRotationAngleAndScalePregnancy(rawPhotoPath);
       } else if (projectType == "musc") {
@@ -957,37 +959,67 @@ class FaceStabilizer {
       String rawPhotoPath,
       int imgWidth,
       int imgHeight,
-      Face? targetFace,
       Rect? targetBoundingBox,
       userRanOutOfSpaceCallback) async {
     List<Point<double>?> eyes;
 
-    if (targetFace != null && !Platform.isMacOS) {
-      eyes = getEyesFromFaces([targetFace]);
-    } else {
-      final bool noFaceSizeFilter = targetBoundingBox != null;
-      final faces = await getFacesFromRawPhotoPath(
+    // Reset face tracking for this photo
+    _currentFaceCount = null;
+    _currentEmbedding = null;
+
+    final bool noFaceSizeFilter = targetBoundingBox != null;
+    final faces = await getFacesFromRawPhotoPath(
+      rawPhotoPath,
+      imgWidth,
+      filterByFaceSize: !noFaceSizeFilter,
+    );
+    if (faces == null || faces.isEmpty) {
+      LogService.instance.log("No faces found. Attempting to flip...");
+      await flipAndTryAgain(rawPhotoPath, userRanOutOfSpaceCallback);
+      return (null, null);
+    }
+
+    // Track face count for embedding storage
+    _currentFaceCount = faces.length;
+
+    // For single-face photos, extract embedding for future reference
+    if (faces.length == 1) {
+      await _extractAndStoreEmbedding(rawPhotoPath);
+    }
+
+    List<dynamic> facesToUse = faces;
+    if (targetBoundingBox != null) {
+      final idx = _pickFaceIndexByBox(faces, targetBoundingBox);
+      if (idx != -1) {
+        facesToUse = [faces[idx]];
+      }
+    }
+
+    eyes = getEyesFromFaces(facesToUse);
+
+    if (facesToUse.length > 1) {
+      // Multiple faces detected - try embedding-based selection first
+      final int? embeddingPickedIdx = await _tryPickFaceByEmbedding(
         rawPhotoPath,
-        imgWidth,
-        filterByFaceSize: !noFaceSizeFilter,
+        facesToUse.length,
       );
-      if (faces == null || faces.isEmpty) {
-        LogService.instance.log("No faces found. Attempting to flip...");
-        await flipAndTryAgain(rawPhotoPath, userRanOutOfSpaceCallback);
-        return (null, null);
-      }
 
-      List<dynamic> facesToUse = faces;
-      if (targetBoundingBox != null) {
-        final idx = _pickFaceIndexByBox(faces, targetBoundingBox);
-        if (idx != -1) {
-          facesToUse = [faces[idx]];
+      if (embeddingPickedIdx != null && embeddingPickedIdx >= 0) {
+        // Embedding match found - use that face
+        LogService.instance
+            .log("Using embedding-matched face at index $embeddingPickedIdx");
+        final int li = 2 * embeddingPickedIdx;
+        final int ri = li + 1;
+        if (ri < eyes.length && eyes[li] != null && eyes[ri] != null) {
+          eyes = [eyes[li]!, eyes[ri]!];
+        } else {
+          // Fallback to centermost if eyes extraction failed for matched face
+          eyes = getCentermostEyes(eyes, facesToUse, imgWidth, imgHeight);
         }
-      }
-
-      eyes = getEyesFromFaces(facesToUse);
-
-      if (facesToUse.length > 1) {
+      } else {
+        // No embedding reference found - fallback to centermost
+        LogService.instance
+            .log("No embedding reference found, using centermost face");
         eyes = getCentermostEyes(eyes, facesToUse, imgWidth, imgHeight);
       }
     }
@@ -995,12 +1027,86 @@ class FaceStabilizer {
     if (eyes.length < 2 || eyes[0] == null || eyes[1] == null) {
       await DB.instance
           .setPhotoNoFacesFound(path.basenameWithoutExtension(rawPhotoPath));
-      unawaited(_emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.noFacesFound));
+      unawaited(
+          _emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.noFacesFound));
       return (null, null);
     }
 
     originalEyePositions = eyes;
     return _calculateEyeMetrics(eyes);
+  }
+
+  /// Tries to pick the correct face using embedding similarity.
+  /// Returns the face index if a reference embedding was found and matching succeeded.
+  /// Returns null if no reference embedding exists (fallback to centermost).
+  Future<int?> _tryPickFaceByEmbedding(
+    String rawPhotoPath,
+    int faceCount,
+  ) async {
+    try {
+      final String timestamp = path.basenameWithoutExtension(rawPhotoPath);
+
+      // Query for the closest single-face photo's embedding
+      final closestSingleFace = await DB.instance.getClosestSingleFacePhoto(
+        timestamp,
+        projectId,
+      );
+
+      if (closestSingleFace == null) {
+        LogService.instance.log(
+            "No single-face reference photos found for embedding matching");
+        return null;
+      }
+
+      final Uint8List? embeddingBytes =
+          closestSingleFace['faceEmbedding'] as Uint8List?;
+      if (embeddingBytes == null) {
+        return null;
+      }
+
+      final Float32List referenceEmbedding =
+          StabUtils.bytesToEmbedding(embeddingBytes);
+      final String refTimestamp = closestSingleFace['timestamp'] as String;
+      LogService.instance.log(
+          "Using reference embedding from photo $refTimestamp for face matching");
+
+      // Read the current image bytes for embedding extraction
+      final String pngPath =
+          await DirUtils.getPngPathFromRawPhotoPath(rawPhotoPath);
+      final Uint8List imageBytes = await File(pngPath).readAsBytes();
+
+      // Use embedding-based face selection
+      final int bestIdx = await StabUtils.pickFaceIndexByEmbedding(
+        referenceEmbedding,
+        imageBytes,
+      );
+
+      return bestIdx;
+    } catch (e) {
+      LogService.instance.log("Error in embedding-based face selection: $e");
+      return null;
+    }
+  }
+
+  /// Extracts and stores the face embedding for a single-face photo.
+  /// This embedding will be used as reference for future multi-face photos.
+  Future<void> _extractAndStoreEmbedding(String rawPhotoPath) async {
+    try {
+      final String pngPath =
+          await DirUtils.getPngPathFromRawPhotoPath(rawPhotoPath);
+      final Uint8List imageBytes = await File(pngPath).readAsBytes();
+
+      final Float32List? embedding =
+          await StabUtils.getFaceEmbeddingFromBytes(imageBytes);
+
+      if (embedding != null) {
+        _currentEmbedding = embedding;
+        LogService.instance.log(
+            "Extracted face embedding (${embedding.length} dims) for single-face photo");
+      }
+    } catch (e) {
+      LogService.instance.log("Error extracting face embedding: $e");
+    }
   }
 
   int _pickFaceIndexByBox(List<dynamic> faces, Rect targetBox) {
@@ -1120,8 +1226,7 @@ class FaceStabilizer {
     return (scaleFactor, rotationDegrees);
   }
 
-  Future<void> flipAndTryAgain(
-      String rawPhotoPath, userRanOutOfSpaceCallback,
+  Future<void> flipAndTryAgain(String rawPhotoPath, userRanOutOfSpaceCallback,
       {CancellationToken? token}) async {
     final String newPath;
     if (rawPhotoPath.contains("rotated")) return;
@@ -1273,16 +1378,11 @@ class FaceStabilizer {
     double smallestDistance = double.infinity;
     List<Point<double>> centeredEyes = [];
 
-    if (Platform.isAndroid || Platform.isIOS) {
-      final List<Face> faceList = faces.cast<Face>();
-      faces = faceList.where((face) {
-        final bool rightEyeNotNull =
-            face.landmarks[FaceLandmarkType.rightEye] != null;
-        final bool leftEyeNotNull =
-            face.landmarks[FaceLandmarkType.leftEye] != null;
-        return leftEyeNotNull && rightEyeNotNull;
-      }).toList();
-    }
+    // All platforms now use face_detection_tflite which returns FaceLike objects
+    // Filter to faces with detected eyes
+    faces = faces.where((face) {
+      return face.leftEye != null && face.rightEye != null;
+    }).toList();
 
     final double marginPx = max(4.0, imgWidth * 0.01);
 
@@ -1344,44 +1444,39 @@ class FaceStabilizer {
 
     return await StabUtils.getFacesFromFilepath(
       pngPath,
-      Platform.isAndroid || Platform.isIOS ? _faceDetector : null,
       filterByFaceSize: filterByFaceSize,
       imageWidth: width,
     );
   }
 
   List<Point<double>?> getEyesFromFaces(dynamic faces) {
-    if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
-      final List<Point<double>?> eyes = [];
-      for (final f in (faces as List)) {
-        Point<double>? a = f.leftEye == null
-            ? null
-            : Point<double>(f.leftEye!.x.toDouble(), f.leftEye!.y.toDouble());
-        Point<double>? b = f.rightEye == null
-            ? null
-            : Point<double>(f.rightEye!.x.toDouble(), f.rightEye!.y.toDouble());
+    // All platforms now use face_detection_tflite which returns FaceLike objects
+    final List<Point<double>?> eyes = [];
+    for (final f in (faces as List)) {
+      Point<double>? a = f.leftEye == null
+          ? null
+          : Point<double>(f.leftEye!.x.toDouble(), f.leftEye!.y.toDouble());
+      Point<double>? b = f.rightEye == null
+          ? null
+          : Point<double>(f.rightEye!.x.toDouble(), f.rightEye!.y.toDouble());
 
-        if (a == null || b == null) {
-          final Rect bb = f.boundingBox as Rect;
-          final double ey = bb.top + bb.height * 0.42;
-          a = Point((bb.left + bb.width * 0.33), ey);
-          b = Point((bb.left + bb.width * 0.67), ey);
-        }
-
-        if (a.x > b.x) {
-          final tmp = a;
-          a = b;
-          b = tmp;
-        }
-        eyes
-          ..add(a)
-          ..add(b);
+      if (a == null || b == null) {
+        final Rect bb = f.boundingBox as Rect;
+        final double ey = bb.top + bb.height * 0.42;
+        a = Point((bb.left + bb.width * 0.33), ey);
+        b = Point((bb.left + bb.width * 0.67), ey);
       }
-      return eyes;
-    } else {
-      final List<Face> typed = (faces as List).cast<Face>();
-      return StabUtils.extractEyePositions(typed);
+
+      if (a.x > b.x) {
+        final tmp = a;
+        a = b;
+        b = tmp;
+      }
+      eyes
+        ..add(a)
+        ..add(b);
     }
+    return eyes;
   }
 
   Future<bool> videoSettingsChanged() async =>

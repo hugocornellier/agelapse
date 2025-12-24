@@ -40,13 +40,15 @@ import '../utils/video_utils.dart';
 class StabilizationService {
   StabilizationService._internal();
 
-  static final StabilizationService _instance = StabilizationService._internal();
+  static final StabilizationService _instance =
+      StabilizationService._internal();
 
   /// The singleton instance.
   static StabilizationService get instance => _instance;
 
   // State management
-  final _progressController = StreamController<StabilizationProgress>.broadcast();
+  final _progressController =
+      StreamController<StabilizationProgress>.broadcast();
   StabilizationState _state = StabilizationState.idle;
   CancellationToken? _currentToken;
   int? _currentProjectId;
@@ -60,7 +62,8 @@ class StabilizationService {
   String _eta = '';
 
   /// Stream of progress updates. Subscribe to this for reactive UI updates.
-  Stream<StabilizationProgress> get progressStream => _progressController.stream;
+  Stream<StabilizationProgress> get progressStream =>
+      _progressController.stream;
 
   /// Current state of the stabilization process.
   StabilizationState get state => _state;
@@ -104,7 +107,8 @@ class StabilizationService {
     _totalPhotos = unstabilizedPhotos.length;
 
     if (_totalPhotos == 0) {
-      LogService.instance.log('StabilizationService: No photos to stabilize, checking video');
+      LogService.instance
+          .log('StabilizationService: No photos to stabilize, checking video');
       // Check if video needs to be created - if so, go straight to video phase
       // If not, return early without emitting any state (no flash)
       final needsVideo = await _checkIfVideoNeeded(projectId);
@@ -133,8 +137,10 @@ class StabilizationService {
 
       // Get counts for progress calculation
       final allPhotos = await DB.instance.getPhotosByProjectID(projectId);
-      final projectOrientation = await SettingsUtil.loadProjectOrientation(projectId.toString());
-      final stabilizedPhotos = await DB.instance.getStabilizedPhotosByProjectID(projectId, projectOrientation);
+      final projectOrientation =
+          await SettingsUtil.loadProjectOrientation(projectId.toString());
+      final stabilizedPhotos = await DB.instance
+          .getStabilizedPhotosByProjectID(projectId, projectOrientation);
       _stabilizedAtStart = stabilizedPhotos.length;
 
       _state = StabilizationState.stabilizing;
@@ -152,9 +158,11 @@ class StabilizationService {
       for (final photo in unstabilizedPhotos) {
         _currentToken?.throwIfCancelled();
 
-        LogService.instance.log('StabilizationService: Stabilizing photo ${_currentPhoto + 1}/$_totalPhotos');
+        LogService.instance.log(
+            'StabilizationService: Stabilizing photo ${_currentPhoto + 1}/$_totalPhotos');
 
-        final result = await _stabilizePhoto(_currentStabilizer!, photo, _currentToken);
+        final result =
+            await _stabilizePhoto(_currentStabilizer!, photo, _currentToken);
 
         if (result.cancelled) {
           throw CancelledException('User cancelled');
@@ -176,7 +184,8 @@ class StabilizationService {
         // Calculate progress
         final totalPhotoCount = allPhotos.length;
         final completed = _stabilizedAtStart + _successfullyStabilized;
-        var pct = totalPhotoCount > 0 ? ((completed * 100) ~/ totalPhotoCount) : 0;
+        var pct =
+            totalPhotoCount > 0 ? ((completed * 100) ~/ totalPhotoCount) : 0;
         if (pct >= 100) pct = 99;
         if (pct < 0) pct = 0;
 
@@ -202,7 +211,6 @@ class StabilizationService {
       _emitProgress(StabilizationProgress.completed(projectId: projectId));
       _state = StabilizationState.completed;
       return true;
-
     } on CancelledException {
       LogService.instance.log('StabilizationService: Cancelled');
       _emitProgress(StabilizationProgress.cancelled(projectId: projectId));
@@ -210,7 +218,8 @@ class StabilizationService {
       return false;
     } catch (e) {
       LogService.instance.log('StabilizationService: Error - $e');
-      _emitProgress(StabilizationProgress.error(e.toString(), projectId: projectId));
+      _emitProgress(
+          StabilizationProgress.error(e.toString(), projectId: projectId));
       _state = StabilizationState.error;
       return false;
     } finally {
@@ -238,10 +247,12 @@ class StabilizationService {
 
     // Emit cancelling state IMMEDIATELY for UI feedback
     if (_state.isVideoPhase) {
-      _emitProgress(StabilizationProgress.cancellingVideo(projectId: _currentProjectId));
+      _emitProgress(
+          StabilizationProgress.cancellingVideo(projectId: _currentProjectId));
       _state = StabilizationState.cancellingVideo;
     } else {
-      _emitProgress(StabilizationProgress.cancelling(projectId: _currentProjectId));
+      _emitProgress(
+          StabilizationProgress.cancelling(projectId: _currentProjectId));
       _state = StabilizationState.cancelling;
     }
 
@@ -271,14 +282,17 @@ class StabilizationService {
     // Force to cancelled state if still not finished
     if (!_state.isFinished) {
       _state = StabilizationState.cancelled;
-      _emitProgress(StabilizationProgress.cancelled(projectId: _currentProjectId));
+      _emitProgress(
+          StabilizationProgress.cancelled(projectId: _currentProjectId));
     }
   }
 
   /// Restart stabilization (cancel current and start fresh).
-  Future<bool> restart(int projectId, {VoidCallback? onUserRanOutOfSpace}) async {
+  Future<bool> restart(int projectId,
+      {VoidCallback? onUserRanOutOfSpace}) async {
     await cancelAndWait();
-    return startStabilization(projectId, onUserRanOutOfSpace: onUserRanOutOfSpace);
+    return startStabilization(projectId,
+        onUserRanOutOfSpace: onUserRanOutOfSpace);
   }
 
   // ==================== Private Methods ====================
@@ -289,7 +303,8 @@ class StabilizationService {
     CancellationToken? token,
   ) async {
     try {
-      final rawPhotoPath = await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
+      final rawPhotoPath =
+          await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
         photo['timestamp'],
         _currentProjectId!,
       );
@@ -301,15 +316,19 @@ class StabilizationService {
       );
     } catch (e) {
       if (e is CancelledException) rethrow;
-      LogService.instance.log('StabilizationService: Error stabilizing photo - $e');
+      LogService.instance
+          .log('StabilizationService: Error stabilizing photo - $e');
       return StabilizationResult(success: false);
     }
   }
 
   Future<void> _finalCheck(FaceStabilizer stabilizer, int projectId) async {
-    final projectOrientation = await SettingsUtil.loadProjectOrientation(projectId.toString());
-    final offsetX = await SettingsUtil.loadOffsetXCurrentOrientation(projectId.toString());
-    final allPhotos = await DB.instance.getStabilizedPhotosByProjectID(projectId, projectOrientation);
+    final projectOrientation =
+        await SettingsUtil.loadProjectOrientation(projectId.toString());
+    final offsetX =
+        await SettingsUtil.loadOffsetXCurrentOrientation(projectId.toString());
+    final allPhotos = await DB.instance
+        .getStabilizedPhotosByProjectID(projectId, projectOrientation);
 
     final columnName = projectOrientation == 'portrait'
         ? "stabilizedPortraitOffsetX"
@@ -329,11 +348,14 @@ class StabilizationService {
     Map<String, dynamic> photo,
     int projectId,
   ) async {
-    final projectOrientation = await SettingsUtil.loadProjectOrientation(projectId.toString());
-    await DB.instance.resetStabilizedColumnByTimestamp(projectOrientation, photo['timestamp']);
+    final projectOrientation =
+        await SettingsUtil.loadProjectOrientation(projectId.toString());
+    await DB.instance.resetStabilizedColumnByTimestamp(
+        projectOrientation, photo['timestamp']);
 
     try {
-      final rawPhotoPath = '${await DirUtils.getRawPhotoDirPath(projectId)}/${photo['timestamp']}${photo['fileExtension']}';
+      final rawPhotoPath =
+          '${await DirUtils.getRawPhotoDirPath(projectId)}/${photo['timestamp']}${photo['fileExtension']}';
       final result = await stabilizer.stabilize(
         rawPhotoPath,
         _currentToken,
@@ -345,7 +367,8 @@ class StabilizationService {
       }
     } catch (e) {
       if (e is CancelledException) rethrow;
-      LogService.instance.log('StabilizationService: Error re-stabilizing photo - $e');
+      LogService.instance
+          .log('StabilizationService: Error re-stabilizing photo - $e');
     }
   }
 
@@ -353,20 +376,26 @@ class StabilizationService {
   /// Used to determine if we should show progress UI when no photos need stabilizing.
   Future<bool> _checkIfVideoNeeded(int projectId) async {
     try {
-      final newestVideo = await DB.instance.getNewestVideoByProjectId(projectId);
-      final projectOrientation = await SettingsUtil.loadProjectOrientation(projectId.toString());
-      final stabilizedPhotos = await DB.instance.getStabilizedPhotosByProjectID(projectId, projectOrientation);
+      final newestVideo =
+          await DB.instance.getNewestVideoByProjectId(projectId);
+      final projectOrientation =
+          await SettingsUtil.loadProjectOrientation(projectId.toString());
+      final stabilizedPhotos = await DB.instance
+          .getStabilizedPhotosByProjectID(projectId, projectOrientation);
       final stabPhotoCount = stabilizedPhotos.length;
 
       final videoIsNull = newestVideo == null;
-      final settingsHaveChanged = await VideoUtils.videoOutputSettingsChanged(projectId, newestVideo);
+      final settingsHaveChanged =
+          await VideoUtils.videoOutputSettingsChanged(projectId, newestVideo);
       final newVideoNeededRaw = await DB.instance.getNewVideoNeeded(projectId);
       final newVideoNeeded = newVideoNeededRaw == 1;
 
       // Note: _successfullyStabilized is 0 at this point since we haven't stabilized anything
-      return newVideoNeeded || ((videoIsNull || settingsHaveChanged) && stabPhotoCount > 1);
+      return newVideoNeeded ||
+          ((videoIsNull || settingsHaveChanged) && stabPhotoCount > 1);
     } catch (e) {
-      LogService.instance.log('StabilizationService: Error checking if video needed - $e');
+      LogService.instance
+          .log('StabilizationService: Error checking if video needed - $e');
       return false;
     }
   }
@@ -375,20 +404,24 @@ class StabilizationService {
     try {
       _currentToken?.throwIfCancelled();
 
-      final newestVideo = await DB.instance.getNewestVideoByProjectId(projectId);
-      final projectOrientation = await SettingsUtil.loadProjectOrientation(projectId.toString());
-      final stabilizedPhotos = await DB.instance.getStabilizedPhotosByProjectID(projectId, projectOrientation);
+      final newestVideo =
+          await DB.instance.getNewestVideoByProjectId(projectId);
+      final projectOrientation =
+          await SettingsUtil.loadProjectOrientation(projectId.toString());
+      final stabilizedPhotos = await DB.instance
+          .getStabilizedPhotosByProjectID(projectId, projectOrientation);
       final stabPhotoCount = stabilizedPhotos.length;
 
       final videoIsNull = newestVideo == null;
-      final settingsHaveChanged = await VideoUtils.videoOutputSettingsChanged(projectId, newestVideo);
+      final settingsHaveChanged =
+          await VideoUtils.videoOutputSettingsChanged(projectId, newestVideo);
       final newPhotosStabilized = _successfullyStabilized > 0;
       final newVideoNeededRaw = await DB.instance.getNewVideoNeeded(projectId);
       final newVideoNeeded = newVideoNeededRaw == 1;
 
       if (newVideoNeeded ||
-          ((videoIsNull || settingsHaveChanged || newPhotosStabilized) && stabPhotoCount > 1)) {
-
+          ((videoIsNull || settingsHaveChanged || newPhotosStabilized) &&
+              stabPhotoCount > 1)) {
         _state = StabilizationState.compilingVideo;
         _emitProgress(StabilizationProgress.compilingVideo(
           currentFrame: 0,
@@ -402,7 +435,9 @@ class StabilizationService {
         final result = await VideoUtils.createTimelapseFromProjectId(
           projectId,
           (currentFrame) {
-            final pct = stabPhotoCount > 0 ? ((currentFrame * 100) ~/ stabPhotoCount) : 0;
+            final pct = stabPhotoCount > 0
+                ? ((currentFrame * 100) ~/ stabPhotoCount)
+                : 0;
             _emitProgress(StabilizationProgress.compilingVideo(
               currentFrame: currentFrame,
               totalFrames: stabPhotoCount,
@@ -416,11 +451,13 @@ class StabilizationService {
           DB.instance.setNewVideoNotNeeded(projectId);
         }
 
-        LogService.instance.log('StabilizationService: Video creation result - $result');
+        LogService.instance
+            .log('StabilizationService: Video creation result - $result');
       }
     } catch (e) {
       if (e is CancelledException) rethrow;
-      LogService.instance.log('StabilizationService: Error creating video - $e');
+      LogService.instance
+          .log('StabilizationService: Error creating video - $e');
     }
   }
 

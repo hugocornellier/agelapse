@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import '../models/setting_model.dart';
 import 'database_import_ffi.dart';
@@ -419,6 +420,8 @@ class DB {
       'stabilizedLandscapeRotationDegrees': 'REAL DEFAULT 0',
       'stabilizedLandscapeScaleFactor': 'REAL DEFAULT 1',
       'captureOffsetMinutes': 'INTEGER',
+      'faceCount': 'INTEGER',
+      'faceEmbedding': 'BLOB',
     };
 
     for (final entry in toAdd.entries) {
@@ -692,6 +695,67 @@ class DB {
       where: 'timestamp = ?',
       whereArgs: [timestamp],
     );
+  }
+
+  /// Stores face count and optional embedding for a photo.
+  /// [faceCount] is the number of faces detected.
+  /// [embedding] is the 192-dim Float32List as bytes (only stored for single-face photos).
+  Future<void> setPhotoFaceData(
+    String timestamp,
+    int projectId,
+    int faceCount, {
+    Uint8List? embedding,
+  }) async {
+    final db = await database;
+    final Map<String, Object?> data = {
+      'faceCount': faceCount,
+    };
+    if (embedding != null) {
+      data['faceEmbedding'] = embedding;
+    }
+    await db.update(
+      photoTable,
+      data,
+      where: 'timestamp = ? AND projectID = ?',
+      whereArgs: [timestamp, projectId],
+    );
+  }
+
+  /// Gets the closest single-face photo by timestamp for embedding-based face matching.
+  /// Returns the embedding bytes and timestamp of the nearest photo with exactly 1 face.
+  /// Returns null if no single-face photos exist for this project.
+  Future<Map<String, dynamic>?> getClosestSingleFacePhoto(
+    String targetTimestamp,
+    int projectId,
+  ) async {
+    final db = await database;
+    // Query for single-face photos with embeddings, ordered by absolute timestamp difference
+    final results = await db.rawQuery('''
+      SELECT timestamp, faceEmbedding
+      FROM $photoTable
+      WHERE projectID = ?
+        AND faceCount = 1
+        AND faceEmbedding IS NOT NULL
+      ORDER BY ABS(CAST(timestamp AS INTEGER) - CAST(? AS INTEGER))
+      LIMIT 1
+    ''', [projectId, targetTimestamp]);
+
+    if (results.isEmpty) return null;
+    return results.first;
+  }
+
+  /// Gets the face embedding for a specific photo.
+  Future<Uint8List?> getPhotoEmbedding(String timestamp, int projectId) async {
+    final db = await database;
+    final results = await db.query(
+      photoTable,
+      columns: ['faceEmbedding'],
+      where: 'timestamp = ? AND projectID = ?',
+      whereArgs: [timestamp, projectId],
+      limit: 1,
+    );
+    if (results.isEmpty) return null;
+    return results.first['faceEmbedding'] as Uint8List?;
   }
 
   Future<void> setCaptureOffsetMinutesByTimestamp(

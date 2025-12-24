@@ -317,10 +317,10 @@ packages:
     dependency: "direct main"
     description:
       name: face_detection_tflite
-      sha256: d0559398560f28c66481d0bff2484d0e29404a5c8de91ba477e385bd09e8f0ae
+      sha256: d6b0551a3b6fc9e67c5dd28922dc0d16e3049e5e6c2f14f99247a0af4e09c973
       url: "https://pub.dev"
     source: hosted
-    version: "4.2.1"
+    version: "4.3.0"
   fake_async:
     dependency: transitive
     description:
@@ -567,21 +567,13 @@ packages:
     source: hosted
     version: "2.1.3"
   google_mlkit_commons:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: google_mlkit_commons
       sha256: "8f40fbac10685cad4715d11e6a0d86837d9ad7168684dfcad29610282a88e67a"
       url: "https://pub.dev"
     source: hosted
     version: "0.11.0"
-  google_mlkit_face_detection:
-    dependency: "direct main"
-    description:
-      name: google_mlkit_face_detection
-      sha256: f336737d5b8a86797fd4368f42a5c26aeaa9c6dcc5243f0a16b5f6f663cfb70a
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.13.1"
   google_mlkit_pose_detection:
     dependency: "direct main"
     description:

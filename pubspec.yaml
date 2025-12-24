@@ -22,7 +22,7 @@ dependencies:
   device_info_plus: ^11.2.0
   exif: ^3.3.0
   exif_reader: ^3.16.1
-  face_detection_tflite: ^4.2.1
+  face_detection_tflite: ^4.3.0
   ffmpeg_kit_flutter_new:
     git:
       url: https://github.com/hugocornellier/ffmpeg_kit_flutter.git
@@ -38,12 +38,10 @@ dependencies:
   flutter_svg: ^2.2.1
   flutter_timezone: ^4.1.1
   font_awesome_flutter: ^10.11.0
-  google_mlkit_face_detection: ^0.13.1
   google_mlkit_pose_detection: ^0.14.0
   heif_converter: ^1.0.1
   image_picker: ^1.2.0
   intl: ^0.20.2
-  google_mlkit_commons: ^0.11.0
   material_symbols_icons: ^4.2873.0
   mime: ^2.0.0
   media_kit_libs_windows_video: ^1.0.11

@@ -114,7 +114,6 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
         rawImagePath,
         null, // No cancellation token for one-off operations
         userRanOutOfSpaceCallback,
-        targetFace: (Platform.isAndroid || Platform.isIOS) ? tappedFace : null,
         targetBoundingBox: targetBox,
       );
       final bool successful = result.success;

@@ -58,7 +58,8 @@ class StabilizedThumbnail extends StatefulWidget {
   /// Thumbnail: .../stabilized/portrait/thumbnails/123.jpg
   /// Full image: .../stabilized/portrait/123.png
   String get stabilizedImagePath {
-    final dir = path.dirname(path.dirname(thumbnailPath)); // Go up from thumbnails/
+    final dir =
+        path.dirname(path.dirname(thumbnailPath)); // Go up from thumbnails/
     final basename = path.basenameWithoutExtension(thumbnailPath);
     return path.join(dir, '$basename.png');
   }
@@ -149,7 +150,8 @@ class StabilizedThumbnailState extends State<StabilizedThumbnail> {
     }
 
     // 3. Check DB for failure flags (single query, not polling)
-    final String timestamp = path.basenameWithoutExtension(widget.thumbnailPath);
+    final String timestamp =
+        path.basenameWithoutExtension(widget.thumbnailPath);
     final photo =
         await DB.instance.getPhotoByTimestamp(timestamp, widget.projectId);
     if (photo != null && mounted) {
@@ -290,7 +292,8 @@ class StabilizedImagePreviewState extends State<StabilizedImagePreview> {
     }
 
     // 3. Check DB for failure flags
-    final String timestamp = path.basenameWithoutExtension(widget.thumbnailPath);
+    final String timestamp =
+        path.basenameWithoutExtension(widget.thumbnailPath);
     final photo =
         await DB.instance.getPhotoByTimestamp(timestamp, widget.projectId);
     if (photo != null && mounted) {

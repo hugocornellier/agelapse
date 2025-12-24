@@ -35,32 +35,36 @@ enum StabilizationState {
 extension StabilizationStateExtension on StabilizationState {
   /// Returns true if any operation is actively running.
   bool get isActive => switch (this) {
-    StabilizationState.preparing ||
-    StabilizationState.stabilizing ||
-    StabilizationState.compilingVideo => true,
-    _ => false,
-  };
+        StabilizationState.preparing ||
+        StabilizationState.stabilizing ||
+        StabilizationState.compilingVideo =>
+          true,
+        _ => false,
+      };
 
   /// Returns true if a cancellation is in progress.
   bool get isCancelling => switch (this) {
-    StabilizationState.cancelling ||
-    StabilizationState.cancellingVideo => true,
-    _ => false,
-  };
+        StabilizationState.cancelling ||
+        StabilizationState.cancellingVideo =>
+          true,
+        _ => false,
+      };
 
   /// Returns true if the process has finished (success, cancelled, or error).
   bool get isFinished => switch (this) {
-    StabilizationState.idle ||
-    StabilizationState.completed ||
-    StabilizationState.cancelled ||
-    StabilizationState.error => true,
-    _ => false,
-  };
+        StabilizationState.idle ||
+        StabilizationState.completed ||
+        StabilizationState.cancelled ||
+        StabilizationState.error =>
+          true,
+        _ => false,
+      };
 
   /// Returns true if video compilation is happening or being cancelled.
   bool get isVideoPhase => switch (this) {
-    StabilizationState.compilingVideo ||
-    StabilizationState.cancellingVideo => true,
-    _ => false,
-  };
+        StabilizationState.compilingVideo ||
+        StabilizationState.cancellingVideo =>
+          true,
+        _ => false,
+      };
 }
