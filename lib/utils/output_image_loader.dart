@@ -22,6 +22,12 @@ class OutputImageLoader {
 
   OutputImageLoader(this.projectId);
 
+  /// Dispose native resources. Call this when done with the loader.
+  void dispose() {
+    guideImage?.dispose();
+    guideImage = null;
+  }
+
   Future<void> initialize() async {
     await _loadSettings();
     await _initializeImageDirectory();

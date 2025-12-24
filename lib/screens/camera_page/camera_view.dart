@@ -198,6 +198,7 @@ class _CameraViewState extends State<CameraView> {
         await SettingsUtil.hasTakenFirstPhoto(widget.projectId.toString());
     final bool mirrorSettingBool =
         await SettingsUtil.loadCameraMirror(widget.projectId.toString());
+    if (!mounted) return;
 
     final String mirrorSetting = mirrorSettingBool.toString();
 
@@ -221,6 +222,7 @@ class _CameraViewState extends State<CameraView> {
 
     final int gridModeIndex =
         await SettingsUtil.loadGridModeIndex(widget.projectId.toString());
+    if (!mounted) return;
     setState(() {
       _gridMode = GridMode.values[gridModeIndex];
     });
@@ -229,6 +231,7 @@ class _CameraViewState extends State<CameraView> {
         await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
     final stabPhotos = await DB.instance
         .getStabilizedPhotosByProjectID(widget.projectId, projectOrientation);
+    if (!mounted) return;
     if (stabPhotos.isNotEmpty) {
       setState(() {
         showGuidePhoto = true;
@@ -250,6 +253,7 @@ class _CameraViewState extends State<CameraView> {
         widget.projectId.toString(),
         customOrientation,
       );
+      if (!mounted) return;
       setState(() {
         _orientation = projectOrientation;
         offsetX = double.parse(offsetXStr);
@@ -266,11 +270,13 @@ class _CameraViewState extends State<CameraView> {
 
     if (!Platform.isMacOS) {
       _cameras = await availableCameras();
+      if (!mounted) return;
 
       if (widget.forceGridModeEnum != null) {
         _gridMode = GridMode.values[widget.forceGridModeEnum!];
       } else if (!takingGuidePhoto) {
         final bool enableGridSetting = await SettingsUtil.loadEnableGrid();
+        if (!mounted) return;
         setState(() => enableGrid = enableGridSetting);
       }
 
@@ -298,6 +304,7 @@ class _CameraViewState extends State<CameraView> {
         _gridMode = GridMode.values[widget.forceGridModeEnum!];
       } else if (!takingGuidePhoto) {
         final bool enableGridSetting = await SettingsUtil.loadEnableGrid();
+        if (!mounted) return;
         setState(() => enableGrid = enableGridSetting);
       }
     }
@@ -306,9 +313,22 @@ class _CameraViewState extends State<CameraView> {
   @override
   void dispose() {
     _stopLiveFeed();
+    _disposeMacController();
     _timer?.cancel();
     _accelerometerSubscription?.cancel();
     super.dispose();
+  }
+
+  /// Dispose macOS camera controller if active
+  void _disposeMacController() {
+    if (_macController != null) {
+      try {
+        _macController!.destroy();
+      } catch (e) {
+        debugPrint('Error disposing macOS camera: $e');
+      }
+      _macController = null;
+    }
   }
 
   Future<void> _takePicture() async {
@@ -1111,6 +1131,7 @@ class CameraGridOverlayState extends State<CameraGridOverlay> {
           .getPhotoColumnValueByTimestamp(timestamp, stabColOffsetY);
       final offsetXData = double.tryParse(offsetXDataRaw);
       final offsetYData = double.tryParse(offsetYDataRaw);
+      if (!mounted) return;
 
       setState(() {
         ghostImageOffsetX = offsetXData;

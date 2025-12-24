@@ -57,6 +57,7 @@ class CameraGridOverlayState extends State<CameraGridOverlay> {
           .getPhotoColumnValueByTimestamp(timestamp, stabColOffsetY);
       final offsetXData = double.tryParse(offsetXDataRaw);
       final offsetYData = double.tryParse(offsetYDataRaw);
+      if (!mounted) return;
 
       setState(() {
         ghostImageOffsetX = offsetXData;

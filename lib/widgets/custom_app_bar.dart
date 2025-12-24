@@ -60,20 +60,28 @@ class CustomAppBarState extends State<CustomAppBar> {
     String imagePath =
         await ProjectSelectionSheetState.getProjectImage(widget.projectId);
 
+    print('DEBUG _loadProjectImage: getProjectImage returned: $imagePath');
+
     if (path.dirname(imagePath).contains(DirUtils.stabilizedDirname)) {
       // Try thumbnail first
       final thumbnailPath = FaceStabilizer.getStabThumbnailPath(imagePath);
-      if (await File(thumbnailPath).exists()) {
+      final thumbnailExists = await File(thumbnailPath).exists();
+      print('DEBUG _loadProjectImage: thumbnail path: $thumbnailPath, exists: $thumbnailExists');
+      if (thumbnailExists) {
         imagePath = thumbnailPath;
       }
       // Otherwise keep the full stabilized image path
     }
 
     // Verify file exists before setting
-    if (imagePath.isNotEmpty && await File(imagePath).exists()) {
+    final fileExists = imagePath.isNotEmpty && await File(imagePath).exists();
+    print('DEBUG _loadProjectImage: final path: $imagePath, exists: $fileExists');
+    if (fileExists) {
       setState(() {
         projectImagePath = imagePath;
       });
+    } else {
+      print('DEBUG _loadProjectImage: NOT setting projectImagePath because file does not exist');
     }
   }
 
@@ -84,17 +92,22 @@ class CustomAppBarState extends State<CustomAppBar> {
       Future<void> Function() cancelStabCallback,
       void Function() refreshSettingsIn,
       void Function() clearRawAndStabPhotos,
-      SettingsCache? settingsCache) async {
-    final bool isDefaultProject = await _isDefaultProject(projectId);
+      SettingsCache? settingsCache) {
+    final stopwatch = Stopwatch()..start();
+    print('DEBUG SETTINGS [${stopwatch.elapsedMilliseconds}ms] showSettingsModal called');
 
-    if (!context.mounted) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      // Use a very fast animation to minimize perceived lag from shader compilation
+      transitionAnimationController: AnimationController(
+        duration: const Duration(milliseconds: 150),
+        vsync: Navigator.of(context),
+      ),
       builder: (context) {
+        print('DEBUG SETTINGS [${stopwatch.elapsedMilliseconds}ms] builder called');
         return SettingsSheet(
           projectId: projectId,
-          isDefaultProject: isDefaultProject,
           stabCallback: stabCallback,
           cancelStabCallback: cancelStabCallback,
           refreshSettings: refreshSettingsIn,
@@ -102,6 +115,7 @@ class CustomAppBarState extends State<CustomAppBar> {
         );
       },
     );
+    print('DEBUG SETTINGS [${stopwatch.elapsedMilliseconds}ms] showModalBottomSheet returned');
   }
 
   static Future<bool> _isDefaultProject(int projectId) async {
@@ -172,14 +186,24 @@ class CustomAppBarState extends State<CustomAppBar> {
                         _showProjectSelectionModal(context, widget.projectId),
                     child: CircleAvatar(
                       backgroundImage: projectImagePath.isNotEmpty
-                          ? FileImage(File(projectImagePath))
-                          : null,
-                      backgroundColor:
-                          projectImagePath.isEmpty ? Colors.grey : null,
+                          ? FileImage(File(projectImagePath)) as ImageProvider
+                          : const AssetImage('assets/images/person-grey.png'),
+                      onBackgroundImageError: (exception, stackTrace) {
+                        print('DEBUG CircleAvatar image load error: $exception');
+                        print('DEBUG CircleAvatar path was: $projectImagePath');
+                        // Reset path to show fallback on next rebuild
+                        if (projectImagePath.isNotEmpty) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted) {
+                              setState(() {
+                                projectImagePath = '';
+                              });
+                            }
+                          });
+                        }
+                      },
+                      backgroundColor: Colors.transparent,
                       radius: 13.5,
-                      child: projectImagePath.isEmpty
-                          ? const Icon(Icons.person, color: Colors.white)
-                          : null,
                     ),
                   ),
                   IconButton(

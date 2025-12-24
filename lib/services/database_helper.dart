@@ -740,6 +740,15 @@ class DB {
         .query(photoTable, where: 'projectID = ?', whereArgs: [projectID]);
   }
 
+  Future<int> getPhotoCountByProjectID(int projectId) async {
+    final db = await database;
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM $photoTable WHERE projectID = ?',
+      [projectId],
+    );
+    return result.first['count'] as int? ?? 0;
+  }
+
   Future<List<String>> getAllPhotoPathsByProjectID(int projectId) async {
     final db = await database;
 

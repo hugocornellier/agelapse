@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/settings_cache.dart';
 import '../styles/styles.dart';
-import '../utils/project_utils.dart';
 import '../utils/settings_utils.dart';
 import '../widgets/main_navigation.dart';
 import '../widgets/settings_sheet.dart';
@@ -127,20 +126,15 @@ class SetUpNotificationsPageState extends State<SetUpNotificationsPage> {
     );
   }
 
-  void navigateToSettings() async {
+  void navigateToSettings() {
     SettingsUtil.setHasOpenedNotifPageToTrue(widget.projectId.toString());
 
-    final bool isDefaultProject =
-        await ProjectUtils.isDefaultProject(widget.projectId);
-
-    if (!mounted) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (context) {
         return SettingsSheet(
           projectId: widget.projectId,
-          isDefaultProject: isDefaultProject,
           cancelStabCallback: widget.cancelStabCallback,
           stabCallback: widget.stabCallback,
           onlyShowNotificationSettings: true,

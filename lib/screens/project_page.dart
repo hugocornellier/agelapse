@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../services/settings_cache.dart';
 import '../styles/styles.dart';
-import '../utils/project_utils.dart';
 import '../utils/settings_utils.dart';
 import '../utils/utils.dart';
 import '../widgets/fancy_button.dart';
@@ -59,10 +58,22 @@ class ProjectPageState extends State<ProjectPage> {
     _initializePage();
   }
 
+  @override
+  void dispose() {
+    outputImageLoader.dispose();
+    super.dispose();
+  }
+
   Future<void> _initializePage() async {
     await loadFramerate();
-    await _waitForCache();
+    if (!mounted) return;
+
+    final cacheReady = await _waitForCache();
+    if (!mounted || !cacheReady) return;
+
     await outputImageLoader.initialize();
+    if (!mounted) return;
+
     setState(() {
       _loading = false;
     });
@@ -72,10 +83,17 @@ class ProjectPageState extends State<ProjectPage> {
     framerate = await SettingsUtil.loadFramerate(widget.projectId.toString());
   }
 
-  Future<void> _waitForCache() async {
-    while (widget.settingsCache == null) {
-      await Future.delayed(const Duration(seconds: 1));
+  Future<bool> _waitForCache({Duration timeout = const Duration(seconds: 30)}) async {
+    if (widget.settingsCache != null) return true;
+
+    final deadline = DateTime.now().add(timeout);
+    while (widget.settingsCache == null && mounted) {
+      if (DateTime.now().isAfter(deadline)) {
+        return false;
+      }
+      await Future.delayed(const Duration(milliseconds: 500));
     }
+    return mounted && widget.settingsCache != null;
   }
 
   @override
@@ -342,18 +360,13 @@ class ProjectPageState extends State<ProjectPage> {
         platform == TargetPlatform.linux;
   }
 
-  void _openSettings(BuildContext context) async {
-    final bool isDefaultProject =
-        await ProjectUtils.isDefaultProject(widget.projectId);
-
-    if (!context.mounted) return;
+  void _openSettings(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (context) {
         return SettingsSheet(
           projectId: widget.projectId,
-          isDefaultProject: isDefaultProject,
           onlyShowVideoSettings: true,
           cancelStabCallback: widget.cancelStabCallback,
           stabCallback: widget.stabCallback,

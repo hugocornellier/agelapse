@@ -50,11 +50,17 @@ class SettingsCache {
     required this.eyeOffsetY,
   });
 
+  /// Dispose native resources. Call this when the cache is no longer needed.
+  void dispose() {
+    image?.dispose();
+    image = null;
+  }
+
   static Future<SettingsCache> initialize(int projectId) async {
     final List<dynamic> settings = await Future.wait([
       SettingsUtil.hasOpenedNonEmptyGallery(projectId.toString()),
       SettingsUtil.lightThemeActive(),
-      DB.instance.getPhotosByProjectID(projectId),
+      DB.instance.getPhotoCountByProjectID(projectId),
       SettingsUtil.hasSeenFirstVideo(projectId.toString()),
       SettingsUtil.hasOpenedNotifPage(projectId.toString()),
       DB.instance.getEarliestPhotoTimestamp(projectId),
@@ -71,8 +77,7 @@ class SettingsCache {
       SettingsUtil.hasTakenFirstPhoto(projectId.toString()),
     ]);
 
-    final List<Map<String, dynamic>> allPhotos =
-        settings[2] as List<Map<String, dynamic>>;
+    final int photoCount = settings[2] as int;
     final int? firstPhotoTimestamp =
         settings[5] != null ? int.tryParse(settings[5] as String) : null;
     final int? latestPhotoTimestamp =
@@ -82,14 +87,14 @@ class SettingsCache {
     return SettingsCache(
       hasOpenedNonEmptyGallery: settings[0] as bool? ?? false,
       isLightTheme: settings[1] as bool?,
-      noPhotos: allPhotos.isEmpty,
+      noPhotos: photoCount == 0,
       hasViewedFirstVideo: settings[3] as bool? ?? false,
       hasOpenedNotifications: settings[4] as bool? ?? false,
-      hasTakenMoreThanOnePhoto: allPhotos.length > 1,
+      hasTakenMoreThanOnePhoto: photoCount > 1,
       hasSeenGuideModeTut: settings[15] as bool? ?? false,
       hasTakenFirstPhoto: settings[16] as bool? ?? false,
       streak: streak ?? 0,
-      photoCount: allPhotos.length,
+      photoCount: photoCount,
       firstPhotoDate: firstPhotoTimestamp != null
           ? Utils.formatUnixTimestamp(firstPhotoTimestamp)
           : '',

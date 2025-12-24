@@ -112,7 +112,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
 
       final result = await faceStabilizer.stabilize(
         rawImagePath,
-        false,
+        null, // No cancellation token for one-off operations
         userRanOutOfSpaceCallback,
         targetFace: (Platform.isAndroid || Platform.isIOS) ? tappedFace : null,
         targetBoundingBox: targetBox,

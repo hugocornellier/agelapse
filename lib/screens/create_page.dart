@@ -12,7 +12,6 @@ import '../services/database_helper.dart';
 import '../services/settings_cache.dart';
 import '../styles/styles.dart';
 import '../utils/dir_utils.dart';
-import '../utils/project_utils.dart';
 import '../utils/settings_utils.dart';
 import '../utils/video_utils.dart';
 import '../widgets/settings_sheet.dart';
@@ -489,18 +488,13 @@ class CreatePageState extends State<CreatePage>
     );
   }
 
-  void _openSettings(BuildContext context) async {
-    final bool isDefaultProject =
-        await ProjectUtils.isDefaultProject(widget.projectId);
-
-    if (!context.mounted) return;
+  void _openSettings(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (context) {
         return SettingsSheet(
           projectId: widget.projectId,
-          isDefaultProject: isDefaultProject,
           onlyShowVideoSettings: true,
           cancelStabCallback: widget.cancelStabCallback,
           stabCallback: widget.stabCallback,

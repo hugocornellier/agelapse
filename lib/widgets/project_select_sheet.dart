@@ -358,13 +358,13 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                       CircleAvatar(
                         backgroundImage:
                             snapshot.hasData && snapshot.data!.isNotEmpty
-                                ? FileImage(File(snapshot.data!))
-                                : null,
-                        backgroundColor: Colors.grey,
+                                ? FileImage(File(snapshot.data!)) as ImageProvider
+                                : const AssetImage('assets/images/person-grey.png'),
+                        onBackgroundImageError: (exception, stackTrace) {
+                          print('DEBUG Project list avatar load error: $exception');
+                        },
+                        backgroundColor: Colors.transparent,
                         radius: 24.0,
-                        child: snapshot.hasData && snapshot.data!.isNotEmpty
-                            ? null
-                            : const Icon(Icons.person, color: Colors.white),
                       ),
                       const SizedBox(width: 16),
                       Column(

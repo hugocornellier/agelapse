@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart' as kit;
+import '../services/ffmpeg_process_manager.dart';
 import '../services/log_service.dart';
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit_config.dart' as kitcfg;
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_session.dart' as kitsession;
@@ -234,6 +235,8 @@ class VideoUtils {
 
           final proc =
               await Process.start('/bin/sh', ['-c', cmd], runInShell: false);
+          FFmpegProcessManager.instance.registerProcess(proc);
+
           proc.stdout
               .transform(utf8.decoder)
               .transform(const LineSplitter())
@@ -249,6 +252,7 @@ class VideoUtils {
           });
 
           final code = await proc.exitCode;
+          FFmpegProcessManager.instance.unregisterProcess();
           LogService.instance.log("[VIDEO] ffmpeg exit code: $code");
 
           try {
@@ -286,7 +290,10 @@ class VideoUtils {
               .log("[VIDEO] Executing ffmpeg command: $ffmpegCommand");
           final kitsession.FFmpegSession session =
               await kit.FFmpegKit.execute(ffmpegCommand);
+          FFmpegProcessManager.instance.registerSession(session);
+
           final returnCode = await session.getReturnCode();
+          FFmpegProcessManager.instance.unregisterSession();
           LogService.instance
               .log("[VIDEO] FFmpegKit return code: ${returnCode?.getValue()}");
 
@@ -709,6 +716,7 @@ class VideoUtils {
 
     try {
       final proc = await Process.start(exe, args, runInShell: false);
+      FFmpegProcessManager.instance.registerProcess(proc);
       LogService.instance
           .log("[VIDEO] ffmpeg process started with PID: ${proc.pid}");
 
@@ -731,6 +739,7 @@ class VideoUtils {
       });
 
       final code = await proc.exitCode;
+      FFmpegProcessManager.instance.unregisterProcess();
       LogService.instance.log("[VIDEO] ffmpeg process exited with code: $code");
 
       try {

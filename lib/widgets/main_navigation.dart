@@ -12,17 +12,14 @@ import '../screens/project_page.dart';
 import '../screens/info_page.dart';
 import '../screens/camera_page/camera_page.dart';
 import '../services/database_helper.dart';
-import '../services/face_stabilizer.dart';
 import '../services/settings_cache.dart';
+import '../services/stabilization_service.dart';
+import '../services/stabilization_progress.dart';
+import '../services/stabilization_state.dart';
 import '../utils/gallery_utils.dart';
-import '../utils/settings_utils.dart';
-import '../utils/dir_utils.dart';
-import '../utils/stabilizer_utils/stabilizer_utils.dart';
-import '../utils/video_utils.dart';
 import 'package:path/path.dart' as path;
 import '../styles/styles.dart';
 import '../widgets/custom_app_bar.dart';
-import 'package:wakelock_plus/wakelock_plus.dart';
 
 class MainNavigation extends StatefulWidget {
   final int projectId;
@@ -51,35 +48,44 @@ class MainNavigation extends StatefulWidget {
 class MainNavigationState extends State<MainNavigation> {
   late int _selectedIndex;
   int _prevIndex = 0;
-  bool _stabilizingActive = false;
-  bool _videoCreationActive = false;
-  bool _cancelStabilization = false;
   bool _isImporting = false;
-  bool _inStabCall = false;
-  int _photoIndex = 0;
-  int _unstabilizedPhotoCount = 0;
-  int _successfullyStabilizedPhotos = 0;
-  int _currentFrame = 0;
   int photoCount = 0;
   late bool _showFlashingCircle;
   late String projectIdStr;
   bool _hideNavBar = false;
-  int progressPercent = 0;
   int _importMaxProgress = 0;
   bool userOnImportTutorial = false;
   List<String> _imageFiles = [];
   List<String> _stabilizedImageFiles = [];
   SettingsCache? _settingsCache;
   bool _photoTakenToday = false;
-  String minutesRemaining = "";
   bool _userRanOutOfSpace = false;
-  int _totalPhotoCountForProgress = 0;
-  int _stabilizedAtStart = 0;
+
+  /// Current stabilization progress from the service stream.
+  StabilizationProgress _stabProgress = StabilizationProgress.idle();
+
+  /// Subscription to the stabilization service progress stream.
+  StreamSubscription<StabilizationProgress>? _stabSubscription;
 
   /// Stream controller to notify GalleryPage when stabilization count changes.
   /// This replaces the 2-second polling loop in GalleryPage.
   final StreamController<int> _stabUpdateController =
       StreamController<int>.broadcast();
+
+  /// Separate progress tracking for imports (not part of stabilization).
+  int _importProgressPercent = 0;
+
+  // Derived getters for compatibility with child widgets
+  bool get _stabilizingActive => _stabProgress.state == StabilizationState.stabilizing ||
+      _stabProgress.state == StabilizationState.preparing ||
+      _stabProgress.state == StabilizationState.cancelling;
+  bool get _videoCreationActive => _stabProgress.state == StabilizationState.compilingVideo ||
+      _stabProgress.state == StabilizationState.cancellingVideo;
+  int get progressPercent => _isImporting ? _importProgressPercent : _stabProgress.progressPercent;
+  String get minutesRemaining => _stabProgress.eta ?? "";
+  int get _photoIndex => _stabProgress.currentPhoto;
+  int get _unstabilizedPhotoCount => _stabProgress.totalPhotos;
+  int get _currentFrame => _stabProgress.currentFrame ?? 0;
 
   @override
   void initState() {
@@ -87,6 +93,18 @@ class MainNavigationState extends State<MainNavigation> {
     projectIdStr = widget.projectId.toString();
     _selectedIndex = widget.index ?? 0;
     _showFlashingCircle = widget.showFlashingCircle;
+
+    // Subscribe to stabilization progress stream for reactive UI updates
+    _stabSubscription = StabilizationService.instance.progressStream.listen((progress) {
+      if (mounted) {
+        setState(() => _stabProgress = progress);
+
+        // Notify gallery of stabilization updates for refreshing the grid
+        if (progress.state == StabilizationState.stabilizing) {
+          _stabUpdateController.add(progress.currentPhoto);
+        }
+      }
+    });
 
     // If the project is a newly created one, we use a settingsCache filled
     // default values instead of loading project data
@@ -104,7 +122,9 @@ class MainNavigationState extends State<MainNavigation> {
 
   @override
   void dispose() {
+    _stabSubscription?.cancel();
     _stabUpdateController.close();
+    _settingsCache?.dispose();
     super.dispose();
   }
 
@@ -156,16 +176,19 @@ class MainNavigationState extends State<MainNavigation> {
   }
 
   void userRanOutOfSpaceCallback() {
-    setState(() {
-      _userRanOutOfSpace = true;
-    });
-    _cancelStabilizationProcess();
+    if (mounted) {
+      setState(() {
+        _userRanOutOfSpace = true;
+      });
+    }
   }
 
   Future<void> _refreshSettingsCache() async {
+    final oldCache = _settingsCache;
     SettingsCache settingsCache =
         await SettingsCache.initialize(widget.projectId);
     setState(() => _settingsCache = settingsCache);
+    oldCache?.dispose(); // Dispose old cache after replacing
   }
 
   void refreshSettings() async {
@@ -239,7 +262,7 @@ class MainNavigationState extends State<MainNavigation> {
 
     setState(() {
       _isImporting = false;
-      progressPercent = 0;
+      _importProgressPercent = 0;
     });
 
     _importMaxProgress = 0;
@@ -258,389 +281,42 @@ class MainNavigationState extends State<MainNavigation> {
       }
     }
     setState(() {
-      progressPercent = next;
+      _importProgressPercent = next;
     });
   }
 
+  /// Start stabilization using the centralized service.
+  ///
+  /// This method delegates to [StabilizationService] which handles:
+  /// - Isolate management and instant cancellation
+  /// - Progress streaming via reactive updates
+  /// - Video compilation with FFmpeg process tracking
   Future<void> _startStabilization() async {
-    if (_inStabCall) return;
-    _inStabCall = true;
-
-    FaceStabilizer? faceStabilizer;
-
-    try {
-      await WakelockPlus.enable();
-
-      faceStabilizer =
-          FaceStabilizer(widget.projectId, userRanOutOfSpaceCallback);
-      final List<Map<String, dynamic>> unstabilizedPhotos =
-          await StabUtils.getUnstabilizedPhotos(widget.projectId);
-      _totalPhotoCountForProgress =
-          (await DB.instance.getPhotosByProjectID(widget.projectId)).length;
-      _stabilizedAtStart = await getStabilizedPhotoCount();
-      _successfullyStabilizedPhotos = 0;
-
-      // Wait for previous stabilization cycle to cancel
-      while (_cancelStabilization && _stabilizingActive) {
-        await Future.delayed(const Duration(seconds: 1));
-      }
-
-      // Lists to collect scores for mean calculation
-      List<double> preScores = [];
-      List<double> twoPassScores = [];
-      List<double> threePassScores = [];
-      List<double> fourPassScores = [];
-
-      if (unstabilizedPhotos.isNotEmpty) {
-        if (mounted) {
-          setState(() {
-            _stabilizingActive = true;
-            _unstabilizedPhotoCount = unstabilizedPhotos.length;
-          });
-        }
-
-        while (_isImporting) {
-          await Future.delayed(const Duration(seconds: 1));
-        }
-
-        int photosDone = 0;
-        int length = unstabilizedPhotos.length;
-        Stopwatch stopwatch = Stopwatch();
-        stopwatch.start();
-
-        for (Map<String, dynamic> photo in unstabilizedPhotos) {
-          if (_cancelStabilization) {
-            if (mounted) {
-              setState(() => _cancelStabilization = false);
-            }
-            break;
-          }
-
-          Stopwatch loopStopwatch = Stopwatch();
-          loopStopwatch.start();
-
-          LogService.instance.log("\nStabilizing new photo...:");
-
-          final StabilizationResult result =
-              await _stabilizePhoto(faceStabilizer, photo);
-
-          // Collect scores for mean calculation
-          if (result.preScore != null) {
-            preScores.add(result.preScore!);
-          }
-          if (result.twoPassScore != null) {
-            twoPassScores.add(result.twoPassScore!);
-          }
-          if (result.threePassScore != null) {
-            threePassScores.add(result.threePassScore!);
-          }
-          if (result.fourPassScore != null) {
-            fourPassScores.add(result.fourPassScore!);
-          }
-
-          loopStopwatch.stop();
-
-          photosDone++;
-          double averageTimePerLoop =
-              stopwatch.elapsedMilliseconds / photosDone;
-          int remainingPhotos = length - photosDone;
-          double estimatedTimeRemaining = averageTimePerLoop * remainingPhotos;
-
-          int hours = (estimatedTimeRemaining ~/ (1000 * 60 * 60)).toInt();
-          int minutes =
-              ((estimatedTimeRemaining % (1000 * 60 * 60)) ~/ (1000 * 60))
-                  .toInt();
-          int seconds =
-              ((estimatedTimeRemaining % (1000 * 60)) ~/ 1000).toInt();
-
-          String timeDisplay = hours > 0
-              ? "${hours}h ${minutes}m ${seconds}s"
-              : "${minutes}m ${seconds}s";
-          if (mounted) {
-            setState(() => minutesRemaining = timeDisplay);
-          }
-          LogService.instance.log("Estimated time remaining: $timeDisplay");
-        }
-
-        stopwatch.stop();
-
-        // Print mean scores at end of stabilization
-        _printMeanScores(
-            preScores, twoPassScores, threePassScores, fourPassScores);
-      }
-
-      await _finalCheck(faceStabilizer);
-
-      if (mounted) {
-        setState(() {
-          _photoIndex = 0;
-          _stabilizingActive = false;
-          progressPercent = 0;
-        });
-      }
-
-      if (!_cancelStabilization) {
-        await _createTimelapse(faceStabilizer);
-      }
-
-      if (mounted) {
-        setState(() => _cancelStabilization = false);
-      }
-    } finally {
-      await faceStabilizer?.dispose();
-      await WakelockPlus.disable();
-      _inStabCall = false;
-    }
-  }
-
-  void _printMeanScores(List<double> preScores, List<double> twoPassScores,
-      List<double> threePassScores, List<double> fourPassScores) {
-    if (preScores.isEmpty) {
-      LogService.instance
-          .log("\n========== STABILIZATION SCORE SUMMARY ==========");
-      LogService.instance.log(
-          "No scores collected (no photos stabilized or non-face project)");
-      LogService.instance
-          .log("==================================================\n");
-      return;
+    // Wait for import to finish before starting stabilization
+    while (_isImporting) {
+      await Future.delayed(const Duration(milliseconds: 100));
     }
 
-    final double preMean = preScores.reduce((a, b) => a + b) / preScores.length;
-
-    LogService.instance
-        .log("\n========== STABILIZATION SCORE SUMMARY ==========");
-    LogService.instance.log(
-        "First-pass mean score:  ${preMean.toStringAsFixed(3)} (n=${preScores.length})");
-
-    if (twoPassScores.isNotEmpty) {
-      final double twoPassMean =
-          twoPassScores.reduce((a, b) => a + b) / twoPassScores.length;
-      LogService.instance.log(
-          "Two-pass mean score:    ${twoPassMean.toStringAsFixed(3)} (n=${twoPassScores.length})");
-      LogService.instance.log(
-          "  -> Improvement from first: ${(preMean - twoPassMean).toStringAsFixed(3)} (${((preMean - twoPassMean) / preMean * 100).toStringAsFixed(1)}%)");
-
-      if (threePassScores.isNotEmpty) {
-        final double threePassMean =
-            threePassScores.reduce((a, b) => a + b) / threePassScores.length;
-        LogService.instance.log(
-            "Three-pass mean score:  ${threePassMean.toStringAsFixed(3)} (n=${threePassScores.length})");
-        LogService.instance.log(
-            "  -> Improvement from two-pass: ${(twoPassMean - threePassMean).toStringAsFixed(3)} (${((twoPassMean - threePassMean) / twoPassMean * 100).toStringAsFixed(1)}%)");
-
-        if (fourPassScores.isNotEmpty) {
-          final double fourPassMean =
-              fourPassScores.reduce((a, b) => a + b) / fourPassScores.length;
-          LogService.instance.log(
-              "Four-pass mean score:   ${fourPassMean.toStringAsFixed(3)} (n=${fourPassScores.length})");
-          LogService.instance.log(
-              "  -> Improvement from three-pass: ${(threePassMean - fourPassMean).toStringAsFixed(3)} (${((threePassMean - fourPassMean) / threePassMean * 100).toStringAsFixed(1)}%)");
-          LogService.instance.log(
-              "  -> Total improvement: ${(preMean - fourPassMean).toStringAsFixed(3)} (${((preMean - fourPassMean) / preMean * 100).toStringAsFixed(1)}%)");
-        } else {
-          LogService.instance.log(
-              "Four-pass mean score:   N/A (no four-pass corrections needed)");
-          LogService.instance.log(
-              "  -> Total improvement: ${(preMean - threePassMean).toStringAsFixed(3)} (${((preMean - threePassMean) / preMean * 100).toStringAsFixed(1)}%)");
-        }
-      } else {
-        LogService.instance.log(
-            "Three-pass mean score:  N/A (no three-pass corrections needed)");
-        LogService.instance.log(
-            "Four-pass mean score:   N/A (no four-pass corrections needed)");
-      }
-    } else {
-      LogService.instance
-          .log("Two-pass mean score:    N/A (no two-pass corrections needed)");
-      LogService.instance.log(
-          "Three-pass mean score:  N/A (no three-pass corrections needed)");
-      LogService.instance
-          .log("Four-pass mean score:   N/A (no four-pass corrections needed)");
-    }
-    LogService.instance
-        .log("==================================================\n");
-  }
-
-  Future<StabilizationResult> _stabilizePhoto(
-      FaceStabilizer faceStabilizer, Map<String, dynamic> photo) async {
-    try {
-      final String rawPhotoPath =
-          await _getRawPhotoPathFromTimestamp(photo['timestamp']);
-      final StabilizationResult result = await faceStabilizer.stabilize(
-          rawPhotoPath, _cancelStabilization, userRanOutOfSpaceCallback);
-
-      if (result.success) {
-        if (mounted) {
-          setState(() => _successfullyStabilizedPhotos++);
-        } else {
-          _successfullyStabilizedPhotos++;
-        }
-        // Notify listeners (GalleryPage) that a new photo was stabilized
-        _stabUpdateController
-            .add(_stabilizedAtStart + _successfullyStabilizedPhotos);
-      }
-
-      return result;
-    } catch (e) {
-      return StabilizationResult(success: false);
-    } finally {
-      if (mounted) {
-        setState(() => _photoIndex++);
-      }
-
-      final int total = _totalPhotoCountForProgress;
-      final int completed = _stabilizedAtStart + _successfullyStabilizedPhotos;
-
-      if (total > 0) {
-        int pct = ((completed * 100) ~/ total);
-        if (pct >= 100) pct = 99;
-        if (pct < 0) pct = 0;
-
-        if (mounted) {
-          setState(() => progressPercent = pct);
-        }
-      }
-    }
-  }
-
-  Future<String> _getRawPhotoPathFromTimestamp(String timestamp) async {
-    return await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-        timestamp, widget.projectId);
-  }
-
-  Future<void> _finalCheck(FaceStabilizer faceStabilizer) async {
-    final projectOrientation =
-        await SettingsUtil.loadProjectOrientation(projectIdStr);
-    final offsetX =
-        await SettingsUtil.loadOffsetXCurrentOrientation(projectIdStr);
-    final allPhotos = await DB.instance
-        .getStabilizedPhotosByProjectID(widget.projectId, projectOrientation);
-
-    final columnName = projectOrientation == 'portrait'
-        ? "stabilizedPortraitOffsetX"
-        : "stabilizedLandscapeOffsetX";
-
-    for (var photo in allPhotos) {
-      if (photo[columnName] != offsetX) {
-        await _reStabilizePhoto(faceStabilizer, photo);
-      }
-    }
-  }
-
-  Future<void> _reStabilizePhoto(
-      FaceStabilizer faceStabilizer, Map<String, dynamic> photo) async {
-    await DB.instance.resetStabilizedColumnByTimestamp(
-      await SettingsUtil.loadProjectOrientation(projectIdStr),
-      photo['timestamp'],
+    // Delegate to service - progress comes via stream subscription
+    await StabilizationService.instance.startStabilization(
+      widget.projectId,
+      onUserRanOutOfSpace: userRanOutOfSpaceCallback,
     );
-    try {
-      final rawPhotoPath = path.join(
-        await DirUtils.getRawPhotoDirPath(widget.projectId),
-        "${photo['timestamp']}${photo['fileExtension']}",
-      );
-      final result = await faceStabilizer.stabilize(
-          rawPhotoPath, _cancelStabilization, userRanOutOfSpaceCallback);
-      if (result.success) {
-        if (mounted) {
-          setState(() => _successfullyStabilizedPhotos++);
-        } else {
-          _successfullyStabilizedPhotos++;
-        }
-        _stabUpdateController
-            .add(_stabilizedAtStart + _successfullyStabilizedPhotos);
-      }
-    } catch (e) {
-      // Handle error if needed
-    }
-  }
-
-  Future<int> getStabilizedPhotoCount() async {
-    String projectOrientation =
-        await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
-    return (await DB.instance.getStabilizedPhotosByProjectID(
-            widget.projectId, projectOrientation))
-        .length;
-  }
-
-  Future<bool> _createTimelapse(FaceStabilizer faceStabilizer) async {
-    try {
-      final newestVideo =
-          await DB.instance.getNewestVideoByProjectId(widget.projectId);
-      final bool videoIsNull = newestVideo == null;
-      final bool settingsHaveChanged =
-          await faceStabilizer.videoSettingsChanged();
-      final bool newPhotosStabilized = _successfullyStabilizedPhotos > 0;
-      final int stabPhotoCount = await getStabilizedPhotoCount();
-      final int? newVideoNeededRaw =
-          await DB.instance.getNewVideoNeeded(widget.projectId);
-      final bool newVideoNeeded = newVideoNeededRaw == 1;
-
-      if (newVideoNeeded ||
-          ((videoIsNull || settingsHaveChanged || newPhotosStabilized) &&
-              stabPhotoCount > 1)) {
-        setState(() => _videoCreationActive = true);
-        final bool videoCreationRes =
-            await VideoUtils.createTimelapseFromProjectId(
-                widget.projectId, _setCurrentFrame);
-
-        if (newVideoNeeded) {
-          DB.instance.setNewVideoNotNeeded(widget.projectId);
-        }
-
-        // If videoCreatingRes is false here, that means a video was needed but
-        // it failed to build. In this case, we need to display an error to the user.
-
-        return videoCreationRes;
-      }
-
-      return false;
-    } catch (e) {
-      return false;
-    } finally {
-      setState(() {
-        _photoIndex = 0;
-        _videoCreationActive = false;
-        _successfullyStabilizedPhotos = 0;
-      });
-    }
-  }
-
-  void _setCurrentFrame(int currFrame) {
-    setState(() => _currentFrame = currFrame);
-    updateProgressPercent();
-  }
-
-  Future<void> updateProgressPercent() async {
-    try {
-      final int stabPhotoCount = await getStabilizedPhotoCount();
-      final double percentUnrounded = _currentFrame / stabPhotoCount * 100;
-      setState(() {
-        progressPercent = percentUnrounded.toInt();
-      });
-    } catch (_) {
-      LogService.instance.log("Error caught during updateProgressPercent");
-    }
   }
 
   void _hideFlashingCircle() {
     setState(() => _showFlashingCircle = false);
   }
 
+  /// Cancel stabilization INSTANTLY.
+  ///
+  /// This method returns immediately after initiating cancellation.
+  /// The service kills all active isolates and FFmpeg processes.
+  /// UI updates come via the progress stream (shows "Cancelling..." state).
   Future<void> _cancelStabilizationProcess() async {
     LogService.instance.log("_cancelStabilizationProcess called");
-
-    if (_stabilizingActive) {
-      setState(() {
-        _cancelStabilization = true;
-        _videoCreationActive = false;
-        _photoIndex = 0;
-        progressPercent = 0;
-      });
-    }
-
-    while (_stabilizingActive) {
-      await Future.delayed(const Duration(seconds: 1));
-    }
+    await StabilizationService.instance.cancel();
+    // No waiting needed - state updates come via stream
   }
 
   List<Widget> get _widgetOptions => [

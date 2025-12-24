@@ -54,11 +54,13 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
   @override
   void dispose() {
     _checkmarkTimer?.cancel();
+    outputImageLoader.dispose();
     super.dispose();
   }
 
   Future<void> _init() async {
     await outputImageLoader.initialize();
+    if (!mounted) return;
 
     setState(() {
       _defaultOffsetX = outputImageLoader.offsetX;

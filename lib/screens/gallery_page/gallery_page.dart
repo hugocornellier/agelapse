@@ -202,9 +202,19 @@ class GalleryPageState extends State<GalleryPage>
   }
 
   Future<void> _initializeFromCache() async {
-    while (widget.settingsCache == null) {
-      await Future.delayed(const Duration(seconds: 1));
+    // Wait for cache with timeout and mounted check
+    const timeout = Duration(seconds: 30);
+    final deadline = DateTime.now().add(timeout);
+
+    while (widget.settingsCache == null && mounted) {
+      if (DateTime.now().isAfter(deadline)) {
+        return; // Timeout - proceed without cache
+      }
+      await Future.delayed(const Duration(milliseconds: 500));
     }
+
+    if (!mounted || widget.settingsCache == null) return;
+
     bool hasOpenedNonEmptyGallery =
         widget.settingsCache!.hasOpenedNonEmptyGallery;
     if (!hasOpenedNonEmptyGallery) {

@@ -30,8 +30,8 @@ class ProgressWidget extends StatelessWidget {
 
     String minutesRemainingDisplay =
         (minutesRemaining != null && minutesRemaining!.isNotEmpty)
-            ? "$minutesRemaining"
-            : "";
+            ? minutesRemaining!
+            : "Calculating ETA";
 
     return Column(
       children: [
@@ -48,7 +48,7 @@ class ProgressWidget extends StatelessWidget {
         ] else if (stabilizingRunningInMain && selectedIndex != 3) ...[
           InProgress(
             message:
-                "Stabilizing... • $progressPercentAsStr • $minutesRemainingDisplay",
+                "Stabilizing • $progressPercentAsStr • $minutesRemainingDisplay",
             goToPage: goToPage,
           ),
         ] else if (videoCreationActiveInMain && selectedIndex != 3) ...[

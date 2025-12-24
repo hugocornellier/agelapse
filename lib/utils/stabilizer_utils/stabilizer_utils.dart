@@ -14,7 +14,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:face_detection_tflite/face_detection_tflite.dart' as fdl;
 import 'package:opencv_dart/opencv_dart.dart' as cv;
 
+import '../../services/cancellation_token.dart';
 import '../../services/database_helper.dart';
+import '../../services/isolate_manager.dart';
 import '../../services/log_service.dart';
 import '../camera_utils.dart';
 import '../dir_utils.dart';
@@ -451,7 +453,9 @@ class StabUtils {
 
   /// Read any image file and return PNG bytes (using opencv for fast native decoding)
   static Future<Uint8List?> readImageAsPngBytesInIsolate(
-      String filePath) async {
+      String filePath, {CancellationToken? token}) async {
+    token?.throwIfCancelled();
+
     ReceivePort receivePort = ReceivePort();
     var params = {
       'sendPort': receivePort.sendPort,
@@ -459,17 +463,25 @@ class StabUtils {
       'operation': 'readToPng'
     };
 
-    Isolate? isolate =
+    final isolate =
         await Isolate.spawn(performFileOperationInBackground, params);
-    final result = await receivePort.first;
-    receivePort.close();
-    isolate.kill(priority: Isolate.immediate);
-    return result as Uint8List?;
+    IsolateManager.instance.register(isolate);
+
+    try {
+      final result = await receivePort.first;
+      return result as Uint8List?;
+    } finally {
+      receivePort.close();
+      IsolateManager.instance.unregister(isolate);
+      isolate.kill(priority: Isolate.immediate);
+    }
   }
 
   /// Write PNG bytes to file
   static Future<void> writePngBytesToFileInIsolate(
-      String filepath, Uint8List pngBytes) async {
+      String filepath, Uint8List pngBytes, {CancellationToken? token}) async {
+    token?.throwIfCancelled();
+
     ReceivePort receivePort = ReceivePort();
     var params = {
       'sendPort': receivePort.sendPort,
@@ -478,45 +490,73 @@ class StabUtils {
       'operation': 'writePngFromBytes'
     };
 
-    Isolate? isolate =
+    final isolate =
         await Isolate.spawn(performFileOperationInBackground, params);
-    await receivePort.first;
-    receivePort.close();
-    isolate.kill(priority: Isolate.immediate);
+    IsolateManager.instance.register(isolate);
+
+    try {
+      await receivePort.first;
+    } finally {
+      receivePort.close();
+      IsolateManager.instance.unregister(isolate);
+      isolate.kill(priority: Isolate.immediate);
+    }
   }
 
-  static Future<Uint8List> compositeBlackPngBytes(Uint8List pngBytes) async {
+  static Future<Uint8List> compositeBlackPngBytes(
+      Uint8List pngBytes, {CancellationToken? token}) async {
+    token?.throwIfCancelled();
+
     ReceivePort receivePort = ReceivePort();
     var params = {
       'sendPort': receivePort.sendPort,
       'bytes': pngBytes,
       'operation': 'compositeBlackPng'
     };
-    Isolate? isolate =
+
+    final isolate =
         await Isolate.spawn(performFileOperationInBackground, params);
-    final result = await receivePort.first as Uint8List;
-    receivePort.close();
-    isolate.kill(priority: Isolate.immediate);
-    return result;
+    IsolateManager.instance.register(isolate);
+
+    try {
+      final result = await receivePort.first as Uint8List;
+      return result;
+    } finally {
+      receivePort.close();
+      IsolateManager.instance.unregister(isolate);
+      isolate.kill(priority: Isolate.immediate);
+    }
   }
 
-  static Future<Uint8List> thumbnailJpgFromPngBytes(Uint8List pngBytes) async {
+  static Future<Uint8List> thumbnailJpgFromPngBytes(
+      Uint8List pngBytes, {CancellationToken? token}) async {
+    token?.throwIfCancelled();
+
     ReceivePort receivePort = ReceivePort();
     var params = {
       'sendPort': receivePort.sendPort,
       'bytes': pngBytes,
       'operation': 'thumbnailFromPng'
     };
-    Isolate? isolate =
+
+    final isolate =
         await Isolate.spawn(performFileOperationInBackground, params);
-    final result = await receivePort.first as Uint8List;
-    receivePort.close();
-    isolate.kill(priority: Isolate.immediate);
-    return result;
+    IsolateManager.instance.register(isolate);
+
+    try {
+      final result = await receivePort.first as Uint8List;
+      return result;
+    } finally {
+      receivePort.close();
+      IsolateManager.instance.unregister(isolate);
+      isolate.kill(priority: Isolate.immediate);
+    }
   }
 
   static Future<void> writeBytesToJpgFileInIsolate(
-      String filePath, List<int> bytes) async {
+      String filePath, List<int> bytes, {CancellationToken? token}) async {
+    token?.throwIfCancelled();
+
     ReceivePort receivePort = ReceivePort();
     var params = {
       'sendPort': receivePort.sendPort,
@@ -525,13 +565,19 @@ class StabUtils {
       'operation': 'writeJpg'
     };
 
-    Isolate? isolate =
+    final isolate =
         await Isolate.spawn(performFileOperationInBackground, params);
-    final result = await receivePort.first;
-    receivePort.close();
-    isolate.kill(priority: Isolate.immediate);
-    if (result == 'NoSpaceLeftError') {
-      throw const FileSystemException('NoSpaceLeftError');
+    IsolateManager.instance.register(isolate);
+
+    try {
+      final result = await receivePort.first;
+      if (result == 'NoSpaceLeftError') {
+        throw const FileSystemException('NoSpaceLeftError');
+      }
+    } finally {
+      receivePort.close();
+      IsolateManager.instance.unregister(isolate);
+      isolate.kill(priority: Isolate.immediate);
     }
   }
 
@@ -680,7 +726,10 @@ class StabUtils {
   }
 
   static Future<File> processImageInIsolate(
-      String imagePath, String operation, String suffix) async {
+      String imagePath, String operation, String suffix,
+      {CancellationToken? token}) async {
+    token?.throwIfCancelled();
+
     ReceivePort receivePort = ReceivePort();
     final rootIsolateToken = RootIsolateToken.instance;
     var params = {
@@ -691,16 +740,21 @@ class StabUtils {
       'rootIsolateToken': rootIsolateToken
     };
 
-    Isolate? isolate =
+    final isolate =
         await Isolate.spawn(performImageProcessingInBackground, params);
-    final result = await receivePort.first;
-    receivePort.close();
-    isolate.kill(priority: Isolate.immediate);
+    IsolateManager.instance.register(isolate);
 
-    if (result is File) {
-      return result;
-    } else {
-      throw result;
+    try {
+      final result = await receivePort.first;
+      if (result is File) {
+        return result;
+      } else {
+        throw result;
+      }
+    } finally {
+      receivePort.close();
+      IsolateManager.instance.unregister(isolate);
+      isolate.kill(priority: Isolate.immediate);
     }
   }
 
@@ -772,7 +826,9 @@ class StabUtils {
 
   /// Get image dimensions from bytes asynchronously (runs decode in isolate)
   static Future<(int, int)?> getImageDimensionsFromBytesAsync(
-      Uint8List bytes) async {
+      Uint8List bytes, {CancellationToken? token}) async {
+    token?.throwIfCancelled();
+
     final ReceivePort receivePort = ReceivePort();
     final params = {
       'sendPort': receivePort.sendPort,
@@ -780,11 +836,16 @@ class StabUtils {
     };
 
     final isolate = await Isolate.spawn(_getImageDimensionsIsolate, params);
-    final result = await receivePort.first;
-    receivePort.close();
-    isolate.kill(priority: Isolate.immediate);
+    IsolateManager.instance.register(isolate);
 
-    return result as (int, int)?;
+    try {
+      final result = await receivePort.first;
+      return result as (int, int)?;
+    } finally {
+      receivePort.close();
+      IsolateManager.instance.unregister(isolate);
+      isolate.kill(priority: Isolate.immediate);
+    }
   }
 
   /// Generate stabilized image bytes using OpenCV warpAffine (desktop only)
@@ -895,8 +956,11 @@ class StabUtils {
     double translateX,
     double translateY,
     int canvasWidth,
-    int canvasHeight,
-  ) async {
+    int canvasHeight, {
+    CancellationToken? token,
+  }) async {
+    token?.throwIfCancelled();
+
     final ReceivePort receivePort = ReceivePort();
     final params = {
       'sendPort': receivePort.sendPort,
@@ -910,10 +974,15 @@ class StabUtils {
     };
 
     final isolate = await Isolate.spawn(_stabilizeCVIsolate, params);
-    final result = await receivePort.first;
-    receivePort.close();
-    isolate.kill(priority: Isolate.immediate);
+    IsolateManager.instance.register(isolate);
 
-    return result as Uint8List?;
+    try {
+      final result = await receivePort.first;
+      return result as Uint8List?;
+    } finally {
+      receivePort.close();
+      IsolateManager.instance.unregister(isolate);
+      isolate.kill(priority: Isolate.immediate);
+    }
   }
 }

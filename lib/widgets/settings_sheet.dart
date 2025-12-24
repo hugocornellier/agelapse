@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -21,7 +22,6 @@ import 'setting_list_tile.dart';
 
 class SettingsSheet extends StatefulWidget {
   final int projectId;
-  final bool isDefaultProject;
   final bool onlyShowVideoSettings;
   final bool onlyShowNotificationSettings;
   final Future<void> Function() stabCallback;
@@ -32,7 +32,6 @@ class SettingsSheet extends StatefulWidget {
   const SettingsSheet({
     super.key,
     required this.projectId,
-    required this.isDefaultProject,
     this.onlyShowVideoSettings = false,
     this.onlyShowNotificationSettings = false,
     required this.stabCallback,
@@ -46,41 +45,107 @@ class SettingsSheet extends StatefulWidget {
 }
 
 class SettingsSheetState extends State<SettingsSheet> {
-  late Future<Map<String, bool>> _settingsFuture;
-  late Future<void> _notificationInitialization;
-  late Future<void> _videoSettingsFuture;
-  late Future<void> _watermarkSettingsFuture;
-  late Future<int> _gridCountFuture;
-  late TimeOfDay _selectedTime;
-  late bool notificationsEnabled;
-  late String dailyNotificationTime;
-  late String projectOrientation;
-  late int? framerate;
-  late bool enableWatermark;
-  late String watermarkPosition;
-  late String watermarkOpacity;
-  late String resolution;
-  late String aspectRatio;
-  late int gridCount;
-  late int _gridModeIndex;
-  final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
-      FlutterLocalNotificationsPlugin();
+  // Use Completers to allow deferred initialization while still having
+  // valid futures for FutureBuilders from the first frame
+  final _settingsCompleter = Completer<Map<String, bool>>();
+  final _notificationCompleter = Completer<void>();
+  final _videoSettingsCompleter = Completer<void>();
+  final _watermarkSettingsCompleter = Completer<void>();
+  final _gridCountCompleter = Completer<int>();
+  final _projectSettingsCompleter = Completer<void>();
+
+  Future<Map<String, bool>> get _settingsFuture => _settingsCompleter.future;
+  Future<void> get _notificationInitialization => _notificationCompleter.future;
+  Future<void> get _videoSettingsFuture => _videoSettingsCompleter.future;
+  Future<void> get _watermarkSettingsFuture => _watermarkSettingsCompleter.future;
+  Future<int> get _gridCountFuture => _gridCountCompleter.future;
+  Future<void> get _projectSettingsFuture => _projectSettingsCompleter.future;
+
+  bool _isDefaultProject = false;
+  TimeOfDay _selectedTime = const TimeOfDay(hour: 17, minute: 0);
+  bool notificationsEnabled = false;
+  String dailyNotificationTime = "not set";
+  String projectOrientation = "Portrait";
+  int? framerate;
+  bool enableWatermark = false;
+  String watermarkPosition = "Lower left";
+  String watermarkOpacity = "0.7";
+  String resolution = "1080p";
+  String aspectRatio = "16:9";
+  int gridCount = 4;
+  int _gridModeIndex = 0;
+
+  // Lazy initialization to avoid blocking widget creation
+  FlutterLocalNotificationsPlugin? _flutterLocalNotificationsPlugin;
+  FlutterLocalNotificationsPlugin get _notificationPlugin {
+    _flutterLocalNotificationsPlugin ??= FlutterLocalNotificationsPlugin();
+    return _flutterLocalNotificationsPlugin!;
+  }
+
+  static final _creationStopwatch = Stopwatch();
+  static bool _stopwatchStarted = false;
 
   @override
   void initState() {
     super.initState();
-    _init();
+    if (!_stopwatchStarted) {
+      _creationStopwatch.start();
+      _stopwatchStarted = true;
+    }
+    print('DEBUG [${_creationStopwatch.elapsedMilliseconds}ms] SettingsSheet.initState called');
+    // Defer initialization until after the first frame to allow
+    // the modal animation to start smoothly
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      print('DEBUG [${_creationStopwatch.elapsedMilliseconds}ms] postFrameCallback fired - calling _init');
+      _init();
+    });
   }
 
   void _init() {
-    _settingsFuture = _initializeData();
-    _notificationInitialization = _settingsFuture.then((_) {
-      //
+    // Start all initializations and complete their Completers
+    _initializeData().then((result) {
+      _settingsCompleter.complete(result);
+      _notificationCompleter.complete();
+    }).catchError((e) {
+      _settingsCompleter.completeError(e);
+      _notificationCompleter.completeError(e);
     });
 
-    _videoSettingsFuture = _initializeVideoSettings();
-    _watermarkSettingsFuture = _initializeWatermarkSettings();
-    _gridCountFuture = _initializeGridCount();
+    _initializeVideoSettings().then((_) {
+      _videoSettingsCompleter.complete();
+    }).catchError((e) {
+      _videoSettingsCompleter.completeError(e);
+    });
+
+    _initializeWatermarkSettings().then((_) {
+      _watermarkSettingsCompleter.complete();
+    }).catchError((e) {
+      _watermarkSettingsCompleter.completeError(e);
+    });
+
+    _initializeGridCount().then((result) {
+      _gridCountCompleter.complete(result);
+    }).catchError((e) {
+      _gridCountCompleter.completeError(e);
+    });
+
+    _initializeProjectSettings().then((_) {
+      _projectSettingsCompleter.complete();
+    }).catchError((e) {
+      _projectSettingsCompleter.completeError(e);
+    });
+  }
+
+  Future<void> _initializeProjectSettings() async {
+    final data = await DB.instance.getSettingByTitle('default_project');
+    final defaultProject = data?['value'];
+
+    if (defaultProject == null || defaultProject == "none") {
+      _isDefaultProject = false;
+    } else {
+      _isDefaultProject = int.tryParse(defaultProject) == widget.projectId;
+    }
+    setState(() {});
   }
 
   Future<Map<String, bool>> _initializeData() async {
@@ -118,14 +183,18 @@ class SettingsSheetState extends State<SettingsSheet> {
   }
 
   Future<void> _initializeVideoSettings() async {
-    resolution =
-        await SettingsUtil.loadVideoResolution(widget.projectId.toString());
-    aspectRatio =
-        await SettingsUtil.loadAspectRatio(widget.projectId.toString());
-    framerate = await SettingsUtil.loadFramerate(widget.projectId.toString());
+    final projectIdStr = widget.projectId.toString();
+    final results = await Future.wait([
+      SettingsUtil.loadVideoResolution(projectIdStr),
+      SettingsUtil.loadAspectRatio(projectIdStr),
+      SettingsUtil.loadFramerate(projectIdStr),
+      SettingsUtil.loadProjectOrientation(projectIdStr),
+    ]);
 
-    String poSetting =
-        await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
+    resolution = results[0] as String;
+    aspectRatio = results[1] as String;
+    framerate = results[2] as int;
+    final poSetting = results[3] as String;
     projectOrientation =
         poSetting[0].toUpperCase() + poSetting.substring(1).toLowerCase();
 
@@ -133,10 +202,15 @@ class SettingsSheetState extends State<SettingsSheet> {
   }
 
   Future<void> _initializeWatermarkSettings() async {
-    enableWatermark =
-        await SettingsUtil.loadWatermarkSetting(widget.projectId.toString());
-    watermarkPosition = await SettingsUtil.loadWatermarkPosition();
-    watermarkOpacity = await SettingsUtil.loadWatermarkOpacity();
+    final results = await Future.wait([
+      SettingsUtil.loadWatermarkSetting(widget.projectId.toString()),
+      SettingsUtil.loadWatermarkPosition(),
+      SettingsUtil.loadWatermarkOpacity(),
+    ]);
+
+    enableWatermark = results[0] as bool;
+    watermarkPosition = results[1] as String;
+    watermarkOpacity = results[2] as String;
     setState(() {});
   }
 
@@ -184,8 +258,14 @@ class SettingsSheetState extends State<SettingsSheet> {
         widget.projectId, dailyNotificationTime);
   }
 
+  static bool _firstBuild = true;
+
   @override
   Widget build(BuildContext context) {
+    if (_firstBuild) {
+      print('DEBUG [${_creationStopwatch.elapsedMilliseconds}ms] SettingsSheet.build called (first build)');
+      _firstBuild = false;
+    }
     return GestureDetector(
       onTap: () {
         FocusScope.of(context).unfocus();
@@ -328,7 +408,7 @@ class SettingsSheetState extends State<SettingsSheet> {
   Future<void> _getFutureForTitle(String title) {
     switch (title) {
       case 'Projects':
-        return _settingsFuture;
+        return _projectSettingsFuture;
       case 'Camera Settings':
         return _settingsFuture;
       case 'Notifications':
@@ -349,7 +429,7 @@ class SettingsSheetState extends State<SettingsSheet> {
       children: [
         BoolSettingSwitch(
           title: 'Set project as default',
-          initialValue: widget.isDefaultProject,
+          initialValue: _isDefaultProject,
           showInfo: true,
           infoContent:
               "If you set this project as your default, it will be selected automatically on launch.",
@@ -379,7 +459,7 @@ class SettingsSheetState extends State<SettingsSheet> {
             if (value) {
               _scheduleDailyNotification();
             } else {
-              _flutterLocalNotificationsPlugin.cancelAll();
+              _notificationPlugin.cancelAll();
             }
           },
         ),
