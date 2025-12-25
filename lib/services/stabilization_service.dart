@@ -9,6 +9,7 @@ import 'face_stabilizer.dart';
 import 'ffmpeg_process_manager.dart';
 import 'isolate_manager.dart';
 import 'log_service.dart';
+import 'stabilization_benchmark.dart';
 import 'stabilization_progress.dart';
 import 'stabilization_state.dart';
 import '../utils/dir_utils.dart';
@@ -60,6 +61,9 @@ class StabilizationService {
   int _successfullyStabilized = 0;
   int _stabilizedAtStart = 0;
   String _eta = '';
+
+  // Benchmark tracking
+  final StabilizationBenchmark _benchmark = StabilizationBenchmark();
 
   /// Stream of progress updates. Subscribe to this for reactive UI updates.
   Stream<StabilizationProgress> get progressStream =>
@@ -170,6 +174,13 @@ class StabilizationService {
 
         if (result.success) {
           _successfullyStabilized++;
+          // Add to benchmark
+          _benchmark.addResult(
+            finalScore: result.finalScore,
+            finalEyeDeltaY: result.finalEyeDeltaY,
+            finalEyeDistance: result.finalEyeDistance,
+            goalEyeDistance: result.goalEyeDistance,
+          );
         }
 
         _currentPhoto++;
@@ -199,6 +210,11 @@ class StabilizationService {
       }
 
       stopwatch.stop();
+
+      // Log benchmark summary
+      if (_benchmark.count > 0) {
+        _benchmark.logSummary();
+      }
 
       // Final check for re-stabilization if settings changed
       _currentToken?.throwIfCancelled();
@@ -480,6 +496,7 @@ class StabilizationService {
     _successfullyStabilized = 0;
     _stabilizedAtStart = 0;
     _eta = '';
+    _benchmark.reset();
   }
 
   Future<void> _cleanup() async {

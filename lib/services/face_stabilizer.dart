@@ -29,6 +29,12 @@ class StabilizationResult {
       threePassScore; // Score after three-pass (null if not attempted)
   final double? fourPassScore; // Score after four-pass (null if not attempted)
 
+  // Final benchmark metrics
+  final double? finalScore; // Final stabilization score
+  final double? finalEyeDeltaY; // Final vertical difference between eyes (rotation error)
+  final double? finalEyeDistance; // Final distance between eyes
+  final double? goalEyeDistance; // Target eye distance
+
   StabilizationResult({
     required this.success,
     this.cancelled = false,
@@ -36,6 +42,10 @@ class StabilizationResult {
     this.twoPassScore,
     this.threePassScore,
     this.fourPassScore,
+    this.finalScore,
+    this.finalEyeDeltaY,
+    this.finalEyeDistance,
+    this.goalEyeDistance,
   });
 
   /// Creates a cancelled result.
@@ -253,7 +263,10 @@ class FaceStabilizer {
         double? preScore,
         double? twoPassScore,
         double? threePassScore,
-        double? fourPassScore
+        double? fourPassScore,
+        double? finalScore,
+        double? finalEyeDeltaY,
+        double? finalEyeDistance,
       ) = await _finalizeStabilization(
           rawPhotoPath,
           stabilizedPhotoPath,
@@ -279,7 +292,11 @@ class FaceStabilizer {
           preScore: preScore,
           twoPassScore: twoPassScore,
           threePassScore: threePassScore,
-          fourPassScore: fourPassScore);
+          fourPassScore: fourPassScore,
+          finalScore: finalScore,
+          finalEyeDeltaY: finalEyeDeltaY,
+          finalEyeDistance: finalEyeDistance,
+          goalEyeDistance: eyeDistanceGoal);
     } on CancelledException {
       LogService.instance.log("Stabilization cancelled");
       return StabilizationResult.cancelled();
@@ -289,8 +306,8 @@ class FaceStabilizer {
     }
   }
 
-  /// Returns (success, preScore, twoPassScore, threePassScore, fourPassScore)
-  Future<(bool, double?, double?, double?, double?)> _finalizeStabilization(
+  /// Returns (success, preScore, twoPassScore, threePassScore, fourPassScore, finalScore, finalEyeDeltaY, finalEyeDistance)
+  Future<(bool, double?, double?, double?, double?, double?, double?, double?)> _finalizeStabilization(
     String rawPhotoPath,
     String stabilizedJpgPhotoPath,
     int imgWidth,
@@ -318,6 +335,9 @@ class FaceStabilizer {
       );
       return (
         success,
+        null,
+        null,
+        null,
         null,
         null,
         null,
@@ -365,7 +385,7 @@ class FaceStabilizer {
         rotationDegrees: rotationDegrees,
         scaleFactor: scaleFactor,
       );
-      return (success, score, null, null, null); // No multi-pass for fallback
+      return (success, score, null, null, null, score, null, null); // No multi-pass for fallback
     }
 
     List<Point<double>?> eyes = _filterAndCenterEyes(stabFaces);
@@ -395,11 +415,10 @@ class FaceStabilizer {
         rotationDegrees: rotationDegrees,
         scaleFactor: scaleFactor,
       );
-      return (success, score, null, null, null); // No multi-pass for fallback
+      return (success, score, null, null, null, score, null, null); // No multi-pass for fallback
     }
 
-    LogService.instance.log("EYE POS GOALS: $goalLeftEye $goalRightEye");
-    LogService.instance.log("POST-STAB POS: ${eyes[0]} ${eyes[1]}");
+    LogService.instance.log("Goal: L$goalLeftEye R$goalRightEye | Init: L${eyes[0]} R${eyes[1]}");
 
     List<String> toDelete = [
       await DirUtils.getPngPathFromRawPhotoPath(rawPhotoPath),
@@ -411,7 +430,10 @@ class FaceStabilizer {
       double? preScore,
       double? twoPassScore,
       double? threePassScore,
-      double? fourPassScore
+      double? fourPassScore,
+      double? finalScore,
+      double? finalEyeDeltaY,
+      double? finalEyeDistance,
     ) = await _performMultiPassFix(
       stabFaces,
       eyes,
@@ -437,7 +459,10 @@ class FaceStabilizer {
       preScore,
       twoPassScore,
       threePassScore,
-      fourPassScore
+      fourPassScore,
+      finalScore,
+      finalEyeDeltaY,
+      finalEyeDistance,
     );
   }
 
@@ -481,9 +506,14 @@ class FaceStabilizer {
     return [Point(ax, ay), Point(bx, by)];
   }
 
-  /// Returns (success, preScore, twoPassScore, threePassScore, fourPassScore)
+  /// Returns (success, preScore, twoPassScore, threePassScore, fourPassScore, finalScore, finalEyeDeltaY, finalEyeDistance)
   /// Scores are null if that pass was not attempted
-  Future<(bool, double?, double?, double?, double?)> _performMultiPassFix(
+  ///
+  /// NEW SEQUENTIAL REFINEMENT APPROACH:
+  /// 1. Rotation Pass: Fix eye angle (make eyes horizontal)
+  /// 2. Scale Pass: Fix eye distance
+  /// 3. Translation Passes: Fix eye position (existing logic)
+  Future<(bool, double?, double?, double?, double?, double?, double?, double?)> _performMultiPassFix(
     List<dynamic> stabFaces,
     List<Point<double>?> eyes,
     Point<double> goalLeftEye,
@@ -505,6 +535,14 @@ class FaceStabilizer {
 
     final double firstPassScore =
         calculateStabScore(eyes, goalLeftEye, goalRightEye);
+
+    // Log initial eye positions for debugging
+    final double initialEyeDeltaY = eyes[1]!.y - eyes[0]!.y;
+    final double initialEyeDistance = sqrt(
+        pow(eyes[1]!.x - eyes[0]!.x, 2) + pow(eyes[1]!.y - eyes[0]!.y, 2));
+    LogService.instance.log(
+        "Init: score=${firstPassScore.toStringAsFixed(2)}, tilt=${initialEyeDeltaY.toStringAsFixed(1)}px, dist=${initialEyeDistance.toStringAsFixed(1)}→$eyeDistanceGoal");
+
     final (
       double overshotLeftX,
       double overshotLeftY,
@@ -525,7 +563,7 @@ class FaceStabilizer {
         rotationDegrees: rotationDegrees,
         scaleFactor: scaleFactor,
       );
-      return (successfulStabilization, firstPassScore, null, null, null);
+      return (successfulStabilization, firstPassScore, null, null, null, firstPassScore, initialEyeDeltaY, initialEyeDistance);
     }
 
     final String stabilizedPhotoPath = await StabUtils.getStabilizedImagePath(
@@ -536,112 +574,341 @@ class FaceStabilizer {
     double bestScore = firstPassScore;
     double bestTX = translateX;
     double bestTY = translateY;
+    double bestRotation = rotationDegrees;
+    double bestScale = scaleFactor;
 
-    // Track scores and state for each pass
-    double? twoPassScore, threePassScore, fourPassScore;
-    bool usedTwoPass = false, usedThreePass = false, usedFourPass = false;
+    // Track scores for each pass type
+    double? rotationPassScore, scalePassScore, translationPassScore;
     List<Point<double>?>? currentEyes = eyes;
-    double currentTX = translateX;
-    double currentTY = translateY;
 
-    // === TWO-PASS ===
+    // === ROTATION REFINEMENT PASSES ===
+    const int maxRotationPasses = 3;
+    double eyeDeltaY = currentEyes[1]!.y - currentEyes[0]!.y;
+    final double rotStartEyeDeltaY = eyeDeltaY;
+    int rotPassCount = 0;
+
+    for (int rotPass = 1; rotPass <= maxRotationPasses; rotPass++) {
+      token?.throwIfCancelled();
+
+      if (currentEyes == null || currentEyes.length < 2 ||
+          currentEyes[0] == null || currentEyes[1] == null) {
+        break;
+      }
+
+      double eyeDeltaX = currentEyes[1]!.x - currentEyes[0]!.x;
+      double detectedAngleDeg = atan2(eyeDeltaY, eyeDeltaX) * 180 / pi;
+
+      if (detectedAngleDeg.abs() <= 0.1) break;
+
+      double newRotation = bestRotation - detectedAngleDeg;
+      final (double? rotTX, double? rotTY) =
+          _calculateTranslateData(bestScale, newRotation, imgWidth, imgHeight);
+
+      if (rotTX == null || rotTY == null) break;
+
+      Uint8List? rotPassBytes =
+          await StabUtils.generateStabilizedImageBytesCVAsync(
+        srcBytes, newRotation, bestScale, rotTX, rotTY,
+        canvasWidth, canvasHeight, token: token,
+      );
+
+      if (rotPassBytes == null) break;
+
+      final rotPassFaces = await StabUtils.getFacesFromBytes(rotPassBytes,
+          filterByFaceSize: false, imageWidth: canvasWidth);
+
+      if (rotPassFaces == null) break;
+
+      List<Point<double>?> rotPassEyes = _filterAndCenterEyes(rotPassFaces);
+
+      if (rotPassEyes.length < 2 ||
+          rotPassEyes[0] == null ||
+          rotPassEyes[1] == null) {
+        break;
+      }
+
+      double newEyeDeltaY = rotPassEyes[1]!.y - rotPassEyes[0]!.y;
+      rotationPassScore =
+          calculateStabScore(rotPassEyes, goalLeftEye, goalRightEye);
+
+      if (newEyeDeltaY.abs() < eyeDeltaY.abs()) {
+        rotPassCount++;
+        bestBytes = rotPassBytes;
+        bestScore = rotationPassScore;
+        bestTX = rotTX;
+        bestTY = rotTY;
+        bestRotation = newRotation;
+        currentEyes = rotPassEyes;
+        eyeDeltaY = newEyeDeltaY;
+      } else {
+        break;
+      }
+    }
+
+    if (rotPassCount > 0) {
+      LogService.instance.log(
+          "Rot: |${rotStartEyeDeltaY.toStringAsFixed(1)}|→|${eyeDeltaY.toStringAsFixed(1)}|px ($rotPassCount pass${rotPassCount > 1 ? 'es' : ''})");
+    }
+
+    // === SCALE REFINEMENT PASSES ===
+    const int maxScalePasses = 3;
+    double currentEyeDistance = (currentEyes != null && currentEyes.length >= 2 &&
+        currentEyes[0] != null && currentEyes[1] != null)
+        ? sqrt(pow(currentEyes[1]!.x - currentEyes[0]!.x, 2) +
+               pow(currentEyes[1]!.y - currentEyes[0]!.y, 2))
+        : eyeDistanceGoal;
+    double scaleError = (currentEyeDistance - eyeDistanceGoal).abs();
+    final double initialScaleError = scaleError;
+    int scalePassCount = 0;
+
+    for (int scalePass = 1; scalePass <= maxScalePasses; scalePass++) {
+      token?.throwIfCancelled();
+
+      if (currentEyes == null || currentEyes.length < 2 ||
+          currentEyes[0] == null || currentEyes[1] == null) {
+        break;
+      }
+
+      if (scaleError <= 1.0) break;
+
+      double scaleCorrection = eyeDistanceGoal / currentEyeDistance;
+      double newScale = bestScale * scaleCorrection;
+
+      final (double? scaleTX, double? scaleTY) =
+          _calculateTranslateData(newScale, bestRotation, imgWidth, imgHeight);
+
+      if (scaleTX == null || scaleTY == null) break;
+
+      Uint8List? scalePassBytes =
+          await StabUtils.generateStabilizedImageBytesCVAsync(
+        srcBytes, bestRotation, newScale, scaleTX, scaleTY,
+        canvasWidth, canvasHeight, token: token,
+      );
+
+      if (scalePassBytes == null) break;
+
+      final scalePassFaces = await StabUtils.getFacesFromBytes(scalePassBytes,
+          filterByFaceSize: false, imageWidth: canvasWidth);
+
+      if (scalePassFaces == null) break;
+
+      List<Point<double>?> scalePassEyes = _filterAndCenterEyes(scalePassFaces);
+
+      if (scalePassEyes.length < 2 ||
+          scalePassEyes[0] == null ||
+          scalePassEyes[1] == null) {
+        break;
+      }
+
+      double newEyeDistance = sqrt(
+          pow(scalePassEyes[1]!.x - scalePassEyes[0]!.x, 2) +
+          pow(scalePassEyes[1]!.y - scalePassEyes[0]!.y, 2));
+      double newScaleError = (newEyeDistance - eyeDistanceGoal).abs();
+      scalePassScore =
+          calculateStabScore(scalePassEyes, goalLeftEye, goalRightEye);
+
+      if (newScaleError < scaleError) {
+        scalePassCount++;
+        bestBytes = scalePassBytes;
+        bestScore = scalePassScore;
+        bestTX = scaleTX;
+        bestTY = scaleTY;
+        bestScale = newScale;
+        currentEyes = scalePassEyes;
+        currentEyeDistance = newEyeDistance;
+        scaleError = newScaleError;
+      } else {
+        break;
+      }
+    }
+
+    if (scalePassCount > 0) {
+      LogService.instance.log(
+          "Scale: ${initialScaleError.toStringAsFixed(1)}→${scaleError.toStringAsFixed(1)}px ($scalePassCount pass${scalePassCount > 1 ? 'es' : ''})");
+    }
+
+    // === TRANSLATION REFINEMENT PASSES ===
+    // Up to 3 iterative passes to fix eye position
     token?.throwIfCancelled();
-    LogService.instance.log(
-        "Attempting two-pass correction. First-pass score = $firstPassScore...");
+
+    if (currentEyes == null || currentEyes.length < 2 ||
+        currentEyes[0] == null || currentEyes[1] == null) {
+      // Can't do translation passes without valid eyes, save current best and return
+      bool success = await saveStabilizedImage(
+        bestBytes,
+        rawPhotoPath,
+        stabilizedPhotoPath,
+        bestScore,
+        translateX: bestTX,
+        translateY: bestTY,
+        rotationDegrees: bestRotation,
+        scaleFactor: bestScale,
+      );
+      return (success, firstPassScore, rotationPassScore, scalePassScore, null, bestScore, null, null);
+    }
 
     var (double ovLX, double ovLY, double ovRX, double ovRY) =
         _calculateOvershots(currentEyes, goalLeftEye, goalRightEye);
-    final (double twoPassTX, double twoPassTY) =
-        _calculateNewTranslations(currentTX, currentTY, ovLX, ovRX, ovLY, ovRY);
 
-    Uint8List? twoPassBytes =
-        await StabUtils.generateStabilizedImageBytesCVAsync(
-      srcBytes,
-      rotationDegrees,
-      scaleFactor,
-      twoPassTX,
-      twoPassTY,
-      canvasWidth,
-      canvasHeight,
-      token: token,
-    );
-    if (twoPassBytes == null) return (false, firstPassScore, null, null, null);
+    double currentTX = bestTX;
+    double currentTY = bestTY;
 
-    final twoPassFaces = await StabUtils.getFacesFromBytes(twoPassBytes,
-        filterByFaceSize: false, imageWidth: canvasWidth);
-    if (twoPassFaces == null) return (false, firstPassScore, null, null, null);
+    const int maxTranslationPasses = 3;
+    const double convergenceThreshold = 0.05;
+    final double initialTransScore = bestScore;
+    int transPassCount = 0;
 
-    List<Point<double>?> twoPassEyes = _filterAndCenterEyes(twoPassFaces);
+    for (int passNum = 1; passNum <= maxTranslationPasses; passNum++) {
+      token?.throwIfCancelled();
 
-    if (twoPassEyes.length >= 2 &&
-        twoPassEyes[0] != null &&
-        twoPassEyes[1] != null) {
-      twoPassScore = calculateStabScore(twoPassEyes, goalLeftEye, goalRightEye);
-      if (twoPassScore < bestScore) {
-        usedTwoPass = true;
-        bestBytes = twoPassBytes;
-        bestScore = twoPassScore;
-        bestTX = twoPassTX;
-        bestTY = twoPassTY;
-        currentEyes = twoPassEyes;
-        currentTX = twoPassTX;
-        currentTY = twoPassTY;
+      if (!correctionIsNeeded(bestScore, ovLX, ovRX, ovLY, ovRY)) break;
+
+      final (double transTX, double transTY) =
+          _calculateNewTranslations(currentTX, currentTY, ovLX, ovRX, ovLY, ovRY);
+
+      Uint8List? transPassBytes =
+          await StabUtils.generateStabilizedImageBytesCVAsync(
+        srcBytes,
+        bestRotation,
+        bestScale,
+        transTX,
+        transTY,
+        canvasWidth,
+        canvasHeight,
+        token: token,
+      );
+
+      if (transPassBytes == null) break;
+
+      final transPassFaces = await StabUtils.getFacesFromBytes(transPassBytes,
+          filterByFaceSize: false, imageWidth: canvasWidth);
+
+      if (transPassFaces == null) break;
+
+      List<Point<double>?> transPassEyes =
+          _filterAndCenterEyes(transPassFaces);
+
+      if (transPassEyes.length < 2 ||
+          transPassEyes[0] == null ||
+          transPassEyes[1] == null) {
+        break;
+      }
+
+      double passScore =
+          calculateStabScore(transPassEyes, goalLeftEye, goalRightEye);
+
+      double improvement = bestScore - passScore;
+
+      if (passScore < bestScore) {
+        transPassCount++;
+        bestBytes = transPassBytes;
+        bestScore = passScore;
+        bestTX = transTX;
+        bestTY = transTY;
+        currentEyes = transPassEyes;
+        currentTX = transTX;
+        currentTY = transTY;
+        translationPassScore = passScore;
+
+        // Update overshots for next pass
+        (ovLX, ovLY, ovRX, ovRY) =
+            _calculateOvershots(currentEyes, goalLeftEye, goalRightEye);
+
+        // Check convergence
+        if (improvement > 0 && improvement < convergenceThreshold) break;
+      } else {
+        // Even if rejected, update translations for next attempt
+        // This allows the algorithm to "push through" local minima
+        currentTX = transTX;
+        currentTY = transTY;
+        (ovLX, ovLY, ovRX, ovRY) =
+            _calculateOvershots(transPassEyes, goalLeftEye, goalRightEye);
       }
     }
 
-    // === THREE-PASS (only if two-pass improved) ===
-    if (usedTwoPass &&
-        currentEyes.length >= 2 &&
-        currentEyes[0] != null &&
-        currentEyes[1] != null) {
-      token?.throwIfCancelled();
-      (ovLX, ovLY, ovRX, ovRY) =
-          _calculateOvershots(currentEyes, goalLeftEye, goalRightEye);
+    if (transPassCount > 0) {
+      LogService.instance.log(
+          "Trans: ${initialTransScore.toStringAsFixed(2)}→${bestScore.toStringAsFixed(2)} ($transPassCount pass${transPassCount > 1 ? 'es' : ''})");
+    }
 
-      if (correctionIsNeeded(bestScore, ovLX, ovRX, ovLY, ovRY)) {
-        LogService.instance.log(
-            "Attempting three-pass correction. Two-pass score = $twoPassScore...");
+    // === FINAL CLEANUP PASS ===
+    token?.throwIfCancelled();
 
-        final (double threePassTX, double threePassTY) =
-            _calculateNewTranslations(
-                currentTX, currentTY, ovLX, ovRX, ovLY, ovRY);
+    final Point<double>? cleanupLeftEye = (currentEyes != null && currentEyes.isNotEmpty) ? currentEyes[0] : null;
+    final Point<double>? cleanupRightEye = (currentEyes != null && currentEyes.length > 1) ? currentEyes[1] : null;
 
-        Uint8List? threePassBytes =
+    double cleanupEyeDeltaY = 0;
+    double cleanupEyeDistance = eyeDistanceGoal;
+    double cleanupScaleError = 0;
+    double cleanupRotationAngle = 0;
+    bool needsCleanup = false;
+
+    if (cleanupLeftEye != null && cleanupRightEye != null) {
+      cleanupEyeDeltaY = cleanupRightEye.y - cleanupLeftEye.y;
+      cleanupEyeDistance = sqrt(
+          pow(cleanupRightEye.x - cleanupLeftEye.x, 2) +
+          pow(cleanupRightEye.y - cleanupLeftEye.y, 2));
+      cleanupScaleError = (cleanupEyeDistance - eyeDistanceGoal).abs();
+      cleanupRotationAngle = atan2(cleanupEyeDeltaY, cleanupRightEye.x - cleanupLeftEye.x) * 180 / pi;
+      needsCleanup = cleanupEyeDeltaY.abs() > 1.5 || cleanupScaleError > 2.0;
+    }
+
+    if (needsCleanup && bestScore > 0.5) {
+      double cleanupRotation = bestRotation;
+      double cleanupScale = bestScale;
+
+      if (cleanupEyeDeltaY.abs() > 1.5) {
+        cleanupRotation = bestRotation - cleanupRotationAngle;
+      }
+
+      if (cleanupScaleError > 2.0) {
+        double scaleCorrection = eyeDistanceGoal / cleanupEyeDistance;
+        cleanupScale = bestScale * scaleCorrection;
+      }
+
+      // Apply cleanup transform
+      final (double? cleanupTX, double? cleanupTY) =
+          _calculateTranslateData(cleanupScale, cleanupRotation, imgWidth, imgHeight);
+
+      if (cleanupTX != null && cleanupTY != null) {
+        Uint8List? cleanupBytes =
             await StabUtils.generateStabilizedImageBytesCVAsync(
           srcBytes,
-          rotationDegrees,
-          scaleFactor,
-          threePassTX,
-          threePassTY,
+          cleanupRotation,
+          cleanupScale,
+          cleanupTX,
+          cleanupTY,
           canvasWidth,
           canvasHeight,
           token: token,
         );
 
-        if (threePassBytes != null) {
-          final threePassFaces = await StabUtils.getFacesFromBytes(
-              threePassBytes,
+        if (cleanupBytes != null) {
+          final cleanupFaces = await StabUtils.getFacesFromBytes(
+              cleanupBytes,
               filterByFaceSize: false,
               imageWidth: canvasWidth);
 
-          if (threePassFaces != null) {
-            List<Point<double>?> threePassEyes =
-                _filterAndCenterEyes(threePassFaces);
+          if (cleanupFaces != null) {
+            List<Point<double>?> cleanupEyes =
+                _filterAndCenterEyes(cleanupFaces);
 
-            if (threePassEyes.length >= 2 &&
-                threePassEyes[0] != null &&
-                threePassEyes[1] != null) {
-              threePassScore =
-                  calculateStabScore(threePassEyes, goalLeftEye, goalRightEye);
-              if (threePassScore < bestScore) {
-                usedThreePass = true;
-                bestBytes = threePassBytes;
-                bestScore = threePassScore;
-                bestTX = threePassTX;
-                bestTY = threePassTY;
-                currentEyes = threePassEyes;
-                currentTX = threePassTX;
-                currentTY = threePassTY;
+            if (cleanupEyes.length >= 2 &&
+                cleanupEyes[0] != null &&
+                cleanupEyes[1] != null) {
+              double cleanupScore =
+                  calculateStabScore(cleanupEyes, goalLeftEye, goalRightEye);
+
+              if (cleanupScore < bestScore) {
+                LogService.instance.log(
+                    "Cleanup: ${bestScore.toStringAsFixed(2)}→${cleanupScore.toStringAsFixed(2)}");
+                bestBytes = cleanupBytes;
+                bestScore = cleanupScore;
+                bestTX = cleanupTX;
+                bestTY = cleanupTY;
+                bestRotation = cleanupRotation;
+                bestScale = cleanupScale;
+                currentEyes = cleanupEyes;
               }
             }
           }
@@ -649,58 +916,20 @@ class FaceStabilizer {
       }
     }
 
-    // === FOUR-PASS (only if three-pass improved) ===
-    if (usedThreePass &&
-        currentEyes.length >= 2 &&
-        currentEyes[0] != null &&
-        currentEyes[1] != null) {
-      token?.throwIfCancelled();
-      (ovLX, ovLY, ovRX, ovRY) =
-          _calculateOvershots(currentEyes, goalLeftEye, goalRightEye);
-
-      if (correctionIsNeeded(bestScore, ovLX, ovRX, ovLY, ovRY)) {
+    // Log final eye positions for comparison and capture for benchmarking
+    double? finalEyeDeltaY;
+    double? finalEyeDistance;
+    final finalFaces = await StabUtils.getFacesFromBytes(bestBytes,
+        filterByFaceSize: false, imageWidth: canvasWidth);
+    if (finalFaces != null) {
+      final finalEyes = _filterAndCenterEyes(finalFaces);
+      if (finalEyes.length >= 2 && finalEyes[0] != null && finalEyes[1] != null) {
+        finalEyeDeltaY = finalEyes[1]!.y - finalEyes[0]!.y;
+        finalEyeDistance = sqrt(
+            pow(finalEyes[1]!.x - finalEyes[0]!.x, 2) +
+            pow(finalEyes[1]!.y - finalEyes[0]!.y, 2));
         LogService.instance.log(
-            "Attempting four-pass correction. Three-pass score = $threePassScore...");
-
-        final (double fourPassTX, double fourPassTY) =
-            _calculateNewTranslations(
-                currentTX, currentTY, ovLX, ovRX, ovLY, ovRY);
-
-        Uint8List? fourPassBytes =
-            await StabUtils.generateStabilizedImageBytesCVAsync(
-          srcBytes,
-          rotationDegrees,
-          scaleFactor,
-          fourPassTX,
-          fourPassTY,
-          canvasWidth,
-          canvasHeight,
-          token: token,
-        );
-
-        if (fourPassBytes != null) {
-          final fourPassFaces = await StabUtils.getFacesFromBytes(fourPassBytes,
-              filterByFaceSize: false, imageWidth: canvasWidth);
-
-          if (fourPassFaces != null) {
-            List<Point<double>?> fourPassEyes =
-                _filterAndCenterEyes(fourPassFaces);
-
-            if (fourPassEyes.length >= 2 &&
-                fourPassEyes[0] != null &&
-                fourPassEyes[1] != null) {
-              fourPassScore =
-                  calculateStabScore(fourPassEyes, goalLeftEye, goalRightEye);
-              if (fourPassScore < bestScore) {
-                usedFourPass = true;
-                bestBytes = fourPassBytes;
-                bestScore = fourPassScore;
-                bestTX = fourPassTX;
-                bestTY = fourPassTY;
-              }
-            }
-          }
-        }
+            "Final: score=${bestScore.toStringAsFixed(2)}, tilt=${finalEyeDeltaY.toStringAsFixed(1)}px, dist=${finalEyeDistance.toStringAsFixed(1)}px");
       }
     }
 
@@ -713,8 +942,8 @@ class FaceStabilizer {
         bestScore,
         translateX: bestTX,
         translateY: bestTY,
-        rotationDegrees: rotationDegrees,
-        scaleFactor: scaleFactor,
+        rotationDegrees: bestRotation,
+        scaleFactor: bestScale,
       );
     } else {
       LogService.instance.log("STAB FAILURE. STAB SCORE: $bestScore");
@@ -724,12 +953,20 @@ class FaceStabilizer {
       successfulStabilization = false;
     }
 
+    // Return scores for comparison (reusing existing return structure)
+    // rotationPassScore -> twoPassScore slot
+    // scalePassScore -> threePassScore slot
+    // translationPassScore -> fourPassScore slot
+    // Also return final benchmark metrics
     return (
       successfulStabilization,
       firstPassScore,
-      usedTwoPass ? twoPassScore : null,
-      usedThreePass ? threePassScore : null,
-      usedFourPass ? fourPassScore : null,
+      rotationPassScore,
+      scalePassScore,
+      translationPassScore,
+      bestScore,
+      finalEyeDeltaY,
+      finalEyeDistance,
     );
   }
 
