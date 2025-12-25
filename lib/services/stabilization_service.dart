@@ -180,6 +180,7 @@ class StabilizationService {
             finalEyeDeltaY: result.finalEyeDeltaY,
             finalEyeDistance: result.finalEyeDistance,
             goalEyeDistance: result.goalEyeDistance,
+            mode: _currentStabilizer?.stabilizationMode,
           );
         }
 

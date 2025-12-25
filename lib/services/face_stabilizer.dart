@@ -9,6 +9,7 @@ import 'cancellation_token.dart';
 import 'isolate_manager.dart';
 import 'log_service.dart';
 import 'thumbnail_service.dart';
+import '../models/stabilization_mode.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import 'package:heif_converter/heif_converter.dart';
 import 'package:path/path.dart' as path;
@@ -82,6 +83,7 @@ class FaceStabilizer {
   PoseDetector? _poseDetector;
   late double eyeOffsetX;
   late double eyeOffsetY;
+  late StabilizationMode stabilizationMode;
 
   // Face embedding tracking for identity-based face matching
   int? _currentFaceCount;
@@ -154,6 +156,10 @@ class FaceStabilizer {
 
     canvasWidth = projectOrientation == "landscape" ? longSide : shortSide;
     canvasHeight = projectOrientation == "landscape" ? shortSide : longSide;
+
+    // Load stabilization mode (global setting)
+    final String modeStr = await SettingsUtil.loadStabilizationMode();
+    stabilizationMode = StabilizationMode.fromString(modeStr);
 
     await _initializeGoalsAndOffsets();
   }
@@ -509,11 +515,306 @@ class FaceStabilizer {
   /// Returns (success, preScore, twoPassScore, threePassScore, fourPassScore, finalScore, finalEyeDeltaY, finalEyeDistance)
   /// Scores are null if that pass was not attempted
   ///
-  /// NEW SEQUENTIAL REFINEMENT APPROACH:
+  /// FAST MODE: Translation-only multi-pass (up to 4 passes)
+  /// SLOW MODE: Full affine refinement (rotation, scale, translation passes)
+  Future<(bool, double?, double?, double?, double?, double?, double?, double?)> _performMultiPassFix(
+    List<dynamic> stabFaces,
+    List<Point<double>?> eyes,
+    Point<double> goalLeftEye,
+    Point<double> goalRightEye,
+    double translateX,
+    double translateY,
+    double rotationDegrees,
+    double scaleFactor,
+    Uint8List imageBytesStabilized,
+    String rawPhotoPath,
+    String stabilizedJpgPhotoPath,
+    List<String> toDelete,
+    int imgWidth,
+    int imgHeight,
+    Uint8List srcBytes,
+    CancellationToken? token,
+  ) async {
+    if (stabilizationMode == StabilizationMode.fast) {
+      return _performFastMultiPass(
+        stabFaces, eyes, goalLeftEye, goalRightEye,
+        translateX, translateY, rotationDegrees, scaleFactor,
+        imageBytesStabilized, rawPhotoPath, stabilizedJpgPhotoPath,
+        toDelete, imgWidth, imgHeight, srcBytes, token,
+      );
+    } else {
+      return _performSlowMultiPass(
+        stabFaces, eyes, goalLeftEye, goalRightEye,
+        translateX, translateY, rotationDegrees, scaleFactor,
+        imageBytesStabilized, rawPhotoPath, stabilizedJpgPhotoPath,
+        toDelete, imgWidth, imgHeight, srcBytes, token,
+      );
+    }
+  }
+
+  /// FAST MODE: Translation-only multi-pass correction (up to 4 passes).
+  /// This is the original algorithm that only adjusts X/Y translation.
+  Future<(bool, double?, double?, double?, double?, double?, double?, double?)> _performFastMultiPass(
+    List<dynamic> stabFaces,
+    List<Point<double>?> eyes,
+    Point<double> goalLeftEye,
+    Point<double> goalRightEye,
+    double translateX,
+    double translateY,
+    double rotationDegrees,
+    double scaleFactor,
+    Uint8List imageBytesStabilized,
+    String rawPhotoPath,
+    String stabilizedJpgPhotoPath,
+    List<String> toDelete,
+    int imgWidth,
+    int imgHeight,
+    Uint8List srcBytes,
+    CancellationToken? token,
+  ) async {
+    bool successfulStabilization = false;
+
+    final double firstPassScore =
+        calculateStabScore(eyes, goalLeftEye, goalRightEye);
+    final (
+      double overshotLeftX,
+      double overshotLeftY,
+      double overshotRightX,
+      double overshotRightY
+    ) = _calculateOvershots(eyes, goalLeftEye, goalRightEye);
+
+    if (!correctionIsNeeded(firstPassScore, overshotLeftX, overshotRightX,
+        overshotLeftY, overshotRightY)) {
+      // No correction needed - save with first pass result
+      successfulStabilization = await saveStabilizedImage(
+        imageBytesStabilized,
+        rawPhotoPath,
+        stabilizedJpgPhotoPath,
+        firstPassScore,
+        translateX: translateX,
+        translateY: translateY,
+        rotationDegrees: rotationDegrees,
+        scaleFactor: scaleFactor,
+      );
+      return (successfulStabilization, firstPassScore, null, null, null, firstPassScore, null, null);
+    }
+
+    final String stabilizedPhotoPath = await StabUtils.getStabilizedImagePath(
+        rawPhotoPath, projectId, projectOrientation);
+
+    // Track best result across all passes
+    Uint8List bestBytes = imageBytesStabilized;
+    double bestScore = firstPassScore;
+    double bestTX = translateX;
+    double bestTY = translateY;
+
+    // Track scores and state for each pass
+    double? twoPassScore, threePassScore, fourPassScore;
+    bool usedTwoPass = false, usedThreePass = false, usedFourPass = false;
+    List<Point<double>?>? currentEyes = eyes;
+    double currentTX = translateX;
+    double currentTY = translateY;
+
+    // === TWO-PASS ===
+    token?.throwIfCancelled();
+    LogService.instance.log(
+        "Attempting two-pass correction. First-pass score = $firstPassScore...");
+
+    var (double ovLX, double ovLY, double ovRX, double ovRY) =
+        _calculateOvershots(currentEyes, goalLeftEye, goalRightEye);
+    final (double twoPassTX, double twoPassTY) =
+        _calculateNewTranslations(currentTX, currentTY, ovLX, ovRX, ovLY, ovRY);
+
+    Uint8List? twoPassBytes =
+        await StabUtils.generateStabilizedImageBytesCVAsync(
+      srcBytes,
+      rotationDegrees,
+      scaleFactor,
+      twoPassTX,
+      twoPassTY,
+      canvasWidth,
+      canvasHeight,
+      token: token,
+    );
+    if (twoPassBytes == null) return (false, firstPassScore, null, null, null, firstPassScore, null, null);
+
+    final twoPassFaces = await StabUtils.getFacesFromBytes(twoPassBytes,
+        filterByFaceSize: false, imageWidth: canvasWidth);
+    if (twoPassFaces == null) return (false, firstPassScore, null, null, null, firstPassScore, null, null);
+
+    List<Point<double>?> twoPassEyes = _filterAndCenterEyes(twoPassFaces);
+
+    if (twoPassEyes.length >= 2 &&
+        twoPassEyes[0] != null &&
+        twoPassEyes[1] != null) {
+      twoPassScore = calculateStabScore(twoPassEyes, goalLeftEye, goalRightEye);
+      if (twoPassScore < bestScore) {
+        usedTwoPass = true;
+        bestBytes = twoPassBytes;
+        bestScore = twoPassScore;
+        bestTX = twoPassTX;
+        bestTY = twoPassTY;
+        currentEyes = twoPassEyes;
+        currentTX = twoPassTX;
+        currentTY = twoPassTY;
+      }
+    }
+
+    // === THREE-PASS (only if two-pass improved) ===
+    if (usedTwoPass &&
+        currentEyes.length >= 2 &&
+        currentEyes[0] != null &&
+        currentEyes[1] != null) {
+      token?.throwIfCancelled();
+      (ovLX, ovLY, ovRX, ovRY) =
+          _calculateOvershots(currentEyes, goalLeftEye, goalRightEye);
+
+      if (correctionIsNeeded(bestScore, ovLX, ovRX, ovLY, ovRY)) {
+        LogService.instance.log(
+            "Attempting three-pass correction. Two-pass score = $twoPassScore...");
+
+        final (double threePassTX, double threePassTY) =
+            _calculateNewTranslations(
+                currentTX, currentTY, ovLX, ovRX, ovLY, ovRY);
+
+        Uint8List? threePassBytes =
+            await StabUtils.generateStabilizedImageBytesCVAsync(
+          srcBytes,
+          rotationDegrees,
+          scaleFactor,
+          threePassTX,
+          threePassTY,
+          canvasWidth,
+          canvasHeight,
+          token: token,
+        );
+
+        if (threePassBytes != null) {
+          final threePassFaces = await StabUtils.getFacesFromBytes(
+              threePassBytes,
+              filterByFaceSize: false,
+              imageWidth: canvasWidth);
+
+          if (threePassFaces != null) {
+            List<Point<double>?> threePassEyes =
+                _filterAndCenterEyes(threePassFaces);
+
+            if (threePassEyes.length >= 2 &&
+                threePassEyes[0] != null &&
+                threePassEyes[1] != null) {
+              threePassScore =
+                  calculateStabScore(threePassEyes, goalLeftEye, goalRightEye);
+              if (threePassScore < bestScore) {
+                usedThreePass = true;
+                bestBytes = threePassBytes;
+                bestScore = threePassScore;
+                bestTX = threePassTX;
+                bestTY = threePassTY;
+                currentEyes = threePassEyes;
+                currentTX = threePassTX;
+                currentTY = threePassTY;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // === FOUR-PASS (only if three-pass improved) ===
+    if (usedThreePass &&
+        currentEyes.length >= 2 &&
+        currentEyes[0] != null &&
+        currentEyes[1] != null) {
+      token?.throwIfCancelled();
+      (ovLX, ovLY, ovRX, ovRY) =
+          _calculateOvershots(currentEyes, goalLeftEye, goalRightEye);
+
+      if (correctionIsNeeded(bestScore, ovLX, ovRX, ovLY, ovRY)) {
+        LogService.instance.log(
+            "Attempting four-pass correction. Three-pass score = $threePassScore...");
+
+        final (double fourPassTX, double fourPassTY) =
+            _calculateNewTranslations(
+                currentTX, currentTY, ovLX, ovRX, ovLY, ovRY);
+
+        Uint8List? fourPassBytes =
+            await StabUtils.generateStabilizedImageBytesCVAsync(
+          srcBytes,
+          rotationDegrees,
+          scaleFactor,
+          fourPassTX,
+          fourPassTY,
+          canvasWidth,
+          canvasHeight,
+          token: token,
+        );
+
+        if (fourPassBytes != null) {
+          final fourPassFaces = await StabUtils.getFacesFromBytes(fourPassBytes,
+              filterByFaceSize: false, imageWidth: canvasWidth);
+
+          if (fourPassFaces != null) {
+            List<Point<double>?> fourPassEyes =
+                _filterAndCenterEyes(fourPassFaces);
+
+            if (fourPassEyes.length >= 2 &&
+                fourPassEyes[0] != null &&
+                fourPassEyes[1] != null) {
+              fourPassScore =
+                  calculateStabScore(fourPassEyes, goalLeftEye, goalRightEye);
+              if (fourPassScore < bestScore) {
+                usedFourPass = true;
+                bestBytes = fourPassBytes;
+                bestScore = fourPassScore;
+                bestTX = fourPassTX;
+                bestTY = fourPassTY;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Save the best result
+    if (bestScore < 20) {
+      successfulStabilization = await saveStabilizedImage(
+        bestBytes,
+        rawPhotoPath,
+        stabilizedPhotoPath,
+        bestScore,
+        translateX: bestTX,
+        translateY: bestTY,
+        rotationDegrees: rotationDegrees,
+        scaleFactor: scaleFactor,
+      );
+    } else {
+      LogService.instance.log("STAB FAILURE. STAB SCORE: $bestScore");
+      await StabUtils.writeImagesBytesToJpgFile(bestBytes, stabilizedPhotoPath);
+      await _handleStabilizationFailure(
+          rawPhotoPath, stabilizedPhotoPath, toDelete);
+      successfulStabilization = false;
+    }
+
+    return (
+      successfulStabilization,
+      firstPassScore,
+      usedTwoPass ? twoPassScore : null,
+      usedThreePass ? threePassScore : null,
+      usedFourPass ? fourPassScore : null,
+      bestScore,
+      null,  // No finalEyeDeltaY in fast mode
+      null,  // No finalEyeDistance in fast mode
+    );
+  }
+
+  /// SLOW MODE: Full affine refinement with rotation, scale, and translation passes.
+  /// This is the new algorithm that adjusts all affine transformation parameters.
+  ///
+  /// Sequential refinement approach:
   /// 1. Rotation Pass: Fix eye angle (make eyes horizontal)
   /// 2. Scale Pass: Fix eye distance
-  /// 3. Translation Passes: Fix eye position (existing logic)
-  Future<(bool, double?, double?, double?, double?, double?, double?, double?)> _performMultiPassFix(
+  /// 3. Translation Passes: Fix eye position
+  Future<(bool, double?, double?, double?, double?, double?, double?, double?)> _performSlowMultiPass(
     List<dynamic> stabFaces,
     List<Point<double>?> eyes,
     Point<double> goalLeftEye,

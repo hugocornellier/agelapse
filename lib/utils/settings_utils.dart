@@ -302,4 +302,16 @@ class SettingsUtil {
     await DB.instance.setSettingByTitle(
         'grid_mode_index', gridModeIndex.toString(), projectId);
   }
+
+  static Future<String> loadStabilizationMode() async {
+    try {
+      return await DB.instance.getSettingValueByTitle('stabilization_mode');
+    } catch (e) {
+      return 'fast';
+    }
+  }
+
+  static Future<void> saveStabilizationMode(String mode) async {
+    await DB.instance.setSettingByTitle('stabilization_mode', mode);
+  }
 }

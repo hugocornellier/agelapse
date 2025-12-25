@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'log_service.dart';
+import '../models/stabilization_mode.dart';
 
 /// Accumulates stabilization metrics for benchmarking.
 ///
@@ -18,6 +19,7 @@ class StabilizationBenchmark {
   final List<double> _scaleErrors = []; // |eyeDistance - goalDistance| in pixels
 
   double? _goalEyeDistance;
+  StabilizationMode? _mode;
 
   /// Add a stabilization result to the benchmark.
   void addResult({
@@ -25,6 +27,7 @@ class StabilizationBenchmark {
     double? finalEyeDeltaY,
     double? finalEyeDistance,
     double? goalEyeDistance,
+    StabilizationMode? mode,
   }) {
     if (finalScore != null) {
       _scores.add(finalScore);
@@ -36,6 +39,7 @@ class StabilizationBenchmark {
       _scaleErrors.add((finalEyeDistance - goalEyeDistance).abs());
       _goalEyeDistance ??= goalEyeDistance;
     }
+    _mode ??= mode;
   }
 
   /// Reset all accumulated metrics.
@@ -44,6 +48,7 @@ class StabilizationBenchmark {
     _rotationErrors.clear();
     _scaleErrors.clear();
     _goalEyeDistance = null;
+    _mode = null;
   }
 
   /// Number of results collected.
@@ -62,6 +67,7 @@ class StabilizationBenchmark {
     LogService.instance.log("       STABILIZATION BENCHMARK RESULTS");
     LogService.instance.log(separator);
     LogService.instance.log("Photos processed: ${_scores.length}");
+    LogService.instance.log("Mode: ${_mode?.name ?? 'unknown'}");
     if (_goalEyeDistance != null) {
       LogService.instance.log("Goal eye distance: ${_goalEyeDistance!.toStringAsFixed(2)}px");
     }

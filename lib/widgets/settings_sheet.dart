@@ -75,6 +75,7 @@ class SettingsSheetState extends State<SettingsSheet> {
   String aspectRatio = "16:9";
   int gridCount = 4;
   int _gridModeIndex = 0;
+  String _stabilizationMode = 'fast';
 
   // Lazy initialization to avoid blocking widget creation
   FlutterLocalNotificationsPlugin? _flutterLocalNotificationsPlugin;
@@ -149,11 +150,13 @@ class SettingsSheetState extends State<SettingsSheet> {
         SettingsUtil.loadDailyNotificationTime(widget.projectId.toString()),
         SettingsUtil.loadGridModeIndex(widget.projectId.toString()),
         SettingsUtil.loadCameraMirror(widget.projectId.toString()),
+        SettingsUtil.loadStabilizationMode(),
       ]);
 
       notificationsEnabled = results[2] as bool;
       dailyNotificationTime = results[3] as String;
       _gridModeIndex = results[4] as int;
+      _stabilizationMode = results[6] as String;
 
       if (dailyNotificationTime == "not set") {
         _selectedTime = const TimeOfDay(hour: 17, minute: 0);
@@ -536,6 +539,7 @@ class SettingsSheetState extends State<SettingsSheet> {
         _buildProjectOrientationDropdown(),
         _buildResolutionDropdown(),
         _buildAspectRatioDropdown(),
+        _buildStabilizationModeDropdown(),
         _buildEyeScaleButton(),
         const SizedBox(height: 24),
       ],
@@ -747,6 +751,38 @@ class SettingsSheetState extends State<SettingsSheet> {
       DropdownMenuItem<String>(value: "3K", child: Text("3K")),
       DropdownMenuItem<String>(value: "4K", child: Text("4K")),
     ];
+  }
+
+  Widget _buildStabilizationModeDropdown() {
+    return SettingListTile(
+      title: 'Stabilization mode',
+      contentWidget: CustomDropdownButton<String>(
+        value: _stabilizationMode,
+        items: const [
+          DropdownMenuItem<String>(value: "fast", child: Text("Fast")),
+          DropdownMenuItem<String>(value: "slow", child: Text("Slow")),
+        ],
+        onChanged: (String? value) async {
+          if (value != null && value != _stabilizationMode) {
+            bool shouldProceed = await Utils.showConfirmChangeDialog(
+                context, "stabilization mode");
+
+            if (shouldProceed) {
+              setState(() => _stabilizationMode = value);
+
+              await widget.cancelStabCallback();
+              await SettingsUtil.saveStabilizationMode(value);
+              widget.refreshSettings();
+
+              await resetStabStatusAndRestartStabilization();
+            }
+          }
+        },
+      ),
+      infoContent: 'Fast: Translation-only correction (quicker).\n'
+          'Slow: Full affine correction including rotation and scale (more thorough).',
+      showInfo: true,
+    );
   }
 
   Widget _buildAspectRatioDropdown() {
