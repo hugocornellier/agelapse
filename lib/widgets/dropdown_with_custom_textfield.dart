@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../styles/styles.dart';
 import '../widgets/setting_list_tile.dart';
 import '../services/database_helper.dart';
 
@@ -7,13 +8,16 @@ class DropdownWithCustomTextField extends StatefulWidget {
   final String title;
   final int initialValue;
   final ValueChanged<int> onChanged;
+  final bool? showDivider;
 
-  const DropdownWithCustomTextField(
-      {super.key,
-      required this.projectId,
-      required this.title,
-      required this.initialValue,
-      required this.onChanged});
+  const DropdownWithCustomTextField({
+    super.key,
+    required this.projectId,
+    required this.title,
+    required this.initialValue,
+    required this.onChanged,
+    this.showDivider,
+  });
 
   @override
   DropdownWithCustomTextFieldState createState() =>
@@ -88,22 +92,38 @@ class DropdownWithCustomTextFieldState
   @override
   Widget build(BuildContext context) {
     return SettingListTile(
-        title: widget.title,
-        infoContent: "",
-        contentWidget: isCustom ? _buildCustomTextField() : _buildDropdown(),
-        showInfo: false);
+      title: widget.title,
+      infoContent: "",
+      contentWidget: isCustom ? _buildCustomTextField() : _buildDropdown(),
+      showInfo: false,
+      showDivider: widget.showDivider,
+    );
   }
 
   Widget _buildCustomTextField() {
-    return SizedBox(
+    return Container(
       width: 75,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.settingsCardBorder,
+        borderRadius: BorderRadius.circular(8),
+      ),
       child: TextField(
         focusNode: _focusNode,
         controller: _controller,
+        style: const TextStyle(
+          fontSize: 14,
+          color: AppColors.settingsTextPrimary,
+        ),
         decoration: const InputDecoration(
           hintText: '1-120',
-          contentPadding: EdgeInsets.all(4.0),
-          border: OutlineInputBorder(),
+          hintStyle: TextStyle(
+            color: AppColors.settingsTextTertiary,
+            fontSize: 14,
+          ),
+          contentPadding: EdgeInsets.zero,
+          border: InputBorder.none,
+          isDense: true,
         ),
         keyboardType: const TextInputType.numberWithOptions(decimal: false),
         textInputAction: TextInputAction.done,
@@ -113,19 +133,40 @@ class DropdownWithCustomTextFieldState
   }
 
   Widget _buildDropdown() {
-    return DropdownButton<int>(
-      value: isCustom ? -1 : currentValue,
-      onChanged: _handleDropdownChanged,
-      items: defaultValues
-          .map<DropdownMenuItem<int>>((int value) => DropdownMenuItem<int>(
-                value: value,
-                child: Text(value.toString()),
-              ))
-          .toList()
-        ..add(const DropdownMenuItem<int>(
-          value: -1,
-          child: Text('Custom'),
-        )),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.settingsCardBorder,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<int>(
+          value: isCustom ? -1 : currentValue,
+          onChanged: _handleDropdownChanged,
+          isDense: true,
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: AppColors.settingsTextSecondary,
+            size: 20,
+          ),
+          dropdownColor: AppColors.settingsCardBackground,
+          borderRadius: BorderRadius.circular(12),
+          style: const TextStyle(
+            fontSize: 14,
+            color: AppColors.settingsTextPrimary,
+          ),
+          items: defaultValues
+              .map<DropdownMenuItem<int>>((int value) => DropdownMenuItem<int>(
+                    value: value,
+                    child: Text(value.toString()),
+                  ))
+              .toList()
+            ..add(const DropdownMenuItem<int>(
+              value: -1,
+              child: Text('Custom'),
+            )),
+        ),
+      ),
     );
   }
 }

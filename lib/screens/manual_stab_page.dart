@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import '../services/face_stabilizer.dart';
 import '../services/database_helper.dart';
 import '../services/log_service.dart';
+import '../styles/styles.dart';
 import '../utils/dir_utils.dart';
 import '../utils/image_utils.dart';
 import '../utils/settings_utils.dart';
@@ -153,150 +154,405 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBody: true, // let the body draw underneath the bottom bar
-      appBar: AppBar(
-        toolbarHeight: 48,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        shadowColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        title: const Text(
-          'Manual Stabilization',
-          style: TextStyle(fontSize: 18),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.info_outline),
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Quick Guide'),
-                  content: const SingleChildScrollView(
-                    child: Text(
-                      '• Goal: Center each pupil on its vertical line and place both pupils exactly on the horizontal line.\n'
-                      '• Horiz. Offset (whole number, ±): Shifts the image left/right. Increase to move the face right, decrease to move left.\n'
-                      '• Vert. Offset (whole number, ±): Shifts the image up/down. Increase to move the face up, decrease to move down.\n'
-                      '• Scale Factor (positive decimal): Zooms in or out. Values > 1 enlarge, values between 0 and 1 shrink.\n'
-                      '• Rotation (decimal, ±): Tilts the image. Positive values rotate clockwise, negative counter-clockwise.\n\n'
-                      'Use the toolbar arrows or type exact numbers. Keep adjusting until the pupils touch all three guides.',
-                    ),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('OK'),
+      backgroundColor: AppColors.settingsBackground,
+      appBar: _buildAppBar(),
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            const double minPreviewHeight = 300;
+            const double controlsEstimatedHeight = 220; // controls + spacing
+            final double availableForPreview = constraints.maxHeight - 32 - controlsEstimatedHeight; // 32 for padding
+
+            if (availableForPreview >= minPreviewHeight) {
+              // Enough space - use Expanded layout
+              return Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildControlsSection(),
+                    const SizedBox(height: 20),
+                    Expanded(child: _buildPreviewSection()),
+                  ],
+                ),
+              );
+            } else {
+              // Not enough space - use scrollable layout with min height
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildControlsSection(),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      height: minPreviewHeight,
+                      child: _buildPreviewSection(),
                     ),
                   ],
                 ),
               );
-            },
+            }
+          },
+        ),
+      ),
+      bottomNavigationBar: _buildToolbar(context),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      toolbarHeight: 56,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      backgroundColor: AppColors.settingsBackground,
+      title: const Text(
+        'Manual Stabilization',
+        style: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: AppColors.settingsTextPrimary,
+        ),
+      ),
+      leading: GestureDetector(
+        onTap: () => Navigator.pop(context),
+        child: Container(
+          margin: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.settingsCardBackground,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppColors.settingsCardBorder,
+              width: 1,
+            ),
           ),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(0.5),
-          child: Container(
-            height: 0.5,
-            color: Colors.grey.shade700.withValues(alpha: 0.5),
+          child: const Icon(
+            Icons.arrow_back,
+            color: AppColors.settingsTextPrimary,
+            size: 20,
           ),
         ),
       ),
-      body: GestureDetector(
-        onTap: () {
-          FocusScope.of(context).unfocus();
-        },
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
+      actions: [
+        GestureDetector(
+          onTap: _showHelpDialog,
+          child: Container(
+            width: 40,
+            height: 40,
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: AppColors.settingsCardBackground,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.settingsCardBorder,
+                width: 1,
+              ),
+            ),
+            child: const Icon(
+              Icons.help_outline_rounded,
+              color: AppColors.settingsTextSecondary,
+              size: 20,
+            ),
+          ),
+        ),
+      ],
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(1),
+        child: Container(
+          height: 1,
+          color: AppColors.settingsDivider,
+        ),
+      ),
+    );
+  }
+
+  void _showHelpDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.settingsCardBackground,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Row(
+          children: [
+            Icon(
+              Icons.lightbulb_outline_rounded,
+              color: AppColors.settingsAccent,
+              size: 24,
+            ),
+            SizedBox(width: 12),
+            Text(
+              'Quick Guide',
+              style: TextStyle(
+                color: AppColors.settingsTextPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        content: const SingleChildScrollView(
+          child: Text(
+            'Goal: Center each pupil on its vertical line and place both pupils exactly on the horizontal line.\n\n'
+            'Horiz. Offset (whole number, +/-)\nShifts the image left/right. Increase to move the face right, decrease to move left.\n\n'
+            'Vert. Offset (whole number, +/-)\nShifts the image up/down. Increase to move the face up, decrease to move down.\n\n'
+            'Scale Factor (positive decimal)\nZooms in or out. Values > 1 enlarge, values between 0 and 1 shrink.\n\n'
+            'Rotation (decimal, +/-)\nTilts the image. Positive values rotate clockwise, negative counter-clockwise.\n\n'
+            'Use the toolbar arrows or type exact numbers. Keep adjusting until the pupils touch all three guides.',
+            style: TextStyle(
+              color: AppColors.settingsTextSecondary,
+              fontSize: 14,
+              height: 1.6,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(
+              'Got it',
+              style: TextStyle(
+                color: AppColors.settingsAccent,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildControlsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 12),
+          child: Row(
+            children: [
+              Icon(
+                Icons.tune_rounded,
+                size: 18,
+                color: AppColors.settingsTextSecondary,
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'TRANSFORM CONTROLS',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.settingsTextSecondary,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.settingsCardBackground,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: AppColors.settingsCardBorder,
+              width: 1,
+            ),
+          ),
+          padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              const SizedBox(height: 4),
               Row(
                 children: [
                   Expanded(
-                    child: TextField(
+                    child: _buildInputField(
                       controller: _inputController1,
-                      keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true, signed: true),
-                      onEditingComplete: _validateInputs,
-                      decoration: const InputDecoration(
-                        labelText: 'Horiz. Offset',
-                        labelStyle: TextStyle(fontSize: 15),
-                        floatingLabelStyle: TextStyle(fontSize: 14),
-                        border: OutlineInputBorder(),
-                      ),
+                      label: 'Horiz. Offset',
+                      icon: Icons.swap_horiz_rounded,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   Expanded(
-                    child: TextField(
+                    child: _buildInputField(
                       controller: _inputController2,
-                      keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true, signed: true),
-                      onEditingComplete: _validateInputs,
-                      decoration: const InputDecoration(
-                        labelText: 'Vert. Offset',
-                        labelStyle: TextStyle(fontSize: 15),
-                        floatingLabelStyle: TextStyle(fontSize: 14),
-                        border: OutlineInputBorder(),
-                      ),
+                      label: 'Vert. Offset',
+                      icon: Icons.swap_vert_rounded,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
-                    child: TextField(
+                    child: _buildInputField(
                       controller: _inputController3,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      onEditingComplete: _validateInputs,
-                      decoration: const InputDecoration(
-                        labelText: 'Scale Factor',
-                        labelStyle: TextStyle(fontSize: 15),
-                        floatingLabelStyle: TextStyle(fontSize: 14),
-                        border: OutlineInputBorder(),
-                      ),
+                      label: 'Scale Factor',
+                      icon: Icons.zoom_in_rounded,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   Expanded(
-                    child: TextField(
+                    child: _buildInputField(
                       controller: _inputController4,
-                      keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true, signed: true),
-                      onEditingComplete: _validateInputs,
-                      decoration: const InputDecoration(
-                        labelText: 'Rotation (Deg)',
-                        labelStyle: TextStyle(fontSize: 15),
-                        floatingLabelStyle: TextStyle(fontSize: 14),
-                        border: OutlineInputBorder(),
-                      ),
+                      label: 'Rotation',
+                      icon: Icons.rotate_right_rounded,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              if (_stabilizedImageBytes != null &&
-                  _canvasWidth != null &&
-                  _canvasHeight != null &&
-                  _leftEyeXGoal != null &&
-                  _rightEyeXGoal != null &&
-                  _bothEyesYGoal != null)
-                Builder(builder: (context) {
-                  final double fullWidth = MediaQuery.of(context).size.width;
-                  final bool isPortrait = projectOrientation == 'portrait';
-                  final double previewWidth =
-                      isPortrait ? fullWidth * 0.8 : fullWidth;
-                  final double previewHeight =
-                      previewWidth * _canvasHeight! / _canvasWidth!;
-                  return Center(
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              icon,
+              size: 14,
+              color: AppColors.settingsTextTertiary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.settingsTextTertiary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.settingsCardBorder,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: TextField(
+            controller: controller,
+            keyboardType: const TextInputType.numberWithOptions(
+                decimal: true, signed: true),
+            onEditingComplete: _validateInputs,
+            style: const TextStyle(
+              fontSize: 16,
+              color: AppColors.settingsTextPrimary,
+              fontWeight: FontWeight.w500,
+            ),
+            decoration: InputDecoration(
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              border: InputBorder.none,
+              hintText: '0',
+              hintStyle: TextStyle(
+                color: AppColors.settingsTextTertiary.withValues(alpha: 0.5),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPreviewSection() {
+    if (_stabilizedImageBytes == null ||
+        _canvasWidth == null ||
+        _canvasHeight == null ||
+        _leftEyeXGoal == null ||
+        _rightEyeXGoal == null ||
+        _bothEyesYGoal == null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildPreviewHeader(),
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppColors.settingsCardBackground,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: AppColors.settingsCardBorder,
+                  width: 1,
+                ),
+              ),
+              child: const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.settingsAccent,
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'Loading preview...',
+                      style: TextStyle(
+                        color: AppColors.settingsTextSecondary,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildPreviewHeader(),
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final double aspectRatioValue = _canvasHeight! / _canvasWidth!;
+              final double availableWidth = (constraints.maxWidth - 24).clamp(0.0, double.infinity);
+              final double availableHeight = (constraints.maxHeight - 24).clamp(0.0, double.infinity);
+
+              if (availableWidth == 0 || availableHeight == 0) {
+                return const SizedBox.shrink();
+              }
+
+              double previewWidth = availableWidth;
+              double previewHeight = previewWidth * aspectRatioValue;
+
+              if (previewHeight > availableHeight) {
+                previewHeight = availableHeight;
+                previewWidth = previewHeight / aspectRatioValue;
+              }
+
+              return Container(
+                decoration: BoxDecoration(
+                  color: AppColors.settingsCardBackground,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: AppColors.settingsCardBorder,
+                    width: 1,
+                  ),
+                ),
+                padding: const EdgeInsets.all(12),
+                child: Center(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
                     child: Stack(
                       children: [
                         Image.memory(
@@ -321,26 +577,50 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
                             height: previewHeight,
                           ),
                         ),
-                        if (_isProcessing)
-                          const Positioned(
-                            top: 8,
-                            right: 8,
-                            child: SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          ),
                       ],
                     ),
-                  );
-                }),
-              const SizedBox(height: 88),
-            ],
+                  ),
+                ),
+              );
+            },
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildPreviewHeader() {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 12),
+      child: Row(
+        children: [
+          Icon(
+            Icons.preview_rounded,
+            size: 18,
+            color: AppColors.settingsTextSecondary,
+          ),
+          const SizedBox(width: 8),
+          const Text(
+            'PREVIEW',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.settingsTextSecondary,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const Spacer(),
+          if (_isProcessing)
+            const SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppColors.settingsAccent,
+              ),
+            ),
+        ],
       ),
-      bottomNavigationBar: _buildToolbar(context),
     );
   }
 
@@ -354,17 +634,49 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
       context: context,
       builder: (_) {
         return AlertDialog(
-          title: const Text('Invalid input'),
+          backgroundColor: AppColors.settingsCardBackground,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                color: AppColors.orange,
+                size: 24,
+              ),
+              SizedBox(width: 12),
+              Text(
+                'Invalid Input',
+                style: TextStyle(
+                  color: AppColors.settingsTextPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
           content: Text(
-            'Please check these fields:\n• ${fields.join('\n• ')}\n\n'
+            'Please check these fields:\n\n${fields.map((f) => '• $f').join('\n')}\n\n'
             'Horiz./Vert. Offset: whole numbers like -10 or 25\n'
             'Scale Factor: positive numbers like 1 or 2.5\n'
             'Rotation: any number like -1.5 or 30',
+            style: const TextStyle(
+              color: AppColors.settingsTextSecondary,
+              fontSize: 14,
+              height: 1.5,
+            ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
+              child: const Text(
+                'OK',
+                style: TextStyle(
+                  color: AppColors.settingsAccent,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ],
         );
@@ -592,8 +904,6 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
   }
 
   Widget _buildToolbar(BuildContext context) {
-    final Color barColor = Colors.black.withAlpha((0.75 * 255).round());
-
     void forceApplyNow() {
       final now = DateTime.now();
       if (_lastApplyAt != null &&
@@ -626,134 +936,128 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
       forceApplyNow();
     }
 
-    return ColoredBox(
-      color: barColor,
+    Widget buildToolbarButton({
+      required String key,
+      required IconData icon,
+      required VoidCallback onTap,
+      required VoidCallback onHold,
+      String? label,
+    }) {
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (_) => startHold(key, onHold),
+        onTapUp: (_) => stopHold(key),
+        onTapCancel: () => stopHold(key),
+        onPanEnd: (_) => stopHold(key),
+        onPanCancel: () => stopHold(key),
+        child: Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: AppColors.settingsCardBackground,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppColors.settingsCardBorder,
+              width: 1,
+            ),
+          ),
+          child: IconButton(
+            icon: Icon(icon, size: 22),
+            color: AppColors.settingsTextPrimary,
+            onPressed: () {
+              if (_recentlyHeld[key] == true) {
+                _recentlyHeld[key] = false;
+                return;
+              }
+              onTap();
+              forceApplyNow();
+            },
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.settingsBackground,
+        border: Border(
+          top: BorderSide(
+            color: AppColors.settingsDivider,
+            width: 1,
+          ),
+        ),
+      ),
       child: SafeArea(
         top: false,
         left: false,
         right: false,
-        child: SizedBox(
-          height: 56,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTapDown: (_) =>
-                    startHold('scaleMinus', () => _adjustScale(-0.01)),
-                onTapUp: (_) => stopHold('scaleMinus'),
-                onTapCancel: () => stopHold('scaleMinus'),
-                onPanEnd: (_) => stopHold('scaleMinus'),
-                onPanCancel: () => stopHold('scaleMinus'),
-                child: IconButton(
-                  icon: const Icon(Icons.remove),
-                  onPressed: () {
-                    if (_recentlyHeld['scaleMinus'] == true) {
-                      _recentlyHeld['scaleMinus'] = false;
-                      return;
-                    }
-                    _adjustScale(-0.01);
-                    forceApplyNow();
-                  },
+              // Scale controls
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.settingsCardBorder.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  children: [
+                    buildToolbarButton(
+                      key: 'scaleMinus',
+                      icon: Icons.remove_rounded,
+                      onTap: () => _adjustScale(-0.01),
+                      onHold: () => _adjustScale(-0.01),
+                    ),
+                    const SizedBox(width: 4),
+                    buildToolbarButton(
+                      key: 'scalePlus',
+                      icon: Icons.add_rounded,
+                      onTap: () => _adjustScale(0.01),
+                      onHold: () => _adjustScale(0.01),
+                    ),
+                  ],
                 ),
               ),
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTapDown: (_) =>
-                    startHold('scalePlus', () => _adjustScale(0.01)),
-                onTapUp: (_) => stopHold('scalePlus'),
-                onTapCancel: () => stopHold('scalePlus'),
-                onPanEnd: (_) => stopHold('scalePlus'),
-                onPanCancel: () => stopHold('scalePlus'),
-                child: IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: () {
-                    if (_recentlyHeld['scalePlus'] == true) {
-                      _recentlyHeld['scalePlus'] = false;
-                      return;
-                    }
-                    _adjustScale(0.01);
-                    forceApplyNow();
-                  },
+              // Direction controls
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.settingsCardBorder.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-              ),
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTapDown: (_) =>
-                    startHold('left', () => _adjustOffsets(dx: -1)),
-                onTapUp: (_) => stopHold('left'),
-                onTapCancel: () => stopHold('left'),
-                onPanEnd: (_) => stopHold('left'),
-                onPanCancel: () => stopHold('left'),
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_left),
-                  onPressed: () {
-                    if (_recentlyHeld['left'] == true) {
-                      _recentlyHeld['left'] = false;
-                      return;
-                    }
-                    _adjustOffsets(dx: -1);
-                    forceApplyNow();
-                  },
-                ),
-              ),
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTapDown: (_) =>
-                    startHold('right', () => _adjustOffsets(dx: 1)),
-                onTapUp: (_) => stopHold('right'),
-                onTapCancel: () => stopHold('right'),
-                onPanEnd: (_) => stopHold('right'),
-                onPanCancel: () => stopHold('right'),
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_right),
-                  onPressed: () {
-                    if (_recentlyHeld['right'] == true) {
-                      _recentlyHeld['right'] = false;
-                      return;
-                    }
-                    _adjustOffsets(dx: 1);
-                    forceApplyNow();
-                  },
-                ),
-              ),
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTapDown: (_) => startHold('up', () => _adjustOffsets(dy: -1)),
-                onTapUp: (_) => stopHold('up'),
-                onTapCancel: () => stopHold('up'),
-                onPanEnd: (_) => stopHold('up'),
-                onPanCancel: () => stopHold('up'),
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_upward),
-                  onPressed: () {
-                    if (_recentlyHeld['up'] == true) {
-                      _recentlyHeld['up'] = false;
-                      return;
-                    }
-                    _adjustOffsets(dy: -1);
-                    forceApplyNow();
-                  },
-                ),
-              ),
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTapDown: (_) =>
-                    startHold('down', () => _adjustOffsets(dy: 1)),
-                onTapUp: (_) => stopHold('down'),
-                onTapCancel: () => stopHold('down'),
-                onPanEnd: (_) => stopHold('down'),
-                onPanCancel: () => stopHold('down'),
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_downward),
-                  onPressed: () {
-                    if (_recentlyHeld['down'] == true) {
-                      _recentlyHeld['down'] = false;
-                      return;
-                    }
-                    _adjustOffsets(dy: 1);
-                    forceApplyNow();
-                  },
+                child: Row(
+                  children: [
+                    buildToolbarButton(
+                      key: 'left',
+                      icon: Icons.arrow_back_rounded,
+                      onTap: () => _adjustOffsets(dx: -1),
+                      onHold: () => _adjustOffsets(dx: -1),
+                    ),
+                    const SizedBox(width: 4),
+                    buildToolbarButton(
+                      key: 'right',
+                      icon: Icons.arrow_forward_rounded,
+                      onTap: () => _adjustOffsets(dx: 1),
+                      onHold: () => _adjustOffsets(dx: 1),
+                    ),
+                    const SizedBox(width: 4),
+                    buildToolbarButton(
+                      key: 'up',
+                      icon: Icons.arrow_upward_rounded,
+                      onTap: () => _adjustOffsets(dy: -1),
+                      onHold: () => _adjustOffsets(dy: -1),
+                    ),
+                    const SizedBox(width: 4),
+                    buildToolbarButton(
+                      key: 'down',
+                      icon: Icons.arrow_downward_rounded,
+                      onTap: () => _adjustOffsets(dy: 1),
+                      onHold: () => _adjustOffsets(dy: 1),
+                    ),
+                  ],
                 ),
               ),
             ],

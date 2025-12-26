@@ -307,7 +307,7 @@ class SettingsUtil {
     try {
       return await DB.instance.getSettingValueByTitle('stabilization_mode');
     } catch (e) {
-      return 'fast';
+      return 'slow';
     }
   }
 

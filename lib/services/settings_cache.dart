@@ -23,6 +23,7 @@ class SettingsCache {
   String aspectRatio;
   String resolution;
   bool watermarkEnabled;
+  String stabilizationMode;
   ui.Image? image;
   double eyeOffsetX;
   double eyeOffsetY;
@@ -45,6 +46,7 @@ class SettingsCache {
     required this.aspectRatio,
     required this.resolution,
     required this.watermarkEnabled,
+    required this.stabilizationMode,
     required this.image,
     required this.eyeOffsetX,
     required this.eyeOffsetY,
@@ -70,6 +72,7 @@ class SettingsCache {
       SettingsUtil.loadAspectRatio(projectId.toString()),
       SettingsUtil.loadVideoResolution(projectId.toString()),
       SettingsUtil.loadWatermarkSetting(projectId.toString()),
+      SettingsUtil.loadStabilizationMode(),
       ProjectUtils.loadImage('assets/images/person-grey.png'),
       SettingsUtil.loadOffsetXCurrentOrientation(projectId.toString()),
       SettingsUtil.loadOffsetYCurrentOrientation(projectId.toString()),
@@ -91,8 +94,8 @@ class SettingsCache {
       hasViewedFirstVideo: settings[3] as bool? ?? false,
       hasOpenedNotifications: settings[4] as bool? ?? false,
       hasTakenMoreThanOnePhoto: photoCount > 1,
-      hasSeenGuideModeTut: settings[15] as bool? ?? false,
-      hasTakenFirstPhoto: settings[16] as bool? ?? false,
+      hasSeenGuideModeTut: settings[16] as bool? ?? false,
+      hasTakenFirstPhoto: settings[17] as bool? ?? false,
       streak: streak ?? 0,
       photoCount: photoCount,
       firstPhotoDate: firstPhotoTimestamp != null
@@ -111,9 +114,10 @@ class SettingsCache {
       aspectRatio: settings[9] as String,
       resolution: settings[10] as String,
       watermarkEnabled: settings[11] as bool,
-      image: settings[12] as ui.Image,
-      eyeOffsetX: double.parse(settings[13] as String),
-      eyeOffsetY: double.parse(settings[14] as String),
+      stabilizationMode: settings[12] as String,
+      image: settings[13] as ui.Image,
+      eyeOffsetX: double.parse(settings[14] as String),
+      eyeOffsetY: double.parse(settings[15] as String),
     );
   }
 
@@ -138,6 +142,7 @@ class SettingsCache {
       aspectRatio: defaults['aspect_ratio']!,
       resolution: defaults['video_resolution']!,
       watermarkEnabled: defaults['enable_watermark'] == 'true',
+      stabilizationMode: defaults['stabilization_mode']!,
       image: await ProjectUtils.loadImage('assets/images/person-grey.png'),
       eyeOffsetX: double.parse(defaults['eyeOffsetXPortrait']!),
       eyeOffsetY: double.parse(defaults['eyeOffsetYPortrait']!),

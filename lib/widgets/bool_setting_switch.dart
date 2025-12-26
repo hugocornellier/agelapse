@@ -1,4 +1,6 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../styles/styles.dart';
 import '../widgets/setting_list_tile.dart';
 
 class BoolSettingSwitch extends StatefulWidget {
@@ -7,6 +9,7 @@ class BoolSettingSwitch extends StatefulWidget {
   final ValueChanged<bool> onChanged;
   final bool? showInfo;
   final String? infoContent;
+  final bool? showDivider;
 
   const BoolSettingSwitch({
     super.key,
@@ -15,6 +18,7 @@ class BoolSettingSwitch extends StatefulWidget {
     required this.onChanged,
     this.showInfo,
     this.infoContent,
+    this.showDivider,
   });
 
   @override
@@ -43,12 +47,13 @@ class BoolSettingSwitchState extends State<BoolSettingSwitch> {
       showInfo: widget.showInfo,
       infoContent: widget.infoContent,
       title: widget.title,
-      contentWidget: Transform.scale(
-        scale: 0.8,
-        child: Switch(
-          value: currentValue,
-          onChanged: _handleChanged,
-        ),
+      showDivider: widget.showDivider,
+      contentWidget: CupertinoSwitch(
+        value: currentValue,
+        onChanged: _handleChanged,
+        activeTrackColor: AppColors.settingsAccent,
+        thumbColor: Colors.white,
+        inactiveTrackColor: AppColors.settingsCardBorder,
       ),
     );
   }

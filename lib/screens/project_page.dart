@@ -322,33 +322,59 @@ class ProjectPageState extends State<ProjectPage> {
   }
 
   Widget _buildSectionTitle(String title, String step) {
+    IconData icon;
+    switch (title) {
+      case 'Getting started':
+        icon = Icons.rocket_launch_outlined;
+        break;
+      case 'Dashboard':
+        icon = Icons.dashboard_outlined;
+        break;
+      case 'Output':
+        icon = Icons.movie_outlined;
+        break;
+      default:
+        icon = Icons.info_outlined;
+    }
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          title,
-          style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w600),
-        ),
-        Align(
-          alignment: Alignment.centerRight,
-          child: Row(
-            children: [
-              Text(
-                step,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
+        Row(
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: AppColors.settingsTextSecondary,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              title.toUpperCase(),
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.settingsTextSecondary,
+                letterSpacing: 1.2,
               ),
-              if (title == 'Output') ...[
-                IconButton(
-                  icon: const Icon(Icons.more_vert, color: Colors.grey),
-                  onPressed: () => _openSettings(context),
-                ),
-              ],
-            ],
-          ),
+            ),
+          ],
         ),
+        if (title == 'Output')
+          GestureDetector(
+            onTap: () => _openSettings(context),
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.settingsCardBorder,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.tune,
+                size: 18,
+                color: AppColors.settingsTextSecondary,
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -427,6 +453,7 @@ class ProjectPageState extends State<ProjectPage> {
                 aspectRatio: widget.settingsCache!.aspectRatio,
                 resolution: widget.settingsCache!.resolution,
                 watermarkEnabled: widget.settingsCache!.watermarkEnabled,
+                stabilizationMode: widget.settingsCache!.stabilizationMode,
                 framerate: framerate,
               ),
             ),
@@ -474,6 +501,7 @@ class ProjectPageState extends State<ProjectPage> {
                 aspectRatio: widget.settingsCache!.aspectRatio,
                 resolution: widget.settingsCache!.resolution,
                 watermarkEnabled: widget.settingsCache!.watermarkEnabled,
+                stabilizationMode: widget.settingsCache!.stabilizationMode,
                 framerate: framerate,
               ),
             ),
@@ -665,8 +693,12 @@ class CardBuilder extends StatelessWidget {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: const Color(0xff212121),
-        borderRadius: BorderRadius.circular(8.0),
+        color: AppColors.settingsCardBackground,
+        borderRadius: BorderRadius.circular(14.0),
+        border: Border.all(
+          color: AppColors.settingsCardBorder,
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -696,7 +728,7 @@ class TextRowBuilder extends StatelessWidget {
         Text(
           title,
           style: const TextStyle(
-            color: Colors.grey,
+            color: AppColors.settingsTextSecondary,
             fontSize: 13.7,
             height: 0.97,
           ),
@@ -709,7 +741,7 @@ class TextRowBuilder extends StatelessWidget {
               value,
               style: valueTextStyle ??
                   const TextStyle(
-                    color: Colors.white,
+                    color: AppColors.settingsTextPrimary,
                     fontSize: 24.0,
                     fontWeight: FontWeight.bold,
                   ),
@@ -745,6 +777,7 @@ class SpecialCard extends StatelessWidget {
   final String aspectRatio;
   final String resolution;
   final bool watermarkEnabled;
+  final String stabilizationMode;
   final int framerate;
 
   const SpecialCard({
@@ -753,36 +786,63 @@ class SpecialCard extends StatelessWidget {
     required this.aspectRatio,
     required this.resolution,
     required this.watermarkEnabled,
+    required this.stabilizationMode,
     required this.framerate,
   });
 
   @override
   Widget build(BuildContext context) {
     return CardBuilder(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
       children: [
-        _buildTextRow("Framerate", "$framerate FPS"),
-        const SizedBox(height: 24),
-        _buildTextRow(
+        _buildSettingsRow("Framerate", "$framerate FPS"),
+        _buildSettingsRow(
             "Orientation", _capitalizeFirstLetter(projectOrientation)),
-        const SizedBox(height: 24),
-        _buildTextRow("Resolution", resolution),
-        const SizedBox(height: 24),
-        _buildTextRow("Aspect Ratio", aspectRatio),
-        const SizedBox(height: 24),
-        _buildTextRow("Watermark", watermarkEnabled ? "Yes" : "No"),
+        _buildSettingsRow("Resolution", resolution),
+        _buildSettingsRow("Aspect ratio", aspectRatio),
+        _buildSettingsRow(
+            "Stabilization", _capitalizeFirstLetter(stabilizationMode)),
+        _buildSettingsRow("Watermark", watermarkEnabled ? "Yes" : "No",
+            showDivider: false),
       ],
     );
   }
 
-  Widget _buildTextRow(String title, String value) {
-    return TextRowBuilder(
-      title: title,
-      value: value,
-      valueTextStyle: const TextStyle(
-        color: Colors.white,
-        fontSize: 16.0,
-        fontWeight: FontWeight.normal,
-      ),
+  Widget _buildSettingsRow(String title, String value,
+      {bool showDivider = true}) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: AppColors.settingsTextPrimary,
+                  fontSize: 13.0,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: AppColors.settingsTextSecondary,
+                  fontSize: 13.0,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (showDivider)
+          const Divider(
+            height: 1,
+            thickness: 1,
+            color: AppColors.settingsCardBorder,
+          ),
+      ],
     );
   }
 

@@ -277,7 +277,7 @@ class DB {
     'video_resolution': '1080p',
     'aspect_ratio': '16:9',
     'selected_guide_photo': 'not set',
-    'stabilization_mode': 'fast',
+    'stabilization_mode': 'slow',
   };
 
   Future<Map<String, dynamic>?> getSettingByTitle(String title,

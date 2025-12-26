@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../services/database_helper.dart';
 import '../../utils/dir_utils.dart';
+import '../styles/styles.dart';
 import '../utils/utils.dart';
 import '../widgets/grid_painter_se.dart';
 import '../utils/output_image_loader.dart';
@@ -120,38 +121,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
         if (didPop) return;
 
         if (_hasUnsavedChanges) {
-          bool? saveChanges = await showDialog<bool>(
-            context: context,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                title: const Text('Unsaved Changes'),
-                content: const Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                        'You have unsaved changes. Do you want to save them before leaving?'),
-                    SizedBox(height: 16.0),
-                    Text(
-                      '⚠️ WARNING: ',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    Text('All photos will need to be re-stabilized.'),
-                  ],
-                ),
-                actions: <Widget>[
-                  TextButton(
-                    child: const Text('Cancel'),
-                    onPressed: () => Navigator.of(context).pop(false),
-                  ),
-                  TextButton(
-                    child: const Text('Save'),
-                    onPressed: () => Navigator.of(context).pop(true),
-                  ),
-                ],
-              );
-            },
-          );
+          bool? saveChanges = await _showUnsavedChangesDialog();
 
           if (saveChanges == true) {
             await _saveChanges();
@@ -166,27 +136,8 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
         }
       },
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text("Output Position"),
-          actions: [
-            if (_hasUnsavedChanges)
-              IconButton(
-                icon: _isSaving
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : (_showCheckmark
-                        ? const Icon(Icons.check_circle, color: Colors.green)
-                        : const Icon(Icons.playlist_add_check_circle)),
-                onPressed: _isSaving
-                    ? null
-                    : () async {
-                        final bool shouldProceed =
-                            await Utils.showConfirmChangeDialog(
-                                context, "eye position");
-                        if (shouldProceed) await _saveChanges();
-                      },
-              ),
-          ],
-        ),
+        backgroundColor: AppColors.settingsBackground,
+        appBar: _buildAppBar(),
         body: Stack(
           children: [
             Column(
@@ -195,49 +146,283 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                 const SizedBox(height: 20.0),
               ],
             ),
-            if (_isInfoWidgetVisible)
-              Positioned(
-                bottom: 64,
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.black
-                        .withAlpha(230), // Equivalent to opacity 0.9
-                    borderRadius:
-                        BorderRadius.circular(16), // More rounded corners
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        "Drag guide lines to optimal position. Tap\n"
-                        "checkmark to save changes. Note: Camera guide\n"
-                        "lines don't affect output guide lines.",
-                        style: TextStyle(color: Colors.white, fontSize: 12),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: () =>
-                            setState(() => _isInfoWidgetVisible = false),
-                        child: const Icon(
-                          Icons.close,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+            if (_isInfoWidgetVisible) _buildInfoBanner(),
           ],
         ),
       ),
     );
   }
 
-  // TO REPLACE WITH
+  Future<bool?> _showUnsavedChangesDialog() {
+    return showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppColors.settingsCardBackground,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Row(
+            children: [
+              Icon(
+                Icons.save_outlined,
+                color: AppColors.settingsAccent,
+                size: 24,
+              ),
+              SizedBox(width: 12),
+              Text(
+                'Unsaved Changes',
+                style: TextStyle(
+                  color: AppColors.settingsTextPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              const Text(
+                'You have unsaved changes. Do you want to save them before leaving?',
+                style: TextStyle(
+                  color: AppColors.settingsTextSecondary,
+                  fontSize: 14,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 16.0),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.orange.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: AppColors.orange.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: AppColors.orange,
+                      size: 20,
+                    ),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'All photos will need to be re-stabilized.',
+                        style: TextStyle(
+                          color: AppColors.orange,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text(
+                'Discard',
+                style: TextStyle(
+                  color: AppColors.settingsTextSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+            TextButton(
+              child: const Text(
+                'Save',
+                style: TextStyle(
+                  color: AppColors.settingsAccent,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              onPressed: () => Navigator.of(context).pop(true),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      toolbarHeight: 56,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      backgroundColor: AppColors.settingsBackground,
+      title: const Text(
+        'Output Position',
+        style: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: AppColors.settingsTextPrimary,
+        ),
+      ),
+      leading: GestureDetector(
+        onTap: () {
+          if (_hasUnsavedChanges) {
+            _showUnsavedChangesDialog().then((saveChanges) async {
+              if (saveChanges == true) {
+                await _saveChanges();
+                if (mounted) Navigator.of(context).pop();
+              } else if (saveChanges == false) {
+                if (mounted) Navigator.of(context).pop();
+              }
+            });
+          } else {
+            Navigator.pop(context);
+          }
+        },
+        child: Container(
+          margin: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.settingsCardBackground,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppColors.settingsCardBorder,
+              width: 1,
+            ),
+          ),
+          child: const Icon(
+            Icons.arrow_back,
+            color: AppColors.settingsTextPrimary,
+            size: 20,
+          ),
+        ),
+      ),
+      actions: [
+        if (_hasUnsavedChanges)
+          GestureDetector(
+            onTap: _isSaving
+                ? null
+                : () async {
+                    final bool shouldProceed =
+                        await Utils.showConfirmChangeDialog(
+                            context, "eye position");
+                    if (shouldProceed) await _saveChanges();
+                  },
+            child: Container(
+              width: 44,
+              height: 44,
+              margin: const EdgeInsets.only(right: 8),
+              decoration: BoxDecoration(
+                color: _showCheckmark
+                    ? Colors.green.withValues(alpha: 0.15)
+                    : AppColors.settingsAccent.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _showCheckmark
+                      ? Colors.green.withValues(alpha: 0.3)
+                      : AppColors.settingsAccent.withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              child: _isSaving
+                  ? const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.settingsAccent,
+                      ),
+                    )
+                  : Icon(
+                      _showCheckmark
+                          ? Icons.check_circle_rounded
+                          : Icons.save_rounded,
+                      color: _showCheckmark
+                          ? Colors.green
+                          : AppColors.settingsAccent,
+                      size: 22,
+                    ),
+            ),
+          ),
+      ],
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(1),
+        child: Container(
+          height: 1,
+          color: AppColors.settingsDivider,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoBanner() {
+    return Positioned(
+      bottom: 24,
+      left: 16,
+      right: 16,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.settingsCardBackground,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: AppColors.settingsCardBorder,
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.settingsAccent.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.lightbulb_outline_rounded,
+                color: AppColors.settingsAccent,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Text(
+                "Drag guide lines to optimal position. Tap save to apply changes.\n"
+                "Note: Camera guide lines don't affect output.",
+                style: TextStyle(
+                  color: AppColors.settingsTextSecondary,
+                  fontSize: 13,
+                  height: 1.4,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: () => setState(() => _isInfoWidgetVisible = false),
+              child: Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: AppColors.settingsCardBorder,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.close,
+                  color: AppColors.settingsTextSecondary,
+                  size: 16,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildImageLayer(BuildContext context) {
     return Expanded(
       child: LayoutBuilder(
@@ -275,71 +460,107 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                   left: leftPad,
                   right: leftPad,
                   top: topPad,
-                  child: SizedBox(
-                    width: adjustedWidth,
-                    height: adjustedHeight,
-                    child: GestureDetector(
-                      key: _widgetKey,
-                      onPanStart: (details) {
-                        final dx = details.localPosition.dx;
-                        final dy = details.localPosition.dy;
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.settingsCardBorder,
+                        width: 1,
+                      ),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(11),
+                      child: SizedBox(
+                        width: adjustedWidth,
+                        height: adjustedHeight,
+                        child: GestureDetector(
+                          key: _widgetKey,
+                          onPanStart: (details) {
+                            final dx = details.localPosition.dx;
+                            final dy = details.localPosition.dy;
 
-                        final centerX = adjustedWidth / 2;
-                        final leftX = centerX - _offsetX * adjustedWidth;
-                        final rightX = centerX + _offsetX * adjustedWidth;
-                        final centerY = _offsetY * adjustedHeight;
+                            final centerX = adjustedWidth / 2;
+                            final leftX = centerX - _offsetX * adjustedWidth;
+                            final rightX = centerX + _offsetX * adjustedWidth;
+                            final centerY = _offsetY * adjustedHeight;
 
-                        final distanceToLeftX = (dx - leftX).abs();
-                        final distanceToRightX = (dx - rightX).abs();
-                        final distanceToHorizontalLine = (dy - centerY).abs();
+                            final distanceToLeftX = (dx - leftX).abs();
+                            final distanceToRightX = (dx - rightX).abs();
+                            final distanceToHorizontalLine =
+                                (dy - centerY).abs();
 
-                        setState(() {
-                          _isDraggingVertical =
-                              (distanceToLeftX < 20 || distanceToRightX < 20);
-                          _draggingRight = distanceToRightX < distanceToLeftX;
-                          _isDraggingHorizontal = (!_isDraggingVertical &&
-                              distanceToHorizontalLine < 20);
-                        });
-                      },
-                      onPanUpdate: (details) {
-                        if (_isDraggingVertical) {
-                          setState(() {
-                            final delta = details.delta.dx / adjustedWidth;
-                            _offsetX += _draggingRight ? delta : -delta;
-                            _offsetX = _offsetX.clamp(0.0, 1.0);
-                            _hasUnsavedChanges = true;
-                          });
-                        } else if (_isDraggingHorizontal) {
-                          setState(() {
-                            final delta = details.delta.dy / adjustedHeight;
-                            _offsetY += delta;
-                            _offsetY = _offsetY.clamp(0.0, 1.0);
-                            _hasUnsavedChanges = true;
-                          });
-                        }
-                      },
-                      onPanEnd: (details) {
-                        _isDraggingVertical = false;
-                        _isDraggingHorizontal = false;
-                      },
-                      child: ClipRect(
-                        child: CustomPaint(
-                          painter: GridPainterSE(
-                            _offsetX,
-                            _offsetY,
-                            outputImageLoader.ghostImageOffsetX,
-                            outputImageLoader.ghostImageOffsetY,
-                            outputImageLoader.guideImage,
-                            outputImageLoader.aspectRatio!,
-                            outputImageLoader.projectOrientation!,
-                          ),
-                          child: SizedBox(
-                            width: adjustedWidth,
-                            height: adjustedHeight,
+                            setState(() {
+                              _isDraggingVertical = (distanceToLeftX < 20 ||
+                                  distanceToRightX < 20);
+                              _draggingRight =
+                                  distanceToRightX < distanceToLeftX;
+                              _isDraggingHorizontal = (!_isDraggingVertical &&
+                                  distanceToHorizontalLine < 20);
+                            });
+                          },
+                          onPanUpdate: (details) {
+                            if (_isDraggingVertical) {
+                              setState(() {
+                                final delta = details.delta.dx / adjustedWidth;
+                                _offsetX += _draggingRight ? delta : -delta;
+                                _offsetX = _offsetX.clamp(0.0, 1.0);
+                                _hasUnsavedChanges = true;
+                              });
+                            } else if (_isDraggingHorizontal) {
+                              setState(() {
+                                final delta = details.delta.dy / adjustedHeight;
+                                _offsetY += delta;
+                                _offsetY = _offsetY.clamp(0.0, 1.0);
+                                _hasUnsavedChanges = true;
+                              });
+                            }
+                          },
+                          onPanEnd: (details) {
+                            _isDraggingVertical = false;
+                            _isDraggingHorizontal = false;
+                          },
+                          child: CustomPaint(
+                            painter: GridPainterSE(
+                              _offsetX,
+                              _offsetY,
+                              outputImageLoader.ghostImageOffsetX,
+                              outputImageLoader.ghostImageOffsetY,
+                              outputImageLoader.guideImage,
+                              outputImageLoader.aspectRatio!,
+                              outputImageLoader.projectOrientation!,
+                            ),
+                            child: SizedBox(
+                              width: adjustedWidth,
+                              height: adjustedHeight,
+                            ),
                           ),
                         ),
                       ),
                     ),
+                  ),
+                ),
+              if (outputImageLoader.guideImage == null)
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.settingsAccent,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Loading preview...',
+                        style: TextStyle(
+                          color: AppColors.settingsTextSecondary,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
             ],

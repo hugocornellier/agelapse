@@ -32,7 +32,8 @@ class StabilizationResult {
 
   // Final benchmark metrics
   final double? finalScore; // Final stabilization score
-  final double? finalEyeDeltaY; // Final vertical difference between eyes (rotation error)
+  final double?
+      finalEyeDeltaY; // Final vertical difference between eyes (rotation error)
   final double? finalEyeDistance; // Final distance between eyes
   final double? goalEyeDistance; // Target eye distance
 
@@ -313,7 +314,8 @@ class FaceStabilizer {
   }
 
   /// Returns (success, preScore, twoPassScore, threePassScore, fourPassScore, finalScore, finalEyeDeltaY, finalEyeDistance)
-  Future<(bool, double?, double?, double?, double?, double?, double?, double?)> _finalizeStabilization(
+  Future<(bool, double?, double?, double?, double?, double?, double?, double?)>
+      _finalizeStabilization(
     String rawPhotoPath,
     String stabilizedJpgPhotoPath,
     int imgWidth,
@@ -391,7 +393,16 @@ class FaceStabilizer {
         rotationDegrees: rotationDegrees,
         scaleFactor: scaleFactor,
       );
-      return (success, score, null, null, null, score, null, null); // No multi-pass for fallback
+      return (
+        success,
+        score,
+        null,
+        null,
+        null,
+        score,
+        null,
+        null
+      ); // No multi-pass for fallback
     }
 
     List<Point<double>?> eyes = _filterAndCenterEyes(stabFaces);
@@ -421,10 +432,20 @@ class FaceStabilizer {
         rotationDegrees: rotationDegrees,
         scaleFactor: scaleFactor,
       );
-      return (success, score, null, null, null, score, null, null); // No multi-pass for fallback
+      return (
+        success,
+        score,
+        null,
+        null,
+        null,
+        score,
+        null,
+        null
+      ); // No multi-pass for fallback
     }
 
-    LogService.instance.log("Goal: L$goalLeftEye R$goalRightEye | Init: L${eyes[0]} R${eyes[1]}");
+    LogService.instance.log(
+        "Goal: L$goalLeftEye R$goalRightEye | Init: L${eyes[0]} R${eyes[1]}");
 
     List<String> toDelete = [
       await DirUtils.getPngPathFromRawPhotoPath(rawPhotoPath),
@@ -517,7 +538,8 @@ class FaceStabilizer {
   ///
   /// FAST MODE: Translation-only multi-pass (up to 4 passes)
   /// SLOW MODE: Full affine refinement (rotation, scale, translation passes)
-  Future<(bool, double?, double?, double?, double?, double?, double?, double?)> _performMultiPassFix(
+  Future<(bool, double?, double?, double?, double?, double?, double?, double?)>
+      _performMultiPassFix(
     List<dynamic> stabFaces,
     List<Point<double>?> eyes,
     Point<double> goalLeftEye,
@@ -537,24 +559,49 @@ class FaceStabilizer {
   ) async {
     if (stabilizationMode == StabilizationMode.fast) {
       return _performFastMultiPass(
-        stabFaces, eyes, goalLeftEye, goalRightEye,
-        translateX, translateY, rotationDegrees, scaleFactor,
-        imageBytesStabilized, rawPhotoPath, stabilizedJpgPhotoPath,
-        toDelete, imgWidth, imgHeight, srcBytes, token,
+        stabFaces,
+        eyes,
+        goalLeftEye,
+        goalRightEye,
+        translateX,
+        translateY,
+        rotationDegrees,
+        scaleFactor,
+        imageBytesStabilized,
+        rawPhotoPath,
+        stabilizedJpgPhotoPath,
+        toDelete,
+        imgWidth,
+        imgHeight,
+        srcBytes,
+        token,
       );
     } else {
       return _performSlowMultiPass(
-        stabFaces, eyes, goalLeftEye, goalRightEye,
-        translateX, translateY, rotationDegrees, scaleFactor,
-        imageBytesStabilized, rawPhotoPath, stabilizedJpgPhotoPath,
-        toDelete, imgWidth, imgHeight, srcBytes, token,
+        stabFaces,
+        eyes,
+        goalLeftEye,
+        goalRightEye,
+        translateX,
+        translateY,
+        rotationDegrees,
+        scaleFactor,
+        imageBytesStabilized,
+        rawPhotoPath,
+        stabilizedJpgPhotoPath,
+        toDelete,
+        imgWidth,
+        imgHeight,
+        srcBytes,
+        token,
       );
     }
   }
 
   /// FAST MODE: Translation-only multi-pass correction (up to 4 passes).
   /// This is the original algorithm that only adjusts X/Y translation.
-  Future<(bool, double?, double?, double?, double?, double?, double?, double?)> _performFastMultiPass(
+  Future<(bool, double?, double?, double?, double?, double?, double?, double?)>
+      _performFastMultiPass(
     List<dynamic> stabFaces,
     List<Point<double>?> eyes,
     Point<double> goalLeftEye,
@@ -596,7 +643,16 @@ class FaceStabilizer {
         rotationDegrees: rotationDegrees,
         scaleFactor: scaleFactor,
       );
-      return (successfulStabilization, firstPassScore, null, null, null, firstPassScore, null, null);
+      return (
+        successfulStabilization,
+        firstPassScore,
+        null,
+        null,
+        null,
+        firstPassScore,
+        null,
+        null
+      );
     }
 
     final String stabilizedPhotoPath = await StabUtils.getStabilizedImagePath(
@@ -636,11 +692,31 @@ class FaceStabilizer {
       canvasHeight,
       token: token,
     );
-    if (twoPassBytes == null) return (false, firstPassScore, null, null, null, firstPassScore, null, null);
+    if (twoPassBytes == null)
+      return (
+        false,
+        firstPassScore,
+        null,
+        null,
+        null,
+        firstPassScore,
+        null,
+        null
+      );
 
     final twoPassFaces = await StabUtils.getFacesFromBytes(twoPassBytes,
         filterByFaceSize: false, imageWidth: canvasWidth);
-    if (twoPassFaces == null) return (false, firstPassScore, null, null, null, firstPassScore, null, null);
+    if (twoPassFaces == null)
+      return (
+        false,
+        firstPassScore,
+        null,
+        null,
+        null,
+        firstPassScore,
+        null,
+        null
+      );
 
     List<Point<double>?> twoPassEyes = _filterAndCenterEyes(twoPassFaces);
 
@@ -802,8 +878,8 @@ class FaceStabilizer {
       usedThreePass ? threePassScore : null,
       usedFourPass ? fourPassScore : null,
       bestScore,
-      null,  // No finalEyeDeltaY in fast mode
-      null,  // No finalEyeDistance in fast mode
+      null, // No finalEyeDeltaY in fast mode
+      null, // No finalEyeDistance in fast mode
     );
   }
 
@@ -814,7 +890,8 @@ class FaceStabilizer {
   /// 1. Rotation Pass: Fix eye angle (make eyes horizontal)
   /// 2. Scale Pass: Fix eye distance
   /// 3. Translation Passes: Fix eye position
-  Future<(bool, double?, double?, double?, double?, double?, double?, double?)> _performSlowMultiPass(
+  Future<(bool, double?, double?, double?, double?, double?, double?, double?)>
+      _performSlowMultiPass(
     List<dynamic> stabFaces,
     List<Point<double>?> eyes,
     Point<double> goalLeftEye,
@@ -839,8 +916,8 @@ class FaceStabilizer {
 
     // Log initial eye positions for debugging
     final double initialEyeDeltaY = eyes[1]!.y - eyes[0]!.y;
-    final double initialEyeDistance = sqrt(
-        pow(eyes[1]!.x - eyes[0]!.x, 2) + pow(eyes[1]!.y - eyes[0]!.y, 2));
+    final double initialEyeDistance =
+        sqrt(pow(eyes[1]!.x - eyes[0]!.x, 2) + pow(eyes[1]!.y - eyes[0]!.y, 2));
     LogService.instance.log(
         "Init: score=${firstPassScore.toStringAsFixed(2)}, tilt=${initialEyeDeltaY.toStringAsFixed(1)}px, dist=${initialEyeDistance.toStringAsFixed(1)}→$eyeDistanceGoal");
 
@@ -864,7 +941,16 @@ class FaceStabilizer {
         rotationDegrees: rotationDegrees,
         scaleFactor: scaleFactor,
       );
-      return (successfulStabilization, firstPassScore, null, null, null, firstPassScore, initialEyeDeltaY, initialEyeDistance);
+      return (
+        successfulStabilization,
+        firstPassScore,
+        null,
+        null,
+        null,
+        firstPassScore,
+        initialEyeDeltaY,
+        initialEyeDistance
+      );
     }
 
     final String stabilizedPhotoPath = await StabUtils.getStabilizedImagePath(
@@ -891,8 +977,10 @@ class FaceStabilizer {
     for (int rotPass = 1; rotPass <= maxRotationPasses; rotPass++) {
       token?.throwIfCancelled();
 
-      if (currentEyes == null || currentEyes.length < 2 ||
-          currentEyes[0] == null || currentEyes[1] == null) {
+      if (currentEyes == null ||
+          currentEyes.length < 2 ||
+          currentEyes[0] == null ||
+          currentEyes[1] == null) {
         break;
       }
 
@@ -909,8 +997,14 @@ class FaceStabilizer {
 
       Uint8List? rotPassBytes =
           await StabUtils.generateStabilizedImageBytesCVAsync(
-        srcBytes, newRotation, bestScale, rotTX, rotTY,
-        canvasWidth, canvasHeight, token: token,
+        srcBytes,
+        newRotation,
+        bestScale,
+        rotTX,
+        rotTY,
+        canvasWidth,
+        canvasHeight,
+        token: token,
       );
 
       if (rotPassBytes == null) break;
@@ -953,10 +1047,12 @@ class FaceStabilizer {
 
     // === SCALE REFINEMENT PASSES ===
     const int maxScalePasses = 3;
-    double currentEyeDistance = (currentEyes != null && currentEyes.length >= 2 &&
-        currentEyes[0] != null && currentEyes[1] != null)
+    double currentEyeDistance = (currentEyes != null &&
+            currentEyes.length >= 2 &&
+            currentEyes[0] != null &&
+            currentEyes[1] != null)
         ? sqrt(pow(currentEyes[1]!.x - currentEyes[0]!.x, 2) +
-               pow(currentEyes[1]!.y - currentEyes[0]!.y, 2))
+            pow(currentEyes[1]!.y - currentEyes[0]!.y, 2))
         : eyeDistanceGoal;
     double scaleError = (currentEyeDistance - eyeDistanceGoal).abs();
     final double initialScaleError = scaleError;
@@ -965,8 +1061,10 @@ class FaceStabilizer {
     for (int scalePass = 1; scalePass <= maxScalePasses; scalePass++) {
       token?.throwIfCancelled();
 
-      if (currentEyes == null || currentEyes.length < 2 ||
-          currentEyes[0] == null || currentEyes[1] == null) {
+      if (currentEyes == null ||
+          currentEyes.length < 2 ||
+          currentEyes[0] == null ||
+          currentEyes[1] == null) {
         break;
       }
 
@@ -982,8 +1080,14 @@ class FaceStabilizer {
 
       Uint8List? scalePassBytes =
           await StabUtils.generateStabilizedImageBytesCVAsync(
-        srcBytes, bestRotation, newScale, scaleTX, scaleTY,
-        canvasWidth, canvasHeight, token: token,
+        srcBytes,
+        bestRotation,
+        newScale,
+        scaleTX,
+        scaleTY,
+        canvasWidth,
+        canvasHeight,
+        token: token,
       );
 
       if (scalePassBytes == null) break;
@@ -1003,7 +1107,7 @@ class FaceStabilizer {
 
       double newEyeDistance = sqrt(
           pow(scalePassEyes[1]!.x - scalePassEyes[0]!.x, 2) +
-          pow(scalePassEyes[1]!.y - scalePassEyes[0]!.y, 2));
+              pow(scalePassEyes[1]!.y - scalePassEyes[0]!.y, 2));
       double newScaleError = (newEyeDistance - eyeDistanceGoal).abs();
       scalePassScore =
           calculateStabScore(scalePassEyes, goalLeftEye, goalRightEye);
@@ -1032,8 +1136,10 @@ class FaceStabilizer {
     // Up to 3 iterative passes to fix eye position
     token?.throwIfCancelled();
 
-    if (currentEyes == null || currentEyes.length < 2 ||
-        currentEyes[0] == null || currentEyes[1] == null) {
+    if (currentEyes == null ||
+        currentEyes.length < 2 ||
+        currentEyes[0] == null ||
+        currentEyes[1] == null) {
       // Can't do translation passes without valid eyes, save current best and return
       bool success = await saveStabilizedImage(
         bestBytes,
@@ -1045,7 +1151,16 @@ class FaceStabilizer {
         rotationDegrees: bestRotation,
         scaleFactor: bestScale,
       );
-      return (success, firstPassScore, rotationPassScore, scalePassScore, null, bestScore, null, null);
+      return (
+        success,
+        firstPassScore,
+        rotationPassScore,
+        scalePassScore,
+        null,
+        bestScore,
+        null,
+        null
+      );
     }
 
     var (double ovLX, double ovLY, double ovRX, double ovRY) =
@@ -1064,8 +1179,8 @@ class FaceStabilizer {
 
       if (!correctionIsNeeded(bestScore, ovLX, ovRX, ovLY, ovRY)) break;
 
-      final (double transTX, double transTY) =
-          _calculateNewTranslations(currentTX, currentTY, ovLX, ovRX, ovLY, ovRY);
+      final (double transTX, double transTY) = _calculateNewTranslations(
+          currentTX, currentTY, ovLX, ovRX, ovLY, ovRY);
 
       Uint8List? transPassBytes =
           await StabUtils.generateStabilizedImageBytesCVAsync(
@@ -1086,8 +1201,7 @@ class FaceStabilizer {
 
       if (transPassFaces == null) break;
 
-      List<Point<double>?> transPassEyes =
-          _filterAndCenterEyes(transPassFaces);
+      List<Point<double>?> transPassEyes = _filterAndCenterEyes(transPassFaces);
 
       if (transPassEyes.length < 2 ||
           transPassEyes[0] == null ||
@@ -1135,8 +1249,10 @@ class FaceStabilizer {
     // === FINAL CLEANUP PASS ===
     token?.throwIfCancelled();
 
-    final Point<double>? cleanupLeftEye = (currentEyes != null && currentEyes.isNotEmpty) ? currentEyes[0] : null;
-    final Point<double>? cleanupRightEye = (currentEyes != null && currentEyes.length > 1) ? currentEyes[1] : null;
+    final Point<double>? cleanupLeftEye =
+        (currentEyes != null && currentEyes.isNotEmpty) ? currentEyes[0] : null;
+    final Point<double>? cleanupRightEye =
+        (currentEyes != null && currentEyes.length > 1) ? currentEyes[1] : null;
 
     double cleanupEyeDeltaY = 0;
     double cleanupEyeDistance = eyeDistanceGoal;
@@ -1146,11 +1262,13 @@ class FaceStabilizer {
 
     if (cleanupLeftEye != null && cleanupRightEye != null) {
       cleanupEyeDeltaY = cleanupRightEye.y - cleanupLeftEye.y;
-      cleanupEyeDistance = sqrt(
-          pow(cleanupRightEye.x - cleanupLeftEye.x, 2) +
+      cleanupEyeDistance = sqrt(pow(cleanupRightEye.x - cleanupLeftEye.x, 2) +
           pow(cleanupRightEye.y - cleanupLeftEye.y, 2));
       cleanupScaleError = (cleanupEyeDistance - eyeDistanceGoal).abs();
-      cleanupRotationAngle = atan2(cleanupEyeDeltaY, cleanupRightEye.x - cleanupLeftEye.x) * 180 / pi;
+      cleanupRotationAngle =
+          atan2(cleanupEyeDeltaY, cleanupRightEye.x - cleanupLeftEye.x) *
+              180 /
+              pi;
       needsCleanup = cleanupEyeDeltaY.abs() > 1.5 || cleanupScaleError > 2.0;
     }
 
@@ -1168,8 +1286,8 @@ class FaceStabilizer {
       }
 
       // Apply cleanup transform
-      final (double? cleanupTX, double? cleanupTY) =
-          _calculateTranslateData(cleanupScale, cleanupRotation, imgWidth, imgHeight);
+      final (double? cleanupTX, double? cleanupTY) = _calculateTranslateData(
+          cleanupScale, cleanupRotation, imgWidth, imgHeight);
 
       if (cleanupTX != null && cleanupTY != null) {
         Uint8List? cleanupBytes =
@@ -1185,10 +1303,8 @@ class FaceStabilizer {
         );
 
         if (cleanupBytes != null) {
-          final cleanupFaces = await StabUtils.getFacesFromBytes(
-              cleanupBytes,
-              filterByFaceSize: false,
-              imageWidth: canvasWidth);
+          final cleanupFaces = await StabUtils.getFacesFromBytes(cleanupBytes,
+              filterByFaceSize: false, imageWidth: canvasWidth);
 
           if (cleanupFaces != null) {
             List<Point<double>?> cleanupEyes =
@@ -1224,10 +1340,11 @@ class FaceStabilizer {
         filterByFaceSize: false, imageWidth: canvasWidth);
     if (finalFaces != null) {
       final finalEyes = _filterAndCenterEyes(finalFaces);
-      if (finalEyes.length >= 2 && finalEyes[0] != null && finalEyes[1] != null) {
+      if (finalEyes.length >= 2 &&
+          finalEyes[0] != null &&
+          finalEyes[1] != null) {
         finalEyeDeltaY = finalEyes[1]!.y - finalEyes[0]!.y;
-        finalEyeDistance = sqrt(
-            pow(finalEyes[1]!.x - finalEyes[0]!.x, 2) +
+        finalEyeDistance = sqrt(pow(finalEyes[1]!.x - finalEyes[0]!.x, 2) +
             pow(finalEyes[1]!.y - finalEyes[0]!.y, 2));
         LogService.instance.log(
             "Final: score=${bestScore.toStringAsFixed(2)}, tilt=${finalEyeDeltaY.toStringAsFixed(1)}px, dist=${finalEyeDistance.toStringAsFixed(1)}px");

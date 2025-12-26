@@ -16,7 +16,8 @@ import '../models/stabilization_mode.dart';
 class StabilizationBenchmark {
   final List<double> _scores = [];
   final List<double> _rotationErrors = []; // |eyeDeltaY| in pixels
-  final List<double> _scaleErrors = []; // |eyeDistance - goalDistance| in pixels
+  final List<double> _scaleErrors =
+      []; // |eyeDistance - goalDistance| in pixels
 
   double? _goalEyeDistance;
   StabilizationMode? _mode;
@@ -69,7 +70,8 @@ class StabilizationBenchmark {
     LogService.instance.log("Photos processed: ${_scores.length}");
     LogService.instance.log("Mode: ${_mode?.name ?? 'unknown'}");
     if (_goalEyeDistance != null) {
-      LogService.instance.log("Goal eye distance: ${_goalEyeDistance!.toStringAsFixed(2)}px");
+      LogService.instance
+          .log("Goal eye distance: ${_goalEyeDistance!.toStringAsFixed(2)}px");
     }
     LogService.instance.log("");
 
@@ -80,14 +82,16 @@ class StabilizationBenchmark {
 
     // Rotation Error
     if (_rotationErrors.isNotEmpty) {
-      LogService.instance.log("ROTATION ERROR (|eyeDeltaY| in px, lower is better):");
+      LogService.instance
+          .log("ROTATION ERROR (|eyeDeltaY| in px, lower is better):");
       _logStats(_rotationErrors, "  ");
       LogService.instance.log("");
     }
 
     // Scale Error
     if (_scaleErrors.isNotEmpty) {
-      LogService.instance.log("SCALE ERROR (distance from goal in px, lower is better):");
+      LogService.instance
+          .log("SCALE ERROR (distance from goal in px, lower is better):");
       _logStats(_scaleErrors, "  ");
       LogService.instance.log("");
     }
@@ -139,10 +143,14 @@ class StabilizationBenchmark {
 
     final total = _scores.length;
     LogService.instance.log("QUALITY DISTRIBUTION:");
-    LogService.instance.log("  Excellent (< 0.3):   $excellent (${(excellent * 100 / total).toStringAsFixed(1)}%)");
-    LogService.instance.log("  Good (0.3 - 0.6):    $good (${(good * 100 / total).toStringAsFixed(1)}%)");
-    LogService.instance.log("  Acceptable (0.6-1):  $acceptable (${(acceptable * 100 / total).toStringAsFixed(1)}%)");
-    LogService.instance.log("  Poor (> 1.0):        $poor (${(poor * 100 / total).toStringAsFixed(1)}%)");
+    LogService.instance.log(
+        "  Excellent (< 0.3):   $excellent (${(excellent * 100 / total).toStringAsFixed(1)}%)");
+    LogService.instance.log(
+        "  Good (0.3 - 0.6):    $good (${(good * 100 / total).toStringAsFixed(1)}%)");
+    LogService.instance.log(
+        "  Acceptable (0.6-1):  $acceptable (${(acceptable * 100 / total).toStringAsFixed(1)}%)");
+    LogService.instance.log(
+        "  Poor (> 1.0):        $poor (${(poor * 100 / total).toStringAsFixed(1)}%)");
   }
 
   double _percentile(List<double> sorted, int percentile) {
@@ -185,27 +193,38 @@ class StabilizationBenchmark {
       'position': {
         'mean': _scores.reduce((a, b) => a + b) / _scores.length,
         'median': _percentile(sortedScores, 50),
-        'stdDev': _standardDeviation(_scores, _scores.reduce((a, b) => a + b) / _scores.length),
+        'stdDev': _standardDeviation(
+            _scores, _scores.reduce((a, b) => a + b) / _scores.length),
         'p95': _percentile(sortedScores, 95),
         'min': sortedScores.first,
         'max': sortedScores.last,
       },
-      'rotation': _rotationErrors.isNotEmpty ? {
-        'mean': _rotationErrors.reduce((a, b) => a + b) / _rotationErrors.length,
-        'median': _percentile(sortedRotation, 50),
-        'stdDev': _standardDeviation(_rotationErrors, _rotationErrors.reduce((a, b) => a + b) / _rotationErrors.length),
-        'p95': _percentile(sortedRotation, 95),
-        'min': sortedRotation.first,
-        'max': sortedRotation.last,
-      } : null,
-      'scale': _scaleErrors.isNotEmpty ? {
-        'mean': _scaleErrors.reduce((a, b) => a + b) / _scaleErrors.length,
-        'median': _percentile(sortedScale, 50),
-        'stdDev': _standardDeviation(_scaleErrors, _scaleErrors.reduce((a, b) => a + b) / _scaleErrors.length),
-        'p95': _percentile(sortedScale, 95),
-        'min': sortedScale.first,
-        'max': sortedScale.last,
-      } : null,
+      'rotation': _rotationErrors.isNotEmpty
+          ? {
+              'mean': _rotationErrors.reduce((a, b) => a + b) /
+                  _rotationErrors.length,
+              'median': _percentile(sortedRotation, 50),
+              'stdDev': _standardDeviation(
+                  _rotationErrors,
+                  _rotationErrors.reduce((a, b) => a + b) /
+                      _rotationErrors.length),
+              'p95': _percentile(sortedRotation, 95),
+              'min': sortedRotation.first,
+              'max': sortedRotation.last,
+            }
+          : null,
+      'scale': _scaleErrors.isNotEmpty
+          ? {
+              'mean':
+                  _scaleErrors.reduce((a, b) => a + b) / _scaleErrors.length,
+              'median': _percentile(sortedScale, 50),
+              'stdDev': _standardDeviation(_scaleErrors,
+                  _scaleErrors.reduce((a, b) => a + b) / _scaleErrors.length),
+              'p95': _percentile(sortedScale, 95),
+              'min': sortedScale.first,
+              'max': sortedScale.last,
+            }
+          : null,
     };
   }
 }

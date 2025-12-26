@@ -75,7 +75,7 @@ class SettingsSheetState extends State<SettingsSheet> {
   String aspectRatio = "16:9";
   int gridCount = 4;
   int _gridModeIndex = 0;
-  String _stabilizationMode = 'fast';
+  String _stabilizationMode = 'slow';
 
   // Lazy initialization to avoid blocking widget creation
   FlutterLocalNotificationsPlugin? _flutterLocalNotificationsPlugin;
@@ -225,6 +225,17 @@ class SettingsSheetState extends State<SettingsSheet> {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: _selectedTime,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: AppColors.settingsAccent,
+              surface: AppColors.settingsCardBackground,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
     if (picked != null && picked != _selectedTime) {
       setState(() => _selectedTime = picked);
@@ -256,26 +267,25 @@ class SettingsSheetState extends State<SettingsSheet> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        FocusScope.of(context).unfocus();
-      },
+      onTap: () => FocusScope.of(context).unfocus(),
       child: Container(
-        padding: const EdgeInsets.all(16.0),
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.85,
         ),
         decoration: const BoxDecoration(
-          color: Color(0xff121212),
+          color: AppColors.settingsBackground,
           borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(16.0),
-            topRight: Radius.circular(16.0),
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
           ),
         ),
-        child: Stack(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 70.0),
+            _buildHeader(),
+            Flexible(
               child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -283,61 +293,47 @@ class SettingsSheetState extends State<SettingsSheet> {
                         !widget.onlyShowNotificationSettings)
                       _buildSettingsSection(
                         'Projects',
+                        Icons.folder_outlined,
                         _buildProjectSettings,
+                      ),
+                    if (!widget.onlyShowNotificationSettings)
+                      _buildSettingsSection(
+                        'Stabilization',
+                        Icons.center_focus_strong_outlined,
+                        _buildStabilizationSettings,
+                      ),
+                    if (!widget.onlyShowNotificationSettings)
+                      _buildSettingsSection(
+                        'Video',
+                        Icons.movie_outlined,
+                        _buildVideoSettings,
                       ),
                     if (!widget.onlyShowVideoSettings &&
                         !widget.onlyShowNotificationSettings)
                       _buildSettingsSection(
-                        'Camera Settings',
+                        'Camera',
+                        Icons.camera_alt_outlined,
                         _buildCameraSettings,
                       ),
                     if (!widget.onlyShowVideoSettings)
                       _buildSettingsSection(
                         'Notifications',
+                        Icons.notifications_outlined,
                         _buildNotificationSettings,
                       ),
                     if (!widget.onlyShowVideoSettings &&
                         !widget.onlyShowNotificationSettings)
                       _buildSettingsSection(
-                        'Gallery Settings',
+                        'Gallery',
+                        Icons.grid_view_outlined,
                         _buildGallerySettings,
                       ),
                     if (!widget.onlyShowNotificationSettings)
                       _buildSettingsSection(
-                        'Video Settings',
-                        _buildVideoSettings,
-                      ),
-                    if (!widget.onlyShowNotificationSettings)
-                      _buildSettingsSection(
                         'Watermark',
+                        Icons.branding_watermark_outlined,
                         _buildWatermarkSettings,
                       ),
-                    if (widget.onlyShowNotificationSettings)
-                      const SizedBox(height: 50),
-                  ],
-                ),
-              ),
-            ),
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                color: const Color(0xff121212),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Settings',
-                            style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white)),
-                        _buildIconButton(),
-                      ],
-                    ),
-                    const Divider(),
                   ],
                 ),
               ),
@@ -348,49 +344,160 @@ class SettingsSheetState extends State<SettingsSheet> {
     );
   }
 
-  Widget _buildIconButton() {
-    return IconButton(
-      icon: Icon(
-        widget.onlyShowNotificationSettings ? Icons.check : Icons.close,
-        color: Colors.white,
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 12, 12, 16),
+      decoration: const BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: AppColors.settingsDivider,
+            width: 1,
+          ),
+        ),
       ),
-      onPressed: () {
-        Navigator.of(context).pop();
-
-        if (widget.onlyShowNotificationSettings) {
-          Utils.navigateToScreenReplaceNoAnim(
-              context,
-              MainNavigation(
-                projectId: widget.projectId,
-                projectName: "",
-                showFlashingCircle: false,
-              ));
-        }
-      },
+      child: Column(
+        children: [
+          // Drag handle
+          Container(
+            width: 36,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: AppColors.settingsTextTertiary,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Settings',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.settingsTextPrimary,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              _buildCloseButton(),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildSettingsSection(String title, Widget Function() buildSettings) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 16.0, bottom: 0.0),
-          child: Text(title, style: const TextStyle(color: Colors.grey)),
+  Widget _buildCloseButton() {
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).pop();
+        if (widget.onlyShowNotificationSettings) {
+          Utils.navigateToScreenReplaceNoAnim(
+            context,
+            MainNavigation(
+              projectId: widget.projectId,
+              projectName: "",
+              showFlashingCircle: false,
+            ),
+          );
+        }
+      },
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: AppColors.settingsCardBorder,
+          borderRadius: BorderRadius.circular(16),
         ),
-        FutureBuilder<void>(
-          future: _getFutureForTitle(title),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            } else if (snapshot.hasError) {
-              return Center(child: Text('Error: ${snapshot.error}'));
-            } else {
-              return buildSettings();
-            }
-          },
+        child: Icon(
+          widget.onlyShowNotificationSettings ? Icons.check : Icons.close,
+          color: AppColors.settingsTextSecondary,
+          size: 18,
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsSection(
+    String title,
+    IconData icon,
+    Widget Function() buildSettings,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 12),
+            child: Row(
+              children: [
+                Icon(
+                  icon,
+                  size: 18,
+                  color: AppColors.settingsTextSecondary,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  title.toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.settingsTextSecondary,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.settingsCardBackground,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: AppColors.settingsCardBorder,
+                width: 1,
+              ),
+            ),
+            child: FutureBuilder<void>(
+              future: _getFutureForTitle(title),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Center(
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.settingsAccent,
+                        ),
+                      ),
+                    ),
+                  );
+                } else if (snapshot.hasError) {
+                  return Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      'Error loading settings',
+                      style: TextStyle(
+                        color: Colors.red.shade300,
+                        fontSize: 14,
+                      ),
+                    ),
+                  );
+                } else {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: buildSettings(),
+                  );
+                }
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -398,13 +505,15 @@ class SettingsSheetState extends State<SettingsSheet> {
     switch (title) {
       case 'Projects':
         return _projectSettingsFuture;
-      case 'Camera Settings':
+      case 'Stabilization':
+        return _settingsFuture;
+      case 'Camera':
         return _settingsFuture;
       case 'Notifications':
         return _notificationInitialization;
-      case 'Gallery Settings':
+      case 'Gallery':
         return _gridCountFuture;
-      case 'Video Settings':
+      case 'Video':
         return _videoSettingsFuture;
       case 'Watermark':
         return _watermarkSettingsFuture;
@@ -417,7 +526,7 @@ class SettingsSheetState extends State<SettingsSheet> {
     return Column(
       children: [
         BoolSettingSwitch(
-          title: 'Set project as default',
+          title: 'Set as default project',
           initialValue: _isDefaultProject,
           showInfo: true,
           infoContent:
@@ -427,7 +536,6 @@ class SettingsSheetState extends State<SettingsSheet> {
                 value ? widget.projectId.toString() : 'none');
           },
         ),
-        const SizedBox(height: 20),
       ],
     );
   }
@@ -438,6 +546,7 @@ class SettingsSheetState extends State<SettingsSheet> {
         BoolSettingSwitch(
           title: 'Enable notifications',
           initialValue: notificationsEnabled,
+          showDivider: true,
           onChanged: (value) async {
             setState(() {
               notificationsEnabled = value;
@@ -453,25 +562,38 @@ class SettingsSheetState extends State<SettingsSheet> {
           },
         ),
         SettingListTile(
-          title: 'Daily notification time',
-          contentWidget: InkWell(
+          title: 'Daily reminder time',
+          contentWidget: GestureDetector(
             onTap: _selectTime,
             child: Container(
-              padding: const EdgeInsets.all(8.0),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey),
-                borderRadius: BorderRadius.circular(4.0),
+                color: AppColors.settingsCardBorder,
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(
-                _selectedTime.format(context),
-                style: const TextStyle(fontSize: 16),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _selectedTime.format(context),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: AppColors.settingsTextPrimary,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  const Icon(
+                    Icons.access_time,
+                    size: 16,
+                    color: AppColors.settingsTextSecondary,
+                  ),
+                ],
               ),
             ),
           ),
           infoContent: '',
           showInfo: false,
         ),
-        const SizedBox(height: 20),
       ],
     );
   }
@@ -480,14 +602,18 @@ class SettingsSheetState extends State<SettingsSheet> {
     return Column(
       children: [
         SettingListTile(
-          title: 'Grid count',
+          title: 'Grid columns',
           contentWidget: FutureBuilder<int>(
             future: _gridCountFuture,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const CircularProgressIndicator();
+                return const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                );
               } else if (snapshot.hasError) {
-                return Text('Error: ${snapshot.error}');
+                return const Text('Error');
               } else if (snapshot.hasData) {
                 return StatefulBuilder(
                   builder: (context, setState) {
@@ -521,13 +647,21 @@ class SettingsSheetState extends State<SettingsSheet> {
                   },
                 );
               }
-              return const Center(child: Text('Unexpected error'));
+              return const Text('Error');
             },
           ),
           infoContent: '',
           showInfo: false,
         ),
-        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Widget _buildStabilizationSettings() {
+    return Column(
+      children: [
+        _buildStabilizationModeDropdown(),
+        _buildEyeScaleButton(),
       ],
     );
   }
@@ -539,9 +673,6 @@ class SettingsSheetState extends State<SettingsSheet> {
         _buildProjectOrientationDropdown(),
         _buildResolutionDropdown(),
         _buildAspectRatioDropdown(),
-        _buildStabilizationModeDropdown(),
-        _buildEyeScaleButton(),
-        const SizedBox(height: 24),
       ],
     );
   }
@@ -558,11 +689,25 @@ class SettingsSheetState extends State<SettingsSheet> {
   }
 
   Widget _buildLoading() {
-    return const Center(child: CircularProgressIndicator());
+    return const Center(
+      child: SizedBox(
+        width: 20,
+        height: 20,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: AppColors.settingsAccent,
+        ),
+      ),
+    );
   }
 
   Widget _buildError(String error) {
-    return Center(child: Text('Error: $error'));
+    return Center(
+      child: Text(
+        'Error loading settings',
+        style: TextStyle(color: Colors.red.shade300),
+      ),
+    );
   }
 
   Widget _buildCameraSettings() {
@@ -576,7 +721,7 @@ class SettingsSheetState extends State<SettingsSheet> {
         } else if (snapshot.hasData) {
           return _buildCameraSettingsContent(snapshot.data!);
         }
-        return const Center(child: Text('Unexpected error'));
+        return const Text('Unexpected error');
       },
     );
   }
@@ -590,7 +735,7 @@ class SettingsSheetState extends State<SettingsSheet> {
         _buildGridModeDropdown(),
         _buildSaveToCameraRollSwitch(saveToCameraRoll),
         BoolSettingSwitch(
-          title: 'Mirror Front Camera',
+          title: 'Mirror front camera',
           initialValue: cameraMirror,
           onChanged: (bool value) async {
             setState(() {
@@ -605,7 +750,6 @@ class SettingsSheetState extends State<SettingsSheet> {
             widget.refreshSettings();
           },
         ),
-        const SizedBox(height: 20),
       ],
     );
   }
@@ -619,7 +763,8 @@ class SettingsSheetState extends State<SettingsSheet> {
     };
 
     return SettingListTile(
-      title: 'Grid mode',
+      title: 'Overlay mode',
+      showDivider: true,
       contentWidget: CustomDropdownButton<int>(
         value: _gridModeIndex,
         items: gridModeMap.entries.map((entry) {
@@ -649,8 +794,9 @@ class SettingsSheetState extends State<SettingsSheet> {
 
   Widget _buildSaveToCameraRollSwitch(bool saveToCameraRoll) {
     return BoolSettingSwitch(
-      title: 'Save photos to camera roll',
+      title: 'Save to camera roll',
       initialValue: saveToCameraRoll,
+      showDivider: true,
       onChanged: (bool value) {
         setState(() => saveToCameraRoll = value);
         _updateSetting('save_to_camera_roll', value);
@@ -661,6 +807,7 @@ class SettingsSheetState extends State<SettingsSheet> {
   Widget _buildProjectOrientationDropdown() {
     return SettingListTile(
       title: 'Orientation',
+      showDivider: true,
       contentWidget: CustomDropdownButton<String>(
         value: projectOrientation,
         items: const [
@@ -692,15 +839,17 @@ class SettingsSheetState extends State<SettingsSheet> {
 
   Widget _buildFramerateDropdown(int framerate) {
     return DropdownWithCustomTextField(
-        projectId: widget.projectId,
-        title: 'Framerate (FPS)',
-        initialValue: framerate,
-        onChanged: (newValue) async {
-          await DB.instance.setSettingByTitle(
-              'framerate', newValue.toString(), widget.projectId.toString());
-          widget.refreshSettings();
-          widget.stabCallback();
-        });
+      projectId: widget.projectId,
+      title: 'Framerate (FPS)',
+      initialValue: framerate,
+      showDivider: true,
+      onChanged: (newValue) async {
+        await DB.instance.setSettingByTitle(
+            'framerate', newValue.toString(), widget.projectId.toString());
+        widget.refreshSettings();
+        widget.stabCallback();
+      },
+    );
   }
 
   Future<void> resetStabStatusAndRestartStabilization() async {
@@ -718,6 +867,7 @@ class SettingsSheetState extends State<SettingsSheet> {
   Widget _buildResolutionDropdown() {
     return SettingListTile(
       title: 'Resolution',
+      showDivider: true,
       contentWidget: CustomDropdownButton<String>(
         value: resolution,
         items: _getResolutionDropdownItems(),
@@ -756,6 +906,7 @@ class SettingsSheetState extends State<SettingsSheet> {
   Widget _buildStabilizationModeDropdown() {
     return SettingListTile(
       title: 'Stabilization mode',
+      showDivider: true,
       contentWidget: CustomDropdownButton<String>(
         value: _stabilizationMode,
         items: const [
@@ -779,8 +930,8 @@ class SettingsSheetState extends State<SettingsSheet> {
           }
         },
       ),
-      infoContent: 'Fast: Translation-only correction (quicker).\n'
-          'Slow: Full affine correction including rotation and scale (more thorough).',
+      infoContent: 'Fast: Quicker, but less accurate.\n'
+          'Slow: More accurate, but takes longer.',
       showInfo: true,
     );
   }
@@ -788,6 +939,7 @@ class SettingsSheetState extends State<SettingsSheet> {
   Widget _buildAspectRatioDropdown() {
     return SettingListTile(
       title: 'Aspect ratio',
+      showDivider: true,
       contentWidget: CustomDropdownButton<String>(
         value: aspectRatio,
         items: const [
@@ -820,8 +972,8 @@ class SettingsSheetState extends State<SettingsSheet> {
   Widget _buildEyeScaleButton() {
     return SettingListTile(
       title: 'Eye position',
-      contentWidget: ElevatedButton(
-        onPressed: () => Utils.navigateToScreen(
+      contentWidget: GestureDetector(
+        onTap: () => Utils.navigateToScreen(
           context,
           SetEyePositionPage(
             projectId: widget.projectId,
@@ -830,13 +982,24 @@ class SettingsSheetState extends State<SettingsSheet> {
             refreshSettings: widget.refreshSettings,
           ),
         ),
-        style: ElevatedButton.styleFrom(
-          textStyle: const TextStyle(color: Colors.white),
-          backgroundColor: AppColors.evenDarkerLightBlue,
-        ),
-        child: const Text(
-          "Configure",
-          style: TextStyle(color: Colors.white),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.settingsAccent.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: AppColors.settingsAccent.withValues(alpha: 0.3),
+              width: 1,
+            ),
+          ),
+          child: const Text(
+            'Configure',
+            style: TextStyle(
+              color: AppColors.settingsAccent,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ),
       ),
       infoContent: '',
@@ -848,6 +1011,7 @@ class SettingsSheetState extends State<SettingsSheet> {
     return BoolSettingSwitch(
       title: 'Enable watermark',
       initialValue: enableWatermark,
+      showDivider: true,
       onChanged: (bool value) async {
         setState(() => enableWatermark = value);
         await DB.instance.setSettingByTitle(
@@ -860,17 +1024,20 @@ class SettingsSheetState extends State<SettingsSheet> {
 
   Widget _buildWatermarkImageInput() {
     return SettingListTile(
-        title: 'Watermark image',
-        contentWidget: ImagePickerWidget(
-            disabled: !enableWatermark, projectId: widget.projectId),
-        infoContent: '',
-        showInfo: false,
-        disabled: !enableWatermark);
+      title: 'Watermark image',
+      showDivider: true,
+      contentWidget: ImagePickerWidget(
+          disabled: !enableWatermark, projectId: widget.projectId),
+      infoContent: '',
+      showInfo: false,
+      disabled: !enableWatermark,
+    );
   }
 
   Widget _buildWatermarkPositionDropdown() {
     return SettingListTile(
-      title: 'Watermark position',
+      title: 'Position',
+      showDivider: true,
       contentWidget: CustomDropdownButton<String>(
         value: watermarkPosition,
         items: const [
@@ -903,7 +1070,7 @@ class SettingsSheetState extends State<SettingsSheet> {
 
   Widget _buildWatermarkOpacityDropdown() {
     return SettingListTile(
-      title: 'Watermark opacity',
+      title: 'Opacity',
       contentWidget: CustomDropdownButton<String>(
         value: watermarkOpacity,
         items: List.generate(9, (index) {
@@ -1005,32 +1172,60 @@ class ImagePickerWidgetState extends State<ImagePickerWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: widget.disabled || uploading ? null : _pickImage,
-      style: ButtonStyle(
-        backgroundColor: WidgetStateProperty.all<Color>(Colors.transparent),
-        shape: WidgetStateProperty.all<OutlinedBorder>(
-          const RoundedRectangleBorder(
-            borderRadius: BorderRadius.zero,
-          ),
+    return GestureDetector(
+      onTap: widget.disabled || uploading ? null : _pickImage,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: widget.disabled
+              ? AppColors.settingsCardBorder.withValues(alpha: 0.5)
+              : AppColors.settingsCardBorder,
+          borderRadius: BorderRadius.circular(8),
         ),
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          if (watermarkFilePath.isNotEmpty && watermarkExists) ...[
-            Image.file(
-              File(watermarkFilePath),
-              fit: BoxFit.cover,
-              width: 20,
-            ),
-          ] else ...[
-            const Icon(Icons.upload)
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (uploading)
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.settingsAccent,
+                ),
+              )
+            else if (watermarkFilePath.isNotEmpty && watermarkExists)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: Image.file(
+                  File(watermarkFilePath),
+                  fit: BoxFit.cover,
+                  width: 20,
+                  height: 20,
+                ),
+              )
+            else
+              Icon(
+                Icons.add_photo_alternate_outlined,
+                size: 18,
+                color: widget.disabled
+                    ? AppColors.settingsTextTertiary
+                    : AppColors.settingsTextSecondary,
+              ),
+            if (!uploading) ...[
+              const SizedBox(width: 6),
+              Text(
+                watermarkExists ? 'Change' : 'Select',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: widget.disabled
+                      ? AppColors.settingsTextTertiary
+                      : AppColors.settingsTextPrimary,
+                ),
+              ),
+            ],
           ],
-          uploading
-              ? const CircularProgressIndicator()
-              : Text(watermarkFilePath.isNotEmpty ? '' : 'Select'),
-        ],
+        ),
       ),
     );
   }
