@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import '../services/database_helper.dart';
 import '../services/face_stabilizer.dart';
+import '../styles/styles.dart';
 import '../utils/camera_utils.dart';
 import '../utils/dir_utils.dart';
 import '../utils/stabilizer_utils/stabilizer_utils.dart';
@@ -141,20 +142,60 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Confirm Stabilization'),
-          content: const Text('Do you want to stabilize on this face?'),
+          backgroundColor: AppColors.settingsCardBackground,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Row(
+            children: [
+              Icon(
+                Icons.face_rounded,
+                color: AppColors.settingsAccent,
+                size: 24,
+              ),
+              SizedBox(width: 12),
+              Text(
+                'Confirm Stabilization',
+                style: TextStyle(
+                  color: AppColors.settingsTextPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          content: const Text(
+            'Do you want to stabilize on this face?',
+            style: TextStyle(
+              color: AppColors.settingsTextSecondary,
+              fontSize: 14,
+              height: 1.5,
+            ),
+          ),
           actions: <Widget>[
             TextButton(
-              child: const Text('Cancel'),
               onPressed: () {
                 Navigator.of(context).pop(false);
               },
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: AppColors.settingsTextSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ),
             TextButton(
-              child: const Text('Confirm'),
               onPressed: () {
                 Navigator.of(context).pop(true);
               },
+              child: const Text(
+                'Confirm',
+                style: TextStyle(
+                  color: AppColors.settingsAccent,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ],
         );
@@ -162,12 +203,133 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
     );
   }
 
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      toolbarHeight: 56,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      backgroundColor: AppColors.settingsBackground,
+      title: const Text(
+        'Stabilize on Other Face',
+        style: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: AppColors.settingsTextPrimary,
+        ),
+      ),
+      leading: GestureDetector(
+        onTap: () => Navigator.pop(context),
+        child: Container(
+          margin: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.settingsCardBackground,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppColors.settingsCardBorder,
+              width: 1,
+            ),
+          ),
+          child: const Icon(
+            Icons.arrow_back,
+            color: AppColors.settingsTextPrimary,
+            size: 20,
+          ),
+        ),
+      ),
+      actions: [
+        GestureDetector(
+          onTap: _showHelpDialog,
+          child: Container(
+            width: 40,
+            height: 40,
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: AppColors.settingsCardBackground,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.settingsCardBorder,
+                width: 1,
+              ),
+            ),
+            child: const Icon(
+              Icons.help_outline_rounded,
+              color: AppColors.settingsTextSecondary,
+              size: 20,
+            ),
+          ),
+        ),
+      ],
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(1),
+        child: Container(
+          height: 1,
+          color: AppColors.settingsDivider,
+        ),
+      ),
+    );
+  }
+
+  void _showHelpDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.settingsCardBackground,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Row(
+          children: [
+            Icon(
+              Icons.lightbulb_outline_rounded,
+              color: AppColors.settingsAccent,
+              size: 24,
+            ),
+            SizedBox(width: 12),
+            Text(
+              'Quick Guide',
+              style: TextStyle(
+                color: AppColors.settingsTextPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        content: const SingleChildScrollView(
+          child: Text(
+            'This screen lets you choose which face to stabilize on when multiple faces are detected in a photo.\n\n'
+            'Detected faces are highlighted with red outlines. Tap on a face to select it as the stabilization target.\n\n'
+            'Use this when the automatic stabilization picked the wrong person, or when you want to create a timelapse focused on someone else in the photo.',
+            style: TextStyle(
+              color: AppColors.settingsTextSecondary,
+              fontSize: 14,
+              height: 1.6,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(
+              'Got it',
+              style: TextStyle(
+                color: AppColors.settingsAccent,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Stabilize'),
-      ),
+      backgroundColor: AppColors.settingsBackground,
+      appBar: _buildAppBar(),
       body: Center(
         child: stabCompletedSuccessfully == null
             ? !isLoading
@@ -180,26 +342,61 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
                 : Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const CircularProgressIndicator(),
-                      const SizedBox(height: 20),
-                      Text(loadingStatus),
+                      const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.settingsAccent,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        loadingStatus,
+                        style: const TextStyle(
+                          color: AppColors.settingsTextSecondary,
+                          fontSize: 14,
+                        ),
+                      ),
                     ],
                   )
             : stabCompletedSuccessfully!
                 ? Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.check, color: Colors.green),
-                      const SizedBox(height: 20),
-                      Text(loadingStatus),
+                      Icon(
+                        Icons.check_circle_rounded,
+                        color: AppColors.settingsAccent,
+                        size: 48,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        loadingStatus,
+                        style: const TextStyle(
+                          color: AppColors.settingsTextPrimary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ],
                   )
                 : Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.error_outline, color: Colors.red),
-                      const SizedBox(height: 20),
-                      Text(loadingStatus),
+                      const Icon(
+                        Icons.error_outline_rounded,
+                        color: AppColors.orange,
+                        size: 48,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        loadingStatus,
+                        style: const TextStyle(
+                          color: AppColors.settingsTextPrimary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ],
                   ),
       ),

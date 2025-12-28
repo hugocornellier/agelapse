@@ -18,6 +18,7 @@ import '../widgets/main_navigation.dart';
 import '../theme/theme.dart';
 import '../services/database_import_ffi.dart';
 import '../utils/dir_utils.dart';
+import '../utils/test_mode.dart' as test_config;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -64,8 +65,10 @@ Future<void> _main() async {
     );
 
     await windowManager.waitUntilReadyToShow(options, () async {
-      await windowManager.show();
-      await windowManager.focus();
+      if (!test_config.isTestMode) {
+        await windowManager.show();
+        await windowManager.focus();
+      }
 
       if (!hasProjects) {
         final currentSize = await windowManager.getSize();

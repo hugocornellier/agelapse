@@ -24,7 +24,6 @@ import '../../utils/dir_utils.dart';
 import '../../utils/gallery_utils.dart';
 import '../../utils/settings_utils.dart';
 import '../../utils/utils.dart';
-import '../../widgets/progress_widget.dart';
 import '../../widgets/yellow_tip_bar.dart';
 import '../manual_stab_page.dart';
 import '../stab_on_diff_face.dart';
@@ -604,6 +603,7 @@ class GalleryPageState extends State<GalleryPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.darkGrey,
       extendBodyBehindAppBar: true,
       body: Column(
         children: [
@@ -713,22 +713,7 @@ class GalleryPageState extends State<GalleryPage>
   }
 
   Widget _buildCustomHeader(BuildContext context) {
-    return Column(
-      children: [
-        SizedBox(height: MediaQuery.of(context).padding.top),
-        ProgressWidget(
-          stabilizingRunningInMain: widget.stabilizingRunningInMain,
-          videoCreationActiveInMain: widget.videoCreationActiveInMain,
-          progressPercent: widget.progressPercent,
-          goToPage: widget.goToPage,
-          importRunningInMain: widget.importRunningInMain,
-          selectedIndex: -1,
-          minutesRemaining: widget.minutesRemaining,
-          userRanOutOfSpace: widget.userRanOutOfSpace,
-        ),
-        _buildTabBarContainer(),
-      ],
-    );
+    return _buildTabBarContainer();
   }
 
   Widget _buildTabBarContainer() {

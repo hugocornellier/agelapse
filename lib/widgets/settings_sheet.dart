@@ -1002,8 +1002,9 @@ class SettingsSheetState extends State<SettingsSheet> {
           ),
         ),
       ),
-      infoContent: '',
-      showInfo: false,
+      infoContent:
+          'Controls where eyes are positioned in the output frame. Photos are transformed so that detected eyes align to this position, and the video output is consistent across frames.',
+      showInfo: true,
     );
   }
 

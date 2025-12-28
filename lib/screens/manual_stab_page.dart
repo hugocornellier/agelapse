@@ -162,7 +162,9 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
           builder: (context, constraints) {
             const double minPreviewHeight = 300;
             const double controlsEstimatedHeight = 220; // controls + spacing
-            final double availableForPreview = constraints.maxHeight - 32 - controlsEstimatedHeight; // 32 for padding
+            final double availableForPreview = constraints.maxHeight -
+                32 -
+                controlsEstimatedHeight; // 32 for padding
 
             if (availableForPreview >= minPreviewHeight) {
               // Enough space - use Expanded layout
@@ -525,8 +527,10 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final double aspectRatioValue = _canvasHeight! / _canvasWidth!;
-              final double availableWidth = (constraints.maxWidth - 24).clamp(0.0, double.infinity);
-              final double availableHeight = (constraints.maxHeight - 24).clamp(0.0, double.infinity);
+              final double availableWidth =
+                  (constraints.maxWidth - 24).clamp(0.0, double.infinity);
+              final double availableHeight =
+                  (constraints.maxHeight - 24).clamp(0.0, double.infinity);
 
               if (availableWidth == 0 || availableHeight == 0) {
                 return const SizedBox.shrink();

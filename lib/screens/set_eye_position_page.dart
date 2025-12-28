@@ -253,6 +253,61 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
     );
   }
 
+  void _showHelpDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.settingsCardBackground,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Row(
+          children: [
+            Icon(
+              Icons.lightbulb_outline_rounded,
+              color: AppColors.settingsAccent,
+              size: 24,
+            ),
+            SizedBox(width: 12),
+            Text(
+              'Quick Guide',
+              style: TextStyle(
+                color: AppColors.settingsTextPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        content: const SingleChildScrollView(
+          child: Text(
+            'This screen controls where eyes are positioned in the output frame.\n\n'
+            'Drag the horizontal guide line up or down to adjust the vertical eye position.\n\n'
+            'Drag the vertical guide lines left or right to adjust the horizontal eye spacing.\n\n'
+            'Photos are transformed so that detected eyes align to these positions, ensuring consistent framing across all images in your timelapse.',
+            style: TextStyle(
+              color: AppColors.settingsTextSecondary,
+              fontSize: 14,
+              height: 1.6,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(
+              'Got it',
+              style: TextStyle(
+                color: AppColors.settingsAccent,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       toolbarHeight: 56,
@@ -302,6 +357,27 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
         ),
       ),
       actions: [
+        GestureDetector(
+          onTap: _showHelpDialog,
+          child: Container(
+            width: 40,
+            height: 40,
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: AppColors.settingsCardBackground,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.settingsCardBorder,
+                width: 1,
+              ),
+            ),
+            child: const Icon(
+              Icons.help_outline_rounded,
+              color: AppColors.settingsTextSecondary,
+              size: 20,
+            ),
+          ),
+        ),
         if (_hasUnsavedChanges)
           GestureDetector(
             onTap: _isSaving

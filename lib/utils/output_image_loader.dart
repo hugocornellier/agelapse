@@ -33,6 +33,74 @@ class OutputImageLoader {
     await _initializeImageDirectory();
   }
 
+  /// Reset to placeholder state when orientation changes.
+  /// This clears the stale guide image and reloads orientation-specific settings.
+  Future<void> resetToPlaceholder() async {
+    // Dispose old image to free memory
+    guideImage?.dispose();
+
+    // Load placeholder
+    guideImage = await ProjectUtils.loadImage('assets/images/person-grey.png');
+    ghostImageOffsetX = 0.105;
+    ghostImageOffsetY = 0.241;
+
+    // Reload settings to get new orientation-specific offsets
+    await _loadSettings();
+  }
+
+  /// Attempt to load a real stabilized guide image for current settings.
+  ///
+  /// Returns `true` if a new image was loaded, `false` if no image available
+  /// or already showing the correct image. Safe to call repeatedly.
+  Future<bool> tryLoadRealGuideImage() async {
+    try {
+      final Map<String, Object?>? guidePhoto =
+          await DirUtils.getGuidePhoto(offsetX, projectId);
+
+      if (guidePhoto == null) {
+        // No stabilized image available for current orientation/offset
+        return false;
+      }
+
+      final String guideImagePath =
+          await DirUtils.getGuideImagePath(projectId, guidePhoto);
+
+      // Check if file exists
+      final file = File(guideImagePath);
+      if (!await file.exists()) {
+        return false;
+      }
+
+      // Get offset data from the photo
+      final stabilizedColumn =
+          DB.instance.getStabilizedColumn(projectOrientation!);
+      final stabColOffsetX = "${stabilizedColumn}OffsetX";
+      final stabColOffsetY = "${stabilizedColumn}OffsetY";
+
+      final rawOffsetX = guidePhoto[stabColOffsetX];
+      final rawOffsetY = guidePhoto[stabColOffsetY];
+      final newOffsetX = rawOffsetX is double
+          ? rawOffsetX
+          : double.tryParse(rawOffsetX?.toString() ?? '');
+      final newOffsetY = rawOffsetY is double
+          ? rawOffsetY
+          : double.tryParse(rawOffsetY?.toString() ?? '');
+
+      // Dispose old image before loading new one
+      guideImage?.dispose();
+
+      // Load the new guide image
+      guideImage = await StabUtils.loadImageFromFile(file);
+      ghostImageOffsetX = newOffsetX;
+      ghostImageOffsetY = newOffsetY;
+
+      return true;
+    } catch (e) {
+      debugPrint('Failed to load real guide image: $e');
+      return false;
+    }
+  }
+
   Future<void> _loadSettings() async {
     final String offsetXSettingVal =
         await SettingsUtil.loadOffsetXCurrentOrientation(projectId.toString());

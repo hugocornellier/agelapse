@@ -8,13 +8,17 @@ import 'package:path/path.dart';
 import '../utils/dir_utils.dart';
 import '../utils/notification_util.dart';
 import '../utils/settings_utils.dart';
+import '../utils/test_mode.dart' as test_config;
 
 class DB {
   static final DB _instance = DB._internal();
   Database? _database;
 
   static const int _version = 1;
-  static const String _dbName = "Settings.db";
+  static const String _prodDbName = "Settings.db";
+  static const String _testDbName = "Settings_test.db";
+  static String get _dbName =>
+      test_config.isTestMode ? _testDbName : _prodDbName;
   static const String settingTable = "Setting";
   static const String photoTable = "Photos";
   static const String projectTable = "Projects";

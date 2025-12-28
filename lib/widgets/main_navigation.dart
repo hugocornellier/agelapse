@@ -336,6 +336,7 @@ class MainNavigationState extends State<MainNavigation> {
           refreshSettings: refreshSettings,
           clearRawAndStabPhotos: clearRawAndStabPhotos,
           photoTakenToday: _photoTakenToday,
+          stabUpdateStream: _stabUpdateController.stream,
         ),
         GalleryPage(
           projectId: widget.projectId,
@@ -437,6 +438,7 @@ class MainNavigationState extends State<MainNavigation> {
 
     Widget? appBar;
     if (_selectedIndex == 0 ||
+        _selectedIndex == 1 ||
         _selectedIndex == 4 ||
         onCreatePageDuringLoading()) {
       appBar = CustomAppBar(

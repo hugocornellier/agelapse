@@ -692,7 +692,7 @@ class FaceStabilizer {
       canvasHeight,
       token: token,
     );
-    if (twoPassBytes == null)
+    if (twoPassBytes == null) {
       return (
         false,
         firstPassScore,
@@ -703,10 +703,11 @@ class FaceStabilizer {
         null,
         null
       );
+    }
 
     final twoPassFaces = await StabUtils.getFacesFromBytes(twoPassBytes,
         filterByFaceSize: false, imageWidth: canvasWidth);
-    if (twoPassFaces == null)
+    if (twoPassFaces == null) {
       return (
         false,
         firstPassScore,
@@ -717,6 +718,7 @@ class FaceStabilizer {
         null,
         null
       );
+    }
 
     List<Point<double>?> twoPassEyes = _filterAndCenterEyes(twoPassFaces);
 

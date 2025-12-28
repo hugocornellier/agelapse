@@ -26,6 +26,7 @@ class ProjectPage extends StatefulWidget {
   final void Function() refreshSettings;
   final void Function() clearRawAndStabPhotos;
   final bool photoTakenToday;
+  final Stream<int>? stabUpdateStream;
 
   const ProjectPage({
     super.key,
@@ -40,6 +41,7 @@ class ProjectPage extends StatefulWidget {
     required this.refreshSettings,
     required this.clearRawAndStabPhotos,
     required this.photoTakenToday,
+    this.stabUpdateStream,
   });
 
   @override
@@ -51,17 +53,74 @@ class ProjectPageState extends State<ProjectPage> {
   late int framerate;
   late OutputImageLoader outputImageLoader;
 
+  StreamSubscription<int>? _stabUpdateSubscription;
+  Timer? _guideImageDebounce;
+
   @override
   void initState() {
     super.initState();
     outputImageLoader = OutputImageLoader(widget.projectId);
     _initializePage();
+    _subscribeToStabUpdates();
   }
 
   @override
   void dispose() {
+    _guideImageDebounce?.cancel();
+    _stabUpdateSubscription?.cancel();
     outputImageLoader.dispose();
     super.dispose();
+  }
+
+  void _subscribeToStabUpdates() {
+    if (widget.stabUpdateStream == null) return;
+
+    _stabUpdateSubscription = widget.stabUpdateStream!.listen((_) {
+      if (!mounted) return;
+
+      // Debounce: cancel pending reload, schedule new one after 500ms
+      // This prevents excessive DB queries when stabilizing many photos
+      _guideImageDebounce?.cancel();
+      _guideImageDebounce = Timer(const Duration(milliseconds: 500), () {
+        _tryUpdateGuideImage();
+      });
+    });
+  }
+
+  Future<void> _tryUpdateGuideImage() async {
+    if (!mounted) return;
+
+    final didLoad = await outputImageLoader.tryLoadRealGuideImage();
+    if (didLoad && mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  void didUpdateWidget(ProjectPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // Check if orientation changed
+    final oldOrientation = oldWidget.settingsCache?.projectOrientation;
+    final newOrientation = widget.settingsCache?.projectOrientation;
+
+    if (oldOrientation != null &&
+        newOrientation != null &&
+        oldOrientation != newOrientation) {
+      // Orientation changed - reset preview to placeholder
+      _handleOrientationChange();
+    }
+  }
+
+  Future<void> _handleOrientationChange() async {
+    await outputImageLoader.resetToPlaceholder();
+    if (mounted) {
+      setState(() {});
+    }
+
+    // Attempt to load a real guide image immediately if one exists
+    // for the new orientation (don't wait for stabilization stream)
+    await _tryUpdateGuideImage();
   }
 
   Future<void> _initializePage() async {
@@ -325,7 +384,7 @@ class ProjectPageState extends State<ProjectPage> {
     IconData icon;
     switch (title) {
       case 'Getting started':
-        icon = Icons.rocket_launch_outlined;
+        icon = Icons.lightbulb_outlined;
         break;
       case 'Dashboard':
         icon = Icons.dashboard_outlined;
@@ -337,45 +396,49 @@ class ProjectPageState extends State<ProjectPage> {
         icon = Icons.info_outlined;
     }
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
-          children: [
-            Icon(
-              icon,
-              size: 18,
-              color: AppColors.settingsTextSecondary,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              title.toUpperCase(),
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.settingsTextSecondary,
-                letterSpacing: 1.2,
-              ),
-            ),
-          ],
-        ),
-        if (title == 'Output')
-          GestureDetector(
-            onTap: () => _openSettings(context),
-            child: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: AppColors.settingsCardBorder,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.tune,
+    return SizedBox(
+      height: 30,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Row(
+            children: [
+              Icon(
+                icon,
                 size: 18,
                 color: AppColors.settingsTextSecondary,
               ),
-            ),
+              const SizedBox(width: 8),
+              Text(
+                title.toUpperCase(),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.settingsTextSecondary,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ],
           ),
-      ],
+          if (title == 'Output')
+            GestureDetector(
+              onTap: () => _openSettings(context),
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppColors.settingsCardBorder,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.tune,
+                  size: 18,
+                  color: AppColors.settingsTextSecondary,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -422,7 +485,7 @@ class ProjectPageState extends State<ProjectPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (!widget.settingsCache!.noPhotos) ...[const SizedBox(height: 30)],
+        const SizedBox(height: 30),
         _buildSectionTitle('Output', ''),
         const SizedBox(height: 21),
         _buildOutputContentForWidth(availableWidth),
@@ -468,7 +531,7 @@ class ProjectPageState extends State<ProjectPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.start,
       children: [
-        if (!widget.settingsCache!.noPhotos) ...[const SizedBox(height: 30)],
+        const SizedBox(height: 30),
         _buildSectionTitle('Output', ''),
         const SizedBox(height: 21),
         _buildOutputContent(),
