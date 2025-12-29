@@ -13,6 +13,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:face_detection_tflite/face_detection_tflite.dart' as fdl;
 import 'package:opencv_dart/opencv_dart.dart' as cv;
 
+import '../../services/async_mutex.dart';
 import '../../services/cancellation_token.dart';
 import '../../services/database_helper.dart';
 import '../../services/isolate_manager.dart';
@@ -37,6 +38,11 @@ class FaceLike {
 
 class StabUtils {
   static fdl.FaceDetectorIsolate? _faceDetectorIsolate;
+
+  /// Mutex to serialize access to the face detector isolate.
+  /// Prevents race conditions when multiple callers (e.g., main stabilization
+  /// and StabDiffFacePage) try to use the detector concurrently.
+  static final AsyncMutex _faceDetectorMutex = AsyncMutex();
 
   static Future<void> _ensureFDLite() async {
     if (_faceDetectorIsolate == null || !_faceDetectorIsolate!.isReady) {
@@ -76,60 +82,64 @@ class StabUtils {
     bool filterByFaceSize = true,
     int? imageWidth,
   }) async {
-    try {
-      await _ensureFDLite();
+    // Serialize access to the face detector to prevent race conditions
+    return await _faceDetectorMutex.protect(() async {
+      try {
+        await _ensureFDLite();
 
-      // Face detection runs entirely in background isolate - UI never blocked
-      final facesDetected = await _faceDetectorIsolate!.detectFaces(
-        bytes,
-        mode: fdl.FaceDetectionMode.full,
-      );
+        // Face detection runs entirely in background isolate - UI never blocked
+        final facesDetected = await _faceDetectorIsolate!.detectFaces(
+          bytes,
+          mode: fdl.FaceDetectionMode.full,
+        );
 
-      if (facesDetected.isEmpty) {
+        if (facesDetected.isEmpty) {
+          return [];
+        }
+
+        // Get image width from first detected face's originalSize
+        final double w = facesDetected.first.originalSize.width;
+
+        final List<FaceLike> faces = [];
+        for (final face in facesDetected) {
+          final boundingBox = face.boundingBox;
+          final Rect bbox = Rect.fromLTRB(
+            boundingBox.topLeft.x,
+            boundingBox.topLeft.y,
+            boundingBox.bottomRight.x,
+            boundingBox.bottomRight.y,
+          );
+
+          final landmarks = face.landmarks;
+          final Point<double>? l = landmarks.leftEye != null
+              ? Point(landmarks.leftEye!.x, landmarks.leftEye!.y)
+              : null;
+          final Point<double>? r = landmarks.rightEye != null
+              ? Point(landmarks.rightEye!.x, landmarks.rightEye!.y)
+              : null;
+
+          faces.add(
+            FaceLike(
+              boundingBox: bbox,
+              leftEye: l,
+              rightEye: r,
+            ),
+          );
+        }
+
+        if (!filterByFaceSize || faces.isEmpty) return faces;
+
+        const double minFaceSize = 0.1;
+        final filtered = faces
+            .where((f) => (f.boundingBox.width / w) > minFaceSize)
+            .toList();
+        return filtered.isNotEmpty ? filtered : faces;
+      } catch (e) {
+        LogService.instance
+            .log("Error caught while fetching faces from bytes: $e");
         return [];
       }
-
-      // Get image width from first detected face's originalSize
-      final double w = facesDetected.first.originalSize.width;
-
-      final List<FaceLike> faces = [];
-      for (final face in facesDetected) {
-        final boundingBox = face.boundingBox;
-        final Rect bbox = Rect.fromLTRB(
-          boundingBox.topLeft.x,
-          boundingBox.topLeft.y,
-          boundingBox.bottomRight.x,
-          boundingBox.bottomRight.y,
-        );
-
-        final landmarks = face.landmarks;
-        final Point<double>? l = landmarks.leftEye != null
-            ? Point(landmarks.leftEye!.x, landmarks.leftEye!.y)
-            : null;
-        final Point<double>? r = landmarks.rightEye != null
-            ? Point(landmarks.rightEye!.x, landmarks.rightEye!.y)
-            : null;
-
-        faces.add(
-          FaceLike(
-            boundingBox: bbox,
-            leftEye: l,
-            rightEye: r,
-          ),
-        );
-      }
-
-      if (!filterByFaceSize || faces.isEmpty) return faces;
-
-      const double minFaceSize = 0.1;
-      final filtered =
-          faces.where((f) => (f.boundingBox.width / w) > minFaceSize).toList();
-      return filtered.isNotEmpty ? filtered : faces;
-    } catch (e) {
-      LogService.instance
-          .log("Error caught while fetching faces from bytes: $e");
-      return [];
-    }
+    });
   }
 
   static Future<List<FaceLike>?> getFacesFromFilepath(
@@ -142,61 +152,66 @@ class StabUtils {
       return null;
     }
 
-    try {
-      await _ensureFDLite();
+    // Read file bytes outside mutex (doesn't need face detector)
+    final bytes = await File(imagePath).readAsBytes();
 
-      final bytes = await File(imagePath).readAsBytes();
+    // Serialize access to the face detector to prevent race conditions
+    return await _faceDetectorMutex.protect(() async {
+      try {
+        await _ensureFDLite();
 
-      // Face detection runs entirely in background isolate - UI never blocked
-      final facesDetected = await _faceDetectorIsolate!.detectFaces(
-        bytes,
-        mode: fdl.FaceDetectionMode.full,
-      );
+        // Face detection runs entirely in background isolate - UI never blocked
+        final facesDetected = await _faceDetectorIsolate!.detectFaces(
+          bytes,
+          mode: fdl.FaceDetectionMode.full,
+        );
 
-      if (facesDetected.isEmpty) {
+        if (facesDetected.isEmpty) {
+          return [];
+        }
+
+        // Get image width from first detected face's originalSize
+        final double w = facesDetected.first.originalSize.width;
+
+        final List<FaceLike> faces = [];
+        for (final face in facesDetected) {
+          final boundingBox = face.boundingBox;
+          final Rect bbox = Rect.fromLTRB(
+            boundingBox.topLeft.x,
+            boundingBox.topLeft.y,
+            boundingBox.bottomRight.x,
+            boundingBox.bottomRight.y,
+          );
+
+          final landmarks = face.landmarks;
+          final Point<double>? l = landmarks.leftEye != null
+              ? Point(landmarks.leftEye!.x, landmarks.leftEye!.y)
+              : null;
+          final Point<double>? r = landmarks.rightEye != null
+              ? Point(landmarks.rightEye!.x, landmarks.rightEye!.y)
+              : null;
+
+          faces.add(
+            FaceLike(
+              boundingBox: bbox,
+              leftEye: l,
+              rightEye: r,
+            ),
+          );
+        }
+
+        if (!filterByFaceSize || faces.isEmpty) return faces;
+
+        const double minFaceSize = 0.1;
+        final filtered = faces
+            .where((f) => (f.boundingBox.width / w) > minFaceSize)
+            .toList();
+        return filtered.isNotEmpty ? filtered : faces;
+      } catch (e) {
+        LogService.instance.log("Error caught while fetching faces: $e");
         return [];
       }
-
-      // Get image width from first detected face's originalSize
-      final double w = facesDetected.first.originalSize.width;
-
-      final List<FaceLike> faces = [];
-      for (final face in facesDetected) {
-        final boundingBox = face.boundingBox;
-        final Rect bbox = Rect.fromLTRB(
-          boundingBox.topLeft.x,
-          boundingBox.topLeft.y,
-          boundingBox.bottomRight.x,
-          boundingBox.bottomRight.y,
-        );
-
-        final landmarks = face.landmarks;
-        final Point<double>? l = landmarks.leftEye != null
-            ? Point(landmarks.leftEye!.x, landmarks.leftEye!.y)
-            : null;
-        final Point<double>? r = landmarks.rightEye != null
-            ? Point(landmarks.rightEye!.x, landmarks.rightEye!.y)
-            : null;
-
-        faces.add(
-          FaceLike(
-            boundingBox: bbox,
-            leftEye: l,
-            rightEye: r,
-          ),
-        );
-      }
-
-      if (!filterByFaceSize || faces.isEmpty) return faces;
-
-      const double minFaceSize = 0.1;
-      final filtered =
-          faces.where((f) => (f.boundingBox.width / w) > minFaceSize).toList();
-      return filtered.isNotEmpty ? filtered : faces;
-    } catch (e) {
-      LogService.instance.log("Error caught while fetching faces: $e");
-      return [];
-    }
+    });
   }
 
   // ============================================================
@@ -207,52 +222,58 @@ class StabUtils {
   /// Used for single-face photos to store reference embeddings.
   /// Returns null if no faces detected or embedding extraction fails.
   static Future<Float32List?> getFaceEmbeddingFromBytes(Uint8List bytes) async {
-    try {
-      await _ensureFDLite();
+    // Serialize access to the face detector to prevent race conditions
+    return await _faceDetectorMutex.protect(() async {
+      try {
+        await _ensureFDLite();
 
-      final faces = await _faceDetectorIsolate!.detectFaces(
-        bytes,
-        mode: fdl.FaceDetectionMode.fast,
-      );
+        final faces = await _faceDetectorIsolate!.detectFaces(
+          bytes,
+          mode: fdl.FaceDetectionMode.fast,
+        );
 
-      if (faces.isEmpty) return null;
+        if (faces.isEmpty) return null;
 
-      final embedding = await _faceDetectorIsolate!.getFaceEmbedding(
-        faces.first,
-        bytes,
-      );
+        final embedding = await _faceDetectorIsolate!.getFaceEmbedding(
+          faces.first,
+          bytes,
+        );
 
-      return embedding;
-    } catch (e) {
-      LogService.instance.log("Error extracting face embedding: $e");
-      return null;
-    }
+        return embedding;
+      } catch (e) {
+        LogService.instance.log("Error extracting face embedding: $e");
+        return null;
+      }
+    });
   }
 
   /// Gets face embeddings for all detected faces in the image.
   /// Returns a list of embeddings (may contain nulls for faces where extraction failed).
   static Future<List<Float32List?>> getFaceEmbeddingsFromBytes(
       Uint8List bytes) async {
-    try {
-      await _ensureFDLite();
+    // Serialize access to the face detector to prevent race conditions
+    return await _faceDetectorMutex.protect(() async {
+      try {
+        await _ensureFDLite();
 
-      final faces = await _faceDetectorIsolate!.detectFaces(
-        bytes,
-        mode: fdl.FaceDetectionMode.fast,
-      );
+        final faces = await _faceDetectorIsolate!.detectFaces(
+          bytes,
+          mode: fdl.FaceDetectionMode.fast,
+        );
 
-      if (faces.isEmpty) return [];
+        if (faces.isEmpty) return [];
 
-      final embeddings = await _faceDetectorIsolate!.getFaceEmbeddings(
-        faces,
-        bytes,
-      );
+        final embeddings = await _faceDetectorIsolate!.getFaceEmbeddings(
+          faces,
+          bytes,
+        );
 
-      return embeddings;
-    } catch (e) {
-      LogService.instance.log("Error extracting face embeddings: $e");
-      return [];
-    }
+        return embeddings;
+      } catch (e) {
+        LogService.instance.log("Error extracting face embeddings: $e");
+        return [];
+      }
+    });
   }
 
   /// Picks the face index with highest similarity to the reference embedding.
@@ -263,46 +284,49 @@ class StabUtils {
     Float32List referenceEmbedding,
     Uint8List imageBytes,
   ) async {
-    try {
-      await _ensureFDLite();
+    // Serialize access to the face detector to prevent race conditions
+    return await _faceDetectorMutex.protect(() async {
+      try {
+        await _ensureFDLite();
 
-      final faces = await _faceDetectorIsolate!.detectFaces(
-        imageBytes,
-        mode: fdl.FaceDetectionMode.fast,
-      );
-
-      if (faces.isEmpty) return -1;
-      if (faces.length == 1) return 0;
-
-      int bestIndex = 0;
-      double bestSimilarity = -1.0;
-
-      for (int i = 0; i < faces.length; i++) {
-        final embedding = await _faceDetectorIsolate!.getFaceEmbedding(
-          faces[i],
+        final faces = await _faceDetectorIsolate!.detectFaces(
           imageBytes,
+          mode: fdl.FaceDetectionMode.fast,
         );
 
-        final similarity =
-            fdl.FaceDetector.compareFaces(referenceEmbedding, embedding);
+        if (faces.isEmpty) return -1;
+        if (faces.length == 1) return 0;
+
+        int bestIndex = 0;
+        double bestSimilarity = -1.0;
+
+        for (int i = 0; i < faces.length; i++) {
+          final embedding = await _faceDetectorIsolate!.getFaceEmbedding(
+            faces[i],
+            imageBytes,
+          );
+
+          final similarity =
+              fdl.FaceDetector.compareFaces(referenceEmbedding, embedding);
+
+          LogService.instance.log(
+              "Face $i embedding similarity: ${similarity.toStringAsFixed(3)}");
+
+          if (similarity > bestSimilarity) {
+            bestSimilarity = similarity;
+            bestIndex = i;
+          }
+        }
 
         LogService.instance.log(
-            "Face $i embedding similarity: ${similarity.toStringAsFixed(3)}");
+            "Selected face $bestIndex with similarity ${bestSimilarity.toStringAsFixed(3)}");
 
-        if (similarity > bestSimilarity) {
-          bestSimilarity = similarity;
-          bestIndex = i;
-        }
+        return bestIndex;
+      } catch (e) {
+        LogService.instance.log("Error in embedding-based face selection: $e");
+        return 0; // Fallback to first face
       }
-
-      LogService.instance.log(
-          "Selected face $bestIndex with similarity ${bestSimilarity.toStringAsFixed(3)}");
-
-      return bestIndex;
-    } catch (e) {
-      LogService.instance.log("Error in embedding-based face selection: $e");
-      return 0; // Fallback to first face
-    }
+    });
   }
 
   /// Converts a Float32List embedding to Uint8List for database storage.

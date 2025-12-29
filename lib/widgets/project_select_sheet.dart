@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
 import '../screens/create_project_page.dart';
 import '../services/database_helper.dart';
+import '../services/log_service.dart';
 import '../styles/styles.dart';
 import '../utils/dir_utils.dart';
 import '../utils/notification_util.dart';
@@ -56,36 +57,72 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
   }
 
   static Future<String> getProjectImage(int projectId) async {
+    LogService.instance
+        .log('[getProjectImage] Called for projectId=$projectId');
+
     final String stabilizedDirPath =
         await DirUtils.getStabilizedDirPath(projectId);
     final String activeProjectOrientation =
         await SettingsUtil.loadProjectOrientation(projectId.toString());
+    LogService.instance.log(
+        '[getProjectImage] activeProjectOrientation=$activeProjectOrientation');
+
     final String videoOutputPath =
         await DirUtils.getVideoOutputPath(projectId, activeProjectOrientation);
     final String gifPath =
         videoOutputPath.replaceAll(path.extension(videoOutputPath), ".gif");
-    if (await File(gifPath).exists()) return gifPath;
+    if (await File(gifPath).exists()) {
+      LogService.instance.log('[getProjectImage] Found GIF: $gifPath');
+      return gifPath;
+    }
 
     final String stabilizedDirActivePath =
         path.join(stabilizedDirPath, activeProjectOrientation);
+    LogService.instance.log(
+        '[getProjectImage] Checking active stabilized dir: $stabilizedDirActivePath');
     String? pngPath = await checkForStabilizedImage(stabilizedDirActivePath);
-    if (pngPath != null) return pngPath;
+    if (pngPath != null) {
+      LogService.instance.log(
+          '[getProjectImage] Found stabilized image in active dir: $pngPath');
+      return pngPath;
+    }
 
     final String stabilizedDirInactivePath = path.join(stabilizedDirPath,
         activeProjectOrientation == "portrait" ? "landscape" : "portrait");
+    LogService.instance.log(
+        '[getProjectImage] Checking inactive stabilized dir: $stabilizedDirInactivePath');
     pngPath = await checkForStabilizedImage(stabilizedDirInactivePath);
-    if (pngPath != null) return pngPath;
+    if (pngPath != null) {
+      LogService.instance.log(
+          '[getProjectImage] Found stabilized image in inactive dir: $pngPath');
+      return pngPath;
+    }
 
     final String rawPhotoDirPath = await DirUtils.getRawPhotoDirPath(projectId);
     final Directory rawPhotoDir = Directory(rawPhotoDirPath);
     final bool dirExists = await rawPhotoDir.exists();
-    if (!dirExists) return "";
+    if (!dirExists) {
+      LogService.instance.log(
+          '[getProjectImage] Raw photo dir does not exist, returning empty');
+      return "";
+    }
 
     final files = await rawPhotoDir.list().toList();
-    return files
-        .firstWhere((file) => file is File && Utils.isImage(file.path),
-            orElse: () => File(''))
-        .path;
+    final imageFiles = files
+        .where((file) => file is File && Utils.isImage(file.path))
+        .toList();
+    if (imageFiles.isEmpty) {
+      LogService.instance
+          .log('[getProjectImage] No raw images found, returning empty');
+      return "";
+    }
+
+    // Sort by filename (timestamp) to ensure consistent ordering
+    imageFiles
+        .sort((a, b) => path.basename(a.path).compareTo(path.basename(b.path)));
+    LogService.instance.log(
+        '[getProjectImage] Returning first raw image: ${imageFiles.first.path}');
+    return imageFiles.first.path;
   }
 
   static Future<String?> checkForStabilizedImage(String dirPath) async {
@@ -97,6 +134,9 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
             .where((item) => item.path.endsWith('.png') && item is File)
             .toList();
         if (pngFiles.isNotEmpty) {
+          // Sort by filename (timestamp) to ensure consistent ordering
+          pngFiles.sort(
+              (a, b) => path.basename(a.path).compareTo(path.basename(b.path)));
           return pngFiles.first.path;
         }
       } catch (e) {

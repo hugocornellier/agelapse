@@ -679,7 +679,8 @@ class DB {
     return await db.query(photoTable,
         where:
             '$stabilizedColumn = ? AND projectID = ? AND ${stabilizedColumn}OffsetX = ?',
-        whereArgs: [1, projectId, offsetX.toString()]);
+        whereArgs: [1, projectId, offsetX.toString()],
+        orderBy: 'timestamp ASC');
   }
 
   Future<void> setPhotoNoFacesFound(String timestamp) async {

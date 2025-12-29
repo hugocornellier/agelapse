@@ -17,3 +17,9 @@ String getFixturePath(String relativePath) {
 String getSampleFacePath(int day) {
   return getFixturePath(p.join('sample_faces', 'day$day.jpg'));
 }
+
+/// Returns the absolute path to a sample file for testing.
+/// [filename] is the name of the file in samples_for_testing/
+String getSampleForTestingPath(String filename) {
+  return p.join(getProjectRoot(), 'samples_for_testing', filename);
+}

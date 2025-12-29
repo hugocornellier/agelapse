@@ -31,7 +31,7 @@ class CreatePage extends StatefulWidget {
   final Future<void> Function() hideNavBar;
   final int progressPercent;
   final Future<void> Function() stabCallback;
-  final void Function() refreshSettings;
+  final Future<void> Function() refreshSettings;
   final void Function() clearRawAndStabPhotos;
   final SettingsCache? settingsCache;
 

@@ -10,7 +10,7 @@ class SetUpNotificationsPage extends StatefulWidget {
   final String projectName;
   final Future<void> Function() stabCallback;
   final Future<void> Function() cancelStabCallback;
-  final void Function() refreshSettings;
+  final Future<void> Function() refreshSettings;
   final void Function() clearRawAndStabPhotos;
   final SettingsCache? settingsCache;
 

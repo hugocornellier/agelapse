@@ -63,7 +63,7 @@ class CameraView extends StatefulWidget {
   final bool? takingGuidePhoto;
   final int? forceGridModeEnum;
   final VoidCallback openGallery;
-  final VoidCallback refreshSettings;
+  final Future<void> Function() refreshSettings;
   final void Function(int index) goToPage;
 
   const CameraView({

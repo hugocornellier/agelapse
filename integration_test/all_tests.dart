@@ -2,6 +2,7 @@ import 'package:integration_test/integration_test.dart';
 import 'package:agelapse/utils/test_mode.dart' as test_config;
 
 import 'app_test.dart' as app_tests;
+import 'image_format_test.dart' as image_format_tests;
 import 'stabilization_test.dart' as stabilization_tests;
 import 'smoke_test.dart' as smoke_tests;
 
@@ -16,6 +17,9 @@ void main() {
 
   // Basic app launch tests
   app_tests.main();
+
+  // Image format conversion tests (AVIF, HEIC)
+  image_format_tests.main();
 
   // Stabilization algorithm tests
   stabilization_tests.main();

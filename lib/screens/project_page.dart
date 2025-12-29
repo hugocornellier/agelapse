@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../services/settings_cache.dart';
+import '../services/stab_update_event.dart';
 import '../styles/styles.dart';
 import '../utils/settings_utils.dart';
 import '../utils/utils.dart';
@@ -23,10 +24,10 @@ class ProjectPage extends StatefulWidget {
   final Future<void> Function() stabCallback;
   final Future<void> Function() setUserOnImportTutorialTrue;
   final SettingsCache? settingsCache;
-  final void Function() refreshSettings;
+  final Future<void> Function() refreshSettings;
   final void Function() clearRawAndStabPhotos;
   final bool photoTakenToday;
-  final Stream<int>? stabUpdateStream;
+  final Stream<StabUpdateEvent>? stabUpdateStream;
 
   const ProjectPage({
     super.key,
@@ -53,7 +54,7 @@ class ProjectPageState extends State<ProjectPage> {
   late int framerate;
   late OutputImageLoader outputImageLoader;
 
-  StreamSubscription<int>? _stabUpdateSubscription;
+  StreamSubscription<StabUpdateEvent>? _stabUpdateSubscription;
   Timer? _guideImageDebounce;
 
   @override
@@ -75,11 +76,16 @@ class ProjectPageState extends State<ProjectPage> {
   void _subscribeToStabUpdates() {
     if (widget.stabUpdateStream == null) return;
 
-    _stabUpdateSubscription = widget.stabUpdateStream!.listen((_) {
+    _stabUpdateSubscription = widget.stabUpdateStream!.listen((event) {
       if (!mounted) return;
 
-      // Debounce: cancel pending reload, schedule new one after 500ms
-      // This prevents excessive DB queries when stabilizing many photos
+      // For completion events, update immediately without debounce
+      if (event.isCompletionEvent) {
+        _tryUpdateGuideImage();
+        return;
+      }
+
+      // Debounce normal progress updates to prevent excessive DB queries
       _guideImageDebounce?.cancel();
       _guideImageDebounce = Timer(const Duration(milliseconds: 500), () {
         _tryUpdateGuideImage();
@@ -100,26 +106,29 @@ class ProjectPageState extends State<ProjectPage> {
   void didUpdateWidget(ProjectPage oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // Check if orientation changed
-    final oldOrientation = oldWidget.settingsCache?.projectOrientation;
-    final newOrientation = widget.settingsCache?.projectOrientation;
+    final oldCache = oldWidget.settingsCache;
+    final newCache = widget.settingsCache;
 
-    if (oldOrientation != null &&
-        newOrientation != null &&
-        oldOrientation != newOrientation) {
-      // Orientation changed - reset preview to placeholder
-      _handleOrientationChange();
+    if (oldCache != null && newCache != null) {
+      final orientationChanged =
+          oldCache.projectOrientation != newCache.projectOrientation;
+      final aspectRatioChanged = oldCache.aspectRatio != newCache.aspectRatio;
+
+      if (orientationChanged || aspectRatioChanged) {
+        // Settings changed - reset preview to placeholder and reload
+        _handleSettingsChange();
+      }
     }
   }
 
-  Future<void> _handleOrientationChange() async {
+  Future<void> _handleSettingsChange() async {
     await outputImageLoader.resetToPlaceholder();
     if (mounted) {
       setState(() {});
     }
 
     // Attempt to load a real guide image immediately if one exists
-    // for the new orientation (don't wait for stabilization stream)
+    // for the new settings (don't wait for stabilization stream)
     await _tryUpdateGuideImage();
   }
 

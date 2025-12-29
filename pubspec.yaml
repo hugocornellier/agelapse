@@ -31,6 +31,7 @@ dependencies:
   file_selector: ^1.0.4
   flutter:
     sdk: flutter
+  flutter_avif: ^2.4.3
   flutter_email_sender: ^8.0.0
   flutter_launcher_icons: ^0.14.4
   flutter_local_notifications: ^19.4.2

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import '../services/database_helper.dart';
 import '../services/face_stabilizer.dart';
+import '../services/thumbnail_service.dart';
 import '../styles/styles.dart';
 import '../utils/camera_utils.dart';
 import '../utils/dir_utils.dart';
@@ -14,6 +15,10 @@ class StabDiffFacePage extends StatefulWidget {
   final VoidCallback stabCallback;
   final VoidCallback userRanOutOfSpaceCallback;
 
+  /// Whether the main stabilization process is currently running.
+  /// Used to show appropriate loading messages and prevent unnecessary restarts.
+  final bool stabilizationRunningInMain;
+
   const StabDiffFacePage({
     super.key,
     required this.projectId,
@@ -21,6 +26,7 @@ class StabDiffFacePage extends StatefulWidget {
     required this.reloadImagesInGallery,
     required this.stabCallback,
     required this.userRanOutOfSpaceCallback,
+    this.stabilizationRunningInMain = false,
   });
 
   @override
@@ -45,7 +51,10 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
 
   Future<void> _init() async {
     setState(() {
-      loadingStatus = "Loading image...";
+      // Show different message if main stabilization is running (user may need to wait)
+      loadingStatus = widget.stabilizationRunningInMain
+          ? "Waiting for stabilizer..."
+          : "Loading image...";
     });
 
     rawImagePath = await _getRawPhotoPath();
@@ -122,12 +131,26 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
       final String loadStatus =
           successful ? "Stabilization successful" : "Stabilization failed";
 
-      await DB.instance.setNewVideoNeeded(widget.projectId);
-      widget.reloadImagesInGallery();
-      widget.stabCallback();
+      if (successful) {
+        // 1. Wait for thumbnail to be created before updating UI
+        final thumbnailPath =
+            await faceStabilizer.createStabThumbnailFromRawPath(rawImagePath);
 
-      PaintingBinding.instance.imageCache.clear();
-      PaintingBinding.instance.imageCache.clearLiveImages();
+        // 2. Clear caches BEFORE reloading gallery
+        PaintingBinding.instance.imageCache.clear();
+        PaintingBinding.instance.imageCache.clearLiveImages();
+        ThumbnailService.instance.clearCache(thumbnailPath);
+      }
+
+      // 3. Now safe to reload gallery and notify
+      await DB.instance.setNewVideoNeeded(widget.projectId);
+      await widget.reloadImagesInGallery();
+
+      // Only trigger stabCallback if main stabilization isn't already running.
+      // This avoids unnecessarily restarting/cancelling the ongoing stabilization.
+      if (!widget.stabilizationRunningInMain) {
+        widget.stabCallback();
+      }
 
       setState(() {
         loadingStatus = loadStatus;

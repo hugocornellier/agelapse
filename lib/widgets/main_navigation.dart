@@ -16,6 +16,7 @@ import '../services/settings_cache.dart';
 import '../services/stabilization_service.dart';
 import '../services/stabilization_progress.dart';
 import '../services/stabilization_state.dart';
+import '../services/stab_update_event.dart';
 import '../utils/gallery_utils.dart';
 import 'package:path/path.dart' as path;
 import '../styles/styles.dart';
@@ -67,10 +68,10 @@ class MainNavigationState extends State<MainNavigation> {
   /// Subscription to the stabilization service progress stream.
   StreamSubscription<StabilizationProgress>? _stabSubscription;
 
-  /// Stream controller to notify GalleryPage when stabilization count changes.
-  /// This replaces the 2-second polling loop in GalleryPage.
-  final StreamController<int> _stabUpdateController =
-      StreamController<int>.broadcast();
+  /// Stream controller to notify UI components of stabilization updates.
+  /// Emits typed events for progress updates, completion, cancellation, etc.
+  final StreamController<StabUpdateEvent> _stabUpdateController =
+      StreamController<StabUpdateEvent>.broadcast();
 
   /// Separate progress tracking for imports (not part of stabilization).
   int _importProgressPercent = 0;
@@ -101,11 +102,34 @@ class MainNavigationState extends State<MainNavigation> {
     _stabSubscription =
         StabilizationService.instance.progressStream.listen((progress) {
       if (mounted) {
+        final prevState = _stabProgress.state;
         setState(() => _stabProgress = progress);
 
-        // Notify gallery of stabilization updates for refreshing the grid
-        if (progress.state == StabilizationState.stabilizing) {
-          _stabUpdateController.add(progress.currentPhoto);
+        // Emit typed events for UI components (gallery, app bar, project page)
+        switch (progress.state) {
+          case StabilizationState.stabilizing:
+            _stabUpdateController
+                .add(StabUpdateEvent.photoStabilized(progress.currentPhoto));
+            break;
+          case StabilizationState.completed:
+            _stabUpdateController.add(StabUpdateEvent.stabilizationComplete());
+            break;
+          case StabilizationState.compilingVideo:
+            // Emit completion when video starts (stabilization done)
+            // Only emit once when transitioning to video phase
+            if (prevState != StabilizationState.compilingVideo) {
+              _stabUpdateController
+                  .add(StabUpdateEvent.stabilizationComplete());
+            }
+            break;
+          case StabilizationState.cancelled:
+            _stabUpdateController.add(StabUpdateEvent.cancelled());
+            break;
+          case StabilizationState.error:
+            _stabUpdateController.add(StabUpdateEvent.error());
+            break;
+          default:
+            break;
         }
       }
     });
@@ -195,7 +219,7 @@ class MainNavigationState extends State<MainNavigation> {
     oldCache?.dispose(); // Dispose old cache after replacing
   }
 
-  void refreshSettings() async {
+  Future<void> refreshSettings() async {
     LogService.instance.log("Settings are being refreshed...");
     await _refreshSettingsCache();
   }
@@ -456,6 +480,7 @@ class MainNavigationState extends State<MainNavigation> {
         clearRawAndStabPhotos: clearRawAndStabPhotos,
         minutesRemaining: minutesRemaining,
         userRanOutOfSpace: _userRanOutOfSpace,
+        stabUpdateStream: _stabUpdateController.stream,
       );
     }
 

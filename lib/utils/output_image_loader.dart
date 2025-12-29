@@ -20,6 +20,12 @@ class OutputImageLoader {
   double? ghostImageOffsetY;
   ui.Image? guideImage;
 
+  /// Track if we have loaded a real stabilized guide image (vs placeholder)
+  bool hasRealGuideImage = false;
+
+  /// Path to the current guide image file (to check if it still exists)
+  String? _guideImagePath;
+
   OutputImageLoader(this.projectId);
 
   /// Dispose native resources. Call this when done with the loader.
@@ -43,6 +49,8 @@ class OutputImageLoader {
     guideImage = await ProjectUtils.loadImage('assets/images/person-grey.png');
     ghostImageOffsetX = 0.105;
     ghostImageOffsetY = 0.241;
+    hasRealGuideImage = false;
+    _guideImagePath = null;
 
     // Reload settings to get new orientation-specific offsets
     await _loadSettings();
@@ -53,6 +61,18 @@ class OutputImageLoader {
   /// Returns `true` if a new image was loaded, `false` if no image available
   /// or already showing the correct image. Safe to call repeatedly.
   Future<bool> tryLoadRealGuideImage() async {
+    // Skip if we already have a real guide image that still exists
+    // This prevents flickering through different photos during stabilization
+    if (hasRealGuideImage) {
+      // But check if the file was deleted (e.g., settings changed and restabilization started)
+      if (_guideImagePath != null && await File(_guideImagePath!).exists()) {
+        return false;
+      }
+      // File was deleted, need to reload
+      hasRealGuideImage = false;
+      _guideImagePath = null;
+    }
+
     try {
       final Map<String, Object?>? guidePhoto =
           await DirUtils.getGuidePhoto(offsetX, projectId);
@@ -93,6 +113,8 @@ class OutputImageLoader {
       guideImage = await StabUtils.loadImageFromFile(file);
       ghostImageOffsetX = newOffsetX;
       ghostImageOffsetY = newOffsetY;
+      hasRealGuideImage = true;
+      _guideImagePath = guideImagePath;
 
       return true;
     } catch (e) {

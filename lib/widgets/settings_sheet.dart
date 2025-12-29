@@ -26,7 +26,7 @@ class SettingsSheet extends StatefulWidget {
   final bool onlyShowNotificationSettings;
   final Future<void> Function() stabCallback;
   final Future<void> Function() cancelStabCallback;
-  final void Function() refreshSettings;
+  final Future<void> Function() refreshSettings;
   final void Function() clearRawAndStabPhotos;
 
   const SettingsSheet({
@@ -823,9 +823,9 @@ class SettingsSheetState extends State<SettingsSheet> {
               await widget.cancelStabCallback();
 
               setState(() => projectOrientation = value);
-              DB.instance.setSettingByTitle('project_orientation',
+              await DB.instance.setSettingByTitle('project_orientation',
                   value.toLowerCase(), widget.projectId.toString());
-              widget.refreshSettings();
+              await widget.refreshSettings();
 
               await resetStabStatusAndRestartStabilization();
             }
@@ -882,7 +882,7 @@ class SettingsSheetState extends State<SettingsSheet> {
               await widget.cancelStabCallback();
               await DB.instance.setSettingByTitle(
                   'video_resolution', value, widget.projectId.toString());
-              widget.refreshSettings();
+              await widget.refreshSettings();
 
               await resetStabStatusAndRestartStabilization();
             }
@@ -923,7 +923,7 @@ class SettingsSheetState extends State<SettingsSheet> {
 
               await widget.cancelStabCallback();
               await SettingsUtil.saveStabilizationMode(value);
-              widget.refreshSettings();
+              await widget.refreshSettings();
 
               await resetStabStatusAndRestartStabilization();
             }
@@ -952,14 +952,24 @@ class SettingsSheetState extends State<SettingsSheet> {
                 await Utils.showConfirmChangeDialog(context, "aspect ratio");
 
             if (shouldProceed) {
+              LogService.instance
+                  .log('[SettingsSheet] Aspect ratio changing to: $value');
               setState(() => aspectRatio = value);
               await DB.instance.setSettingByTitle(
                   'aspect_ratio', value, widget.projectId.toString());
+              LogService.instance
+                  .log('[SettingsSheet] DB updated, cancelling stab...');
 
               await widget.cancelStabCallback();
-              widget.refreshSettings();
+              LogService.instance.log(
+                  '[SettingsSheet] Stab cancelled, refreshing settings...');
+              await widget.refreshSettings();
+              LogService.instance.log(
+                  '[SettingsSheet] Settings refreshed, restarting stabilization...');
 
               await resetStabStatusAndRestartStabilization();
+              LogService.instance
+                  .log('[SettingsSheet] Stabilization restarted');
             }
           }
         },

@@ -3,6 +3,8 @@ PODS:
     - FlutterMacOS
   - face_detection_tflite (0.0.1):
     - FlutterMacOS
+  - flutter_avif_macos (0.0.1):
+    - FlutterMacOS
   - FlutterMacOS (1.0.0)
   - media_kit_video (0.0.1):
     - FlutterMacOS
@@ -19,6 +21,7 @@ PODS:
 DEPENDENCIES:
   - camera_macos (from `Flutter/ephemeral/.symlinks/plugins/camera_macos/macos`)
   - face_detection_tflite (from `Flutter/ephemeral/.symlinks/plugins/face_detection_tflite/macos`)
+  - flutter_avif_macos (from `Flutter/ephemeral/.symlinks/plugins/flutter_avif_macos/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
   - media_kit_video (from `Flutter/ephemeral/.symlinks/plugins/media_kit_video/macos`)
   - photo_manager (from `Flutter/ephemeral/.symlinks/plugins/photo_manager/macos`)
@@ -31,6 +34,8 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/camera_macos/macos
   face_detection_tflite:
     :path: Flutter/ephemeral/.symlinks/plugins/face_detection_tflite/macos
+  flutter_avif_macos:
+    :path: Flutter/ephemeral/.symlinks/plugins/flutter_avif_macos/macos
   FlutterMacOS:
     :path: Flutter/ephemeral
   media_kit_video:
@@ -47,6 +52,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   camera_macos: 9fd766915a6c236c8b3fd902f7ccd215636cd07a
   face_detection_tflite: 2e848ccb3ee51fbd993a2dadd9f2d916478a5ab6
+  flutter_avif_macos: 9ed61d67adfbd6964eccb59971020fb55c31fc11
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
   media_kit_video: 28d7d27611c7769a2464eb7621c37386a61dcc9a
   photo_manager: d2fbcc0f2d82458700ee6256a15018210a81d413

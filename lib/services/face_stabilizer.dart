@@ -1569,6 +1569,16 @@ class FaceStabilizer {
     }
   }
 
+  /// Creates thumbnail and waits for completion. Use this for manual
+  /// restabilization where we need the thumbnail ready before UI updates.
+  Future<String> createStabThumbnailFromRawPath(String rawPhotoPath) async {
+    final String stabilizedPath = await StabUtils.getStabilizedImagePath(
+        rawPhotoPath, projectId, projectOrientation);
+    final String pngPath = stabilizedPath.replaceAll('.jpg', '.png');
+    await createStabThumbnail(pngPath);
+    return getStabThumbnailPath(pngPath);
+  }
+
   Future<void> _emitThumbnailFailure(
       String rawPhotoPath, ThumbnailStatus status) async {
     final String timestamp = path

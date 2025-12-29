@@ -16,6 +16,7 @@ import '../../services/database_helper.dart';
 import '../../services/log_service.dart';
 import '../../services/face_stabilizer.dart';
 import '../../services/settings_cache.dart';
+import '../../services/stab_update_event.dart';
 import '../../services/thumbnail_service.dart';
 import '../../styles/styles.dart';
 import '../../utils/project_utils.dart';
@@ -54,10 +55,10 @@ class GalleryPage extends StatefulWidget {
   final Future<void> Function(FilePickerResult? pickedFiles,
           Future<void> Function(dynamic file) processFileCallback)
       processPickedFiles;
-  final void Function() refreshSettings;
+  final Future<void> Function() refreshSettings;
   final String minutesRemaining;
   final bool userRanOutOfSpace;
-  final Stream<int>? stabUpdateStream;
+  final Stream<StabUpdateEvent>? stabUpdateStream;
   const GalleryPage({
     super.key,
     required this.projectId,
@@ -91,6 +92,9 @@ class GalleryPage extends StatefulWidget {
 
 class GalleryPageState extends State<GalleryPage>
     with SingleTickerProviderStateMixin {
+  // Track last project to only clear cache on project switch, not every mount
+  static int? _lastProjectId;
+
   late TabController _tabController;
   bool exportingToZip = false;
   bool gallerySaveIsLoading = false;
@@ -117,7 +121,7 @@ class GalleryPageState extends State<GalleryPage>
   double _previousScale = 1.0;
   final ScrollController _stabilizedScrollController = ScrollController();
   final ScrollController _rawScrollController = ScrollController();
-  StreamSubscription<int>? _stabUpdateSubscription;
+  StreamSubscription<StabUpdateEvent>? _stabUpdateSubscription;
   Timer? _loadImagesDebounce;
   bool _stickyBottomEnabled = true;
   bool _isAutoScrolling = false;
@@ -174,7 +178,14 @@ class GalleryPageState extends State<GalleryPage>
     _isMounted = true;
     projectId = widget.projectId;
     projectIdStr = widget.projectId.toString();
-    ThumbnailService.instance.clearAllCache();
+
+    // Only clear thumbnail cache when switching projects, not on every mount.
+    // This preserves cache state when returning from StabDiffFacePage.
+    if (_lastProjectId != projectId) {
+      ThumbnailService.instance.clearAllCache();
+      _lastProjectId = projectId;
+    }
+
     _initializeFromCache();
     _init();
     _tabController = TabController(length: 2, vsync: this);
@@ -479,12 +490,19 @@ class GalleryPageState extends State<GalleryPage>
     // This eliminates the 2-second polling loop that was causing unnecessary
     // database queries and potential UI blocking.
     if (widget.stabUpdateStream != null) {
-      _stabUpdateSubscription = widget.stabUpdateStream!.listen((newCount) {
+      _stabUpdateSubscription = widget.stabUpdateStream!.listen((event) {
         if (!_isMounted) return;
+
+        // For completion events, reload immediately without debounce
+        if (event.isCompletionEvent) {
+          _loadImages();
+          return;
+        }
+
+        // For normal progress updates, debounce to prevent excessive reloads
+        final newCount = event.photoIndex ?? 0;
         if (newCount != _stabCount) {
           _stabCount = newCount;
-          // Debounce: cancel pending reload, schedule new one after 500ms
-          // This prevents O(n²) DB queries when stabilizing many photos
           _loadImagesDebounce?.cancel();
           _loadImagesDebounce = Timer(const Duration(milliseconds: 500), () {
             if (_isMounted) _loadImages();
@@ -1686,7 +1704,9 @@ class GalleryPageState extends State<GalleryPage>
                       reloadImagesInGallery: _loadImages,
                       stabCallback: widget.stabCallback,
                       userRanOutOfSpaceCallback:
-                          widget.userRanOutOfSpaceCallback);
+                          widget.userRanOutOfSpaceCallback,
+                      stabilizationRunningInMain:
+                          widget.stabilizingRunningInMain);
                   Utils.navigateToScreenReplace(context, stabNewFaceScreen);
                 },
               ),

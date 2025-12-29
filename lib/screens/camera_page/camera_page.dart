@@ -20,7 +20,7 @@ class CameraPage extends StatefulWidget {
   final bool? takingGuidePhoto;
   final int? forceGridModeEnum;
   final void Function() openGallery;
-  final void Function() refreshSettings;
+  final Future<void> Function() refreshSettings;
   final void Function(int index) goToPage;
 
   @override
@@ -75,7 +75,7 @@ class DetectorView extends StatefulWidget {
   final bool? takingGuidePhoto;
   final int? forceGridModeEnum;
   final VoidCallback openGallery;
-  final VoidCallback refreshSettings;
+  final Future<void> Function() refreshSettings;
   final void Function(int index) goToPage;
 
   @override

@@ -1,10 +1,12 @@
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:ui' as ui;
 
 import 'package:archive/archive_io.dart';
 import 'package:async_zip/async_zip.dart';
 import 'package:exif_reader/exif_reader.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_avif/flutter_avif.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as path;
 import 'package:flutter/services.dart';
@@ -41,21 +43,70 @@ class GalleryUtils {
     }
   }
 
-  static Future<void> convertAvifToPng(
+  static Future<bool> convertAvifToPng(
       String avifFilePath, String pngFilePath) async {
+    LogService.instance
+        .log('[convertAvifToPng] START: $avifFilePath -> $pngFilePath');
     try {
-      final avifBytes = await File(avifFilePath).readAsBytes();
-      // Convert in isolate to avoid blocking UI
-      final pngBytes = await ImageUtils.convertToPngInIsolate(avifBytes);
+      final File avifFile = File(avifFilePath);
+      final bool avifExists = await avifFile.exists();
+      LogService.instance
+          .log('[convertAvifToPng] AVIF file exists: $avifExists');
 
-      if (pngBytes != null) {
-        final pngFile = File(pngFilePath);
-        await pngFile.writeAsBytes(pngBytes);
-      } else {
-        throw Exception('Failed to convert AVIF to PNG');
+      if (!avifExists) {
+        LogService.instance.log('[convertAvifToPng] AVIF file not found!');
+        return false;
       }
-    } catch (e) {
-      //LogService.instance.log('Error converting AVIF to PNG: $e');
+
+      final avifBytes = await avifFile.readAsBytes();
+      LogService.instance
+          .log('[convertAvifToPng] Read ${avifBytes.length} bytes from AVIF');
+
+      // Decode AVIF using flutter_avif (cross-platform libavif)
+      LogService.instance
+          .log('[convertAvifToPng] Decoding AVIF with flutter_avif...');
+      final List<AvifFrameInfo> frames = await decodeAvif(avifBytes);
+
+      if (frames.isEmpty) {
+        LogService.instance
+            .log('[convertAvifToPng] FAILED: flutter_avif returned no frames');
+        return false;
+      }
+
+      final ui.Image image = frames.first.image;
+      LogService.instance.log(
+          '[convertAvifToPng] Decoded AVIF: ${image.width}x${image.height}');
+
+      // Convert dart:ui Image to PNG bytes
+      final ByteData? byteData =
+          await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) {
+        LogService.instance
+            .log('[convertAvifToPng] FAILED: toByteData returned null');
+        return false;
+      }
+
+      final Uint8List pngBytes = byteData.buffer.asUint8List();
+      LogService.instance
+          .log('[convertAvifToPng] Converted to PNG: ${pngBytes.length} bytes');
+
+      // Write PNG to file
+      final pngFile = File(pngFilePath);
+      await pngFile.writeAsBytes(pngBytes);
+      final bool pngExists = await pngFile.exists();
+      LogService.instance.log(
+          '[convertAvifToPng] PNG written, exists: $pngExists, size: ${await pngFile.length()} bytes');
+
+      // Dispose frames to free memory
+      for (final frame in frames) {
+        frame.image.dispose();
+      }
+
+      return true;
+    } catch (e, stackTrace) {
+      LogService.instance.log('[convertAvifToPng] EXCEPTION: $e');
+      LogService.instance.log('[convertAvifToPng] Stack trace: $stackTrace');
+      return false;
     }
   }
 
