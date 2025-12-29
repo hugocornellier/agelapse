@@ -67,39 +67,20 @@ class ProjectsPageState extends State<ProjectsPage> {
   }
 
   Widget _buildProjectSelectScreen() {
-    return Column(
-      children: [
-        ProjectSelectionSheet(
-          isDefaultProject: false,
-          showCloseButton: false,
-          cancelStabCallback: () {},
-        ),
-        Expanded(
-            child: Container(
-          color: const Color(0xff121212),
-        ))
-      ],
+    return ProjectSelectionSheet(
+      isDefaultProject: false,
+      showCloseButton: false,
+      cancelStabCallback: () {},
+      isFullPage: true,
     );
   }
 
   Widget _buildProjectSelectScreenDesktop() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1200),
-            child: SizedBox(
-              height: constraints.maxHeight,
-              child: ProjectSelectionSheet(
-                isDefaultProject: false,
-                showCloseButton: false,
-                cancelStabCallback: () {},
-              ),
-            ),
-          ),
-        );
-      },
+    return ProjectSelectionSheet(
+      isDefaultProject: false,
+      showCloseButton: false,
+      cancelStabCallback: () {},
+      isFullPage: true,
     );
   }
 

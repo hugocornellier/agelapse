@@ -146,25 +146,123 @@ class Utils {
 
   static Future<bool> showConfirmChangeDialog(
       BuildContext context, String toChange) async {
+    const dangerColor = Color(0xFFDC2626);
+    const dangerColorLight = Color(0x26DC2626);
+    const dangerColorBorder = Color(0x4DDC2626);
+    const cardBackground = Color(0xFF1C1C1E);
+    const textPrimary = Color(0xFFF5F5F7);
+    const textSecondary = Color(0xFF8E8E93);
+
     return await showDialog<bool>(
           context: context,
           builder: (BuildContext context) {
             return AlertDialog(
-              title: const Text('Confirm Change'),
-              content: Text('Are you sure you want to change the $toChange? '
-                  'This will require re-stabilizing all photos.'),
-              actions: <Widget>[
+              backgroundColor: cardBackground,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: dangerColorLight,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.warning_amber_rounded,
+                      color: dangerColor,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Are you sure?',
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'You are about to change the $toChange.',
+                    style: const TextStyle(
+                      color: textSecondary,
+                      fontSize: 14,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: dangerColorLight,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: dangerColorBorder,
+                        width: 1,
+                      ),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(
+                          Icons.refresh_rounded,
+                          color: dangerColor,
+                          size: 20,
+                        ),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'This will re-stabilize all photos.\nThis action cannot be undone.',
+                            style: TextStyle(
+                              color: dangerColor,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
                 TextButton(
-                  child: const Text('Cancel'),
-                  onPressed: () {
-                    Navigator.of(context).pop(false);
-                  },
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(
+                      color: textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
-                TextButton(
-                  child: const Text('Proceed'),
-                  onPressed: () {
-                    Navigator.of(context).pop(true);
-                  },
+                GestureDetector(
+                  onTap: () => Navigator.of(context).pop(true),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: dangerColor,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'Proceed Anyway',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             );

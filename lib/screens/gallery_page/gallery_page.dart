@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
-import 'dart:ui' as ui;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:desktop_drop/desktop_drop.dart';
@@ -966,61 +965,202 @@ class GalleryPageState extends State<GalleryPage>
   Widget _buildOptionsBottomSheet(
       BuildContext context, String title, List<Widget> content) {
     return Container(
-      padding: const EdgeInsets.all(16.0),
-      height: MediaQuery.of(context).size.height * 0.6,
-      width: MediaQuery.of(context).size.width,
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.6,
-      ),
+      padding: const EdgeInsets.fromLTRB(20.0, 12.0, 20.0, 20.0),
       decoration: const BoxDecoration(
-        color: Color(0xff121212),
+        color: Color(0xff1a1a1a),
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(16.0),
-          topRight: Radius.circular(16.0),
+          topLeft: Radius.circular(20.0),
+          topRight: Radius.circular(20.0),
         ),
       ),
-      child: Stack(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 70.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: content,
-            ),
-          ),
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
+          Center(
             child: Container(
-              color: const Color(0xff121212),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white),
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                        },
-                      ),
-                    ],
-                  ),
-                  const Divider(),
-                ],
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
           ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child:
+                      const Icon(Icons.close, color: Colors.white70, size: 18),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          ...content,
+          const SizedBox(height: 8),
         ],
+      ),
+    );
+  }
+
+  Widget _buildImportOptionTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: Colors.white, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.5),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right,
+                color: Colors.white.withValues(alpha: 0.3), size: 22),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExportOptionToggle({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool isSelected,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return GestureDetector(
+      onTap: () => onChanged(!isSelected),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected
+                ? AppColors.settingsAccent.withValues(alpha: 0.5)
+                : Colors.white.withValues(alpha: 0.08),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppColors.settingsAccent.withValues(alpha: 0.2)
+                    : Colors.white.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                icon,
+                color: isSelected ? AppColors.settingsAccent : Colors.white,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.5),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                color:
+                    isSelected ? AppColors.settingsAccent : Colors.transparent,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: isSelected
+                      ? AppColors.settingsAccent
+                      : Colors.white.withValues(alpha: 0.3),
+                  width: 2,
+                ),
+              ),
+              child: isSelected
+                  ? const Icon(Icons.check, color: Colors.white, size: 16)
+                  : null,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1029,54 +1169,48 @@ class GalleryPageState extends State<GalleryPage>
     final bool isMobile = Platform.isAndroid || Platform.isIOS;
     final bool isDesktop =
         Platform.isMacOS || Platform.isWindows || Platform.isLinux;
-    final String filesLabel = isDesktop ? 'Browse Files' : 'Import from Files';
     final List<Widget> content = [
-      if (isMobile)
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.photo_library),
-            title: const Text('Import from Gallery'),
-            trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: isImporting
-                ? null
-                : () {
-                    Navigator.of(context).pop();
-                    try {
-                      _pickFromGallery();
-                    } catch (e) {
-                      LogService.instance.log(e.toString());
-                    }
-                  },
-          ),
-        ),
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0),
-        child: ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.folder_open),
-          title: Text(filesLabel),
-          trailing: const Icon(Icons.arrow_forward_ios),
+      if (isMobile) ...[
+        _buildImportOptionTile(
+          icon: Icons.photo_library_outlined,
+          title: 'Photo Library',
+          subtitle: 'Select photos from your device',
           onTap: isImporting
               ? null
               : () {
+                  Navigator.of(context).pop();
                   try {
-                    _pickFiles();
-                  } finally {
-                    Navigator.of(context).pop();
+                    _pickFromGallery();
+                  } catch (e) {
+                    LogService.instance.log(e.toString());
                   }
                 },
         ),
+        const SizedBox(height: 10),
+      ],
+      _buildImportOptionTile(
+        icon: Icons.folder_outlined,
+        title: isDesktop ? 'Browse Files' : 'Files',
+        subtitle:
+            isDesktop ? 'Select images or folders' : 'Import from file manager',
+        onTap: isImporting
+            ? null
+            : () {
+                try {
+                  _pickFiles();
+                } finally {
+                  Navigator.of(context).pop();
+                }
+              },
       ),
-      if (isDesktop)
-        Padding(
-          padding: const EdgeInsets.only(top: 12.0),
-          child: _buildDesktopDropZone(),
-        ),
+      if (isDesktop) ...[
+        const SizedBox(height: 16),
+        _buildDesktopDropZone(),
+      ],
     ];
     showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
         return _buildOptionsBottomSheet(context, 'Import Photos', content);
       },
@@ -1114,24 +1248,51 @@ class GalleryPageState extends State<GalleryPage>
         _showImportCompleteDialog(
             successfullyImported, photosImported - successfullyImported);
       },
-      child: CustomPaint(
-        foregroundPainter: _DashedRectPainter(
-          color: Colors.white24,
-          strokeWidth: 2,
-          dash: 8,
-          gap: 6,
-        ),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 12.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.file_upload_outlined, size: 28),
-              SizedBox(height: 8),
-              Text('Drop files here to import'),
-            ],
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 28.0, horizontal: 16.0),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.03),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.12),
+            width: 1.5,
+            strokeAlign: BorderSide.strokeAlignInside,
           ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                Icons.upload_file_outlined,
+                size: 26,
+                color: Colors.white.withValues(alpha: 0.7),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Drop files here',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.7),
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'or drag and drop images',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.4),
+                fontSize: 12,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1142,6 +1303,7 @@ class GalleryPageState extends State<GalleryPage>
     bool exportStabilizedFiles = false;
     showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
         bool localExportingToZip = false;
         bool exportSuccessful = false;
@@ -1156,109 +1318,187 @@ class GalleryPageState extends State<GalleryPage>
 
             List<Widget> content = [
               if (!localExportingToZip && !exportSuccessful) ...[
-                CheckboxListTile(
-                  title: const Text('Raw Image Files'),
-                  value: exportRawFiles,
-                  onChanged: (bool? value) {
+                _buildExportOptionToggle(
+                  icon: Icons.image_outlined,
+                  title: 'Raw Photos',
+                  subtitle: 'Original unprocessed images',
+                  isSelected: exportRawFiles,
+                  onChanged: (value) => setState(() => exportRawFiles = value),
+                ),
+                const SizedBox(height: 10),
+                _buildExportOptionToggle(
+                  icon: Icons.auto_fix_high_outlined,
+                  title: 'Stabilized Photos',
+                  subtitle: 'Face-aligned processed images',
+                  isSelected: exportStabilizedFiles,
+                  onChanged: (value) =>
+                      setState(() => exportStabilizedFiles = value),
+                ),
+                const SizedBox(height: 20),
+                GestureDetector(
+                  onTap: () async {
+                    if (!exportRawFiles && !exportStabilizedFiles) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text(
+                                'Please select at least one type of files to export')),
+                      );
+                      return;
+                    }
                     setState(() {
-                      exportRawFiles = value ?? false;
+                      localExportingToZip = true;
                     });
-                  },
-                ),
-                CheckboxListTile(
-                  title: const Text('Stabilized Image Files'),
-                  value: exportStabilizedFiles,
-                  onChanged: (bool? value) {
-                    setState(() {
-                      exportStabilizedFiles = value ?? false;
-                    });
-                  },
-                ),
-                const SizedBox(
-                  height: 24,
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: FractionallySizedBox(
-                    widthFactor: 1.0,
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        setState(() {
-                          localExportingToZip = true;
-                        });
-                        if (!exportRawFiles && !exportStabilizedFiles) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text(
-                                    'Please select at least one type of files to export')),
-                          );
-                          return;
+                    try {
+                      Map<String, List<String>> filesToExport = {
+                        'Raw': [],
+                        'Stabilized': []
+                      };
+                      if (exportRawFiles) {
+                        filesToExport['Raw']!.addAll(widget.imageFilesStr);
+                      }
+                      if (exportStabilizedFiles) {
+                        String stabilizedDir = await DirUtils
+                            .getStabilizedDirPathFromProjectIdAndOrientation(
+                                widget.projectId, projectOrientation!);
+                        List<String> stabilizedFiles =
+                            await listFilesInDirectory(stabilizedDir);
+                        filesToExport['Stabilized']!.addAll(stabilizedFiles);
+                      }
+                      String res = await GalleryUtils.exportZipFile(
+                          widget.projectId,
+                          widget.projectName,
+                          filesToExport,
+                          setExportProgress);
+                      if (res == 'success') {
+                        setState(() => exportSuccessful = true);
+                        if (Platform.isAndroid || Platform.isIOS) {
+                          _shareZipFile();
                         }
-                        try {
-                          Map<String, List<String>> filesToExport = {
-                            'Raw': [],
-                            'Stabilized': []
-                          };
-                          if (exportRawFiles) {
-                            filesToExport['Raw']!.addAll(widget.imageFilesStr);
-                          }
-                          if (exportStabilizedFiles) {
-                            String stabilizedDir = await DirUtils
-                                .getStabilizedDirPathFromProjectIdAndOrientation(
-                                    widget.projectId, projectOrientation!);
-                            List<String> stabilizedFiles =
-                                await listFilesInDirectory(stabilizedDir);
-                            filesToExport['Stabilized']!
-                                .addAll(stabilizedFiles);
-                          }
-                          String res = await GalleryUtils.exportZipFile(
-                              widget.projectId,
-                              widget.projectName,
-                              filesToExport,
-                              setExportProgress);
-                          if (res == 'success') {
-                            setState(() => exportSuccessful = true);
-                            if (Platform.isAndroid || Platform.isIOS) {
-                              _shareZipFile();
-                            }
-                          }
-                        } catch (e) {
-                          LogService.instance.log(e.toString());
-                        } finally {
-                          setState(() => localExportingToZip = false);
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.darkerLightBlue,
-                        minimumSize: const Size(double.infinity, 50),
-                        padding: const EdgeInsets.symmetric(vertical: 18.0),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6.0),
-                        ),
-                      ),
+                      }
+                    } catch (e) {
+                      LogService.instance.log(e.toString());
+                    } finally {
+                      setState(() => localExportingToZip = false);
+                    }
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      color: (exportRawFiles || exportStabilizedFiles)
+                          ? AppColors.settingsAccent
+                          : AppColors.settingsAccent.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Center(
                       child: Text(
-                        'Export '.toUpperCase(),
-                        style: const TextStyle(
-                            fontSize: 15,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold),
+                        'Export to ZIP',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),
                 ),
               ],
               if (localExportingToZip) ...[
-                const CircularProgressIndicator(),
-                Text("Exporting... $exportProgressPercent %"),
+                _buildExportProgressIndicator(exportProgressPercent),
               ],
               if (!localExportingToZip && exportSuccessful) ...[
-                const Text("Export successful!")
+                _buildExportSuccessState(),
               ],
             ];
             return _buildOptionsBottomSheet(context, 'Export Photos', content);
           },
         );
       },
+    );
+  }
+
+  Widget _buildExportProgressIndicator(double progressPercent) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                valueColor:
+                    AlwaysStoppedAnimation<Color>(AppColors.settingsAccent),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Exporting...',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.9),
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '$progressPercent%',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.5),
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExportSuccessState() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xff4CD964).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.check_circle_outline,
+              color: Color(0xff4CD964),
+              size: 32,
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Export Complete!',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Your photos have been exported to a ZIP file',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.5),
+              fontSize: 13,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 
@@ -1521,22 +1761,11 @@ class GalleryPageState extends State<GalleryPage>
 
     final int stabCount = selectedStabilized.length;
     final int rawCount = selectedRaw.length;
-
-    // Build description text
-    String descriptionText;
-    if (stabCount > 0 && rawCount > 0) {
-      descriptionText =
-          'Export $stabCount stabilized and $rawCount raw photo${stabCount + rawCount == 1 ? '' : 's'}?';
-    } else if (stabCount > 0) {
-      descriptionText =
-          'Export $stabCount stabilized photo${stabCount == 1 ? '' : 's'}?';
-    } else {
-      descriptionText =
-          'Export $rawCount raw photo${rawCount == 1 ? '' : 's'}?';
-    }
+    final int totalCount = stabCount + rawCount;
 
     showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
         bool localExportingToZip = false;
         bool exportSuccessful = false;
@@ -1552,62 +1781,105 @@ class GalleryPageState extends State<GalleryPage>
 
             List<Widget> content = [
               if (!localExportingToZip && !exportSuccessful) ...[
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16.0),
-                  child: Text(
-                    descriptionText,
-                    style: const TextStyle(fontSize: 16),
+                // Summary box
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border:
+                        Border.all(color: Colors.white.withValues(alpha: 0.08)),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: FractionallySizedBox(
-                    widthFactor: 1.0,
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        setState(() {
-                          localExportingToZip = true;
-                        });
-                        try {
-                          Map<String, List<String>> filesToExport = {
-                            'Raw': selectedRaw,
-                            'Stabilized': selectedStabilized,
-                          };
-
-                          String res = await GalleryUtils.exportZipFile(
-                            widget.projectId,
-                            widget.projectName,
-                            filesToExport,
-                            setExportProgress,
-                          );
-
-                          if (res == 'success') {
-                            setState(() => exportSuccessful = true);
-                            if (Platform.isAndroid || Platform.isIOS) {
-                              _shareZipFile();
-                            }
-                          }
-                        } catch (e) {
-                          LogService.instance.log(e.toString());
-                        } finally {
-                          setState(() => localExportingToZip = false);
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.darkerLightBlue,
-                        minimumSize: const Size(double.infinity, 50),
-                        padding: const EdgeInsets.symmetric(vertical: 18.0),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6.0),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color:
+                              AppColors.settingsAccent.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.photo_library_outlined,
+                          color: AppColors.settingsAccent,
+                          size: 22,
                         ),
                       ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '$totalCount photo${totalCount == 1 ? '' : 's'} selected',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              [
+                                if (rawCount > 0) '$rawCount raw',
+                                if (stabCount > 0) '$stabCount stabilized',
+                              ].join(' • '),
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.5),
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                GestureDetector(
+                  onTap: () async {
+                    setState(() {
+                      localExportingToZip = true;
+                    });
+                    try {
+                      Map<String, List<String>> filesToExport = {
+                        'Raw': selectedRaw,
+                        'Stabilized': selectedStabilized,
+                      };
+
+                      String res = await GalleryUtils.exportZipFile(
+                        widget.projectId,
+                        widget.projectName,
+                        filesToExport,
+                        setExportProgress,
+                      );
+
+                      if (res == 'success') {
+                        setState(() => exportSuccessful = true);
+                        if (Platform.isAndroid || Platform.isIOS) {
+                          _shareZipFile();
+                        }
+                      }
+                    } catch (e) {
+                      LogService.instance.log(e.toString());
+                    } finally {
+                      setState(() => localExportingToZip = false);
+                    }
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      color: AppColors.settingsAccent,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Center(
                       child: Text(
-                        'Export'.toUpperCase(),
-                        style: const TextStyle(
-                          fontSize: 15,
+                        'Export to ZIP',
+                        style: TextStyle(
                           color: Colors.white,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -1615,17 +1887,16 @@ class GalleryPageState extends State<GalleryPage>
                 ),
               ],
               if (localExportingToZip) ...[
-                const CircularProgressIndicator(),
-                Text("Exporting... $exportProgressPercent %"),
+                _buildExportProgressIndicator(exportProgressPercent),
               ],
               if (!localExportingToZip && exportSuccessful) ...[
-                const Text("Export successful!")
+                _buildExportSuccessState(),
               ],
             ];
 
             return _buildOptionsBottomSheet(
               context,
-              'Export Selected Photos',
+              'Export Selected',
               content,
             );
           },
@@ -2197,47 +2468,4 @@ class GalleryPageState extends State<GalleryPage>
       }
     }
   }
-}
-
-class _DashedRectPainter extends CustomPainter {
-  final Color color;
-  final double strokeWidth;
-  final double dash;
-  final double gap;
-  _DashedRectPainter({
-    required this.color,
-    this.strokeWidth = 2,
-    this.dash = 8,
-    this.gap = 6,
-  });
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint p = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth;
-    final Rect rect = Rect.fromLTWH(0, 0, size.width, size.height);
-    final ui.Path outline = ui.Path()..addRect(rect);
-    final ui.Path dashedPath = _dashPath(outline, dash, gap);
-    canvas.drawPath(dashedPath, p);
-  }
-
-  ui.Path _dashPath(ui.Path source, double dashLength, double gapLength) {
-    final ui.Path dest = ui.Path();
-    for (final ui.PathMetric metric in source.computeMetrics()) {
-      double distance = 0.0;
-      while (distance < metric.length) {
-        final double next = distance + dashLength;
-        dest.addPath(
-          metric.extractPath(distance, next.clamp(0.0, metric.length)),
-          ui.Offset.zero,
-        );
-        distance = next + gapLength;
-      }
-    }
-    return dest;
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

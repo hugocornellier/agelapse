@@ -8,6 +8,7 @@ import 'dart:ui' as ui;
 import '../services/database_helper.dart';
 import '../services/log_service.dart';
 import 'dir_utils.dart';
+import 'notification_util.dart';
 
 class ProjectUtils {
   static Future<int?> calculateStreak(int projectId) async {
@@ -34,6 +35,27 @@ class ProjectUtils {
     } else {
       return int.tryParse(defaultProject) == projectId;
     }
+  }
+
+  /// Deletes a project and all associated data.
+  /// This includes: database record, notifications, and all project files.
+  static Future<void> deleteProject(int projectId) async {
+    // 1. Reset default project if this was the default
+    final String defaultProject =
+        await DB.instance.getSettingValueByTitle('default_project');
+    if (defaultProject == projectId.toString()) {
+      DB.instance.setSettingByTitle('default_project', 'none');
+    }
+
+    // 2. Delete from database
+    final int result = await DB.instance.deleteProject(projectId);
+    if (result > 0) {
+      await NotificationUtil.cancelNotification(projectId);
+    }
+
+    // 3. Delete project directory and all files
+    final String projectDirPath = await DirUtils.getProjectDirPath(projectId);
+    await DirUtils.deleteDirectoryContents(Directory(projectDirPath));
   }
 
   static Future<void> deleteFile(File file) async => await file.delete();

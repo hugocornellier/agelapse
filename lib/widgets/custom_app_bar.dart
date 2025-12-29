@@ -282,7 +282,8 @@ class CustomAppBarState extends State<CustomAppBar> {
       builder: (context) {
         return ProjectSelectionSheet(
             isDefaultProject: isDefaultProject,
-            cancelStabCallback: widget.cancelStabCallback);
+            cancelStabCallback: widget.cancelStabCallback,
+            currentProjectId: projectId);
       },
     );
   }

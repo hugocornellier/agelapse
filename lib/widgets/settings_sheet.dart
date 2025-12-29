@@ -13,9 +13,12 @@ import '../utils/dir_utils.dart';
 import '../utils/notification_util.dart';
 import '../utils/settings_utils.dart';
 import '../utils/stabilizer_utils/stabilizer_utils.dart';
+import '../utils/project_utils.dart';
 import '../utils/utils.dart';
 import 'bool_setting_switch.dart';
 import 'custom_dropdown_button.dart';
+import '../screens/projects_page.dart';
+import 'delete_project_dialog.dart';
 import 'dropdown_with_custom_textfield.dart';
 import 'main_navigation.dart';
 import 'setting_list_tile.dart';
@@ -334,6 +337,9 @@ class SettingsSheetState extends State<SettingsSheet> {
                         Icons.branding_watermark_outlined,
                         _buildWatermarkSettings,
                       ),
+                    if (!widget.onlyShowVideoSettings &&
+                        !widget.onlyShowNotificationSettings)
+                      _buildDangerZoneSection(),
                   ],
                 ),
               ),
@@ -403,15 +409,14 @@ class SettingsSheetState extends State<SettingsSheet> {
         }
       },
       child: Container(
-        width: 32,
-        height: 32,
+        padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
-          color: AppColors.settingsCardBorder,
-          borderRadius: BorderRadius.circular(16),
+          color: Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(
           widget.onlyShowNotificationSettings ? Icons.check : Icons.close,
-          color: AppColors.settingsTextSecondary,
+          color: Colors.white70,
           size: 18,
         ),
       ),
@@ -499,6 +504,127 @@ class SettingsSheetState extends State<SettingsSheet> {
         ],
       ),
     );
+  }
+
+  static const Color _dangerRed = Color(0xffFF453A);
+
+  Widget _buildDangerZoneSection() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 12),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.warning_amber_rounded,
+                  size: 18,
+                  color: _dangerRed.withValues(alpha: 0.8),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'DANGER ZONE',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: _dangerRed.withValues(alpha: 0.8),
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.settingsCardBackground,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: _dangerRed.withValues(alpha: 0.3),
+                width: 1,
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Delete this project',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.settingsTextPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Once deleted, there is no going back. This will permanently delete all photos and videos associated with this project.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.settingsTextSecondary,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  GestureDetector(
+                    onTap: _showDeleteProjectDialog,
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        color: _dangerRed.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _dangerRed.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'Delete this project',
+                          style: TextStyle(
+                            color: _dangerRed,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showDeleteProjectDialog() async {
+    // Get project name from DB
+    final projectName = await DB.instance.getProjectNameById(widget.projectId);
+    if (projectName == null || !mounted) return;
+
+    // Show type-to-confirm dialog
+    final confirmed = await showDeleteProjectDialog(
+      context: context,
+      projectName: projectName,
+    );
+
+    if (confirmed == true && mounted) {
+      // Perform deletion
+      await ProjectUtils.deleteProject(widget.projectId);
+
+      // Navigate to ProjectsPage and clear the entire navigation stack
+      // This prevents the broken MainNavigation from persisting
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const ProjectsPage()),
+          (route) => false,
+        );
+      }
+    }
   }
 
   Future<void> _getFutureForTitle(String title) {
@@ -816,7 +942,7 @@ class SettingsSheetState extends State<SettingsSheet> {
               value: "Landscape", child: Text("Landscape")),
         ],
         onChanged: (String? value) async {
-          if (value != null) {
+          if (value != null && value != projectOrientation) {
             final bool shouldProceed = await Utils.showConfirmChangeDialog(
                 context, "project orientation");
             if (shouldProceed) {
@@ -872,7 +998,7 @@ class SettingsSheetState extends State<SettingsSheet> {
         value: resolution,
         items: _getResolutionDropdownItems(),
         onChanged: (String? value) async {
-          if (value != null) {
+          if (value != null && value != resolution) {
             bool shouldProceed =
                 await Utils.showConfirmChangeDialog(context, "resolution");
 
@@ -947,7 +1073,7 @@ class SettingsSheetState extends State<SettingsSheet> {
           DropdownMenuItem<String>(value: "4:3", child: Text("4:3")),
         ],
         onChanged: (String? value) async {
-          if (value != null) {
+          if (value != null && value != aspectRatio) {
             bool shouldProceed =
                 await Utils.showConfirmChangeDialog(context, "aspect ratio");
 
