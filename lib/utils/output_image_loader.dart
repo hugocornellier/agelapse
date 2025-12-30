@@ -61,10 +61,7 @@ class OutputImageLoader {
   /// Returns `true` if a new image was loaded, `false` if no image available
   /// or already showing the correct image. Safe to call repeatedly.
   Future<bool> tryLoadRealGuideImage() async {
-    // Skip if we already have a real guide image that still exists
-    // This prevents flickering through different photos during stabilization
     if (hasRealGuideImage) {
-      // But check if the file was deleted (e.g., settings changed and restabilization started)
       if (_guideImagePath != null && await File(_guideImagePath!).exists()) {
         return false;
       }
@@ -150,8 +147,6 @@ class OutputImageLoader {
         final stabColOffsetX = "${stabilizedColumn}OffsetX";
         final stabColOffsetY = "${stabilizedColumn}OffsetY";
 
-        // Use values directly from guidePhoto instead of making another DB query
-        // (the old DB query didn't filter by projectID, causing cross-project data leakage)
         final rawOffsetX = guidePhoto[stabColOffsetX];
         final rawOffsetY = guidePhoto[stabColOffsetY];
         final offsetXData = rawOffsetX is double

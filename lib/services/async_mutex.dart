@@ -2,9 +2,6 @@ import 'dart:async';
 
 /// A simple async mutex for serializing access to shared resources.
 ///
-/// This prevents race conditions when multiple callers try to use the same
-/// resource concurrently (e.g., the face detector isolate).
-///
 /// Usage:
 /// ```dart
 /// final mutex = AsyncMutex();

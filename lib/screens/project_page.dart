@@ -889,20 +889,28 @@ class SpecialCard extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  color: AppColors.settingsTextPrimary,
-                  fontSize: 13.0,
-                  fontWeight: FontWeight.w400,
+              Flexible(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    color: AppColors.settingsTextPrimary,
+                    fontSize: 13.0,
+                    fontWeight: FontWeight.w400,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Text(
-                value,
-                style: const TextStyle(
-                  color: AppColors.settingsTextSecondary,
-                  fontSize: 13.0,
-                  fontWeight: FontWeight.w400,
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  value,
+                  style: const TextStyle(
+                    color: AppColors.settingsTextSecondary,
+                    fontSize: 13.0,
+                    fontWeight: FontWeight.w400,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.end,
                 ),
               ),
             ],

@@ -105,8 +105,6 @@ class StabilizationService {
     _currentToken = CancellationToken();
     _resetCounters();
 
-    // Check if there's any work to do BEFORE emitting preparing state
-    // This prevents the blue progress bar from flashing when there's nothing to do
     final unstabilizedPhotos = await StabUtils.getUnstabilizedPhotos(projectId);
     _totalPhotos = unstabilizedPhotos.length;
 

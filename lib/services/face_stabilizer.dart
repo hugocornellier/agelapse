@@ -1135,7 +1135,6 @@ class FaceStabilizer {
     }
 
     // === TRANSLATION REFINEMENT PASSES ===
-    // Up to 3 iterative passes to fix eye position
     token?.throwIfCancelled();
 
     if (currentEyes == null ||
@@ -1234,8 +1233,6 @@ class FaceStabilizer {
         // Check convergence
         if (improvement > 0 && improvement < convergenceThreshold) break;
       } else {
-        // Even if rejected, update translations for next attempt
-        // This allows the algorithm to "push through" local minima
         currentTX = transTX;
         currentTY = transTY;
         (ovLX, ovLY, ovRX, ovRY) =

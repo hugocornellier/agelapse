@@ -1,7 +1,4 @@
 /// Represents the current state of the stabilization process.
-///
-/// This enum provides a clear state machine for the stabilization flow,
-/// replacing the previous implicit boolean flag transitions.
 enum StabilizationState {
   /// No stabilization operation is running
   idle,

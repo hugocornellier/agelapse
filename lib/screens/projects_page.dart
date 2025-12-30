@@ -85,46 +85,38 @@ class ProjectsPageState extends State<ProjectsPage> {
   }
 
   Widget _buildWelcomePageDesktop() {
-    return GestureDetector(
-      onTap: () {
-        FocusScope.of(context).unfocus();
-      },
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const SizedBox(height: 32),
-            _buildWaveImage(),
-            const SizedBox(height: 64),
-            Image.asset(
-              'assets/images/agelapselogo.png',
-              width: 160,
-              fit: BoxFit.cover,
-            ),
-            const SizedBox(height: 64),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.0),
-              child: Text(
-                'The most powerful tool for creating aging timelapses.'
-                '\n\n'
-                '100% free, forever.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Expanded(child: Container()),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32.0),
-              child: _buildActionButton("Get Started"),
-            ),
-            const SizedBox(height: 32),
-          ],
+    return _buildScrollableWelcome(
+      children: [
+        const SizedBox(height: 32),
+        _buildWaveImage(),
+        const SizedBox(height: 64),
+        Image.asset(
+          'assets/images/agelapselogo.png',
+          width: 160,
+          fit: BoxFit.cover,
         ),
-      ),
+        const SizedBox(height: 64),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.0),
+          child: Text(
+            'The most powerful tool for creating aging timelapses.'
+            '\n\n'
+            '100% free, forever.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.white,
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        const Spacer(),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32.0),
+          child: _buildActionButton("Get Started"),
+        ),
+        const SizedBox(height: 32),
+      ],
     );
   }
 
@@ -159,6 +151,32 @@ class ProjectsPageState extends State<ProjectsPage> {
     );
   }
 
+  Widget _buildScrollableWelcome({required List<Widget> children}) {
+    return GestureDetector(
+      onTap: () {
+        FocusScope.of(context).unfocus();
+      },
+      child: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: children,
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   Widget _buildWaveImage() {
     const String imagePath = 'assets/images/wave-tc.png';
 
@@ -170,46 +188,38 @@ class ProjectsPageState extends State<ProjectsPage> {
   }
 
   Widget _buildWelcomePage() {
-    return GestureDetector(
-      onTap: () {
-        FocusScope.of(context).unfocus();
-      },
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const SizedBox(height: 32),
-            _buildWaveImage(),
-            const SizedBox(height: 96),
-            Image.asset(
-              'assets/images/agelapselogo.png',
-              width: 160,
-              fit: BoxFit.cover,
-            ),
-            const SizedBox(height: 96),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.0),
-              child: Text(
-                'The most powerful tool for creating aging timelapses.'
-                '\n\n'
-                '100% free, forever.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            const SizedBox(height: 36),
-            Expanded(child: Container()),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32.0),
-              child: _buildActionButton("Get Started"),
-            ),
-            const SizedBox(height: 64),
-          ],
+    return _buildScrollableWelcome(
+      children: [
+        const SizedBox(height: 32),
+        _buildWaveImage(),
+        const SizedBox(height: 96),
+        Image.asset(
+          'assets/images/agelapselogo.png',
+          width: 160,
+          fit: BoxFit.cover,
         ),
-      ),
+        const SizedBox(height: 96),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.0),
+          child: Text(
+            'The most powerful tool for creating aging timelapses.'
+            '\n\n'
+            '100% free, forever.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.white,
+            ),
+          ),
+        ),
+        const SizedBox(height: 36),
+        const Spacer(),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32.0),
+          child: _buildActionButton("Get Started"),
+        ),
+        const SizedBox(height: 64),
+      ],
     );
   }
 

@@ -39,9 +39,6 @@ class FaceLike {
 class StabUtils {
   static fdl.FaceDetectorIsolate? _faceDetectorIsolate;
 
-  /// Mutex to serialize access to the face detector isolate.
-  /// Prevents race conditions when multiple callers (e.g., main stabilization
-  /// and StabDiffFacePage) try to use the detector concurrently.
   static final AsyncMutex _faceDetectorMutex = AsyncMutex();
 
   static Future<void> _ensureFDLite() async {

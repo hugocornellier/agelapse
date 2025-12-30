@@ -485,9 +485,6 @@ class GalleryPageState extends State<GalleryPage>
       if (mounted) _showImportOptionsBottomSheet(context);
     }
 
-    // Subscribe to stabilization updates from MainNavigation instead of polling.
-    // This eliminates the 2-second polling loop that was causing unnecessary
-    // database queries and potential UI blocking.
     if (widget.stabUpdateStream != null) {
       _stabUpdateSubscription = widget.stabUpdateStream!.listen((event) {
         if (!_isMounted) return;

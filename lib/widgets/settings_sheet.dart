@@ -616,8 +616,6 @@ class SettingsSheetState extends State<SettingsSheet> {
       // Perform deletion
       await ProjectUtils.deleteProject(widget.projectId);
 
-      // Navigate to ProjectsPage and clear the entire navigation stack
-      // This prevents the broken MainNavigation from persisting
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const ProjectsPage()),

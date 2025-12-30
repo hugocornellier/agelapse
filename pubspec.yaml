@@ -22,7 +22,7 @@ dependencies:
   device_info_plus: ^11.2.0
   exif: ^3.3.0
   exif_reader: ^3.16.1
-  face_detection_tflite: ^4.3.0
+  face_detection_tflite: ^4.4.0
   ffmpeg_kit_flutter_new:
     git:
       url: https://github.com/hugocornellier/ffmpeg_kit_flutter.git
@@ -92,6 +92,9 @@ flutter:
     - assets/ffmpeg/windows/ffmpeg.exe
     - assets/ffmpeg/windows/LICENSE
     - assets/heic/windows/heicConverter.exe
+    - assets/test_fixtures/sample_faces/
+    - assets/test_fixtures/sample-avif.avif
+    - assets/test_fixtures/sample-heic.HEIC
 
 flutter_icons:
   android: true

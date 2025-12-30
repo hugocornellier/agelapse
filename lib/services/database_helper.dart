@@ -347,6 +347,9 @@ class DB {
       setSettingByTitle('framerate_is_default', 'false', projectId);
     }
 
+    // Ensure setting exists before updating (creates with default if missing)
+    await getSettingByTitle(title, projectId!);
+
     return await db.update(
       settingTable,
       {'value': value},
@@ -390,24 +393,24 @@ class DB {
 
   Future<void> addPhoto(String timestamp, int projectID, String fileExtension,
       int imageLength, String originalFilename, String orientation) async {
+    // Check if photo already exists to prevent duplicates
+    final existing = await doesPhotoExistByTimestamp(timestamp, projectID);
+    if (existing) return;
+
     final db = await database;
-    try {
-      await db.insert(photoTable, {
-        'timestamp': timestamp,
-        'projectID': projectID,
-        'fileExtension': fileExtension,
-        'imageLength': imageLength,
-        'originalFilename': originalFilename,
-        'originalOrientation': orientation,
-        'stabilizedPortrait': 0,
-        'stabilizedLandscape': 0,
-        'stabFailed': 0,
-        'noFacesFound': 0,
-        'favorite': 0
-      });
-    } catch (e) {
-      // Ignore duplicate photo insertion errors
-    }
+    await db.insert(photoTable, {
+      'timestamp': timestamp,
+      'projectID': projectID,
+      'fileExtension': fileExtension,
+      'imageLength': imageLength,
+      'originalFilename': originalFilename,
+      'originalOrientation': orientation,
+      'stabilizedPortrait': 0,
+      'stabilizedLandscape': 0,
+      'stabFailed': 0,
+      'noFacesFound': 0,
+      'favorite': 0
+    });
   }
 
   Future<void> _ensurePhotoTransformColumns() async {

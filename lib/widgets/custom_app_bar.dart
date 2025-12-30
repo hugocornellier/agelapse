@@ -101,10 +101,6 @@ class CustomAppBarState extends State<CustomAppBar> {
         LogService.instance.log(
             '[CustomAppBar] Resetting projectImagePath to empty (was: $projectImagePath)');
 
-        // Settings changed - old stabilized images are being regenerated.
-        // Reset to placeholder and let stabUpdateStream trigger reload when
-        // new images are ready. refreshSettings is now awaited in settings_sheet
-        // before stabilization restarts, so this runs before any stab events.
         setState(() {
           projectImagePath = '';
         });
@@ -131,8 +127,6 @@ class CustomAppBarState extends State<CustomAppBar> {
       LogService.instance.log(
           '[CustomAppBar] stabUpdateStream event: ${event.type}, photoIndex=${event.photoIndex}, isCompletion=${event.isCompletionEvent}');
 
-      // For completion events, always force a reload (no debounce, no early return)
-      // This ensures the profile icon updates when stabilization finishes
       if (event.isCompletionEvent) {
         LogService.instance.log(
             '[CustomAppBar] Completion event - calling _loadProjectImage immediately');
@@ -140,8 +134,6 @@ class CustomAppBarState extends State<CustomAppBar> {
         return;
       }
 
-      // For normal progress updates, only reload if we don't have a valid stabilized image
-      // This prevents flickering between different stabilized photos during stabilization
       final hasValidImage =
           projectImagePath.isNotEmpty && File(projectImagePath).existsSync();
       final isStabilizedImage =

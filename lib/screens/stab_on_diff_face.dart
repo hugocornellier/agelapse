@@ -142,12 +142,9 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
         ThumbnailService.instance.clearCache(thumbnailPath);
       }
 
-      // 3. Now safe to reload gallery and notify
       await DB.instance.setNewVideoNeeded(widget.projectId);
       await widget.reloadImagesInGallery();
 
-      // Only trigger stabCallback if main stabilization isn't already running.
-      // This avoids unnecessarily restarting/cancelling the ongoing stabilization.
       if (!widget.stabilizationRunningInMain) {
         widget.stabCallback();
       }

@@ -158,6 +158,7 @@ class MainNavigationState extends State<MainNavigation> {
 
   Future<void> _initPhotosThenStabilize() async {
     await loadPhotos();
+    if (!mounted) return;
 
     _checkPhotoTakenToday();
     _startStabilization();
@@ -169,11 +170,13 @@ class MainNavigationState extends State<MainNavigation> {
       GalleryUtils.getAllStabAndFailedImagePaths(widget.projectId)
     ]);
 
+    if (!mounted) return;
     setRawAndStabPhotoStates(
         results[0] as List<String>, results[1] as List<String>);
   }
 
   void _checkPhotoTakenToday() {
+    if (!mounted) return;
     setState(() {
       _photoTakenToday = photoWasTakenToday(_imageFiles);
     });
@@ -190,6 +193,7 @@ class MainNavigationState extends State<MainNavigation> {
 
   void setRawAndStabPhotoStates(
       List<String> imageFiles, List<String> stabilizedImageFiles) {
+    if (!mounted) return;
     setState(() {
       _imageFiles = imageFiles;
       _stabilizedImageFiles = stabilizedImageFiles;
@@ -197,6 +201,7 @@ class MainNavigationState extends State<MainNavigation> {
   }
 
   void clearRawAndStabPhotos() {
+    if (!mounted) return;
     setState(() {
       _imageFiles.clear();
       _stabilizedImageFiles.clear();
@@ -215,6 +220,10 @@ class MainNavigationState extends State<MainNavigation> {
     final oldCache = _settingsCache;
     SettingsCache settingsCache =
         await SettingsCache.initialize(widget.projectId);
+    if (!mounted) {
+      settingsCache.dispose();
+      return;
+    }
     setState(() => _settingsCache = settingsCache);
     oldCache?.dispose(); // Dispose old cache after replacing
   }
@@ -231,12 +240,14 @@ class MainNavigationState extends State<MainNavigation> {
   }
 
   Future<void> setUserOnImportTutorialTrue() async {
+    if (!mounted) return;
     setState(() {
       userOnImportTutorial = true;
     });
   }
 
   void setUserOnImportTutorialFalse() {
+    if (!mounted) return;
     setState(() {
       userOnImportTutorial = false;
     });
@@ -244,6 +255,7 @@ class MainNavigationState extends State<MainNavigation> {
 
   Future<void> hideNavBar() async {
     await initPhotoCount();
+    if (!mounted) return;
     setState(() {
       _hideNavBar = true;
     });
@@ -252,6 +264,7 @@ class MainNavigationState extends State<MainNavigation> {
   Future<void> processPickedFiles(FilePickerResult? pickedFiles,
       Future<void> Function(dynamic file) processFileCallback) async {
     if (pickedFiles == null) return;
+    if (!mounted) return;
 
     setState(() {
       _isImporting = true;
@@ -288,6 +301,7 @@ class MainNavigationState extends State<MainNavigation> {
       }
     }
 
+    if (!mounted) return;
     setState(() {
       _isImporting = false;
       _importProgressPercent = 0;
@@ -297,6 +311,7 @@ class MainNavigationState extends State<MainNavigation> {
   }
 
   void setProgressInMain(int progressIn) {
+    if (!mounted) return;
     int next = progressIn;
     if (_isImporting && progressIn < _importMaxProgress && progressIn != 100) {
       next = _importMaxProgress;
@@ -333,6 +348,7 @@ class MainNavigationState extends State<MainNavigation> {
   }
 
   void _hideFlashingCircle() {
+    if (!mounted) return;
     setState(() => _showFlashingCircle = false);
   }
 

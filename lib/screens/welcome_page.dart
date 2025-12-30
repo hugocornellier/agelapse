@@ -23,8 +23,8 @@ class WelcomePagePartTwoState extends State<WelcomePagePartTwo> {
     );
   }
 
-  Container _buildBody() {
-    return Container(
+  Widget _buildBody() {
+    return ColoredBox(
       color: backgroundColor,
       child: _buildFirstPhotoPage(),
     );
@@ -34,55 +34,69 @@ class WelcomePagePartTwoState extends State<WelcomePagePartTwo> {
     const double imageDiameter = 200;
     const String imagePath = 'assets/images/stable_face.png';
 
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 18.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const SizedBox(height: 32),
-            ClipOval(
-              child: Image.asset(
-                imagePath,
-                width: imageDiameter,
-                height: imageDiameter,
-                fit: BoxFit.cover,
-              ),
-            ),
-            const SizedBox(height: 96),
-            RichText(
-              textAlign: TextAlign.center,
-              text: TextSpan(
-                text: 'Advanced\n',
-                style: const TextStyle(
-                    fontSize: 26,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold),
-                children: <InlineSpan>[
-                  WidgetSpan(
-                    child: GradientText(
-                      'Auto-Stabilization',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 27.5,
-                      ),
+    return SafeArea(
+      top: false,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: IntrinsicHeight(
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 18.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(height: 32),
+                        ClipOval(
+                          child: Image.asset(
+                            imagePath,
+                            width: imageDiameter,
+                            height: imageDiameter,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        const SizedBox(height: 96),
+                        RichText(
+                          textAlign: TextAlign.center,
+                          text: TextSpan(
+                            text: 'Advanced\n',
+                            style: const TextStyle(
+                                fontSize: 26,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold),
+                            children: <InlineSpan>[
+                              WidgetSpan(
+                                child: GradientText(
+                                  'Auto-Stabilization',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 27.5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+                        const Text(
+                          "AgeLapse automatically aligns every photo to create "
+                          "a stabilized timelapse.",
+                          style: TextStyle(fontSize: 15),
+                          textAlign: TextAlign.center,
+                        ),
+                        const Spacer(),
+                        _buildActionButton("Create Project"),
+                        const SizedBox(height: 32),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
             ),
-            const SizedBox(height: 32),
-            const Text(
-              "AgeLapse automatically aligns every photo to create "
-              "a stabilized timelapse.",
-              style: TextStyle(fontSize: 15),
-              textAlign: TextAlign.center,
-            ),
-            Expanded(child: Container()),
-            _buildActionButton("Create Project"),
-            const SizedBox(height: 32),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
