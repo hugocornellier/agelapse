@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui' as ui;
@@ -754,20 +755,23 @@ class GalleryUtils {
     }
   }
 
+  /// Streams files directly to ZIP on disk using ZipFileEncoder.
+  /// Memory usage: ~1x largest single file (vs ~2x total size previously).
   static void zipFiles(ZipIsolateParams params) async {
     final send = params.sendPort;
     void log(String m) => send.send({'type': 'log', 'msg': m});
 
-    final outFile = File(params.zipFilePath);
-    outFile.parent.createSync(recursive: true);
+    final zipPath = params.zipFilePath;
+    final zipFile = File(zipPath);
+    zipFile.parent.createSync(recursive: true);
 
     for (final e in params.filesToExport.entries) {
-      e.value.removeWhere((p) => path.equals(p, params.zipFilePath));
+      e.value.removeWhere((p) => path.equals(p, zipPath));
     }
 
-    if (outFile.existsSync()) {
+    if (zipFile.existsSync()) {
       try {
-        outFile.deleteSync();
+        zipFile.deleteSync();
       } catch (e) {
         log('Cannot delete pre-existing zip: $e');
         send.send('error');
@@ -789,6 +793,7 @@ class GalleryUtils {
       return aBase.compareTo(bBase);
     }
 
+    ZipFileEncoder? encoder;
     try {
       final Map<String, int> rawCounts = {};
       final Map<String, int> stabCounts = {};
@@ -845,12 +850,14 @@ class GalleryUtils {
       final totalBytes = items.fold<int>(0, (s, it) => s + it.len);
       var stagedBytes = 0;
 
-      final archive = Archive();
+      // Use ZipFileEncoder for streaming - writes directly to disk
+      encoder = ZipFileEncoder();
+      encoder.create(zipPath);
+
       for (final it in items) {
         try {
-          final bytes = it.file.readAsBytesSync();
-          final af = ArchiveFile.noCompress(it.arcPath, bytes.length, bytes);
-          archive.addFile(af);
+          // addFile streams file content directly to the ZIP on disk
+          encoder.addFile(it.file, it.arcPath);
           added++;
 
           stagedBytes += it.len;
@@ -858,19 +865,20 @@ class GalleryUtils {
           send.send(pct);
         } catch (e, st) {
           ok = false;
-          log('read/add failed for ${it.file.path}: $e');
+          log('add failed for ${it.file.path}: $e');
           log('stack: $st');
           break;
         }
       }
 
-      if (ok) {
-        final zipBytes = ZipEncoder().encode(archive, level: 0);
-        outFile.writeAsBytesSync(zipBytes, flush: true);
-      }
+      encoder.close();
+      encoder = null;
     } catch (e, st) {
       ok = false;
       log('zipFiles crashed: $e\n$st');
+      try {
+        encoder?.close();
+      } catch (_) {}
     } finally {
       send.send({
         'type': 'summary',
@@ -883,7 +891,7 @@ class GalleryUtils {
         send.send('success');
       } else {
         try {
-          if (outFile.existsSync()) outFile.deleteSync();
+          if (zipFile.existsSync()) zipFile.deleteSync();
         } catch (_) {}
         send.send('error');
       }
@@ -920,22 +928,66 @@ class GalleryUtils {
       }
 
       final receivePort = ReceivePort();
-      await Isolate.spawn(
-        zipFiles,
-        ZipIsolateParams(receivePort.sendPort, projectId, projectName,
-            filesToExport, zipWorkPath),
-      );
+      final errorPort = ReceivePort();
+      final exitPort = ReceivePort();
+      final completer = Completer<String>();
+      Isolate? isolate;
 
-      String result = 'error';
-      await for (var message in receivePort) {
+      // Inactivity timeout - reset on each progress message
+      const inactivityLimit = Duration(minutes: 5);
+      Timer? inactivityTimer;
+
+      void cleanup() {
+        inactivityTimer?.cancel();
+        receivePort.close();
+        errorPort.close();
+        exitPort.close();
+      }
+
+      void resetInactivityTimer() {
+        inactivityTimer?.cancel();
+        inactivityTimer = Timer(inactivityLimit, () {
+          if (!completer.isCompleted) {
+            debugPrint('[zip] Isolate inactive for ${inactivityLimit.inMinutes} minutes, killing');
+            isolate?.kill(priority: Isolate.immediate);
+            completer.complete('error');
+            cleanup();
+          }
+        });
+      }
+
+      // Handle isolate errors (uncaught exceptions)
+      errorPort.listen((error) {
+        debugPrint('[zip] Isolate error: $error');
+        if (!completer.isCompleted) {
+          completer.complete('error');
+          cleanup();
+        }
+      });
+
+      // Handle isolate exit (crash, OOM, or normal termination without result)
+      exitPort.listen((_) {
+        if (!completer.isCompleted) {
+          debugPrint('[zip] Isolate exited without sending result');
+          completer.complete('error');
+          cleanup();
+        }
+      });
+
+      // Handle normal messages from isolate
+      receivePort.listen((message) {
+        resetInactivityTimer(); // Reset on any message
+
         if (message == 'success' || message == 'error') {
-          result = message as String;
-          receivePort.close();
-          break;
+          if (!completer.isCompleted) {
+            completer.complete(message as String);
+            cleanup();
+          }
+          return;
         }
         if (message is Map && message['type'] == 'log') {
           debugPrint('[zip] ${message['msg']}');
-          continue;
+          return;
         }
         if (message is Map && message['type'] == 'summary') {
           debugPrint(
@@ -943,21 +995,34 @@ class GalleryUtils {
           if ((message['added'] ?? 0) == 0) {
             debugPrint('[zip] WARNING: 0 files added');
           }
-          continue;
+          return;
         }
         if (message is double) {
           setExportProgress(message);
-          continue;
+          return;
         }
         if (message is String) {
           final p = double.tryParse(message);
           if (p != null) {
             setExportProgress(p);
-            continue;
+            return;
           }
         }
         debugPrint('[zip] Unrecognized message: $message');
-      }
+      });
+
+      isolate = await Isolate.spawn(
+        zipFiles,
+        ZipIsolateParams(receivePort.sendPort, projectId, projectName,
+            filesToExport, zipWorkPath),
+        onError: errorPort.sendPort,
+        onExit: exitPort.sendPort,
+      );
+
+      // Start inactivity timer
+      resetInactivityTimer();
+
+      final result = await completer.future;
 
       if (!(Platform.isAndroid || Platform.isIOS) && result == 'success') {
         final suggested =

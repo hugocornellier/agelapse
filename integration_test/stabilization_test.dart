@@ -11,45 +11,54 @@ import 'test_utils.dart';
 void main() {
   test_config.isTestMode = true;
 
-  late String testImage;
-
-  setUpAll(() async {
-    // Preload fixtures on mobile platforms (extracts from assets to temp files)
-    await preloadFixtures();
-    if (!fixturesUnavailable) {
-      testImage = await getSampleFacePathAsync(1);
-    }
-  });
+  String? testImage;
+  bool fixturesLoaded = false;
 
   tearDownAll(() async {
     await cleanupFixtures();
   });
 
+  /// Helper to initialize app and load fixtures (must be called after app.main())
+  Future<bool> initAppAndFixtures(WidgetTester tester) async {
+    app.main();
+    await tester.pumpAndSettle(const Duration(seconds: 3));
+
+    // Load fixtures after app is initialized (required for rootBundle on mobile)
+    if (!fixturesLoaded) {
+      await preloadFixtures();
+      if (!fixturesUnavailable) {
+        testImage = await getSampleFacePathAsync(1);
+      }
+      fixturesLoaded = true;
+    }
+
+    if (fixturesUnavailable || testImage == null) {
+      markTestSkipped('Test fixtures not available on this platform');
+      return false;
+    }
+
+    // Verify file actually exists
+    if (!await File(testImage!).exists()) {
+      markTestSkipped('Test image file not found: $testImage');
+      return false;
+    }
+
+    return true;
+  }
+
   group('Face Detection', () {
     testWidgets('detects face from file path', (tester) async {
-      if (fixturesUnavailable) {
-        markTestSkipped('Test fixtures not available on this platform');
-        return;
-      }
+      if (!await initAppAndFixtures(tester)) return;
 
-      app.main();
-      await tester.pumpAndSettle(const Duration(seconds: 3));
-
-      final faces = await StabUtils.getFacesFromFilepath(testImage);
+      final faces = await StabUtils.getFacesFromFilepath(testImage!);
       expect(faces, isNotNull, reason: 'Face detection should return a result');
       expect(faces, isNotEmpty, reason: 'Should detect at least one face');
     });
 
     testWidgets('extracts eye landmarks', (tester) async {
-      if (fixturesUnavailable) {
-        markTestSkipped('Test fixtures not available on this platform');
-        return;
-      }
+      if (!await initAppAndFixtures(tester)) return;
 
-      app.main();
-      await tester.pumpAndSettle(const Duration(seconds: 3));
-
-      final faces = await StabUtils.getFacesFromFilepath(testImage);
+      final faces = await StabUtils.getFacesFromFilepath(testImage!);
       if (faces == null || faces.isEmpty) {
         markTestSkipped('Face detection returned no faces');
         return;
@@ -60,21 +69,9 @@ void main() {
     });
 
     testWidgets('detects face from bytes', (tester) async {
-      if (fixturesUnavailable) {
-        markTestSkipped('Test fixtures not available on this platform');
-        return;
-      }
+      if (!await initAppAndFixtures(tester)) return;
 
-      app.main();
-      await tester.pumpAndSettle(const Duration(seconds: 3));
-
-      final file = File(testImage);
-      if (!await file.exists()) {
-        markTestSkipped('Test image file not found: $testImage');
-        return;
-      }
-
-      final bytes = await file.readAsBytes();
+      final bytes = await File(testImage!).readAsBytes();
       final faces = await StabUtils.getFacesFromBytes(bytes);
       expect(faces, isNotNull);
       expect(faces, isNotEmpty);
@@ -83,21 +80,9 @@ void main() {
 
   group('Image Stabilization', () {
     testWidgets('generates stabilized image bytes', (tester) async {
-      if (fixturesUnavailable) {
-        markTestSkipped('Test fixtures not available on this platform');
-        return;
-      }
+      if (!await initAppAndFixtures(tester)) return;
 
-      app.main();
-      await tester.pumpAndSettle(const Duration(seconds: 3));
-
-      final file = File(testImage);
-      if (!await file.exists()) {
-        markTestSkipped('Test image file not found: $testImage');
-        return;
-      }
-
-      final bytes = await file.readAsBytes();
+      final bytes = await File(testImage!).readAsBytes();
 
       final result = await StabUtils.generateStabilizedImageBytesCVAsync(
         bytes,
@@ -116,22 +101,10 @@ void main() {
 
   group('End-to-End Pipeline', () {
     testWidgets('stabilizes image with detected face', (tester) async {
-      if (fixturesUnavailable) {
-        markTestSkipped('Test fixtures not available on this platform');
-        return;
-      }
-
-      app.main();
-      await tester.pumpAndSettle(const Duration(seconds: 3));
-
-      final file = File(testImage);
-      if (!await file.exists()) {
-        markTestSkipped('Test image file not found: $testImage');
-        return;
-      }
+      if (!await initAppAndFixtures(tester)) return;
 
       // 1. Load image
-      final bytes = await file.readAsBytes();
+      final bytes = await File(testImage!).readAsBytes();
 
       // 2. Detect face
       final faces = await StabUtils.getFacesFromBytes(bytes);

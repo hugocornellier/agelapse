@@ -97,10 +97,16 @@ Future<void> _main() async {
 }
 
 Future<void> _initializeApp() async {
-  await Future.wait([
+  final futures = <Future>[
     DB.instance.createTablesIfNotExist(),
-    initializeNotifications(),
-  ]);
+  ];
+
+  // Skip notification initialization in test mode to avoid permission prompts
+  if (!test_config.isTestMode) {
+    futures.add(initializeNotifications());
+  }
+
+  await Future.wait(futures);
 }
 
 Future<void> initializeNotifications() async {

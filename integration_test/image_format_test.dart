@@ -20,17 +20,25 @@ void main() {
 
   group('Image Format Conversion Tests', () {
     late Directory tempDir;
-    late String avifPath;
-    late String heicPath;
+    String? avifPath;
+    String? heicPath;
+    bool fixturesLoaded = false;
 
-    setUpAll(() async {
-      // Preload fixtures on mobile platforms
+    /// Load fixtures lazily (required for iOS where rootBundle needs app context)
+    Future<bool> ensureFixturesLoaded() async {
+      if (fixturesLoaded) {
+        return !fixturesUnavailable && avifPath != null;
+      }
+
       await preloadFixtures();
       if (!fixturesUnavailable) {
         avifPath = await getFixturePathAsync('sample-avif.avif');
         heicPath = await getFixturePathAsync('sample-heic.HEIC');
       }
-    });
+      fixturesLoaded = true;
+
+      return !fixturesUnavailable && avifPath != null;
+    }
 
     setUp(() async {
       // Create a temp directory for output files
@@ -49,12 +57,12 @@ void main() {
     });
 
     testWidgets('AVIF to PNG conversion works', (tester) async {
-      if (fixturesUnavailable) {
+      if (!await ensureFixturesLoaded()) {
         markTestSkipped('Test fixtures not available on this platform');
         return;
       }
 
-      final avifFile = File(avifPath);
+      final avifFile = File(avifPath!);
 
       // Verify sample file exists
       if (!await avifFile.exists()) {
@@ -66,7 +74,7 @@ void main() {
       final pngPath = p.join(tempDir.path, 'converted-avif.png');
 
       // Perform conversion
-      final result = await GalleryUtils.convertAvifToPng(avifPath, pngPath);
+      final result = await GalleryUtils.convertAvifToPng(avifPath!, pngPath);
 
       // Verify conversion succeeded
       expect(result, isTrue, reason: 'AVIF to PNG conversion should succeed');
@@ -90,16 +98,16 @@ void main() {
         return;
       }
 
-      if (fixturesUnavailable) {
+      if (!await ensureFixturesLoaded() || heicPath == null) {
         markTestSkipped('Test fixtures not available on this platform');
         return;
       }
 
-      final heicFile = File(heicPath);
+      final heicFile = File(heicPath!);
 
       // Verify sample file exists
       if (!await heicFile.exists()) {
-        markTestSkipped('Sample HEIC file not found at: $heicPath');
+        markTestSkipped('Sample HEIC file not found at: $heicPath!');
         return;
       }
 
@@ -109,7 +117,7 @@ void main() {
       // Perform conversion using sips (macOS built-in tool)
       final result = await Process.run(
         'sips',
-        ['-s', 'format', 'jpeg', heicPath, '--out', jpgPath],
+        ['-s', 'format', 'jpeg', heicPath!, '--out', jpgPath],
       );
 
       // Verify conversion succeeded
@@ -147,12 +155,12 @@ void main() {
     });
 
     testWidgets('converted PNG is valid and readable', (tester) async {
-      if (fixturesUnavailable) {
+      if (!await ensureFixturesLoaded()) {
         markTestSkipped('Test fixtures not available on this platform');
         return;
       }
 
-      final avifFile = File(avifPath);
+      final avifFile = File(avifPath!);
       if (!await avifFile.exists()) {
         markTestSkipped('Sample AVIF file not found at: $avifPath');
         return;
@@ -162,7 +170,7 @@ void main() {
 
       // Convert AVIF to PNG
       final conversionResult =
-          await GalleryUtils.convertAvifToPng(avifPath, pngPath);
+          await GalleryUtils.convertAvifToPng(avifPath!, pngPath);
       expect(conversionResult, isTrue);
 
       // Read the PNG file

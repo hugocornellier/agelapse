@@ -5,6 +5,7 @@ import '../services/database_helper.dart';
 import '../services/log_service.dart';
 import '../styles/styles.dart';
 import '../utils/notification_util.dart';
+import '../utils/test_mode.dart' as test_config;
 import 'main_navigation.dart';
 
 class CreateProjectSheet extends StatefulWidget {
@@ -240,18 +241,21 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
       LogService.instance.log("Error while setting new default project: $e");
     }
 
-    try {
-      DateTime fivePMLocalTime = NotificationUtil.getFivePMLocalTime();
-      final dailyNotificationTime =
-          fivePMLocalTime.millisecondsSinceEpoch.toString();
+    // Skip notification setup in test mode to avoid permission prompts
+    if (!test_config.isTestMode) {
+      try {
+        DateTime fivePMLocalTime = NotificationUtil.getFivePMLocalTime();
+        final dailyNotificationTime =
+            fivePMLocalTime.millisecondsSinceEpoch.toString();
 
-      await DB.instance.setSettingByTitle('daily_notification_time',
-          dailyNotificationTime, projectId.toString());
-      await NotificationUtil.initializeNotifications();
-      await NotificationUtil.scheduleDailyNotification(
-          projectId, dailyNotificationTime);
-    } catch (e) {
-      LogService.instance.log("Error while setting up notifications: $e");
+        await DB.instance.setSettingByTitle('daily_notification_time',
+            dailyNotificationTime, projectId.toString());
+        await NotificationUtil.initializeNotifications();
+        await NotificationUtil.scheduleDailyNotification(
+            projectId, dailyNotificationTime);
+      } catch (e) {
+        LogService.instance.log("Error while setting up notifications: $e");
+      }
     }
 
     if (!mounted) return;

@@ -196,7 +196,9 @@ void main() {
         final iconFinder = find.byIcon(icon);
         if (iconFinder.evaluate().isNotEmpty) {
           await tester.tap(iconFinder.first);
-          await tester.pumpAndSettle(const Duration(seconds: 2));
+          // Use pump instead of pumpAndSettle for tabs with continuous animations
+          // (e.g., video player previews that never "settle")
+          await tester.pump(const Duration(seconds: 2));
 
           // Verify app didn't crash - we should still have a scaffold
           expect(find.byType(Scaffold), findsWidgets,
