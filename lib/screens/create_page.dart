@@ -583,9 +583,8 @@ class CreatePageState extends State<CreatePage>
   Future<int> getStabilizedPhotoCount() async {
     String projectOrientation =
         await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
-    return (await DB.instance.getStabilizedPhotosByProjectID(
-            widget.projectId, projectOrientation))
-        .length;
+    return await DB.instance.getStabilizedPhotoCountByProjectID(
+        widget.projectId, projectOrientation);
   }
 }
 

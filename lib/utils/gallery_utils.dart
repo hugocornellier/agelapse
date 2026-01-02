@@ -14,8 +14,10 @@ import 'package:flutter/services.dart';
 import 'package:file_selector/file_selector.dart';
 
 import '../services/database_helper.dart';
+import '../services/face_stabilizer.dart';
 import '../services/log_service.dart';
 import '../services/image_processor.dart';
+import '../services/thumbnail_service.dart';
 import 'camera_utils.dart';
 import 'dir_utils.dart';
 import 'image_utils.dart';
@@ -264,12 +266,19 @@ class GalleryUtils {
 
     List<Future<String>> futurePaths = stabPhotos.map((stabilizedPhoto) async {
       final String timestamp = stabilizedPhoto['timestamp'];
+      final String? fileExtension = stabilizedPhoto['fileExtension'] as String?;
       final rawPhotoPath =
           await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
         timestamp,
         projectId,
+        fileExtension: fileExtension,
       );
-      return await DirUtils.getStabilizedImagePath(rawPhotoPath, projectId);
+      return await DirUtils
+          .getStabilizedImagePathFromRawPathAndProjectOrientation(
+        projectId,
+        rawPhotoPath,
+        projectOrientation,
+      );
     }).toList();
 
     return await Future.wait(futurePaths);
@@ -300,12 +309,54 @@ class GalleryUtils {
       onShowInfoDialog();
     }
 
+    // Sort newest first (descending by filename/timestamp)
     rawImagePaths
         .sort((b, a) => b.split('/').last.compareTo(a.split('/').last));
     stabImagePaths
         .sort((b, a) => b.split('/').last.compareTo(a.split('/').last));
 
+    // OPT-3: Prefetch thumbnail statuses to avoid N individual DB queries
+    await _prefetchThumbnailStatuses(stabImagePaths, projectId);
+
     await onImagesLoaded(rawImagePaths, stabImagePaths);
+  }
+
+  /// Batch prefetch thumbnail statuses to seed ThumbnailService cache.
+  /// Converts N individual DB queries into a single batch query.
+  static Future<void> _prefetchThumbnailStatuses(
+      List<String> stabImagePaths, int projectId) async {
+    if (stabImagePaths.isEmpty) return;
+
+    // Extract timestamps from stabilized image paths
+    final timestamps =
+        stabImagePaths.map((p) => path.basenameWithoutExtension(p)).toList();
+
+    // Batch query status flags
+    final statusMap =
+        await DB.instance.getPhotoStatusBatch(timestamps, projectId);
+
+    // Build thumbnail path -> status map for cache seeding
+    final Map<String, ThumbnailStatus> cacheEntries = {};
+    for (final stabPath in stabImagePaths) {
+      final timestamp = path.basenameWithoutExtension(stabPath);
+      final flags = statusMap[timestamp];
+
+      if (flags != null) {
+        final thumbnailPath = FaceStabilizer.getStabThumbnailPath(stabPath);
+        if (flags['noFacesFound'] == 1) {
+          cacheEntries[thumbnailPath] = ThumbnailStatus.noFacesFound;
+        } else if (flags['stabFailed'] == 1) {
+          cacheEntries[thumbnailPath] = ThumbnailStatus.stabFailed;
+        }
+        // Note: success status is determined by file existence check,
+        // which is still needed but now only for non-failure cases
+      }
+    }
+
+    // Seed the cache with failure statuses
+    if (cacheEntries.isNotEmpty) {
+      ThumbnailService.instance.seedCache(cacheEntries);
+    }
   }
 
   static Future<void> scrollToBottomInstantly(
@@ -851,13 +902,14 @@ class GalleryUtils {
       var stagedBytes = 0;
 
       // Use ZipFileEncoder for streaming - writes directly to disk
+      // level: 0 (store) = no compression, faster for already-compressed media
       encoder = ZipFileEncoder();
-      encoder.create(zipPath);
+      encoder.create(zipPath, level: ZipFileEncoder.store);
 
       for (final it in items) {
         try {
           // addFile streams file content directly to the ZIP on disk
-          encoder.addFile(it.file, it.arcPath);
+          await encoder.addFile(it.file, it.arcPath, ZipFileEncoder.store);
           added++;
 
           stagedBytes += it.len;
@@ -871,13 +923,13 @@ class GalleryUtils {
         }
       }
 
-      encoder.close();
+      await encoder.close();
       encoder = null;
     } catch (e, st) {
       ok = false;
       log('zipFiles crashed: $e\n$st');
       try {
-        encoder?.close();
+        await encoder?.close();
       } catch (_) {}
     } finally {
       send.send({
@@ -948,7 +1000,8 @@ class GalleryUtils {
         inactivityTimer?.cancel();
         inactivityTimer = Timer(inactivityLimit, () {
           if (!completer.isCompleted) {
-            debugPrint('[zip] Isolate inactive for ${inactivityLimit.inMinutes} minutes, killing');
+            debugPrint(
+                '[zip] Isolate inactive for ${inactivityLimit.inMinutes} minutes, killing');
             isolate?.kill(priority: Isolate.immediate);
             completer.complete('error');
             cleanup();

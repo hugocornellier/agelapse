@@ -166,10 +166,34 @@ class ProjectUtils {
     return await DB.instance.deletePhoto(timestamp);
   }
 
+  /// Returns unique photo dates in descending order (newest first).
+  ///
+  /// PRECONDITION: [photos] must be sorted by timestamp descending
+  /// (as returned by [DB.getPhotosByProjectIDNewestFirst]).
+  ///
+  /// Complexity: O(n) time, O(unique_days) space - avoids O(d log d) sort
+  /// by preserving encounter order from pre-sorted input.
   static List<String> getUniquePhotoDates(List<Map<String, dynamic>> photos) {
-    final Set<DateTime> uniqueDays = {};
+    if (photos.isEmpty) return [];
 
-    for (var photo in photos) {
+    // Debug assertion to catch misuse - validates descending timestamp order
+    assert(() {
+      for (int i = 1; i < photos.length; i++) {
+        final prev = int.tryParse(photos[i - 1]['timestamp'] ?? '0') ?? 0;
+        final curr = int.tryParse(photos[i]['timestamp'] ?? '0') ?? 0;
+        if (curr > prev) {
+          throw StateError(
+              'getUniquePhotoDates requires timestamp-descending input. '
+              'Found timestamp $curr after $prev at index $i.');
+        }
+      }
+      return true;
+    }());
+
+    final List<DateTime> days = [];
+    DateTime? lastDay;
+
+    for (final photo in photos) {
       final int ts = int.tryParse(photo['timestamp'] ?? '0') ?? 0;
       final DateTime utc = DateTime.fromMillisecondsSinceEpoch(ts, isUtc: true);
       final int? offsetMin = photo['captureOffsetMinutes'] is int
@@ -180,11 +204,14 @@ class ProjectUtils {
           : utc.toLocal();
       final DateTime dayOnly =
           DateTime(localLike.year, localLike.month, localLike.day);
-      uniqueDays.add(dayOnly);
+
+      // Only add if different from last day (preserves descending order)
+      if (lastDay == null || dayOnly != lastDay) {
+        days.add(dayOnly);
+        lastDay = dayOnly;
+      }
     }
 
-    final List<DateTime> days = uniqueDays.toList()
-      ..sort((a, b) => b.compareTo(a));
     return days.map((d) => d.toString()).toList();
   }
 

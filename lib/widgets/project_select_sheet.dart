@@ -123,12 +123,12 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
       return "";
     }
 
-    // Sort by filename (timestamp) to ensure consistent ordering
-    imageFiles
-        .sort((a, b) => path.basename(a.path).compareTo(path.basename(b.path)));
-    LogService.instance.log(
-        '[getProjectImage] Returning first raw image: ${imageFiles.first.path}');
-    return imageFiles.first.path;
+    // Find minimum by filename (timestamp) in O(n) instead of sorting O(n log n)
+    final minFile = imageFiles.reduce((a, b) =>
+        path.basename(a.path).compareTo(path.basename(b.path)) <= 0 ? a : b);
+    LogService.instance
+        .log('[getProjectImage] Returning first raw image: ${minFile.path}');
+    return minFile.path;
   }
 
   static Future<String?> checkForStabilizedImage(String dirPath) async {
@@ -140,10 +140,12 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
             .where((item) => item.path.endsWith('.png') && item is File)
             .toList();
         if (pngFiles.isNotEmpty) {
-          // Sort by filename (timestamp) to ensure consistent ordering
-          pngFiles.sort(
-              (a, b) => path.basename(a.path).compareTo(path.basename(b.path)));
-          return pngFiles.first.path;
+          // Find minimum by filename (timestamp) in O(n) instead of sorting O(n log n)
+          final minFile = pngFiles.reduce((a, b) =>
+              path.basename(a.path).compareTo(path.basename(b.path)) <= 0
+                  ? a
+                  : b);
+          return minFile.path;
         }
       } catch (e) {
         return null;

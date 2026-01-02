@@ -86,7 +86,7 @@ class VideoUtils {
 
       final Directory dir =
           Directory(path.join(stabilizedDirPath, projectOrientation));
-      LogService.instance.log("[VIDEO] Listing PNG files from: ${dir.path}");
+      LogService.instance.log("[VIDEO] Source directory: ${dir.path}");
 
       // Check if directory exists
       if (!await dir.exists()) {
@@ -95,37 +95,8 @@ class VideoUtils {
         return false;
       }
 
-      List<String> pngFiles;
-      try {
-        pngFiles = await dir
-            .list()
-            .where((f) => f.path.endsWith('.png'))
-            .map((f) => f.path)
-            .toList()
-          ..sort();
-      } catch (e, stackTrace) {
-        LogService.instance
-            .log("[VIDEO] ERROR: Failed to list directory contents: $e");
-        LogService.instance.log("[VIDEO] Stack trace: $stackTrace");
-        return false;
-      }
-
-      LogService.instance
-          .log("[VIDEO] Found ${pngFiles.length} PNG files in ${dir.path}");
-
-      // Log sample PNG paths for debugging
-      if (pngFiles.isNotEmpty) {
-        final sampleCount = pngFiles.length < 3 ? pngFiles.length : 3;
-        LogService.instance
-            .log("[VIDEO] Sample PNG files (first $sampleCount):");
-        for (int i = 0; i < sampleCount; i++) {
-          final file = File(pngFiles[i]);
-          final exists = await file.exists();
-          final size = exists ? await file.length() : 0;
-          LogService.instance.log(
-              "[VIDEO]   ${i + 1}. ${pngFiles[i]} (exists: $exists, size: ${(size / 1024).toStringAsFixed(1)} KB)");
-        }
-      }
+      // Note: PNG listing and validation now handled in _buildConcatListFromDir
+      // to avoid redundant directory scans
 
       final bool framerateIsDefault =
           await SettingsUtil.loadFramerateIsDefault(projectId.toString());
@@ -389,9 +360,8 @@ class VideoUtils {
   static Future<int> getStabilizedPhotoCount(int projectId) async {
     String projectOrientation =
         await SettingsUtil.loadProjectOrientation(projectId.toString());
-    return (await DB.instance
-            .getStabilizedPhotosByProjectID(projectId, projectOrientation))
-        .length;
+    return await DB.instance
+        .getStabilizedPhotoCountByProjectID(projectId, projectOrientation);
   }
 
   static Future<void> createGif(String videoOutputPath, int framerate) async {
@@ -632,6 +602,13 @@ class VideoUtils {
     files.sort((a, b) => path.basename(a).compareTo(path.basename(b)));
     LogService.instance
         .log("[VIDEO] Found ${files.length} PNG files for concat list");
+
+    // Log sample files for debugging
+    if (files.length >= 2) {
+      LogService.instance.log(
+          "[VIDEO] Frame range: ${path.basename(files.first)} → ${path.basename(files.last)}");
+    }
+
     if (files.isEmpty) {
       LogService.instance
           .log("[VIDEO] ERROR: No .png files found in $framesDir");

@@ -32,6 +32,9 @@ class StabilizationProgress {
   /// The project ID this progress relates to.
   final int? projectId;
 
+  /// Timestamp of the last stabilized photo (for incremental UI updates).
+  final String? lastStabilizedTimestamp;
+
   const StabilizationProgress({
     required this.state,
     this.currentPhoto = 0,
@@ -42,6 +45,7 @@ class StabilizationProgress {
     this.currentFrame,
     this.totalFrames,
     this.projectId,
+    this.lastStabilizedTimestamp,
   });
 
   /// Creates an idle state with no active operation.
@@ -63,6 +67,7 @@ class StabilizationProgress {
     required int progressPercent,
     String? eta,
     int? projectId,
+    String? lastStabilizedTimestamp,
   }) =>
       StabilizationProgress(
         state: StabilizationState.stabilizing,
@@ -71,6 +76,7 @@ class StabilizationProgress {
         progressPercent: progressPercent,
         eta: eta,
         projectId: projectId,
+        lastStabilizedTimestamp: lastStabilizedTimestamp,
       );
 
   /// Creates a cancelling state.
@@ -135,6 +141,7 @@ class StabilizationProgress {
     int? currentFrame,
     int? totalFrames,
     int? projectId,
+    String? lastStabilizedTimestamp,
   }) =>
       StabilizationProgress(
         state: state ?? this.state,
@@ -146,6 +153,8 @@ class StabilizationProgress {
         currentFrame: currentFrame ?? this.currentFrame,
         totalFrames: totalFrames ?? this.totalFrames,
         projectId: projectId ?? this.projectId,
+        lastStabilizedTimestamp:
+            lastStabilizedTimestamp ?? this.lastStabilizedTimestamp,
       );
 
   @override
@@ -170,7 +179,8 @@ class StabilizationProgress {
           errorMessage == other.errorMessage &&
           currentFrame == other.currentFrame &&
           totalFrames == other.totalFrames &&
-          projectId == other.projectId;
+          projectId == other.projectId &&
+          lastStabilizedTimestamp == other.lastStabilizedTimestamp;
 
   @override
   int get hashCode => Object.hash(
@@ -183,5 +193,6 @@ class StabilizationProgress {
         currentFrame,
         totalFrames,
         projectId,
+        lastStabilizedTimestamp,
       );
 }

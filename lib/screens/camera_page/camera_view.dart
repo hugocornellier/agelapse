@@ -229,10 +229,10 @@ class _CameraViewState extends State<CameraView> {
 
     final projectOrientation =
         await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
-    final stabPhotos = await DB.instance
-        .getStabilizedPhotosByProjectID(widget.projectId, projectOrientation);
+    final hasStabPhotos = await DB.instance
+        .hasStabilizedPhotos(widget.projectId, projectOrientation);
     if (!mounted) return;
-    if (stabPhotos.isNotEmpty) {
+    if (hasStabPhotos) {
       setState(() {
         showGuidePhoto = true;
       });

@@ -164,30 +164,34 @@ void main() {
     });
 
     test('returns unique dates only', () {
-      // Two photos on same day
+      // Two photos on same day - sorted newest first (descending)
       final photos = [
-        {'timestamp': '1704067200000'}, // 2024-01-01 00:00:00
-        {'timestamp': '1704070800000'}, // 2024-01-01 01:00:00 (same day)
+        {'timestamp': '1704070800000'}, // 2024-01-01 01:00:00 (later)
+        {
+          'timestamp': '1704067200000'
+        }, // 2024-01-01 00:00:00 (earlier, same day)
       ];
       final result = ProjectUtils.getUniquePhotoDates(photos);
       expect(result.length, 1);
     });
 
     test('returns multiple dates for photos on different days', () {
+      // Photos sorted newest first (descending timestamp order)
       final photos = [
-        {'timestamp': '1704067200000'}, // 2024-01-01
+        {'timestamp': '1704240000000'}, // 2024-01-03 (newest)
         {'timestamp': '1704153600000'}, // 2024-01-02
-        {'timestamp': '1704240000000'}, // 2024-01-03
+        {'timestamp': '1704067200000'}, // 2024-01-01 (oldest)
       ];
       final result = ProjectUtils.getUniquePhotoDates(photos);
       expect(result.length, 3);
     });
 
     test('returns dates sorted newest first', () {
+      // Input already sorted newest first (as from getPhotosByProjectIDNewestFirst)
       final photos = [
-        {'timestamp': '1704067200000'}, // earliest
-        {'timestamp': '1704240000000'}, // latest
-        {'timestamp': '1704153600000'}, // middle
+        {'timestamp': '1704240000000'}, // latest (2024-01-03)
+        {'timestamp': '1704153600000'}, // middle (2024-01-02)
+        {'timestamp': '1704067200000'}, // earliest (2024-01-01)
       ];
       final result = ProjectUtils.getUniquePhotoDates(photos);
       expect(result.length, 3);

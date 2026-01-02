@@ -495,15 +495,63 @@ class GalleryPageState extends State<GalleryPage>
           return;
         }
 
-        // For normal progress updates, debounce to prevent excessive reloads
+        // For normal progress updates, use incremental update if timestamp available
         final newCount = event.photoIndex ?? 0;
         if (newCount != _stabCount) {
           _stabCount = newCount;
-          _loadImagesDebounce?.cancel();
-          _loadImagesDebounce = Timer(const Duration(milliseconds: 500), () {
-            if (_isMounted) _loadImages();
-          });
+
+          // Use incremental update if timestamp is available
+          if (event.timestamp != null && projectOrientation != null) {
+            _handleIncrementalStabUpdate(event.timestamp!);
+          } else {
+            // Fall back to debounced full reload
+            _loadImagesDebounce?.cancel();
+            _loadImagesDebounce = Timer(const Duration(milliseconds: 500), () {
+              if (_isMounted) _loadImages();
+            });
+          }
         }
+      });
+    }
+  }
+
+  /// Handles incremental update when a single photo is stabilized.
+  /// Instead of reloading the entire list from DB, constructs the path
+  /// and inserts at the correct position (O(log n) vs O(n) reload).
+  Future<void> _handleIncrementalStabUpdate(String timestamp) async {
+    final newPath = await DirUtils.getStabilizedImagePathFromTimestamp(
+        projectId, timestamp, projectOrientation!);
+
+    // Check if already in list (avoid duplicates)
+    final currentList = widget.stabilizedImageFilesStr;
+    if (currentList.contains(newPath)) return;
+
+    // Create new list with the item inserted at correct position
+    // List is sorted ASC by timestamp (oldest first, newest last)
+    final newList = List<String>.from(currentList);
+
+    // Binary search for insertion point
+    int low = 0;
+    int high = newList.length;
+    while (low < high) {
+      final mid = (low + high) ~/ 2;
+      final midTimestamp = path.basenameWithoutExtension(newList[mid]);
+      if (midTimestamp.compareTo(timestamp) < 0) {
+        low = mid + 1;
+      } else {
+        high = mid;
+      }
+    }
+
+    newList.insert(low, newPath);
+
+    // Update parent state with new list
+    widget.setRawAndStabPhotoStates(widget.imageFilesStr, newList);
+
+    // Scroll to bottom if sticky mode enabled
+    if (_stickyBottomEnabled) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _performAutoScroll();
       });
     }
   }
@@ -557,7 +605,6 @@ class GalleryPageState extends State<GalleryPage>
       GalleryUtils.startImportBatch(result.length);
       for (final AssetEntity asset in result) {
         await _processAsset(asset);
-        _loadImages();
       }
       widget.refreshSettings();
       _loadImages();
@@ -1231,7 +1278,6 @@ class GalleryPageState extends State<GalleryPage>
         GalleryUtils.startImportBatch(details.files.length);
         for (final f in details.files) {
           await processPickedFile(File(f.path));
-          _loadImages();
         }
         final String projectOrientationRaw =
             await SettingsUtil.loadProjectOrientation(projectIdStr);

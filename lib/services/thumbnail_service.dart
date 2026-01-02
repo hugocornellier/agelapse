@@ -47,6 +47,12 @@ class ThumbnailService {
     _statusCache.clear();
   }
 
+  /// Seed the cache with pre-fetched statuses to avoid individual DB queries.
+  /// Called during gallery load to batch-prefetch thumbnail statuses.
+  void seedCache(Map<String, ThumbnailStatus> statuses) {
+    _statusCache.addAll(statuses);
+  }
+
   void dispose() {
     _controller.close();
   }

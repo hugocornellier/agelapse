@@ -8,9 +8,11 @@ import 'database_helper.dart';
 import 'face_stabilizer.dart';
 import 'ffmpeg_process_manager.dart';
 import 'isolate_manager.dart';
+import 'isolate_pool.dart';
 import 'log_service.dart';
 import 'stabilization_benchmark.dart';
 import 'stabilization_progress.dart';
+import 'stabilization_settings.dart';
 import 'stabilization_state.dart';
 import '../utils/dir_utils.dart';
 import '../utils/settings_utils.dart';
@@ -54,6 +56,7 @@ class StabilizationService {
   CancellationToken? _currentToken;
   int? _currentProjectId;
   FaceStabilizer? _currentStabilizer;
+  StabilizationSettings? _currentSettings;
 
   // Progress tracking
   int _currentPhoto = 0;
@@ -131,19 +134,23 @@ class StabilizationService {
     try {
       await WakelockPlus.enable();
 
-      // Create stabilizer
+      // Initialize isolate pool for efficient parallel processing
+      await IsolatePool.instance.initialize();
+
+      // Load settings once for entire stabilization run
+      _currentSettings = await StabilizationSettings.load(projectId);
+
+      // Create stabilizer with pre-loaded settings
       _currentStabilizer = FaceStabilizer(
         projectId,
         _handleUserRanOutOfSpace,
+        settings: _currentSettings,
       );
 
-      // Get counts for progress calculation
+      // Get counts for progress calculation (use cached orientation)
       final allPhotos = await DB.instance.getPhotosByProjectID(projectId);
-      final projectOrientation =
-          await SettingsUtil.loadProjectOrientation(projectId.toString());
-      final stabilizedPhotos = await DB.instance
-          .getStabilizedPhotosByProjectID(projectId, projectOrientation);
-      _stabilizedAtStart = stabilizedPhotos.length;
+      _stabilizedAtStart = await DB.instance.getStabilizedPhotoCountByProjectID(
+          projectId, _currentSettings!.projectOrientation);
 
       _state = StabilizationState.stabilizing;
       _emitProgress(StabilizationProgress.stabilizing(
@@ -205,6 +212,7 @@ class StabilizationService {
           progressPercent: pct,
           eta: _eta,
           projectId: projectId,
+          lastStabilizedTimestamp: photo['timestamp']?.toString(),
         ));
       }
 
@@ -276,6 +284,7 @@ class StabilizationService {
 
     // Kill everything forcefully (instant cancellation)
     IsolateManager.instance.killAll();
+    IsolatePool.instance.killAll();
     await FFmpegProcessManager.instance.killActiveProcess();
 
     LogService.instance.log('StabilizationService: All processes killed');
@@ -322,6 +331,7 @@ class StabilizationService {
           await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
         photo['timestamp'],
         _currentProjectId!,
+        fileExtension: photo['fileExtension'],
       );
 
       return await stabilizer.stabilize(
@@ -338,22 +348,23 @@ class StabilizationService {
   }
 
   Future<void> _finalCheck(FaceStabilizer stabilizer, int projectId) async {
-    final projectOrientation =
-        await SettingsUtil.loadProjectOrientation(projectId.toString());
-    final offsetX =
-        await SettingsUtil.loadOffsetXCurrentOrientation(projectId.toString());
-    final allPhotos = await DB.instance
-        .getStabilizedPhotosByProjectID(projectId, projectOrientation);
+    // Load fresh settings to compare against stored offsets in photos
+    // This detects if user changed settings since photos were stabilized
+    final freshSettings = await StabilizationSettings.load(projectId);
+    final allPhotos = await DB.instance.getStabilizedPhotosByProjectID(
+        projectId, freshSettings.projectOrientation);
 
-    final columnName = projectOrientation == 'portrait'
+    final columnName = freshSettings.projectOrientation == 'portrait'
         ? "stabilizedPortraitOffsetX"
         : "stabilizedLandscapeOffsetX";
+    final currentOffsetX = freshSettings.eyeOffsetX.toString();
 
     for (var photo in allPhotos) {
       _currentToken?.throwIfCancelled();
 
-      if (photo[columnName] != offsetX) {
-        await _reStabilizePhoto(stabilizer, photo, projectId);
+      if (photo[columnName] != currentOffsetX) {
+        await _reStabilizePhoto(
+            stabilizer, photo, projectId, freshSettings.projectOrientation);
       }
     }
   }
@@ -362,9 +373,8 @@ class StabilizationService {
     FaceStabilizer stabilizer,
     Map<String, dynamic> photo,
     int projectId,
+    String projectOrientation,
   ) async {
-    final projectOrientation =
-        await SettingsUtil.loadProjectOrientation(projectId.toString());
     await DB.instance.resetStabilizedColumnByTimestamp(
         projectOrientation, photo['timestamp']);
 
@@ -393,11 +403,11 @@ class StabilizationService {
     try {
       final newestVideo =
           await DB.instance.getNewestVideoByProjectId(projectId);
-      final projectOrientation =
+      // Use cached settings if available, otherwise load fresh
+      final orientation = _currentSettings?.projectOrientation ??
           await SettingsUtil.loadProjectOrientation(projectId.toString());
-      final stabilizedPhotos = await DB.instance
-          .getStabilizedPhotosByProjectID(projectId, projectOrientation);
-      final stabPhotoCount = stabilizedPhotos.length;
+      final stabPhotoCount = await DB.instance
+          .getStabilizedPhotoCountByProjectID(projectId, orientation);
 
       final videoIsNull = newestVideo == null;
       final settingsHaveChanged =
@@ -421,11 +431,11 @@ class StabilizationService {
 
       final newestVideo =
           await DB.instance.getNewestVideoByProjectId(projectId);
-      final projectOrientation =
+      // Use cached settings if available, otherwise load fresh
+      final orientation = _currentSettings?.projectOrientation ??
           await SettingsUtil.loadProjectOrientation(projectId.toString());
-      final stabilizedPhotos = await DB.instance
-          .getStabilizedPhotosByProjectID(projectId, projectOrientation);
-      final stabPhotoCount = stabilizedPhotos.length;
+      final stabPhotoCount = await DB.instance
+          .getStabilizedPhotoCountByProjectID(projectId, orientation);
 
       final videoIsNull = newestVideo == null;
       final settingsHaveChanged =
@@ -502,6 +512,7 @@ class StabilizationService {
     await _currentStabilizer?.dispose();
     _currentStabilizer = null;
     _currentToken = null;
+    _currentSettings = null;
     await WakelockPlus.disable();
 
     // Reset to idle after a short delay to allow UI to update

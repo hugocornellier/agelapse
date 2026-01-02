@@ -17,6 +17,7 @@ import '../../services/async_mutex.dart';
 import '../../services/cancellation_token.dart';
 import '../../services/database_helper.dart';
 import '../../services/isolate_manager.dart';
+import '../../services/isolate_pool.dart';
 import '../../services/log_service.dart';
 import '../camera_utils.dart';
 import '../dir_utils.dart';
@@ -74,7 +75,75 @@ class StabUtils {
     return dividend / divisor;
   }
 
+  /// Result from face detection containing both FaceLike wrappers and raw faces.
+  /// The raw faces are needed for embedding extraction.
+  static (List<FaceLike>, List<fdl.Face>) _convertFaces(
+    List<fdl.Face> facesDetected, {
+    bool filterByFaceSize = true,
+  }) {
+    if (facesDetected.isEmpty) {
+      return ([], []);
+    }
+
+    // Get image width from first detected face's originalSize
+    final double w = facesDetected.first.originalSize.width;
+
+    final List<FaceLike> faces = [];
+    final List<fdl.Face> rawFaces = [];
+
+    for (final face in facesDetected) {
+      final boundingBox = face.boundingBox;
+      final Rect bbox = Rect.fromLTRB(
+        boundingBox.topLeft.x,
+        boundingBox.topLeft.y,
+        boundingBox.bottomRight.x,
+        boundingBox.bottomRight.y,
+      );
+
+      final landmarks = face.landmarks;
+      final Point<double>? l = landmarks.leftEye != null
+          ? Point(landmarks.leftEye!.x, landmarks.leftEye!.y)
+          : null;
+      final Point<double>? r = landmarks.rightEye != null
+          ? Point(landmarks.rightEye!.x, landmarks.rightEye!.y)
+          : null;
+
+      final faceLike = FaceLike(
+        boundingBox: bbox,
+        leftEye: l,
+        rightEye: r,
+      );
+
+      if (!filterByFaceSize || (bbox.width / w) > 0.1) {
+        faces.add(faceLike);
+        rawFaces.add(face);
+      }
+    }
+
+    // If filtering removed all faces, return original set
+    if (faces.isEmpty && facesDetected.isNotEmpty) {
+      return _convertFaces(facesDetected, filterByFaceSize: false);
+    }
+
+    return (faces, rawFaces);
+  }
+
   static Future<List<FaceLike>?> getFacesFromBytes(
+    Uint8List bytes, {
+    bool filterByFaceSize = true,
+    int? imageWidth,
+  }) async {
+    final result = await getFacesFromBytesWithRaw(
+      bytes,
+      filterByFaceSize: filterByFaceSize,
+      imageWidth: imageWidth,
+    );
+    return result?.$1;
+  }
+
+  /// Gets faces from bytes, returning both FaceLike wrappers and raw fdl.Face objects.
+  /// The raw faces are needed for embedding extraction without re-detecting.
+  static Future<(List<FaceLike>, List<fdl.Face>)?> getFacesFromBytesWithRaw(
     Uint8List bytes, {
     bool filterByFaceSize = true,
     int? imageWidth,
@@ -91,50 +160,14 @@ class StabUtils {
         );
 
         if (facesDetected.isEmpty) {
-          return [];
+          return (<FaceLike>[], <fdl.Face>[]);
         }
 
-        // Get image width from first detected face's originalSize
-        final double w = facesDetected.first.originalSize.width;
-
-        final List<FaceLike> faces = [];
-        for (final face in facesDetected) {
-          final boundingBox = face.boundingBox;
-          final Rect bbox = Rect.fromLTRB(
-            boundingBox.topLeft.x,
-            boundingBox.topLeft.y,
-            boundingBox.bottomRight.x,
-            boundingBox.bottomRight.y,
-          );
-
-          final landmarks = face.landmarks;
-          final Point<double>? l = landmarks.leftEye != null
-              ? Point(landmarks.leftEye!.x, landmarks.leftEye!.y)
-              : null;
-          final Point<double>? r = landmarks.rightEye != null
-              ? Point(landmarks.rightEye!.x, landmarks.rightEye!.y)
-              : null;
-
-          faces.add(
-            FaceLike(
-              boundingBox: bbox,
-              leftEye: l,
-              rightEye: r,
-            ),
-          );
-        }
-
-        if (!filterByFaceSize || faces.isEmpty) return faces;
-
-        const double minFaceSize = 0.1;
-        final filtered = faces
-            .where((f) => (f.boundingBox.width / w) > minFaceSize)
-            .toList();
-        return filtered.isNotEmpty ? filtered : faces;
+        return _convertFaces(facesDetected, filterByFaceSize: filterByFaceSize);
       } catch (e) {
         LogService.instance
             .log("Error caught while fetching faces from bytes: $e");
-        return [];
+        return (<FaceLike>[], <fdl.Face>[]);
       }
     });
   }
@@ -276,20 +309,30 @@ class StabUtils {
   /// Picks the face index with highest similarity to the reference embedding.
   /// Returns -1 if no match found above threshold, or falls back to first face.
   /// [referenceEmbedding] is the 192-dim embedding from a single-face photo.
-  /// [imageBytes] is the raw image bytes to detect and compare faces.
+  /// [imageBytes] is the raw image bytes (needed for embedding extraction).
+  /// [preDetectedFaces] optional pre-detected faces to avoid redundant detection.
   static Future<int> pickFaceIndexByEmbedding(
     Float32List referenceEmbedding,
-    Uint8List imageBytes,
-  ) async {
+    Uint8List imageBytes, {
+    List<fdl.Face>? preDetectedFaces,
+  }) async {
     // Serialize access to the face detector to prevent race conditions
     return await _faceDetectorMutex.protect(() async {
       try {
         await _ensureFDLite();
 
-        final faces = await _faceDetectorIsolate!.detectFaces(
-          imageBytes,
-          mode: fdl.FaceDetectionMode.fast,
-        );
+        // Use pre-detected faces if available, otherwise detect
+        final List<fdl.Face> faces;
+        if (preDetectedFaces != null && preDetectedFaces.isNotEmpty) {
+          faces = preDetectedFaces;
+          LogService.instance.log(
+              "Using ${faces.length} pre-detected faces for embedding matching");
+        } else {
+          faces = await _faceDetectorIsolate!.detectFaces(
+            imageBytes,
+            mode: fdl.FaceDetectionMode.fast,
+          );
+        }
 
         if (faces.isEmpty) return -1;
         if (faces.length == 1) return 0;
@@ -505,10 +548,20 @@ class StabUtils {
   }
 
   /// Read any image file and return PNG bytes (using opencv for fast native decoding)
+  /// Uses persistent isolate pool to avoid spawn/kill overhead.
   static Future<Uint8List?> readImageAsPngBytesInIsolate(String filePath,
       {CancellationToken? token}) async {
     token?.throwIfCancelled();
 
+    // Use pool if available for better performance
+    if (IsolatePool.instance.isInitialized) {
+      return await IsolatePool.instance.execute<Uint8List>(
+        'readToPng',
+        {'filePath': filePath},
+      );
+    }
+
+    // Fallback to individual isolate if pool not initialized
     ReceivePort receivePort = ReceivePort();
     var params = {
       'sendPort': receivePort.sendPort,
@@ -531,11 +584,22 @@ class StabUtils {
   }
 
   /// Write PNG bytes to file
+  /// Uses persistent isolate pool to avoid spawn/kill overhead.
   static Future<void> writePngBytesToFileInIsolate(
       String filepath, Uint8List pngBytes,
       {CancellationToken? token}) async {
     token?.throwIfCancelled();
 
+    // Use pool if available for better performance
+    if (IsolatePool.instance.isInitialized) {
+      await IsolatePool.instance.execute(
+        'writePngFromBytes',
+        {'filePath': filepath, 'bytes': pngBytes},
+      );
+      return;
+    }
+
+    // Fallback to individual isolate if pool not initialized
     ReceivePort receivePort = ReceivePort();
     var params = {
       'sendPort': receivePort.sendPort,
@@ -557,10 +621,22 @@ class StabUtils {
     }
   }
 
+  /// Composite PNG on black background.
+  /// Uses persistent isolate pool to avoid spawn/kill overhead.
   static Future<Uint8List> compositeBlackPngBytes(Uint8List pngBytes,
       {CancellationToken? token}) async {
     token?.throwIfCancelled();
 
+    // Use pool if available for better performance
+    if (IsolatePool.instance.isInitialized) {
+      final result = await IsolatePool.instance.execute<Uint8List>(
+        'compositeBlackPng',
+        {'bytes': pngBytes},
+      );
+      return result ?? pngBytes; // Fallback to original if composite fails
+    }
+
+    // Fallback to individual isolate if pool not initialized
     ReceivePort receivePort = ReceivePort();
     var params = {
       'sendPort': receivePort.sendPort,
@@ -582,10 +658,22 @@ class StabUtils {
     }
   }
 
+  /// Create thumbnail JPG from PNG bytes.
+  /// Uses persistent isolate pool to avoid spawn/kill overhead.
   static Future<Uint8List> thumbnailJpgFromPngBytes(Uint8List pngBytes,
       {CancellationToken? token}) async {
     token?.throwIfCancelled();
 
+    // Use pool if available for better performance
+    if (IsolatePool.instance.isInitialized) {
+      final result = await IsolatePool.instance.execute<Uint8List>(
+        'thumbnailFromPng',
+        {'bytes': pngBytes},
+      );
+      return result ?? pngBytes; // Fallback to original if thumbnail fails
+    }
+
+    // Fallback to individual isolate if pool not initialized
     ReceivePort receivePort = ReceivePort();
     var params = {
       'sendPort': receivePort.sendPort,
@@ -607,11 +695,23 @@ class StabUtils {
     }
   }
 
+  /// Write bytes to JPG file.
+  /// Uses persistent isolate pool to avoid spawn/kill overhead.
   static Future<void> writeBytesToJpgFileInIsolate(
       String filePath, List<int> bytes,
       {CancellationToken? token}) async {
     token?.throwIfCancelled();
 
+    // Use pool if available for better performance
+    if (IsolatePool.instance.isInitialized) {
+      await IsolatePool.instance.execute(
+        'writeJpg',
+        {'filePath': filePath, 'bytes': Uint8List.fromList(bytes)},
+      );
+      return;
+    }
+
+    // Fallback to individual isolate if pool not initialized
     ReceivePort receivePort = ReceivePort();
     var params = {
       'sendPort': receivePort.sendPort,
@@ -643,21 +743,24 @@ class StabUtils {
     return true;
   }
 
-  static Future<void> preparePNG(String imgPath) async {
+  /// Prepares a PNG version of the image and returns the PNG bytes.
+  /// Also writes to disk for caching. If PNG already exists, reads and returns it.
+  static Future<Uint8List?> preparePNG(String imgPath) async {
     final String pngPath = await DirUtils.getPngPathFromRawPhotoPath(imgPath);
     await DirUtils.createDirectoryIfNotExists(pngPath);
     final File pngFile = File(pngPath);
 
     final bool rawExists = await File(imgPath).exists();
     if (!rawExists) {
-      return;
+      return null;
     }
 
+    // If PNG already cached, read and return those bytes directly
     final bool pngExists = await pngFile.exists();
     if (pngExists) {
       final int len = await pngFile.length();
       if (len > 0) {
-        return;
+        return await pngFile.readAsBytes();
       }
     }
 
@@ -675,12 +778,12 @@ class StabUtils {
           ['-s', 'format', 'jpeg', imgPath, '--out', jpgImgPath],
         );
         if (result.exitCode != 0 || !await File(jpgImgPath).exists()) {
-          return;
+          return null;
         }
       } else if (Platform.isWindows) {
         final success = await HeicUtils.convertHeicToJpgAt(imgPath, jpgImgPath);
         if (!success) {
-          return;
+          return null;
         }
       } else {
         // iOS/Android - use heif_converter package
@@ -690,7 +793,7 @@ class StabUtils {
           format: 'jpeg',
         );
         if (!await File(jpgImgPath).exists()) {
-          return;
+          return null;
         }
       }
 
@@ -699,12 +802,16 @@ class StabUtils {
 
     final Uint8List? pngBytes = await readImageAsPngBytesInIsolate(imgPath);
     if (pngBytes != null) {
+      // Write to disk for caching (fire-and-forget for future runs)
       await writePngBytesToFileInIsolate(pngPath, pngBytes);
     }
 
     if (conversionToJpgNeeded) {
       await ProjectUtils.deleteFile(File(jpgImgPath));
     }
+
+    // Return bytes directly - caller doesn't need to read from disk
+    return pngBytes;
   }
 
   static Future<File> flipImageHorizontally(String imagePath) async {
@@ -880,10 +987,20 @@ class StabUtils {
   }
 
   /// Get image dimensions from bytes asynchronously (runs decode in isolate)
+  /// Uses persistent isolate pool to avoid spawn/kill overhead.
   static Future<(int, int)?> getImageDimensionsFromBytesAsync(Uint8List bytes,
       {CancellationToken? token}) async {
     token?.throwIfCancelled();
 
+    // Use pool if available for better performance
+    if (IsolatePool.instance.isInitialized) {
+      return await IsolatePool.instance.execute<(int, int)>(
+        'getImageDimensions',
+        {'bytes': bytes},
+      );
+    }
+
+    // Fallback to individual isolate if pool not initialized
     final ReceivePort receivePort = ReceivePort();
     final params = {
       'sendPort': receivePort.sendPort,
@@ -1003,7 +1120,13 @@ class StabUtils {
     }
   }
 
-  /// Async version that runs CV stabilization in an isolate to avoid blocking UI
+  /// Async version that runs CV stabilization in an isolate to avoid blocking UI.
+  /// Uses persistent isolate pool to avoid spawn/kill overhead.
+  ///
+  /// When [srcId] is provided, the decoded source Mat is cached in the worker
+  /// to avoid redundant decoding during multi-pass stabilization. This can
+  /// reduce decode operations from O(N*P) to O(N) where P is number of passes.
+  /// Call [IsolatePool.instance.clearMatCache()] after finishing each photo.
   static Future<Uint8List?> generateStabilizedImageBytesCVAsync(
     Uint8List srcBytes,
     double rotationDegrees,
@@ -1013,9 +1136,28 @@ class StabUtils {
     int canvasWidth,
     int canvasHeight, {
     CancellationToken? token,
+    String? srcId,
   }) async {
     token?.throwIfCancelled();
 
+    // Use pool if available for better performance
+    if (IsolatePool.instance.isInitialized) {
+      return await IsolatePool.instance.execute<Uint8List>(
+        'stabilizeCV',
+        {
+          'srcBytes': srcBytes,
+          'rotationDegrees': rotationDegrees,
+          'scaleFactor': scaleFactor,
+          'translateX': translateX,
+          'translateY': translateY,
+          'canvasWidth': canvasWidth,
+          'canvasHeight': canvasHeight,
+          'srcId': srcId,
+        },
+      );
+    }
+
+    // Fallback to individual isolate if pool not initialized
     final ReceivePort receivePort = ReceivePort();
     final params = {
       'sendPort': receivePort.sendPort,

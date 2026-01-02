@@ -325,10 +325,10 @@ packages:
     dependency: "direct main"
     description:
       name: face_detection_tflite
-      sha256: dfddc0ee62f1c661a91dbc2976b646f704bdf779dd85d7c196ca939aaca17a82
+      sha256: eec9c1ad7b22ff0b69ff52ab41a24dc5c2e41af9324ec7806b4e24f89d1c9255
       url: "https://pub.dev"
     source: hosted
-    version: "4.4.0"
+    version: "4.4.1"
   fake_async:
     dependency: "direct dev"
     description:

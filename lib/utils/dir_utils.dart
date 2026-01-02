@@ -94,6 +94,14 @@ class DirUtils {
         projectOrientation.toLowerCase());
   }
 
+  /// Constructs stabilized image path directly from timestamp and orientation.
+  /// Used for incremental gallery updates to avoid DB lookups.
+  static Future<String> getStabilizedImagePathFromTimestamp(
+      int projectId, String timestamp, String projectOrientation) async {
+    return path.join(await getStabilizedDirPath(projectId),
+        projectOrientation.toLowerCase(), '$timestamp.png');
+  }
+
   static Future<String> getStabilizedImagePathFromRawPathAndProjectOrientation(
       int projectId, String rawImagePath, String projectOrientation) async {
     if (projectOrientation == 'portrait') {

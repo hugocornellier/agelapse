@@ -27,15 +27,22 @@ class StabUpdateEvent {
   /// Current photo index (only relevant for [StabUpdateType.photoStabilized]).
   final int? photoIndex;
 
+  /// Timestamp of the stabilized photo (for incremental UI updates).
+  final String? timestamp;
+
   const StabUpdateEvent._({
     required this.type,
     this.photoIndex,
+    this.timestamp,
   });
 
   /// A photo was stabilized during normal progress.
-  factory StabUpdateEvent.photoStabilized(int photoIndex) => StabUpdateEvent._(
+  factory StabUpdateEvent.photoStabilized(int photoIndex,
+          {String? timestamp}) =>
+      StabUpdateEvent._(
         type: StabUpdateType.photoStabilized,
         photoIndex: photoIndex,
+        timestamp: timestamp,
       );
 
   /// All photos have been stabilized.

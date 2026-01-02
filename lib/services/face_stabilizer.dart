@@ -7,7 +7,9 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'cancellation_token.dart';
 import 'isolate_manager.dart';
+import 'isolate_pool.dart';
 import 'log_service.dart';
+import 'stabilization_settings.dart';
 import 'thumbnail_service.dart';
 import '../models/stabilization_mode.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
@@ -16,7 +18,6 @@ import 'package:path/path.dart' as path;
 import '../utils/camera_utils.dart';
 import '../utils/dir_utils.dart';
 import '../utils/heic_utils.dart';
-import '../utils/settings_utils.dart';
 import '../utils/stabilizer_utils/stabilizer_utils.dart';
 import '../utils/video_utils.dart';
 import 'database_helper.dart';
@@ -91,8 +92,13 @@ class FaceStabilizer {
   Float32List? _currentEmbedding;
 
   final VoidCallback userRanOutOfSpaceCallbackIn;
+  final StabilizationSettings? _preloadedSettings;
 
-  FaceStabilizer(this.projectId, this.userRanOutOfSpaceCallbackIn);
+  FaceStabilizer(
+    this.projectId,
+    this.userRanOutOfSpaceCallbackIn, {
+    StabilizationSettings? settings,
+  }) : _preloadedSettings = settings;
 
   bool _disposed = false;
 
@@ -133,15 +139,19 @@ class FaceStabilizer {
   }
 
   Future<void> initializeProjectSettings() async {
-    String? rawProjectType =
-        await DB.instance.getProjectTypeByProjectId(projectId);
+    // Use preloaded settings if available, otherwise load from DB
+    final settings =
+        _preloadedSettings ?? await StabilizationSettings.load(projectId);
 
-    projectType = rawProjectType!.toLowerCase();
-    projectOrientation =
-        await SettingsUtil.loadProjectOrientation(projectId.toString());
-    resolution = await SettingsUtil.loadVideoResolution(projectId.toString());
-    aspectRatio = await SettingsUtil.loadAspectRatio(projectId.toString());
-    aspectRatioDecimal = StabUtils.getAspectRatioAsDecimal(aspectRatio);
+    projectType = settings.projectType;
+    projectOrientation = settings.projectOrientation;
+    resolution = settings.resolution;
+    aspectRatio = settings.aspectRatio;
+    aspectRatioDecimal = settings.aspectRatioDecimal;
+    stabilizationMode =
+        StabilizationMode.fromString(settings.stabilizationMode);
+    eyeOffsetX = settings.eyeOffsetX;
+    eyeOffsetY = settings.eyeOffsetY;
 
     if (projectType != "face") {
       final PoseDetector poseDetector = PoseDetector(
@@ -158,21 +168,10 @@ class FaceStabilizer {
     canvasWidth = projectOrientation == "landscape" ? longSide : shortSide;
     canvasHeight = projectOrientation == "landscape" ? shortSide : longSide;
 
-    // Load stabilization mode (global setting)
-    final String modeStr = await SettingsUtil.loadStabilizationMode();
-    stabilizationMode = StabilizationMode.fromString(modeStr);
-
-    await _initializeGoalsAndOffsets();
+    _initializeGoalsAndOffsets();
   }
 
-  Future<void> _initializeGoalsAndOffsets() async {
-    final String offsetX =
-        await SettingsUtil.loadOffsetXCurrentOrientation(projectId.toString());
-    final String offsetY =
-        await SettingsUtil.loadOffsetYCurrentOrientation(projectId.toString());
-    eyeOffsetX = double.parse(offsetX);
-    eyeOffsetY = double.parse(offsetY);
-
+  void _initializeGoalsAndOffsets() {
     final double xAxisCenter = canvasWidth / 2;
     leftEyeXGoal = (xAxisCenter - eyeOffsetX * canvasWidth);
     rightEyeXGoal = (xAxisCenter + eyeOffsetX * canvasWidth);
@@ -191,6 +190,9 @@ class FaceStabilizer {
     void Function() userRanOutOfSpaceCallback, {
     Rect? targetBoundingBox,
   }) async {
+    // Generate unique srcId for this photo to enable Mat caching across passes
+    final String srcId = path.basenameWithoutExtension(rawPhotoPath);
+
     try {
       token?.throwIfCancelled();
       await _ensureReady();
@@ -205,15 +207,9 @@ class FaceStabilizer {
 
       double? rotationDegrees, scaleFactor, translateX, translateY;
 
+      // Prepare PNG and get bytes directly (avoids redundant disk read)
       token?.throwIfCancelled();
-      await StabUtils.preparePNG(rawPhotoPath);
-      final String canonicalPath =
-          await DirUtils.getPngPathFromRawPhotoPath(rawPhotoPath);
-
-      // Load source image bytes asynchronously to avoid blocking UI
-      token?.throwIfCancelled();
-      final Uint8List? srcBytes =
-          await StabUtils.loadPngBytesAsync(canonicalPath);
+      final Uint8List? srcBytes = await StabUtils.preparePNG(rawPhotoPath);
       if (srcBytes == null) return StabilizationResult(success: false);
 
       // Get dimensions asynchronously (decode runs in isolate)
@@ -229,7 +225,8 @@ class FaceStabilizer {
           imgWidth,
           imgHeight,
           targetBoundingBox,
-          userRanOutOfSpaceCallback);
+          userRanOutOfSpaceCallback,
+          pngBytes: srcBytes);
       if (rotationDegrees == null || scaleFactor == null) {
         return StabilizationResult(success: false);
       }
@@ -243,6 +240,7 @@ class FaceStabilizer {
       if (projectType == "musc") translateY = 0;
 
       // Generate stabilized bytes using OpenCV in isolate (avoids blocking UI)
+      // Pass srcId to enable Mat caching for multi-pass optimization
       token?.throwIfCancelled();
       Uint8List? imageBytesStabilized =
           await StabUtils.generateStabilizedImageBytesCVAsync(
@@ -254,6 +252,7 @@ class FaceStabilizer {
         canvasWidth,
         canvasHeight,
         token: token,
+        srcId: srcId,
       );
       if (imageBytesStabilized == null) {
         return StabilizationResult(success: false);
@@ -285,7 +284,8 @@ class FaceStabilizer {
           scaleFactor,
           imageBytesStabilized,
           srcBytes,
-          token);
+          token,
+          srcId);
 
       LogService.instance.log("Result => '$result'");
 
@@ -310,6 +310,12 @@ class FaceStabilizer {
     } catch (e) {
       LogService.instance.log("Caught error: $e");
       return StabilizationResult(success: false);
+    } finally {
+      // Clear the decoded Mat cache to free memory after processing this photo
+      await IsolatePool.instance.clearMatCache();
+      // Clear cached PNG bytes and raw faces
+      _lastPngBytes = null;
+      _lastRawFaces = null;
     }
   }
 
@@ -327,6 +333,7 @@ class FaceStabilizer {
     Uint8List imageBytesStabilized,
     Uint8List srcBytes,
     CancellationToken? token,
+    String srcId,
   ) async {
     if (projectType != "face") {
       await StabUtils.writeImagesBytesToJpgFile(
@@ -478,6 +485,7 @@ class FaceStabilizer {
       imgHeight,
       srcBytes,
       token,
+      srcId,
     );
 
     await DirUtils.tryDeleteFiles(toDelete);
@@ -556,6 +564,7 @@ class FaceStabilizer {
     int imgHeight,
     Uint8List srcBytes,
     CancellationToken? token,
+    String srcId,
   ) async {
     if (stabilizationMode == StabilizationMode.fast) {
       return _performFastMultiPass(
@@ -575,6 +584,7 @@ class FaceStabilizer {
         imgHeight,
         srcBytes,
         token,
+        srcId,
       );
     } else {
       return _performSlowMultiPass(
@@ -594,6 +604,7 @@ class FaceStabilizer {
         imgHeight,
         srcBytes,
         token,
+        srcId,
       );
     }
   }
@@ -618,6 +629,7 @@ class FaceStabilizer {
     int imgHeight,
     Uint8List srcBytes,
     CancellationToken? token,
+    String srcId,
   ) async {
     bool successfulStabilization = false;
 
@@ -664,6 +676,10 @@ class FaceStabilizer {
     double bestTX = translateX;
     double bestTY = translateY;
 
+    // Track which buffer is currently best (for memory recycling)
+    // 0 = imageBytesStabilized, 1 = twoPass, 2 = threePass, 3 = fourPass
+    int bestPassIndex = 0;
+
     // Track scores and state for each pass
     double? twoPassScore, threePassScore, fourPassScore;
     bool usedTwoPass = false, usedThreePass = false, usedFourPass = false;
@@ -691,6 +707,7 @@ class FaceStabilizer {
       canvasWidth,
       canvasHeight,
       token: token,
+      srcId: srcId,
     );
     if (twoPassBytes == null) {
       return (
@@ -735,7 +752,14 @@ class FaceStabilizer {
         currentEyes = twoPassEyes;
         currentTX = twoPassTX;
         currentTY = twoPassTY;
+        bestPassIndex = 1;
+      } else {
+        // Two-pass not better, release its memory
+        twoPassBytes = null;
       }
+    } else {
+      // Couldn't detect eyes, release memory
+      twoPassBytes = null;
     }
 
     // === THREE-PASS (only if two-pass improved) ===
@@ -765,6 +789,7 @@ class FaceStabilizer {
           canvasWidth,
           canvasHeight,
           token: token,
+          srcId: srcId,
         );
 
         if (threePassBytes != null) {
@@ -784,6 +809,8 @@ class FaceStabilizer {
                   calculateStabScore(threePassEyes, goalLeftEye, goalRightEye);
               if (threePassScore < bestScore) {
                 usedThreePass = true;
+                // Release previous best if it was twoPass
+                if (bestPassIndex == 1) twoPassBytes = null;
                 bestBytes = threePassBytes;
                 bestScore = threePassScore;
                 bestTX = threePassTX;
@@ -791,8 +818,16 @@ class FaceStabilizer {
                 currentEyes = threePassEyes;
                 currentTX = threePassTX;
                 currentTY = threePassTY;
+                bestPassIndex = 2;
+              } else {
+                // Three-pass not better, release its memory
+                threePassBytes = null;
               }
+            } else {
+              threePassBytes = null;
             }
+          } else {
+            threePassBytes = null;
           }
         }
       }
@@ -825,6 +860,7 @@ class FaceStabilizer {
           canvasWidth,
           canvasHeight,
           token: token,
+          srcId: srcId,
         );
 
         if (fourPassBytes != null) {
@@ -842,12 +878,21 @@ class FaceStabilizer {
                   calculateStabScore(fourPassEyes, goalLeftEye, goalRightEye);
               if (fourPassScore < bestScore) {
                 usedFourPass = true;
+                // Note: threePassBytes already out of scope, GC will handle it
                 bestBytes = fourPassBytes;
                 bestScore = fourPassScore;
                 bestTX = fourPassTX;
                 bestTY = fourPassTY;
+                bestPassIndex = 3;
+              } else {
+                // Four-pass not better, release its memory
+                fourPassBytes = null;
               }
+            } else {
+              fourPassBytes = null;
             }
+          } else {
+            fourPassBytes = null;
           }
         }
       }
@@ -910,6 +955,7 @@ class FaceStabilizer {
     int imgHeight,
     Uint8List srcBytes,
     CancellationToken? token,
+    String srcId,
   ) async {
     bool successfulStabilization = false;
 
@@ -966,6 +1012,9 @@ class FaceStabilizer {
     double bestRotation = rotationDegrees;
     double bestScale = scaleFactor;
 
+    // Track previous pass bytes for memory recycling
+    Uint8List? previousPassBytes;
+
     // Track scores for each pass type
     double? rotationPassScore, scalePassScore, translationPassScore;
     List<Point<double>?>? currentEyes = eyes;
@@ -1007,6 +1056,7 @@ class FaceStabilizer {
         canvasWidth,
         canvasHeight,
         token: token,
+        srcId: srcId,
       );
 
       if (rotPassBytes == null) break;
@@ -1014,13 +1064,17 @@ class FaceStabilizer {
       final rotPassFaces = await StabUtils.getFacesFromBytes(rotPassBytes,
           filterByFaceSize: false, imageWidth: canvasWidth);
 
-      if (rotPassFaces == null) break;
+      if (rotPassFaces == null) {
+        rotPassBytes = null;
+        break;
+      }
 
       List<Point<double>?> rotPassEyes = _filterAndCenterEyes(rotPassFaces);
 
       if (rotPassEyes.length < 2 ||
           rotPassEyes[0] == null ||
           rotPassEyes[1] == null) {
+        rotPassBytes = null;
         break;
       }
 
@@ -1030,6 +1084,14 @@ class FaceStabilizer {
 
       if (newEyeDeltaY.abs() < eyeDeltaY.abs()) {
         rotPassCount++;
+        // Release previous best bytes (unless it's the original input)
+        if (previousPassBytes != null) {
+          previousPassBytes = null;
+        }
+        previousPassBytes = bestBytes;
+        if (bestBytes == imageBytesStabilized) {
+          previousPassBytes = null; // Don't null the input parameter
+        }
         bestBytes = rotPassBytes;
         bestScore = rotationPassScore;
         bestTX = rotTX;
@@ -1038,6 +1100,8 @@ class FaceStabilizer {
         currentEyes = rotPassEyes;
         eyeDeltaY = newEyeDeltaY;
       } else {
+        // This pass didn't improve, release its memory
+        rotPassBytes = null;
         break;
       }
     }
@@ -1090,6 +1154,7 @@ class FaceStabilizer {
         canvasWidth,
         canvasHeight,
         token: token,
+        srcId: srcId,
       );
 
       if (scalePassBytes == null) break;
@@ -1097,13 +1162,17 @@ class FaceStabilizer {
       final scalePassFaces = await StabUtils.getFacesFromBytes(scalePassBytes,
           filterByFaceSize: false, imageWidth: canvasWidth);
 
-      if (scalePassFaces == null) break;
+      if (scalePassFaces == null) {
+        scalePassBytes = null;
+        break;
+      }
 
       List<Point<double>?> scalePassEyes = _filterAndCenterEyes(scalePassFaces);
 
       if (scalePassEyes.length < 2 ||
           scalePassEyes[0] == null ||
           scalePassEyes[1] == null) {
+        scalePassBytes = null;
         break;
       }
 
@@ -1116,6 +1185,14 @@ class FaceStabilizer {
 
       if (newScaleError < scaleError) {
         scalePassCount++;
+        // Release previous best bytes (unless it's the original input)
+        if (previousPassBytes != null) {
+          previousPassBytes = null;
+        }
+        previousPassBytes = bestBytes;
+        if (bestBytes == imageBytesStabilized) {
+          previousPassBytes = null;
+        }
         bestBytes = scalePassBytes;
         bestScore = scalePassScore;
         bestTX = scaleTX;
@@ -1125,6 +1202,8 @@ class FaceStabilizer {
         currentEyeDistance = newEyeDistance;
         scaleError = newScaleError;
       } else {
+        // This pass didn't improve, release its memory
+        scalePassBytes = null;
         break;
       }
     }
@@ -1193,6 +1272,7 @@ class FaceStabilizer {
         canvasWidth,
         canvasHeight,
         token: token,
+        srcId: srcId,
       );
 
       if (transPassBytes == null) break;
@@ -1200,13 +1280,17 @@ class FaceStabilizer {
       final transPassFaces = await StabUtils.getFacesFromBytes(transPassBytes,
           filterByFaceSize: false, imageWidth: canvasWidth);
 
-      if (transPassFaces == null) break;
+      if (transPassFaces == null) {
+        transPassBytes = null;
+        break;
+      }
 
       List<Point<double>?> transPassEyes = _filterAndCenterEyes(transPassFaces);
 
       if (transPassEyes.length < 2 ||
           transPassEyes[0] == null ||
           transPassEyes[1] == null) {
+        transPassBytes = null;
         break;
       }
 
@@ -1217,6 +1301,14 @@ class FaceStabilizer {
 
       if (passScore < bestScore) {
         transPassCount++;
+        // Release previous best bytes (unless it's the original input)
+        if (previousPassBytes != null) {
+          previousPassBytes = null;
+        }
+        previousPassBytes = bestBytes;
+        if (bestBytes == imageBytesStabilized) {
+          previousPassBytes = null;
+        }
         bestBytes = transPassBytes;
         bestScore = passScore;
         bestTX = transTX;
@@ -1233,6 +1325,8 @@ class FaceStabilizer {
         // Check convergence
         if (improvement > 0 && improvement < convergenceThreshold) break;
       } else {
+        // This pass didn't improve, release its memory
+        transPassBytes = null;
         currentTX = transTX;
         currentTY = transTY;
         (ovLX, ovLY, ovRX, ovRY) =
@@ -1299,6 +1393,7 @@ class FaceStabilizer {
           canvasWidth,
           canvasHeight,
           token: token,
+          srcId: srcId,
         );
 
         if (cleanupBytes != null) {
@@ -1318,6 +1413,13 @@ class FaceStabilizer {
               if (cleanupScore < bestScore) {
                 LogService.instance.log(
                     "Cleanup: ${bestScore.toStringAsFixed(2)}→${cleanupScore.toStringAsFixed(2)}");
+                // Release previous best bytes (unless it's the original input)
+                if (previousPassBytes != null) {
+                  previousPassBytes = null;
+                }
+                if (bestBytes != imageBytesStabilized) {
+                  previousPassBytes = bestBytes;
+                }
                 bestBytes = cleanupBytes;
                 bestScore = cleanupScore;
                 bestTX = cleanupTX;
@@ -1325,29 +1427,35 @@ class FaceStabilizer {
                 bestRotation = cleanupRotation;
                 bestScale = cleanupScale;
                 currentEyes = cleanupEyes;
+                // Release previous pass bytes now that we've switched
+                previousPassBytes = null;
+              } else {
+                // Cleanup didn't improve, release its memory
+                cleanupBytes = null;
               }
+            } else {
+              cleanupBytes = null;
             }
+          } else {
+            cleanupBytes = null;
           }
         }
       }
     }
 
-    // Log final eye positions for comparison and capture for benchmarking
+    // Use eye positions from the best pass (already computed during refinement)
+    // This avoids a redundant face detection pass just for metrics logging
     double? finalEyeDeltaY;
     double? finalEyeDistance;
-    final finalFaces = await StabUtils.getFacesFromBytes(bestBytes,
-        filterByFaceSize: false, imageWidth: canvasWidth);
-    if (finalFaces != null) {
-      final finalEyes = _filterAndCenterEyes(finalFaces);
-      if (finalEyes.length >= 2 &&
-          finalEyes[0] != null &&
-          finalEyes[1] != null) {
-        finalEyeDeltaY = finalEyes[1]!.y - finalEyes[0]!.y;
-        finalEyeDistance = sqrt(pow(finalEyes[1]!.x - finalEyes[0]!.x, 2) +
-            pow(finalEyes[1]!.y - finalEyes[0]!.y, 2));
-        LogService.instance.log(
-            "Final: score=${bestScore.toStringAsFixed(2)}, tilt=${finalEyeDeltaY.toStringAsFixed(1)}px, dist=${finalEyeDistance.toStringAsFixed(1)}px");
-      }
+    if (currentEyes != null &&
+        currentEyes.length >= 2 &&
+        currentEyes[0] != null &&
+        currentEyes[1] != null) {
+      finalEyeDeltaY = currentEyes[1]!.y - currentEyes[0]!.y;
+      finalEyeDistance = sqrt(pow(currentEyes[1]!.x - currentEyes[0]!.x, 2) +
+          pow(currentEyes[1]!.y - currentEyes[0]!.y, 2));
+      LogService.instance.log(
+          "Final: score=${bestScore.toStringAsFixed(2)}, tilt=${finalEyeDeltaY.toStringAsFixed(1)}px, dist=${finalEyeDistance.toStringAsFixed(1)}px");
     }
 
     // Save the best result
@@ -1601,11 +1709,13 @@ class FaceStabilizer {
       int imgWidth,
       int imgHeight,
       Rect? targetBoundingBox,
-      userRanOutOfSpaceCallback) async {
+      userRanOutOfSpaceCallback,
+      {Uint8List? pngBytes}) async {
     try {
       if (projectType == "face") {
         return await _calculateRotationAngleAndScaleFace(rawPhotoPath, imgWidth,
-            imgHeight, targetBoundingBox, userRanOutOfSpaceCallback);
+            imgHeight, targetBoundingBox, userRanOutOfSpaceCallback,
+            pngBytes: pngBytes);
       } else if (projectType == "pregnancy") {
         return await _calculateRotationAngleAndScalePregnancy(rawPhotoPath);
       } else if (projectType == "musc") {
@@ -1624,7 +1734,8 @@ class FaceStabilizer {
       int imgWidth,
       int imgHeight,
       Rect? targetBoundingBox,
-      userRanOutOfSpaceCallback) async {
+      userRanOutOfSpaceCallback,
+      {Uint8List? pngBytes}) async {
     List<Point<double>?> eyes;
 
     // Reset face tracking for this photo
@@ -1636,6 +1747,7 @@ class FaceStabilizer {
       rawPhotoPath,
       imgWidth,
       filterByFaceSize: !noFaceSizeFilter,
+      pngBytes: pngBytes,
     );
     if (faces == null || faces.isEmpty) {
       LogService.instance.log("No faces found. Attempting to flip...");
@@ -1703,6 +1815,7 @@ class FaceStabilizer {
   /// Tries to pick the correct face using embedding similarity.
   /// Returns the face index if a reference embedding was found and matching succeeded.
   /// Returns null if no reference embedding exists (fallback to centermost).
+  /// Uses cached PNG bytes and raw faces from previous detection to avoid redundant work.
   Future<int?> _tryPickFaceByEmbedding(
     String rawPhotoPath,
     int faceCount,
@@ -1734,15 +1847,27 @@ class FaceStabilizer {
       LogService.instance.log(
           "Using reference embedding from photo $refTimestamp for face matching");
 
-      // Read the current image bytes for embedding extraction
-      final String pngPath =
-          await DirUtils.getPngPathFromRawPhotoPath(rawPhotoPath);
-      final Uint8List imageBytes = await File(pngPath).readAsBytes();
+      // Use cached PNG bytes from previous detection (avoids redundant file read)
+      Uint8List imageBytes;
+      if (_lastPngBytes != null) {
+        imageBytes = _lastPngBytes!;
+        LogService.instance
+            .log("Using cached PNG bytes for embedding extraction");
+      } else {
+        // Fallback: read from disk if cache miss
+        final String pngPath =
+            await DirUtils.getPngPathFromRawPhotoPath(rawPhotoPath);
+        imageBytes = await File(pngPath).readAsBytes();
+      }
 
-      // Use embedding-based face selection
+      // Use pre-detected raw faces to avoid redundant face detection
+      final List<dynamic>? rawFaces = _lastRawFaces;
+
+      // Use embedding-based face selection with pre-detected faces
       final int bestIdx = await StabUtils.pickFaceIndexByEmbedding(
         referenceEmbedding,
         imageBytes,
+        preDetectedFaces: rawFaces?.cast(),
       );
 
       return bestIdx;
@@ -1754,11 +1879,19 @@ class FaceStabilizer {
 
   /// Extracts and stores the face embedding for a single-face photo.
   /// This embedding will be used as reference for future multi-face photos.
+  /// Uses cached PNG bytes from previous detection to avoid redundant file read.
   Future<void> _extractAndStoreEmbedding(String rawPhotoPath) async {
     try {
-      final String pngPath =
-          await DirUtils.getPngPathFromRawPhotoPath(rawPhotoPath);
-      final Uint8List imageBytes = await File(pngPath).readAsBytes();
+      // Use cached PNG bytes from previous detection (avoids redundant file read)
+      Uint8List imageBytes;
+      if (_lastPngBytes != null) {
+        imageBytes = _lastPngBytes!;
+      } else {
+        // Fallback: read from disk if cache miss
+        final String pngPath =
+            await DirUtils.getPngPathFromRawPhotoPath(rawPhotoPath);
+        imageBytes = await File(pngPath).readAsBytes();
+      }
 
       final Float32List? embedding =
           await StabUtils.getFaceEmbeddingFromBytes(imageBytes);
@@ -2098,19 +2231,35 @@ class FaceStabilizer {
     return horizontalDistance;
   }
 
+  /// Result of face detection containing FaceLike wrappers, raw faces, and PNG bytes.
+  /// Raw faces are needed for embedding extraction without re-detecting.
+  /// PNG bytes are cached to avoid redundant file reads.
+  Uint8List? _lastPngBytes;
+  List<dynamic>? _lastRawFaces;
+
   Future<List<dynamic>?> getFacesFromRawPhotoPath(
       String rawPhotoPath, int width,
-      {bool filterByFaceSize = true}) async {
+      {bool filterByFaceSize = true, Uint8List? pngBytes}) async {
     await _ensureReady();
-    await StabUtils.preparePNG(rawPhotoPath);
-    final String pngPath =
-        await DirUtils.getPngPathFromRawPhotoPath(rawPhotoPath);
+    // Use provided bytes or prepare PNG (avoids redundant disk read when bytes passed)
+    pngBytes ??= await StabUtils.preparePNG(rawPhotoPath);
+    if (pngBytes == null) return null;
 
-    return await StabUtils.getFacesFromFilepath(
-      pngPath,
+    // Cache PNG bytes for potential embedding extraction later
+    _lastPngBytes = pngBytes;
+
+    final result = await StabUtils.getFacesFromBytesWithRaw(
+      pngBytes,
       filterByFaceSize: filterByFaceSize,
       imageWidth: width,
     );
+
+    if (result == null) return null;
+
+    // Cache raw faces for embedding extraction
+    _lastRawFaces = result.$2;
+
+    return result.$1;
   }
 
   List<Point<double>?> getEyesFromFaces(dynamic faces) {
@@ -2162,7 +2311,7 @@ class FaceStabilizer {
     await DB.instance.setPhotoStabilized(
       timestamp,
       projectId,
-      await SettingsUtil.loadProjectOrientation(projectId.toString()),
+      projectOrientation!, // Use cached value - initialized in initializeProjectSettings()
       aspectRatio,
       resolution,
       eyeOffsetX,

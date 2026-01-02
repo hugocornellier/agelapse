@@ -830,6 +830,7 @@ class DB {
       columns: ['timestamp', 'fileExtension'],
       where: 'projectID = ?',
       whereArgs: [projectId],
+      orderBy: 'CAST(timestamp AS INTEGER) DESC',
     );
 
     List<Future<String>> futurePaths = photos.map((photo) async {
@@ -862,10 +863,47 @@ class DB {
 
     return await db.query(
       photoTable,
+      columns: ['timestamp', 'fileExtension'],
       where:
           '($stabilizedColumn = ? OR stabFailed = ? OR noFacesFound = ?) AND projectID = ?',
       whereArgs: [1, 1, 1, projectId],
+      orderBy: 'CAST(timestamp AS INTEGER) DESC',
     );
+  }
+
+  /// Batch query to get photo status flags for multiple timestamps.
+  /// Returns a map of timestamp -> {noFacesFound, stabFailed} for efficient
+  /// thumbnail status prefetching. Queries in chunks to avoid SQLite limits.
+  Future<Map<String, Map<String, int>>> getPhotoStatusBatch(
+      List<String> timestamps, int projectId) async {
+    if (timestamps.isEmpty) return {};
+
+    final db = await database;
+    final Map<String, Map<String, int>> result = {};
+
+    // SQLite has a limit of ~999 parameters, chunk to 500 for safety
+    const chunkSize = 500;
+    for (int i = 0; i < timestamps.length; i += chunkSize) {
+      final chunk = timestamps.skip(i).take(chunkSize).toList();
+      final placeholders = List.filled(chunk.length, '?').join(',');
+
+      final rows = await db.query(
+        photoTable,
+        columns: ['timestamp', 'noFacesFound', 'stabFailed'],
+        where: 'timestamp IN ($placeholders) AND projectID = ?',
+        whereArgs: [...chunk, projectId],
+      );
+
+      for (final row in rows) {
+        final ts = row['timestamp'] as String;
+        result[ts] = {
+          'noFacesFound': row['noFacesFound'] as int? ?? 0,
+          'stabFailed': row['stabFailed'] as int? ?? 0,
+        };
+      }
+    }
+
+    return result;
   }
 
   Future<int> getStabilizedPhotoCountByProjectID(
@@ -879,6 +917,13 @@ class DB {
     );
 
     return result.first.values.first as int? ?? 0;
+  }
+
+  Future<bool> hasStabilizedPhotos(
+      int projectId, String projectOrientation) async {
+    final count =
+        await getStabilizedPhotoCountByProjectID(projectId, projectOrientation);
+    return count > 0;
   }
 
   Future<List<Map<String, dynamic>>> getPhotosByProjectIDNewestFirst(

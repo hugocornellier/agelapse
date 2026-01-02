@@ -108,8 +108,10 @@ class MainNavigationState extends State<MainNavigation> {
         // Emit typed events for UI components (gallery, app bar, project page)
         switch (progress.state) {
           case StabilizationState.stabilizing:
-            _stabUpdateController
-                .add(StabUpdateEvent.photoStabilized(progress.currentPhoto));
+            _stabUpdateController.add(StabUpdateEvent.photoStabilized(
+              progress.currentPhoto,
+              timestamp: progress.lastStabilizedTimestamp,
+            ));
             break;
           case StabilizationState.completed:
             _stabUpdateController.add(StabUpdateEvent.stabilizationComplete());
