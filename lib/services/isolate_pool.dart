@@ -114,8 +114,6 @@ class IsolatePool {
     final receivePort = ReceivePort();
     mainSendPort.send(receivePort.sendPort);
 
-    // Worker-local cache for decoded source images.
-    // This eliminates redundant decoding during multi-pass stabilization.
     cv.Mat? cachedSrcMat;
     String? cachedSrcId;
 

@@ -123,7 +123,6 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
       return "";
     }
 
-    // Find minimum by filename (timestamp) in O(n) instead of sorting O(n log n)
     final minFile = imageFiles.reduce((a, b) =>
         path.basename(a.path).compareTo(path.basename(b.path)) <= 0 ? a : b);
     LogService.instance
@@ -140,7 +139,6 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
             .where((item) => item.path.endsWith('.png') && item is File)
             .toList();
         if (pngFiles.isNotEmpty) {
-          // Find minimum by filename (timestamp) in O(n) instead of sorting O(n log n)
           final minFile = pngFiles.reduce((a, b) =>
               path.basename(a.path).compareTo(path.basename(b.path)) <= 0
                   ? a

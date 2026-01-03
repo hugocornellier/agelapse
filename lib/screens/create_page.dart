@@ -221,16 +221,15 @@ class CreatePageState extends State<CreatePage>
     final double smallerSide = getSmallerSide(width, height);
 
     setState(() {
-      if (smallerSide == 2304.0) {
+      if (smallerSide == 4320.0) {
+        resolution = "8K";
+      } else if (smallerSide == 2304.0) {
         resolution = "4K";
-      } else if (smallerSide == 1728.0) {
-        resolution = "3K";
-      } else if (smallerSide == 1152.0) {
-        resolution = "2K";
       } else if (smallerSide == 1080.0) {
         resolution = "1080p";
       } else {
-        resolution = "${width.toInt()} x ${height.toInt()}";
+        // Custom resolution - show as "1728p" format
+        resolution = "${smallerSide.toInt()}p";
       }
     });
   }

@@ -48,29 +48,159 @@ void main() {
         expect(StabUtils.getShortSide('1080p'), 1080);
       });
 
-      test('returns 1152 for "2K"', () {
-        expect(StabUtils.getShortSide('2K'), 1152);
-      });
-
-      test('returns 1728 for "3K"', () {
-        expect(StabUtils.getShortSide('3K'), 1728);
-      });
-
       test('returns 2304 for "4K"', () {
         expect(StabUtils.getShortSide('4K'), 2304);
       });
 
-      test('returns null for unknown resolution', () {
-        expect(StabUtils.getShortSide('720p'), isNull);
-        expect(StabUtils.getShortSide('8K'), isNull);
-        expect(StabUtils.getShortSide('unknown'), isNull);
-        expect(StabUtils.getShortSide(''), isNull);
+      test('returns 4320 for "8K"', () {
+        expect(StabUtils.getShortSide('8K'), 4320);
       });
 
-      test('is case sensitive', () {
+      test('returns 1152 for legacy "2K"', () {
+        expect(StabUtils.getShortSide('2K'), 1152);
+      });
+
+      test('returns 1728 for legacy "3K"', () {
+        expect(StabUtils.getShortSide('3K'), 1728);
+      });
+
+      test('parses custom numeric resolution strings', () {
+        expect(StabUtils.getShortSide('1728'), 1728);
+        expect(StabUtils.getShortSide('1440'), 1440);
+        expect(StabUtils.getShortSide('2160'), 2160);
+        expect(StabUtils.getShortSide('480'), 480);
+        expect(StabUtils.getShortSide('5400'), 5400);
+      });
+
+      test('returns null for custom values outside valid range', () {
+        expect(StabUtils.getShortSide('479'), isNull); // Below min
+        expect(StabUtils.getShortSide('5401'), isNull); // Above max
+        expect(StabUtils.getShortSide('100'), isNull); // Way below min
+        expect(StabUtils.getShortSide('10000'), isNull); // Way above max
+      });
+
+      test('returns null for unknown resolution strings', () {
+        expect(StabUtils.getShortSide('720p'), isNull);
+        expect(StabUtils.getShortSide('unknown'), isNull);
+        expect(StabUtils.getShortSide(''), isNull);
+        expect(StabUtils.getShortSide('abc'), isNull);
+      });
+
+      test('is case sensitive for presets', () {
         expect(StabUtils.getShortSide('1080P'), isNull);
-        expect(StabUtils.getShortSide('2k'), isNull);
         expect(StabUtils.getShortSide('4k'), isNull);
+        expect(StabUtils.getShortSide('8k'), isNull);
+        expect(StabUtils.getShortSide('2k'), isNull);
+        expect(StabUtils.getShortSide('3k'), isNull);
+      });
+
+      test('parses WIDTHxHEIGHT format and returns short side', () {
+        expect(StabUtils.getShortSide('1920x1080'), 1080); // Landscape
+        expect(StabUtils.getShortSide('1080x1920'), 1080); // Portrait
+        expect(StabUtils.getShortSide('3840x2160'), 2160); // 4K landscape
+        expect(StabUtils.getShortSide('2160x3840'), 2160); // 4K portrait
+        expect(StabUtils.getShortSide('7680x4320'), 4320); // 8K
+        expect(StabUtils.getShortSide('480x854'), 480); // Low res
+      });
+
+      test('returns null for invalid WIDTHxHEIGHT formats', () {
+        expect(StabUtils.getShortSide('1920x'), isNull);
+        expect(StabUtils.getShortSide('x1080'), isNull);
+        expect(StabUtils.getShortSide('1920 x 1080'), isNull); // Spaces
+        expect(StabUtils.getShortSide('1920X1080'), isNull); // Uppercase X
+      });
+    });
+
+    group('getDimensions()', () {
+      test('parses WIDTHxHEIGHT format correctly', () {
+        expect(StabUtils.getDimensions('1920x1080'), (1920, 1080));
+        expect(StabUtils.getDimensions('1080x1920'), (1080, 1920));
+        expect(StabUtils.getDimensions('3840x2160'), (3840, 2160));
+        expect(StabUtils.getDimensions('7680x4320'), (7680, 4320));
+      });
+
+      test('returns null for non-WIDTHxHEIGHT formats', () {
+        expect(StabUtils.getDimensions('1080p'), isNull);
+        expect(StabUtils.getDimensions('4K'), isNull);
+        expect(StabUtils.getDimensions('1728'), isNull);
+        expect(StabUtils.getDimensions(''), isNull);
+        expect(StabUtils.getDimensions('invalid'), isNull);
+      });
+    });
+
+    group('getOutputDimensions()', () {
+      test('returns exact dimensions for custom WIDTHxHEIGHT format', () {
+        // Custom square resolution - should return exact dimensions
+        expect(
+          StabUtils.getOutputDimensions('7000x7000', '16:9', 'landscape'),
+          (7000, 7000),
+        );
+        expect(
+          StabUtils.getOutputDimensions('7000x7000', '16:9', 'portrait'),
+          (7000, 7000),
+        );
+        // Aspect ratio and orientation should be ignored for custom
+        expect(
+          StabUtils.getOutputDimensions('1920x1080', '4:3', 'portrait'),
+          (1920, 1080),
+        );
+      });
+
+      test('calculates dimensions from preset + aspect ratio + orientation',
+          () {
+        // 1080p landscape 16:9 -> 1920x1080
+        expect(
+          StabUtils.getOutputDimensions('1080p', '16:9', 'landscape'),
+          (1920, 1080),
+        );
+        // 1080p portrait 16:9 -> 1080x1920
+        expect(
+          StabUtils.getOutputDimensions('1080p', '16:9', 'portrait'),
+          (1080, 1920),
+        );
+        // 4K landscape 16:9 -> 4096x2304
+        expect(
+          StabUtils.getOutputDimensions('4K', '16:9', 'landscape'),
+          (4096, 2304),
+        );
+        // 1080p landscape 4:3 -> 1440x1080
+        expect(
+          StabUtils.getOutputDimensions('1080p', '4:3', 'landscape'),
+          (1440, 1080),
+        );
+      });
+
+      test('handles case-insensitive orientation', () {
+        expect(
+          StabUtils.getOutputDimensions('1080p', '16:9', 'Landscape'),
+          (1920, 1080),
+        );
+        expect(
+          StabUtils.getOutputDimensions('1080p', '16:9', 'LANDSCAPE'),
+          (1920, 1080),
+        );
+        expect(
+          StabUtils.getOutputDimensions('1080p', '16:9', 'Portrait'),
+          (1080, 1920),
+        );
+      });
+
+      test('returns null for invalid resolution', () {
+        expect(
+          StabUtils.getOutputDimensions('invalid', '16:9', 'landscape'),
+          isNull,
+        );
+        expect(
+          StabUtils.getOutputDimensions('', '16:9', 'landscape'),
+          isNull,
+        );
+      });
+
+      test('returns null for invalid aspect ratio', () {
+        expect(
+          StabUtils.getOutputDimensions('1080p', 'invalid', 'landscape'),
+          isNull,
+        );
       });
     });
 

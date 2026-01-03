@@ -76,6 +76,13 @@ class SettingsSheetState extends State<SettingsSheet> {
   String watermarkOpacity = "0.7";
   String resolution = "1080p";
   String aspectRatio = "16:9";
+  bool _isCustomResolution = false;
+  String? _customResolutionError;
+  final TextEditingController _customWidthController = TextEditingController();
+  final TextEditingController _customHeightController = TextEditingController();
+  bool _customResolutionModified = false;
+  String _customResolutionBaseline =
+      ''; // The initial WxH when entering custom mode
   int gridCount = 4;
   int _gridModeIndex = 0;
   String _stabilizationMode = 'slow';
@@ -90,11 +97,33 @@ class SettingsSheetState extends State<SettingsSheet> {
   @override
   void initState() {
     super.initState();
+    // Listen for changes to custom resolution fields
+    _customWidthController.addListener(_onCustomResolutionFieldChanged);
+    _customHeightController.addListener(_onCustomResolutionFieldChanged);
     // Defer initialization until after the first frame to allow
     // the modal animation to start smoothly
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _init();
     });
+  }
+
+  void _onCustomResolutionFieldChanged() {
+    if (!_isCustomResolution) return;
+    final currentDims =
+        '${_customWidthController.text}x${_customHeightController.text}';
+    final hasChanges = currentDims != _customResolutionBaseline;
+    if (hasChanges != _customResolutionModified) {
+      setState(() => _customResolutionModified = hasChanges);
+    }
+  }
+
+  @override
+  void dispose() {
+    _customWidthController.removeListener(_onCustomResolutionFieldChanged);
+    _customHeightController.removeListener(_onCustomResolutionFieldChanged);
+    _customWidthController.dispose();
+    _customHeightController.dispose();
+    super.dispose();
   }
 
   void _init() {
@@ -180,6 +209,8 @@ class SettingsSheetState extends State<SettingsSheet> {
     }
   }
 
+  static const _presetResolutions = ['1080p', '4K', '8K'];
+
   Future<void> _initializeVideoSettings() async {
     final projectIdStr = widget.projectId.toString();
     final results = await Future.wait([
@@ -195,6 +226,36 @@ class SettingsSheetState extends State<SettingsSheet> {
     final poSetting = results[3] as String;
     projectOrientation =
         poSetting[0].toUpperCase() + poSetting.substring(1).toLowerCase();
+
+    // Detect if resolution is custom (not a preset)
+    _isCustomResolution = !_presetResolutions.contains(resolution);
+    if (_isCustomResolution) {
+      String w = '', h = '';
+      // Try to parse WIDTHxHEIGHT format first
+      final dimensions = StabUtils.getDimensions(resolution);
+      if (dimensions != null) {
+        w = dimensions.$1.toString();
+        h = dimensions.$2.toString();
+      } else {
+        // Legacy format (short side only like "1728" or "2K"/"3K")
+        // Calculate dimensions using stored aspect ratio
+        final shortSide = StabUtils.getShortSide(resolution);
+        final aspectDecimal = StabUtils.getAspectRatioAsDecimal(aspectRatio);
+        if (shortSide != null && aspectDecimal != null) {
+          final longSide = (shortSide * aspectDecimal).toInt();
+          final width =
+              projectOrientation == "Landscape" ? longSide : shortSide.toInt();
+          final height =
+              projectOrientation == "Landscape" ? shortSide.toInt() : longSide;
+          w = width.toString();
+          h = height.toString();
+        }
+      }
+      _customWidthController.text = w;
+      _customHeightController.text = h;
+      _customResolutionBaseline = '${w}x$h';
+      _customResolutionModified = false;
+    }
 
     setState(() {});
   }
@@ -793,11 +854,44 @@ class SettingsSheetState extends State<SettingsSheet> {
   Widget _buildVideoSettings() {
     return Column(
       children: [
-        _buildFramerateDropdown(framerate ?? 30),
-        _buildProjectOrientationDropdown(),
         _buildResolutionDropdown(),
-        _buildAspectRatioDropdown(),
+        if (!_isCustomResolution) ...[
+          _buildProjectOrientationDropdown(),
+          _buildAspectRatioDropdown(),
+          _buildOutputResolutionDisplay(),
+        ],
+        _buildFramerateDropdown(framerate ?? 30),
       ],
+    );
+  }
+
+  /// Calculates output dimensions from the current resolution setting.
+  /// For presets, uses aspect ratio and orientation.
+  /// For custom WIDTHxHEIGHT, returns exact dimensions.
+  (int, int)? _calculateOutputDimensions() {
+    return StabUtils.getOutputDimensions(
+      resolution,
+      aspectRatio,
+      projectOrientation,
+    );
+  }
+
+  Widget _buildOutputResolutionDisplay() {
+    final dims = _calculateOutputDimensions();
+    if (dims == null) return const SizedBox.shrink();
+
+    return SettingListTile(
+      title: 'Output resolution',
+      showDivider: true,
+      contentWidget: Text(
+        '${dims.$1} × ${dims.$2}',
+        style: const TextStyle(
+          color: AppColors.settingsTextPrimary,
+          fontSize: 14,
+        ),
+      ),
+      infoContent: '',
+      showInfo: false,
     );
   }
 
@@ -989,41 +1083,300 @@ class SettingsSheetState extends State<SettingsSheet> {
   }
 
   Widget _buildResolutionDropdown() {
-    return SettingListTile(
-      title: 'Resolution',
-      showDivider: true,
-      contentWidget: CustomDropdownButton<String>(
-        value: resolution,
-        items: _getResolutionDropdownItems(),
-        onChanged: (String? value) async {
-          if (value != null && value != resolution) {
-            bool shouldProceed =
-                await Utils.showConfirmChangeDialog(context, "resolution");
+    return Column(
+      children: [
+        SettingListTile(
+          title: 'Resolution',
+          showDivider: !_isCustomResolution,
+          contentWidget: CustomDropdownButton<String>(
+            value: _isCustomResolution ? 'Custom' : resolution,
+            items: _getResolutionDropdownItems(),
+            onChanged: (String? value) async {
+              if (value == null) return;
 
-            if (shouldProceed) {
-              setState(() => resolution = value);
+              if (value == 'Custom') {
+                // Switching to custom mode - pre-populate with current dimensions
+                if (!_isCustomResolution) {
+                  final dims = _calculateOutputDimensions();
+                  final w = dims?.$1.toString() ?? '';
+                  final h = dims?.$2.toString() ?? '';
+                  setState(() {
+                    _isCustomResolution = true;
+                    _customWidthController.text = w;
+                    _customHeightController.text = h;
+                    _customResolutionBaseline = '${w}x$h';
+                    _customResolutionModified = false;
+                    _customResolutionError = null;
+                  });
+                }
+                return;
+              }
 
-              await widget.cancelStabCallback();
-              await DB.instance.setSettingByTitle(
-                  'video_resolution', value, widget.projectId.toString());
-              await widget.refreshSettings();
+              // Switching from custom to preset, or preset to preset
+              if (value != resolution || _isCustomResolution) {
+                bool shouldProceed =
+                    await Utils.showConfirmChangeDialog(context, "resolution");
 
-              await resetStabStatusAndRestartStabilization();
-            }
-          }
-        },
-      ),
-      infoContent: '',
-      showInfo: false,
+                if (shouldProceed) {
+                  setState(() {
+                    resolution = value;
+                    _isCustomResolution = false;
+                    _customResolutionError = null;
+                  });
+
+                  await widget.cancelStabCallback();
+                  await DB.instance.setSettingByTitle(
+                      'video_resolution', value, widget.projectId.toString());
+                  await widget.refreshSettings();
+
+                  await resetStabStatusAndRestartStabilization();
+                }
+              }
+            },
+          ),
+          infoContent: '',
+          showInfo: false,
+        ),
+        if (_isCustomResolution) _buildCustomResolutionInput(),
+      ],
     );
+  }
+
+  Widget _buildCustomResolutionInput() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Width field
+              Expanded(
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _customWidthController,
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.center,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      style: const TextStyle(
+                        color: AppColors.settingsTextPrimary,
+                        fontSize: 16,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: '1920',
+                        hintStyle: const TextStyle(
+                          color: AppColors.settingsTextTertiary,
+                          fontSize: 16,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: AppColors.settingsTextTertiary,
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: AppColors.settingsTextTertiary,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: AppColors.settingsAccent,
+                          ),
+                        ),
+                      ),
+                      onSubmitted: (_) => _applyCustomResolution(),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'width',
+                      style: TextStyle(
+                        color: AppColors.settingsTextTertiary,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // × symbol
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Text(
+                    '×',
+                    style: TextStyle(
+                      color: AppColors.settingsTextSecondary,
+                      fontSize: 20,
+                    ),
+                  ),
+                ),
+              ),
+              // Height field
+              Expanded(
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _customHeightController,
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.center,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      style: const TextStyle(
+                        color: AppColors.settingsTextPrimary,
+                        fontSize: 16,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: '1080',
+                        hintStyle: const TextStyle(
+                          color: AppColors.settingsTextTertiary,
+                          fontSize: 16,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: AppColors.settingsTextTertiary,
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: AppColors.settingsTextTertiary,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: AppColors.settingsAccent,
+                          ),
+                        ),
+                      ),
+                      onSubmitted: (_) => _applyCustomResolution(),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'height',
+                      style: TextStyle(
+                        color: AppColors.settingsTextTertiary,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Apply button (full width) - reactive styling based on changes
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed:
+                  _customResolutionModified ? _applyCustomResolution : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _customResolutionModified
+                    ? AppColors.settingsAccent
+                    : AppColors.settingsCardBorder,
+                foregroundColor: _customResolutionModified
+                    ? Colors.white
+                    : AppColors.settingsTextTertiary,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                disabledBackgroundColor: AppColors.settingsCardBorder,
+                disabledForegroundColor: AppColors.settingsTextTertiary,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (_customResolutionModified) ...[
+                    const Icon(Icons.save_outlined, size: 18),
+                    const SizedBox(width: 8),
+                  ],
+                  const Text('Apply'),
+                ],
+              ),
+            ),
+          ),
+          // Error message
+          if (_customResolutionError != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                _customResolutionError!,
+                style: const TextStyle(color: Colors.red, fontSize: 12),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _applyCustomResolution() async {
+    final widthStr = _customWidthController.text.trim();
+    final heightStr = _customHeightController.text.trim();
+    final width = int.tryParse(widthStr);
+    final height = int.tryParse(heightStr);
+
+    // Validate
+    if (width == null || height == null) {
+      setState(() => _customResolutionError = 'Enter valid numbers');
+      return;
+    }
+    if (width < 480 || height < 480) {
+      setState(() => _customResolutionError = 'Minimum dimension is 480');
+      return;
+    }
+    if (width > 7680 || height > 7680) {
+      setState(() => _customResolutionError = 'Maximum dimension is 7680');
+      return;
+    }
+    if (width % 2 != 0 || height % 2 != 0) {
+      setState(() => _customResolutionError = 'Dimensions must be even');
+      return;
+    }
+
+    // Valid - apply the resolution
+    final newResolution = '${width}x$height';
+    if (newResolution == resolution && _customResolutionError == null) {
+      // No change needed
+      return;
+    }
+
+    bool shouldProceed =
+        await Utils.showConfirmChangeDialog(context, "resolution");
+
+    if (shouldProceed) {
+      setState(() {
+        resolution = newResolution;
+        _customResolutionBaseline = newResolution;
+        _customResolutionError = null;
+        _customResolutionModified = false;
+      });
+
+      await widget.cancelStabCallback();
+      await DB.instance.setSettingByTitle(
+          'video_resolution', newResolution, widget.projectId.toString());
+      await widget.refreshSettings();
+
+      await resetStabStatusAndRestartStabilization();
+    }
   }
 
   List<DropdownMenuItem<String>> _getResolutionDropdownItems() {
     return const [
       DropdownMenuItem<String>(value: "1080p", child: Text("1080p")),
-      DropdownMenuItem<String>(value: "2K", child: Text("2K")),
-      DropdownMenuItem<String>(value: "3K", child: Text("3K")),
       DropdownMenuItem<String>(value: "4K", child: Text("4K")),
+      DropdownMenuItem<String>(value: "8K", child: Text("8K")),
+      DropdownMenuItem<String>(value: "Custom", child: Text("Custom")),
     ];
   }
 

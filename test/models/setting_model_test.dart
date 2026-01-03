@@ -248,15 +248,28 @@ void main() {
         expect(double.tryParse(setting.value), 0.065);
       });
 
-      test('enum-like setting', () {
+      test('enum-like setting with preset resolution', () {
         const setting = Setting(
           title: 'resolution',
           value: '1080p',
           projectId: '1',
         );
 
-        final validResolutions = ['720p', '1080p', '2K', '4K'];
-        expect(validResolutions.contains(setting.value), isTrue);
+        final validPresets = ['1080p', '4K', '8K'];
+        expect(validPresets.contains(setting.value), isTrue);
+      });
+
+      test('custom numeric resolution setting', () {
+        const setting = Setting(
+          title: 'resolution',
+          value: '1728',
+          projectId: '1',
+        );
+
+        // Custom resolutions are stored as numeric strings (short side)
+        final numericValue = int.tryParse(setting.value);
+        expect(numericValue, isNotNull);
+        expect(numericValue! >= 480 && numericValue <= 5400, isTrue);
       });
 
       test('global setting with empty projectId', () {

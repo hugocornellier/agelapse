@@ -23,17 +23,57 @@ class VideoUtils {
   static int currentFrame = 1;
 
   static int pickBitrateKbps(String resolution) {
+    // Handle resolution setting strings (e.g., "8K", "4K", "1080p")
+    if (resolution == "8K") return 100000; // 8K: 100 Mbps
+    if (resolution == "4K") return 50000; // 4K: 50 Mbps
+    if (resolution == "1080p") return 14000; // 1080p: 14 Mbps
+
+    // Handle custom resolution (short side as number, e.g., "1728")
+    final shortSide = double.tryParse(resolution);
+    if (shortSide != null) {
+      // Estimate pixels assuming 16:9 aspect ratio for bitrate calculation
+      final longSide = shortSide * (16 / 9);
+      final pixels = (shortSide * longSide).toInt();
+      return _bitrateFromPixels(pixels);
+    }
+
+    // Handle dimension strings (e.g., "7680x4320", "1920x1080")
     final m = RegExp(r'(\d+)x(\d+)').firstMatch(resolution);
     if (m == null) return 12000; // safer default
     final w = int.parse(m.group(1)!);
     final h = int.parse(m.group(2)!);
-    final pixels = w * h;
+    return _bitrateFromPixels(w * h);
+  }
 
+  static int _bitrateFromPixels(int pixels) {
+    if (pixels >= 5760 * 4320) return 100000; // 8K: 100 Mbps
     if (pixels >= 3840 * 2160) return 50000; // 4K: 50 Mbps
     if (pixels >= 2560 * 1440) return 20000; // 1440p: 20 Mbps
     if (pixels >= 1920 * 1080) return 14000; // 1080p: 14 Mbps
     if (pixels >= 1280 * 720) return 8000; // 720p: 8 Mbps
     return 5000; // lower
+  }
+
+  /// Check if resolution requires HEVC encoder (H.264 VideoToolbox doesn't support 8K)
+  /// Returns true for 8K preset or custom resolutions with short side > 2304 (4K)
+  static bool _resolutionNeedsHevc(String resolution) {
+    if (resolution == "8K") return true;
+    if (resolution == "4K" || resolution == "1080p") return false;
+
+    // Handle WIDTHxHEIGHT format (e.g., "1920x1080")
+    final match = RegExp(r'^(\d+)x(\d+)$').firstMatch(resolution);
+    if (match != null) {
+      final w = int.parse(match.group(1)!);
+      final h = int.parse(match.group(2)!);
+      final shortSide = w < h ? w : h;
+      return shortSide > 2304;
+    }
+
+    // Custom resolution: parse short side and check if above 4K threshold
+    final shortSide = double.tryParse(resolution);
+    if (shortSide != null && shortSide > 2304) return true;
+
+    return false;
   }
 
   static Future<bool> createTimelapse(int projectId, framerate, totalPhotoCount,
@@ -94,9 +134,6 @@ class VideoUtils {
             "[VIDEO] ERROR: Stabilized directory does not exist: ${dir.path}");
         return false;
       }
-
-      // Note: PNG listing and validation now handled in _buildConcatListFromDir
-      // to avoid redundant directory scans
 
       final bool framerateIsDefault =
           await SettingsUtil.loadFramerateIsDefault(projectId.toString());
@@ -179,7 +216,22 @@ class VideoUtils {
       final kbps = pickBitrateKbps(resolution);
       final vtRate =
           "-b:v ${kbps}k -maxrate ${(kbps * 1.5).round()}k -bufsize ${(kbps * 3).round()}k";
-      final vCodec = Platform.isAndroid ? 'libx264' : 'h264_videotoolbox';
+      // Use HEVC hardware encoder for high resolutions on macOS/iOS (h264_videotoolbox doesn't support 8K)
+      // Use libx264 on Android (FFmpegKit has it)
+      final bool needsHevc = _resolutionNeedsHevc(resolution);
+      final String vCodec;
+      final String codecTag;
+      if (Platform.isAndroid) {
+        vCodec = 'libx264';
+        codecTag = '-tag:v avc1';
+      } else if (needsHevc) {
+        // Use HEVC (H.265) for high resolutions on macOS/iOS - VideoToolbox HEVC supports 8K+
+        vCodec = 'hevc_videotoolbox';
+        codecTag = '-tag:v hvc1';
+      } else {
+        vCodec = 'h264_videotoolbox';
+        codecTag = '-tag:v avc1';
+      }
 
       String ffmpegCommand = "-y "
           "-f concat -safe 0 "
@@ -187,7 +239,7 @@ class VideoUtils {
           "-vsync cfr -r 30 "
           "$watermarkInputsAndFilter "
           "-c:v $vCodec $vtRate "
-          "-g 240 -movflags +faststart -tag:v avc1 "
+          "-g 240 -movflags +faststart $codecTag "
           "-pix_fmt yuv420p "
           "\"$videoOutputPath\"";
 

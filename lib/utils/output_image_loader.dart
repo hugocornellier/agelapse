@@ -14,6 +14,7 @@ class OutputImageLoader {
   final int projectId;
   String? projectOrientation;
   String? aspectRatio;
+  String? resolution;
   double offsetX = 0.0;
   double offsetY = 0.0;
   double? ghostImageOffsetX;
@@ -45,10 +46,14 @@ class OutputImageLoader {
     // Dispose old image to free memory
     guideImage?.dispose();
 
-    // Load placeholder
-    guideImage = await ProjectUtils.loadImage('assets/images/person-grey.png');
+    // Load placeholder SVG with eye holes aligned to stabilization guides
+    guideImage = await ProjectUtils.loadSvgImage(
+      'assets/images/person-grey.svg',
+      width: 400,
+      height: 480,
+    );
     ghostImageOffsetX = 0.105;
-    ghostImageOffsetY = 0.241;
+    ghostImageOffsetY = 0.292;
     hasRealGuideImage = false;
     _guideImagePath = null;
 
@@ -129,9 +134,35 @@ class OutputImageLoader {
     projectOrientation =
         await SettingsUtil.loadProjectOrientation(projectId.toString());
     aspectRatio = await SettingsUtil.loadAspectRatio(projectId.toString());
+    resolution = await SettingsUtil.loadVideoResolution(projectId.toString());
 
     offsetX = double.parse(offsetXSettingVal);
     offsetY = double.parse(offsetYSettingVal);
+  }
+
+  /// Get the display aspect ratio (height/width) for fitting the output preview.
+  /// Handles both custom WIDTHxHEIGHT resolutions and presets.
+  double getDisplayAspectRatio() {
+    if (resolution == null ||
+        aspectRatio == null ||
+        projectOrientation == null) {
+      // Fallback to 16:9 landscape
+      return 9 / 16;
+    }
+
+    final dims = StabUtils.getOutputDimensions(
+      resolution!,
+      aspectRatio!,
+      projectOrientation!,
+    );
+
+    if (dims == null) {
+      // Fallback to 16:9 based on orientation
+      return projectOrientation == 'landscape' ? 9 / 16 : 16 / 9;
+    }
+
+    // Return height/width for display fitting
+    return dims.$2 / dims.$1;
   }
 
   Future<void> _initializeImageDirectory() async {
@@ -163,17 +194,23 @@ class OutputImageLoader {
           guideImage = await StabUtils.loadImageFromFile(File(guideImagePath));
         } catch (e) {
           LogService.instance
-              .log("Error caught $e, setting ghostImage to persongrey");
-          guideImage =
-              await ProjectUtils.loadImage('assets/images/person-grey.png');
+              .log("Error caught $e, setting ghostImage to SVG placeholder");
+          guideImage = await ProjectUtils.loadSvgImage(
+            'assets/images/person-grey.svg',
+            width: 400,
+            height: 480,
+          );
           ghostImageOffsetX = 0.105;
-          ghostImageOffsetY = 0.241;
+          ghostImageOffsetY = 0.292;
         }
       } else {
-        guideImage =
-            await ProjectUtils.loadImage('assets/images/person-grey.png');
+        guideImage = await ProjectUtils.loadSvgImage(
+          'assets/images/person-grey.svg',
+          width: 400,
+          height: 480,
+        );
         ghostImageOffsetX = 0.105;
-        ghostImageOffsetY = 0.241;
+        ghostImageOffsetY = 0.292;
       }
     } catch (e) {
       debugPrint('Failed to initialize image directory: $e');

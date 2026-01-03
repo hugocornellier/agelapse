@@ -315,27 +315,21 @@ class GalleryUtils {
     stabImagePaths
         .sort((b, a) => b.split('/').last.compareTo(a.split('/').last));
 
-    // OPT-3: Prefetch thumbnail statuses to avoid N individual DB queries
     await _prefetchThumbnailStatuses(stabImagePaths, projectId);
 
     await onImagesLoaded(rawImagePaths, stabImagePaths);
   }
 
   /// Batch prefetch thumbnail statuses to seed ThumbnailService cache.
-  /// Converts N individual DB queries into a single batch query.
   static Future<void> _prefetchThumbnailStatuses(
       List<String> stabImagePaths, int projectId) async {
     if (stabImagePaths.isEmpty) return;
 
-    // Extract timestamps from stabilized image paths
     final timestamps =
         stabImagePaths.map((p) => path.basenameWithoutExtension(p)).toList();
-
-    // Batch query status flags
     final statusMap =
         await DB.instance.getPhotoStatusBatch(timestamps, projectId);
 
-    // Build thumbnail path -> status map for cache seeding
     final Map<String, ThumbnailStatus> cacheEntries = {};
     for (final stabPath in stabImagePaths) {
       final timestamp = path.basenameWithoutExtension(stabPath);
@@ -348,8 +342,6 @@ class GalleryUtils {
         } else if (flags['stabFailed'] == 1) {
           cacheEntries[thumbnailPath] = ThumbnailStatus.stabFailed;
         }
-        // Note: success status is determined by file existence check,
-        // which is still needed but now only for non-failure cases
       }
     }
 
@@ -807,7 +799,7 @@ class GalleryUtils {
   }
 
   /// Streams files directly to ZIP on disk using ZipFileEncoder.
-  /// Memory usage: ~1x largest single file (vs ~2x total size previously).
+  /// Memory usage: ~1x largest single file.
   static void zipFiles(ZipIsolateParams params) async {
     final send = params.sendPort;
     void log(String m) => send.send({'type': 'log', 'msg': m});

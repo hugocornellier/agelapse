@@ -503,18 +503,9 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
     return Expanded(
       child: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
-          double aspectRatioValue;
-          if (outputImageLoader.aspectRatio == '4:3') {
-            aspectRatioValue =
-                outputImageLoader.projectOrientation == 'landscape'
-                    ? 3 / 4
-                    : 4 / 3;
-          } else {
-            aspectRatioValue =
-                outputImageLoader.projectOrientation == 'landscape'
-                    ? 9 / 16
-                    : 16 / 9;
-          }
+          // Use actual output dimensions (handles custom resolutions)
+          final double aspectRatioValue =
+              outputImageLoader.getDisplayAspectRatio();
 
           final double maxW = constraints.maxWidth;
           final double maxH = constraints.maxHeight;

@@ -155,7 +155,7 @@ void main() {
 
     test('video resolution is valid', () {
       final resolution = DB.defaultValues['video_resolution']!;
-      expect(['720p', '1080p', '4k'].contains(resolution), isTrue);
+      expect(['720p', '1080p', '4K', '8K'].contains(resolution), isTrue);
     });
 
     test('aspect ratio is valid', () {

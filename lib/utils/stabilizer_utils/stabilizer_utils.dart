@@ -59,11 +59,64 @@ class StabUtils {
   }
 
   static double? getShortSide(String resolution) {
+    // Standard presets
     if (resolution == "1080p") return 1080;
+    if (resolution == "4K") return 2304;
+    if (resolution == "8K") return 4320;
+
+    // Legacy presets (backwards compatibility with pre-2.2.1 versions)
     if (resolution == "2K") return 1152;
     if (resolution == "3K") return 1728;
-    if (resolution == "4K") return 2304;
+
+    // Handle WIDTHxHEIGHT format (e.g., "1920x1080")
+    final match = RegExp(r'^(\d+)x(\d+)$').firstMatch(resolution);
+    if (match != null) {
+      final w = double.parse(match.group(1)!);
+      final h = double.parse(match.group(2)!);
+      return w < h ? w : h; // Return smaller dimension
+    }
+
+    // Custom: try parsing as number (e.g., "1728" -> 1728.0)
+    final parsed = double.tryParse(resolution);
+    if (parsed != null && parsed >= 480 && parsed <= 5400) return parsed;
+
     return null;
+  }
+
+  /// Get both dimensions from a "WIDTHxHEIGHT" format resolution string.
+  /// Returns (width, height) or null if not in that format.
+  static (int, int)? getDimensions(String resolution) {
+    final match = RegExp(r'^(\d+)x(\d+)$').firstMatch(resolution);
+    if (match != null) {
+      return (int.parse(match.group(1)!), int.parse(match.group(2)!));
+    }
+    return null;
+  }
+
+  /// Get output canvas dimensions (width, height) for a given resolution setting.
+  ///
+  /// For custom "WIDTHxHEIGHT" resolutions, returns exact dimensions.
+  /// For presets (1080p, 4K, 8K), calculates from short side × aspect ratio.
+  /// Returns null if resolution cannot be parsed.
+  static (int, int)? getOutputDimensions(
+    String resolution,
+    String aspectRatio,
+    String orientation,
+  ) {
+    final customDims = getDimensions(resolution);
+    if (customDims != null) {
+      return customDims;
+    }
+
+    final shortSide = getShortSide(resolution);
+    final aspectDecimal = getAspectRatioAsDecimal(aspectRatio);
+    if (shortSide == null || aspectDecimal == null) return null;
+
+    final longSide = (shortSide * aspectDecimal).toInt();
+    final isLandscape = orientation.toLowerCase() == 'landscape';
+    final width = isLandscape ? longSide : shortSide.toInt();
+    final height = isLandscape ? shortSide.toInt() : longSide;
+    return (width, height);
   }
 
   static double? getAspectRatioAsDecimal(String aspectRatio) {
@@ -553,7 +606,6 @@ class StabUtils {
       {CancellationToken? token}) async {
     token?.throwIfCancelled();
 
-    // Use pool if available for better performance
     if (IsolatePool.instance.isInitialized) {
       return await IsolatePool.instance.execute<Uint8List>(
         'readToPng',
@@ -590,7 +642,6 @@ class StabUtils {
       {CancellationToken? token}) async {
     token?.throwIfCancelled();
 
-    // Use pool if available for better performance
     if (IsolatePool.instance.isInitialized) {
       await IsolatePool.instance.execute(
         'writePngFromBytes',
@@ -627,7 +678,6 @@ class StabUtils {
       {CancellationToken? token}) async {
     token?.throwIfCancelled();
 
-    // Use pool if available for better performance
     if (IsolatePool.instance.isInitialized) {
       final result = await IsolatePool.instance.execute<Uint8List>(
         'compositeBlackPng',
@@ -664,7 +714,6 @@ class StabUtils {
       {CancellationToken? token}) async {
     token?.throwIfCancelled();
 
-    // Use pool if available for better performance
     if (IsolatePool.instance.isInitialized) {
       final result = await IsolatePool.instance.execute<Uint8List>(
         'thumbnailFromPng',
@@ -702,7 +751,6 @@ class StabUtils {
       {CancellationToken? token}) async {
     token?.throwIfCancelled();
 
-    // Use pool if available for better performance
     if (IsolatePool.instance.isInitialized) {
       await IsolatePool.instance.execute(
         'writeJpg',
@@ -992,7 +1040,6 @@ class StabUtils {
       {CancellationToken? token}) async {
     token?.throwIfCancelled();
 
-    // Use pool if available for better performance
     if (IsolatePool.instance.isInitialized) {
       return await IsolatePool.instance.execute<(int, int)>(
         'getImageDimensions',
@@ -1021,7 +1068,6 @@ class StabUtils {
   }
 
   /// Generate stabilized image bytes using OpenCV warpAffine (desktop only)
-  /// This is faster than Flutter's Canvas-based approach due to SIMD optimization
   static Uint8List? generateStabilizedImageBytesCV(
     cv.Mat srcMat,
     double rotationDegrees,
@@ -1123,9 +1169,7 @@ class StabUtils {
   /// Async version that runs CV stabilization in an isolate to avoid blocking UI.
   /// Uses persistent isolate pool to avoid spawn/kill overhead.
   ///
-  /// When [srcId] is provided, the decoded source Mat is cached in the worker
-  /// to avoid redundant decoding during multi-pass stabilization. This can
-  /// reduce decode operations from O(N*P) to O(N) where P is number of passes.
+  /// When [srcId] is provided, the decoded source Mat is cached in the worker.
   /// Call [IsolatePool.instance.clearMatCache()] after finishing each photo.
   static Future<Uint8List?> generateStabilizedImageBytesCVAsync(
     Uint8List srcBytes,
@@ -1140,7 +1184,6 @@ class StabUtils {
   }) async {
     token?.throwIfCancelled();
 
-    // Use pool if available for better performance
     if (IsolatePool.instance.isInitialized) {
       return await IsolatePool.instance.execute<Uint8List>(
         'stabilizeCV',

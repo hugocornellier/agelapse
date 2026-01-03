@@ -27,7 +27,7 @@ void main() {
         ),
       );
 
-      expect(find.byIcon(Icons.lightbulb_outline), findsOneWidget);
+      expect(find.byIcon(Icons.info_outline), findsOneWidget);
     });
 
     testWidgets('has correct layout with Row', (tester) async {
@@ -82,8 +82,8 @@ void main() {
         ),
       );
 
-      final icon = tester.widget<Icon>(find.byIcon(Icons.lightbulb_outline));
-      expect(icon.size, 30);
+      final icon = tester.widget<Icon>(find.byIcon(Icons.info_outline));
+      expect(icon.size, 20);
     });
 
     testWidgets('displays empty message', (tester) async {

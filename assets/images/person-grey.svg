@@ -1,0 +1,30 @@
+<svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg">
+  <!--
+    Eye positions calculated from:
+    ghostImageOffsetX = 0.105 (10.5% from center)
+    ghostImageOffsetY = 0.292 (29.2% from top)
+
+    Left eye X:  200 * (0.5 - 0.105) = 79
+    Right eye X: 200 * (0.5 + 0.105) = 121
+    Eye Y:       240 * 0.292 = 70
+  -->
+
+  <!-- Body/shoulders -->
+  <ellipse cx="100" cy="230" rx="96" ry="70" fill="#5a5a5a"/>
+
+  <!-- Head with eye cutouts using fill-rule evenodd -->
+  <path fill-rule="evenodd" fill="#5a5a5a" d="
+    M 100 16
+    A 64 64 0 1 1 100 144
+    A 64 64 0 1 1 100 16
+    Z
+    M 79 54
+    A 14 16 0 1 0 79 86
+    A 14 16 0 1 0 79 54
+    Z
+    M 121 54
+    A 14 16 0 1 0 121 86
+    A 14 16 0 1 0 121 54
+    Z
+  "/>
+</svg>

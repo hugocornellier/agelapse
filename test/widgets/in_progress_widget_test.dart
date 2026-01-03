@@ -170,7 +170,6 @@ void main() {
       );
 
       expect(find.byType(InProgress), findsOneWidget);
-      // Note: current implementation has goToPage commented out in onTap
     });
   });
 }

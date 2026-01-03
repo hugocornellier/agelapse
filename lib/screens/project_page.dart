@@ -588,16 +588,13 @@ class ProjectPageState extends State<ProjectPage> {
     required double landscapeCardWidth,
     required bool isLandscape,
   }) {
-    Map<String, double> aspectRatios = {
-      "4:3": isLandscape ? 3 / 4 : 4 / 3,
-      "16:9": isLandscape ? 9 / 16 : 16 / 9,
-    };
+    // Use actual output dimensions (handles custom resolutions)
+    final double aspectRatioValue = outputImageLoader.getDisplayAspectRatio();
 
     return Column(
       children: [
         CustomPaint(
-          size: Size(sideLength,
-              aspectRatios[outputImageLoader.aspectRatio]! * sideLength),
+          size: Size(sideLength, aspectRatioValue * sideLength),
           painter: outputImageLoader.guideImage == null
               ? null
               : GridPainterSE(

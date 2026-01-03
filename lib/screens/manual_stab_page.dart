@@ -107,14 +107,14 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
         await SettingsUtil.loadVideoResolution(widget.projectId.toString());
     aspectRatio =
         await SettingsUtil.loadAspectRatio(widget.projectId.toString());
-    double? aspectRatioDecimal = StabUtils.getAspectRatioAsDecimal(aspectRatio);
 
-    final double? shortSideDouble = StabUtils.getShortSide(resolution);
-    final int longSide = (aspectRatioDecimal! * shortSideDouble!).toInt();
-    final int shortSide = shortSideDouble.toInt();
-
-    canvasWidth = projectOrientation == "landscape" ? longSide : shortSide;
-    canvasHeight = projectOrientation == "landscape" ? shortSide : longSide;
+    final dims = StabUtils.getOutputDimensions(
+      resolution,
+      aspectRatio,
+      projectOrientation,
+    );
+    canvasWidth = dims!.$1;
+    canvasHeight = dims.$2;
 
     String localRawPath;
     if (widget.imagePath.contains('/stabilized/') ||
@@ -133,7 +133,6 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
     final File rawFile = File(localRawPath);
     if (await rawFile.exists()) {
       _rawImageBytes = await rawFile.readAsBytes();
-      // Get dimensions in isolate to avoid blocking UI
       final dims =
           await ImageUtils.getImageDimensionsInIsolate(_rawImageBytes!);
       if (dims != null) {

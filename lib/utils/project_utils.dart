@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:path/path.dart' as path;
 import 'dart:ui' as ui;
 
@@ -123,6 +124,30 @@ class ProjectUtils {
       completer.complete(img);
     });
     return completer.future;
+  }
+
+  /// Loads an SVG asset and converts it to a ui.Image at the specified size.
+  static Future<ui.Image> loadSvgImage(
+    String assetPath, {
+    required int width,
+    required int height,
+  }) async {
+    final pictureInfo = await vg.loadPicture(SvgAssetLoader(assetPath), null);
+
+    final recorder = ui.PictureRecorder();
+    final canvas = ui.Canvas(recorder);
+
+    // Scale SVG to fit the target dimensions
+    final scaleX = width / pictureInfo.size.width;
+    final scaleY = height / pictureInfo.size.height;
+    canvas.scale(scaleX, scaleY);
+    canvas.drawPicture(pictureInfo.picture);
+
+    final picture = recorder.endRecording();
+    final image = await picture.toImage(width, height);
+
+    pictureInfo.picture.dispose();
+    return image;
   }
 
   static Duration calculateDateDifference(int startDate, int endDate) {

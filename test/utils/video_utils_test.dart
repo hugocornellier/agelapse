@@ -4,6 +4,70 @@ import 'package:agelapse/utils/video_utils.dart';
 void main() {
   group('VideoUtils', () {
     group('pickBitrateKbps', () {
+      // Resolution setting string tests
+      test('returns 100000 kbps for "8K" setting string', () {
+        expect(VideoUtils.pickBitrateKbps('8K'), 100000);
+      });
+
+      test('returns 50000 kbps for "4K" setting string', () {
+        expect(VideoUtils.pickBitrateKbps('4K'), 50000);
+      });
+
+      test('returns 14000 kbps for "1080p" setting string', () {
+        expect(VideoUtils.pickBitrateKbps('1080p'), 14000);
+      });
+
+      // Custom numeric resolution string tests (short side value)
+      test('calculates bitrate for custom numeric resolution "4320" (8K)', () {
+        // 4320 short side with 16:9 aspect = 4320 * 7680 pixels
+        expect(VideoUtils.pickBitrateKbps('4320'), 100000);
+      });
+
+      test('calculates bitrate for custom numeric resolution "2304" (4K)', () {
+        // 2304 short side with 16:9 aspect = 2304 * 4096 pixels
+        expect(VideoUtils.pickBitrateKbps('2304'), 50000);
+      });
+
+      test('calculates bitrate for custom numeric resolution "1728" (3K)', () {
+        // 1728 short side with 16:9 aspect = 1728 * 3072 = 5,308,416 pixels
+        // This is between 4K and 1440p thresholds, so returns 20000
+        expect(VideoUtils.pickBitrateKbps('1728'), 20000);
+      });
+
+      test('calculates bitrate for custom numeric resolution "1440"', () {
+        // 1440 short side with 16:9 aspect = 1440 * 2560 = 3,686,400 pixels
+        // At 1440p threshold
+        expect(VideoUtils.pickBitrateKbps('1440'), 20000);
+      });
+
+      test('calculates bitrate for custom numeric resolution "1080"', () {
+        // 1080 short side with 16:9 aspect = 1080 * 1920 = 2,073,600 pixels
+        expect(VideoUtils.pickBitrateKbps('1080'), 14000);
+      });
+
+      test('calculates bitrate for custom numeric resolution "720"', () {
+        // 720 short side with 16:9 aspect = 720 * 1280 = 921,600 pixels
+        expect(VideoUtils.pickBitrateKbps('720'), 8000);
+      });
+
+      test('calculates bitrate for custom numeric resolution "480"', () {
+        // 480 short side with 16:9 aspect = 480 * 853 = ~409,440 pixels
+        expect(VideoUtils.pickBitrateKbps('480'), 5000);
+      });
+
+      // Dimension string tests
+      test('returns 100000 kbps for 8K resolution (7680x4320)', () {
+        expect(VideoUtils.pickBitrateKbps('7680x4320'), 100000);
+      });
+
+      test('handles 8K portrait orientation (4320x7680)', () {
+        expect(VideoUtils.pickBitrateKbps('4320x7680'), 100000);
+      });
+
+      test('handles 8K with 4:3 aspect ratio (5760x4320)', () {
+        expect(VideoUtils.pickBitrateKbps('5760x4320'), 100000);
+      });
+
       test('returns 50000 kbps for 4K resolution (3840x2160)', () {
         expect(VideoUtils.pickBitrateKbps('3840x2160'), 50000);
       });
@@ -32,8 +96,8 @@ void main() {
         expect(VideoUtils.pickBitrateKbps(''), 12000);
       });
 
-      test('returns 12000 kbps default for resolution without dimensions', () {
-        expect(VideoUtils.pickBitrateKbps('1080p'), 12000);
+      test('returns 12000 kbps default for unrecognized resolution string', () {
+        expect(VideoUtils.pickBitrateKbps('720p'), 12000);
       });
 
       test('handles portrait orientation (1080x1920)', () {

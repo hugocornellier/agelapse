@@ -161,12 +161,13 @@ class FaceStabilizer {
       _poseDetector = poseDetector;
     }
 
-    final double? shortSideDouble = StabUtils.getShortSide(resolution);
-    final int longSide = (aspectRatioDecimal! * shortSideDouble!).toInt();
-    final int shortSide = shortSideDouble.toInt();
-
-    canvasWidth = projectOrientation == "landscape" ? longSide : shortSide;
-    canvasHeight = projectOrientation == "landscape" ? shortSide : longSide;
+    final dims = StabUtils.getOutputDimensions(
+      resolution,
+      aspectRatio,
+      projectOrientation!,
+    );
+    canvasWidth = dims!.$1;
+    canvasHeight = dims.$2;
 
     _initializeGoalsAndOffsets();
   }
@@ -190,7 +191,6 @@ class FaceStabilizer {
     void Function() userRanOutOfSpaceCallback, {
     Rect? targetBoundingBox,
   }) async {
-    // Generate unique srcId for this photo to enable Mat caching across passes
     final String srcId = path.basenameWithoutExtension(rawPhotoPath);
 
     try {
@@ -207,12 +207,10 @@ class FaceStabilizer {
 
       double? rotationDegrees, scaleFactor, translateX, translateY;
 
-      // Prepare PNG and get bytes directly (avoids redundant disk read)
       token?.throwIfCancelled();
       final Uint8List? srcBytes = await StabUtils.preparePNG(rawPhotoPath);
       if (srcBytes == null) return StabilizationResult(success: false);
 
-      // Get dimensions asynchronously (decode runs in isolate)
       token?.throwIfCancelled();
       final dims = await StabUtils.getImageDimensionsFromBytesAsync(srcBytes,
           token: token);
@@ -239,8 +237,6 @@ class FaceStabilizer {
 
       if (projectType == "musc") translateY = 0;
 
-      // Generate stabilized bytes using OpenCV in isolate (avoids blocking UI)
-      // Pass srcId to enable Mat caching for multi-pass optimization
       token?.throwIfCancelled();
       Uint8List? imageBytesStabilized =
           await StabUtils.generateStabilizedImageBytesCVAsync(
@@ -311,9 +307,7 @@ class FaceStabilizer {
       LogService.instance.log("Caught error: $e");
       return StabilizationResult(success: false);
     } finally {
-      // Clear the decoded Mat cache to free memory after processing this photo
       await IsolatePool.instance.clearMatCache();
-      // Clear cached PNG bytes and raw faces
       _lastPngBytes = null;
       _lastRawFaces = null;
     }
@@ -610,7 +604,6 @@ class FaceStabilizer {
   }
 
   /// FAST MODE: Translation-only multi-pass correction (up to 4 passes).
-  /// This is the original algorithm that only adjusts X/Y translation.
   Future<(bool, double?, double?, double?, double?, double?, double?, double?)>
       _performFastMultiPass(
     List<dynamic> stabFaces,
@@ -878,7 +871,6 @@ class FaceStabilizer {
                   calculateStabScore(fourPassEyes, goalLeftEye, goalRightEye);
               if (fourPassScore < bestScore) {
                 usedFourPass = true;
-                // Note: threePassBytes already out of scope, GC will handle it
                 bestBytes = fourPassBytes;
                 bestScore = fourPassScore;
                 bestTX = fourPassTX;
@@ -931,7 +923,6 @@ class FaceStabilizer {
   }
 
   /// SLOW MODE: Full affine refinement with rotation, scale, and translation passes.
-  /// This is the new algorithm that adjusts all affine transformation parameters.
   ///
   /// Sequential refinement approach:
   /// 1. Rotation Pass: Fix eye angle (make eyes horizontal)
@@ -1443,8 +1434,6 @@ class FaceStabilizer {
       }
     }
 
-    // Use eye positions from the best pass (already computed during refinement)
-    // This avoids a redundant face detection pass just for metrics logging
     double? finalEyeDeltaY;
     double? finalEyeDistance;
     if (currentEyes != null &&
@@ -1478,11 +1467,6 @@ class FaceStabilizer {
       successfulStabilization = false;
     }
 
-    // Return scores for comparison (reusing existing return structure)
-    // rotationPassScore -> twoPassScore slot
-    // scalePassScore -> threePassScore slot
-    // translationPassScore -> fourPassScore slot
-    // Also return final benchmark metrics
     return (
       successfulStabilization,
       firstPassScore,
@@ -1847,23 +1831,19 @@ class FaceStabilizer {
       LogService.instance.log(
           "Using reference embedding from photo $refTimestamp for face matching");
 
-      // Use cached PNG bytes from previous detection (avoids redundant file read)
       Uint8List imageBytes;
       if (_lastPngBytes != null) {
         imageBytes = _lastPngBytes!;
         LogService.instance
             .log("Using cached PNG bytes for embedding extraction");
       } else {
-        // Fallback: read from disk if cache miss
         final String pngPath =
             await DirUtils.getPngPathFromRawPhotoPath(rawPhotoPath);
         imageBytes = await File(pngPath).readAsBytes();
       }
 
-      // Use pre-detected raw faces to avoid redundant face detection
       final List<dynamic>? rawFaces = _lastRawFaces;
 
-      // Use embedding-based face selection with pre-detected faces
       final int bestIdx = await StabUtils.pickFaceIndexByEmbedding(
         referenceEmbedding,
         imageBytes,
@@ -1878,16 +1858,12 @@ class FaceStabilizer {
   }
 
   /// Extracts and stores the face embedding for a single-face photo.
-  /// This embedding will be used as reference for future multi-face photos.
-  /// Uses cached PNG bytes from previous detection to avoid redundant file read.
   Future<void> _extractAndStoreEmbedding(String rawPhotoPath) async {
     try {
-      // Use cached PNG bytes from previous detection (avoids redundant file read)
       Uint8List imageBytes;
       if (_lastPngBytes != null) {
         imageBytes = _lastPngBytes!;
       } else {
-        // Fallback: read from disk if cache miss
         final String pngPath =
             await DirUtils.getPngPathFromRawPhotoPath(rawPhotoPath);
         imageBytes = await File(pngPath).readAsBytes();
@@ -2175,7 +2151,6 @@ class FaceStabilizer {
     double smallestDistance = double.infinity;
     List<Point<double>> centeredEyes = [];
 
-    // All platforms now use face_detection_tflite which returns FaceLike objects
     // Filter to faces with detected eyes
     faces = faces.where((face) {
       return face.leftEye != null && face.rightEye != null;
@@ -2231,9 +2206,6 @@ class FaceStabilizer {
     return horizontalDistance;
   }
 
-  /// Result of face detection containing FaceLike wrappers, raw faces, and PNG bytes.
-  /// Raw faces are needed for embedding extraction without re-detecting.
-  /// PNG bytes are cached to avoid redundant file reads.
   Uint8List? _lastPngBytes;
   List<dynamic>? _lastRawFaces;
 
@@ -2241,11 +2213,8 @@ class FaceStabilizer {
       String rawPhotoPath, int width,
       {bool filterByFaceSize = true, Uint8List? pngBytes}) async {
     await _ensureReady();
-    // Use provided bytes or prepare PNG (avoids redundant disk read when bytes passed)
     pngBytes ??= await StabUtils.preparePNG(rawPhotoPath);
     if (pngBytes == null) return null;
-
-    // Cache PNG bytes for potential embedding extraction later
     _lastPngBytes = pngBytes;
 
     final result = await StabUtils.getFacesFromBytesWithRaw(
@@ -2255,15 +2224,12 @@ class FaceStabilizer {
     );
 
     if (result == null) return null;
-
-    // Cache raw faces for embedding extraction
     _lastRawFaces = result.$2;
 
     return result.$1;
   }
 
   List<Point<double>?> getEyesFromFaces(dynamic faces) {
-    // All platforms now use face_detection_tflite which returns FaceLike objects
     final List<Point<double>?> eyes = [];
     for (final f in (faces as List)) {
       Point<double>? a = f.leftEye == null

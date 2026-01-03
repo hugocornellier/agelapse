@@ -137,8 +137,8 @@ void main() {
 
     test('ghostImageOffsetY can be modified', () {
       final loader = OutputImageLoader(1);
-      loader.ghostImageOffsetY = 0.241;
-      expect(loader.ghostImageOffsetY, 0.241);
+      loader.ghostImageOffsetY = 0.292;
+      expect(loader.ghostImageOffsetY, 0.292);
     });
 
     test('hasRealGuideImage can be modified', () {

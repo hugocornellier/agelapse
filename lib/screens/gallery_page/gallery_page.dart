@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:desktop_drop/desktop_drop.dart';
@@ -516,8 +517,6 @@ class GalleryPageState extends State<GalleryPage>
   }
 
   /// Handles incremental update when a single photo is stabilized.
-  /// Instead of reloading the entire list from DB, constructs the path
-  /// and inserts at the correct position (O(log n) vs O(n) reload).
   Future<void> _handleIncrementalStabUpdate(String timestamp) async {
     final newPath = await DirUtils.getStabilizedImagePathFromTimestamp(
         projectId, timestamp, projectOrientation!);
@@ -526,11 +525,7 @@ class GalleryPageState extends State<GalleryPage>
     final currentList = widget.stabilizedImageFilesStr;
     if (currentList.contains(newPath)) return;
 
-    // Create new list with the item inserted at correct position
-    // List is sorted ASC by timestamp (oldest first, newest last)
     final newList = List<String>.from(currentList);
-
-    // Binary search for insertion point
     int low = 0;
     int high = newList.length;
     while (low < high) {
@@ -544,11 +539,8 @@ class GalleryPageState extends State<GalleryPage>
     }
 
     newList.insert(low, newPath);
-
-    // Update parent state with new list
     widget.setRawAndStabPhotoStates(widget.imageFilesStr, newList);
 
-    // Scroll to bottom if sticky mode enabled
     if (_stickyBottomEnabled) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _performAutoScroll();
@@ -2153,6 +2145,13 @@ class GalleryPageState extends State<GalleryPage>
     );
   }
 
+  Future<ui.Image> _getImageDimensions(File imageFile) async {
+    final Uint8List bytes = await imageFile.readAsBytes();
+    final Completer<ui.Image> completer = Completer();
+    ui.decodeImageFromList(bytes, completer.complete);
+    return completer.future;
+  }
+
   Future<void> _showImagePreviewDialog(File imageFile,
       {required bool isStabilized}) async {
     final String timestamp = path.basenameWithoutExtension(imageFile.path);
@@ -2199,6 +2198,20 @@ class GalleryPageState extends State<GalleryPage>
                                 captureOffsetMinutes: off),
                             style: const TextStyle(
                               color: Colors.white,
+                              fontSize: 13,
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 16),
+                      FutureBuilder<ui.Image>(
+                        future: _getImageDimensions(imageFile),
+                        builder: (context, snap) {
+                          if (!snap.hasData) return const SizedBox.shrink();
+                          return Text(
+                            '${snap.data!.width}x${snap.data!.height}',
+                            style: const TextStyle(
+                              color: Colors.white70,
                               fontSize: 13,
                             ),
                           );

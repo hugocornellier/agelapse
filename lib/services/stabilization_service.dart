@@ -114,8 +114,6 @@ class StabilizationService {
     if (_totalPhotos == 0) {
       LogService.instance
           .log('StabilizationService: No photos to stabilize, checking video');
-      // Check if video needs to be created - if so, go straight to video phase
-      // If not, return early without emitting any state (no flash)
       final needsVideo = await _checkIfVideoNeeded(projectId);
       if (needsVideo) {
         _state = StabilizationState.compilingVideo;
@@ -134,20 +132,14 @@ class StabilizationService {
     try {
       await WakelockPlus.enable();
 
-      // Initialize isolate pool for efficient parallel processing
       await IsolatePool.instance.initialize();
-
-      // Load settings once for entire stabilization run
       _currentSettings = await StabilizationSettings.load(projectId);
-
-      // Create stabilizer with pre-loaded settings
       _currentStabilizer = FaceStabilizer(
         projectId,
         _handleUserRanOutOfSpace,
         settings: _currentSettings,
       );
 
-      // Get counts for progress calculation (use cached orientation)
       final allPhotos = await DB.instance.getPhotosByProjectID(projectId);
       _stabilizedAtStart = await DB.instance.getStabilizedPhotoCountByProjectID(
           projectId, _currentSettings!.projectOrientation);
@@ -192,13 +184,11 @@ class StabilizationService {
         _currentPhoto++;
         photosDone++;
 
-        // Calculate ETA
         final avgTimePerPhoto = stopwatch.elapsedMilliseconds / photosDone;
         final remainingPhotos = _totalPhotos - photosDone;
         final estimatedTimeRemaining = avgTimePerPhoto * remainingPhotos;
         _eta = _formatDuration(estimatedTimeRemaining.toInt());
 
-        // Calculate progress
         final totalPhotoCount = allPhotos.length;
         final completed = _stabilizedAtStart + _successfullyStabilized;
         var pct =
@@ -415,7 +405,6 @@ class StabilizationService {
       final newVideoNeededRaw = await DB.instance.getNewVideoNeeded(projectId);
       final newVideoNeeded = newVideoNeededRaw == 1;
 
-      // Note: _successfullyStabilized is 0 at this point since we haven't stabilized anything
       return newVideoNeeded ||
           ((videoIsNull || settingsHaveChanged) && stabPhotoCount > 1);
     } catch (e) {

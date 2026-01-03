@@ -17,9 +17,6 @@ enum StabUpdateType {
 }
 
 /// Event emitted during stabilization to notify UI components of updates.
-///
-/// This replaces the raw `int` stream to provide context about what happened,
-/// allowing consumers to react differently to progress updates vs completion.
 class StabUpdateEvent {
   /// The type of event that occurred.
   final StabUpdateType type;

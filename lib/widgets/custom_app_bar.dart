@@ -320,30 +320,36 @@ class CustomAppBarState extends State<CustomAppBar> {
                   InkWell(
                     onTap: () =>
                         _showProjectSelectionModal(context, widget.projectId),
-                    child: CircleAvatar(
-                      backgroundImage: projectImagePath.isNotEmpty &&
-                              File(projectImagePath).existsSync()
-                          ? FileImage(File(projectImagePath)) as ImageProvider
-                          : const AssetImage('assets/images/person-grey.png'),
-                      onBackgroundImageError: (exception, stackTrace) {
-                        // File was deleted between existsSync check and load - use fallback
-                        LogService.instance.log(
-                            '[CustomAppBar] onBackgroundImageError! exception=$exception, path=$projectImagePath');
-                        if (projectImagePath.isNotEmpty) {
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (mounted) {
+                    child: projectImagePath.isNotEmpty &&
+                            File(projectImagePath).existsSync()
+                        ? CircleAvatar(
+                            backgroundImage: FileImage(File(projectImagePath)),
+                            onBackgroundImageError: (exception, stackTrace) {
+                              // File was deleted between existsSync check and load - use fallback
                               LogService.instance.log(
-                                  '[CustomAppBar] Resetting path due to image load error');
-                              setState(() {
-                                projectImagePath = '';
-                              });
-                            }
-                          });
-                        }
-                      },
-                      backgroundColor: Colors.transparent,
-                      radius: 13.5,
-                    ),
+                                  '[CustomAppBar] onBackgroundImageError! exception=$exception, path=$projectImagePath');
+                              if (projectImagePath.isNotEmpty) {
+                                WidgetsBinding.instance
+                                    .addPostFrameCallback((_) {
+                                  if (mounted) {
+                                    LogService.instance.log(
+                                        '[CustomAppBar] Resetting path due to image load error');
+                                    setState(() {
+                                      projectImagePath = '';
+                                    });
+                                  }
+                                });
+                              }
+                            },
+                            backgroundColor: Colors.transparent,
+                            radius: 13.5,
+                          )
+                        : const CircleAvatar(
+                            backgroundColor: Color(0xFF5a5a5a),
+                            radius: 13.5,
+                            child: Icon(Icons.person,
+                                color: Colors.white70, size: 18),
+                          ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.settings, size: 26),

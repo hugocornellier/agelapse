@@ -2,8 +2,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:opencv_dart/opencv_dart.dart' as cv;
 
-/// Unified image processing utilities using opencv_dart for fast native operations.
-/// Replaces dart:image (imglib) with significantly faster native C++ implementations.
+/// Image processing utilities using opencv_dart for fast native operations.
 class ImageUtils {
   /// Decode image bytes to cv.Mat
   static cv.Mat decode(Uint8List bytes) {

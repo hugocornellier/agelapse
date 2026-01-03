@@ -10,29 +10,44 @@ class YellowTipBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-        padding: const EdgeInsets.all(16),
-        margin: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: AppColors.evenDarkerLightBlue,
-          borderRadius: BorderRadius.circular(16),
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: AppColors.settingsCardBackground,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppColors.settingsCardBorder,
+          width: 1,
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.lightbulb_outline,
-              color: Colors.yellow.withAlpha(204), // Equivalent to opacity 0.8
-              size: 30,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.settingsAccent.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
             ),
-            const SizedBox(width: 16),
-            Flexible(
-              child: Text(
-                message,
-                style: const TextStyle(color: Colors.white, fontSize: 14),
-                textAlign: TextAlign.center,
+            child: const Icon(
+              Icons.info_outline,
+              color: AppColors.settingsAccent,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Flexible(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: AppColors.settingsTextPrimary,
+                fontSize: 14,
+                height: 1.4,
               ),
             ),
-          ],
-        ));
+          ),
+        ],
+      ),
+    );
   }
 }
