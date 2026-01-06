@@ -117,6 +117,16 @@ class ProjectPageState extends State<ProjectPage> {
       if (orientationChanged || aspectRatioChanged) {
         // Settings changed - reset preview to placeholder and reload
         _handleSettingsChange();
+      } else {
+        // Check if only eye offsets changed (no need to reset guide image)
+        final eyeOffsetChanged = oldCache.eyeOffsetX != newCache.eyeOffsetX ||
+            oldCache.eyeOffsetY != newCache.eyeOffsetY;
+
+        if (eyeOffsetChanged) {
+          outputImageLoader.offsetX = newCache.eyeOffsetX;
+          outputImageLoader.offsetY = newCache.eyeOffsetY;
+          setState(() {});
+        }
       }
     }
   }

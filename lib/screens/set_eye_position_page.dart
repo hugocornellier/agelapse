@@ -1,8 +1,7 @@
-import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../services/database_helper.dart';
-import '../../utils/dir_utils.dart';
+import '../../services/thumbnail_service.dart';
 import '../styles/styles.dart';
 import '../utils/utils.dart';
 import '../widgets/grid_painter_se.dart';
@@ -13,6 +12,8 @@ class SetEyePositionPage extends StatefulWidget {
   final String projectName;
   final Future<void> Function() cancelStabCallback;
   final VoidCallback refreshSettings;
+  final VoidCallback clearRawAndStabPhotos;
+  final VoidCallback stabCallback;
 
   const SetEyePositionPage({
     super.key,
@@ -20,6 +21,8 @@ class SetEyePositionPage extends StatefulWidget {
     required this.projectName,
     required this.cancelStabCallback,
     required this.refreshSettings,
+    required this.clearRawAndStabPhotos,
+    required this.stabCallback,
   });
 
   @override
@@ -31,7 +34,6 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
   late double _defaultOffsetY;
   late double _offsetX;
   late double _offsetY;
-  String? stabDirPath;
   String? offSetXColName;
   String? offSetYColName;
   bool _hasUnsavedChanges = false;
@@ -69,8 +71,6 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
       _offsetX = _defaultOffsetX;
       _offsetY = _defaultOffsetY;
     });
-
-    stabDirPath = await DirUtils.getStabilizedDirPath(widget.projectId);
   }
 
   Future<void> _saveChanges() async {
@@ -78,7 +78,8 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
       _isSaving = true;
     });
 
-    widget.cancelStabCallback();
+    // 1. Await cancellation FIRST (prevents race condition)
+    await widget.cancelStabCallback();
 
     final projectOrientation = outputImageLoader.projectOrientation!;
     offSetXColName = projectOrientation == 'landscape'
@@ -88,14 +89,27 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
         ? "eyeOffsetYLandscape"
         : "eyeOffsetYPortrait";
 
+    // 2. Save new settings
     await DB.instance.setSettingByTitle(
         offSetXColName!, _offsetX.toString(), widget.projectId.toString());
     await DB.instance.setSettingByTitle(
         offSetYColName!, _offsetY.toString(), widget.projectId.toString());
+
+    // 3. Reset DB + delete files (resetStabilizationStatusForProject handles deletion)
     await DB.instance.resetStabilizationStatusForProject(
         widget.projectId, projectOrientation);
+
+    // 4. Clear ALL caches
+    PaintingBinding.instance.imageCache.clear();
+    PaintingBinding.instance.imageCache.clearLiveImages();
+    ThumbnailService.instance.clearAllCache();
+
+    // 5. Refresh settings and clear gallery state
     widget.refreshSettings();
-    await DirUtils.deleteDirectoryContents(Directory(stabDirPath!));
+    widget.clearRawAndStabPhotos();
+
+    // 6. Restart stabilization
+    widget.stabCallback();
 
     setState(() {
       _isSaving = false;

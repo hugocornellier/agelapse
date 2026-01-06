@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:path/path.dart' as path;
@@ -8,6 +9,8 @@ import 'dart:ui' as ui;
 
 import '../services/database_helper.dart';
 import '../services/log_service.dart';
+import '../services/stabilization_service.dart';
+import '../services/thumbnail_service.dart';
 import 'dir_utils.dart';
 import 'notification_util.dart';
 
@@ -41,20 +44,28 @@ class ProjectUtils {
   /// Deletes a project and all associated data.
   /// This includes: database record, notifications, and all project files.
   static Future<void> deleteProject(int projectId) async {
-    // 1. Reset default project if this was the default
+    // 1. Cancel any active stabilization FIRST (prevents race condition/crash)
+    await StabilizationService.instance.cancelAndWait();
+
+    // 2. Clear caches for this project
+    ThumbnailService.instance.clearAllCache();
+    PaintingBinding.instance.imageCache.clear();
+    PaintingBinding.instance.imageCache.clearLiveImages();
+
+    // 3. Reset default project if this was the default
     final String defaultProject =
         await DB.instance.getSettingValueByTitle('default_project');
     if (defaultProject == projectId.toString()) {
       DB.instance.setSettingByTitle('default_project', 'none');
     }
 
-    // 2. Delete from database
+    // 4. Delete from database
     final int result = await DB.instance.deleteProject(projectId);
     if (result > 0) {
       await NotificationUtil.cancelNotification(projectId);
     }
 
-    // 3. Delete project directory and all files
+    // 5. Delete project directory and all files (now safe - stabilization stopped)
     final String projectDirPath = await DirUtils.getProjectDirPath(projectId);
     await DirUtils.deleteDirectoryContents(Directory(projectDirPath));
   }

@@ -857,13 +857,41 @@ class GalleryPageState extends State<GalleryPage>
   Widget _buildLoadingView() {
     return Center(
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const Text("Importing..."),
-          const SizedBox(height: 8.0),
-          const CircularProgressIndicator(),
-          const SizedBox(height: 8.0),
-          Text("${widget.progressPercent}%"),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                valueColor:
+                    AlwaysStoppedAnimation<Color>(AppColors.settingsAccent),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Importing...',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.9),
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${widget.progressPercent}%',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.5),
+              fontSize: 14,
+            ),
+          ),
         ],
       ),
     );
@@ -917,7 +945,7 @@ class GalleryPageState extends State<GalleryPage>
       if (pickedFiles == null) return;
       setState(() => isImporting = true);
       if (widget.stabilizingRunningInMain) {
-        widget.cancelStabCallback();
+        await widget.cancelStabCallback();
       }
       GalleryUtils.startImportBatch(pickedFiles.files.length);
       await widget.processPickedFiles(pickedFiles, processPickedFile);
@@ -1265,7 +1293,7 @@ class GalleryPageState extends State<GalleryPage>
           isImporting = true;
         });
         if (widget.stabilizingRunningInMain) {
-          widget.cancelStabCallback();
+          await widget.cancelStabCallback();
         }
         GalleryUtils.startImportBatch(details.files.length);
         for (final f in details.files) {

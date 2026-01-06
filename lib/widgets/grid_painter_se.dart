@@ -23,6 +23,9 @@ class GridPainterSE extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Clip to canvas bounds to prevent guide image from spilling outside frame
+    canvas.clipRect(Offset.zero & size);
+
     if (guideImage != null &&
         ghostImageOffsetX != null &&
         ghostImageOffsetY != null) {

@@ -37,10 +37,15 @@ The face detection model used by AgeLapse is platform-dependent. On Mobile, Goog
 
 ## What's New / Changelog
 
+### v2.2.1
+- 8K + custom resolution output support
+- Performance optimizations & improvements
+- Minor bug fixes
+
 ### v2.2.0
 
 #### Improvements
-- Massive performance improvements. Stabilization pipeline is 2-4x faster (platform-dependant).
+- Massive performance improvements. Stabilization pipeline is 2-4x faster (platform-dependent).
 
 #### New Features
 - .HEIC support on Windows devices. Thanks to the user who wrote in and suggested this.

@@ -15,6 +15,8 @@ void main() {
         projectName: 'Test Project',
         cancelStabCallback: () async {},
         refreshSettings: () {},
+        clearRawAndStabPhotos: () {},
+        stabCallback: () {},
       );
 
       expect(widget.projectId, 1);
@@ -27,6 +29,8 @@ void main() {
         projectName: 'My Project',
         cancelStabCallback: () async {},
         refreshSettings: () {},
+        clearRawAndStabPhotos: () {},
+        stabCallback: () {},
       );
 
       expect(widget.projectId, 42);
@@ -38,6 +42,8 @@ void main() {
         projectName: 'Face Timelapse 2024',
         cancelStabCallback: () async {},
         refreshSettings: () {},
+        clearRawAndStabPhotos: () {},
+        stabCallback: () {},
       );
 
       expect(widget.projectName, 'Face Timelapse 2024');
@@ -46,6 +52,8 @@ void main() {
     test('SetEyePositionPage callbacks are stored correctly', () {
       bool cancelCalled = false;
       bool refreshCalled = false;
+      bool clearPhotosCalled = false;
+      bool stabCalled = false;
 
       final widget = SetEyePositionPage(
         projectId: 1,
@@ -56,14 +64,24 @@ void main() {
         refreshSettings: () {
           refreshCalled = true;
         },
+        clearRawAndStabPhotos: () {
+          clearPhotosCalled = true;
+        },
+        stabCallback: () {
+          stabCalled = true;
+        },
       );
 
       // Verify callbacks are accessible
       widget.cancelStabCallback();
       widget.refreshSettings();
+      widget.clearRawAndStabPhotos();
+      widget.stabCallback();
 
       expect(cancelCalled, isTrue);
       expect(refreshCalled, isTrue);
+      expect(clearPhotosCalled, isTrue);
+      expect(stabCalled, isTrue);
     });
   });
 
@@ -74,6 +92,8 @@ void main() {
         projectName: 'Test',
         cancelStabCallback: () async {},
         refreshSettings: () {},
+        clearRawAndStabPhotos: () {},
+        stabCallback: () {},
       );
 
       expect(widget.createState(), isA<SetEyePositionPageState>());
@@ -87,6 +107,8 @@ void main() {
         projectName: '',
         cancelStabCallback: () async {},
         refreshSettings: () {},
+        clearRawAndStabPhotos: () {},
+        stabCallback: () {},
       );
 
       expect(widget.projectName, '');
@@ -99,6 +121,8 @@ void main() {
         projectName: longName,
         cancelStabCallback: () async {},
         refreshSettings: () {},
+        clearRawAndStabPhotos: () {},
+        stabCallback: () {},
       );
 
       expect(widget.projectName.length, 200);
@@ -110,6 +134,8 @@ void main() {
         projectName: "Project's #1 (2024)",
         cancelStabCallback: () async {},
         refreshSettings: () {},
+        clearRawAndStabPhotos: () {},
+        stabCallback: () {},
       );
 
       expect(widget.projectName, contains("'"));
@@ -124,6 +150,8 @@ void main() {
         projectName: 'Test',
         cancelStabCallback: () async {},
         refreshSettings: () {},
+        clearRawAndStabPhotos: () {},
+        stabCallback: () {},
       );
 
       expect(widget.projectId, 0);

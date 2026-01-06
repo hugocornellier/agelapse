@@ -8,6 +8,7 @@ import 'package:opencv_dart/opencv_dart.dart' as cv;
 import '../screens/set_eye_position_page.dart';
 import '../services/database_helper.dart';
 import '../services/log_service.dart';
+import '../services/thumbnail_service.dart';
 import '../styles/styles.dart';
 import '../utils/dir_utils.dart';
 import '../utils/notification_util.dart';
@@ -1065,7 +1066,8 @@ class SettingsSheetState extends State<SettingsSheet> {
         await DB.instance.setSettingByTitle(
             'framerate', newValue.toString(), widget.projectId.toString());
         widget.refreshSettings();
-        widget.stabCallback();
+        // Note: Framerate only affects video export, not stabilization.
+        // No need to restart stabilization here.
       },
     );
   }
@@ -1074,9 +1076,10 @@ class SettingsSheetState extends State<SettingsSheet> {
     await DB.instance.resetStabilizationStatusForProject(
         widget.projectId, projectOrientation);
 
-    // Clear cache
+    // Clear ALL caches
     PaintingBinding.instance.imageCache.clear();
     PaintingBinding.instance.imageCache.clearLiveImages();
+    ThumbnailService.instance.clearAllCache();
 
     widget.clearRawAndStabPhotos();
     widget.stabCallback();
@@ -1467,6 +1470,8 @@ class SettingsSheetState extends State<SettingsSheet> {
             projectName: "",
             cancelStabCallback: widget.cancelStabCallback,
             refreshSettings: widget.refreshSettings,
+            clearRawAndStabPhotos: widget.clearRawAndStabPhotos,
+            stabCallback: widget.stabCallback,
           ),
         ),
         child: Container(

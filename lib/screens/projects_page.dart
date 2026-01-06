@@ -37,7 +37,9 @@ class ProjectsPageState extends State<ProjectsPage> {
   Future<void> _getProjects() async {
     final List<Map<String, dynamic>> projects =
         await DB.instance.getAllProjects();
-    setState(() => _projects = projects);
+    if (mounted) {
+      setState(() => _projects = projects);
+    }
   }
 
   @override

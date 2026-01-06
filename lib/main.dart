@@ -61,7 +61,7 @@ Future<void> _main() async {
       size: startSize,
       minimumSize: hasProjects ? minDefault : minIntro,
       center: true,
-      title: 'AgeLapse v2.2.0',
+      title: 'AgeLapse v2.2.1',
     );
 
     await windowManager.waitUntilReadyToShow(options, () async {
