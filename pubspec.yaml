@@ -45,6 +45,8 @@ dependencies:
   intl: ^0.20.2
   material_symbols_icons: ^4.2873.0
   mime: ^2.0.0
+  media_kit: ^1.1.11
+  media_kit_video: ^2.0.1
   media_kit_libs_windows_video: ^1.0.11
   opencv_dart: ^2.1.0
   package_info_plus: ^9.0.0

@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:chewie/chewie.dart';
 import 'package:flutter/services.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 import 'package:file_selector/file_selector.dart';
@@ -63,6 +65,9 @@ class CreatePageState extends State<CreatePage>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   VideoPlayerController? _videoPlayerController;
   ChewieController? _chewieController;
+  // media_kit player for Linux (handles 8K better with texture scaling)
+  Player? _mediaKitPlayer;
+  VideoController? _mediaKitController;
   bool stabilizingActive = true;
   bool videoCreationActive = false;
   bool loadingComplete = false;
@@ -99,6 +104,7 @@ class CreatePageState extends State<CreatePage>
   void dispose() {
     _videoPlayerController?.dispose();
     _chewieController?.dispose();
+    _mediaKitPlayer?.dispose();
     _animationController.dispose();
 
     WidgetsBinding.instance.removeObserver(this);
@@ -169,6 +175,52 @@ class CreatePageState extends State<CreatePage>
       return;
     }
 
+    // On Linux, use media_kit directly with texture scaling for 8K support
+    if (Platform.isLinux) {
+      await _setupMediaKitPlayer(videoFile);
+    } else {
+      await _setupStandardVideoPlayer(videoFile);
+    }
+
+    setResolution();
+    aspectRatio =
+        await SettingsUtil.loadAspectRatio(widget.projectId.toString());
+    videoFps = await SettingsUtil.loadFramerate(widget.projectId.toString());
+
+    await widget.hideNavBar();
+    playVideo();
+
+    final bool hasViewedFirstVideo =
+        await SettingsUtil.hasSeenFirstVideo(widget.projectId.toString());
+    if (!hasViewedFirstVideo) {
+      await SettingsUtil.setHasSeenFirstVideoToTrue(
+          widget.projectId.toString());
+      widget.refreshSettings();
+    }
+  }
+
+  Future<void> _setupMediaKitPlayer(File videoFile) async {
+    _mediaKitPlayer = Player();
+    // Create video controller with scaled-down texture for preview
+    // This allows 8K video to play by scaling the preview to 1080p
+    _mediaKitController = VideoController(
+      _mediaKitPlayer!,
+      configuration: const VideoControllerConfiguration(
+        enableHardwareAcceleration: false,
+        width: 1920,
+        height: 1080,
+      ),
+    );
+
+    await _mediaKitPlayer!.open(Media(videoFile.path));
+    _mediaKitPlayer!.setPlaylistMode(PlaylistMode.loop);
+    _mediaKitPlayer!.setRate(playbackSpeed);
+
+    // Wait for controller to be ready after opening media
+    await _mediaKitController!.waitUntilFirstFrameRendered;
+  }
+
+  Future<void> _setupStandardVideoPlayer(File videoFile) async {
     _videoPlayerController = VideoPlayerController.file(videoFile);
 
     await _videoPlayerController!.initialize();
@@ -191,32 +243,31 @@ class CreatePageState extends State<CreatePage>
         DeviceOrientation.portraitUp,
       ],
     );
-
-    setResolution();
-    aspectRatio =
-        await SettingsUtil.loadAspectRatio(widget.projectId.toString());
-    videoFps = await SettingsUtil.loadFramerate(widget.projectId.toString());
-
-    await widget.hideNavBar();
-    playVideo();
-
-    final bool hasViewedFirstVideo =
-        await SettingsUtil.hasSeenFirstVideo(widget.projectId.toString());
-    if (!hasViewedFirstVideo) {
-      await SettingsUtil.setHasSeenFirstVideoToTrue(
-          widget.projectId.toString());
-      widget.refreshSettings();
-    }
   }
 
   void playVideo() {
     setState(() {
       loadingComplete = true;
-      _videoPlayerController!.play();
+      if (Platform.isLinux) {
+        _mediaKitPlayer?.play();
+      } else {
+        _videoPlayerController!.play();
+      }
     });
   }
 
-  void setResolution() {
+  void setResolution() async {
+    if (Platform.isLinux) {
+      // For Linux with media_kit, get resolution from settings since
+      // the preview texture is scaled down
+      final res =
+          await SettingsUtil.loadVideoResolution(widget.projectId.toString());
+      setState(() {
+        resolution = res;
+      });
+      return;
+    }
+
     final (double width, double height) = getVideoResolution();
     final double smallerSide = getSmallerSide(width, height);
 
@@ -255,7 +306,11 @@ class CreatePageState extends State<CreatePage>
       } else {
         playbackSpeed = 1.0;
       }
-      _videoPlayerController?.setPlaybackSpeed(playbackSpeed);
+      if (Platform.isLinux) {
+        _mediaKitPlayer?.setRate(playbackSpeed);
+      } else {
+        _videoPlayerController?.setPlaybackSpeed(playbackSpeed);
+      }
     });
   }
 
@@ -271,12 +326,18 @@ class CreatePageState extends State<CreatePage>
 
   void togglePlayback() {
     setState(() {
-      if (_videoPlayerController!.value.isPlaying) {
-        _videoPlayerController!.pause();
-        overlayIcon = Icons.pause;
+      if (Platform.isLinux) {
+        _mediaKitPlayer?.playOrPause();
+        final isPlaying = _mediaKitPlayer?.state.playing ?? false;
+        overlayIcon = isPlaying ? Icons.pause : Icons.play_arrow;
       } else {
-        _videoPlayerController!.play();
-        overlayIcon = Icons.play_arrow;
+        if (_videoPlayerController!.value.isPlaying) {
+          _videoPlayerController!.pause();
+          overlayIcon = Icons.pause;
+        } else {
+          _videoPlayerController!.play();
+          overlayIcon = Icons.play_arrow;
+        }
       }
       showOverlayIcon = true;
       _animationController.reset();
@@ -332,6 +393,10 @@ class CreatePageState extends State<CreatePage>
   }
 
   bool _readyToShowVideoPlayer() {
+    if (Platform.isLinux) {
+      return loadingComplete &&
+          (lessThan2Photos || _mediaKitController != null);
+    }
     return (loadingComplete &&
         (lessThan2Photos ||
             (_chewieController != null &&
@@ -410,41 +475,75 @@ class CreatePageState extends State<CreatePage>
             child: Center(
               child: GestureDetector(
                 onTap: togglePlayback,
-                child: AspectRatio(
-                  aspectRatio: _chewieController!.aspectRatio!,
-                  child: Stack(
-                    alignment: Alignment.bottomCenter,
-                    children: [
-                      Chewie(controller: _chewieController!),
-                      if (showOverlayIcon)
-                        Center(
-                          child: FadeTransition(
-                            opacity: _opacityAnimation,
-                            child: Container(
-                              width: 80,
-                              height: 80,
-                              decoration: BoxDecoration(
-                                color: Colors.black.withAlpha(
-                                    128), // Equivalent to opacity 0.5
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                overlayIcon,
-                                color: Colors.white,
-                                size: 50,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
+                child: Platform.isLinux
+                    ? _buildMediaKitVideoPlayer()
+                    : _buildChewieVideoPlayer(),
               ),
             ),
           ),
         ),
         _buildActionBar(),
       ],
+    );
+  }
+
+  Widget _buildMediaKitVideoPlayer() {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Video(
+          controller: _mediaKitController!,
+          controls: NoVideoControls,
+        ),
+        if (showOverlayIcon)
+          FadeTransition(
+            opacity: _opacityAnimation,
+            child: Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: Colors.black.withAlpha(128),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                overlayIcon,
+                color: Colors.white,
+                size: 50,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildChewieVideoPlayer() {
+    return AspectRatio(
+      aspectRatio: _chewieController!.aspectRatio!,
+      child: Stack(
+        alignment: Alignment.bottomCenter,
+        children: [
+          Chewie(controller: _chewieController!),
+          if (showOverlayIcon)
+            Center(
+              child: FadeTransition(
+                opacity: _opacityAnimation,
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withAlpha(128),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    overlayIcon,
+                    color: Colors.white,
+                    size: 50,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 

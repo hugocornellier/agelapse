@@ -687,6 +687,23 @@ class VideoUtils {
     return tmpPath;
   }
 
+  /// Determines H.264 profile and level based on resolution.
+  /// H.264 Level 4.1 only supports up to ~1920x1080.
+  /// Level 5.1 supports up to 4096x2304 (4K).
+  /// Level 6.0+ supports up to 8192x4320 (8K).
+  static (String, String) _getH264ProfileAndLevel(String resolution) {
+    if (resolution == "8K" || _resolutionNeedsHevc(resolution)) {
+      // 8K or custom resolution above 4K needs Level 6.0, High profile
+      return ('high', '6.0');
+    }
+    if (resolution == "4K") {
+      // 4K needs Level 5.1, High profile
+      return ('high', '5.1');
+    }
+    // 1080p and below: Level 4.1, Main profile
+    return ('main', '4.1');
+  }
+
   static Future<bool> _encodeWindows({
     required String framesDir,
     required String outputPath,
@@ -715,6 +732,14 @@ class VideoUtils {
     final listPath = await _buildConcatListFromDir(framesDir, fps,
         projectId: projectId, orientation: orientation);
 
+    // Get resolution setting to determine H.264 profile/level
+    final resolution =
+        await SettingsUtil.loadVideoResolution(projectId.toString());
+    final (profile, level) = _getH264ProfileAndLevel(resolution);
+    final kbps = pickBitrateKbps(resolution);
+    LogService.instance.log(
+        "[VIDEO] Resolution: $resolution, Profile: $profile, Level: $level, Bitrate: ${kbps}k");
+
     final args = <String>[
       '-y',
       '-f',
@@ -732,9 +757,15 @@ class VideoUtils {
       '-c:v',
       'libx264',
       '-profile:v',
-      'main',
+      profile,
       '-level',
-      '4.1',
+      level,
+      '-b:v',
+      '${kbps}k',
+      '-maxrate',
+      '${(kbps * 1.5).round()}k',
+      '-bufsize',
+      '${(kbps * 3).round()}k',
       '-movflags',
       '+faststart',
       outputPath,
