@@ -200,6 +200,7 @@ class CameraUtils {
         final String jpgPath = path.setExtension(heicPath, ".jpg");
 
         if (Platform.isMacOS) {
+          // macOS: use built-in sips command
           final result = await Process.run(
             'sips',
             ['-s', 'format', 'jpeg', heicPath, '--out', jpgPath],
@@ -210,22 +211,48 @@ class CameraUtils {
             return false;
           }
         } else if (Platform.isWindows) {
+          // Windows: use bundled HeicConverter.exe
           final success = await HeicUtils.convertHeicToJpgAt(heicPath, jpgPath);
           if (!success) {
             LogService.instance.log(
                 "[savePhoto] SKIP: HEIC conversion failed (HeicUtils) for $filename");
             return false;
           }
+        } else if (Platform.isLinux) {
+          // Linux (both .deb and Flatpak): use heif_converter package
+          // This is a pure Dart/native implementation, no external binary needed
+          try {
+            await HeifConverter.convert(
+              heicPath,
+              output: jpgPath,
+              format: 'jpeg',
+            );
+            if (!await File(jpgPath).exists()) {
+              LogService.instance.log(
+                  "[savePhoto] SKIP: HEIC conversion failed (HeifConverter) for $filename");
+              return false;
+            }
+          } catch (e) {
+            LogService.instance.log(
+                "[savePhoto] SKIP: HEIC conversion exception: $e for $filename");
+            return false;
+          }
         } else {
           // iOS/Android - use heif_converter package
-          await HeifConverter.convert(
-            heicPath,
-            output: jpgPath,
-            format: 'jpeg',
-          );
-          if (!await File(jpgPath).exists()) {
+          try {
+            await HeifConverter.convert(
+              heicPath,
+              output: jpgPath,
+              format: 'jpeg',
+            );
+            if (!await File(jpgPath).exists()) {
+              LogService.instance.log(
+                  "[savePhoto] SKIP: HEIC conversion failed (HeifConverter) for $filename");
+              return false;
+            }
+          } catch (e) {
             LogService.instance.log(
-                "[savePhoto] SKIP: HEIC conversion failed (HeifConverter) for $filename");
+                "[savePhoto] SKIP: HEIC conversion exception: $e for $filename");
             return false;
           }
         }
@@ -235,8 +262,14 @@ class CameraUtils {
         extension = ".jpg";
       }
 
-      LogService.instance.log("[savePhoto] Reading bytes from: $imgPath");
-      bytes = await CameraUtils.readBytesInIsolate(imgPath);
+      // Only re-read if bytes weren't provided OR if conversion changed the file path
+      if (bytes == null || imgPath != image.path) {
+        LogService.instance.log("[savePhoto] Reading bytes from: $imgPath");
+        bytes = await CameraUtils.readBytesInIsolate(imgPath);
+      } else {
+        LogService.instance
+            .log("[savePhoto] Using pre-loaded bytes (${bytes.length} bytes)");
+      }
       if (bytes == null) {
         LogService.instance
             .log("[savePhoto] SKIP: Failed to read bytes from $filename");

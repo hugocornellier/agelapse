@@ -821,6 +821,7 @@ class StabUtils {
       jpgImgPath = path.setExtension(imgPath, ".jpg");
 
       if (Platform.isMacOS) {
+        // macOS: use built-in sips command
         final result = await Process.run(
           'sips',
           ['-s', 'format', 'jpeg', imgPath, '--out', jpgImgPath],
@@ -829,18 +830,39 @@ class StabUtils {
           return null;
         }
       } else if (Platform.isWindows) {
+        // Windows: use bundled HeicConverter.exe
         final success = await HeicUtils.convertHeicToJpgAt(imgPath, jpgImgPath);
         if (!success) {
           return null;
         }
+      } else if (Platform.isLinux) {
+        // Linux (both .deb and Flatpak): use heif_converter package
+        // Pure Dart/native implementation, no external binary needed
+        try {
+          await HeifConverter.convert(
+            imgPath,
+            output: jpgImgPath,
+            format: 'jpeg',
+          );
+          if (!await File(jpgImgPath).exists()) {
+            return null;
+          }
+        } catch (e) {
+          LogService.instance.log('[STABILIZE] HEIC conversion error: $e');
+          return null;
+        }
       } else {
         // iOS/Android - use heif_converter package
-        await HeifConverter.convert(
-          imgPath,
-          output: jpgImgPath,
-          format: 'jpeg',
-        );
-        if (!await File(jpgImgPath).exists()) {
+        try {
+          await HeifConverter.convert(
+            imgPath,
+            output: jpgImgPath,
+            format: 'jpeg',
+          );
+          if (!await File(jpgImgPath).exists()) {
+            return null;
+          }
+        } catch (e) {
           return null;
         }
       }

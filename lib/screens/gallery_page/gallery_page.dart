@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
-import 'dart:ui' as ui;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:desktop_drop/desktop_drop.dart';
@@ -10,8 +9,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:wechat_assets_picker/wechat_assets_picker.dart';
 import 'package:device_info_plus/device_info_plus.dart';
-import 'package:file_selector/file_selector.dart';
-import 'package:path_provider/path_provider.dart';
 import '../../services/database_helper.dart';
 import '../../services/log_service.dart';
 import '../../services/face_stabilizer.dart';
@@ -20,7 +17,6 @@ import '../../services/stab_update_event.dart';
 import '../../services/thumbnail_service.dart';
 import '../../styles/styles.dart';
 import '../../utils/project_utils.dart';
-import '../../utils/camera_utils.dart';
 import '../../utils/dir_utils.dart';
 import '../../utils/gallery_utils.dart';
 import '../../utils/settings_utils.dart';
@@ -29,6 +25,7 @@ import '../../widgets/yellow_tip_bar.dart';
 import '../manual_stab_page.dart';
 import '../stab_on_diff_face.dart';
 import 'gallery_widgets.dart';
+import 'image_preview_navigator.dart';
 
 class GalleryPage extends StatefulWidget {
   final int projectId;
@@ -259,111 +256,6 @@ class GalleryPageState extends State<GalleryPage>
     );
     String newTimestamp = newDateTime.millisecondsSinceEpoch.toString();
     await _changePhotoDate(currentTimestamp, newTimestamp);
-  }
-
-  Future<void> _saveImageToDownloadsOrGallery(XFile image) async {
-    if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-      final bytes = await image.readAsBytes();
-      final downloadsPath = await _preferredUserDownloads();
-      await _ensureDirExists(downloadsPath);
-      final targetPath =
-          await _uniquePath(downloadsPath, path.basename(image.path));
-      try {
-        await File(targetPath).writeAsBytes(bytes, flush: true);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Saved to ${path.normalize(targetPath)}')),
-          );
-        }
-      } on FileSystemException {
-        final location =
-            await getSaveLocation(suggestedName: path.basename(image.path));
-        if (location != null && location.path.isNotEmpty) {
-          await File(location.path).writeAsBytes(bytes, flush: true);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                  content: Text('Saved to ${path.normalize(location.path)}')),
-            );
-          }
-        } else {
-          final docs = (await getApplicationDocumentsDirectory()).path;
-          final fallback = await _uniquePath(docs, path.basename(image.path));
-          await File(fallback).writeAsBytes(bytes, flush: true);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Saved to ${path.normalize(fallback)}')),
-            );
-          }
-        }
-      }
-    } else {
-      await checkAndRequestPermissions();
-      await CameraUtils.saveToGallery(image);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Saved to Photos')),
-        );
-      }
-    }
-  }
-
-  Future<String> _preferredUserDownloads() async {
-    if (Platform.isMacOS || Platform.isLinux) {
-      final home = Platform.environment['HOME'];
-      if (home != null) {
-        return path.join(home, 'Downloads');
-      }
-    }
-    if (Platform.isWindows) {
-      final profile = Platform.environment['USERPROFILE'];
-      if (profile != null) {
-        final oneDriveDownloads = path.join(profile, 'OneDrive', 'Downloads');
-        if (await Directory(oneDriveDownloads).exists()) {
-          return oneDriveDownloads;
-        }
-        return path.join(profile, 'Downloads');
-      }
-    }
-    final d = await getDownloadsDirectory();
-    if (d != null) {
-      return d.path;
-    }
-    return (await getApplicationDocumentsDirectory()).path;
-  }
-
-  Future<void> _ensureDirExists(String dir) async {
-    final directory = Directory(dir);
-    if (!await directory.exists()) {
-      await directory.create(recursive: true);
-    }
-  }
-
-  Future<String> _uniquePath(String dir, String filename) async {
-    final name = path.basenameWithoutExtension(filename);
-    final ext = path.extension(filename);
-    var candidate = path.join(dir, filename);
-    var i = 1;
-    // Batch check existence to avoid multiple sequential awaits
-    // First check if original filename is available
-    if (!await File(candidate).exists()) {
-      return candidate;
-    }
-    // If not, find a unique name by listing existing files once
-    final directory = Directory(dir);
-    final existingFiles = <String>{};
-    if (await directory.exists()) {
-      await for (final entity in directory.list()) {
-        if (entity is File) {
-          existingFiles.add(path.basename(entity.path));
-        }
-      }
-    }
-    // Now find unique name without additional I/O
-    while (existingFiles.contains('$name ($i)$ext')) {
-      i++;
-    }
-    return path.join(dir, '$name ($i)$ext');
   }
 
   Future<void> _changePhotoDate(
@@ -2149,7 +2041,6 @@ class GalleryPageState extends State<GalleryPage>
   }
 
   final Set<String> _retryingPhotoTimestamps = {};
-  Future<Map<String, dynamic>?>? _previewPhotoFuture;
 
   Widget _buildStabilizedThumbnail(String filepath) {
     final String timestamp = path.basenameWithoutExtension(filepath);
@@ -2173,231 +2064,31 @@ class GalleryPageState extends State<GalleryPage>
     );
   }
 
-  Future<ui.Image> _getImageDimensions(File imageFile) async {
-    final Uint8List bytes = await imageFile.readAsBytes();
-    final Completer<ui.Image> completer = Completer();
-    ui.decodeImageFromList(bytes, completer.complete);
-    return completer.future;
-  }
+  void _showImagePreviewDialog(File imageFile, {required bool isStabilized}) {
+    final List<String> currentList =
+        isStabilized ? widget.stabilizedImageFilesStr : widget.imageFilesStr;
 
-  Future<void> _showImagePreviewDialog(File imageFile,
-      {required bool isStabilized}) async {
-    final String timestamp = path.basenameWithoutExtension(imageFile.path);
-    final bool isRaw = !isStabilized;
+    final int initialIndex = currentList.indexOf(imageFile.path);
+    if (initialIndex < 0 || currentList.isEmpty) return;
 
-    // Cache the future once before opening dialog to prevent recreation on rebuilds
-    _previewPhotoFuture = DB.instance.getPhotoByTimestamp(timestamp, projectId);
-
-    setState(() {
-      activeImagePreviewPath = imageFile.path;
-      activeButton = isRaw ? 'raw' : projectOrientation!.toLowerCase();
-      imagePreviewIsOpen = true;
-    });
-    _showDialog(
-      context,
-      StatefulBuilder(
-        builder: (BuildContext context, StateSetter setState) {
-          return Dialog(
-            backgroundColor: const Color(0xff121212),
-            surfaceTintColor: Colors.transparent,
-            insetPadding: const EdgeInsets.all(10.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  color: const Color(0xff121212),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8.0, vertical: 0.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.access_time_outlined),
-                      const SizedBox(width: 8),
-                      FutureBuilder<Map<String, dynamic>?>(
-                        future: _previewPhotoFuture,
-                        builder: (context, snap) {
-                          final int? off = snap.data != null &&
-                                  snap.data!['captureOffsetMinutes'] is int
-                              ? snap.data!['captureOffsetMinutes'] as int
-                              : null;
-                          return Text(
-                            Utils.formatUnixTimestampPlatformAware(
-                                int.parse(timestamp),
-                                captureOffsetMinutes: off),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 16),
-                      FutureBuilder<ui.Image>(
-                        future: _getImageDimensions(imageFile),
-                        builder: (context, snap) {
-                          if (!snap.hasData) return const SizedBox.shrink();
-                          return Text(
-                            '${snap.data!.width}x${snap.data!.height}',
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 13,
-                            ),
-                          );
-                        },
-                      ),
-                      Expanded(child: Container()),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white),
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          setState(() => imagePreviewIsOpen = false);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                Flexible(
-                  child: _buildImagePreview(setState, imageFile, isStabilized),
-                ),
-              ],
-            ),
-          );
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            ImagePreviewNavigator(
+          rawImageFiles: widget.imageFilesStr,
+          stabilizedImageFiles: widget.stabilizedImageFilesStr,
+          initialIndex: initialIndex,
+          initialIsRaw: !isStabilized,
+          projectId: widget.projectId,
+          projectOrientation: projectOrientation ?? 'portrait',
+          stabCallback: widget.stabCallback,
+          userRanOutOfSpaceCallback: widget.userRanOutOfSpaceCallback,
+          stabilizingRunningInMain: widget.stabilizingRunningInMain,
+          loadImages: _loadImages,
+        ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
         },
-      ),
-    );
-  }
-
-  Widget _buildImagePreview(
-      StateSetter dialogSetState, File imageFile, bool isStabilized) {
-    return activeImagePreviewPath != null
-        ? Flexible(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (isStabilized && activeButton != 'raw')
-                  StabilizedImagePreview(
-                    thumbnailPath:
-                        FaceStabilizer.getStabThumbnailPath(imageFile.path),
-                    imagePath: activeImagePreviewPath!,
-                    projectId: widget.projectId,
-                    buildImage: _buildResizableImage,
-                  )
-                else
-                  _buildResizableImage(File(activeImagePreviewPath!)),
-                _buildActionBar(dialogSetState, imageFile),
-              ],
-            ),
-          )
-        : Container();
-  }
-
-  Widget _buildResizableImage(File imageFile) {
-    return Container(
-      constraints: BoxConstraints(
-        maxWidth: MediaQuery.of(context).size.width * 0.9,
-        maxHeight: MediaQuery.of(context).size.height * 0.7,
-      ),
-      child: Image.file(
-        imageFile,
-        fit: BoxFit.contain,
-        errorBuilder: (context, error, stack) => Container(color: Colors.black),
-      ),
-    );
-  }
-
-  Future<String> getRawPhotoPathFromTimestamp(String timestamp) async {
-    return await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-        timestamp, projectId);
-  }
-
-  Widget _buildActionBar(StateSetter dialogSetState, File imageFile) {
-    const double iconSize = 20.0;
-    final String timestamp =
-        path.basenameWithoutExtension(activeImagePreviewPath!);
-    Future<String> getRawPhotoPathFromTimestamp(String timestamp) async {
-      return await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-          timestamp, projectId);
-    }
-
-    Future<void> showRawImage(StateSetter dialogSetState) async {
-      String rawPhotoPath = await getRawPhotoPathFromTimestamp(timestamp);
-      if (await File(rawPhotoPath).exists()) {
-        dialogSetState(() {
-          activeImagePreviewPath = rawPhotoPath;
-          activeButton = 'raw';
-        });
-        setState(() {
-          activeImagePreviewPath = rawPhotoPath;
-          activeButton = 'raw';
-        });
-      }
-    }
-
-    Future<void> updateImagePreviewPath(StateSetter dialogSetState,
-        Future<String> Function() getPathFunction, String buttonType) async {
-      String newPath = await getPathFunction();
-      dialogSetState(() {
-        activeImagePreviewPath = newPath;
-        activeButton = buttonType;
-      });
-      setState(() {
-        activeImagePreviewPath = newPath;
-        activeButton = buttonType;
-      });
-    }
-
-    Widget buildMoreOptionsButton(BuildContext context) {
-      return IconButton(
-        icon: const Icon(Icons.more_vert, color: Colors.white),
-        iconSize: iconSize,
-        onPressed: () async {
-          if (activeImagePreviewPath != null) {
-            await _showImageOptionsMenu(File(activeImagePreviewPath!));
-          }
-        },
-      );
-    }
-
-    return Container(
-      color: const Color(0xff121212),
-      height: 48,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _buildDownloadButton(),
-          projectOrientation == 'portrait'
-              ? _buildActionButton(
-                  icon: Icons.video_stable,
-                  active: activeButton == 'portrait',
-                  onPressed: () => updateImagePreviewPath(
-                    dialogSetState,
-                    () => DirUtils.getStabilizedPortraitImagePathFromRawPath(
-                        activeImagePreviewPath!, projectId),
-                    'portrait',
-                  ),
-                )
-              : _buildActionButton(
-                  icon: Icons.video_stable,
-                  active: activeButton == 'landscape',
-                  onPressed: () => updateImagePreviewPath(
-                    dialogSetState,
-                    () => DirUtils.getStabilizedLandscapeImagePathFromRawPath(
-                        activeImagePreviewPath!, projectId),
-                    'landscape',
-                  ),
-                ),
-          IconButton(
-            icon: Icon(Icons.raw_on,
-                color: activeButton == 'raw' ? Colors.blue : Colors.white),
-            iconSize: 25.0,
-            onPressed: () => showRawImage(dialogSetState),
-          ),
-          Builder(
-            builder: (BuildContext context) {
-              return buildMoreOptionsButton(context);
-            },
-          ),
-        ],
       ),
     );
   }
@@ -2433,48 +2124,6 @@ class GalleryPageState extends State<GalleryPage>
         LogService.instance.log('Error checking permissions: $e');
       }
     }
-  }
-
-  Widget _buildDownloadButton() {
-    return StatefulBuilder(
-      builder: (BuildContext context, StateSetter setState) {
-        return IconButton(
-          iconSize: 20.0,
-          icon: gallerySaveIsLoading
-              ? const Icon(Icons.hourglass_top, color: Colors.white)
-              : (gallerySaveSuccessful
-                  ? const Icon(Icons.check, color: Colors.greenAccent)
-                  : const Icon(Icons.download, color: Colors.white)),
-          onPressed: () async {
-            try {
-              setState(() => gallerySaveIsLoading = true);
-              final XFile image = XFile(activeImagePreviewPath!);
-              await _saveImageToDownloadsOrGallery(image);
-              setState(() {
-                gallerySaveIsLoading = false;
-                gallerySaveSuccessful = true;
-              });
-              await Future.delayed(const Duration(seconds: 1));
-              if (mounted) setState(() => gallerySaveSuccessful = false);
-            } catch (e) {
-              setState(() => gallerySaveIsLoading = false);
-            }
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildActionButton(
-      {required IconData icon,
-      required VoidCallback onPressed,
-      bool active = false,
-      double iconSize = 20.0}) {
-    return IconButton(
-      icon: Icon(icon, color: active ? Colors.blue : Colors.white),
-      iconSize: iconSize,
-      onPressed: onPressed,
-    );
   }
 
   void showInfoDialog(BuildContext context) {

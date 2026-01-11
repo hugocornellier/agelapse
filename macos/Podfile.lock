@@ -8,9 +8,6 @@ PODS:
   - FlutterMacOS (1.0.0)
   - media_kit_video (0.0.1):
     - FlutterMacOS
-  - photo_manager (2.0.0):
-    - Flutter
-    - FlutterMacOS
   - pose_detection_tflite (0.0.1):
     - FlutterMacOS
   - screen_retriever_macos (0.0.1):
@@ -24,7 +21,6 @@ DEPENDENCIES:
   - flutter_avif_macos (from `Flutter/ephemeral/.symlinks/plugins/flutter_avif_macos/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
   - media_kit_video (from `Flutter/ephemeral/.symlinks/plugins/media_kit_video/macos`)
-  - photo_manager (from `Flutter/ephemeral/.symlinks/plugins/photo_manager/macos`)
   - pose_detection_tflite (from `Flutter/ephemeral/.symlinks/plugins/pose_detection_tflite/macos`)
   - screen_retriever_macos (from `Flutter/ephemeral/.symlinks/plugins/screen_retriever_macos/macos`)
   - tflite_flutter_custom (from `Flutter/ephemeral/.symlinks/plugins/tflite_flutter_custom/macos`)
@@ -40,8 +36,6 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral
   media_kit_video:
     :path: Flutter/ephemeral/.symlinks/plugins/media_kit_video/macos
-  photo_manager:
-    :path: Flutter/ephemeral/.symlinks/plugins/photo_manager/macos
   pose_detection_tflite:
     :path: Flutter/ephemeral/.symlinks/plugins/pose_detection_tflite/macos
   screen_retriever_macos:
@@ -55,7 +49,6 @@ SPEC CHECKSUMS:
   flutter_avif_macos: 9ed61d67adfbd6964eccb59971020fb55c31fc11
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
   media_kit_video: 28d7d27611c7769a2464eb7621c37386a61dcc9a
-  photo_manager: d2fbcc0f2d82458700ee6256a15018210a81d413
   pose_detection_tflite: ba15fe2cb6f0111f7a79019f14d090ce9844855e
   screen_retriever_macos: 452e51764a9e1cdb74b3c541238795849f21557f
   tflite_flutter_custom: 4d6a173c30b77994bcd611da5e0713fcad622125

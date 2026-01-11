@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.hugocornellier.agelapse</id>
+
+  <name>AgeLapse</name>
+  <summary>Create stabilized aging timelapses</summary>
+
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>LicenseRef-proprietary</project_license>
+
+  <developer id="com.hugocornellier">
+    <name>Hugo Cornellier</name>
+  </developer>
+
+  <description>
+    <p>
+      AgeLapse helps you create professional face-aligned timelapse videos from your
+      daily selfies. Whether you're documenting your fitness journey, watching your
+      child grow up, or creating an artistic aging timelapse, AgeLapse makes it easy.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>Automatic face detection and alignment for smooth, stabilized videos</li>
+      <li>Support for high-resolution output up to 8K</li>
+      <li>Import photos from your camera roll or file system</li>
+      <li>Built-in camera for capturing new photos</li>
+      <li>Customizable video framerate and resolution</li>
+      <li>Watermark support with adjustable position and opacity</li>
+      <li>Export videos in H.264 or HEVC format</li>
+      <li>HEIC/HEIF photo support</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">com.hugocornellier.agelapse.desktop</launchable>
+
+  <url type="homepage">https://agelapse.com</url>
+  <url type="bugtracker">https://github.com/hugocornellier/agelapse/issues</url>
+  <url type="help">https://agelapse.com/docs/intro/</url>
+
+  <branding>
+    <color type="primary" scheme_preference="light">#4a90d9</color>
+    <color type="primary" scheme_preference="dark">#1a5fb4</color>
+  </branding>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Main gallery view showing your timelapse photos</caption>
+      <image>https://agelapse.com/screenshots/flatpak/gallery.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Home screen with project overview</caption>
+      <image>https://agelapse.com/screenshots/flatpak/home.png</image>
+    </screenshot>
+  </screenshots>
+
+  <content_rating type="oars-1.1" />
+
+  <releases>
+    <release version="2.3.0" date="2026-01-11">
+      <description>
+        <ul>
+          <li>New features and improvements</li>
+        </ul>
+      </description>
+    </release>
+    <release version="2.2.1" date="2026-01-11">
+      <description>
+        <ul>
+          <li>8K video support with HEVC encoding</li>
+          <li>Custom resolution options</li>
+          <li>Performance improvements for large photo collections</li>
+          <li>Bug fixes for thumbnail caching</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+
+  <requires>
+    <display_length compare="ge">768</display_length>
+  </requires>
+
+  <recommends>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </recommends>
+
+  <supports>
+    <control>touch</control>
+  </supports>
+
+  <categories>
+    <category>AudioVideo</category>
+    <category>Video</category>
+    <category>Graphics</category>
+    <category>Photography</category>
+  </categories>
+
+  <keywords>
+    <keyword>timelapse</keyword>
+    <keyword>aging</keyword>
+    <keyword>photo</keyword>
+    <keyword>video</keyword>
+    <keyword>face</keyword>
+    <keyword>stabilization</keyword>
+    <keyword>selfie</keyword>
+  </keywords>
+
+</component>

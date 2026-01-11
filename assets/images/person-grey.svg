@@ -1,30 +1,55 @@
 <svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg">
   <!--
-    Eye positions calculated from:
-    ghostImageOffsetX = 0.105 (10.5% from center)
-    ghostImageOffsetY = 0.292 (29.2% from top)
+    Eye positions aligned to stabilization guides:
+    Left eye X: 79, Right eye X: 121, Eye Y: 70
 
-    Left eye X:  200 * (0.5 - 0.105) = 79
-    Right eye X: 200 * (0.5 + 0.105) = 121
-    Eye Y:       240 * 0.292 = 70
+    Scale factor: 42/148 = 0.2838 (to match eye separation)
+    Translate: (-45.3, -63.4) to center eyes at correct position
   -->
+  <g transform="translate(-45.3, -63.4) scale(0.2838)">
+    <!-- shirt -->
+    <path d="M 250 830
+             C 310 690, 410 610, 512 610
+             C 614 610, 714 690, 774 830
+             C 700 900, 610 925, 512 925
+             C 414 925, 324 900, 250 830 Z"
+          fill="#3285AF"/>
 
-  <!-- Body/shoulders -->
-  <ellipse cx="100" cy="230" rx="96" ry="70" fill="#5a5a5a"/>
+    <!-- collar -->
+    <path d="M 380 660
+             C 405 600, 455 570, 512 570
+             C 569 570, 619 600, 644 660
+             C 610 700, 565 720, 512 720
+             C 459 720, 414 700, 380 660 Z"
+          fill="#206588"/>
 
-  <!-- Head with eye cutouts using fill-rule evenodd -->
-  <path fill-rule="evenodd" fill="#5a5a5a" d="
-    M 100 16
-    A 64 64 0 1 1 100 144
-    A 64 64 0 1 1 100 16
-    Z
-    M 79 54
-    A 14 16 0 1 0 79 86
-    A 14 16 0 1 0 79 54
-    Z
-    M 121 54
-    A 14 16 0 1 0 121 86
-    A 14 16 0 1 0 121 54
-    Z
-  "/>
+    <!-- neck -->
+    <path d="M 440 595
+             C 440 650, 472 690, 512 690
+             C 552 690, 584 650, 584 595
+             C 584 560, 552 540, 512 540
+             C 472 540, 440 560, 440 595 Z"
+          fill="#FFB044"/>
+
+    <!-- ears -->
+    <circle cx="350" cy="465" r="30" fill="#FFB044"/>
+    <circle cx="674" cy="465" r="30" fill="#FFB044"/>
+
+    <!-- face -->
+    <ellipse cx="512" cy="485" rx="165" ry="185" fill="#FFD28C"/>
+
+    <!-- hair with ridge on left side -->
+    <path d="M 347 485
+             C 347 310, 390 280, 420 268
+             L 450 248
+             L 490 268
+             C 590 260, 677 310, 677 485
+             C 677 400, 625 340, 512 340
+             C 399 340, 347 400, 347 485 Z"
+          fill="#5D4037"/>
+
+    <!-- eyes -->
+    <circle cx="438" cy="470" r="25" fill="#6B3E1C"/>
+    <circle cx="586" cy="470" r="25" fill="#6B3E1C"/>
+  </g>
 </svg>

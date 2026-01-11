@@ -66,8 +66,8 @@ class NotificationUtil {
       },
     );
 
-    final timeZoneName = await FlutterTimezone.getLocalTimezone();
-    tz.setLocalLocation(tz.getLocation(timeZoneName));
+    final timezoneInfo = await FlutterTimezone.getLocalTimezone();
+    tz.setLocalLocation(tz.getLocation(timezoneInfo.identifier));
   }
 
   static Future<void> showImmediateNotification() async {

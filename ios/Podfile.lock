@@ -82,9 +82,6 @@ PODS:
   - nanopb/encode (3.30910.0)
   - permission_handler_apple (9.3.0):
     - Flutter
-  - photo_manager (2.0.0):
-    - Flutter
-    - FlutterMacOS
   - PromisesObjC (2.4.0)
   - saver_gallery (0.0.1):
     - Flutter
@@ -110,8 +107,6 @@ PODS:
     - TensorFlowLiteSwift (= 2.12.0)
     - TensorFlowLiteSwift/CoreML (= 2.12.0)
     - TensorFlowLiteSwift/Metal (= 2.12.0)
-  - vibration (3.0.0):
-    - Flutter
 
 DEPENDENCIES:
   - async_zip (from `.symlinks/plugins/async_zip/ios`)
@@ -123,10 +118,8 @@ DEPENDENCIES:
   - heif_converter (from `.symlinks/plugins/heif_converter/ios`)
   - media_kit_video (from `.symlinks/plugins/media_kit_video/ios`)
   - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
-  - photo_manager (from `.symlinks/plugins/photo_manager/ios`)
   - saver_gallery (from `.symlinks/plugins/saver_gallery/ios`)
   - tflite_flutter_custom (from `.symlinks/plugins/tflite_flutter_custom/ios`)
-  - vibration (from `.symlinks/plugins/vibration/ios`)
 
 SPEC REPOS:
   https://github.com/CocoaPods/Specs.git:
@@ -168,14 +161,10 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/media_kit_video/ios"
   permission_handler_apple:
     :path: ".symlinks/plugins/permission_handler_apple/ios"
-  photo_manager:
-    :path: ".symlinks/plugins/photo_manager/ios"
   saver_gallery:
     :path: ".symlinks/plugins/saver_gallery/ios"
   tflite_flutter_custom:
     :path: ".symlinks/plugins/tflite_flutter_custom/ios"
-  vibration:
-    :path: ".symlinks/plugins/vibration/ios"
 
 SPEC CHECKSUMS:
   async_zip: 1d6a4f059b13bd0f2c60eb2e32666d33166b96bd
@@ -200,13 +189,11 @@ SPEC CHECKSUMS:
   MLKitXenoCommon: ce5047943af6b4be7ae035dd81b3a56fdb29aab3
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
   permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d
-  photo_manager: d2fbcc0f2d82458700ee6256a15018210a81d413
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
   saver_gallery: af2d0c762dafda254e0ad025ef0dabd6506cd490
   TensorFlowLiteC: 20785a69299185a379ba9852b6625f00afd7984a
   TensorFlowLiteSwift: 3a4928286e9e35bdd3e17970f48e53c80d25e793
   tflite_flutter_custom: c9b7ec51def8824214660fe6db81c7bd6afcf6f9
-  vibration: 69774ad57825b11c951ee4c46155f455d7a592ce
 
 PODFILE CHECKSUM: b595372de811b817b6ce00a128ceea1e2e871542
 

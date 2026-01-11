@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=AgeLapse
+GenericName=Timelapse Creator
+Comment=Create stabilized aging timelapses from your photos
+Exec=agelapse %U
+Icon=com.hugocornellier.agelapse
+Categories=AudioVideo;Video;Graphics;Photography;
+Keywords=timelapse;aging;photo;video;face;stabilization;
+StartupNotify=true
+StartupWMClass=agelapse
+Terminal=false
+MimeType=image/jpeg;image/png;image/heic;image/heif;

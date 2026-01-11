@@ -77,14 +77,15 @@ class VideoUtils {
   }
 
   static Future<bool> createTimelapse(int projectId, framerate, totalPhotoCount,
-      Function(int currentFrame)? setCurrentFrame) async {
+      Function(int currentFrame)? setCurrentFrame,
+      {String? orientation}) async {
     try {
       LogService.instance.log(
           "[VIDEO] createTimelapse called - projectId: $projectId, framerate: $framerate, totalPhotoCount: $totalPhotoCount");
       LogService.instance.log(
           "[VIDEO] Platform: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}");
 
-      String projectOrientation =
+      String projectOrientation = orientation ??
           await SettingsUtil.loadProjectOrientation(projectId.toString());
       final String stabilizedDirPath =
           await DirUtils.getStabilizedDirPath(projectId);
@@ -113,9 +114,21 @@ class VideoUtils {
             LogService.instance.log(
                 "[VIDEO] Disk space check: ${result.stdout.toString().trim()}");
           } else if (Platform.isLinux || Platform.isMacOS) {
-            final result = await Process.run('df', ['-h', videoOutputPath]);
-            LogService.instance
-                .log("[VIDEO] Disk space check:\n${result.stdout}");
+            // df works in both .deb and Flatpak (available in freedesktop runtime)
+            try {
+              final result = await Process.run('df', ['-h', videoOutputPath]);
+              if (result.exitCode == 0) {
+                LogService.instance
+                    .log("[VIDEO] Disk space check:\n${result.stdout}");
+              } else {
+                LogService.instance.log(
+                    "[VIDEO] Disk space check unavailable (exit ${result.exitCode})");
+              }
+            } catch (dfError) {
+              // Graceful fallback - disk space check is informational only
+              LogService.instance
+                  .log("[VIDEO] Disk space check unavailable: $dfError");
+            }
           }
         }
       } catch (e) {
@@ -256,8 +269,10 @@ class VideoUtils {
           LogService.instance.log('[VIDEO] ffmpeg executable: $ffmpegExe');
           LogService.instance.log('[VIDEO] ffmpeg command: $ffmpegCommand');
 
+          // Use 'sh' without absolute path - works in both .deb (/bin/sh)
+          // and Flatpak (sandbox provides sh in PATH)
           final proc =
-              await Process.start('/bin/sh', ['-c', cmd], runInShell: false);
+              await Process.start('sh', ['-c', cmd], runInShell: false);
           FFmpegProcessManager.instance.registerProcess(proc);
 
           proc.stdout
@@ -373,7 +388,8 @@ class VideoUtils {
       LogService.instance.log("[VIDEO] Loaded framerate: $framerate");
 
       return await createTimelapse(
-          projectId, framerate, stabilizedPhotos.length, setCurrentFrame);
+          projectId, framerate, stabilizedPhotos.length, setCurrentFrame,
+          orientation: projectOrientation);
     } catch (e, stackTrace) {
       LogService.instance
           .log("[VIDEO] ERROR in createTimelapseFromProjectId: $e");
@@ -577,8 +593,33 @@ class VideoUtils {
           "[VIDEO] WARNING: No ffmpeg found, falling back to 'ffmpeg' command");
       return 'ffmpeg';
     } else {
+      // Linux/macOS path resolution
+      if (Platform.isLinux) {
+        // In Flatpak, ffmpeg extension is mounted at /app/lib/ffmpeg/bin/ffmpeg
+        // Check this first before falling back to PATH lookup
+        const flatpakFfmpegExt = '/app/lib/ffmpeg/bin/ffmpeg';
+        if (await File(flatpakFfmpegExt).exists()) {
+          LogService.instance
+              .log("[VIDEO] Using Flatpak ffmpeg extension: $flatpakFfmpegExt");
+          return flatpakFfmpegExt;
+        }
+
+        // Also check /app/bin/ffmpeg (if bundled directly in Flatpak)
+        const flatpakBundled = '/app/bin/ffmpeg';
+        if (await File(flatpakBundled).exists()) {
+          LogService.instance
+              .log("[VIDEO] Using Flatpak bundled ffmpeg: $flatpakBundled");
+          return flatpakBundled;
+        }
+      }
+
+      // Standard PATH lookup for .deb installations and macOS
       final onPath = await _findFfmpegOnPath();
       if (onPath.isNotEmpty) return onPath;
+
+      // Final fallback - rely on ffmpeg being in PATH
+      LogService.instance
+          .log("[VIDEO] Using 'ffmpeg' command (assuming it's in PATH)");
       return 'ffmpeg';
     }
   }

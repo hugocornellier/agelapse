@@ -630,8 +630,13 @@ class GalleryUtils {
   static Future<Map<String, dynamic>> tryReadExifFromBytes(
       Uint8List bytes) async {
     try {
-      final data = await readExifFromBytes(bytes);
-      return Map<String, dynamic>.from(data);
+      final exifData = await readExifFromBytes(bytes);
+      // Convert ExifData.tags to Map<String, dynamic>
+      final Map<String, dynamic> result = {};
+      for (final entry in exifData.tags.entries) {
+        result[entry.key] = entry.value;
+      }
+      return result;
     } catch (e) {
       return {};
     }
