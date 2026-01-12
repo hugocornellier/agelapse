@@ -40,12 +40,17 @@ void main() {
         app.main();
         await tester.pumpAndSettle(const Duration(seconds: 3));
 
-        final projectId =
-            await DB.instance.addProject('Error Test', 'face', 123456);
+        final projectId = await DB.instance.addProject(
+          'Error Test',
+          'face',
+          123456,
+        );
 
         // Try to get a non-existent photo
-        final photo =
-            await DB.instance.getPhotoByTimestamp('nonexistent', projectId);
+        final photo = await DB.instance.getPhotoByTimestamp(
+          'nonexistent',
+          projectId,
+        );
         expect(photo, isNull);
 
         // App should still be running
@@ -57,8 +62,10 @@ void main() {
         await tester.pumpAndSettle(const Duration(seconds: 3));
 
         // Request a known setting that should have a default
-        final value =
-            await DB.instance.getSettingValueByTitle('theme', 'test_project');
+        final value = await DB.instance.getSettingValueByTitle(
+          'theme',
+          'test_project',
+        );
 
         // Should return the default value
         expect(value, isNotNull);
@@ -70,8 +77,9 @@ void main() {
         await tester.pumpAndSettle(const Duration(seconds: 3));
 
         // Request an unknown setting
-        final result =
-            await DB.instance.getSettingByTitle('completely_unknown_setting');
+        final result = await DB.instance.getSettingByTitle(
+          'completely_unknown_setting',
+        );
 
         // Should return null
         expect(result, isNull);
@@ -81,14 +89,29 @@ void main() {
         app.main();
         await tester.pumpAndSettle(const Duration(seconds: 3));
 
-        final projectId =
-            await DB.instance.addProject('Duplicate Test', 'face', 123456);
+        final projectId = await DB.instance.addProject(
+          'Duplicate Test',
+          'face',
+          123456,
+        );
 
         // Add the same photo twice
-        await DB.instance
-            .addPhoto('12345', projectId, 'jpg', 1000, 'test.jpg', 'portrait');
-        await DB.instance
-            .addPhoto('12345', projectId, 'jpg', 1000, 'test.jpg', 'portrait');
+        await DB.instance.addPhoto(
+          '12345',
+          projectId,
+          'jpg',
+          1000,
+          'test.jpg',
+          'portrait',
+        );
+        await DB.instance.addPhoto(
+          '12345',
+          projectId,
+          'jpg',
+          1000,
+          'test.jpg',
+          'portrait',
+        );
 
         // Should still work - second insert is ignored
         final photos = await DB.instance.getPhotosByProjectID(projectId);
@@ -97,8 +120,9 @@ void main() {
     });
 
     group('Cancellation Token Behavior', () {
-      testWidgets('cancellation token works across async operations',
-          (tester) async {
+      testWidgets('cancellation token works across async operations', (
+        tester,
+      ) async {
         app.main();
         await tester.pumpAndSettle(const Duration(seconds: 3));
 
@@ -174,19 +198,21 @@ void main() {
     });
 
     group('Navigation Error Handling', () {
-      testWidgets('navigating to non-existent project shows error or redirects',
-          (tester) async {
-        app.main();
-        await tester.pumpAndSettle(const Duration(seconds: 3));
+      testWidgets(
+        'navigating to non-existent project shows error or redirects',
+        (tester) async {
+          app.main();
+          await tester.pumpAndSettle(const Duration(seconds: 3));
 
-        // Set a non-existent project as default
-        await DB.instance.setSettingByTitle('default_project', '999999');
+          // Set a non-existent project as default
+          await DB.instance.setSettingByTitle('default_project', '999999');
 
-        // Restart app context (navigate back and forth)
-        // The app should handle this gracefully
-        expect(find.byType(MaterialApp), findsOneWidget);
-        expect(find.byType(Scaffold), findsWidgets);
-      });
+          // Restart app context (navigate back and forth)
+          // The app should handle this gracefully
+          expect(find.byType(MaterialApp), findsOneWidget);
+          expect(find.byType(Scaffold), findsWidgets);
+        },
+      );
 
       testWidgets('back navigation does not crash app', (tester) async {
         app.main();
@@ -202,21 +228,43 @@ void main() {
     });
 
     group('Data Integrity', () {
-      testWidgets('photo count is accurate after multiple operations',
-          (tester) async {
+      testWidgets('photo count is accurate after multiple operations', (
+        tester,
+      ) async {
         app.main();
         await tester.pumpAndSettle(const Duration(seconds: 3));
 
-        final projectId =
-            await DB.instance.addProject('Count Test', 'face', 123456);
+        final projectId = await DB.instance.addProject(
+          'Count Test',
+          'face',
+          123456,
+        );
 
         // Add photos
-        await DB.instance
-            .addPhoto('1', projectId, 'jpg', 1000, 'a.jpg', 'portrait');
-        await DB.instance
-            .addPhoto('2', projectId, 'jpg', 1000, 'b.jpg', 'portrait');
-        await DB.instance
-            .addPhoto('3', projectId, 'jpg', 1000, 'c.jpg', 'portrait');
+        await DB.instance.addPhoto(
+          '1',
+          projectId,
+          'jpg',
+          1000,
+          'a.jpg',
+          'portrait',
+        );
+        await DB.instance.addPhoto(
+          '2',
+          projectId,
+          'jpg',
+          1000,
+          'b.jpg',
+          'portrait',
+        );
+        await DB.instance.addPhoto(
+          '3',
+          projectId,
+          'jpg',
+          1000,
+          'c.jpg',
+          'portrait',
+        );
 
         var count = await DB.instance.getPhotoCountByProjectID(projectId);
         expect(count, 3);
@@ -228,10 +276,22 @@ void main() {
         expect(count, 2);
 
         // Add more
-        await DB.instance
-            .addPhoto('4', projectId, 'jpg', 1000, 'd.jpg', 'portrait');
-        await DB.instance
-            .addPhoto('5', projectId, 'jpg', 1000, 'e.jpg', 'portrait');
+        await DB.instance.addPhoto(
+          '4',
+          projectId,
+          'jpg',
+          1000,
+          'd.jpg',
+          'portrait',
+        );
+        await DB.instance.addPhoto(
+          '5',
+          projectId,
+          'jpg',
+          1000,
+          'e.jpg',
+          'portrait',
+        );
 
         count = await DB.instance.getPhotoCountByProjectID(projectId);
         expect(count, 4);
@@ -241,14 +301,29 @@ void main() {
         app.main();
         await tester.pumpAndSettle(const Duration(seconds: 3));
 
-        final projectId =
-            await DB.instance.addProject('Delete Test', 'face', 123456);
+        final projectId = await DB.instance.addProject(
+          'Delete Test',
+          'face',
+          123456,
+        );
 
         // Add photos to project
-        await DB.instance
-            .addPhoto('100', projectId, 'jpg', 1000, 'a.jpg', 'portrait');
-        await DB.instance
-            .addPhoto('200', projectId, 'jpg', 1000, 'b.jpg', 'portrait');
+        await DB.instance.addPhoto(
+          '100',
+          projectId,
+          'jpg',
+          1000,
+          'a.jpg',
+          'portrait',
+        );
+        await DB.instance.addPhoto(
+          '200',
+          projectId,
+          'jpg',
+          1000,
+          'b.jpg',
+          'portrait',
+        );
 
         // Delete project
         await DB.instance.deleteProject(projectId);
@@ -262,22 +337,46 @@ void main() {
         app.main();
         await tester.pumpAndSettle(const Duration(seconds: 3));
 
-        final projectId =
-            await DB.instance.addProject('Stab Status Test', 'face', 123456);
+        final projectId = await DB.instance.addProject(
+          'Stab Status Test',
+          'face',
+          123456,
+        );
 
         // Add unstabilized photos
-        await DB.instance
-            .addPhoto('1', projectId, 'jpg', 1000, 'a.jpg', 'portrait');
-        await DB.instance
-            .addPhoto('2', projectId, 'jpg', 1000, 'b.jpg', 'portrait');
+        await DB.instance.addPhoto(
+          '1',
+          projectId,
+          'jpg',
+          1000,
+          'a.jpg',
+          'portrait',
+        );
+        await DB.instance.addPhoto(
+          '2',
+          projectId,
+          'jpg',
+          1000,
+          'b.jpg',
+          'portrait',
+        );
 
-        var unstab =
-            await DB.instance.getUnstabilizedPhotos(projectId, 'portrait');
+        var unstab = await DB.instance.getUnstabilizedPhotos(
+          projectId,
+          'portrait',
+        );
         expect(unstab.length, 2);
 
         // Mark one as stabilized
         await DB.instance.setPhotoStabilized(
-            '1', projectId, 'portrait', '16:9', '1080p', 0.0, 0.0);
+          '1',
+          projectId,
+          'portrait',
+          '16:9',
+          '1080p',
+          0.0,
+          0.0,
+        );
 
         unstab = await DB.instance.getUnstabilizedPhotos(projectId, 'portrait');
         expect(unstab.length, 1);
@@ -302,16 +401,20 @@ void main() {
         await DB.instance.setSettingByTitle('framerate', '24', projectId);
 
         // Read it back
-        final value =
-            await DB.instance.getSettingValueByTitle('framerate', projectId);
+        final value = await DB.instance.getSettingValueByTitle(
+          'framerate',
+          projectId,
+        );
         expect(value, '24');
 
         // Change it
         await DB.instance.setSettingByTitle('framerate', '30', projectId);
 
         // Read again
-        final newValue =
-            await DB.instance.getSettingValueByTitle('framerate', projectId);
+        final newValue = await DB.instance.getSettingValueByTitle(
+          'framerate',
+          projectId,
+        );
         expect(newValue, '30');
       });
 
@@ -327,10 +430,14 @@ void main() {
         await DB.instance.setSettingByTitle('aspect_ratio', '4:3', project2);
 
         // Verify isolation
-        final val1 =
-            await DB.instance.getSettingValueByTitle('aspect_ratio', project1);
-        final val2 =
-            await DB.instance.getSettingValueByTitle('aspect_ratio', project2);
+        final val1 = await DB.instance.getSettingValueByTitle(
+          'aspect_ratio',
+          project1,
+        );
+        final val2 = await DB.instance.getSettingValueByTitle(
+          'aspect_ratio',
+          project2,
+        );
 
         expect(val1, '16:9');
         expect(val2, '4:3');
@@ -342,8 +449,11 @@ void main() {
         app.main();
         await tester.pumpAndSettle(const Duration(seconds: 3));
 
-        final projectId =
-            await DB.instance.addProject('Empty Project', 'face', 123456);
+        final projectId = await DB.instance.addProject(
+          'Empty Project',
+          'face',
+          123456,
+        );
 
         final count = await DB.instance.getPhotoCountByProjectID(projectId);
         expect(count, 0);
@@ -362,22 +472,29 @@ void main() {
         app.main();
         await tester.pumpAndSettle(const Duration(seconds: 3));
 
-        final projectId =
-            await DB.instance.addProject('No Photos Video', 'face', 123456);
+        final projectId = await DB.instance.addProject(
+          'No Photos Video',
+          'face',
+          123456,
+        );
 
         // No video should exist
         final video = await DB.instance.getNewestVideoByProjectId(projectId);
         expect(video, isNull);
       });
 
-      testWidgets('special characters in project name are handled',
-          (tester) async {
+      testWidgets('special characters in project name are handled', (
+        tester,
+      ) async {
         app.main();
         await tester.pumpAndSettle(const Duration(seconds: 3));
 
         // Create project with special characters
-        final id = await DB.instance
-            .addProject("Test's \"Project\" <script>", 'face', 123456);
+        final id = await DB.instance.addProject(
+          "Test's \"Project\" <script>",
+          'face',
+          123456,
+        );
 
         final project = await DB.instance.getProject(id);
         expect(project, isNotNull);

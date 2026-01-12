@@ -33,10 +33,7 @@ class ImportPageState extends State<ImportPage> {
           ),
         ],
       ),
-      body: Container(
-        color: backgroundColor,
-        child: _buildImportPage(),
-      ),
+      body: Container(color: backgroundColor, child: _buildImportPage()),
     );
   }
 
@@ -89,9 +86,11 @@ class ImportPageState extends State<ImportPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildText('To import, head to the gallery and click the import '
-            'button in the upper right corner.\nThe import button will be '
-            'highlighted on the following page.'),
+        _buildText(
+          'To import, head to the gallery and click the import '
+          'button in the upper right corner.\nThe import button will be '
+          'highlighted on the following page.',
+        ),
         _buildText('A wide range of file formats are supported, including:'),
         _buildFileFormats(),
       ],
@@ -129,7 +128,10 @@ class ImportPageState extends State<ImportPage> {
         child: Text(
           text.toUpperCase(),
           style: const TextStyle(
-              fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+            fontSize: 16,
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );

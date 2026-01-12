@@ -52,10 +52,8 @@ class StabilizationResult {
   });
 
   /// Creates a cancelled result.
-  factory StabilizationResult.cancelled() => StabilizationResult(
-        success: false,
-        cancelled: true,
-      );
+  factory StabilizationResult.cancelled() =>
+      StabilizationResult(success: false, cancelled: true);
 }
 
 class FaceStabilizer {
@@ -148,16 +146,19 @@ class FaceStabilizer {
     resolution = settings.resolution;
     aspectRatio = settings.aspectRatio;
     aspectRatioDecimal = settings.aspectRatioDecimal;
-    stabilizationMode =
-        StabilizationMode.fromString(settings.stabilizationMode);
+    stabilizationMode = StabilizationMode.fromString(
+      settings.stabilizationMode,
+    );
     eyeOffsetX = settings.eyeOffsetX;
     eyeOffsetY = settings.eyeOffsetY;
 
     if (projectType != "face") {
       final PoseDetector poseDetector = PoseDetector(
-          options: PoseDetectorOptions(
-              mode: PoseDetectionMode.single,
-              model: PoseDetectionModel.accurate));
+        options: PoseDetectorOptions(
+          mode: PoseDetectionMode.single,
+          model: PoseDetectionModel.accurate,
+        ),
+      );
       _poseDetector = poseDetector;
     }
 
@@ -200,8 +201,11 @@ class FaceStabilizer {
       rawPhotoPath = await _convertHeicToJpgIfNeeded(rawPhotoPath);
       if (rawPhotoPath.contains("_flipped_flipped")) {
         token?.throwIfCancelled();
-        final bool success =
-            await tryRotation(rawPhotoPath, userRanOutOfSpaceCallback, token);
+        final bool success = await tryRotation(
+          rawPhotoPath,
+          userRanOutOfSpaceCallback,
+          token,
+        );
         return StabilizationResult(success: success);
       }
 
@@ -212,25 +216,32 @@ class FaceStabilizer {
       if (srcBytes == null) return StabilizationResult(success: false);
 
       token?.throwIfCancelled();
-      final dims = await StabUtils.getImageDimensionsFromBytesAsync(srcBytes,
-          token: token);
+      final dims = await StabUtils.getImageDimensionsFromBytesAsync(
+        srcBytes,
+        token: token,
+      );
       if (dims == null) return StabilizationResult(success: false);
       final (int imgWidth, int imgHeight) = dims;
 
       token?.throwIfCancelled();
       (scaleFactor, rotationDegrees) = await _calculateRotationAndScale(
-          rawPhotoPath,
-          imgWidth,
-          imgHeight,
-          targetBoundingBox,
-          userRanOutOfSpaceCallback,
-          pngBytes: srcBytes);
+        rawPhotoPath,
+        imgWidth,
+        imgHeight,
+        targetBoundingBox,
+        userRanOutOfSpaceCallback,
+        pngBytes: srcBytes,
+      );
       if (rotationDegrees == null || scaleFactor == null) {
         return StabilizationResult(success: false);
       }
 
       (translateX, translateY) = _calculateTranslateData(
-          scaleFactor, rotationDegrees, imgWidth, imgHeight);
+        scaleFactor,
+        rotationDegrees,
+        imgWidth,
+        imgHeight,
+      );
       if (translateX == null || translateY == null) {
         return StabilizationResult(success: false);
       }
@@ -255,7 +266,10 @@ class FaceStabilizer {
       }
 
       String stabilizedPhotoPath = await StabUtils.getStabilizedImagePath(
-          rawPhotoPath, projectId, projectOrientation);
+        rawPhotoPath,
+        projectId,
+        projectOrientation,
+      );
       stabilizedPhotoPath = _cleanUpPhotoPath(stabilizedPhotoPath);
       rawPhotoPath = _cleanUpPhotoPath(rawPhotoPath);
 
@@ -270,36 +284,39 @@ class FaceStabilizer {
         double? finalEyeDeltaY,
         double? finalEyeDistance,
       ) = await _finalizeStabilization(
-          rawPhotoPath,
-          stabilizedPhotoPath,
-          imgWidth,
-          imgHeight,
-          translateX,
-          translateY,
-          rotationDegrees,
-          scaleFactor,
-          imageBytesStabilized,
-          srcBytes,
-          token,
-          srcId);
+        rawPhotoPath,
+        stabilizedPhotoPath,
+        imgWidth,
+        imgHeight,
+        translateX,
+        translateY,
+        rotationDegrees,
+        scaleFactor,
+        imageBytesStabilized,
+        srcBytes,
+        token,
+        srcId,
+      );
 
       LogService.instance.log("Result => '$result'");
 
       if (result) {
-        unawaited(createStabThumbnail(
-            stabilizedPhotoPath.replaceAll('.jpg', '.png')));
+        unawaited(
+          createStabThumbnail(stabilizedPhotoPath.replaceAll('.jpg', '.png')),
+        );
       }
 
       return StabilizationResult(
-          success: result,
-          preScore: preScore,
-          twoPassScore: twoPassScore,
-          threePassScore: threePassScore,
-          fourPassScore: fourPassScore,
-          finalScore: finalScore,
-          finalEyeDeltaY: finalEyeDeltaY,
-          finalEyeDistance: finalEyeDistance,
-          goalEyeDistance: eyeDistanceGoal);
+        success: result,
+        preScore: preScore,
+        twoPassScore: twoPassScore,
+        threePassScore: threePassScore,
+        fourPassScore: fourPassScore,
+        finalScore: finalScore,
+        finalEyeDeltaY: finalEyeDeltaY,
+        finalEyeDistance: finalEyeDistance,
+        goalEyeDistance: eyeDistanceGoal,
+      );
     } on CancelledException {
       LogService.instance.log("Stabilization cancelled");
       return StabilizationResult.cancelled();
@@ -331,7 +348,9 @@ class FaceStabilizer {
   ) async {
     if (projectType != "face") {
       await StabUtils.writeImagesBytesToJpgFile(
-          imageBytesStabilized, stabilizedJpgPhotoPath);
+        imageBytesStabilized,
+        stabilizedJpgPhotoPath,
+      );
       final success = await saveStabilizedImage(
         imageBytesStabilized,
         rawPhotoPath,
@@ -350,7 +369,7 @@ class FaceStabilizer {
         null,
         null,
         null,
-        null
+        null,
       ); // No scores for non-face projects
     }
 
@@ -369,10 +388,12 @@ class FaceStabilizer {
     if (stabFaces == null || stabFaces.isEmpty) {
       // No faces found after stabilization
       if (stabFaces != null && stabFaces.isEmpty) {
-        await DB.instance
-            .setPhotoNoFacesFound(path.basenameWithoutExtension(rawPhotoPath));
+        await DB.instance.setPhotoNoFacesFound(
+          path.basenameWithoutExtension(rawPhotoPath),
+        );
         unawaited(
-            _emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.noFacesFound));
+          _emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.noFacesFound),
+        );
       }
       // Fall back to estimated eyes for scoring
       final eyesXY = _estimatedEyesAfterTransform(
@@ -402,17 +423,19 @@ class FaceStabilizer {
         null,
         score,
         null,
-        null
+        null,
       ); // No multi-pass for fallback
     }
 
     List<Point<double>?> eyes = _filterAndCenterEyes(stabFaces);
 
     if (eyes.length < 2 || eyes[0] == null || eyes[1] == null) {
-      await DB.instance
-          .setPhotoNoFacesFound(path.basenameWithoutExtension(rawPhotoPath));
+      await DB.instance.setPhotoNoFacesFound(
+        path.basenameWithoutExtension(rawPhotoPath),
+      );
       unawaited(
-          _emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.noFacesFound));
+        _emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.noFacesFound),
+      );
       // Fall back to estimated eyes for scoring
       final eyesXY = _estimatedEyesAfterTransform(
         imgWidth,
@@ -441,16 +464,17 @@ class FaceStabilizer {
         null,
         score,
         null,
-        null
+        null,
       ); // No multi-pass for fallback
     }
 
     LogService.instance.log(
-        "Goal: L$goalLeftEye R$goalRightEye | Init: L${eyes[0]} R${eyes[1]}");
+      "Goal: L$goalLeftEye R$goalRightEye | Init: L${eyes[0]} R${eyes[1]}",
+    );
 
     List<String> toDelete = [
       await DirUtils.getPngPathFromRawPhotoPath(rawPhotoPath),
-      stabilizedJpgPhotoPath
+      stabilizedJpgPhotoPath,
     ];
 
     final (
@@ -626,17 +650,29 @@ class FaceStabilizer {
   ) async {
     bool successfulStabilization = false;
 
-    final double firstPassScore =
-        calculateStabScore(eyes, goalLeftEye, goalRightEye);
+    final double firstPassScore = calculateStabScore(
+      eyes,
+      goalLeftEye,
+      goalRightEye,
+    );
     final (
       double overshotLeftX,
       double overshotLeftY,
       double overshotRightX,
-      double overshotRightY
-    ) = _calculateOvershots(eyes, goalLeftEye, goalRightEye);
+      double overshotRightY,
+    ) = _calculateOvershots(
+      eyes,
+      goalLeftEye,
+      goalRightEye,
+    );
 
-    if (!correctionIsNeeded(firstPassScore, overshotLeftX, overshotRightX,
-        overshotLeftY, overshotRightY)) {
+    if (!correctionIsNeeded(
+      firstPassScore,
+      overshotLeftX,
+      overshotRightX,
+      overshotLeftY,
+      overshotRightY,
+    )) {
       // No correction needed - save with first pass result
       successfulStabilization = await saveStabilizedImage(
         imageBytesStabilized,
@@ -656,12 +692,15 @@ class FaceStabilizer {
         null,
         firstPassScore,
         null,
-        null
+        null,
       );
     }
 
     final String stabilizedPhotoPath = await StabUtils.getStabilizedImagePath(
-        rawPhotoPath, projectId, projectOrientation);
+      rawPhotoPath,
+      projectId,
+      projectOrientation,
+    );
 
     // Track best result across all passes
     Uint8List bestBytes = imageBytesStabilized;
@@ -683,12 +722,19 @@ class FaceStabilizer {
     // === TWO-PASS ===
     token?.throwIfCancelled();
     LogService.instance.log(
-        "Attempting two-pass correction. First-pass score = $firstPassScore...");
+      "Attempting two-pass correction. First-pass score = $firstPassScore...",
+    );
 
     var (double ovLX, double ovLY, double ovRX, double ovRY) =
         _calculateOvershots(currentEyes, goalLeftEye, goalRightEye);
-    final (double twoPassTX, double twoPassTY) =
-        _calculateNewTranslations(currentTX, currentTY, ovLX, ovRX, ovLY, ovRY);
+    final (double twoPassTX, double twoPassTY) = _calculateNewTranslations(
+      currentTX,
+      currentTY,
+      ovLX,
+      ovRX,
+      ovLY,
+      ovRY,
+    );
 
     Uint8List? twoPassBytes =
         await StabUtils.generateStabilizedImageBytesCVAsync(
@@ -711,12 +757,15 @@ class FaceStabilizer {
         null,
         firstPassScore,
         null,
-        null
+        null,
       );
     }
 
-    final twoPassFaces = await StabUtils.getFacesFromBytes(twoPassBytes,
-        filterByFaceSize: false, imageWidth: canvasWidth);
+    final twoPassFaces = await StabUtils.getFacesFromBytes(
+      twoPassBytes,
+      filterByFaceSize: false,
+      imageWidth: canvasWidth,
+    );
     if (twoPassFaces == null) {
       return (
         false,
@@ -726,7 +775,7 @@ class FaceStabilizer {
         null,
         firstPassScore,
         null,
-        null
+        null,
       );
     }
 
@@ -761,16 +810,28 @@ class FaceStabilizer {
         currentEyes[0] != null &&
         currentEyes[1] != null) {
       token?.throwIfCancelled();
-      (ovLX, ovLY, ovRX, ovRY) =
-          _calculateOvershots(currentEyes, goalLeftEye, goalRightEye);
+      (ovLX, ovLY, ovRX, ovRY) = _calculateOvershots(
+        currentEyes,
+        goalLeftEye,
+        goalRightEye,
+      );
 
       if (correctionIsNeeded(bestScore, ovLX, ovRX, ovLY, ovRY)) {
         LogService.instance.log(
-            "Attempting three-pass correction. Two-pass score = $twoPassScore...");
+          "Attempting three-pass correction. Two-pass score = $twoPassScore...",
+        );
 
-        final (double threePassTX, double threePassTY) =
-            _calculateNewTranslations(
-                currentTX, currentTY, ovLX, ovRX, ovLY, ovRY);
+        final (
+          double threePassTX,
+          double threePassTY,
+        ) = _calculateNewTranslations(
+          currentTX,
+          currentTY,
+          ovLX,
+          ovRX,
+          ovLY,
+          ovRY,
+        );
 
         Uint8List? threePassBytes =
             await StabUtils.generateStabilizedImageBytesCVAsync(
@@ -787,19 +848,24 @@ class FaceStabilizer {
 
         if (threePassBytes != null) {
           final threePassFaces = await StabUtils.getFacesFromBytes(
-              threePassBytes,
-              filterByFaceSize: false,
-              imageWidth: canvasWidth);
+            threePassBytes,
+            filterByFaceSize: false,
+            imageWidth: canvasWidth,
+          );
 
           if (threePassFaces != null) {
-            List<Point<double>?> threePassEyes =
-                _filterAndCenterEyes(threePassFaces);
+            List<Point<double>?> threePassEyes = _filterAndCenterEyes(
+              threePassFaces,
+            );
 
             if (threePassEyes.length >= 2 &&
                 threePassEyes[0] != null &&
                 threePassEyes[1] != null) {
-              threePassScore =
-                  calculateStabScore(threePassEyes, goalLeftEye, goalRightEye);
+              threePassScore = calculateStabScore(
+                threePassEyes,
+                goalLeftEye,
+                goalRightEye,
+              );
               if (threePassScore < bestScore) {
                 usedThreePass = true;
                 // Release previous best if it was twoPass
@@ -832,16 +898,28 @@ class FaceStabilizer {
         currentEyes[0] != null &&
         currentEyes[1] != null) {
       token?.throwIfCancelled();
-      (ovLX, ovLY, ovRX, ovRY) =
-          _calculateOvershots(currentEyes, goalLeftEye, goalRightEye);
+      (ovLX, ovLY, ovRX, ovRY) = _calculateOvershots(
+        currentEyes,
+        goalLeftEye,
+        goalRightEye,
+      );
 
       if (correctionIsNeeded(bestScore, ovLX, ovRX, ovLY, ovRY)) {
         LogService.instance.log(
-            "Attempting four-pass correction. Three-pass score = $threePassScore...");
+          "Attempting four-pass correction. Three-pass score = $threePassScore...",
+        );
 
-        final (double fourPassTX, double fourPassTY) =
-            _calculateNewTranslations(
-                currentTX, currentTY, ovLX, ovRX, ovLY, ovRY);
+        final (
+          double fourPassTX,
+          double fourPassTY,
+        ) = _calculateNewTranslations(
+          currentTX,
+          currentTY,
+          ovLX,
+          ovRX,
+          ovLY,
+          ovRY,
+        );
 
         Uint8List? fourPassBytes =
             await StabUtils.generateStabilizedImageBytesCVAsync(
@@ -857,18 +935,25 @@ class FaceStabilizer {
         );
 
         if (fourPassBytes != null) {
-          final fourPassFaces = await StabUtils.getFacesFromBytes(fourPassBytes,
-              filterByFaceSize: false, imageWidth: canvasWidth);
+          final fourPassFaces = await StabUtils.getFacesFromBytes(
+            fourPassBytes,
+            filterByFaceSize: false,
+            imageWidth: canvasWidth,
+          );
 
           if (fourPassFaces != null) {
-            List<Point<double>?> fourPassEyes =
-                _filterAndCenterEyes(fourPassFaces);
+            List<Point<double>?> fourPassEyes = _filterAndCenterEyes(
+              fourPassFaces,
+            );
 
             if (fourPassEyes.length >= 2 &&
                 fourPassEyes[0] != null &&
                 fourPassEyes[1] != null) {
-              fourPassScore =
-                  calculateStabScore(fourPassEyes, goalLeftEye, goalRightEye);
+              fourPassScore = calculateStabScore(
+                fourPassEyes,
+                goalLeftEye,
+                goalRightEye,
+              );
               if (fourPassScore < bestScore) {
                 usedFourPass = true;
                 bestBytes = fourPassBytes;
@@ -906,7 +991,10 @@ class FaceStabilizer {
       LogService.instance.log("STAB FAILURE. STAB SCORE: $bestScore");
       await StabUtils.writeImagesBytesToJpgFile(bestBytes, stabilizedPhotoPath);
       await _handleStabilizationFailure(
-          rawPhotoPath, stabilizedPhotoPath, toDelete);
+        rawPhotoPath,
+        stabilizedPhotoPath,
+        toDelete,
+      );
       successfulStabilization = false;
     }
 
@@ -950,25 +1038,39 @@ class FaceStabilizer {
   ) async {
     bool successfulStabilization = false;
 
-    final double firstPassScore =
-        calculateStabScore(eyes, goalLeftEye, goalRightEye);
+    final double firstPassScore = calculateStabScore(
+      eyes,
+      goalLeftEye,
+      goalRightEye,
+    );
 
     // Log initial eye positions for debugging
     final double initialEyeDeltaY = eyes[1]!.y - eyes[0]!.y;
-    final double initialEyeDistance =
-        sqrt(pow(eyes[1]!.x - eyes[0]!.x, 2) + pow(eyes[1]!.y - eyes[0]!.y, 2));
+    final double initialEyeDistance = sqrt(
+      pow(eyes[1]!.x - eyes[0]!.x, 2) + pow(eyes[1]!.y - eyes[0]!.y, 2),
+    );
     LogService.instance.log(
-        "Init: score=${firstPassScore.toStringAsFixed(2)}, tilt=${initialEyeDeltaY.toStringAsFixed(1)}px, dist=${initialEyeDistance.toStringAsFixed(1)}→$eyeDistanceGoal");
+      "Init: score=${firstPassScore.toStringAsFixed(2)}, tilt=${initialEyeDeltaY.toStringAsFixed(1)}px, dist=${initialEyeDistance.toStringAsFixed(1)}→$eyeDistanceGoal",
+    );
 
     final (
       double overshotLeftX,
       double overshotLeftY,
       double overshotRightX,
-      double overshotRightY
-    ) = _calculateOvershots(eyes, goalLeftEye, goalRightEye);
+      double overshotRightY,
+    ) = _calculateOvershots(
+      eyes,
+      goalLeftEye,
+      goalRightEye,
+    );
 
-    if (!correctionIsNeeded(firstPassScore, overshotLeftX, overshotRightX,
-        overshotLeftY, overshotRightY)) {
+    if (!correctionIsNeeded(
+      firstPassScore,
+      overshotLeftX,
+      overshotRightX,
+      overshotLeftY,
+      overshotRightY,
+    )) {
       // No correction needed - save with first pass result
       successfulStabilization = await saveStabilizedImage(
         imageBytesStabilized,
@@ -988,12 +1090,15 @@ class FaceStabilizer {
         null,
         firstPassScore,
         initialEyeDeltaY,
-        initialEyeDistance
+        initialEyeDistance,
       );
     }
 
     final String stabilizedPhotoPath = await StabUtils.getStabilizedImagePath(
-        rawPhotoPath, projectId, projectOrientation);
+      rawPhotoPath,
+      projectId,
+      projectOrientation,
+    );
 
     // Track best result across all passes
     Uint8List bestBytes = imageBytesStabilized;
@@ -1032,8 +1137,12 @@ class FaceStabilizer {
       if (detectedAngleDeg.abs() <= 0.1) break;
 
       double newRotation = bestRotation - detectedAngleDeg;
-      final (double? rotTX, double? rotTY) =
-          _calculateTranslateData(bestScale, newRotation, imgWidth, imgHeight);
+      final (double? rotTX, double? rotTY) = _calculateTranslateData(
+        bestScale,
+        newRotation,
+        imgWidth,
+        imgHeight,
+      );
 
       if (rotTX == null || rotTY == null) break;
 
@@ -1052,8 +1161,11 @@ class FaceStabilizer {
 
       if (rotPassBytes == null) break;
 
-      final rotPassFaces = await StabUtils.getFacesFromBytes(rotPassBytes,
-          filterByFaceSize: false, imageWidth: canvasWidth);
+      final rotPassFaces = await StabUtils.getFacesFromBytes(
+        rotPassBytes,
+        filterByFaceSize: false,
+        imageWidth: canvasWidth,
+      );
 
       if (rotPassFaces == null) {
         rotPassBytes = null;
@@ -1070,8 +1182,11 @@ class FaceStabilizer {
       }
 
       double newEyeDeltaY = rotPassEyes[1]!.y - rotPassEyes[0]!.y;
-      rotationPassScore =
-          calculateStabScore(rotPassEyes, goalLeftEye, goalRightEye);
+      rotationPassScore = calculateStabScore(
+        rotPassEyes,
+        goalLeftEye,
+        goalRightEye,
+      );
 
       if (newEyeDeltaY.abs() < eyeDeltaY.abs()) {
         rotPassCount++;
@@ -1099,7 +1214,8 @@ class FaceStabilizer {
 
     if (rotPassCount > 0) {
       LogService.instance.log(
-          "Rot: |${rotStartEyeDeltaY.toStringAsFixed(1)}|→|${eyeDeltaY.toStringAsFixed(1)}|px ($rotPassCount pass${rotPassCount > 1 ? 'es' : ''})");
+        "Rot: |${rotStartEyeDeltaY.toStringAsFixed(1)}|→|${eyeDeltaY.toStringAsFixed(1)}|px ($rotPassCount pass${rotPassCount > 1 ? 'es' : ''})",
+      );
     }
 
     // === SCALE REFINEMENT PASSES ===
@@ -1108,8 +1224,10 @@ class FaceStabilizer {
             currentEyes.length >= 2 &&
             currentEyes[0] != null &&
             currentEyes[1] != null)
-        ? sqrt(pow(currentEyes[1]!.x - currentEyes[0]!.x, 2) +
-            pow(currentEyes[1]!.y - currentEyes[0]!.y, 2))
+        ? sqrt(
+            pow(currentEyes[1]!.x - currentEyes[0]!.x, 2) +
+                pow(currentEyes[1]!.y - currentEyes[0]!.y, 2),
+          )
         : eyeDistanceGoal;
     double scaleError = (currentEyeDistance - eyeDistanceGoal).abs();
     final double initialScaleError = scaleError;
@@ -1130,8 +1248,12 @@ class FaceStabilizer {
       double scaleCorrection = eyeDistanceGoal / currentEyeDistance;
       double newScale = bestScale * scaleCorrection;
 
-      final (double? scaleTX, double? scaleTY) =
-          _calculateTranslateData(newScale, bestRotation, imgWidth, imgHeight);
+      final (double? scaleTX, double? scaleTY) = _calculateTranslateData(
+        newScale,
+        bestRotation,
+        imgWidth,
+        imgHeight,
+      );
 
       if (scaleTX == null || scaleTY == null) break;
 
@@ -1150,8 +1272,11 @@ class FaceStabilizer {
 
       if (scalePassBytes == null) break;
 
-      final scalePassFaces = await StabUtils.getFacesFromBytes(scalePassBytes,
-          filterByFaceSize: false, imageWidth: canvasWidth);
+      final scalePassFaces = await StabUtils.getFacesFromBytes(
+        scalePassBytes,
+        filterByFaceSize: false,
+        imageWidth: canvasWidth,
+      );
 
       if (scalePassFaces == null) {
         scalePassBytes = null;
@@ -1168,11 +1293,15 @@ class FaceStabilizer {
       }
 
       double newEyeDistance = sqrt(
-          pow(scalePassEyes[1]!.x - scalePassEyes[0]!.x, 2) +
-              pow(scalePassEyes[1]!.y - scalePassEyes[0]!.y, 2));
+        pow(scalePassEyes[1]!.x - scalePassEyes[0]!.x, 2) +
+            pow(scalePassEyes[1]!.y - scalePassEyes[0]!.y, 2),
+      );
       double newScaleError = (newEyeDistance - eyeDistanceGoal).abs();
-      scalePassScore =
-          calculateStabScore(scalePassEyes, goalLeftEye, goalRightEye);
+      scalePassScore = calculateStabScore(
+        scalePassEyes,
+        goalLeftEye,
+        goalRightEye,
+      );
 
       if (newScaleError < scaleError) {
         scalePassCount++;
@@ -1201,7 +1330,8 @@ class FaceStabilizer {
 
     if (scalePassCount > 0) {
       LogService.instance.log(
-          "Scale: ${initialScaleError.toStringAsFixed(1)}→${scaleError.toStringAsFixed(1)}px ($scalePassCount pass${scalePassCount > 1 ? 'es' : ''})");
+        "Scale: ${initialScaleError.toStringAsFixed(1)}→${scaleError.toStringAsFixed(1)}px ($scalePassCount pass${scalePassCount > 1 ? 'es' : ''})",
+      );
     }
 
     // === TRANSLATION REFINEMENT PASSES ===
@@ -1230,7 +1360,7 @@ class FaceStabilizer {
         null,
         bestScore,
         null,
-        null
+        null,
       );
     }
 
@@ -1251,7 +1381,13 @@ class FaceStabilizer {
       if (!correctionIsNeeded(bestScore, ovLX, ovRX, ovLY, ovRY)) break;
 
       final (double transTX, double transTY) = _calculateNewTranslations(
-          currentTX, currentTY, ovLX, ovRX, ovLY, ovRY);
+        currentTX,
+        currentTY,
+        ovLX,
+        ovRX,
+        ovLY,
+        ovRY,
+      );
 
       Uint8List? transPassBytes =
           await StabUtils.generateStabilizedImageBytesCVAsync(
@@ -1268,8 +1404,11 @@ class FaceStabilizer {
 
       if (transPassBytes == null) break;
 
-      final transPassFaces = await StabUtils.getFacesFromBytes(transPassBytes,
-          filterByFaceSize: false, imageWidth: canvasWidth);
+      final transPassFaces = await StabUtils.getFacesFromBytes(
+        transPassBytes,
+        filterByFaceSize: false,
+        imageWidth: canvasWidth,
+      );
 
       if (transPassFaces == null) {
         transPassBytes = null;
@@ -1285,8 +1424,11 @@ class FaceStabilizer {
         break;
       }
 
-      double passScore =
-          calculateStabScore(transPassEyes, goalLeftEye, goalRightEye);
+      double passScore = calculateStabScore(
+        transPassEyes,
+        goalLeftEye,
+        goalRightEye,
+      );
 
       double improvement = bestScore - passScore;
 
@@ -1310,8 +1452,11 @@ class FaceStabilizer {
         translationPassScore = passScore;
 
         // Update overshots for next pass
-        (ovLX, ovLY, ovRX, ovRY) =
-            _calculateOvershots(currentEyes, goalLeftEye, goalRightEye);
+        (ovLX, ovLY, ovRX, ovRY) = _calculateOvershots(
+          currentEyes,
+          goalLeftEye,
+          goalRightEye,
+        );
 
         // Check convergence
         if (improvement > 0 && improvement < convergenceThreshold) break;
@@ -1320,14 +1465,18 @@ class FaceStabilizer {
         transPassBytes = null;
         currentTX = transTX;
         currentTY = transTY;
-        (ovLX, ovLY, ovRX, ovRY) =
-            _calculateOvershots(transPassEyes, goalLeftEye, goalRightEye);
+        (ovLX, ovLY, ovRX, ovRY) = _calculateOvershots(
+          transPassEyes,
+          goalLeftEye,
+          goalRightEye,
+        );
       }
     }
 
     if (transPassCount > 0) {
       LogService.instance.log(
-          "Trans: ${initialTransScore.toStringAsFixed(2)}→${bestScore.toStringAsFixed(2)} ($transPassCount pass${transPassCount > 1 ? 'es' : ''})");
+        "Trans: ${initialTransScore.toStringAsFixed(2)}→${bestScore.toStringAsFixed(2)} ($transPassCount pass${transPassCount > 1 ? 'es' : ''})",
+      );
     }
 
     // === FINAL CLEANUP PASS ===
@@ -1346,8 +1495,10 @@ class FaceStabilizer {
 
     if (cleanupLeftEye != null && cleanupRightEye != null) {
       cleanupEyeDeltaY = cleanupRightEye.y - cleanupLeftEye.y;
-      cleanupEyeDistance = sqrt(pow(cleanupRightEye.x - cleanupLeftEye.x, 2) +
-          pow(cleanupRightEye.y - cleanupLeftEye.y, 2));
+      cleanupEyeDistance = sqrt(
+        pow(cleanupRightEye.x - cleanupLeftEye.x, 2) +
+            pow(cleanupRightEye.y - cleanupLeftEye.y, 2),
+      );
       cleanupScaleError = (cleanupEyeDistance - eyeDistanceGoal).abs();
       cleanupRotationAngle =
           atan2(cleanupEyeDeltaY, cleanupRightEye.x - cleanupLeftEye.x) *
@@ -1371,7 +1522,11 @@ class FaceStabilizer {
 
       // Apply cleanup transform
       final (double? cleanupTX, double? cleanupTY) = _calculateTranslateData(
-          cleanupScale, cleanupRotation, imgWidth, imgHeight);
+        cleanupScale,
+        cleanupRotation,
+        imgWidth,
+        imgHeight,
+      );
 
       if (cleanupTX != null && cleanupTY != null) {
         Uint8List? cleanupBytes =
@@ -1388,22 +1543,30 @@ class FaceStabilizer {
         );
 
         if (cleanupBytes != null) {
-          final cleanupFaces = await StabUtils.getFacesFromBytes(cleanupBytes,
-              filterByFaceSize: false, imageWidth: canvasWidth);
+          final cleanupFaces = await StabUtils.getFacesFromBytes(
+            cleanupBytes,
+            filterByFaceSize: false,
+            imageWidth: canvasWidth,
+          );
 
           if (cleanupFaces != null) {
-            List<Point<double>?> cleanupEyes =
-                _filterAndCenterEyes(cleanupFaces);
+            List<Point<double>?> cleanupEyes = _filterAndCenterEyes(
+              cleanupFaces,
+            );
 
             if (cleanupEyes.length >= 2 &&
                 cleanupEyes[0] != null &&
                 cleanupEyes[1] != null) {
-              double cleanupScore =
-                  calculateStabScore(cleanupEyes, goalLeftEye, goalRightEye);
+              double cleanupScore = calculateStabScore(
+                cleanupEyes,
+                goalLeftEye,
+                goalRightEye,
+              );
 
               if (cleanupScore < bestScore) {
                 LogService.instance.log(
-                    "Cleanup: ${bestScore.toStringAsFixed(2)}→${cleanupScore.toStringAsFixed(2)}");
+                  "Cleanup: ${bestScore.toStringAsFixed(2)}→${cleanupScore.toStringAsFixed(2)}",
+                );
                 // Release previous best bytes (unless it's the original input)
                 if (previousPassBytes != null) {
                   previousPassBytes = null;
@@ -1441,10 +1604,13 @@ class FaceStabilizer {
         currentEyes[0] != null &&
         currentEyes[1] != null) {
       finalEyeDeltaY = currentEyes[1]!.y - currentEyes[0]!.y;
-      finalEyeDistance = sqrt(pow(currentEyes[1]!.x - currentEyes[0]!.x, 2) +
-          pow(currentEyes[1]!.y - currentEyes[0]!.y, 2));
+      finalEyeDistance = sqrt(
+        pow(currentEyes[1]!.x - currentEyes[0]!.x, 2) +
+            pow(currentEyes[1]!.y - currentEyes[0]!.y, 2),
+      );
       LogService.instance.log(
-          "Final: score=${bestScore.toStringAsFixed(2)}, tilt=${finalEyeDeltaY.toStringAsFixed(1)}px, dist=${finalEyeDistance.toStringAsFixed(1)}px");
+        "Final: score=${bestScore.toStringAsFixed(2)}, tilt=${finalEyeDeltaY.toStringAsFixed(1)}px, dist=${finalEyeDistance.toStringAsFixed(1)}px",
+      );
     }
 
     // Save the best result
@@ -1463,7 +1629,10 @@ class FaceStabilizer {
       LogService.instance.log("STAB FAILURE. STAB SCORE: $bestScore");
       await StabUtils.writeImagesBytesToJpgFile(bestBytes, stabilizedPhotoPath);
       await _handleStabilizationFailure(
-          rawPhotoPath, stabilizedPhotoPath, toDelete);
+        rawPhotoPath,
+        stabilizedPhotoPath,
+        toDelete,
+      );
       successfulStabilization = false;
     }
 
@@ -1532,31 +1701,41 @@ class FaceStabilizer {
         embedding: embeddingBytes,
       );
       LogService.instance.log(
-          "Stored face data: count=$_currentFaceCount, hasEmbedding=${embeddingBytes != null}");
+        "Stored face data: count=$_currentFaceCount, hasEmbedding=${embeddingBytes != null}",
+      );
     }
 
-    LogService.instance
-        .log("SUCCESS! STAB SCORE: $score (closer to 0 is better)");
     LogService.instance.log(
-        "FINAL TRANSFORM -> translateX: $tx, translateY: $ty, rotationDegrees: $rot, scaleFactor: $sc");
+      "SUCCESS! STAB SCORE: $score (closer to 0 is better)",
+    );
+    LogService.instance.log(
+      "FINAL TRANSFORM -> translateX: $tx, translateY: $ty, rotationDegrees: $rot, scaleFactor: $sc",
+    );
 
     return true;
   }
 
-  Future<void> _handleStabilizationFailure(String rawPhotoPath,
-      String stabilizedJpgPhotoPath, List<String> toDelete) async {
+  Future<void> _handleStabilizationFailure(
+    String rawPhotoPath,
+    String stabilizedJpgPhotoPath,
+    List<String> toDelete,
+  ) async {
     final String timestamp = path.basenameWithoutExtension(rawPhotoPath);
     await DB.instance.setPhotoStabFailed(timestamp);
     unawaited(_emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.stabFailed));
 
     final String failureDir = await DirUtils.getFailureDirPath(projectId);
-    final String failureImgPath =
-        path.join(failureDir, path.basename(stabilizedJpgPhotoPath));
+    final String failureImgPath = path.join(
+      failureDir,
+      path.basename(stabilizedJpgPhotoPath),
+    );
     await DirUtils.createDirectoryIfNotExists(failureImgPath);
     await copyFile(stabilizedJpgPhotoPath, failureImgPath);
 
-    final String stabilizedPngPath =
-        stabilizedJpgPhotoPath.replaceAll(".jpg", ".png");
+    final String stabilizedPngPath = stabilizedJpgPhotoPath.replaceAll(
+      ".jpg",
+      ".png",
+    );
     toDelete.add(stabilizedPngPath);
   }
 
@@ -1565,18 +1744,24 @@ class FaceStabilizer {
       if (heicToJpgMap.containsKey(rawPhotoPath)) {
         return heicToJpgMap[rawPhotoPath]!;
       } else {
-        final String basename =
-            path.basename(rawPhotoPath.replaceAll(".heic", ".jpg"));
+        final String basename = path.basename(
+          rawPhotoPath.replaceAll(".heic", ".jpg"),
+        );
         final String tempDir = await DirUtils.getTemporaryDirPath();
         final String tempJpgPath = path.join(tempDir, basename);
 
         if (Platform.isWindows) {
-          final success =
-              await HeicUtils.convertHeicToJpgAt(rawPhotoPath, tempJpgPath);
+          final success = await HeicUtils.convertHeicToJpgAt(
+            rawPhotoPath,
+            tempJpgPath,
+          );
           if (!success) return rawPhotoPath;
         } else {
-          await HeifConverter.convert(rawPhotoPath,
-              output: tempJpgPath, format: 'jpeg');
+          await HeifConverter.convert(
+            rawPhotoPath,
+            output: tempJpgPath,
+            format: 'jpeg',
+          );
         }
         heicToJpgMap[rawPhotoPath] = tempJpgPath;
         return tempJpgPath;
@@ -1586,36 +1771,49 @@ class FaceStabilizer {
   }
 
   Future<bool> tryRotation(
-      String rawPhotoPath,
-      void Function() userRanOutOfSpaceCallback,
-      CancellationToken? token) async {
+    String rawPhotoPath,
+    void Function() userRanOutOfSpaceCallback,
+    CancellationToken? token,
+  ) async {
     LogService.instance.log(
-        "Tried mirroring, but faces were still not found. Trying rotation.");
+      "Tried mirroring, but faces were still not found. Trying rotation.",
+    );
     final String timestamp = path.basenameWithoutExtension(
-        rawPhotoPath.replaceAll("_flipped_flipped", ""));
+      rawPhotoPath.replaceAll("_flipped_flipped", ""),
+    );
     rawPhotoPath = await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-        timestamp, projectId);
+      timestamp,
+      projectId,
+    );
     rawPhotoPath = await _convertHeicToJpgIfNeeded(rawPhotoPath);
 
     token?.throwIfCancelled();
     final File rotatedCounterClockwiseImage =
         await StabUtils.rotateImageCounterClockwise(rawPhotoPath);
     final result1 = await stabilize(
-        rotatedCounterClockwiseImage.path, token, userRanOutOfSpaceCallback);
+      rotatedCounterClockwiseImage.path,
+      token,
+      userRanOutOfSpaceCallback,
+    );
     if (result1.success) return true;
     if (result1.cancelled) return false;
 
     token?.throwIfCancelled();
-    final File rotatedClockwiseImage =
-        await StabUtils.rotateImageClockwise(rawPhotoPath);
+    final File rotatedClockwiseImage = await StabUtils.rotateImageClockwise(
+      rawPhotoPath,
+    );
     final result2 = await stabilize(
-        rotatedClockwiseImage.path, token, userRanOutOfSpaceCallback);
+      rotatedClockwiseImage.path,
+      token,
+      userRanOutOfSpaceCallback,
+    );
     if (result2.success) return true;
     if (result2.cancelled) return false;
 
     await DB.instance.setPhotoNoFacesFound(timestamp);
     unawaited(
-        _emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.noFacesFound));
+      _emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.noFacesFound),
+    );
     return false;
   }
 
@@ -1626,35 +1824,42 @@ class FaceStabilizer {
       await DirUtils.createDirectoryIfNotExists(stabThumbnailPath);
       final bytes = await CameraUtils.readBytesInIsolate(stabilizedPhotoPath);
       if (bytes == null) {
-        LogService.instance
-            .log("createStabThumbnail: bytes null for $stabilizedPhotoPath");
+        LogService.instance.log(
+          "createStabThumbnail: bytes null for $stabilizedPhotoPath",
+        );
         // Still emit success - widget will fall back to full image
-        ThumbnailService.instance.emit(ThumbnailEvent(
-          thumbnailPath: stabThumbnailPath,
-          status: ThumbnailStatus.success,
-          projectId: projectId,
-          timestamp: timestamp,
-        ));
+        ThumbnailService.instance.emit(
+          ThumbnailEvent(
+            thumbnailPath: stabThumbnailPath,
+            status: ThumbnailStatus.success,
+            projectId: projectId,
+            timestamp: timestamp,
+          ),
+        );
         return;
       }
       final thumbnailBytes = await StabUtils.thumbnailJpgFromPngBytes(bytes);
       await File(stabThumbnailPath).writeAsBytes(thumbnailBytes);
 
-      ThumbnailService.instance.emit(ThumbnailEvent(
-        thumbnailPath: stabThumbnailPath,
-        status: ThumbnailStatus.success,
-        projectId: projectId,
-        timestamp: timestamp,
-      ));
+      ThumbnailService.instance.emit(
+        ThumbnailEvent(
+          thumbnailPath: stabThumbnailPath,
+          status: ThumbnailStatus.success,
+          projectId: projectId,
+          timestamp: timestamp,
+        ),
+      );
     } catch (e) {
       LogService.instance.log("createStabThumbnail error (non-fatal): $e");
       // Still emit success so widget doesn't stay stuck - it will fall back to full image
-      ThumbnailService.instance.emit(ThumbnailEvent(
-        thumbnailPath: stabThumbnailPath,
-        status: ThumbnailStatus.success,
-        projectId: projectId,
-        timestamp: timestamp,
-      ));
+      ThumbnailService.instance.emit(
+        ThumbnailEvent(
+          thumbnailPath: stabThumbnailPath,
+          status: ThumbnailStatus.success,
+          projectId: projectId,
+          timestamp: timestamp,
+        ),
+      );
     }
   }
 
@@ -1662,44 +1867,61 @@ class FaceStabilizer {
   /// restabilization where we need the thumbnail ready before UI updates.
   Future<String> createStabThumbnailFromRawPath(String rawPhotoPath) async {
     final String stabilizedPath = await StabUtils.getStabilizedImagePath(
-        rawPhotoPath, projectId, projectOrientation);
+      rawPhotoPath,
+      projectId,
+      projectOrientation,
+    );
     final String pngPath = stabilizedPath.replaceAll('.jpg', '.png');
     await createStabThumbnail(pngPath);
     return getStabThumbnailPath(pngPath);
   }
 
   Future<void> _emitThumbnailFailure(
-      String rawPhotoPath, ThumbnailStatus status) async {
+    String rawPhotoPath,
+    ThumbnailStatus status,
+  ) async {
     final String timestamp = path
         .basenameWithoutExtension(rawPhotoPath)
         .replaceAll('_flipped', '')
         .replaceAll('_rotated_counter_clockwise', '')
         .replaceAll('_rotated_clockwise', '');
     final String stabilizedPath = await StabUtils.getStabilizedImagePath(
-        rawPhotoPath, projectId, projectOrientation);
-    final String thumbnailPath =
-        getStabThumbnailPath(stabilizedPath.replaceAll('.jpg', '.png'));
+      rawPhotoPath,
+      projectId,
+      projectOrientation,
+    );
+    final String thumbnailPath = getStabThumbnailPath(
+      stabilizedPath.replaceAll('.jpg', '.png'),
+    );
 
-    ThumbnailService.instance.emit(ThumbnailEvent(
-      thumbnailPath: thumbnailPath,
-      status: status,
-      projectId: projectId,
-      timestamp: timestamp,
-    ));
+    ThumbnailService.instance.emit(
+      ThumbnailEvent(
+        thumbnailPath: thumbnailPath,
+        status: status,
+        projectId: projectId,
+        timestamp: timestamp,
+      ),
+    );
   }
 
   Future<(double?, double?)> _calculateRotationAndScale(
-      String rawPhotoPath,
-      int imgWidth,
-      int imgHeight,
-      Rect? targetBoundingBox,
-      userRanOutOfSpaceCallback,
-      {Uint8List? pngBytes}) async {
+    String rawPhotoPath,
+    int imgWidth,
+    int imgHeight,
+    Rect? targetBoundingBox,
+    userRanOutOfSpaceCallback, {
+    Uint8List? pngBytes,
+  }) async {
     try {
       if (projectType == "face") {
-        return await _calculateRotationAngleAndScaleFace(rawPhotoPath, imgWidth,
-            imgHeight, targetBoundingBox, userRanOutOfSpaceCallback,
-            pngBytes: pngBytes);
+        return await _calculateRotationAngleAndScaleFace(
+          rawPhotoPath,
+          imgWidth,
+          imgHeight,
+          targetBoundingBox,
+          userRanOutOfSpaceCallback,
+          pngBytes: pngBytes,
+        );
       } else if (projectType == "pregnancy") {
         return await _calculateRotationAngleAndScalePregnancy(rawPhotoPath);
       } else if (projectType == "musc") {
@@ -1714,12 +1936,13 @@ class FaceStabilizer {
   }
 
   Future<(double?, double?)> _calculateRotationAngleAndScaleFace(
-      String rawPhotoPath,
-      int imgWidth,
-      int imgHeight,
-      Rect? targetBoundingBox,
-      userRanOutOfSpaceCallback,
-      {Uint8List? pngBytes}) async {
+    String rawPhotoPath,
+    int imgWidth,
+    int imgHeight,
+    Rect? targetBoundingBox,
+    userRanOutOfSpaceCallback, {
+    Uint8List? pngBytes,
+  }) async {
     List<Point<double>?> eyes;
 
     // Reset face tracking for this photo
@@ -1766,8 +1989,9 @@ class FaceStabilizer {
 
       if (embeddingPickedIdx != null && embeddingPickedIdx >= 0) {
         // Embedding match found - use that face
-        LogService.instance
-            .log("Using embedding-matched face at index $embeddingPickedIdx");
+        LogService.instance.log(
+          "Using embedding-matched face at index $embeddingPickedIdx",
+        );
         final int li = 2 * embeddingPickedIdx;
         final int ri = li + 1;
         if (ri < eyes.length && eyes[li] != null && eyes[ri] != null) {
@@ -1778,17 +2002,20 @@ class FaceStabilizer {
         }
       } else {
         // No embedding reference found - fallback to centermost
-        LogService.instance
-            .log("No embedding reference found, using centermost face");
+        LogService.instance.log(
+          "No embedding reference found, using centermost face",
+        );
         eyes = getCentermostEyes(eyes, facesToUse, imgWidth, imgHeight);
       }
     }
 
     if (eyes.length < 2 || eyes[0] == null || eyes[1] == null) {
-      await DB.instance
-          .setPhotoNoFacesFound(path.basenameWithoutExtension(rawPhotoPath));
+      await DB.instance.setPhotoNoFacesFound(
+        path.basenameWithoutExtension(rawPhotoPath),
+      );
       unawaited(
-          _emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.noFacesFound));
+        _emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.noFacesFound),
+      );
       return (null, null);
     }
 
@@ -1815,7 +2042,8 @@ class FaceStabilizer {
 
       if (closestSingleFace == null) {
         LogService.instance.log(
-            "No single-face reference photos found for embedding matching");
+          "No single-face reference photos found for embedding matching",
+        );
         return null;
       }
 
@@ -1825,20 +2053,24 @@ class FaceStabilizer {
         return null;
       }
 
-      final Float32List referenceEmbedding =
-          StabUtils.bytesToEmbedding(embeddingBytes);
+      final Float32List referenceEmbedding = StabUtils.bytesToEmbedding(
+        embeddingBytes,
+      );
       final String refTimestamp = closestSingleFace['timestamp'] as String;
       LogService.instance.log(
-          "Using reference embedding from photo $refTimestamp for face matching");
+        "Using reference embedding from photo $refTimestamp for face matching",
+      );
 
       Uint8List imageBytes;
       if (_lastPngBytes != null) {
         imageBytes = _lastPngBytes!;
-        LogService.instance
-            .log("Using cached PNG bytes for embedding extraction");
+        LogService.instance.log(
+          "Using cached PNG bytes for embedding extraction",
+        );
       } else {
-        final String pngPath =
-            await DirUtils.getPngPathFromRawPhotoPath(rawPhotoPath);
+        final String pngPath = await DirUtils.getPngPathFromRawPhotoPath(
+          rawPhotoPath,
+        );
         imageBytes = await File(pngPath).readAsBytes();
       }
 
@@ -1864,18 +2096,21 @@ class FaceStabilizer {
       if (_lastPngBytes != null) {
         imageBytes = _lastPngBytes!;
       } else {
-        final String pngPath =
-            await DirUtils.getPngPathFromRawPhotoPath(rawPhotoPath);
+        final String pngPath = await DirUtils.getPngPathFromRawPhotoPath(
+          rawPhotoPath,
+        );
         imageBytes = await File(pngPath).readAsBytes();
       }
 
-      final Float32List? embedding =
-          await StabUtils.getFaceEmbeddingFromBytes(imageBytes);
+      final Float32List? embedding = await StabUtils.getFaceEmbeddingFromBytes(
+        imageBytes,
+      );
 
       if (embedding != null) {
         _currentEmbedding = embedding;
         LogService.instance.log(
-            "Extracted face embedding (${embedding.length} dims) for single-face photo");
+          "Extracted face embedding (${embedding.length} dims) for single-face photo",
+        );
       }
     } catch (e) {
       LogService.instance.log("Error extracting face embedding: $e");
@@ -1927,10 +2162,12 @@ class FaceStabilizer {
   }
 
   Future<(double?, double?)> _calculateRotationAngleAndScalePregnancy(
-      String rawPhotoPath) async {
+    String rawPhotoPath,
+  ) async {
     await StabUtils.preparePNG(rawPhotoPath);
-    final String pngPath =
-        await DirUtils.getPngPathFromRawPhotoPath(rawPhotoPath);
+    final String pngPath = await DirUtils.getPngPathFromRawPhotoPath(
+      rawPhotoPath,
+    );
 
     List<Pose>? poses;
     try {
@@ -1943,17 +2180,21 @@ class FaceStabilizer {
 
     final Pose pose = poses.first;
     final Point rightAnklePos = Point(
-        pose.landmarks[PoseLandmarkType.rightAnkle]!.x,
-        pose.landmarks[PoseLandmarkType.rightAnkle]!.y);
-    final Point nosePos = Point(pose.landmarks[PoseLandmarkType.nose]!.x,
-        pose.landmarks[PoseLandmarkType.nose]!.y);
+      pose.landmarks[PoseLandmarkType.rightAnkle]!.x,
+      pose.landmarks[PoseLandmarkType.rightAnkle]!.y,
+    );
+    final Point nosePos = Point(
+      pose.landmarks[PoseLandmarkType.nose]!.x,
+      pose.landmarks[PoseLandmarkType.nose]!.y,
+    );
 
     originalRightAnkleX = rightAnklePos.x.toDouble();
     originalRightAnkleY = rightAnklePos.y.toDouble();
     final double verticalDistance = (originalRightAnkleY - nosePos.y).abs();
     final double horizontalDistance = (originalRightAnkleX - nosePos.x).abs();
-    double hypotenuse =
-        sqrt(pow2(verticalDistance, 2) + pow2(horizontalDistance, 2));
+    double hypotenuse = sqrt(
+      pow2(verticalDistance, 2) + pow2(horizontalDistance, 2),
+    );
     double scaleFactor = bodyDistanceGoal / hypotenuse;
     double rotationDegreesRaw =
         90 - (atan2(verticalDistance, horizontalDistance) * (180 / pi));
@@ -1964,10 +2205,12 @@ class FaceStabilizer {
   }
 
   Future<(double?, double?)> _calculateRotationAngleAndScaleMusc(
-      String rawPhotoPath) async {
+    String rawPhotoPath,
+  ) async {
     await StabUtils.preparePNG(rawPhotoPath);
-    final String pngPath =
-        await DirUtils.getPngPathFromRawPhotoPath(rawPhotoPath);
+    final String pngPath = await DirUtils.getPngPathFromRawPhotoPath(
+      rawPhotoPath,
+    );
 
     List<Pose>? poses;
     try {
@@ -1979,11 +2222,14 @@ class FaceStabilizer {
     if (poses == null || poses.isEmpty) return (null, null);
 
     final Pose pose = poses.first;
-    final Point leftHipPos = Point(pose.landmarks[PoseLandmarkType.leftHip]!.x,
-        pose.landmarks[PoseLandmarkType.leftHip]!.y);
+    final Point leftHipPos = Point(
+      pose.landmarks[PoseLandmarkType.leftHip]!.x,
+      pose.landmarks[PoseLandmarkType.leftHip]!.y,
+    );
     final Point rightHipPos = Point(
-        pose.landmarks[PoseLandmarkType.rightHip]!.x,
-        pose.landmarks[PoseLandmarkType.rightHip]!.y);
+      pose.landmarks[PoseLandmarkType.rightHip]!.x,
+      pose.landmarks[PoseLandmarkType.rightHip]!.y,
+    );
 
     originalRightHipX = rightHipPos.x.toDouble();
     originalRightHipY = rightHipPos.y.toDouble();
@@ -1992,23 +2238,29 @@ class FaceStabilizer {
     double rotationDegrees = atan2(verticalDistance, horizontalDistance) *
         (180 / pi) *
         (rightHipPos.y > leftHipPos.y ? -1 : 1);
-    double hypotenuse = sqrt(pow2(verticalDistance.toDouble(), 2) +
-        pow2(horizontalDistance.toDouble(), 2));
+    double hypotenuse = sqrt(
+      pow2(verticalDistance.toDouble(), 2) +
+          pow2(horizontalDistance.toDouble(), 2),
+    );
     double scaleFactor = eyeDistanceGoal / hypotenuse;
 
     return (scaleFactor, rotationDegrees);
   }
 
-  Future<void> flipAndTryAgain(String rawPhotoPath, userRanOutOfSpaceCallback,
-      {CancellationToken? token}) async {
+  Future<void> flipAndTryAgain(
+    String rawPhotoPath,
+    userRanOutOfSpaceCallback, {
+    CancellationToken? token,
+  }) async {
     final String newPath;
     if (rawPhotoPath.contains("rotated")) return;
 
     if (rawPhotoPath.contains("_flipped")) {
       newPath = rawPhotoPath.replaceAll("_flipped", "_flipped_flipped");
     } else {
-      final File flippedImgFile =
-          await StabUtils.flipImageHorizontally(rawPhotoPath);
+      final File flippedImgFile = await StabUtils.flipImageHorizontally(
+        rawPhotoPath,
+      );
       newPath = flippedImgFile.path;
     }
 
@@ -2017,14 +2269,22 @@ class FaceStabilizer {
 
   static String getStabThumbnailPath(String stabilizedPhotoPath) {
     final String dirname = path.dirname(stabilizedPhotoPath);
-    final String basenameWithoutExt =
-        path.basenameWithoutExtension(stabilizedPhotoPath);
+    final String basenameWithoutExt = path.basenameWithoutExtension(
+      stabilizedPhotoPath,
+    );
     return path.join(
-        dirname, DirUtils.thumbnailDirname, "$basenameWithoutExt.jpg");
+      dirname,
+      DirUtils.thumbnailDirname,
+      "$basenameWithoutExt.jpg",
+    );
   }
 
   (double?, double?) _calculateTranslateData(
-      double scaleFactor, double rotationDegrees, int imgWidth, int imgHeight) {
+    double scaleFactor,
+    double rotationDegrees,
+    int imgWidth,
+    int imgHeight,
+  ) {
     num goalX;
     num goalY;
     if (projectType == "face") {
@@ -2037,15 +2297,21 @@ class FaceStabilizer {
       goalX = muscRightHipXGoal;
       goalY = muscRightHipYGoal;
     }
-    Map<String, double> transformedPoint =
-        transformPoint(scaleFactor, rotationDegrees, imgWidth, imgHeight);
+    Map<String, double> transformedPoint = transformPoint(
+      scaleFactor,
+      rotationDegrees,
+      imgWidth,
+      imgHeight,
+    );
     double? translateX = (goalX - transformedPoint['x']!);
     double? translateY = (goalY - transformedPoint['y']!);
     return (translateX, translateY);
   }
 
   static Future<String> saveBytesToPngFileInIsolate(
-      Uint8List imageBytes, String saveToPath) async {
+    Uint8List imageBytes,
+    String saveToPath,
+  ) async {
     Future<void> saveImageIsolateOperation(Map<String, dynamic> params) async {
       SendPort sendPort = params['sendPort'];
       Uint8List bytes = params['imageBytes'];
@@ -2085,9 +2351,10 @@ class FaceStabilizer {
   }
 
   (double, double, double, double) _calculateOvershots(
-      List<Point<double>?> eyes,
-      Point<double> goalLeftEye,
-      Point<double> goalRightEye) {
+    List<Point<double>?> eyes,
+    Point<double> goalLeftEye,
+    Point<double> goalRightEye,
+  ) {
     final double overshotLeftX = eyes[0]!.x - goalLeftEye.x;
     final double overshotLeftY = eyes[0]!.y - goalLeftEye.y;
     final double overshotRightX = eyes[1]!.x - goalRightEye.x;
@@ -2096,12 +2363,13 @@ class FaceStabilizer {
   }
 
   (double, double) _calculateNewTranslations(
-      double translateX,
-      double translateY,
-      double overshotLeftX,
-      double overshotRightX,
-      double overshotLeftY,
-      double overshotRightY) {
+    double translateX,
+    double translateY,
+    double overshotLeftX,
+    double overshotRightX,
+    double overshotLeftY,
+    double overshotRightY,
+  ) {
     final double overshotAverageX = (overshotLeftX + overshotRightX) / 2;
     final double overshotAverageY = (overshotLeftY + overshotRightY) / 2;
     final double newTranslateX = translateX - overshotAverageX.toDouble();
@@ -2133,7 +2401,11 @@ class FaceStabilizer {
 
     if (validFaces.length > 1 && validPairs.length > 2) {
       return getCentermostEyes(
-          validPairs, validFaces, canvasWidth, canvasHeight);
+        validPairs,
+        validFaces,
+        canvasWidth,
+        canvasHeight,
+      );
     }
 
     return validPairs;
@@ -2146,8 +2418,12 @@ class FaceStabilizer {
         .replaceAll('_rotated_clockwise', '');
   }
 
-  List<Point<double>> getCentermostEyes(List<Point<double>?> eyes,
-      List<dynamic> faces, int imgWidth, int imgHeight) {
+  List<Point<double>> getCentermostEyes(
+    List<Point<double>?> eyes,
+    List<dynamic> faces,
+    int imgWidth,
+    int imgHeight,
+  ) {
     double smallestDistance = double.infinity;
     List<Point<double>> centeredEyes = [];
 
@@ -2200,7 +2476,9 @@ class FaceStabilizer {
   }
 
   double calculateHorizontalProximityToCenter(
-      Point<double> point, int imageWidth) {
+    Point<double> point,
+    int imageWidth,
+  ) {
     final int centerX = imageWidth ~/ 2;
     final double horizontalDistance = (point.x.toDouble() - centerX).abs();
     return horizontalDistance;
@@ -2210,8 +2488,11 @@ class FaceStabilizer {
   List<dynamic>? _lastRawFaces;
 
   Future<List<dynamic>?> getFacesFromRawPhotoPath(
-      String rawPhotoPath, int width,
-      {bool filterByFaceSize = true, Uint8List? pngBytes}) async {
+    String rawPhotoPath,
+    int width, {
+    bool filterByFaceSize = true,
+    Uint8List? pngBytes,
+  }) async {
     await _ensureReady();
     pngBytes ??= await StabUtils.preparePNG(rawPhotoPath);
     if (pngBytes == null) return null;
@@ -2260,11 +2541,15 @@ class FaceStabilizer {
 
   Future<bool> videoSettingsChanged() async =>
       await VideoUtils.videoOutputSettingsChanged(
-          projectId, await DB.instance.getNewestVideoByProjectId(projectId));
+        projectId,
+        await DB.instance.getNewestVideoByProjectId(projectId),
+      );
 
   Future<String> getRawPhotoPathFromTimestamp(String timestamp) async =>
       await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-          timestamp, projectId);
+        timestamp,
+        projectId,
+      );
 
   Future<void> setPhotoStabilized(
     String rawPhotoPath, {
@@ -2289,8 +2574,11 @@ class FaceStabilizer {
     );
   }
 
-  double calculateStabScore(List<Point<double>?> eyes,
-      Point<double> goalLeftEye, Point<double> goalRightEye) {
+  double calculateStabScore(
+    List<Point<double>?> eyes,
+    Point<double> goalLeftEye,
+    Point<double> goalRightEye,
+  ) {
     final double distanceLeftEye = calculateDistance(eyes[0]!, goalLeftEye);
     final double distanceRightEye = calculateDistance(eyes[1]!, goalRightEye);
     return ((distanceLeftEye + distanceRightEye) * 1000 / 2) / canvasHeight;
@@ -2300,8 +2588,13 @@ class FaceStabilizer {
     return sqrt(pow(point1.x - point2.x, 2) + pow(point1.y - point2.y, 2));
   }
 
-  bool correctionIsNeeded(double score, double overshotLeftX,
-      double overshotRightX, double overshotLeftY, double overshotRightY) {
+  bool correctionIsNeeded(
+    double score,
+    double overshotLeftX,
+    double overshotRightX,
+    double overshotLeftY,
+    double overshotRightY,
+  ) {
     if (score > 0.5) return true;
     return ((overshotLeftX > 0 && overshotRightX > 0) ||
         (overshotLeftX < 0 && overshotRightX < 0) ||
@@ -2321,7 +2614,11 @@ class FaceStabilizer {
   }
 
   Map<String, double> transformPoint(
-      double scaleFactor, double rotationDegrees, int imgWidth, int imgHeight) {
+    double scaleFactor,
+    double rotationDegrees,
+    int imgWidth,
+    int imgHeight,
+  ) {
     final double originalPointX;
     final double originalPointY;
     if (projectType == "face") {
@@ -2384,8 +2681,9 @@ class FaceStabilizer {
     double rotationDegrees = atan2(verticalDistance, horizontalDistance) *
         (180 / pi) *
         (rightEye.y > leftEye.y ? -1 : 1);
-    double hypotenuse =
-        sqrt(pow(verticalDistance, 2) + pow(horizontalDistance, 2));
+    double hypotenuse = sqrt(
+      pow(verticalDistance, 2) + pow(horizontalDistance, 2),
+    );
     double scaleFactor = eyeDistanceGoal / hypotenuse;
 
     return (scaleFactor, rotationDegrees);

@@ -13,6 +13,7 @@ import '../services/stabilization_service.dart';
 import '../services/thumbnail_service.dart';
 import 'dir_utils.dart';
 import 'notification_util.dart';
+import 'capture_timezone.dart';
 
 class ProjectUtils {
   static Future<int?> calculateStreak(int projectId) async {
@@ -53,8 +54,9 @@ class ProjectUtils {
     PaintingBinding.instance.imageCache.clearLiveImages();
 
     // 3. Reset default project if this was the default
-    final String defaultProject =
-        await DB.instance.getSettingValueByTitle('default_project');
+    final String defaultProject = await DB.instance.getSettingValueByTitle(
+      'default_project',
+    );
     if (defaultProject == projectId.toString()) {
       DB.instance.setSettingByTitle('default_project', 'none');
     }
@@ -77,16 +79,19 @@ class ProjectUtils {
     // If DB deletion fails, return false so the image stays in the gallery
     // and the user can retry the deletion.
     try {
-      final int rowsDeleted =
-          await deletePhotoFromDatabaseAndReturnCount(image.path);
+      final int rowsDeleted = await deletePhotoFromDatabaseAndReturnCount(
+        image.path,
+      );
       if (rowsDeleted == 0) {
         LogService.instance.log(
-            "Failed to delete image from database (no rows affected): ${image.path}");
+          "Failed to delete image from database (no rows affected): ${image.path}",
+        );
         return false;
       }
     } catch (e) {
       LogService.instance.log(
-          "Failed to delete image from database: ${image.path}, Error: $e");
+        "Failed to delete image from database: ${image.path}, Error: $e",
+      );
       return false;
     }
 
@@ -97,21 +102,24 @@ class ProjectUtils {
       await deletePngFileIfExists(image);
     } catch (e) {
       LogService.instance.log(
-          "Failed to delete PNG file (will be cleaned up later): ${image.path}, Error: $e");
+        "Failed to delete PNG file (will be cleaned up later): ${image.path}, Error: $e",
+      );
     }
 
     try {
       await deleteStabilizedFileIfExists(image, projectId);
     } catch (e) {
       LogService.instance.log(
-          "Failed to delete stabilized files (will be cleaned up later): ${image.path}, Error: $e");
+        "Failed to delete stabilized files (will be cleaned up later): ${image.path}, Error: $e",
+      );
     }
 
     try {
       await deleteFile(image);
     } catch (e) {
       LogService.instance.log(
-          "Failed to delete raw image file (will be cleaned up later): ${image.path}, Error: $e");
+        "Failed to delete raw image file (will be cleaned up later): ${image.path}, Error: $e",
+      );
     }
 
     return true;
@@ -168,21 +176,32 @@ class ProjectUtils {
   }
 
   static Future<void> deleteStabilizedFileIfExists(
-      File image, int projectId) async {
-    final String stabilizedDirPath =
-        await DirUtils.getStabilizedDirPath(projectId);
+    File image,
+    int projectId,
+  ) async {
+    final String stabilizedDirPath = await DirUtils.getStabilizedDirPath(
+      projectId,
+    );
     final String stabilizedPngPath =
         "${path.basenameWithoutExtension(image.path)}.png";
 
-    final String stabilizedImagePathPngPortrait =
-        path.join(stabilizedDirPath, 'portrait', stabilizedPngPath);
-    final String stabilizedImagePathPngLandscape =
-        path.join(stabilizedDirPath, 'landscape', stabilizedPngPath);
+    final String stabilizedImagePathPngPortrait = path.join(
+      stabilizedDirPath,
+      'portrait',
+      stabilizedPngPath,
+    );
+    final String stabilizedImagePathPngLandscape = path.join(
+      stabilizedDirPath,
+      'landscape',
+      stabilizedPngPath,
+    );
 
-    final File stabilizedImagePngPortrait =
-        File(stabilizedImagePathPngPortrait);
-    final File stabilizedImagePngLandscape =
-        File(stabilizedImagePathPngLandscape);
+    final File stabilizedImagePngPortrait = File(
+      stabilizedImagePathPngPortrait,
+    );
+    final File stabilizedImagePngLandscape = File(
+      stabilizedImagePathPngLandscape,
+    );
 
     if (await stabilizedImagePngPortrait.exists()) {
       await deleteFile(stabilizedImagePngPortrait);
@@ -219,8 +238,9 @@ class ProjectUtils {
         final curr = int.tryParse(photos[i]['timestamp'] ?? '0') ?? 0;
         if (curr > prev) {
           throw StateError(
-              'getUniquePhotoDates requires timestamp-descending input. '
-              'Found timestamp $curr after $prev at index $i.');
+            'getUniquePhotoDates requires timestamp-descending input. '
+            'Found timestamp $curr after $prev at index $i.',
+          );
         }
       }
       return true;
@@ -231,15 +251,16 @@ class ProjectUtils {
 
     for (final photo in photos) {
       final int ts = int.tryParse(photo['timestamp'] ?? '0') ?? 0;
-      final DateTime utc = DateTime.fromMillisecondsSinceEpoch(ts, isUtc: true);
-      final int? offsetMin = photo['captureOffsetMinutes'] is int
-          ? photo['captureOffsetMinutes'] as int
-          : null;
-      final DateTime localLike = offsetMin != null
-          ? utc.add(Duration(minutes: offsetMin))
-          : utc.toLocal();
-      final DateTime dayOnly =
-          DateTime(localLike.year, localLike.month, localLike.day);
+      final int? offsetMin = CaptureTimezone.extractOffset(photo);
+      final DateTime localLike = CaptureTimezone.toLocalDateTime(
+        ts,
+        offsetMinutes: offsetMin,
+      );
+      final DateTime dayOnly = DateTime(
+        localLike.year,
+        localLike.month,
+        localLike.day,
+      );
 
       // Only add if different from last day (preserves descending order)
       if (lastDay == null || dayOnly != lastDay) {
@@ -262,14 +283,16 @@ class ProjectUtils {
     int? latestOffset;
     for (final p in photos) {
       final int ts = int.tryParse(p['timestamp'] ?? '0') ?? 0;
-      final DateTime utc = DateTime.fromMillisecondsSinceEpoch(ts, isUtc: true);
-      final int? off = p['captureOffsetMinutes'] is int
-          ? p['captureOffsetMinutes'] as int
-          : null;
-      final DateTime captureLocal =
-          off != null ? utc.add(Duration(minutes: off)) : utc.toLocal();
-      final DateTime capDay =
-          DateTime(captureLocal.year, captureLocal.month, captureLocal.day);
+      final int? off = CaptureTimezone.extractOffset(p);
+      final DateTime captureLocal = CaptureTimezone.toLocalDateTime(
+        ts,
+        offsetMinutes: off,
+      );
+      final DateTime capDay = DateTime(
+        captureLocal.year,
+        captureLocal.month,
+        captureLocal.day,
+      );
       if (capDay.year == latestPhotoDate.year &&
           capDay.month == latestPhotoDate.month &&
           capDay.day == latestPhotoDate.day) {
@@ -285,8 +308,11 @@ class ProjectUtils {
     } else {
       nowRef = DateTime.now();
     }
-    final DateTime todayLocalLike =
-        DateTime(nowRef.year, nowRef.month, nowRef.day);
+    final DateTime todayLocalLike = DateTime(
+      nowRef.year,
+      nowRef.month,
+      nowRef.day,
+    );
 
     final int headDiff = getTimeDiff(latestPhotoDate, todayLocalLike);
     if (headDiff > 1) return 0;

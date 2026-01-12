@@ -59,48 +59,64 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
 
   Future<void> _onNewButtonTapped() async {
     Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const CreateProjectPage()));
+      MaterialPageRoute(builder: (context) => const CreateProjectPage()),
+    );
   }
 
   static Future<String> getProjectImage(int projectId) async {
-    LogService.instance
-        .log('[getProjectImage] Called for projectId=$projectId');
+    LogService.instance.log(
+      '[getProjectImage] Called for projectId=$projectId',
+    );
 
-    final String stabilizedDirPath =
-        await DirUtils.getStabilizedDirPath(projectId);
+    final String stabilizedDirPath = await DirUtils.getStabilizedDirPath(
+      projectId,
+    );
     final String activeProjectOrientation =
         await SettingsUtil.loadProjectOrientation(projectId.toString());
     LogService.instance.log(
-        '[getProjectImage] activeProjectOrientation=$activeProjectOrientation');
+      '[getProjectImage] activeProjectOrientation=$activeProjectOrientation',
+    );
 
-    final String videoOutputPath =
-        await DirUtils.getVideoOutputPath(projectId, activeProjectOrientation);
-    final String gifPath =
-        videoOutputPath.replaceAll(path.extension(videoOutputPath), ".gif");
+    final String videoOutputPath = await DirUtils.getVideoOutputPath(
+      projectId,
+      activeProjectOrientation,
+    );
+    final String gifPath = videoOutputPath.replaceAll(
+      path.extension(videoOutputPath),
+      ".gif",
+    );
     if (await File(gifPath).exists()) {
       LogService.instance.log('[getProjectImage] Found GIF: $gifPath');
       return gifPath;
     }
 
-    final String stabilizedDirActivePath =
-        path.join(stabilizedDirPath, activeProjectOrientation);
+    final String stabilizedDirActivePath = path.join(
+      stabilizedDirPath,
+      activeProjectOrientation,
+    );
     LogService.instance.log(
-        '[getProjectImage] Checking active stabilized dir: $stabilizedDirActivePath');
+      '[getProjectImage] Checking active stabilized dir: $stabilizedDirActivePath',
+    );
     String? pngPath = await checkForStabilizedImage(stabilizedDirActivePath);
     if (pngPath != null) {
       LogService.instance.log(
-          '[getProjectImage] Found stabilized image in active dir: $pngPath');
+        '[getProjectImage] Found stabilized image in active dir: $pngPath',
+      );
       return pngPath;
     }
 
-    final String stabilizedDirInactivePath = path.join(stabilizedDirPath,
-        activeProjectOrientation == "portrait" ? "landscape" : "portrait");
+    final String stabilizedDirInactivePath = path.join(
+      stabilizedDirPath,
+      activeProjectOrientation == "portrait" ? "landscape" : "portrait",
+    );
     LogService.instance.log(
-        '[getProjectImage] Checking inactive stabilized dir: $stabilizedDirInactivePath');
+      '[getProjectImage] Checking inactive stabilized dir: $stabilizedDirInactivePath',
+    );
     pngPath = await checkForStabilizedImage(stabilizedDirInactivePath);
     if (pngPath != null) {
       LogService.instance.log(
-          '[getProjectImage] Found stabilized image in inactive dir: $pngPath');
+        '[getProjectImage] Found stabilized image in inactive dir: $pngPath',
+      );
       return pngPath;
     }
 
@@ -109,7 +125,8 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
     final bool dirExists = await rawPhotoDir.exists();
     if (!dirExists) {
       LogService.instance.log(
-          '[getProjectImage] Raw photo dir does not exist, returning empty');
+        '[getProjectImage] Raw photo dir does not exist, returning empty',
+      );
       return "";
     }
 
@@ -118,15 +135,19 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
         .where((file) => file is File && Utils.isImage(file.path))
         .toList();
     if (imageFiles.isEmpty) {
-      LogService.instance
-          .log('[getProjectImage] No raw images found, returning empty');
+      LogService.instance.log(
+        '[getProjectImage] No raw images found, returning empty',
+      );
       return "";
     }
 
-    final minFile = imageFiles.reduce((a, b) =>
-        path.basename(a.path).compareTo(path.basename(b.path)) <= 0 ? a : b);
-    LogService.instance
-        .log('[getProjectImage] Returning first raw image: ${minFile.path}');
+    final minFile = imageFiles.reduce(
+      (a, b) =>
+          path.basename(a.path).compareTo(path.basename(b.path)) <= 0 ? a : b,
+    );
+    LogService.instance.log(
+      '[getProjectImage] Returning first raw image: ${minFile.path}',
+    );
     return minFile.path;
   }
 
@@ -139,10 +160,12 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
             .where((item) => item.path.endsWith('.png') && item is File)
             .toList();
         if (pngFiles.isNotEmpty) {
-          final minFile = pngFiles.reduce((a, b) =>
-              path.basename(a.path).compareTo(path.basename(b.path)) <= 0
-                  ? a
-                  : b);
+          final minFile = pngFiles.reduce(
+            (a, b) =>
+                path.basename(a.path).compareTo(path.basename(b.path)) <= 0
+                    ? a
+                    : b,
+          );
           return minFile.path;
         }
       } catch (e) {
@@ -369,8 +392,9 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                                           : 'Photo not taken',
                                       style: TextStyle(
                                         fontSize: 13,
-                                        color:
-                                            Colors.white.withValues(alpha: 0.5),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.5,
+                                        ),
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -453,7 +477,9 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                     onTap: _onNewButtonTapped,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.settingsAccent,
                         borderRadius: BorderRadius.circular(8.0),
@@ -486,8 +512,11 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                       color: Colors.white.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.close,
-                        color: Colors.white70, size: 18),
+                    child: const Icon(
+                      Icons.close,
+                      color: Colors.white70,
+                      size: 18,
+                    ),
                   ),
                 ),
             ],
@@ -554,16 +583,19 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
     }
 
     Utils.navigateToScreenReplaceNoAnim(
-        context,
-        MainNavigation(
-          projectId: project['id'],
-          projectName: project['name'],
-          showFlashingCircle: false,
-        ));
+      context,
+      MainNavigation(
+        projectId: project['id'],
+        projectName: project['name'],
+        showFlashingCircle: false,
+      ),
+    );
   }
 
   void _showProjectOptionsPopup(
-      BuildContext context, Map<String, dynamic> project) {
+    BuildContext context,
+    Map<String, dynamic> project,
+  ) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -614,8 +646,11 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                         color: Colors.white.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(Icons.close,
-                          color: Colors.white70, size: 18),
+                      child: const Icon(
+                        Icons.close,
+                        color: Colors.white70,
+                        size: 18,
+                      ),
                     ),
                   ),
                 ],
@@ -721,7 +756,9 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
   }
 
   void _showEditProjectNamePopup(
-      BuildContext context, Map<String, dynamic> project) {
+    BuildContext context,
+    Map<String, dynamic> project,
+  ) {
     _editProjectNameController.text = project['name'];
     showModalBottomSheet(
       context: context,
@@ -778,8 +815,11 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                           color: Colors.white.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Icon(Icons.close,
-                            color: Colors.white70, size: 18),
+                        child: const Icon(
+                          Icons.close,
+                          color: Colors.white70,
+                          size: 18,
+                        ),
                       ),
                     ),
                   ],
@@ -790,15 +830,13 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(12),
-                    border:
-                        Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.1),
+                    ),
                   ),
                   child: TextField(
                     controller: _editProjectNameController,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                    ),
+                    style: const TextStyle(color: Colors.white, fontSize: 15),
                     decoration: InputDecoration(
                       hintText: 'Enter project name',
                       hintStyle: TextStyle(
@@ -806,7 +844,9 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                         fontSize: 15,
                       ),
                       contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 14),
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       border: InputBorder.none,
                     ),
                     autofocus: true,
@@ -844,8 +884,10 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                         onTap: () async {
                           final newName = _editProjectNameController.text;
                           if (newName.trim().isEmpty) return;
-                          await DB.instance
-                              .updateProjectName(project['id'], newName);
+                          await DB.instance.updateProjectName(
+                            project['id'],
+                            newName,
+                          );
                           _getProjects();
                           if (!context.mounted) return;
                           Navigator.pop(context);
@@ -881,7 +923,9 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
   }
 
   void _showDeleteProjectPopup(
-      BuildContext context, Map<String, dynamic> project) async {
+    BuildContext context,
+    Map<String, dynamic> project,
+  ) async {
     final navigator = Navigator.of(context);
     final confirmed = await showDeleteProjectDialog(
       context: context,
@@ -940,8 +984,9 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(12),
-                  border:
-                      Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.08),
+                  ),
                 ),
                 child: Row(
                   children: [

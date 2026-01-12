@@ -36,19 +36,13 @@ void main() {
     });
 
     test('TutorialSection creates state', () {
-      const widget = TutorialSection(
-        title: 'Test',
-        steps: [Text('Step')],
-      );
+      const widget = TutorialSection(title: 'Test', steps: [Text('Step')]);
 
       expect(widget.createState(), isA<TutorialSectionState>());
     });
 
     test('TutorialSection handles empty steps', () {
-      const widget = TutorialSection(
-        title: 'Empty Section',
-        steps: [],
-      );
+      const widget = TutorialSection(title: 'Empty Section', steps: []);
 
       expect(widget.steps, isEmpty);
     });

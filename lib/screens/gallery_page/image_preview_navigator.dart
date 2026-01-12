@@ -14,6 +14,9 @@ import '../../styles/styles.dart';
 import '../../utils/dir_utils.dart';
 import '../../utils/utils.dart';
 import '../../utils/camera_utils.dart';
+import '../../utils/settings_utils.dart';
+import '../../utils/date_stamp_utils.dart';
+import '../../utils/capture_timezone.dart';
 import '../manual_stab_page.dart';
 import '../stab_on_diff_face.dart';
 import 'gallery_widgets.dart';
@@ -67,6 +70,16 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
   // Cache for photo metadata
   Future<Map<String, dynamic>?>? _previewPhotoFuture;
 
+  // Export date stamp preview settings
+  bool _exportDateStampEnabled = false;
+  String _exportDateStampPosition = DateStampUtils.positionLowerRight;
+  String _exportDateStampFormat = DateStampUtils.exportFormatLong;
+  int _exportDateStampSize = DateStampUtils.defaultSizePercent;
+  double _exportDateStampOpacity = DateStampUtils.defaultOpacity;
+
+  // Cache for capture timezone offsets (timestamp -> offset minutes)
+  Map<String, int?> _captureOffsetMap = {};
+
   @override
   void initState() {
     super.initState();
@@ -75,6 +88,54 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     _currentIndex = widget.initialIndex.clamp(0, _currentList.length - 1);
     _pageController = PageController(initialPage: _currentIndex);
     _loadPhotoMetadata();
+    _loadDateStampSettings();
+    _loadCaptureOffsets();
+  }
+
+  Future<void> _loadDateStampSettings() async {
+    final projectIdStr = widget.projectId.toString();
+    final enabled = await SettingsUtil.loadExportDateStampEnabled(projectIdStr);
+    final position = await SettingsUtil.loadExportDateStampPosition(
+      projectIdStr,
+    );
+    final format = await SettingsUtil.loadExportDateStampFormat(projectIdStr);
+    final size = await SettingsUtil.loadExportDateStampSize(projectIdStr);
+    final opacity = await SettingsUtil.loadExportDateStampOpacity(projectIdStr);
+    if (mounted) {
+      setState(() {
+        _exportDateStampEnabled = enabled;
+        _exportDateStampPosition = position;
+        _exportDateStampFormat = format;
+        _exportDateStampSize = size;
+        _exportDateStampOpacity = opacity;
+      });
+    }
+  }
+
+  /// Load capture timezone offsets for all images in both lists.
+  Future<void> _loadCaptureOffsets() async {
+    try {
+      final offsets = await CaptureTimezone.loadOffsetsForMultipleLists([
+        widget.rawImageFiles,
+        widget.stabilizedImageFiles,
+      ], widget.projectId);
+
+      if (mounted) {
+        setState(() => _captureOffsetMap = offsets);
+      }
+    } catch (e) {
+      // Graceful degradation: continue with empty map (falls back to local time)
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant ImagePreviewNavigator oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Reload offsets if image lists changed
+    if (widget.rawImageFiles != oldWidget.rawImageFiles ||
+        widget.stabilizedImageFiles != oldWidget.stabilizedImageFiles) {
+      _loadCaptureOffsets();
+    }
   }
 
   @override
@@ -106,8 +167,10 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
 
   void _loadPhotoMetadata() {
     if (_currentTimestamp.isNotEmpty) {
-      _previewPhotoFuture =
-          DB.instance.getPhotoByTimestamp(_currentTimestamp, widget.projectId);
+      _previewPhotoFuture = DB.instance.getPhotoByTimestamp(
+        _currentTimestamp,
+        widget.projectId,
+      );
     }
   }
 
@@ -147,8 +210,10 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
 
   Future<void> _switchToRaw() async {
     final currentTimestamp = _currentTimestamp;
-    final newIndex =
-        _findIndexForTimestamp(widget.rawImageFiles, currentTimestamp);
+    final newIndex = _findIndexForTimestamp(
+      widget.rawImageFiles,
+      currentTimestamp,
+    );
 
     if (newIndex >= 0) {
       setState(() {
@@ -162,8 +227,10 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
 
   Future<void> _switchToStabilized() async {
     final currentTimestamp = _currentTimestamp;
-    final newIndex =
-        _findIndexForTimestamp(widget.stabilizedImageFiles, currentTimestamp);
+    final newIndex = _findIndexForTimestamp(
+      widget.stabilizedImageFiles,
+      currentTimestamp,
+    );
 
     if (newIndex >= 0) {
       setState(() {
@@ -272,10 +339,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
           FutureBuilder<Map<String, dynamic>?>(
             future: _previewPhotoFuture,
             builder: (context, snap) {
-              final int? off =
-                  snap.data != null && snap.data!['captureOffsetMinutes'] is int
-                      ? snap.data!['captureOffsetMinutes'] as int
-                      : null;
+              final int? off = CaptureTimezone.extractOffset(snap.data);
               final timestamp = _currentTimestamp;
               if (timestamp.isEmpty) {
                 return const SizedBox.shrink();
@@ -368,20 +432,104 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
 
     if (!_isRaw && _activeButton != 'raw') {
       // Show stabilized image with status handling
-      return Center(
-        child: StabilizedImagePreview(
-          thumbnailPath: FaceStabilizer.getStabThumbnailPath(imagePath),
-          imagePath: imagePath,
-          projectId: widget.projectId,
-          buildImage: _buildResizableImage,
-        ),
+      Widget imageWidget = StabilizedImagePreview(
+        thumbnailPath: FaceStabilizer.getStabThumbnailPath(imagePath),
+        imagePath: imagePath,
+        projectId: widget.projectId,
+        buildImage: _buildResizableImage,
       );
+
+      // Add date stamp overlay preview if enabled
+      if (_exportDateStampEnabled) {
+        final timestamp = path.basenameWithoutExtension(imagePath);
+        final timestampMs = int.tryParse(timestamp);
+        if (timestampMs != null) {
+          final formattedDate = DateStampUtils.formatTimestamp(
+            timestampMs,
+            _exportDateStampFormat,
+            captureOffsetMinutes: _captureOffsetMap[timestamp],
+          );
+          imageWidget = _buildImageWithDateOverlay(imageWidget, formattedDate);
+        }
+      }
+
+      return Center(child: imageWidget);
     } else {
       // Show raw image
-      return Center(
-        child: _buildResizableImage(File(imagePath)),
-      );
+      return Center(child: _buildResizableImage(File(imagePath)));
     }
+  }
+
+  Widget _buildImageWithDateOverlay(Widget imageWidget, String dateText) {
+    // Calculate position based on setting
+    Alignment alignment;
+    switch (_exportDateStampPosition.toLowerCase()) {
+      case DateStampUtils.positionLowerRight:
+        alignment = Alignment.bottomRight;
+        break;
+      case DateStampUtils.positionLowerLeft:
+        alignment = Alignment.bottomLeft;
+        break;
+      case DateStampUtils.positionUpperRight:
+        alignment = Alignment.topRight;
+        break;
+      case DateStampUtils.positionUpperLeft:
+        alignment = Alignment.topLeft;
+        break;
+      default:
+        alignment = Alignment.bottomRight;
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Calculate proportional font size to match export appearance
+        // Export uses sizePercent of image height; preview uses constraints
+        final previewFontSize =
+            (constraints.maxHeight * _exportDateStampSize / 100).clamp(
+          10.0,
+          24.0,
+        );
+
+        return Stack(
+          children: [
+            imageWidget,
+            Positioned.fill(
+              child: Align(
+                alignment: alignment,
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      dateText,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: previewFontSize,
+                        fontWeight: FontWeight.w500,
+                        shadows: const [
+                          Shadow(
+                            offset: Offset(1, 1),
+                            blurRadius: 2,
+                            color: Colors.black54,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Widget _buildResizableImage(File imageFile) {
@@ -442,11 +590,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
             color: AppColors.settingsCardBackground.withValues(alpha: 0.8),
             shape: BoxShape.circle,
           ),
-          child: Icon(
-            icon,
-            color: AppColors.settingsTextPrimary,
-            size: 28,
-          ),
+          child: Icon(icon, color: AppColors.settingsTextPrimary, size: 28),
         ),
       ),
     );
@@ -461,10 +605,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Text(
         '${_currentIndex + 1} of ${_currentList.length}',
-        style: TextStyle(
-          color: AppColors.settingsTextSecondary,
-          fontSize: 14,
-        ),
+        style: TextStyle(color: AppColors.settingsTextSecondary, fontSize: 14),
       ),
     );
   }
@@ -474,10 +615,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
       decoration: BoxDecoration(
         color: AppColors.settingsCardBackground,
         border: Border(
-          top: BorderSide(
-            color: AppColors.settingsDivider,
-            width: 1,
-          ),
+          top: BorderSide(color: AppColors.settingsDivider, width: 1),
         ),
       ),
       padding: EdgeInsets.only(
@@ -571,8 +709,71 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
 
     setState(() => _gallerySaveIsLoading = true);
 
+    String? tempFile;
     try {
-      final XFile image = XFile(_currentImagePath);
+      String imagePathToSave = _currentImagePath;
+      final originalFilename = path.basename(_currentImagePath);
+
+      // Apply date stamp if enabled (only for stabilized images)
+      if (_exportDateStampEnabled && !_isRaw) {
+        final timestamp = path.basenameWithoutExtension(_currentImagePath);
+        final timestampMs = int.tryParse(timestamp);
+        if (timestampMs != null) {
+          // Get captureOffsetMinutes from photo metadata for accurate timezone
+          final photoData = await _previewPhotoFuture;
+          final int? captureOffsetMinutes = CaptureTimezone.extractOffset(
+            photoData,
+          );
+
+          final formattedDate = DateStampUtils.formatTimestamp(
+            timestampMs,
+            _exportDateStampFormat,
+            captureOffsetMinutes: captureOffsetMinutes,
+          );
+
+          // Load watermark settings for overlap prevention
+          final projectIdStr = widget.projectId.toString();
+          final watermarkEnabled = await SettingsUtil.loadWatermarkSetting(
+            projectIdStr,
+          );
+          final String? watermarkPos = watermarkEnabled
+              ? (await DB.instance.getSettingValueByTitle(
+                  'watermark_position',
+                ))
+                  .toLowerCase()
+              : null;
+
+          // Calculate watermark offset if both are in same position
+          double watermarkOffset = 0.0;
+          if (watermarkPos != null &&
+              _exportDateStampPosition.toLowerCase() ==
+                  watermarkPos.toLowerCase()) {
+            final isLowerCorner =
+                _exportDateStampPosition.toLowerCase().contains('lower');
+            watermarkOffset = isLowerCorner ? -60.0 : 60.0;
+          }
+
+          // Create temp file for date-stamped image (use original filename)
+          final tempDir = await getTemporaryDirectory();
+          tempFile = '${tempDir.path}/$originalFilename';
+
+          final success = await DateStampUtils.compositeDate(
+            inputPath: _currentImagePath,
+            outputPath: tempFile,
+            dateText: formattedDate,
+            position: _exportDateStampPosition,
+            sizePercent: _exportDateStampSize,
+            opacity: _exportDateStampOpacity,
+            watermarkVerticalOffset: watermarkOffset,
+          );
+
+          if (success) {
+            imagePathToSave = tempFile;
+          }
+        }
+      }
+
+      final XFile image = XFile(imagePathToSave);
       await _saveImageToDownloadsOrGallery(image);
       if (mounted) {
         setState(() {
@@ -585,9 +786,16 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     } catch (e) {
       if (mounted) {
         setState(() => _gallerySaveIsLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save image: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to save image: $e')));
+      }
+    } finally {
+      // Clean up temp file
+      if (tempFile != null) {
+        try {
+          await File(tempFile).delete();
+        } catch (_) {}
       }
     }
   }
@@ -597,8 +805,10 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
       final bytes = await image.readAsBytes();
       final downloadsPath = await _preferredUserDownloads();
       await _ensureDirExists(downloadsPath);
-      final targetPath =
-          await _uniquePath(downloadsPath, path.basename(image.path));
+      final targetPath = await _uniquePath(
+        downloadsPath,
+        path.basename(image.path),
+      );
       try {
         await File(targetPath).writeAsBytes(bytes, flush: true);
         if (mounted) {
@@ -607,14 +817,16 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
           );
         }
       } on FileSystemException {
-        final location =
-            await getSaveLocation(suggestedName: path.basename(image.path));
+        final location = await getSaveLocation(
+          suggestedName: path.basename(image.path),
+        );
         if (location != null && location.path.isNotEmpty) {
           await File(location.path).writeAsBytes(bytes, flush: true);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                  content: Text('Saved to ${path.normalize(location.path)}')),
+                content: Text('Saved to ${path.normalize(location.path)}'),
+              ),
             );
           }
         } else {
@@ -632,9 +844,9 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
       await _checkAndRequestPermissions();
       await CameraUtils.saveToGallery(image);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Saved to Photos')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Saved to Photos')));
       }
     }
   }
@@ -644,7 +856,9 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
       final xdgDownload = Platform.environment['XDG_DOWNLOAD_DIR'];
       if (xdgDownload != null && xdgDownload.isNotEmpty) {
         final expanded = xdgDownload.replaceAll(
-            '\$HOME', Platform.environment['HOME'] ?? '');
+          '\$HOME',
+          Platform.environment['HOME'] ?? '',
+        );
         if (expanded.isNotEmpty && await Directory(expanded).exists()) {
           return expanded;
         }
@@ -800,10 +1014,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
       ),
       title: Text(
         title,
-        style: TextStyle(
-          fontSize: 14,
-          color: AppColors.settingsTextPrimary,
-        ),
+        style: TextStyle(fontSize: 14, color: AppColors.settingsTextPrimary),
       ),
       onTap: onTap,
     );
@@ -813,8 +1024,9 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     final timestamp = _currentTimestamp;
     if (timestamp.isEmpty) return;
 
-    DateTime initialDate =
-        DateTime.fromMillisecondsSinceEpoch(int.parse(timestamp));
+    DateTime initialDate = DateTime.fromMillisecondsSinceEpoch(
+      int.parse(timestamp),
+    );
     DateTime? newDate = await showDatePicker(
       context: context,
       initialDate: initialDate,
@@ -842,7 +1054,9 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
   }
 
   Future<void> _changePhotoDate(
-      String currentTimestamp, String newTimestamp) async {
+    String currentTimestamp,
+    String newTimestamp,
+  ) async {
     // Update database
     await DB.instance.updatePhotoTimestamp(
       currentTimestamp,
@@ -857,17 +1071,21 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     await widget.loadImages();
     if (mounted) {
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Photo date updated')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Photo date updated')));
     }
   }
 
   Future<void> _renamePhotoFiles(
-      String currentTimestamp, String newTimestamp) async {
+    String currentTimestamp,
+    String newTimestamp,
+  ) async {
     // Get all paths for the current photo
     final rawPath = await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-        currentTimestamp, widget.projectId);
+      currentTimestamp,
+      widget.projectId,
+    );
 
     if (await File(rawPath).exists()) {
       final newRawPath = rawPath.replaceAll(currentTimestamp, newTimestamp);
@@ -877,7 +1095,10 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     // Rename stabilized and thumbnail files if they exist
     final stabPath =
         await DirUtils.getStabilizedImagePathFromRawPathAndProjectOrientation(
-            widget.projectId, rawPath, widget.projectOrientation);
+      widget.projectId,
+      rawPath,
+      widget.projectOrientation,
+    );
     if (await File(stabPath).exists()) {
       final newStabPath = stabPath.replaceAll(currentTimestamp, newTimestamp);
       await File(stabPath).rename(newStabPath);
@@ -908,12 +1129,18 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
 
     final rawPhotoPath =
         await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-            timestamp, widget.projectId);
+      timestamp,
+      widget.projectId,
+    );
     final stabilizedImagePath =
         await DirUtils.getStabilizedImagePathFromRawPathAndProjectOrientation(
-            widget.projectId, rawPhotoPath, widget.projectOrientation);
-    final stabThumbPath =
-        FaceStabilizer.getStabThumbnailPath(stabilizedImagePath);
+      widget.projectId,
+      rawPhotoPath,
+      widget.projectOrientation,
+    );
+    final stabThumbPath = FaceStabilizer.getStabThumbnailPath(
+      stabilizedImagePath,
+    );
 
     final stabImageFile = File(stabilizedImagePath);
     final stabThumbFile = File(stabThumbPath);
@@ -924,8 +1151,10 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
       await stabThumbFile.delete();
     }
 
-    await DB.instance
-        .resetStabilizedColumnByTimestamp(widget.projectOrientation, timestamp);
+    await DB.instance.resetStabilizedColumnByTimestamp(
+      widget.projectOrientation,
+      timestamp,
+    );
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -940,8 +1169,10 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     final timestamp = _currentTimestamp;
     if (timestamp.isEmpty) return;
 
-    final photoRecord =
-        await DB.instance.getPhotoByTimestamp(timestamp, widget.projectId);
+    final photoRecord = await DB.instance.getPhotoByTimestamp(
+      timestamp,
+      widget.projectId,
+    );
     if (photoRecord != null) {
       await DB.instance.setSettingByTitle(
         "selected_guide_photo",
@@ -949,9 +1180,9 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
         widget.projectId.toString(),
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Guide photo updated')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Guide photo updated')));
       }
     }
   }
@@ -1002,15 +1233,18 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
   }
 
   Future<void> _deleteImage(File imageFile) async {
-    final isStabilizedImage =
-        imageFile.path.toLowerCase().contains("stabilized");
+    final isStabilizedImage = imageFile.path.toLowerCase().contains(
+          "stabilized",
+        );
     File toDelete = imageFile;
 
     if (isStabilizedImage) {
       final timestamp = path.basenameWithoutExtension(imageFile.path);
       final rawPhotoPath =
           await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-              timestamp, widget.projectId);
+        timestamp,
+        widget.projectId,
+      );
       toDelete = File(rawPhotoPath);
     }
 
@@ -1052,7 +1286,10 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     // Delete stabilized image and thumbnail
     final stabPath =
         await DirUtils.getStabilizedImagePathFromRawPathAndProjectOrientation(
-            widget.projectId, rawFile.path, widget.projectOrientation);
+      widget.projectId,
+      rawFile.path,
+      widget.projectOrientation,
+    );
     if (await File(stabPath).exists()) {
       await File(stabPath).delete();
     }

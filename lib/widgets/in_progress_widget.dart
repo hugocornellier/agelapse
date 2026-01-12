@@ -5,11 +5,7 @@ class InProgress extends StatelessWidget {
   final String message;
   final Function(int)? goToPage;
 
-  const InProgress({
-    super.key,
-    required this.message,
-    this.goToPage,
-  });
+  const InProgress({super.key, required this.message, this.goToPage});
 
   @override
   Widget build(BuildContext context) {

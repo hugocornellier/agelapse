@@ -38,4 +38,5 @@ class AppColors {
   static const Color settingsTextPrimary = Color(0xffFFFFFF);
   static const Color settingsTextSecondary = Color(0xff8E8E93);
   static const Color settingsTextTertiary = Color(0xff636366);
+  static const Color settingsInputBackground = Color(0xff1A1A1A);
 }

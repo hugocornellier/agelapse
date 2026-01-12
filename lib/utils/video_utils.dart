@@ -15,12 +15,259 @@ import 'package:path_provider/path_provider.dart';
 
 import '../utils/settings_utils.dart';
 import '../utils/utils.dart';
+import '../utils/date_stamp_utils.dart';
+import '../utils/capture_timezone.dart';
 
 import '../services/database_helper.dart';
 import 'dir_utils.dart';
 
+/// Helper class for grouping frames with the same date
+class _DateRange {
+  final String date;
+  final int startFrame;
+  final int endFrame;
+  _DateRange(this.date, this.startFrame, this.endFrame);
+}
+
 class VideoUtils {
   static int currentFrame = 1;
+
+  /// Generate a drawtext filter string for date stamps.
+  /// Returns the filter string, or null if date stamp is disabled.
+  /// This approach uses frame numbers instead of time, avoiding precision issues.
+  static Future<String?> _generateDateStampFilter({
+    required int projectId,
+    required String framesDir,
+    required String orientation,
+    required int videoWidth,
+    required int videoHeight,
+  }) async {
+    final projectIdStr = projectId.toString();
+
+    // Check if date stamp is enabled
+    final dateStampEnabled = await SettingsUtil.loadExportDateStampEnabled(
+      projectIdStr,
+    );
+    if (!dateStampEnabled) return null;
+
+    LogService.instance
+        .log("[VIDEO] Date stamp enabled, generating drawtext filter");
+
+    // Load date stamp settings
+    final dateFormat = await SettingsUtil.loadExportDateStampFormat(
+      projectIdStr,
+    );
+    final datePosition = await SettingsUtil.loadExportDateStampPosition(
+      projectIdStr,
+    );
+    final dateSize = await SettingsUtil.loadExportDateStampSize(projectIdStr);
+    final dateOpacity = await SettingsUtil.loadExportDateStampOpacity(
+      projectIdStr,
+    );
+
+    // Load watermark settings for collision avoidance
+    final watermarkEnabled = await SettingsUtil.loadWatermarkSetting(
+      projectIdStr,
+    );
+    final String? watermarkPos = watermarkEnabled
+        ? (await DB.instance.getSettingValueByTitle('watermark_position'))
+            .toLowerCase()
+        : null;
+
+    // Get list of PNG files
+    final dir = Directory(framesDir);
+    if (!await dir.exists()) return null;
+
+    var files = await dir
+        .list()
+        .where((e) => e is File && e.path.toLowerCase().endsWith('.png'))
+        .map((e) => e.path)
+        .toList();
+
+    // Filter to only include files that exist in the database (same as concat list)
+    final validTimestamps =
+        await _getValidTimestampsFromDB(projectId, orientation);
+    files = files.where((filePath) {
+      final filename = path.basenameWithoutExtension(filePath);
+      final timestamp = int.tryParse(filename);
+      return timestamp != null && validTimestamps.contains(timestamp);
+    }).toList();
+
+    files.sort((a, b) => path.basename(a).compareTo(path.basename(b)));
+
+    if (files.isEmpty) return null;
+
+    LogService.instance
+        .log("[VIDEO] Drawtext: Processing ${files.length} files");
+
+    // Load timezone offsets for accurate date stamps
+    final captureOffsetMap = await CaptureTimezone.loadOffsetsForFiles(
+      files,
+      projectId,
+    );
+
+    // Calculate font size (percentage of video height)
+    final fontSize = (videoHeight * dateSize / 100).round();
+
+    // Calculate position
+    int marginV = (videoHeight * 0.02).round();
+    int marginH = (videoWidth * 0.02).round();
+
+    // Check for watermark collision and adjust margin
+    final bool sameCornerAsWatermark =
+        watermarkPos != null && datePosition.toLowerCase() == watermarkPos;
+    if (sameCornerAsWatermark) {
+      marginV += (videoHeight * 0.05).round();
+    }
+
+    // Determine x and y position expressions for drawtext
+    String xPos, yPos;
+    switch (datePosition.toLowerCase()) {
+      case 'lower right':
+        xPos = 'w-tw-$marginH';
+        yPos = 'h-th-$marginV';
+        break;
+      case 'lower left':
+        xPos = '$marginH';
+        yPos = 'h-th-$marginV';
+        break;
+      case 'upper right':
+        xPos = 'w-tw-$marginH';
+        yPos = '$marginV';
+        break;
+      case 'upper left':
+        xPos = '$marginH';
+        yPos = '$marginV';
+        break;
+      default:
+        xPos = 'w-tw-$marginH';
+        yPos = 'h-th-$marginV';
+    }
+
+    // Convert opacity to alpha (0-1 for drawtext)
+    final alphaValue = dateOpacity.toStringAsFixed(2);
+
+    // Build list of dates for each frame
+    final List<String> frameDates = [];
+    for (int i = 0; i < files.length; i++) {
+      final filePath = files[i];
+      final filename = path.basenameWithoutExtension(filePath);
+      final timestampMs = int.tryParse(filename);
+
+      if (timestampMs == null) {
+        frameDates.add('');
+        continue;
+      }
+
+      final int? offsetMinutes = captureOffsetMap[filename];
+      final dateText = DateStampUtils.formatTimestamp(
+        timestampMs,
+        dateFormat,
+        captureOffsetMinutes: offsetMinutes,
+      );
+      frameDates.add(dateText);
+
+      if (i < 5 || i >= files.length - 3) {
+        LogService.instance.log("[VIDEO] Frame $i: $dateText");
+      }
+    }
+
+    // Group consecutive frames with the same date to minimize filter complexity
+    final List<_DateRange> dateRanges = [];
+    String? currentDate;
+    int rangeStart = 0;
+
+    for (int i = 0; i < frameDates.length; i++) {
+      if (frameDates[i] != currentDate) {
+        if (currentDate != null && currentDate.isNotEmpty) {
+          dateRanges.add(_DateRange(currentDate, rangeStart, i - 1));
+        }
+        currentDate = frameDates[i];
+        rangeStart = i;
+      }
+    }
+    // Add the last range
+    if (currentDate != null && currentDate.isNotEmpty) {
+      dateRanges
+          .add(_DateRange(currentDate, rangeStart, frameDates.length - 1));
+    }
+
+    LogService.instance
+        .log("[VIDEO] Date ranges: ${dateRanges.length} unique ranges");
+
+    // Build drawtext filter chain
+    // Each unique date gets a drawtext filter with enable condition based on frame number
+    final filterParts = <String>[];
+    for (final range in dateRanges) {
+      // Escape special characters for FFmpeg filter
+      final escapedDate = range.date
+          .replaceAll('\\', '\\\\')
+          .replaceAll("'", "'\\''")
+          .replaceAll(':', '\\:');
+
+      final enableExpr = range.startFrame == range.endFrame
+          ? "eq(n\\,${range.startFrame})"
+          : "between(n\\,${range.startFrame}\\,${range.endFrame})";
+
+      filterParts.add(
+          "drawtext=text='$escapedDate':fontfile=/System/Library/Fonts/Helvetica.ttc"
+          ":fontsize=$fontSize:fontcolor=white@$alphaValue"
+          ":borderw=2:bordercolor=black@$alphaValue"
+          ":x=$xPos:y=$yPos:enable='$enableExpr'");
+    }
+
+    final filterString = filterParts.join(',');
+    LogService.instance
+        .log("[VIDEO] Drawtext filter length: ${filterString.length} chars");
+
+    return filterString;
+  }
+
+  /// Get video dimensions from the first frame in a directory
+  static Future<(int, int)?> _getFrameDimensions(String framesDir) async {
+    final dir = Directory(framesDir);
+    if (!await dir.exists()) return null;
+
+    final files = await dir
+        .list()
+        .where((e) => e is File && e.path.toLowerCase().endsWith('.png'))
+        .map((e) => e.path)
+        .toList();
+
+    if (files.isEmpty) return null;
+
+    files.sort((a, b) => path.basename(a).compareTo(path.basename(b)));
+
+    // Read first frame to get dimensions
+    try {
+      final firstFrame = File(files.first);
+      final bytes = await firstFrame.readAsBytes();
+
+      // PNG dimensions are at bytes 16-23 (width at 16-19, height at 20-23)
+      // PNG signature is 8 bytes, then IHDR chunk
+      if (bytes.length < 24) return null;
+
+      // Check PNG signature
+      if (bytes[0] != 0x89 ||
+          bytes[1] != 0x50 ||
+          bytes[2] != 0x4E ||
+          bytes[3] != 0x47) {
+        return null;
+      }
+
+      // Width and height are big-endian 4-byte integers at offset 16 and 20
+      final width =
+          (bytes[16] << 24) | (bytes[17] << 16) | (bytes[18] << 8) | bytes[19];
+      final height =
+          (bytes[20] << 24) | (bytes[21] << 16) | (bytes[22] << 8) | bytes[23];
+
+      LogService.instance.log("[VIDEO] Frame dimensions: ${width}x$height");
+      return (width, height);
+    } catch (e) {
+      LogService.instance.log("[VIDEO] Failed to read frame dimensions: $e");
+      return null;
+    }
+  }
 
   static int pickBitrateKbps(String resolution) {
     // Handle resolution setting strings (e.g., "8K", "4K", "1080p")
@@ -76,21 +323,30 @@ class VideoUtils {
     return false;
   }
 
-  static Future<bool> createTimelapse(int projectId, framerate, totalPhotoCount,
-      Function(int currentFrame)? setCurrentFrame,
-      {String? orientation}) async {
+  static Future<bool> createTimelapse(
+    int projectId,
+    framerate,
+    totalPhotoCount,
+    Function(int currentFrame)? setCurrentFrame, {
+    String? orientation,
+  }) async {
     try {
       LogService.instance.log(
-          "[VIDEO] createTimelapse called - projectId: $projectId, framerate: $framerate, totalPhotoCount: $totalPhotoCount");
+        "[VIDEO] createTimelapse called - projectId: $projectId, framerate: $framerate, totalPhotoCount: $totalPhotoCount",
+      );
       LogService.instance.log(
-          "[VIDEO] Platform: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}");
+        "[VIDEO] Platform: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}",
+      );
 
       String projectOrientation = orientation ??
           await SettingsUtil.loadProjectOrientation(projectId.toString());
-      final String stabilizedDirPath =
-          await DirUtils.getStabilizedDirPath(projectId);
-      final String videoOutputPath =
-          await DirUtils.getVideoOutputPath(projectId, projectOrientation);
+      final String stabilizedDirPath = await DirUtils.getStabilizedDirPath(
+        projectId,
+      );
+      final String videoOutputPath = await DirUtils.getVideoOutputPath(
+        projectId,
+        projectOrientation,
+      );
       LogService.instance.log("[VIDEO] orientation: $projectOrientation");
       LogService.instance.log("[VIDEO] stabilizedDirPath: $stabilizedDirPath");
       LogService.instance.log("[VIDEO] videoOutputPath: $videoOutputPath");
@@ -108,26 +364,30 @@ class VideoUtils {
                   'DeviceID="${path.rootPrefix(videoOutputPath).replaceAll('\\', '')}"',
                   'get',
                   'FreeSpace',
-                  '/value'
+                  '/value',
                 ],
                 runInShell: true);
             LogService.instance.log(
-                "[VIDEO] Disk space check: ${result.stdout.toString().trim()}");
+              "[VIDEO] Disk space check: ${result.stdout.toString().trim()}",
+            );
           } else if (Platform.isLinux || Platform.isMacOS) {
             // df works in both .deb and Flatpak (available in freedesktop runtime)
             try {
               final result = await Process.run('df', ['-h', videoOutputPath]);
               if (result.exitCode == 0) {
-                LogService.instance
-                    .log("[VIDEO] Disk space check:\n${result.stdout}");
+                LogService.instance.log(
+                  "[VIDEO] Disk space check:\n${result.stdout}",
+                );
               } else {
                 LogService.instance.log(
-                    "[VIDEO] Disk space check unavailable (exit ${result.exitCode})");
+                  "[VIDEO] Disk space check unavailable (exit ${result.exitCode})",
+                );
               }
             } catch (dfError) {
               // Graceful fallback - disk space check is informational only
-              LogService.instance
-                  .log("[VIDEO] Disk space check unavailable: $dfError");
+              LogService.instance.log(
+                "[VIDEO] Disk space check unavailable: $dfError",
+              );
             }
           }
         }
@@ -137,31 +397,58 @@ class VideoUtils {
 
       await DirUtils.createDirectoryIfNotExists(videoOutputPath);
 
-      final Directory dir =
-          Directory(path.join(stabilizedDirPath, projectOrientation));
+      final Directory dir = Directory(
+        path.join(stabilizedDirPath, projectOrientation),
+      );
       LogService.instance.log("[VIDEO] Source directory: ${dir.path}");
 
       // Check if directory exists
       if (!await dir.exists()) {
         LogService.instance.log(
-            "[VIDEO] ERROR: Stabilized directory does not exist: ${dir.path}");
+          "[VIDEO] ERROR: Stabilized directory does not exist: ${dir.path}",
+        );
         return false;
       }
 
-      final bool framerateIsDefault =
-          await SettingsUtil.loadFramerateIsDefault(projectId.toString());
+      final bool framerateIsDefault = await SettingsUtil.loadFramerateIsDefault(
+        projectId.toString(),
+      );
       if (framerateIsDefault) {
         framerate = await getOptimalFramerateFromStabPhotoCount(projectId);
         DB.instance.setSettingByTitle(
-            'framerate', framerate.toString(), projectId.toString());
+          'framerate',
+          framerate.toString(),
+          projectId.toString(),
+        );
         LogService.instance.log("[VIDEO] Using optimal framerate: $framerate");
       }
 
       if (Platform.isWindows || Platform.isLinux) {
         LogService.instance.log("[VIDEO] Using Windows/Linux encoding path");
         try {
-          final String framesDir =
-              path.join(stabilizedDirPath, projectOrientation);
+          final String framesDir = path.join(
+            stabilizedDirPath,
+            projectOrientation,
+          );
+
+          // Get frame dimensions for drawtext filter
+          final dimensions = await _getFrameDimensions(framesDir);
+          if (dimensions == null) {
+            LogService.instance
+                .log("[VIDEO] ERROR: Could not get frame dimensions");
+            return false;
+          }
+          final (videoWidth, videoHeight) = dimensions;
+
+          // Generate drawtext filter for date stamps (if enabled)
+          final dateStampFilter = await _generateDateStampFilter(
+            projectId: projectId,
+            framesDir: framesDir,
+            orientation: projectOrientation,
+            videoWidth: videoWidth,
+            videoHeight: videoHeight,
+          );
+
           final bool ok = await _encodeWindows(
             framesDir: framesDir,
             outputPath: videoOutputPath,
@@ -170,17 +457,23 @@ class VideoUtils {
             orientation: projectOrientation,
             onLog: (line) => LogService.instance.log("[FFMPEG] $line"),
             onProgress: setCurrentFrame,
+            dateStampFilter: dateStampFilter,
           );
           LogService.instance.log("[VIDEO] _encodeWindows returned: $ok");
           if (ok) {
-            final String resolution =
-                await SettingsUtil.loadVideoResolution(projectId.toString());
+            final String resolution = await SettingsUtil.loadVideoResolution(
+              projectId.toString(),
+            );
             await DB.instance.addVideo(
               projectId,
               resolution,
-              (await SettingsUtil.loadWatermarkSetting(projectId.toString()))
+              (await SettingsUtil.loadWatermarkSetting(
+                projectId.toString(),
+              ))
                   .toString(),
-              (await DB.instance.getSettingValueByTitle('watermark_position'))
+              (await DB.instance.getSettingValueByTitle(
+                'watermark_position',
+              ))
                   .toLowerCase(),
               totalPhotoCount,
               framerate,
@@ -190,22 +483,52 @@ class VideoUtils {
 
           return ok;
         } catch (e, stackTrace) {
-          LogService.instance
-              .log("[VIDEO] ERROR in Windows/Linux encoding: $e");
+          LogService.instance.log(
+            "[VIDEO] ERROR in Windows/Linux encoding: $e",
+          );
           LogService.instance.log("[VIDEO] Stack trace: $stackTrace");
           return false;
         }
       }
 
-      final bool watermarkEnabled =
-          await SettingsUtil.loadWatermarkSetting(projectId.toString());
-      final String watermarkPos =
-          (await DB.instance.getSettingValueByTitle('watermark_position'))
-              .toLowerCase();
-      final String watermarkFilePath =
-          await DirUtils.getWatermarkFilePath(projectId);
+      final bool watermarkEnabled = await SettingsUtil.loadWatermarkSetting(
+        projectId.toString(),
+      );
+      final String watermarkPos = (await DB.instance.getSettingValueByTitle(
+        'watermark_position',
+      ))
+          .toLowerCase();
+      final String watermarkFilePath = await DirUtils.getWatermarkFilePath(
+        projectId,
+      );
 
-      String watermarkInputsAndFilter = "";
+      final String framesDir = path.join(
+        stabilizedDirPath,
+        projectOrientation,
+      );
+
+      // Get frame dimensions for ASS subtitle generation
+      final dimensions = await _getFrameDimensions(framesDir);
+      if (dimensions == null) {
+        LogService.instance
+            .log("[VIDEO] ERROR: Could not get frame dimensions");
+        return false;
+      }
+      final (videoWidth, videoHeight) = dimensions;
+
+      // Generate drawtext filter for date stamps (if enabled)
+      // This uses frame numbers instead of time, avoiding precision issues
+      String? dateStampFilter = await _generateDateStampFilter(
+        projectId: projectId,
+        framesDir: framesDir,
+        orientation: projectOrientation,
+        videoWidth: videoWidth,
+        videoHeight: videoHeight,
+      );
+
+      // Build watermark filter components
+      String watermarkInput = "";
+      String? watermarkFilterPart;
       if (watermarkEnabled &&
           Utils.isImage(watermarkFilePath) &&
           await File(watermarkFilePath).exists()) {
@@ -213,19 +536,40 @@ class VideoUtils {
             await DB.instance.getSettingValueByTitle('watermark_opacity');
         final double watermarkOpacity =
             double.tryParse(watermarkOpacitySettingVal) ?? 0.8;
-        final String watermarkFilter =
-            getWatermarkFilter(watermarkOpacity, watermarkPos, 10);
-        watermarkInputsAndFilter =
-            "-i \"$watermarkFilePath\" -filter_complex \"$watermarkFilter\"";
+        watermarkInput = "-i \"$watermarkFilePath\"";
+        watermarkFilterPart = getWatermarkFilter(
+          watermarkOpacity,
+          watermarkPos,
+          10,
+        );
       }
 
-      final String framesDir = path.join(stabilizedDirPath, projectOrientation);
-      final String listPath = await _buildConcatListFromDir(
-          framesDir, framerate,
-          projectId: projectId, orientation: projectOrientation);
+      // Build combined filter string
+      String filterArgs = "";
+      if (watermarkFilterPart != null && dateStampFilter != null) {
+        // Both watermark and date stamp
+        // Apply drawtext first, then watermark overlay
+        final wmFilter = watermarkFilterPart.replaceFirst('[0:v]', '[dated]');
+        filterArgs =
+            "-filter_complex \"[0:v]$dateStampFilter[dated];$wmFilter\"";
+      } else if (watermarkFilterPart != null) {
+        // Only watermark
+        filterArgs = "-filter_complex \"$watermarkFilterPart\"";
+      } else if (dateStampFilter != null) {
+        // Only date stamp
+        filterArgs = "-vf \"$dateStampFilter\"";
+      }
 
-      final resolution =
-          await SettingsUtil.loadVideoResolution(projectId.toString());
+      final String listPath = await _buildConcatListFromDir(
+        framesDir,
+        framerate,
+        projectId: projectId,
+        orientation: projectOrientation,
+      );
+
+      final resolution = await SettingsUtil.loadVideoResolution(
+        projectId.toString(),
+      );
       final kbps = pickBitrateKbps(resolution);
       final vtRate =
           "-b:v ${kbps}k -maxrate ${(kbps * 1.5).round()}k -bufsize ${(kbps * 3).round()}k";
@@ -249,20 +593,23 @@ class VideoUtils {
       String ffmpegCommand = "-y "
           "-f concat -safe 0 "
           "-i \"$listPath\" "
+          "$watermarkInput "
           "-vsync cfr -r 30 "
-          "$watermarkInputsAndFilter "
+          "$filterArgs "
           "-c:v $vCodec $vtRate "
           "-g 240 -movflags +faststart $codecTag "
           "-pix_fmt yuv420p "
           "\"$videoOutputPath\"";
 
+      bool success = false;
       try {
         if (Platform.isMacOS) {
           LogService.instance.log("[VIDEO] Using macOS encoding path");
 
           final exeDir = path.dirname(Platform.resolvedExecutable);
-          final resourcesDir =
-              path.normalize(path.join(exeDir, '..', 'Resources'));
+          final resourcesDir = path.normalize(
+            path.join(exeDir, '..', 'Resources'),
+          );
           final ffmpegExe = path.join(resourcesDir, 'ffmpeg');
           final cmd = '"$ffmpegExe" $ffmpegCommand';
 
@@ -271,8 +618,13 @@ class VideoUtils {
 
           // Use 'sh' without absolute path - works in both .deb (/bin/sh)
           // and Flatpak (sandbox provides sh in PATH)
-          final proc =
-              await Process.start('sh', ['-c', cmd], runInShell: false);
+          final proc = await Process.start(
+              'sh',
+              [
+                '-c',
+                cmd,
+              ],
+              runInShell: false);
           FFmpegProcessManager.instance.registerProcess(proc);
 
           proc.stdout
@@ -299,67 +651,78 @@ class VideoUtils {
             LogService.instance.log("[VIDEO] Failed to delete concat list: $e");
           }
           if (code == 0) {
-            final String resolution =
-                await SettingsUtil.loadVideoResolution(projectId.toString());
+            final String resolution = await SettingsUtil.loadVideoResolution(
+              projectId.toString(),
+            );
             await DB.instance.addVideo(
-                projectId,
-                resolution,
-                watermarkEnabled.toString(),
-                watermarkPos,
-                totalPhotoCount,
-                framerate);
+              projectId,
+              resolution,
+              watermarkEnabled.toString(),
+              watermarkPos,
+              totalPhotoCount,
+              framerate,
+            );
             LogService.instance.log(
-                "[VIDEO] Video compilation successful, record added to database");
-            return true;
+              "[VIDEO] Video compilation successful, record added to database",
+            );
+            success = true;
+          } else {
+            LogService.instance.log(
+              "[VIDEO] ffmpeg failed with exit code: $code",
+            );
           }
-          LogService.instance
-              .log("[VIDEO] ffmpeg failed with exit code: $code");
-          return false;
         } else {
-          LogService.instance
-              .log("[VIDEO] Using mobile (FFmpegKit) encoding path");
+          LogService.instance.log(
+            "[VIDEO] Using mobile (FFmpegKit) encoding path",
+          );
           kitcfg.FFmpegKitConfig.enableLogCallback((kitlog.Log log) {
             final String output = log.getMessage();
             parseFFmpegOutput(output, framerate, setCurrentFrame);
             LogService.instance.log("[FFMPEG] $output");
           });
 
-          LogService.instance
-              .log("[VIDEO] Executing ffmpeg command: $ffmpegCommand");
-          final kitsession.FFmpegSession session =
-              await kit.FFmpegKit.execute(ffmpegCommand);
+          LogService.instance.log(
+            "[VIDEO] Executing ffmpeg command: $ffmpegCommand",
+          );
+          final kitsession.FFmpegSession session = await kit.FFmpegKit.execute(
+            ffmpegCommand,
+          );
           FFmpegProcessManager.instance.registerSession(session);
 
           final returnCode = await session.getReturnCode();
           FFmpegProcessManager.instance.unregisterSession();
-          LogService.instance
-              .log("[VIDEO] FFmpegKit return code: ${returnCode?.getValue()}");
+          LogService.instance.log(
+            "[VIDEO] FFmpegKit return code: ${returnCode?.getValue()}",
+          );
 
           if (kitrc.ReturnCode.isSuccess(returnCode)) {
-            final String resolution =
-                await SettingsUtil.loadVideoResolution(projectId.toString());
+            final String resolution = await SettingsUtil.loadVideoResolution(
+              projectId.toString(),
+            );
             await DB.instance.addVideo(
-                projectId,
-                resolution,
-                watermarkEnabled.toString(),
-                watermarkPos,
-                totalPhotoCount,
-                framerate);
+              projectId,
+              resolution,
+              watermarkEnabled.toString(),
+              watermarkPos,
+              totalPhotoCount,
+              framerate,
+            );
             LogService.instance.log(
-                "[VIDEO] Video compilation successful, record added to database");
-            return true;
+              "[VIDEO] Video compilation successful, record added to database",
+            );
+            success = true;
           } else {
             final logs = await session.getAllLogsAsString();
-            LogService.instance
-                .log("[VIDEO] FFmpegKit failed. Full logs: $logs");
-            return false;
+            LogService.instance.log(
+              "[VIDEO] FFmpegKit failed. Full logs: $logs",
+            );
           }
         }
       } catch (e, stackTrace) {
         LogService.instance.log("[VIDEO] ERROR in video compilation: $e");
         LogService.instance.log("[VIDEO] Stack trace: $stackTrace");
-        return false;
       }
+      return success;
     } catch (e, stackTrace) {
       LogService.instance.log("[VIDEO] ERROR in createTimelapse: $e");
       LogService.instance.log("[VIDEO] Stack trace: $stackTrace");
@@ -368,38 +731,50 @@ class VideoUtils {
   }
 
   static Future<bool> createTimelapseFromProjectId(
-      int projectId, Function(int currentFrame)? setCurrentFrame) async {
+    int projectId,
+    Function(int currentFrame)? setCurrentFrame,
+  ) async {
     LogService.instance.log(
-        "[VIDEO] createTimelapseFromProjectId called - projectId: $projectId");
+      "[VIDEO] createTimelapseFromProjectId called - projectId: $projectId",
+    );
     try {
-      String projectOrientation =
-          await SettingsUtil.loadProjectOrientation(projectId.toString());
+      String projectOrientation = await SettingsUtil.loadProjectOrientation(
+        projectId.toString(),
+      );
       final List<Map<String, dynamic>> stabilizedPhotos = await DB.instance
           .getStabilizedPhotosByProjectID(projectId, projectOrientation);
       LogService.instance.log(
-          "[VIDEO] Found ${stabilizedPhotos.length} stabilized photos for orientation: $projectOrientation");
+        "[VIDEO] Found ${stabilizedPhotos.length} stabilized photos for orientation: $projectOrientation",
+      );
       if (stabilizedPhotos.isEmpty) {
         LogService.instance.log("[VIDEO] No stabilized photos found, aborting");
         return false;
       }
 
-      final int framerate =
-          await SettingsUtil.loadFramerate(projectId.toString());
+      final int framerate = await SettingsUtil.loadFramerate(
+        projectId.toString(),
+      );
       LogService.instance.log("[VIDEO] Loaded framerate: $framerate");
 
       return await createTimelapse(
-          projectId, framerate, stabilizedPhotos.length, setCurrentFrame,
-          orientation: projectOrientation);
+        projectId,
+        framerate,
+        stabilizedPhotos.length,
+        setCurrentFrame,
+        orientation: projectOrientation,
+      );
     } catch (e, stackTrace) {
-      LogService.instance
-          .log("[VIDEO] ERROR in createTimelapseFromProjectId: $e");
+      LogService.instance.log(
+        "[VIDEO] ERROR in createTimelapseFromProjectId: $e",
+      );
       LogService.instance.log("[VIDEO] Stack trace: $stackTrace");
       return false;
     }
   }
 
   static Future<int> getOptimalFramerateFromStabPhotoCount(
-      int projectId) async {
+    int projectId,
+  ) async {
     final int stabPhotoCount = await getStabilizedPhotoCount(projectId);
     const List<int> thresholds = [2, 4, 6, 8, 12, 16];
     const List<int> framerates = [2, 3, 4, 6, 8, 10, 14];
@@ -412,8 +787,11 @@ class VideoUtils {
     return framerates.last;
   }
 
-  static void parseFFmpegOutput(String output, int framerate,
-      Function(int currentFrame)? setCurrentFrame) {
+  static void parseFFmpegOutput(
+    String output,
+    int framerate,
+    Function(int currentFrame)? setCurrentFrame,
+  ) {
     final RegExp frameRegex = RegExp(r'frame=\s*(\d+)');
     final match = frameRegex.allMatches(output).isNotEmpty
         ? frameRegex.allMatches(output).last
@@ -426,21 +804,28 @@ class VideoUtils {
   }
 
   static Future<int> getStabilizedPhotoCount(int projectId) async {
-    String projectOrientation =
-        await SettingsUtil.loadProjectOrientation(projectId.toString());
-    return await DB.instance
-        .getStabilizedPhotoCountByProjectID(projectId, projectOrientation);
+    String projectOrientation = await SettingsUtil.loadProjectOrientation(
+      projectId.toString(),
+    );
+    return await DB.instance.getStabilizedPhotoCountByProjectID(
+      projectId,
+      projectOrientation,
+    );
   }
 
   static Future<void> createGif(String videoOutputPath, int framerate) async {
     if (Platform.isWindows) return;
-    final String gifPath =
-        videoOutputPath.replaceAll(path.extension(videoOutputPath), ".gif");
+    final String gifPath = videoOutputPath.replaceAll(
+      path.extension(videoOutputPath),
+      ".gif",
+    );
     await kit.FFmpegKit.execute('-i $videoOutputPath $gifPath');
   }
 
   static Future<bool> videoOutputSettingsChanged(
-      int projectId, Map<String, dynamic>? newestVideo) async {
+    int projectId,
+    Map<String, dynamic>? newestVideo,
+  ) async {
     if (newestVideo == null) return false;
 
     final bool newPhotos = newestVideo['photoCount'] !=
@@ -455,16 +840,18 @@ class VideoUtils {
       return true;
     }
 
-    final String watermarkEnabled =
-        (await SettingsUtil.loadWatermarkSetting(projectId.toString()))
-            .toString();
+    final String watermarkEnabled = (await SettingsUtil.loadWatermarkSetting(
+      projectId.toString(),
+    ))
+        .toString();
     if (newestVideo['watermarkEnabled'] != watermarkEnabled) {
       return true;
     }
 
-    final String watermarkPos =
-        (await DB.instance.getSettingValueByTitle('watermark_position'))
-            .toLowerCase();
+    final String watermarkPos = (await DB.instance.getSettingValueByTitle(
+      'watermark_position',
+    ))
+        .toLowerCase();
     if (newestVideo['watermarkPos'] != watermarkPos) {
       return true;
     }
@@ -473,8 +860,9 @@ class VideoUtils {
   }
 
   static Future<int> _getTotalPhotoCountByProjectId(int projectId) async {
-    String projectOrientation =
-        await SettingsUtil.loadProjectOrientation(projectId.toString());
+    String projectOrientation = await SettingsUtil.loadProjectOrientation(
+      projectId.toString(),
+    );
     List<Map<String, dynamic>> allStabilizedPhotos = await DB.instance
         .getStabilizedPhotosByProjectID(projectId, projectOrientation);
     return allStabilizedPhotos.length;
@@ -484,7 +872,10 @@ class VideoUtils {
       await SettingsUtil.loadFramerate(projectId.toString());
 
   static String getWatermarkFilter(
-      double opacity, String watermarkPos, int offset) {
+    double opacity,
+    String watermarkPos,
+    int offset,
+  ) {
     String watermarkFilter =
         "[1:v]format=rgba,colorchannelmixer=aa=$opacity[watermark];[0:v][watermark]overlay=";
 
@@ -529,17 +920,21 @@ class VideoUtils {
     final markerExists = await File(markerPath).exists();
     final needsWrite = !exeExists || !markerExists;
     LogService.instance.log(
-        "[VIDEO] ffmpeg.exe exists: $exeExists, marker exists: $markerExists, needs extraction: $needsWrite");
+      "[VIDEO] ffmpeg.exe exists: $exeExists, marker exists: $markerExists, needs extraction: $needsWrite",
+    );
     if (needsWrite) {
-      LogService.instance
-          .log("[VIDEO] Extracting bundled ffmpeg from assets...");
+      LogService.instance.log(
+        "[VIDEO] Extracting bundled ffmpeg from assets...",
+      );
       try {
         final bytes = await rootBundle.load(_winFfmpegAssetPath);
-        await File(exePath)
-            .writeAsBytes(bytes.buffer.asUint8List(), flush: true);
+        await File(
+          exePath,
+        ).writeAsBytes(bytes.buffer.asUint8List(), flush: true);
         await File(markerPath).writeAsString('1', flush: true);
-        LogService.instance
-            .log("[VIDEO] Bundled ffmpeg extracted successfully to: $exePath");
+        LogService.instance.log(
+          "[VIDEO] Bundled ffmpeg extracted successfully to: $exePath",
+        );
       } catch (e) {
         LogService.instance.log("[VIDEO] ERROR extracting bundled ffmpeg: $e");
         rethrow;
@@ -550,8 +945,9 @@ class VideoUtils {
 
   static Future<String> _findFfmpegOnPath() async {
     final cmd = Platform.isWindows ? 'where' : 'which';
-    LogService.instance
-        .log("[VIDEO] Searching for ffmpeg on PATH using '$cmd'...");
+    LogService.instance.log(
+      "[VIDEO] Searching for ffmpeg on PATH using '$cmd'...",
+    );
     try {
       final result = await Process.run(cmd, ['ffmpeg'], runInShell: true);
       if (result.exitCode == 0) {
@@ -565,7 +961,8 @@ class VideoUtils {
         }
       }
       LogService.instance.log(
-          "[VIDEO] ffmpeg not found on PATH (exit code: ${result.exitCode})");
+        "[VIDEO] ffmpeg not found on PATH (exit code: ${result.exitCode})",
+      );
     } catch (e) {
       LogService.instance.log("[VIDEO] Error searching PATH for ffmpeg: $e");
     }
@@ -590,7 +987,8 @@ class VideoUtils {
         return onPathWin;
       }
       LogService.instance.log(
-          "[VIDEO] WARNING: No ffmpeg found, falling back to 'ffmpeg' command");
+        "[VIDEO] WARNING: No ffmpeg found, falling back to 'ffmpeg' command",
+      );
       return 'ffmpeg';
     } else {
       // Linux/macOS path resolution
@@ -599,16 +997,18 @@ class VideoUtils {
         // Check this first before falling back to PATH lookup
         const flatpakFfmpegExt = '/app/lib/ffmpeg/bin/ffmpeg';
         if (await File(flatpakFfmpegExt).exists()) {
-          LogService.instance
-              .log("[VIDEO] Using Flatpak ffmpeg extension: $flatpakFfmpegExt");
+          LogService.instance.log(
+            "[VIDEO] Using Flatpak ffmpeg extension: $flatpakFfmpegExt",
+          );
           return flatpakFfmpegExt;
         }
 
         // Also check /app/bin/ffmpeg (if bundled directly in Flatpak)
         const flatpakBundled = '/app/bin/ffmpeg';
         if (await File(flatpakBundled).exists()) {
-          LogService.instance
-              .log("[VIDEO] Using Flatpak bundled ffmpeg: $flatpakBundled");
+          LogService.instance.log(
+            "[VIDEO] Using Flatpak bundled ffmpeg: $flatpakBundled",
+          );
           return flatpakBundled;
         }
       }
@@ -618,8 +1018,9 @@ class VideoUtils {
       if (onPath.isNotEmpty) return onPath;
 
       // Final fallback - rely on ffmpeg being in PATH
-      LogService.instance
-          .log("[VIDEO] Using 'ffmpeg' command (assuming it's in PATH)");
+      LogService.instance.log(
+        "[VIDEO] Using 'ffmpeg' command (assuming it's in PATH)",
+      );
       return 'ffmpeg';
     }
   }
@@ -634,9 +1035,13 @@ class VideoUtils {
   /// Returns a set of valid timestamps from the database for the given project and orientation.
   /// Used to validate filesystem files against the database to prevent orphaned files from appearing in videos.
   static Future<Set<int>> _getValidTimestampsFromDB(
-      int projectId, String orientation) async {
-    final photos = await DB.instance
-        .getStabilizedPhotosByProjectID(projectId, orientation);
+    int projectId,
+    String orientation,
+  ) async {
+    final photos = await DB.instance.getStabilizedPhotosByProjectID(
+      projectId,
+      orientation,
+    );
     final Set<int> timestamps = {};
     for (final photo in photos) {
       final ts = int.tryParse(photo['timestamp']?.toString() ?? '');
@@ -647,14 +1052,20 @@ class VideoUtils {
     return timestamps;
   }
 
-  static Future<String> _buildConcatListFromDir(String framesDir, int fps,
-      {int? projectId, String? orientation}) async {
-    LogService.instance
-        .log("[VIDEO] Building concat list from directory: $framesDir");
+  static Future<String> _buildConcatListFromDir(
+    String framesDir,
+    int fps, {
+    int? projectId,
+    String? orientation,
+  }) async {
+    LogService.instance.log(
+      "[VIDEO] Building concat list from directory: $framesDir",
+    );
     final dir = Directory(framesDir);
     if (!await dir.exists()) {
-      LogService.instance
-          .log("[VIDEO] ERROR: Image directory does not exist: $framesDir");
+      LogService.instance.log(
+        "[VIDEO] ERROR: Image directory does not exist: $framesDir",
+      );
       throw FileSystemException('image directory not found', framesDir);
     }
     var files = await dir
@@ -665,8 +1076,10 @@ class VideoUtils {
 
     // Validate files against database and clean up orphans
     if (projectId != null && orientation != null) {
-      final validTimestamps =
-          await _getValidTimestampsFromDB(projectId, orientation);
+      final validTimestamps = await _getValidTimestampsFromDB(
+        projectId,
+        orientation,
+      );
       final int originalFileCount = files.length;
       final List<String> validFiles = [];
       for (final filePath in files) {
@@ -676,40 +1089,55 @@ class VideoUtils {
           validFiles.add(filePath);
         } else {
           // Orphaned file: exists in filesystem but not in DB - delete it
-          LogService.instance
-              .log("[VIDEO] Cleaning up orphaned file (not in DB): $filePath");
+          LogService.instance.log(
+            "[VIDEO] Cleaning up orphaned file (not in DB): $filePath",
+          );
           try {
             await File(filePath).delete();
           } catch (e) {
-            LogService.instance
-                .log("[VIDEO] Failed to delete orphaned file: $e");
+            LogService.instance.log(
+              "[VIDEO] Failed to delete orphaned file: $e",
+            );
           }
         }
       }
       final int orphansRemoved = originalFileCount - validFiles.length;
       files = validFiles;
       LogService.instance.log(
-          "[VIDEO] After DB validation: ${files.length} valid files (removed $orphansRemoved orphans)");
+        "[VIDEO] After DB validation: ${files.length} valid files (removed $orphansRemoved orphans)",
+      );
     }
 
     files.sort((a, b) => path.basename(a).compareTo(path.basename(b)));
-    LogService.instance
-        .log("[VIDEO] Found ${files.length} PNG files for concat list");
+    LogService.instance.log(
+      "[VIDEO] Found ${files.length} PNG files for concat list",
+    );
 
     // Log sample files for debugging
     if (files.length >= 2) {
       LogService.instance.log(
-          "[VIDEO] Frame range: ${path.basename(files.first)} → ${path.basename(files.last)}");
+        "[VIDEO] Frame range: ${path.basename(files.first)} → ${path.basename(files.last)}",
+      );
+    }
+
+    // Log first few files to compare with ASS file
+    for (int i = 0; i < files.length && i < 5; i++) {
+      LogService.instance.log(
+        "[VIDEO] Concat frame $i: ${path.basename(files[i])}",
+      );
     }
 
     if (files.isEmpty) {
-      LogService.instance
-          .log("[VIDEO] ERROR: No .png files found in $framesDir");
+      LogService.instance.log(
+        "[VIDEO] ERROR: No .png files found in $framesDir",
+      );
       throw StateError('no .png files found in $framesDir');
     }
 
-    final tmpPath = path.join(Directory.systemTemp.path,
-        'ffconcat_${DateTime.now().millisecondsSinceEpoch}.txt');
+    final tmpPath = path.join(
+      Directory.systemTemp.path,
+      'ffconcat_${DateTime.now().millisecondsSinceEpoch}.txt',
+    );
     final f = File(tmpPath);
     final perFrame = 1.0 / fps;
     LogService.instance.log("[VIDEO] Frame duration: ${perFrame}s (fps: $fps)");
@@ -753,11 +1181,15 @@ class VideoUtils {
     required String orientation,
     void Function(String line)? onLog,
     void Function(int frameIndex)? onProgress,
+    String? dateStampFilter,
   }) async {
     LogService.instance.log("[VIDEO] _encodeWindows started");
     LogService.instance.log("[VIDEO] framesDir: $framesDir");
     LogService.instance.log("[VIDEO] outputPath: $outputPath");
     LogService.instance.log("[VIDEO] fps: $fps");
+    if (dateStampFilter != null) {
+      LogService.instance.log("[VIDEO] Date stamp filter enabled");
+    }
 
     final exe = await _resolveFfmpegPath();
     LogService.instance.log("[VIDEO] Resolved ffmpeg executable: $exe");
@@ -766,20 +1198,30 @@ class VideoUtils {
     final exeFile = File(exe);
     if (!exe.contains(path.separator) || !await exeFile.exists()) {
       LogService.instance.log(
-          "[VIDEO] WARNING: ffmpeg path '$exe' may not exist as a file (might be a PATH command)");
+        "[VIDEO] WARNING: ffmpeg path '$exe' may not exist as a file (might be a PATH command)",
+      );
     }
 
     await _ensureOutDir(outputPath);
-    final listPath = await _buildConcatListFromDir(framesDir, fps,
-        projectId: projectId, orientation: orientation);
+    final listPath = await _buildConcatListFromDir(
+      framesDir,
+      fps,
+      projectId: projectId,
+      orientation: orientation,
+    );
 
     // Get resolution setting to determine H.264 profile/level
-    final resolution =
-        await SettingsUtil.loadVideoResolution(projectId.toString());
+    final resolution = await SettingsUtil.loadVideoResolution(
+      projectId.toString(),
+    );
     final (profile, level) = _getH264ProfileAndLevel(resolution);
     final kbps = pickBitrateKbps(resolution);
     LogService.instance.log(
-        "[VIDEO] Resolution: $resolution, Profile: $profile, Level: $level, Bitrate: ${kbps}k");
+      "[VIDEO] Resolution: $resolution, Profile: $profile, Level: $level, Bitrate: ${kbps}k",
+    );
+
+    // Use the drawtext filter for date stamps if provided
+    final String? videoFilter = dateStampFilter;
 
     final args = <String>[
       '-y',
@@ -793,6 +1235,7 @@ class VideoUtils {
       'cfr',
       '-r',
       '$fps',
+      if (videoFilter != null) ...['-vf', videoFilter],
       '-pix_fmt',
       'yuv420p',
       '-c:v',
@@ -818,8 +1261,9 @@ class VideoUtils {
     try {
       final proc = await Process.start(exe, args, runInShell: false);
       FFmpegProcessManager.instance.registerProcess(proc);
-      LogService.instance
-          .log("[VIDEO] ffmpeg process started with PID: ${proc.pid}");
+      LogService.instance.log(
+        "[VIDEO] ffmpeg process started with PID: ${proc.pid}",
+      );
 
       proc.stdout
           .transform(utf8.decoder)
@@ -855,10 +1299,12 @@ class VideoUtils {
       if (await outputFile.exists()) {
         final size = await outputFile.length();
         LogService.instance.log(
-            "[VIDEO] Output file created: $outputPath (${(size / 1024 / 1024).toStringAsFixed(2)} MB)");
+          "[VIDEO] Output file created: $outputPath (${(size / 1024 / 1024).toStringAsFixed(2)} MB)",
+        );
       } else {
-        LogService.instance
-            .log("[VIDEO] WARNING: Output file was not created: $outputPath");
+        LogService.instance.log(
+          "[VIDEO] WARNING: Output file was not created: $outputPath",
+        );
       }
 
       return code == 0;

@@ -99,8 +99,9 @@ class MainNavigationState extends State<MainNavigation> {
     _showFlashingCircle = widget.showFlashingCircle;
 
     // Subscribe to stabilization progress stream for reactive UI updates
-    _stabSubscription =
-        StabilizationService.instance.progressStream.listen((progress) {
+    _stabSubscription = StabilizationService.instance.progressStream.listen((
+      progress,
+    ) {
       if (mounted) {
         final prevState = _stabProgress.state;
         setState(() => _stabProgress = progress);
@@ -108,10 +109,12 @@ class MainNavigationState extends State<MainNavigation> {
         // Emit typed events for UI components (gallery, app bar, project page)
         switch (progress.state) {
           case StabilizationState.stabilizing:
-            _stabUpdateController.add(StabUpdateEvent.photoStabilized(
-              progress.currentPhoto,
-              timestamp: progress.lastStabilizedTimestamp,
-            ));
+            _stabUpdateController.add(
+              StabUpdateEvent.photoStabilized(
+                progress.currentPhoto,
+                timestamp: progress.lastStabilizedTimestamp,
+              ),
+            );
             break;
           case StabilizationState.completed:
             _stabUpdateController.add(StabUpdateEvent.stabilizationComplete());
@@ -120,8 +123,9 @@ class MainNavigationState extends State<MainNavigation> {
             // Emit completion when video starts (stabilization done)
             // Only emit once when transitioning to video phase
             if (prevState != StabilizationState.compilingVideo) {
-              _stabUpdateController
-                  .add(StabUpdateEvent.stabilizationComplete());
+              _stabUpdateController.add(
+                StabUpdateEvent.stabilizationComplete(),
+              );
             }
             break;
           case StabilizationState.cancelled:
@@ -169,12 +173,14 @@ class MainNavigationState extends State<MainNavigation> {
   Future<void> loadPhotos() async {
     final List<Object> results = await Future.wait([
       GalleryUtils.getAllRawImagePaths(widget.projectId),
-      GalleryUtils.getAllStabAndFailedImagePaths(widget.projectId)
+      GalleryUtils.getAllStabAndFailedImagePaths(widget.projectId),
     ]);
 
     if (!mounted) return;
     setRawAndStabPhotoStates(
-        results[0] as List<String>, results[1] as List<String>);
+      results[0] as List<String>,
+      results[1] as List<String>,
+    );
   }
 
   void _checkPhotoTakenToday() {
@@ -194,7 +200,9 @@ class MainNavigationState extends State<MainNavigation> {
   }
 
   void setRawAndStabPhotoStates(
-      List<String> imageFiles, List<String> stabilizedImageFiles) {
+    List<String> imageFiles,
+    List<String> stabilizedImageFiles,
+  ) {
     if (!mounted) return;
     setState(() {
       _imageFiles = imageFiles;
@@ -220,8 +228,9 @@ class MainNavigationState extends State<MainNavigation> {
 
   Future<void> _refreshSettingsCache() async {
     final oldCache = _settingsCache;
-    SettingsCache settingsCache =
-        await SettingsCache.initialize(widget.projectId);
+    SettingsCache settingsCache = await SettingsCache.initialize(
+      widget.projectId,
+    );
     if (!mounted) {
       settingsCache.dispose();
       return;
@@ -263,8 +272,10 @@ class MainNavigationState extends State<MainNavigation> {
     });
   }
 
-  Future<void> processPickedFiles(FilePickerResult? pickedFiles,
-      Future<void> Function(dynamic file) processFileCallback) async {
+  Future<void> processPickedFiles(
+    FilePickerResult? pickedFiles,
+    Future<void> Function(dynamic file) processFileCallback,
+  ) async {
     if (pickedFiles == null) return;
     if (!mounted) return;
 
@@ -285,21 +296,27 @@ class MainNavigationState extends State<MainNavigation> {
     }
 
     if (photoCountBeforeImport == 0) {
-      LogService.instance
-          .log("[processPickedFiles] photoCountBeforeImport == 0 is true");
+      LogService.instance.log(
+        "[processPickedFiles] photoCountBeforeImport == 0 is true",
+      );
 
       String? importedPhotosOrientation =
           await DB.instance.checkPhotoOrientationThreshold(widget.projectId);
       if (importedPhotosOrientation == 'landscape') {
         LogService.instance.log(
-            "[processPickedFiles] importedPhotosOrientation == 'landscape' is true");
+          "[processPickedFiles] importedPhotosOrientation == 'landscape' is true",
+        );
 
         DB.instance.setSettingByTitle(
-            "project_orientation", 'landscape', projectIdStr);
+          "project_orientation",
+          'landscape',
+          projectIdStr,
+        );
         DB.instance.setSettingByTitle("aspect_ratio", "4:3", projectIdStr);
       } else {
         LogService.instance.log(
-            "[processPickedFiles] importedPhotosOrientation == 'landscape' NOT true. importedPhotosOrientation = $importedPhotosOrientation");
+          "[processPickedFiles] importedPhotosOrientation == 'landscape' NOT true. importedPhotosOrientation = $importedPhotosOrientation",
+        );
       }
     }
 
@@ -456,9 +473,7 @@ class MainNavigationState extends State<MainNavigation> {
         DeviceOrientation.landscapeLeft,
       ]);
     } else {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-      ]);
+      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     }
     if (!_stabilizingActive && !_videoCreationActive && !_isImporting) {
       _startStabilization();
@@ -514,9 +529,7 @@ class MainNavigationState extends State<MainNavigation> {
       body: Column(
         children: [
           if (appBar != null) appBar,
-          Expanded(
-            child: _widgetOptions.elementAt(_selectedIndex),
-          ),
+          Expanded(child: _widgetOptions.elementAt(_selectedIndex)),
         ],
       ),
       bottomNavigationBar: navbarShouldBeHidden()
@@ -524,10 +537,7 @@ class MainNavigationState extends State<MainNavigation> {
           : Container(
               decoration: BoxDecoration(
                 border: Border(
-                  top: BorderSide(
-                    color: Colors.grey.shade800,
-                    width: 0.7,
-                  ),
+                  top: BorderSide(color: Colors.grey.shade800, width: 0.7),
                 ),
               ),
               child: AnimatedBottomNavigationBar.builder(
@@ -537,13 +547,7 @@ class MainNavigationState extends State<MainNavigation> {
                       isActive ? AppColors.lightBlue : Colors.grey[300];
                   return Column(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        iconList[index],
-                        size: 24,
-                        color: color,
-                      ),
-                    ],
+                    children: [Icon(iconList[index], size: 24, color: color)],
                   );
                 },
                 height: 60,

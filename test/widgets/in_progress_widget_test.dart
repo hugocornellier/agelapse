@@ -9,24 +9,21 @@ void main() {
 
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: InProgress(message: testMessage),
-          ),
+          home: Scaffold(body: InProgress(message: testMessage)),
         ),
       );
 
       expect(find.text(testMessage), findsOneWidget);
     });
 
-    testWidgets('uses red background for storage error message',
-        (tester) async {
+    testWidgets('uses red background for storage error message', (
+      tester,
+    ) async {
       const errorMessage = 'No storage space on device.';
 
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: InProgress(message: errorMessage),
-          ),
+          home: Scaffold(body: InProgress(message: errorMessage)),
         ),
       );
 
@@ -39,9 +36,7 @@ void main() {
 
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: InProgress(message: normalMessage),
-          ),
+          home: Scaffold(body: InProgress(message: normalMessage)),
         ),
       );
 
@@ -52,9 +47,7 @@ void main() {
     testWidgets('has GestureDetector wrapper', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: InProgress(message: 'Test'),
-          ),
+          home: Scaffold(body: InProgress(message: 'Test')),
         ),
       );
 
@@ -64,9 +57,7 @@ void main() {
     testWidgets('text has centered alignment', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: InProgress(message: 'Test'),
-          ),
+          home: Scaffold(body: InProgress(message: 'Test')),
         ),
       );
 
@@ -77,9 +68,7 @@ void main() {
     testWidgets('text has white color', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: InProgress(message: 'Test'),
-          ),
+          home: Scaffold(body: InProgress(message: 'Test')),
         ),
       );
 
@@ -90,9 +79,7 @@ void main() {
     testWidgets('container has max height constraint', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: InProgress(message: 'Test'),
-          ),
+          home: Scaffold(body: InProgress(message: 'Test')),
         ),
       );
 
@@ -103,9 +90,7 @@ void main() {
     testWidgets('container takes full width', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: InProgress(message: 'Test'),
-          ),
+          home: Scaffold(body: InProgress(message: 'Test')),
         ),
       );
 
@@ -120,9 +105,7 @@ void main() {
 
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: InProgress(message: longMessage),
-          ),
+          home: Scaffold(body: InProgress(message: longMessage)),
         ),
       );
 
@@ -132,9 +115,7 @@ void main() {
     testWidgets('handles empty message', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: InProgress(message: ''),
-          ),
+          home: Scaffold(body: InProgress(message: '')),
         ),
       );
 
@@ -144,12 +125,7 @@ void main() {
     testWidgets('goToPage callback can be null', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: InProgress(
-              message: 'Test',
-              goToPage: null,
-            ),
-          ),
+          home: Scaffold(body: InProgress(message: 'Test', goToPage: null)),
         ),
       );
 
@@ -161,10 +137,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: InProgress(
-              message: 'Test',
-              goToPage: (page) {},
-            ),
+            body: InProgress(message: 'Test', goToPage: (page) {}),
           ),
         ),
       );

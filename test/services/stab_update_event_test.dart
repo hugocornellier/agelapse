@@ -201,12 +201,18 @@ void main() {
     });
 
     test('type property matches factory used', () {
-      expect(StabUpdateEvent.photoStabilized(0).type,
-          StabUpdateType.photoStabilized);
-      expect(StabUpdateEvent.stabilizationComplete().type,
-          StabUpdateType.stabilizationComplete);
       expect(
-          StabUpdateEvent.videoComplete().type, StabUpdateType.videoComplete);
+        StabUpdateEvent.photoStabilized(0).type,
+        StabUpdateType.photoStabilized,
+      );
+      expect(
+        StabUpdateEvent.stabilizationComplete().type,
+        StabUpdateType.stabilizationComplete,
+      );
+      expect(
+        StabUpdateEvent.videoComplete().type,
+        StabUpdateType.videoComplete,
+      );
       expect(StabUpdateEvent.cancelled().type, StabUpdateType.cancelled);
       expect(StabUpdateEvent.error().type, StabUpdateType.error);
     });

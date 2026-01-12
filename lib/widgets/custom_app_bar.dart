@@ -80,7 +80,8 @@ class CustomAppBarState extends State<CustomAppBar> {
     // Reload profile image when project changes
     if (oldWidget.projectId != widget.projectId) {
       LogService.instance.log(
-          '[CustomAppBar] didUpdateWidget: projectId changed ${oldWidget.projectId} -> ${widget.projectId}');
+        '[CustomAppBar] didUpdateWidget: projectId changed ${oldWidget.projectId} -> ${widget.projectId}',
+      );
       _loadProjectImage();
       return;
     }
@@ -95,11 +96,13 @@ class CustomAppBarState extends State<CustomAppBar> {
 
       if (orientationChanged || aspectRatioChanged) {
         LogService.instance.log(
-            '[CustomAppBar] didUpdateWidget: settings changed! '
-            'orientation: ${oldCache.projectOrientation} -> ${newCache.projectOrientation}, '
-            'aspectRatio: ${oldCache.aspectRatio} -> ${newCache.aspectRatio}');
+          '[CustomAppBar] didUpdateWidget: settings changed! '
+          'orientation: ${oldCache.projectOrientation} -> ${newCache.projectOrientation}, '
+          'aspectRatio: ${oldCache.aspectRatio} -> ${newCache.aspectRatio}',
+        );
         LogService.instance.log(
-            '[CustomAppBar] Resetting projectImagePath to empty (was: $projectImagePath)');
+          '[CustomAppBar] Resetting projectImagePath to empty (was: $projectImagePath)',
+        );
 
         setState(() {
           projectImagePath = '';
@@ -111,51 +114,61 @@ class CustomAppBarState extends State<CustomAppBar> {
   void _subscribeToStabUpdates() {
     if (widget.stabUpdateStream == null) {
       LogService.instance.log(
-          '[CustomAppBar] _subscribeToStabUpdates: stream is null, not subscribing');
+        '[CustomAppBar] _subscribeToStabUpdates: stream is null, not subscribing',
+      );
       return;
     }
 
-    LogService.instance
-        .log('[CustomAppBar] _subscribeToStabUpdates: subscribing to stream');
+    LogService.instance.log(
+      '[CustomAppBar] _subscribeToStabUpdates: subscribing to stream',
+    );
     _stabUpdateSubscription = widget.stabUpdateStream!.listen((event) {
       if (!mounted) {
         LogService.instance.log(
-            '[CustomAppBar] stabUpdateStream event received but not mounted, ignoring');
+          '[CustomAppBar] stabUpdateStream event received but not mounted, ignoring',
+        );
         return;
       }
 
       LogService.instance.log(
-          '[CustomAppBar] stabUpdateStream event: ${event.type}, photoIndex=${event.photoIndex}, isCompletion=${event.isCompletionEvent}');
+        '[CustomAppBar] stabUpdateStream event: ${event.type}, photoIndex=${event.photoIndex}, isCompletion=${event.isCompletionEvent}',
+      );
 
       if (event.isCompletionEvent) {
         LogService.instance.log(
-            '[CustomAppBar] Completion event - calling _loadProjectImage immediately');
+          '[CustomAppBar] Completion event - calling _loadProjectImage immediately',
+        );
         _loadProjectImage();
         return;
       }
 
       final hasValidImage =
           projectImagePath.isNotEmpty && File(projectImagePath).existsSync();
-      final isStabilizedImage =
-          projectImagePath.contains(DirUtils.stabilizedDirname);
+      final isStabilizedImage = projectImagePath.contains(
+        DirUtils.stabilizedDirname,
+      );
 
       LogService.instance.log(
-          '[CustomAppBar] Progress event - hasValidImage=$hasValidImage, isStabilizedImage=$isStabilizedImage, currentPath=$projectImagePath');
+        '[CustomAppBar] Progress event - hasValidImage=$hasValidImage, isStabilizedImage=$isStabilizedImage, currentPath=$projectImagePath',
+      );
 
       if (hasValidImage && isStabilizedImage) {
         LogService.instance.log(
-            '[CustomAppBar] Already have valid stabilized image, skipping reload');
+          '[CustomAppBar] Already have valid stabilized image, skipping reload',
+        );
         return;
       }
 
       // Debounce normal updates to prevent excessive reloads
-      LogService.instance
-          .log('[CustomAppBar] Scheduling debounced reload (500ms)');
+      LogService.instance.log(
+        '[CustomAppBar] Scheduling debounced reload (500ms)',
+      );
       _profileImageDebounce?.cancel();
       _profileImageDebounce = Timer(const Duration(milliseconds: 500), () {
         if (mounted) {
           LogService.instance.log(
-              '[CustomAppBar] Debounce complete, calling _loadProjectImage');
+            '[CustomAppBar] Debounce complete, calling _loadProjectImage',
+          );
           _loadProjectImage();
         }
       });
@@ -165,10 +178,12 @@ class CustomAppBarState extends State<CustomAppBar> {
   Future<void> _loadProjectImage() async {
     LogService.instance.log('[CustomAppBar] _loadProjectImage called');
 
-    String imagePath =
-        await ProjectSelectionSheetState.getProjectImage(widget.projectId);
-    LogService.instance
-        .log('[CustomAppBar] getProjectImage returned: $imagePath');
+    String imagePath = await ProjectSelectionSheetState.getProjectImage(
+      widget.projectId,
+    );
+    LogService.instance.log(
+      '[CustomAppBar] getProjectImage returned: $imagePath',
+    );
 
     // Only use stabilized images or GIFs - skip raw photos to avoid showing
     // raw then switching to stabilized. This keeps the experience consistent.
@@ -176,7 +191,8 @@ class CustomAppBarState extends State<CustomAppBar> {
     final isGif = imagePath.endsWith('.gif');
     if (!isStabilized && !isGif) {
       LogService.instance.log(
-          '[CustomAppBar] Image is not stabilized or GIF, skipping (path=$imagePath)');
+        '[CustomAppBar] Image is not stabilized or GIF, skipping (path=$imagePath)',
+      );
       // No stabilized image yet - will be updated via stabUpdateStream
       return;
     }
@@ -186,18 +202,21 @@ class CustomAppBarState extends State<CustomAppBar> {
       final thumbnailPath = FaceStabilizer.getStabThumbnailPath(imagePath);
       final thumbnailExists = await File(thumbnailPath).exists();
       LogService.instance.log(
-          '[CustomAppBar] Checking thumbnail: $thumbnailPath, exists=$thumbnailExists');
+        '[CustomAppBar] Checking thumbnail: $thumbnailPath, exists=$thumbnailExists',
+      );
       if (thumbnailExists) {
         imagePath = thumbnailPath;
       } else {
-        LogService.instance
-            .log('[CustomAppBar] Thumbnail not found, scheduling retry in 2s');
+        LogService.instance.log(
+          '[CustomAppBar] Thumbnail not found, scheduling retry in 2s',
+        );
         // Thumbnail may still be generating - schedule a retry
         _thumbnailRetryTimer?.cancel();
         _thumbnailRetryTimer = Timer(const Duration(seconds: 2), () {
           if (mounted) {
-            LogService.instance
-                .log('[CustomAppBar] Thumbnail retry timer fired');
+            LogService.instance.log(
+              '[CustomAppBar] Thumbnail retry timer fired',
+            );
             _loadProjectImage();
           }
         });
@@ -206,12 +225,14 @@ class CustomAppBarState extends State<CustomAppBar> {
 
     // Verify file exists before setting
     final fileExists = imagePath.isNotEmpty && await File(imagePath).exists();
-    LogService.instance
-        .log('[CustomAppBar] Final image path: $imagePath, exists=$fileExists');
+    LogService.instance.log(
+      '[CustomAppBar] Final image path: $imagePath, exists=$fileExists',
+    );
 
     if (fileExists && mounted) {
       LogService.instance.log(
-          '[CustomAppBar] Setting projectImagePath: $projectImagePath -> $imagePath');
+        '[CustomAppBar] Setting projectImagePath: $projectImagePath -> $imagePath',
+      );
       // Evict from image cache to ensure we load fresh content
       // (same path may have new content after aspect ratio change)
       final imageProvider = FileImage(File(imagePath));
@@ -221,18 +242,20 @@ class CustomAppBarState extends State<CustomAppBar> {
       });
     } else {
       LogService.instance.log(
-          '[CustomAppBar] NOT setting path - fileExists=$fileExists, mounted=$mounted');
+        '[CustomAppBar] NOT setting path - fileExists=$fileExists, mounted=$mounted',
+      );
     }
   }
 
   static void showSettingsModal(
-      BuildContext context,
-      int projectId,
-      Future<void> Function() stabCallback,
-      Future<void> Function() cancelStabCallback,
-      Future<void> Function() refreshSettingsIn,
-      void Function() clearRawAndStabPhotos,
-      SettingsCache? settingsCache) {
+    BuildContext context,
+    int projectId,
+    Future<void> Function() stabCallback,
+    Future<void> Function() cancelStabCallback,
+    Future<void> Function() refreshSettingsIn,
+    void Function() clearRawAndStabPhotos,
+    SettingsCache? settingsCache,
+  ) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -273,9 +296,10 @@ class CustomAppBarState extends State<CustomAppBar> {
       isScrollControlled: true,
       builder: (context) {
         return ProjectSelectionSheet(
-            isDefaultProject: isDefaultProject,
-            cancelStabCallback: widget.cancelStabCallback,
-            currentProjectId: projectId);
+          isDefaultProject: isDefaultProject,
+          cancelStabCallback: widget.cancelStabCallback,
+          currentProjectId: projectId,
+        );
       },
     );
   }
@@ -288,10 +312,7 @@ class CustomAppBarState extends State<CustomAppBar> {
           padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
           decoration: const BoxDecoration(
             border: Border(
-              bottom: BorderSide(
-                color: Color(0x7c6b6b6b),
-                width: 0.7,
-              ),
+              bottom: BorderSide(color: Color(0x7c6b6b6b), width: 0.7),
             ),
             color: Color(0xff0F0F0F),
           ),
@@ -327,13 +348,16 @@ class CustomAppBarState extends State<CustomAppBar> {
                             onBackgroundImageError: (exception, stackTrace) {
                               // File was deleted between existsSync check and load - use fallback
                               LogService.instance.log(
-                                  '[CustomAppBar] onBackgroundImageError! exception=$exception, path=$projectImagePath');
+                                '[CustomAppBar] onBackgroundImageError! exception=$exception, path=$projectImagePath',
+                              );
                               if (projectImagePath.isNotEmpty) {
-                                WidgetsBinding.instance
-                                    .addPostFrameCallback((_) {
+                                WidgetsBinding.instance.addPostFrameCallback((
+                                  _,
+                                ) {
                                   if (mounted) {
                                     LogService.instance.log(
-                                        '[CustomAppBar] Resetting path due to image load error');
+                                      '[CustomAppBar] Resetting path due to image load error',
+                                    );
                                     setState(() {
                                       projectImagePath = '';
                                     });
@@ -347,8 +371,11 @@ class CustomAppBarState extends State<CustomAppBar> {
                         : const CircleAvatar(
                             backgroundColor: Color(0xFF5a5a5a),
                             radius: 13.5,
-                            child: Icon(Icons.person,
-                                color: Colors.white70, size: 18),
+                            child: Icon(
+                              Icons.person,
+                              color: Colors.white70,
+                              size: 18,
+                            ),
                           ),
                   ),
                   IconButton(

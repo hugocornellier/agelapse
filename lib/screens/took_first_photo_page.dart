@@ -28,10 +28,7 @@ class TookFirstPhotoPageState extends State<TookFirstPhotoPage> {
         title: const Text(""),
         backgroundColor: appBarColor,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: () => close(),
-          ),
+          IconButton(icon: const Icon(Icons.close), onPressed: () => close()),
         ],
       ),
       body: _buildBody(),
@@ -39,10 +36,7 @@ class TookFirstPhotoPageState extends State<TookFirstPhotoPage> {
   }
 
   Container _buildBody() {
-    return Container(
-      color: appBarColor,
-      child: _buildTookFirstPhotoPage(),
-    );
+    return Container(color: appBarColor, child: _buildTookFirstPhotoPage());
   }
 
   Widget _buildTookFirstPhotoPage() {
@@ -114,7 +108,10 @@ class TookFirstPhotoPageState extends State<TookFirstPhotoPage> {
         child: Text(
           text.toUpperCase(),
           style: const TextStyle(
-              fontSize: 15, color: Colors.white, fontWeight: FontWeight.bold),
+            fontSize: 15,
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );

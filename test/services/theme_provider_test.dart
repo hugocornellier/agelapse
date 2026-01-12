@@ -82,7 +82,9 @@ void main() {
       });
 
       testWidgets('returns value based on platform brightness for system mode',
-          (tester) async {
+          (
+        tester,
+      ) async {
         provider.themeMode = 'system';
 
         // The actual value depends on platformDispatcher.platformBrightness

@@ -50,8 +50,9 @@ class NotificationUtil {
           ?.createNotificationChannel(channel);
     }
 
-    const initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const initializationSettingsAndroid = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
     final initializationSettingsDarwin = DarwinInitializationSettings();
 
     final initializationSettings = InitializationSettings(
@@ -93,7 +94,9 @@ class NotificationUtil {
   }
 
   static Future<void> scheduleDailyNotification(
-      int projectId, String dailyNotificationTime) async {
+    int projectId,
+    String dailyNotificationTime,
+  ) async {
     final now = DateTime.now();
     final int timestamp = int.parse(dailyNotificationTime);
     final DateTime dateTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
@@ -102,8 +105,10 @@ class NotificationUtil {
     final String? projectName = await DB.instance.getProjectNameById(projectId);
     LogService.instance.log("projectName => $projectName");
 
-    final tz.TZDateTime scheduledDate =
-        _calculateScheduledDate(now, selectedTime);
+    final tz.TZDateTime scheduledDate = _calculateScheduledDate(
+      now,
+      selectedTime,
+    );
 
     const androidDetails = AndroidNotificationDetails(
       'daily_notification_channel_id',
@@ -131,7 +136,9 @@ class NotificationUtil {
   }
 
   static tz.TZDateTime _calculateScheduledDate(
-      DateTime now, TimeOfDay selectedTime) {
+    DateTime now,
+    TimeOfDay selectedTime,
+  ) {
     final tz.TZDateTime scheduledDate = tz.TZDateTime(
       tz.local,
       now.year,
@@ -147,12 +154,6 @@ class NotificationUtil {
 
   static DateTime getFivePMLocalTime() {
     final now = DateTime.now();
-    return DateTime(
-      now.year,
-      now.month,
-      now.day,
-      17,
-      0,
-    );
+    return DateTime(now.year, now.month, now.day, 17, 0);
   }
 }

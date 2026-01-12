@@ -13,9 +13,7 @@ void registerFallbackValues() {
 
 /// Wraps a widget with MaterialApp for testing.
 Widget createTestableWidget(Widget child) {
-  return MaterialApp(
-    home: Scaffold(body: child),
-  );
+  return MaterialApp(home: Scaffold(body: child));
 }
 
 /// Wraps a widget with MaterialApp and a custom theme for testing.

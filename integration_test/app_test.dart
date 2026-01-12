@@ -18,8 +18,9 @@ void main() {
   });
 
   group('Basic Navigation Tests', () {
-    testWidgets('bottom navigation bar is visible after app loads',
-        (tester) async {
+    testWidgets('bottom navigation bar is visible after app loads', (
+      tester,
+    ) async {
       app.main();
       await tester.pumpAndSettle(const Duration(seconds: 5));
 

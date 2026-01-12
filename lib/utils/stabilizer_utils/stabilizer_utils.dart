@@ -51,11 +51,15 @@ class StabUtils {
   }
 
   static Future<List<Map<String, dynamic>>> getUnstabilizedPhotos(
-      int projectId) async {
-    String projectOrientation =
-        await SettingsUtil.loadProjectOrientation(projectId.toString());
-    return await DB.instance
-        .getUnstabilizedPhotos(projectId, projectOrientation);
+    int projectId,
+  ) async {
+    String projectOrientation = await SettingsUtil.loadProjectOrientation(
+      projectId.toString(),
+    );
+    return await DB.instance.getUnstabilizedPhotos(
+      projectId,
+      projectOrientation,
+    );
   }
 
   static double? getShortSide(String resolution) {
@@ -161,11 +165,7 @@ class StabUtils {
           ? Point(landmarks.rightEye!.x, landmarks.rightEye!.y)
           : null;
 
-      final faceLike = FaceLike(
-        boundingBox: bbox,
-        leftEye: l,
-        rightEye: r,
-      );
+      final faceLike = FaceLike(boundingBox: bbox, leftEye: l, rightEye: r);
 
       if (!filterByFaceSize || (bbox.width / w) > 0.1) {
         faces.add(faceLike);
@@ -218,8 +218,9 @@ class StabUtils {
 
         return _convertFaces(facesDetected, filterByFaceSize: filterByFaceSize);
       } catch (e) {
-        LogService.instance
-            .log("Error caught while fetching faces from bytes: $e");
+        LogService.instance.log(
+          "Error caught while fetching faces from bytes: $e",
+        );
         return (<FaceLike>[], <fdl.Face>[]);
       }
     });
@@ -274,13 +275,7 @@ class StabUtils {
               ? Point(landmarks.rightEye!.x, landmarks.rightEye!.y)
               : null;
 
-          faces.add(
-            FaceLike(
-              boundingBox: bbox,
-              leftEye: l,
-              rightEye: r,
-            ),
-          );
+          faces.add(FaceLike(boundingBox: bbox, leftEye: l, rightEye: r));
         }
 
         if (!filterByFaceSize || faces.isEmpty) return faces;
@@ -333,7 +328,8 @@ class StabUtils {
   /// Gets face embeddings for all detected faces in the image.
   /// Returns a list of embeddings (may contain nulls for faces where extraction failed).
   static Future<List<Float32List?>> getFaceEmbeddingsFromBytes(
-      Uint8List bytes) async {
+    Uint8List bytes,
+  ) async {
     // Serialize access to the face detector to prevent race conditions
     return await _faceDetectorMutex.protect(() async {
       try {
@@ -379,7 +375,8 @@ class StabUtils {
         if (preDetectedFaces != null && preDetectedFaces.isNotEmpty) {
           faces = preDetectedFaces;
           LogService.instance.log(
-              "Using ${faces.length} pre-detected faces for embedding matching");
+            "Using ${faces.length} pre-detected faces for embedding matching",
+          );
         } else {
           faces = await _faceDetectorIsolate!.detectFaces(
             imageBytes,
@@ -399,11 +396,14 @@ class StabUtils {
             imageBytes,
           );
 
-          final similarity =
-              fdl.FaceDetector.compareFaces(referenceEmbedding, embedding);
+          final similarity = fdl.FaceDetector.compareFaces(
+            referenceEmbedding,
+            embedding,
+          );
 
           LogService.instance.log(
-              "Face $i embedding similarity: ${similarity.toStringAsFixed(3)}");
+            "Face $i embedding similarity: ${similarity.toStringAsFixed(3)}",
+          );
 
           if (similarity > bestSimilarity) {
             bestSimilarity = similarity;
@@ -412,7 +412,8 @@ class StabUtils {
         }
 
         LogService.instance.log(
-            "Selected face $bestIndex with similarity ${bestSimilarity.toStringAsFixed(3)}");
+          "Selected face $bestIndex with similarity ${bestSimilarity.toStringAsFixed(3)}",
+        );
 
         return bestIndex;
       } catch (e) {
@@ -447,7 +448,8 @@ class StabUtils {
   }
 
   static Future<void> performFileOperationInBackground(
-      Map<String, dynamic> params) async {
+    Map<String, dynamic> params,
+  ) async {
     SendPort sendPort = params['sendPort'];
     String? filePath = params['filePath'];
     var operation = params['operation'];
@@ -494,8 +496,11 @@ class StabUtils {
               sendPort.send('Decoded mat is empty');
               return;
             }
-            final (success, jpgBytes) = cv.imencode('.jpg', mat,
-                params: cv.VecI32.fromList([cv.IMWRITE_JPEG_QUALITY, 90]));
+            final (success, jpgBytes) = cv.imencode(
+              '.jpg',
+              mat,
+              params: cv.VecI32.fromList([cv.IMWRITE_JPEG_QUALITY, 90]),
+            );
             mat.dispose();
             if (success) {
               await File(filePath!).writeAsBytes(jpgBytes);
@@ -531,7 +536,8 @@ class StabUtils {
             final bg = cv.Mat.zeros(mat.rows, mat.cols, cv.MatType.CV_8UC3);
             final channels = cv.split(mat);
             final bgr = cv.merge(
-                cv.VecMat.fromList([channels[0], channels[1], channels[2]]));
+              cv.VecMat.fromList([channels[0], channels[1], channels[2]]),
+            );
             final alpha = channels[3];
             bgr.copyTo(bg, mask: alpha);
             for (final ch in channels) {
@@ -547,7 +553,8 @@ class StabUtils {
           final (success, pngBytes) = cv.imencode('.png', result);
           result.dispose();
           sendPort.send(
-              success ? pngBytes : 'Error compositeBlackPng: encode failed');
+            success ? pngBytes : 'Error compositeBlackPng: encode failed',
+          );
         } catch (e) {
           sendPort.send('Error compositeBlackPng: $e');
         }
@@ -569,7 +576,8 @@ class StabUtils {
             final bg = cv.Mat.zeros(mat.rows, mat.cols, cv.MatType.CV_8UC3);
             final channels = cv.split(mat);
             final bgr = cv.merge(
-                cv.VecMat.fromList([channels[0], channels[1], channels[2]]));
+              cv.VecMat.fromList([channels[0], channels[1], channels[2]]),
+            );
             final alpha = channels[3];
             bgr.copyTo(bg, mask: alpha);
             for (final ch in channels) {
@@ -588,11 +596,15 @@ class StabUtils {
           final thumb = cv.resize(composited, (500, height));
           composited.dispose();
 
-          final (success, jpgBytes) = cv.imencode('.jpg', thumb,
-              params: cv.VecI32.fromList([cv.IMWRITE_JPEG_QUALITY, 90]));
+          final (success, jpgBytes) = cv.imencode(
+            '.jpg',
+            thumb,
+            params: cv.VecI32.fromList([cv.IMWRITE_JPEG_QUALITY, 90]),
+          );
           thumb.dispose();
           sendPort.send(
-              success ? jpgBytes : 'Error thumbnailFromPng: encode failed');
+            success ? jpgBytes : 'Error thumbnailFromPng: encode failed',
+          );
         } catch (e) {
           sendPort.send('Error thumbnailFromPng: $e');
         }
@@ -602,15 +614,16 @@ class StabUtils {
 
   /// Read any image file and return PNG bytes (using opencv for fast native decoding)
   /// Uses persistent isolate pool to avoid spawn/kill overhead.
-  static Future<Uint8List?> readImageAsPngBytesInIsolate(String filePath,
-      {CancellationToken? token}) async {
+  static Future<Uint8List?> readImageAsPngBytesInIsolate(
+    String filePath, {
+    CancellationToken? token,
+  }) async {
     token?.throwIfCancelled();
 
     if (IsolatePool.instance.isInitialized) {
-      return await IsolatePool.instance.execute<Uint8List>(
-        'readToPng',
-        {'filePath': filePath},
-      );
+      return await IsolatePool.instance.execute<Uint8List>('readToPng', {
+        'filePath': filePath,
+      });
     }
 
     // Fallback to individual isolate if pool not initialized
@@ -618,11 +631,13 @@ class StabUtils {
     var params = {
       'sendPort': receivePort.sendPort,
       'filePath': filePath,
-      'operation': 'readToPng'
+      'operation': 'readToPng',
     };
 
-    final isolate =
-        await Isolate.spawn(performFileOperationInBackground, params);
+    final isolate = await Isolate.spawn(
+      performFileOperationInBackground,
+      params,
+    );
     IsolateManager.instance.register(isolate);
 
     try {
@@ -638,15 +653,17 @@ class StabUtils {
   /// Write PNG bytes to file
   /// Uses persistent isolate pool to avoid spawn/kill overhead.
   static Future<void> writePngBytesToFileInIsolate(
-      String filepath, Uint8List pngBytes,
-      {CancellationToken? token}) async {
+    String filepath,
+    Uint8List pngBytes, {
+    CancellationToken? token,
+  }) async {
     token?.throwIfCancelled();
 
     if (IsolatePool.instance.isInitialized) {
-      await IsolatePool.instance.execute(
-        'writePngFromBytes',
-        {'filePath': filepath, 'bytes': pngBytes},
-      );
+      await IsolatePool.instance.execute('writePngFromBytes', {
+        'filePath': filepath,
+        'bytes': pngBytes,
+      });
       return;
     }
 
@@ -656,11 +673,13 @@ class StabUtils {
       'sendPort': receivePort.sendPort,
       'filePath': filepath,
       'bytes': pngBytes,
-      'operation': 'writePngFromBytes'
+      'operation': 'writePngFromBytes',
     };
 
-    final isolate =
-        await Isolate.spawn(performFileOperationInBackground, params);
+    final isolate = await Isolate.spawn(
+      performFileOperationInBackground,
+      params,
+    );
     IsolateManager.instance.register(isolate);
 
     try {
@@ -674,8 +693,10 @@ class StabUtils {
 
   /// Composite PNG on black background.
   /// Uses persistent isolate pool to avoid spawn/kill overhead.
-  static Future<Uint8List> compositeBlackPngBytes(Uint8List pngBytes,
-      {CancellationToken? token}) async {
+  static Future<Uint8List> compositeBlackPngBytes(
+    Uint8List pngBytes, {
+    CancellationToken? token,
+  }) async {
     token?.throwIfCancelled();
 
     if (IsolatePool.instance.isInitialized) {
@@ -691,11 +712,13 @@ class StabUtils {
     var params = {
       'sendPort': receivePort.sendPort,
       'bytes': pngBytes,
-      'operation': 'compositeBlackPng'
+      'operation': 'compositeBlackPng',
     };
 
-    final isolate =
-        await Isolate.spawn(performFileOperationInBackground, params);
+    final isolate = await Isolate.spawn(
+      performFileOperationInBackground,
+      params,
+    );
     IsolateManager.instance.register(isolate);
 
     try {
@@ -710,8 +733,10 @@ class StabUtils {
 
   /// Create thumbnail JPG from PNG bytes.
   /// Uses persistent isolate pool to avoid spawn/kill overhead.
-  static Future<Uint8List> thumbnailJpgFromPngBytes(Uint8List pngBytes,
-      {CancellationToken? token}) async {
+  static Future<Uint8List> thumbnailJpgFromPngBytes(
+    Uint8List pngBytes, {
+    CancellationToken? token,
+  }) async {
     token?.throwIfCancelled();
 
     if (IsolatePool.instance.isInitialized) {
@@ -727,11 +752,13 @@ class StabUtils {
     var params = {
       'sendPort': receivePort.sendPort,
       'bytes': pngBytes,
-      'operation': 'thumbnailFromPng'
+      'operation': 'thumbnailFromPng',
     };
 
-    final isolate =
-        await Isolate.spawn(performFileOperationInBackground, params);
+    final isolate = await Isolate.spawn(
+      performFileOperationInBackground,
+      params,
+    );
     IsolateManager.instance.register(isolate);
 
     try {
@@ -747,15 +774,17 @@ class StabUtils {
   /// Write bytes to JPG file.
   /// Uses persistent isolate pool to avoid spawn/kill overhead.
   static Future<void> writeBytesToJpgFileInIsolate(
-      String filePath, List<int> bytes,
-      {CancellationToken? token}) async {
+    String filePath,
+    List<int> bytes, {
+    CancellationToken? token,
+  }) async {
     token?.throwIfCancelled();
 
     if (IsolatePool.instance.isInitialized) {
-      await IsolatePool.instance.execute(
-        'writeJpg',
-        {'filePath': filePath, 'bytes': Uint8List.fromList(bytes)},
-      );
+      await IsolatePool.instance.execute('writeJpg', {
+        'filePath': filePath,
+        'bytes': Uint8List.fromList(bytes),
+      });
       return;
     }
 
@@ -765,11 +794,13 @@ class StabUtils {
       'sendPort': receivePort.sendPort,
       'filePath': filePath,
       'bytes': bytes,
-      'operation': 'writeJpg'
+      'operation': 'writeJpg',
     };
 
-    final isolate =
-        await Isolate.spawn(performFileOperationInBackground, params);
+    final isolate = await Isolate.spawn(
+      performFileOperationInBackground,
+      params,
+    );
     IsolateManager.instance.register(isolate);
 
     try {
@@ -785,7 +816,9 @@ class StabUtils {
   }
 
   static Future<bool> writeImagesBytesToJpgFile(
-      Uint8List bytes, String imagePath) async {
+    Uint8List bytes,
+    String imagePath,
+  ) async {
     await DirUtils.createDirectoryIfNotExists(imagePath);
     await writeBytesToJpgFileInIsolate(imagePath, bytes);
     return true;
@@ -822,10 +855,14 @@ class StabUtils {
 
       if (Platform.isMacOS) {
         // macOS: use built-in sips command
-        final result = await Process.run(
-          'sips',
-          ['-s', 'format', 'jpeg', imgPath, '--out', jpgImgPath],
-        );
+        final result = await Process.run('sips', [
+          '-s',
+          'format',
+          'jpeg',
+          imgPath,
+          '--out',
+          jpgImgPath,
+        ]);
         if (result.exitCode != 0 || !await File(jpgImgPath).exists()) {
           return null;
         }
@@ -886,23 +923,33 @@ class StabUtils {
 
   static Future<File> flipImageHorizontally(String imagePath) async {
     return await processImageInIsolate(
-        imagePath, 'flip_horizontal', '_flipped.png');
+      imagePath,
+      'flip_horizontal',
+      '_flipped.png',
+    );
   }
 
   // Rotate Image 90 Degrees Clockwise
   static Future<File> rotateImageClockwise(String imagePath) async {
     return await processImageInIsolate(
-        imagePath, 'rotate_clockwise', '_rotated_clockwise.png');
+      imagePath,
+      'rotate_clockwise',
+      '_rotated_clockwise.png',
+    );
   }
 
   // Rotate Image 90 Degrees Counter-Clockwise
   static Future<File> rotateImageCounterClockwise(String imagePath) async {
-    return await processImageInIsolate(imagePath, 'rotate_counter_clockwise',
-        '_rotated_counter_clockwise.png');
+    return await processImageInIsolate(
+      imagePath,
+      'rotate_counter_clockwise',
+      '_rotated_counter_clockwise.png',
+    );
   }
 
   static Future<void> performImageProcessingInBackground(
-      Map<String, dynamic> params) async {
+    Map<String, dynamic> params,
+  ) async {
     final rootIsolateToken = params['rootIsolateToken'] as RootIsolateToken;
     BackgroundIsolateBinaryMessenger.ensureInitialized(rootIsolateToken);
 
@@ -958,8 +1005,11 @@ class StabUtils {
   }
 
   static Future<File> processImageInIsolate(
-      String imagePath, String operation, String suffix,
-      {CancellationToken? token}) async {
+    String imagePath,
+    String operation,
+    String suffix, {
+    CancellationToken? token,
+  }) async {
     token?.throwIfCancelled();
 
     ReceivePort receivePort = ReceivePort();
@@ -969,11 +1019,13 @@ class StabUtils {
       'filePath': imagePath,
       'operation': operation,
       'suffix': suffix,
-      'rootIsolateToken': rootIsolateToken
+      'rootIsolateToken': rootIsolateToken,
     };
 
-    final isolate =
-        await Isolate.spawn(performImageProcessingInBackground, params);
+    final isolate = await Isolate.spawn(
+      performImageProcessingInBackground,
+      params,
+    );
     IsolateManager.instance.register(isolate);
 
     try {
@@ -990,14 +1042,22 @@ class StabUtils {
     }
   }
 
-  static Future<String> getStabilizedImagePath(String originalFilePath,
-      int projectId, String? projectOrientation) async {
-    final stabilizedDirectoryPath =
-        await DirUtils.getStabilizedDirPath(projectId);
-    final String originalBasename =
-        path.basenameWithoutExtension(originalFilePath);
+  static Future<String> getStabilizedImagePath(
+    String originalFilePath,
+    int projectId,
+    String? projectOrientation,
+  ) async {
+    final stabilizedDirectoryPath = await DirUtils.getStabilizedDirPath(
+      projectId,
+    );
+    final String originalBasename = path.basenameWithoutExtension(
+      originalFilePath,
+    );
     return path.join(
-        stabilizedDirectoryPath, projectOrientation, '$originalBasename.jpg');
+      stabilizedDirectoryPath,
+      projectOrientation,
+      '$originalBasename.jpg',
+    );
   }
 
   static Future<ui.Image?> loadImageFromFile(File file) async {
@@ -1007,7 +1067,8 @@ class StabUtils {
     while (!(await file.exists())) {
       if (sw.elapsed.inSeconds >= maxWaitSec) {
         debugPrint(
-            "Error loading image: file not found within $maxWaitSec seconds");
+          "Error loading image: file not found within $maxWaitSec seconds",
+        );
         return null;
       }
       await Future.delayed(const Duration(milliseconds: 150));
@@ -1021,7 +1082,8 @@ class StabUtils {
       } catch (_) {
         if (sw.elapsed.inSeconds >= maxWaitSec) {
           debugPrint(
-              "Error loading image: not decodable within $maxWaitSec seconds");
+            "Error loading image: not decodable within $maxWaitSec seconds",
+          );
           return null;
         }
         await Future.delayed(const Duration(milliseconds: 150));
@@ -1058,8 +1120,10 @@ class StabUtils {
 
   /// Get image dimensions from bytes asynchronously (runs decode in isolate)
   /// Uses persistent isolate pool to avoid spawn/kill overhead.
-  static Future<(int, int)?> getImageDimensionsFromBytesAsync(Uint8List bytes,
-      {CancellationToken? token}) async {
+  static Future<(int, int)?> getImageDimensionsFromBytesAsync(
+    Uint8List bytes, {
+    CancellationToken? token,
+  }) async {
     token?.throwIfCancelled();
 
     if (IsolatePool.instance.isInitialized) {
@@ -1071,10 +1135,7 @@ class StabUtils {
 
     // Fallback to individual isolate if pool not initialized
     final ReceivePort receivePort = ReceivePort();
-    final params = {
-      'sendPort': receivePort.sendPort,
-      'bytes': bytes,
-    };
+    final params = {'sendPort': receivePort.sendPort, 'bytes': bytes};
 
     final isolate = await Isolate.spawn(_getImageDimensionsIsolate, params);
     IsolateManager.instance.register(isolate);
@@ -1207,19 +1268,16 @@ class StabUtils {
     token?.throwIfCancelled();
 
     if (IsolatePool.instance.isInitialized) {
-      return await IsolatePool.instance.execute<Uint8List>(
-        'stabilizeCV',
-        {
-          'srcBytes': srcBytes,
-          'rotationDegrees': rotationDegrees,
-          'scaleFactor': scaleFactor,
-          'translateX': translateX,
-          'translateY': translateY,
-          'canvasWidth': canvasWidth,
-          'canvasHeight': canvasHeight,
-          'srcId': srcId,
-        },
-      );
+      return await IsolatePool.instance.execute<Uint8List>('stabilizeCV', {
+        'srcBytes': srcBytes,
+        'rotationDegrees': rotationDegrees,
+        'scaleFactor': scaleFactor,
+        'translateX': translateX,
+        'translateY': translateY,
+        'canvasWidth': canvasWidth,
+        'canvasHeight': canvasHeight,
+        'srcId': srcId,
+      });
     }
 
     // Fallback to individual isolate if pool not initialized

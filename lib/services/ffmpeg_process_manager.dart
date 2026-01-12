@@ -57,9 +57,7 @@ class FFmpegProcessManager {
   /// Call this immediately after starting an FFmpegKit session.
   void registerSession(FFmpegSession session) {
     _activeSession = session;
-    LogService.instance.log(
-      'FFmpegProcessManager: Registered mobile session',
-    );
+    LogService.instance.log('FFmpegProcessManager: Registered mobile session');
   }
 
   /// Kill the active FFmpeg process or session instantly.

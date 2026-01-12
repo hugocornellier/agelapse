@@ -63,16 +63,18 @@ void main() {
         expect(listener2Called, isTrue);
       });
 
-      test('listeners are only called once even with multiple cancel calls',
-          () {
-        var callCount = 0;
-        token.addListener(() => callCount++);
+      test(
+        'listeners are only called once even with multiple cancel calls',
+        () {
+          var callCount = 0;
+          token.addListener(() => callCount++);
 
-        token.cancel();
-        token.cancel();
+          token.cancel();
+          token.cancel();
 
-        expect(callCount, 1);
-      });
+          expect(callCount, 1);
+        },
+      );
 
       test('ignores errors in listeners', () {
         token.addListener(() => throw Exception('Listener error'));

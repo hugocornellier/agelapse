@@ -146,7 +146,9 @@ void main() {
     test('createThumbnailFromPng throws for empty bytes', () {
       final emptyBytes = Uint8List(0);
       expect(
-          () => ImageUtils.createThumbnailFromPng(emptyBytes), throwsException);
+        () => ImageUtils.createThumbnailFromPng(emptyBytes),
+        throwsException,
+      );
     });
 
     test('compositeBlackPng throws for empty bytes', () {
@@ -206,7 +208,8 @@ void main() {
   group('ImageUtils validateImageInIsolate', () {
     test('returns false for nonexistent file', () async {
       final result = await ImageUtils.validateImageInIsolate(
-          '/nonexistent/path/image.jpg');
+        '/nonexistent/path/image.jpg',
+      );
       expect(result, isFalse);
     });
   });

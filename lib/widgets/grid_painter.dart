@@ -22,7 +22,12 @@ class GridPainter extends CustomPainter {
   }
 
   void drawVerticalLine(
-      Canvas canvas, double dx, double height, Paint paint, int index) {
+    Canvas canvas,
+    double dx,
+    double height,
+    Paint paint,
+    int index,
+  ) {
     canvas.drawLine(Offset(dx * index, 0), Offset(dx * index, height), paint);
   }
 

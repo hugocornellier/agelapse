@@ -141,7 +141,9 @@ void main() {
 
     test('checkForStabilizedImage method exists', () {
       expect(
-          ProjectSelectionSheetState.checkForStabilizedImage, isA<Function>());
+        ProjectSelectionSheetState.checkForStabilizedImage,
+        isA<Function>(),
+      );
     });
 
     test('photoWasTakenToday method exists', () {
@@ -158,14 +160,16 @@ void main() {
     });
 
     test('checkForStabilizedImage returns Future<String?>', () {
-      final result =
-          ProjectSelectionSheetState.checkForStabilizedImage('/nonexistent');
+      final result = ProjectSelectionSheetState.checkForStabilizedImage(
+        '/nonexistent',
+      );
       expect(result, isA<Future<String?>>());
     });
 
     test('checkForStabilizedImage returns null for nonexistent dir', () async {
       final result = await ProjectSelectionSheetState.checkForStabilizedImage(
-          '/nonexistent/path/that/does/not/exist');
+        '/nonexistent/path/that/does/not/exist',
+      );
       expect(result, isNull);
     });
   });

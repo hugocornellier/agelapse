@@ -49,79 +49,126 @@ class DirUtils {
       join(await getTemporaryDirPath(), stabilizedWIPDirname);
 
   static Future<String> getPngPathFromRawPhotoPath(String rawPhotoPath) async =>
-      join(await getRawPhotoPngDirPath(),
-          '${path.basenameWithoutExtension(rawPhotoPath)}.png');
+      join(
+        await getRawPhotoPngDirPath(),
+        '${path.basenameWithoutExtension(rawPhotoPath)}.png',
+      );
 
   static Future<String> getStabilizedWIPPathFromRawPhotoPath(
-          String rawPhotoPath) async =>
-      join(await getStabilizedWIPDirPath(),
-          '${path.basenameWithoutExtension(rawPhotoPath)}.jpg');
+    String rawPhotoPath,
+  ) async =>
+      join(
+        await getStabilizedWIPDirPath(),
+        '${path.basenameWithoutExtension(rawPhotoPath)}.jpg',
+      );
 
   static Future<String> getVideoOutputPath(
-          int projectId, String projectOrientation) async =>
-      join(await getProjectDirPath(projectId), 'videos', projectOrientation,
-          'agelapse.mp4');
+    int projectId,
+    String projectOrientation,
+  ) async =>
+      join(
+        await getProjectDirPath(projectId),
+        'videos',
+        projectOrientation,
+        'agelapse.mp4',
+      );
 
   static Future<String> getWatermarkFilePath(int projectId) async =>
       join(await getWatermarkDirPath(projectId), 'watermark.png');
 
   static Future<String> getZipFileExportPath(
-          int projectId, String projectName) async =>
-      path.join(await getExportsDirPath(projectId),
-          "$projectName-AgeLapse-Export.zip");
+    int projectId,
+    String projectName,
+  ) async =>
+      path.join(
+        await getExportsDirPath(projectId),
+        "$projectName-AgeLapse-Export.zip",
+      );
 
   static Future<String> getRawPhotoPathFromTimestampAndProjectId(
-      String timestamp, int projectId,
-      {String? fileExtension}) async {
+    String timestamp,
+    int projectId, {
+    String? fileExtension,
+  }) async {
     fileExtension ??= await DB.instance
         .getPhotoExtensionByTimestampAndProjectId(timestamp, projectId);
 
     return join(
-        await getRawPhotoDirPath(projectId), '$timestamp$fileExtension');
+      await getRawPhotoDirPath(projectId),
+      '$timestamp$fileExtension',
+    );
   }
 
   static Future<String> getStabilizedImagePath(
-      String rawImagePath, int projectId) async {
+    String rawImagePath,
+    int projectId,
+  ) async {
     return getStabilizedImagePathFromRawPathAndProjectOrientation(
-        projectId,
-        rawImagePath,
-        await SettingsUtil.loadProjectOrientation(projectId.toString()));
+      projectId,
+      rawImagePath,
+      await SettingsUtil.loadProjectOrientation(projectId.toString()),
+    );
   }
 
   static Future<String> getStabilizedDirPathFromProjectIdAndOrientation(
-      int projectId, String projectOrientation) async {
-    return path.join(await getStabilizedDirPath(projectId),
-        projectOrientation.toLowerCase());
+    int projectId,
+    String projectOrientation,
+  ) async {
+    return path.join(
+      await getStabilizedDirPath(projectId),
+      projectOrientation.toLowerCase(),
+    );
   }
 
   /// Constructs stabilized image path directly from timestamp and orientation.
   /// Used for incremental gallery updates to avoid DB lookups.
   static Future<String> getStabilizedImagePathFromTimestamp(
-      int projectId, String timestamp, String projectOrientation) async {
-    return path.join(await getStabilizedDirPath(projectId),
-        projectOrientation.toLowerCase(), '$timestamp.png');
+    int projectId,
+    String timestamp,
+    String projectOrientation,
+  ) async {
+    return path.join(
+      await getStabilizedDirPath(projectId),
+      projectOrientation.toLowerCase(),
+      '$timestamp.png',
+    );
   }
 
   static Future<String> getStabilizedImagePathFromRawPathAndProjectOrientation(
-      int projectId, String rawImagePath, String projectOrientation) async {
+    int projectId,
+    String rawImagePath,
+    String projectOrientation,
+  ) async {
     if (projectOrientation == 'portrait') {
       return getStabilizedPortraitImagePathFromRawPath(rawImagePath, projectId);
     } else {
       return getStabilizedLandscapeImagePathFromRawPath(
-          rawImagePath, projectId);
+        rawImagePath,
+        projectId,
+      );
     }
   }
 
   static Future<String> getStabilizedPortraitImagePathFromRawPath(
-      String rawImagePath, int projectId) async {
-    return path.join(await getStabilizedDirPath(projectId), 'portrait',
-        "${path.basenameWithoutExtension(rawImagePath)}.png");
+    String rawImagePath,
+    int projectId,
+  ) async {
+    return path.join(
+      await getStabilizedDirPath(projectId),
+      'portrait',
+      "${path.basenameWithoutExtension(rawImagePath)}.png",
+    );
   }
 
   static Future<String> getStabilizedLandscapeImagePathFromRawPath(
-      String rawImagePath, int projectId) async {
-    return path.join(await getStabilizedDirPath(projectId), 'landscape',
-        "${path.basenameWithoutExtension(rawImagePath)}.png");
+    String rawImagePath,
+    int projectId,
+  ) async {
+    return path.join(
+      await getStabilizedDirPath(projectId),
+      'landscape',
+      "${path.basenameWithoutExtension(rawImagePath)}.png",
+    );
   }
 
   // Cross-platform temp & permanent data directory path fetchers
@@ -142,7 +189,9 @@ class DirUtils {
   }
 
   static Future<List<File>> getAllFilesInRawPhotoDirByExtension(
-      int projectId, String extension) async {
+    int projectId,
+    String extension,
+  ) async {
     try {
       final String rawPhotoDirectoryPath = await getRawPhotoDirPath(projectId);
       final Directory directory = Directory(rawPhotoDirectoryPath);
@@ -213,18 +262,26 @@ class DirUtils {
   }
 
   static Future<void> deleteAllThumbnails(
-      int projectId, String projectOrientation) async {
-    final String stabilizedDirPath =
-        await DirUtils.getStabilizedDirPath(projectId);
-    final String thumbnailDir = join(stabilizedDirPath, projectOrientation,
-        DirUtils.thumbnailDirname, "thumbnail.jpg");
+    int projectId,
+    String projectOrientation,
+  ) async {
+    final String stabilizedDirPath = await DirUtils.getStabilizedDirPath(
+      projectId,
+    );
+    final String thumbnailDir = join(
+      stabilizedDirPath,
+      projectOrientation,
+      DirUtils.thumbnailDirname,
+      "thumbnail.jpg",
+    );
 
     final bool isValidDirectory = await _isValidDirectory(thumbnailDir);
     if (isValidDirectory) {
       await deleteDirectory(thumbnailDir);
     } else {
-      LogService.instance
-          .log('Directory does not exist or is not a valid directory.');
+      LogService.instance.log(
+        'Directory does not exist or is not a valid directory.',
+      );
     }
   }
 
@@ -279,14 +336,16 @@ class DirUtils {
   }
 
   static Future<String> getGuideImagePath(
-      int projectId, Map<String, Object?>? guidePhoto) async {
+    int projectId,
+    Map<String, Object?>? guidePhoto,
+  ) async {
     if (guidePhoto == null) {
       return "";
     }
 
     final List<Future<String>> futures = [
       DirUtils.getStabilizedDirPath(projectId),
-      SettingsUtil.loadProjectOrientation(projectId.toString())
+      SettingsUtil.loadProjectOrientation(projectId.toString()),
     ];
 
     final List<String> results = await Future.wait(futures);
@@ -294,14 +353,18 @@ class DirUtils {
     final String directoryPath = results[0];
     final String projectOrientation = results[1];
     final String stabDirPath = path.join(directoryPath, projectOrientation);
-    final String guideImagePath =
-        path.join(stabDirPath, "${guidePhoto['timestamp']}.png");
+    final String guideImagePath = path.join(
+      stabDirPath,
+      "${guidePhoto['timestamp']}.png",
+    );
 
     return guideImagePath;
   }
 
   static Future<Map<String, Object?>?> getGuidePhoto(
-      double offsetX, int projectId) async {
+    double offsetX,
+    int projectId,
+  ) async {
     List<Map<String, Object?>> validGuidePhotos =
         await DB.instance.getSetEyePhoto(offsetX, projectId);
 

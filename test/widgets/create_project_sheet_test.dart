@@ -9,17 +9,13 @@ void main() {
     });
 
     test('CreateProjectSheet stores required parameters', () {
-      const widget = CreateProjectSheet(
-        isDefaultProject: true,
-      );
+      const widget = CreateProjectSheet(isDefaultProject: true);
 
       expect(widget.isDefaultProject, isTrue);
     });
 
     test('showCloseButton defaults to true', () {
-      const widget = CreateProjectSheet(
-        isDefaultProject: false,
-      );
+      const widget = CreateProjectSheet(isDefaultProject: false);
 
       expect(widget.showCloseButton, isTrue);
     });
@@ -34,9 +30,7 @@ void main() {
     });
 
     test('CreateProjectSheet creates state', () {
-      const widget = CreateProjectSheet(
-        isDefaultProject: false,
-      );
+      const widget = CreateProjectSheet(isDefaultProject: false);
 
       expect(widget.createState(), isA<CreateProjectSheetState>());
     });
@@ -74,8 +68,9 @@ void main() {
     });
 
     test('checkForStabilizedImage returns Future<String?>', () {
-      final result =
-          CreateProjectSheetState.checkForStabilizedImage('/nonexistent');
+      final result = CreateProjectSheetState.checkForStabilizedImage(
+        '/nonexistent',
+      );
       expect(result, isA<Future<String?>>());
     });
 
@@ -85,11 +80,14 @@ void main() {
       expect(CreateProjectSheetState.photoWasTakenToday, isA<Function>());
     });
 
-    test('checkForStabilizedImage returns null for nonexistent directory',
-        () async {
-      final result = await CreateProjectSheetState.checkForStabilizedImage(
-          '/nonexistent/path/that/does/not/exist');
-      expect(result, isNull);
-    });
+    test(
+      'checkForStabilizedImage returns null for nonexistent directory',
+      () async {
+        final result = await CreateProjectSheetState.checkForStabilizedImage(
+          '/nonexistent/path/that/does/not/exist',
+        );
+        expect(result, isNull);
+      },
+    );
   });
 }

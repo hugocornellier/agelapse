@@ -55,15 +55,25 @@ void main() {
 
     test('directory names are lowercase', () {
       expect(
-          DirUtils.photosRawDirname, DirUtils.photosRawDirname.toLowerCase());
+        DirUtils.photosRawDirname,
+        DirUtils.photosRawDirname.toLowerCase(),
+      );
       expect(
-          DirUtils.stabilizedDirname, DirUtils.stabilizedDirname.toLowerCase());
-      expect(DirUtils.stabilizedWIPDirname,
-          DirUtils.stabilizedWIPDirname.toLowerCase());
+        DirUtils.stabilizedDirname,
+        DirUtils.stabilizedDirname.toLowerCase(),
+      );
       expect(
-          DirUtils.watermarkDirname, DirUtils.watermarkDirname.toLowerCase());
+        DirUtils.stabilizedWIPDirname,
+        DirUtils.stabilizedWIPDirname.toLowerCase(),
+      );
       expect(
-          DirUtils.thumbnailDirname, DirUtils.thumbnailDirname.toLowerCase());
+        DirUtils.watermarkDirname,
+        DirUtils.watermarkDirname.toLowerCase(),
+      );
+      expect(
+        DirUtils.thumbnailDirname,
+        DirUtils.thumbnailDirname.toLowerCase(),
+      );
       expect(DirUtils.failureDirname, DirUtils.failureDirname.toLowerCase());
       expect(DirUtils.testDirname, DirUtils.testDirname.toLowerCase());
     });

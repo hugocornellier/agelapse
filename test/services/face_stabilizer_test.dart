@@ -250,24 +250,12 @@ void main() {
       });
 
       test('returns true for exactly 0.5 score', () {
-        final needed = stabilizer.correctionIsNeeded(
-          0.5,
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-        );
+        final needed = stabilizer.correctionIsNeeded(0.5, 0.0, 0.0, 0.0, 0.0);
         expect(needed, isFalse);
       });
 
       test('returns true for score just above 0.5', () {
-        final needed = stabilizer.correctionIsNeeded(
-          0.51,
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-        );
+        final needed = stabilizer.correctionIsNeeded(0.51, 0.0, 0.0, 0.0, 0.0);
         expect(needed, isTrue);
       });
     });
@@ -392,10 +380,7 @@ void main() {
     test('getCentermostEyes returns valid eyes for single face', () {
       final stabilizer = FaceStabilizer(1, () {});
 
-      final eyes = <Point<double>?>[
-        Point(400.0, 300.0),
-        Point(600.0, 300.0),
-      ];
+      final eyes = <Point<double>?>[Point(400.0, 300.0), Point(600.0, 300.0)];
 
       // Mock faces list (we can't easily mock Face objects, so test with empty list)
       final result = stabilizer.getCentermostEyes(
@@ -420,10 +405,7 @@ void main() {
       // Manually set canvas dimensions for testing
       // We'll use a simple approach - calculate expected score
 
-      final eyes = <Point<double>?>[
-        Point(400.0, 300.0),
-        Point(600.0, 300.0),
-      ];
+      final eyes = <Point<double>?>[Point(400.0, 300.0), Point(600.0, 300.0)];
 
       final goalLeft = Point<double>(400.0, 300.0);
       final goalRight = Point<double>(600.0, 300.0);

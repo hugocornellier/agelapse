@@ -6,9 +6,7 @@ class TutorialPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Tutorials'),
-      ),
+      appBar: AppBar(title: const Text('Tutorials')),
       body: Theme(
         data: Theme.of(context).copyWith(
           dividerColor: Colors.grey.shade700,
@@ -29,23 +27,28 @@ class TutorialPage extends StatelessWidget {
                 SizedBox(height: 16),
                 Divider(),
                 SizedBox(height: 16),
-                Text('2. Tap the upward arrow in the upper right corner.',
-                    style: TextStyle(fontSize: 13.5)),
+                Text(
+                  '2. Tap the upward arrow in the upper right corner.',
+                  style: TextStyle(fontSize: 13.5),
+                ),
                 SizedBox(height: 16),
                 Image.asset('assets/images/import_tut_1.png'),
                 SizedBox(height: 16),
                 Divider(),
                 SizedBox(height: 16),
-                Text('3. Select your import method.',
-                    style: TextStyle(fontSize: 13.5)),
+                Text(
+                  '3. Select your import method.',
+                  style: TextStyle(fontSize: 13.5),
+                ),
                 SizedBox(height: 16),
                 Image.asset('assets/images/import_tut_2.jpg'),
                 SizedBox(height: 16),
                 Divider(),
                 SizedBox(height: 16),
                 Text(
-                    '4. Importing a large quantity of photos? Import a .zip file: AgeLapse will extract and process the contents.',
-                    style: TextStyle(fontSize: 13.5)),
+                  '4. Importing a large quantity of photos? Import a .zip file: AgeLapse will extract and process the contents.',
+                  style: TextStyle(fontSize: 13.5),
+                ),
                 SizedBox(height: 16),
               ],
             ),
@@ -58,43 +61,51 @@ class TutorialPage extends StatelessWidget {
                 SizedBox(height: 16),
                 Divider(),
                 SizedBox(height: 16),
-                Text('2. Tap the downward arrow in the upper right corner.',
-                    style: TextStyle(fontSize: 13.5)),
+                Text(
+                  '2. Tap the downward arrow in the upper right corner.',
+                  style: TextStyle(fontSize: 13.5),
+                ),
                 SizedBox(height: 16),
                 Image.asset('assets/images/export_tut1.png'),
                 SizedBox(height: 16),
                 Divider(),
                 SizedBox(height: 16),
                 Text(
-                    '3. Select the photo types to export. Options: the original (raw) photos, the stabilized photos, or both.',
-                    style: TextStyle(fontSize: 13.5)),
+                  '3. Select the photo types to export. Options: the original (raw) photos, the stabilized photos, or both.',
+                  style: TextStyle(fontSize: 13.5),
+                ),
                 SizedBox(height: 16),
                 Image.asset('assets/images/export_tut2.jpg'),
                 SizedBox(height: 16),
                 Text(
-                    '4. Wait a moment for your files to be archived. When complete, an option will appear to save your .zip file.',
-                    style: TextStyle(fontSize: 13.5)),
+                  '4. Wait a moment for your files to be archived. When complete, an option will appear to save your .zip file.',
+                  style: TextStyle(fontSize: 13.5),
+                ),
               ],
             ),
             TutorialSection(
               title: 'Stabilize photos',
               steps: [
-                Text('1. Take or import photos into AgeLapse.',
-                    style: TextStyle(fontSize: 13.5)),
+                Text(
+                  '1. Take or import photos into AgeLapse.',
+                  style: TextStyle(fontSize: 13.5),
+                ),
                 SizedBox(height: 16),
                 Divider(),
                 SizedBox(height: 16),
                 Text(
-                    '2. Photos are auto-stabilized automatically. You\'ll notice a blue progress bar in the upper portion of the app.',
-                    style: TextStyle(fontSize: 13.5)),
+                  '2. Photos are auto-stabilized automatically. You\'ll notice a blue progress bar in the upper portion of the app.',
+                  style: TextStyle(fontSize: 13.5),
+                ),
                 SizedBox(height: 16),
                 Image.asset('assets/images/stab_tut1.jpg'),
                 SizedBox(height: 16),
                 Divider(),
                 SizedBox(height: 16),
                 Text(
-                    '3. Open your Gallery and tap the "Stabilized" tab to view the images being stabilized in real-time.',
-                    style: TextStyle(fontSize: 13.5)),
+                  '3. Open your Gallery and tap the "Stabilized" tab to view the images being stabilized in real-time.',
+                  style: TextStyle(fontSize: 13.5),
+                ),
                 SizedBox(height: 16),
                 Image.asset('assets/images/stab_tut2.jpg'),
                 SizedBox(height: 16),
@@ -104,36 +115,42 @@ class TutorialPage extends StatelessWidget {
             TutorialSection(
               title: 'Update output position',
               steps: [
-                Text('1. Tap on the Settings icon to open the settings menu.',
-                    style: TextStyle(fontSize: 13.5)),
+                Text(
+                  '1. Tap on the Settings icon to open the settings menu.',
+                  style: TextStyle(fontSize: 13.5),
+                ),
                 SizedBox(height: 16),
                 Image.asset('assets/images/set_eyes_tut1.png'),
                 SizedBox(height: 16),
                 Divider(),
                 SizedBox(height: 16),
                 Text(
-                    '2. Locate the \'Eye position\' setting under Video Settings and tap \'Configure\'',
-                    style: TextStyle(fontSize: 13.5)),
+                  '2. Locate the \'Eye position\' setting under Video Settings and tap \'Configure\'',
+                  style: TextStyle(fontSize: 13.5),
+                ),
                 SizedBox(height: 16),
                 Image.asset('assets/images/set_eyes_tut2.png'),
                 SizedBox(height: 16),
                 Divider(),
                 SizedBox(height: 16),
                 Text(
-                    '3. Drag the horizontal line up or down to adjust the vertical offset.',
-                    style: TextStyle(fontSize: 13.5)),
+                  '3. Drag the horizontal line up or down to adjust the vertical offset.',
+                  style: TextStyle(fontSize: 13.5),
+                ),
                 SizedBox(height: 8),
                 Text(
-                    'Drag either vertical line left or right to adjust the inter-eye spacing.',
-                    style: TextStyle(fontSize: 13.5)),
+                  'Drag either vertical line left or right to adjust the inter-eye spacing.',
+                  style: TextStyle(fontSize: 13.5),
+                ),
                 SizedBox(height: 16),
                 Image.asset('assets/images/set_eyes_tut3.png'),
                 SizedBox(height: 16),
                 Divider(),
                 SizedBox(height: 16),
                 Text(
-                    '4. When satisfied, tap the Save button at the top right corner.',
-                    style: TextStyle(fontSize: 13.5)),
+                  '4. When satisfied, tap the Save button at the top right corner.',
+                  style: TextStyle(fontSize: 13.5),
+                ),
                 SizedBox(height: 16),
                 Image.asset('assets/images/set_eyes_tut4.png'),
               ],
@@ -142,24 +159,27 @@ class TutorialPage extends StatelessWidget {
               title: 'Create or view video',
               steps: [
                 Text(
-                    '1. Open the "play video" page, the fourth option in the navigation bar.',
-                    style: TextStyle(fontSize: 13.5)),
+                  '1. Open the "play video" page, the fourth option in the navigation bar.',
+                  style: TextStyle(fontSize: 13.5),
+                ),
                 SizedBox(height: 16),
                 Image.asset('assets/images/create_vid_tut1.png'),
                 SizedBox(height: 16),
                 Divider(),
                 SizedBox(height: 16),
                 Text(
-                    '2. If you have two or more photos, your video will automatically compile.',
-                    style: TextStyle(fontSize: 13.5)),
+                  '2. If you have two or more photos, your video will automatically compile.',
+                  style: TextStyle(fontSize: 13.5),
+                ),
                 SizedBox(height: 16),
                 Image.asset('assets/images/create_vid_tut2.jpg'),
                 SizedBox(height: 16),
                 Divider(),
                 SizedBox(height: 16),
                 Text(
-                    '3. Adjust the output settings (resolution, orientation, FPS, watermark).',
-                    style: TextStyle(fontSize: 13.5)),
+                  '3. Adjust the output settings (resolution, orientation, FPS, watermark).',
+                  style: TextStyle(fontSize: 13.5),
+                ),
                 SizedBox(height: 16),
                 Image.asset('assets/images/create_vid_tut3.png'),
               ],
@@ -167,23 +187,28 @@ class TutorialPage extends StatelessWidget {
             TutorialSection(
               title: 'Create new project',
               steps: [
-                Text('1. Tap your project icon to open the projects menu.',
-                    style: TextStyle(fontSize: 13.5)),
+                Text(
+                  '1. Tap your project icon to open the projects menu.',
+                  style: TextStyle(fontSize: 13.5),
+                ),
                 SizedBox(height: 16),
                 Image.asset('assets/images/create_proj_tut1.png'),
                 SizedBox(height: 16),
                 Divider(),
                 SizedBox(height: 16),
-                Text('2. Tap the + icon to create a new project.',
-                    style: TextStyle(fontSize: 13.5)),
+                Text(
+                  '2. Tap the + icon to create a new project.',
+                  style: TextStyle(fontSize: 13.5),
+                ),
                 SizedBox(height: 16),
                 Image.asset('assets/images/create_proj_tut2.png'),
                 SizedBox(height: 16),
                 Divider(),
                 SizedBox(height: 16),
                 Text(
-                    '3. Select your pose and enter a project name, then hit "Create".',
-                    style: TextStyle(fontSize: 13.5)),
+                  '3. Select your pose and enter a project name, then hit "Create".',
+                  style: TextStyle(fontSize: 13.5),
+                ),
                 SizedBox(height: 16),
                 Image.asset('assets/images/create_proj_tut3.png'),
               ],
@@ -196,11 +221,7 @@ class TutorialPage extends StatelessWidget {
 }
 
 class TutorialSection extends StatefulWidget {
-  const TutorialSection({
-    super.key,
-    required this.title,
-    required this.steps,
-  });
+  const TutorialSection({super.key, required this.title, required this.steps});
 
   final String title;
   final List<Widget> steps;

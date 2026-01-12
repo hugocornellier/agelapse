@@ -34,8 +34,9 @@ void main() {
   group('HeicUtils Platform Behavior', () {
     test('convertHeicToJpg returns null on non-Windows platforms', () async {
       if (!Platform.isWindows) {
-        final result =
-            await HeicUtils.convertHeicToJpg('/nonexistent/file.heic');
+        final result = await HeicUtils.convertHeicToJpg(
+          '/nonexistent/file.heic',
+        );
         expect(result, isNull);
       }
     });

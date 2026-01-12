@@ -4,11 +4,12 @@ class Setting {
   final String value;
   final String projectId;
 
-  const Setting(
-      {required this.title,
-      required this.value,
-      required this.projectId,
-      this.id});
+  const Setting({
+    required this.title,
+    required this.value,
+    required this.projectId,
+    this.id,
+  });
 
   factory Setting.fromJson(Map<String, dynamic> json) => Setting(
         id: json['id'],

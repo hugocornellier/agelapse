@@ -176,43 +176,46 @@ void main() {
     });
 
     group('state categorization completeness', () {
-      test('every state belongs to at least one category or is transitional',
-          () {
-        for (final state in StabilizationState.values) {
-          final isInSomeCategory = state.isActive ||
-              state.isCancelling ||
-              state.isFinished ||
-              state.isVideoPhase;
-          // All states should be categorizable
-          // Note: cancelling states are in isCancelling, not isActive
-          expect(
-            isInSomeCategory,
-            isTrue,
-            reason: 'State $state should be in at least one category',
-          );
-        }
-      });
+      test(
+        'every state belongs to at least one category or is transitional',
+        () {
+          for (final state in StabilizationState.values) {
+            final isInSomeCategory = state.isActive ||
+                state.isCancelling ||
+                state.isFinished ||
+                state.isVideoPhase;
+            // All states should be categorizable
+            // Note: cancelling states are in isCancelling, not isActive
+            expect(
+              isInSomeCategory,
+              isTrue,
+              reason: 'State $state should be in at least one category',
+            );
+          }
+        },
+      );
     });
 
     group('state flow scenarios', () {
       test(
-          'normal flow: idle -> preparing -> stabilizing -> compilingVideo -> completed',
-          () {
-        final flow = [
-          StabilizationState.idle,
-          StabilizationState.preparing,
-          StabilizationState.stabilizing,
-          StabilizationState.compilingVideo,
-          StabilizationState.completed,
-        ];
+        'normal flow: idle -> preparing -> stabilizing -> compilingVideo -> completed',
+        () {
+          final flow = [
+            StabilizationState.idle,
+            StabilizationState.preparing,
+            StabilizationState.stabilizing,
+            StabilizationState.compilingVideo,
+            StabilizationState.completed,
+          ];
 
-        expect(flow[0].isFinished, isTrue); // Start at idle
-        expect(flow[1].isActive, isTrue); // Preparing is active
-        expect(flow[2].isActive, isTrue); // Stabilizing is active
-        expect(flow[3].isActive, isTrue); // Compiling is active
-        expect(flow[3].isVideoPhase, isTrue); // Compiling is video phase
-        expect(flow[4].isFinished, isTrue); // End at completed
-      });
+          expect(flow[0].isFinished, isTrue); // Start at idle
+          expect(flow[1].isActive, isTrue); // Preparing is active
+          expect(flow[2].isActive, isTrue); // Stabilizing is active
+          expect(flow[3].isActive, isTrue); // Compiling is active
+          expect(flow[3].isVideoPhase, isTrue); // Compiling is video phase
+          expect(flow[4].isFinished, isTrue); // End at completed
+        },
+      );
 
       test('cancellation flow during stabilization', () {
         final flow = [

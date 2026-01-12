@@ -122,15 +122,18 @@ void main() {
         expect(photos.length, 3);
 
         // Verify count
-        final count =
-            await DB.instance.getPhotoCountByProjectID(testProjectId!);
+        final count = await DB.instance.getPhotoCountByProjectID(
+          testProjectId!,
+        );
         expect(count, 3);
 
         // Verify earliest/latest
-        final earliest =
-            await DB.instance.getEarliestPhotoTimestamp(testProjectId!);
-        final latest =
-            await DB.instance.getLatestPhotoTimestamp(testProjectId!);
+        final earliest = await DB.instance.getEarliestPhotoTimestamp(
+          testProjectId!,
+        );
+        final latest = await DB.instance.getLatestPhotoTimestamp(
+          testProjectId!,
+        );
         expect(earliest, '1000000001');
         expect(latest, '1000000003');
       });
@@ -197,12 +200,18 @@ void main() {
 
         // Create two projects
         final ts1 = DateTime.now().millisecondsSinceEpoch;
-        final project1Id =
-            await DB.instance.addProject('Project 1', 'face', ts1);
+        final project1Id = await DB.instance.addProject(
+          'Project 1',
+          'face',
+          ts1,
+        );
 
         final ts2 = ts1 + 1000;
-        final project2Id =
-            await DB.instance.addProject('Project 2', 'face', ts2);
+        final project2Id = await DB.instance.addProject(
+          'Project 2',
+          'face',
+          ts2,
+        );
 
         // Set different framerate for each project
         await DB.instance.setSettingByTitle(
@@ -245,8 +254,9 @@ void main() {
         final framerate = await DB.instance.getSettingValueByTitle('framerate');
         expect(framerate, '14');
 
-        final resolution =
-            await DB.instance.getSettingValueByTitle('video_resolution');
+        final resolution = await DB.instance.getSettingValueByTitle(
+          'video_resolution',
+        );
         expect(resolution, '1080p');
       });
     });
@@ -277,8 +287,9 @@ void main() {
         expect(videoId, isPositive);
 
         // Retrieve newest video
-        final newest =
-            await DB.instance.getNewestVideoByProjectId(testProjectId!);
+        final newest = await DB.instance.getNewestVideoByProjectId(
+          testProjectId!,
+        );
         expect(newest, isNotNull);
         expect(newest!['resolution'], '1080p');
         expect(newest['photoCount'], 50);
@@ -373,8 +384,9 @@ void main() {
         );
 
         // Store face data with embedding
-        final embedding =
-            Uint8List.fromList(List.generate(768, (i) => i % 256));
+        final embedding = Uint8List.fromList(
+          List.generate(768, (i) => i % 256),
+        );
         await DB.instance.setPhotoFaceData(
           '3000000001',
           testProjectId!,
@@ -392,8 +404,9 @@ void main() {
         expect(storedEmbedding!.length, 768);
       });
 
-      testWidgets('getClosestSingleFacePhoto returns correct result',
-          (tester) async {
+      testWidgets('getClosestSingleFacePhoto returns correct result', (
+        tester,
+      ) async {
         app.main();
         await tester.pumpAndSettle(const Duration(seconds: 2));
 
@@ -427,8 +440,9 @@ void main() {
         await DB.instance.setPhotoFaceData('4000000001', testProjectId!, 2);
 
         // Mark second with 1 face and embedding
-        final embedding =
-            Uint8List.fromList(List.generate(768, (i) => i % 256));
+        final embedding = Uint8List.fromList(
+          List.generate(768, (i) => i % 256),
+        );
         await DB.instance.setPhotoFaceData(
           '4000000002',
           testProjectId!,
@@ -551,8 +565,9 @@ void main() {
           'portrait',
         );
 
-        final threshold =
-            await DB.instance.checkPhotoOrientationThreshold(testProjectId!);
+        final threshold = await DB.instance.checkPhotoOrientationThreshold(
+          testProjectId!,
+        );
         expect(threshold, 'landscape');
       });
     });
@@ -594,8 +609,9 @@ void main() {
     });
 
     group('Stabilization Reset', () {
-      testWidgets('resetStabilizationStatusForProject resets all photos',
-          (tester) async {
+      testWidgets('resetStabilizationStatusForProject resets all photos', (
+        tester,
+      ) async {
         app.main();
         await tester.pumpAndSettle(const Duration(seconds: 2));
 

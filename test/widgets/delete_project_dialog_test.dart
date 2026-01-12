@@ -113,8 +113,9 @@ void main() {
       expect(find.text('Delete'), findsOneWidget);
     });
 
-    testWidgets('Delete button enables after typing project name',
-        (tester) async {
+    testWidgets('Delete button enables after typing project name', (
+      tester,
+    ) async {
       bool? result;
 
       await tester.pumpWidget(

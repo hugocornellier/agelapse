@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:mime/mime.dart';
 import 'dart:io';
 import 'package:path/path.dart' as path;
+import 'capture_timezone.dart';
 
 class Utils {
   static bool? parseBoolean(String? input) {
@@ -39,42 +40,38 @@ class Utils {
     int timestamp, {
     int? captureOffsetMinutes,
   }) {
-    final utc = DateTime.fromMillisecondsSinceEpoch(timestamp, isUtc: true);
-    final wall = captureOffsetMinutes != null
-        ? utc.add(Duration(minutes: captureOffsetMinutes))
-        : utc.toLocal();
+    final wall = CaptureTimezone.toLocalDateTime(
+      timestamp,
+      offsetMinutes: captureOffsetMinutes,
+    );
     final pattern = (Platform.isAndroid || Platform.isIOS)
         ? 'MMM d yyyy h:mm a'
         : 'MMMM d yyyy h:mm a';
     final fmt = DateFormat(pattern);
-    final offMin = captureOffsetMinutes ?? wall.timeZoneOffset.inMinutes;
-    final sign = offMin >= 0 ? '+' : '−';
-    final absMin = offMin.abs();
-    final hh = (absMin ~/ 60).toString().padLeft(2, '0');
-    final mm = (absMin % 60).toString().padLeft(2, '0');
-    return '${fmt.format(wall)} UTC$sign$hh:$mm';
+    final tzLabel = CaptureTimezone.formatOffsetLabel(
+      captureOffsetMinutes,
+      fallbackDateTime: wall,
+    );
+    return '${fmt.format(wall)} $tzLabel';
   }
 
-  static String formatUnixTimestamp2(int timestamp,
-      {int? captureOffsetMinutes}) {
-    final DateTime utc =
-        DateTime.fromMillisecondsSinceEpoch(timestamp, isUtc: true);
-    final DateTime localLike = captureOffsetMinutes != null
-        ? utc.add(Duration(minutes: captureOffsetMinutes))
-        : utc.toLocal();
+  static String formatUnixTimestamp2(
+    int timestamp, {
+    int? captureOffsetMinutes,
+  }) {
+    final DateTime localLike = CaptureTimezone.toLocalDateTime(
+      timestamp,
+      offsetMinutes: captureOffsetMinutes,
+    );
     final DateTime nowRef = DateTime.now();
     final String formattedTime = DateFormat('h:mm a').format(localLike);
     final String formattedDate = localLike.year == nowRef.year
         ? DateFormat('MMMM d').format(localLike)
         : DateFormat('MMMM d y').format(localLike);
-    final Duration tzOff = captureOffsetMinutes != null
-        ? Duration(minutes: captureOffsetMinutes)
-        : localLike.timeZoneOffset;
-    final String sign = tzOff.inMinutes >= 0 ? '+' : '-';
-    final int absMin = tzOff.inMinutes.abs();
-    final String hh = (absMin ~/ 60).toString().padLeft(2, '0');
-    final String mm = (absMin % 60).toString().padLeft(2, '0');
-    final String tzLabel = 'UTC$sign$hh:$mm';
+    final String tzLabel = CaptureTimezone.formatOffsetLabel(
+      captureOffsetMinutes,
+      fallbackDateTime: localLike,
+    );
     return '$formattedDate, $formattedTime ($tzLabel)';
   }
 
@@ -94,10 +91,14 @@ class Utils {
 
   static void navigateToScreenReplace(BuildContext context, Widget screen) =>
       Navigator.pushReplacement(
-          context, MaterialPageRoute(builder: (_) => screen));
+        context,
+        MaterialPageRoute(builder: (_) => screen),
+      );
 
   static void navigateToScreenReplaceNoAnim(
-      BuildContext context, Widget screen) {
+    BuildContext context,
+    Widget screen,
+  ) {
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
@@ -132,7 +133,7 @@ class Utils {
       ".tiff",
       ".bmp",
       ".webp",
-      ".avif"
+      ".avif",
     };
     if (validExtensions.contains(extension)) return true;
 
@@ -145,7 +146,9 @@ class Utils {
   }
 
   static Future<bool> showConfirmChangeDialog(
-      BuildContext context, String toChange) async {
+    BuildContext context,
+    String toChange,
+  ) async {
     const dangerColor = Color(0xFFDC2626);
     const dangerColorLight = Color(0x26DC2626);
     const dangerColorBorder = Color(0x4DDC2626);
@@ -205,10 +208,7 @@ class Utils {
                     decoration: BoxDecoration(
                       color: dangerColorLight,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: dangerColorBorder,
-                        width: 1,
-                      ),
+                      border: Border.all(color: dangerColorBorder, width: 1),
                     ),
                     child: const Row(
                       children: [
@@ -248,8 +248,10 @@ class Utils {
                 GestureDetector(
                   onTap: () => Navigator.of(context).pop(true),
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: dangerColor,
                       borderRadius: BorderRadius.circular(8),

@@ -71,7 +71,9 @@ void main() {
               value: 'Test Option',
               items: const [
                 DropdownMenuItem(
-                    value: 'Test Option', child: Text('Test Option')),
+                  value: 'Test Option',
+                  child: Text('Test Option'),
+                ),
                 DropdownMenuItem(value: 'Other', child: Text('Other')),
               ],
             ),
@@ -131,13 +133,7 @@ void main() {
         onChanged: (value) {},
       );
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: widget,
-          ),
-        ),
-      );
+      await tester.pumpWidget(MaterialApp(home: Scaffold(body: widget)));
 
       // Verify the onChanged callback is set
       expect(widget.onChanged, isNotNull);

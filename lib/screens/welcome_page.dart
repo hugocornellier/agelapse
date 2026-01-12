@@ -15,19 +15,13 @@ class WelcomePagePartTwoState extends State<WelcomePagePartTwo> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(""),
-        backgroundColor: backgroundColor,
-      ),
+      appBar: AppBar(title: const Text(""), backgroundColor: backgroundColor),
       body: _buildBody(),
     );
   }
 
   Widget _buildBody() {
-    return ColoredBox(
-      color: backgroundColor,
-      child: _buildFirstPhotoPage(),
-    );
+    return ColoredBox(color: backgroundColor, child: _buildFirstPhotoPage());
   }
 
   Widget _buildFirstPhotoPage() {
@@ -63,9 +57,10 @@ class WelcomePagePartTwoState extends State<WelcomePagePartTwo> {
                           text: TextSpan(
                             text: 'Advanced\n',
                             style: const TextStyle(
-                                fontSize: 26,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold),
+                              fontSize: 26,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
                             children: <InlineSpan>[
                               WidgetSpan(
                                 child: GradientText(
@@ -119,15 +114,21 @@ class WelcomePagePartTwoState extends State<WelcomePagePartTwo> {
         child: Text(
           text.toUpperCase(),
           style: const TextStyle(
-              fontSize: 15, color: Colors.white, fontWeight: FontWeight.bold),
+            fontSize: 15,
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );
   }
 
   void navigateToNextPage({bool? takingGuidePhoto}) {
-    Navigator.of(context).pushReplacement(MaterialPageRoute(
-        builder: (context) => const CreateProjectPage(showCloseButton: false)));
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (context) => const CreateProjectPage(showCloseButton: false),
+      ),
+    );
   }
 }
 
@@ -144,10 +145,7 @@ class GradientText extends StatelessWidget {
         colors: [Colors.blue, Colors.purple.shade500],
         tileMode: TileMode.mirror,
       ).createShader(bounds),
-      child: Text(
-        text,
-        style: style.copyWith(color: Colors.white),
-      ),
+      child: Text(text, style: style.copyWith(color: Colors.white)),
     );
   }
 }

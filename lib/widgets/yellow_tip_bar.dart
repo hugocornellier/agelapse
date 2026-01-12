@@ -15,10 +15,7 @@ class YellowTipBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.settingsCardBackground,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: AppColors.settingsCardBorder,
-          width: 1,
-        ),
+        border: Border.all(color: AppColors.settingsCardBorder, width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

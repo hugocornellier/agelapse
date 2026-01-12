@@ -9,9 +9,7 @@ void main() {
 
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: YellowTipBar(message: testMessage),
-          ),
+          home: Scaffold(body: YellowTipBar(message: testMessage)),
         ),
       );
 
@@ -21,9 +19,7 @@ void main() {
     testWidgets('displays lightbulb icon', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: YellowTipBar(message: 'Test'),
-          ),
+          home: Scaffold(body: YellowTipBar(message: 'Test')),
         ),
       );
 
@@ -33,9 +29,7 @@ void main() {
     testWidgets('has correct layout with Row', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: YellowTipBar(message: 'Test'),
-          ),
+          home: Scaffold(body: YellowTipBar(message: 'Test')),
         ),
       );
 
@@ -49,9 +43,7 @@ void main() {
 
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: YellowTipBar(message: longMessage),
-          ),
+          home: Scaffold(body: YellowTipBar(message: longMessage)),
         ),
       );
 
@@ -62,9 +54,7 @@ void main() {
     testWidgets('has Container with padding and margin', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: YellowTipBar(message: 'Test'),
-          ),
+          home: Scaffold(body: YellowTipBar(message: 'Test')),
         ),
       );
 
@@ -76,9 +66,7 @@ void main() {
     testWidgets('icon has correct size', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: YellowTipBar(message: 'Test'),
-          ),
+          home: Scaffold(body: YellowTipBar(message: 'Test')),
         ),
       );
 
@@ -89,9 +77,7 @@ void main() {
     testWidgets('displays empty message', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: YellowTipBar(message: ''),
-          ),
+          home: Scaffold(body: YellowTipBar(message: '')),
         ),
       );
 
@@ -102,9 +88,7 @@ void main() {
     testWidgets('text has white color', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: YellowTipBar(message: 'Test'),
-          ),
+          home: Scaffold(body: YellowTipBar(message: 'Test')),
         ),
       );
 

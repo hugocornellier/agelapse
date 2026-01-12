@@ -33,9 +33,7 @@ Future<void> _main() async {
   // Clean up orphaned temp files from previous sessions
   await DirUtils.clearStabilizationTempFiles();
 
-  VideoPlayerMediaKit.ensureInitialized(
-    linux: true,
-  );
+  VideoPlayerMediaKit.ensureInitialized(linux: true);
 
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     await DB.instance.createTablesIfNotExist();
@@ -55,7 +53,8 @@ Future<void> _main() async {
             initialDefault.width,
             initialDefault.height < minIntro.height
                 ? minIntro.height
-                : initialDefault.height);
+                : initialDefault.height,
+          );
 
     final options = WindowOptions(
       size: startSize,
@@ -97,9 +96,7 @@ Future<void> _main() async {
 }
 
 Future<void> _initializeApp() async {
-  final futures = <Future>[
-    DB.instance.createTablesIfNotExist(),
-  ];
+  final futures = <Future>[DB.instance.createTablesIfNotExist()];
 
   // Skip notification initialization in test mode to avoid permission prompts
   if (!test_config.isTestMode) {
@@ -138,8 +135,9 @@ Future<Widget> _getHomePage() async {
     //return DesktopHomePage();
   }
 
-  final String defaultProject =
-      await DB.instance.getSettingValueByTitle('default_project');
+  final String defaultProject = await DB.instance.getSettingValueByTitle(
+    'default_project',
+  );
 
   if (defaultProject != "none") {
     final int projectId = int.parse(defaultProject);
@@ -171,8 +169,9 @@ class AgeLapse extends StatelessWidget {
           return _buildApp(context, homePage, themeSnapshot.data!);
         } else {
           return const MaterialApp(
-              home: Scaffold(body: Center(child: CircularProgressIndicator())),
-              debugShowCheckedModeBanner: false);
+            home: Scaffold(body: Center(child: CircularProgressIndicator())),
+            debugShowCheckedModeBanner: false,
+          );
         }
       },
     );
@@ -189,10 +188,11 @@ class AgeLapse extends StatelessWidget {
       create: (_) => ThemeProvider(theme, materialTheme),
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) => MaterialApp(
-            title: 'AgeLapse',
-            theme: themeProvider.themeData,
-            home: homePage,
-            debugShowCheckedModeBanner: false),
+          title: 'AgeLapse',
+          theme: themeProvider.themeData,
+          home: homePage,
+          debugShowCheckedModeBanner: false,
+        ),
       ),
     );
   }

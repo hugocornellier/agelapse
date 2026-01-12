@@ -76,16 +76,20 @@ class OutputImageLoader {
     }
 
     try {
-      final Map<String, Object?>? guidePhoto =
-          await DirUtils.getGuidePhoto(offsetX, projectId);
+      final Map<String, Object?>? guidePhoto = await DirUtils.getGuidePhoto(
+        offsetX,
+        projectId,
+      );
 
       if (guidePhoto == null) {
         // No stabilized image available for current orientation/offset
         return false;
       }
 
-      final String guideImagePath =
-          await DirUtils.getGuideImagePath(projectId, guidePhoto);
+      final String guideImagePath = await DirUtils.getGuideImagePath(
+        projectId,
+        guidePhoto,
+      );
 
       // Check if file exists
       final file = File(guideImagePath);
@@ -94,8 +98,9 @@ class OutputImageLoader {
       }
 
       // Get offset data from the photo
-      final stabilizedColumn =
-          DB.instance.getStabilizedColumn(projectOrientation!);
+      final stabilizedColumn = DB.instance.getStabilizedColumn(
+        projectOrientation!,
+      );
       final stabColOffsetX = "${stabilizedColumn}OffsetX";
       final stabColOffsetY = "${stabilizedColumn}OffsetY";
 
@@ -131,8 +136,9 @@ class OutputImageLoader {
     final String offsetYSettingVal =
         await SettingsUtil.loadOffsetYCurrentOrientation(projectId.toString());
 
-    projectOrientation =
-        await SettingsUtil.loadProjectOrientation(projectId.toString());
+    projectOrientation = await SettingsUtil.loadProjectOrientation(
+      projectId.toString(),
+    );
     aspectRatio = await SettingsUtil.loadAspectRatio(projectId.toString());
     resolution = await SettingsUtil.loadVideoResolution(projectId.toString());
 
@@ -167,14 +173,19 @@ class OutputImageLoader {
 
   Future<void> _initializeImageDirectory() async {
     try {
-      final Map<String, Object?>? guidePhoto =
-          await DirUtils.getGuidePhoto(offsetX, projectId);
-      final String guideImagePath =
-          await DirUtils.getGuideImagePath(projectId, guidePhoto);
+      final Map<String, Object?>? guidePhoto = await DirUtils.getGuidePhoto(
+        offsetX,
+        projectId,
+      );
+      final String guideImagePath = await DirUtils.getGuideImagePath(
+        projectId,
+        guidePhoto,
+      );
 
       if (guidePhoto != null) {
-        final stabilizedColumn =
-            DB.instance.getStabilizedColumn(projectOrientation!);
+        final stabilizedColumn = DB.instance.getStabilizedColumn(
+          projectOrientation!,
+        );
         final stabColOffsetX = "${stabilizedColumn}OffsetX";
         final stabColOffsetY = "${stabilizedColumn}OffsetY";
 
@@ -193,8 +204,9 @@ class OutputImageLoader {
         try {
           guideImage = await StabUtils.loadImageFromFile(File(guideImagePath));
         } catch (e) {
-          LogService.instance
-              .log("Error caught $e, setting ghostImage to SVG placeholder");
+          LogService.instance.log(
+            "Error caught $e, setting ghostImage to SVG placeholder",
+          );
           guideImage = await ProjectUtils.loadSvgImage(
             'assets/images/person-grey.svg',
             width: 400,

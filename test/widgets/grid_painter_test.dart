@@ -100,10 +100,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: CustomPaint(
-              painter: GridPainter(),
-              size: Size.zero,
-            ),
+            body: CustomPaint(painter: GridPainter(), size: Size.zero),
           ),
         ),
       );

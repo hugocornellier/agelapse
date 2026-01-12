@@ -28,10 +28,7 @@ class CreateFirstVideoPageState extends State<CreateFirstVideoPage> {
         backgroundColor: appBarColor,
         automaticallyImplyLeading: false,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: () => close(),
-          ),
+          IconButton(icon: const Icon(Icons.close), onPressed: () => close()),
         ],
       ),
       body: _buildBody(),
@@ -39,20 +36,13 @@ class CreateFirstVideoPageState extends State<CreateFirstVideoPage> {
   }
 
   Container _buildBody() {
-    return Container(
-      color: appBarColor,
-      child: _buildCreateFirstVideoPage(),
-    );
+    return Container(color: appBarColor, child: _buildCreateFirstVideoPage());
   }
 
   Widget _buildWaveImage() {
     const String imagePath = 'assets/images/wave-tc.png';
 
-    return Image.asset(
-      imagePath,
-      width: double.infinity,
-      fit: BoxFit.cover,
-    );
+    return Image.asset(imagePath, width: double.infinity, fit: BoxFit.cover);
   }
 
   Widget _buildCreateFirstVideoPage() {
@@ -105,7 +95,10 @@ class CreateFirstVideoPageState extends State<CreateFirstVideoPage> {
         child: Text(
           text.toUpperCase(),
           style: const TextStyle(
-              fontSize: 15, color: Colors.white, fontWeight: FontWeight.bold),
+            fontSize: 15,
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );

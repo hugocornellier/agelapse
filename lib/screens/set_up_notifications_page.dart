@@ -39,10 +39,7 @@ class SetUpNotificationsPageState extends State<SetUpNotificationsPage> {
         title: const Text(""),
         backgroundColor: appBarColor,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: () => close(),
-          ),
+          IconButton(icon: const Icon(Icons.close), onPressed: () => close()),
         ],
       ),
       body: _buildBody(),
@@ -50,10 +47,7 @@ class SetUpNotificationsPageState extends State<SetUpNotificationsPage> {
   }
 
   Container _buildBody() {
-    return Container(
-      color: appBarColor,
-      child: _buildSetUpNotificationsPage(),
-    );
+    return Container(color: appBarColor, child: _buildSetUpNotificationsPage());
   }
 
   Widget _buildSetUpNotificationsPage() {
@@ -120,7 +114,10 @@ class SetUpNotificationsPageState extends State<SetUpNotificationsPage> {
         child: Text(
           text.toUpperCase(),
           style: const TextStyle(
-              fontSize: 15, color: Colors.white, fontWeight: FontWeight.bold),
+            fontSize: 15,
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );

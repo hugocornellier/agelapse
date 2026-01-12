@@ -94,8 +94,10 @@ class CreatePageState extends State<CreatePage>
       duration: const Duration(seconds: 1),
       vsync: this,
     );
-    _opacityAnimation =
-        Tween<double>(begin: 1.0, end: 0.0).animate(_animationController);
+    _opacityAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.0,
+    ).animate(_animationController);
 
     WidgetsBinding.instance.addObserver(this);
   }
@@ -139,10 +141,13 @@ class CreatePageState extends State<CreatePage>
   }
 
   Future<void> _maybeEncodeWindowsVideo() async {
-    final String projectOrientation =
-        await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
-    final String videoPath =
-        await DirUtils.getVideoOutputPath(widget.projectId, projectOrientation);
+    final String projectOrientation = await SettingsUtil.loadProjectOrientation(
+      widget.projectId.toString(),
+    );
+    final String videoPath = await DirUtils.getVideoOutputPath(
+      widget.projectId,
+      projectOrientation,
+    );
     final File outFile = File(videoPath);
 
     if (await outFile.exists() && await outFile.length() > 0) return;
@@ -162,10 +167,13 @@ class CreatePageState extends State<CreatePage>
   Future<void> setupVideoPlayer() async {
     await _maybeEncodeWindowsVideo();
 
-    String projectOrientation =
-        await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
-    final String videoPath =
-        await DirUtils.getVideoOutputPath(widget.projectId, projectOrientation);
+    String projectOrientation = await SettingsUtil.loadProjectOrientation(
+      widget.projectId.toString(),
+    );
+    final String videoPath = await DirUtils.getVideoOutputPath(
+      widget.projectId,
+      projectOrientation,
+    );
     final File videoFile = File(videoPath);
 
     if (!await videoFile.exists() || await videoFile.length() == 0) {
@@ -183,18 +191,21 @@ class CreatePageState extends State<CreatePage>
     }
 
     setResolution();
-    aspectRatio =
-        await SettingsUtil.loadAspectRatio(widget.projectId.toString());
+    aspectRatio = await SettingsUtil.loadAspectRatio(
+      widget.projectId.toString(),
+    );
     videoFps = await SettingsUtil.loadFramerate(widget.projectId.toString());
 
     await widget.hideNavBar();
     playVideo();
 
-    final bool hasViewedFirstVideo =
-        await SettingsUtil.hasSeenFirstVideo(widget.projectId.toString());
+    final bool hasViewedFirstVideo = await SettingsUtil.hasSeenFirstVideo(
+      widget.projectId.toString(),
+    );
     if (!hasViewedFirstVideo) {
       await SettingsUtil.setHasSeenFirstVideoToTrue(
-          widget.projectId.toString());
+        widget.projectId.toString(),
+      );
       widget.refreshSettings();
     }
   }
@@ -239,9 +250,7 @@ class CreatePageState extends State<CreatePage>
         DeviceOrientation.landscapeRight,
         DeviceOrientation.landscapeLeft,
       ],
-      deviceOrientationsAfterFullScreen: [
-        DeviceOrientation.portraitUp,
-      ],
+      deviceOrientationsAfterFullScreen: [DeviceOrientation.portraitUp],
     );
   }
 
@@ -260,8 +269,9 @@ class CreatePageState extends State<CreatePage>
     if (Platform.isLinux) {
       // For Linux with media_kit, get resolution from settings since
       // the preview texture is scaled down
-      final res =
-          await SettingsUtil.loadVideoResolution(widget.projectId.toString());
+      final res = await SettingsUtil.loadVideoResolution(
+        widget.projectId.toString(),
+      );
       setState(() {
         resolution = res;
       });
@@ -295,7 +305,9 @@ class CreatePageState extends State<CreatePage>
 
   Future<String> getRawPhotoPathFromTimestamp(String timestamp) async =>
       await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-          timestamp, widget.projectId);
+        timestamp,
+        widget.projectId,
+      );
 
   void togglePlaybackSpeed() {
     setState(() {
@@ -378,10 +390,9 @@ class CreatePageState extends State<CreatePage>
             },
             child: Transform.translate(
               offset: Offset(
-                  0,
-                  (dragCurrentY - dragStartY) > 0
-                      ? dragCurrentY - dragStartY
-                      : 0),
+                0,
+                (dragCurrentY - dragStartY) > 0 ? dragCurrentY - dragStartY : 0,
+              ),
               child: _readyToShowVideoPlayer()
                   ? _buildVideoPlayerSection()
                   : buildLoadingView(),
@@ -424,14 +435,15 @@ class CreatePageState extends State<CreatePage>
             Text(
               "${widget.progressPercent}%",
               style: const TextStyle(
-                  fontSize: 24.0,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white),
-            )
+                fontSize: 24.0,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
           ] else ...[
             const CircularProgressIndicator(),
             const SizedBox(height: 30),
-            Text(loadingText)
+            Text(loadingText),
           ],
         ],
       ),
@@ -460,10 +472,12 @@ class CreatePageState extends State<CreatePage>
                 children: [
                   InkWell(
                     onTap: () => goBackToPreviousPage(),
-                    child:
-                        const Icon(Icons.keyboard_arrow_down_rounded, size: 35),
+                    child: const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 35,
+                    ),
                   ),
-                  const SizedBox(width: 20)
+                  const SizedBox(width: 20),
                 ],
               ),
             ],
@@ -491,10 +505,7 @@ class CreatePageState extends State<CreatePage>
     return Stack(
       alignment: Alignment.center,
       children: [
-        Video(
-          controller: _mediaKitController!,
-          controls: NoVideoControls,
-        ),
+        Video(controller: _mediaKitController!, controls: NoVideoControls),
         if (showOverlayIcon)
           FadeTransition(
             opacity: _opacityAnimation,
@@ -505,11 +516,7 @@ class CreatePageState extends State<CreatePage>
                 color: Colors.black.withAlpha(128),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                overlayIcon,
-                color: Colors.white,
-                size: 50,
-              ),
+              child: Icon(overlayIcon, color: Colors.white, size: 50),
             ),
           ),
       ],
@@ -534,11 +541,7 @@ class CreatePageState extends State<CreatePage>
                     color: Colors.black.withAlpha(128),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(
-                    overlayIcon,
-                    color: Colors.white,
-                    size: 50,
-                  ),
+                  child: Icon(overlayIcon, color: Colors.white, size: 50),
                 ),
               ),
             ),
@@ -644,22 +647,25 @@ class CreatePageState extends State<CreatePage>
       await src.copy(dest.path);
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Saved to ${dest.path}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Saved to ${dest.path}')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to save video: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to save video: $e')));
     }
   }
 
   void _shareVideo() async {
-    final String projectOrientation =
-        await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
-    final String videoOutputPath =
-        await DirUtils.getVideoOutputPath(widget.projectId, projectOrientation);
+    final String projectOrientation = await SettingsUtil.loadProjectOrientation(
+      widget.projectId.toString(),
+    );
+    final String videoOutputPath = await DirUtils.getVideoOutputPath(
+      widget.projectId,
+      projectOrientation,
+    );
 
     if (Platform.isAndroid || Platform.isIOS) {
       final result = await SharePlus.instance.share(
@@ -676,13 +682,18 @@ class CreatePageState extends State<CreatePage>
 
   Future<bool> videoSettingsChanged(Map<String, dynamic>? newestVideo) async =>
       await VideoUtils.videoOutputSettingsChanged(
-          widget.projectId, newestVideo);
+        widget.projectId,
+        newestVideo,
+      );
 
   Future<int> getStabilizedPhotoCount() async {
-    String projectOrientation =
-        await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
+    String projectOrientation = await SettingsUtil.loadProjectOrientation(
+      widget.projectId.toString(),
+    );
     return await DB.instance.getStabilizedPhotoCountByProjectID(
-        widget.projectId, projectOrientation);
+      widget.projectId,
+      projectOrientation,
+    );
   }
 }
 
@@ -731,10 +742,7 @@ class FadeInOutIconState extends State<FadeInOutIcon>
       builder: (context, child) {
         return Opacity(
           opacity: _animation.value,
-          child: const Icon(
-            Icons.video_stable,
-            size: 100.0,
-          ),
+          child: const Icon(Icons.video_stable, size: 100.0),
         );
       },
     );
@@ -782,19 +790,14 @@ class AnimatedIconDemoState extends State<AnimatedIconDemo>
           width: 177.78,
           height: 133.335,
           decoration: BoxDecoration(
-              border: Border.all(
-                color: Colors.grey.shade700,
-                width: 14.0,
-              ),
-              borderRadius: BorderRadius.circular(16)),
+            border: Border.all(color: Colors.grey.shade700, width: 14.0),
+            borderRadius: BorderRadius.circular(16),
+          ),
         ),
         AnimatedBuilder(
           animation: _animation,
           builder: (context, child) {
-            return Transform.rotate(
-              angle: _animation.value,
-              child: child,
-            );
+            return Transform.rotate(angle: _animation.value, child: child);
           },
           child: Container(
             width: 88.88,

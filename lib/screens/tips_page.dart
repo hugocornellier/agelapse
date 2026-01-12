@@ -50,10 +50,7 @@ class TipsPageState extends State<TipsPage> {
   }
 
   Container _buildBody() {
-    return Container(
-      color: appBarColor,
-      child: _buildTipsPage(),
-    );
+    return Container(color: appBarColor, child: _buildTipsPage());
   }
 
   Widget _buildTipsPage() {
@@ -64,11 +61,7 @@ class TipsPageState extends State<TipsPage> {
           mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Divider(
-              color: Colors.grey,
-              thickness: 1,
-              height: 16,
-            ),
+            const Divider(color: Colors.grey, thickness: 1, height: 16),
             Expanded(child: Container()),
             const CustomWidget(
               title: "Look At Camera Lens",
@@ -92,8 +85,10 @@ class TipsPageState extends State<TipsPage> {
                 'assets/relax.svg',
                 width: 24,
                 height: 24,
-                colorFilter:
-                    const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                colorFilter: const ColorFilter.mode(
+                  Colors.white,
+                  BlendMode.srcIn,
+                ),
               ),
             ),
             Expanded(child: Container()),
@@ -121,7 +116,10 @@ class TipsPageState extends State<TipsPage> {
         child: Text(
           text.toUpperCase(),
           style: const TextStyle(
-              fontSize: 15, color: Colors.white, fontWeight: FontWeight.bold),
+            fontSize: 15,
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );
@@ -149,8 +147,10 @@ class CustomWidget extends StatelessWidget {
     required this.description,
     this.icon,
     this.svgIcon,
-  }) : assert(icon != null || svgIcon != null,
-            'Either icon or svgIcon must be provided');
+  }) : assert(
+          icon != null || svgIcon != null,
+          'Either icon or svgIcon must be provided',
+        );
 
   @override
   Widget build(BuildContext context) {
@@ -159,10 +159,7 @@ class CustomWidget extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xff212121),
         borderRadius: BorderRadius.circular(16.0),
-        border: Border.all(
-          color: Colors.grey.shade800,
-          width: 0.7,
-        ),
+        border: Border.all(color: Colors.grey.shade800, width: 0.7),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -170,11 +167,7 @@ class CustomWidget extends StatelessWidget {
           Row(
             children: [
               if (icon != null)
-                Icon(
-                  icon,
-                  color: Colors.white,
-                  size: 24.0,
-                )
+                Icon(icon, color: Colors.white, size: 24.0)
               else if (svgIcon != null)
                 svgIcon!,
               const SizedBox(width: 8.0),

@@ -20,6 +20,8 @@ import '../../utils/project_utils.dart';
 import '../../utils/dir_utils.dart';
 import '../../utils/gallery_utils.dart';
 import '../../utils/settings_utils.dart';
+import '../../utils/date_stamp_utils.dart';
+import '../../utils/capture_timezone.dart';
 import '../../utils/utils.dart';
 import '../../widgets/yellow_tip_bar.dart';
 import '../manual_stab_page.dart';
@@ -47,11 +49,13 @@ class GalleryPage extends StatefulWidget {
   final List<String> imageFilesStr;
   final List<String> stabilizedImageFilesStr;
   final void Function(
-          List<String> imageFiles, List<String> stabilizedImageFiles)
-      setRawAndStabPhotoStates;
-  final Future<void> Function(FilePickerResult? pickedFiles,
-          Future<void> Function(dynamic file) processFileCallback)
-      processPickedFiles;
+    List<String> imageFiles,
+    List<String> stabilizedImageFiles,
+  ) setRawAndStabPhotoStates;
+  final Future<void> Function(
+    FilePickerResult? pickedFiles,
+    Future<void> Function(dynamic file) processFileCallback,
+  ) processPickedFiles;
   final Future<void> Function() refreshSettings;
   final String minutesRemaining;
   final bool userRanOutOfSpace;
@@ -102,8 +106,9 @@ class GalleryPageState extends State<GalleryPage>
   bool isImporting = false;
   bool imagePreviewIsOpen = false;
   VoidCallback? closeImagePreviewCallback;
-  ValueNotifier<String> activeProcessingDateNotifier =
-      ValueNotifier<String>('');
+  ValueNotifier<String> activeProcessingDateNotifier = ValueNotifier<String>(
+    '',
+  );
   late bool showFlashingCircle;
   late int projectId;
   late String projectIdStr;
@@ -124,6 +129,46 @@ class GalleryPageState extends State<GalleryPage>
   bool _isAutoScrolling = false;
   bool _isSelectionMode = false;
   Set<String> _selectedPhotos = {};
+
+  // Date stamp settings for gallery labels
+  bool _galleryDateLabelsEnabled = false;
+  bool _galleryRawDateLabelsEnabled = false;
+  String _galleryDateFormat = DateStampUtils.galleryFormatMMYY;
+
+  // Cache for capture timezone offsets (timestamp -> offset minutes)
+  Map<String, int?> _captureOffsetMap = {};
+
+  /// Reload date stamp settings from DB. Call this after settings change.
+  Future<void> reloadDateStampSettings() async {
+    final results = await Future.wait([
+      SettingsUtil.loadGalleryDateLabelsEnabled(projectIdStr),
+      SettingsUtil.loadGalleryRawDateLabelsEnabled(projectIdStr),
+      SettingsUtil.loadGalleryDateFormat(projectIdStr),
+    ]);
+    if (mounted) {
+      setState(() {
+        _galleryDateLabelsEnabled = results[0] as bool;
+        _galleryRawDateLabelsEnabled = results[1] as bool;
+        _galleryDateFormat = results[2] as String;
+      });
+    }
+  }
+
+  /// Load capture timezone offsets for all images.
+  Future<void> _loadCaptureOffsets() async {
+    try {
+      final offsets = await CaptureTimezone.loadOffsetsForMultipleLists([
+        widget.imageFilesStr,
+        widget.stabilizedImageFilesStr,
+      ], projectId);
+
+      if (mounted) {
+        setState(() => _captureOffsetMap = offsets);
+      }
+    } catch (e) {
+      // Graceful degradation: continue with empty map (falls back to local time)
+    }
+  }
 
   bool _isAtBottom() {
     if (!_stabilizedScrollController.hasClients) return true;
@@ -188,8 +233,23 @@ class GalleryPageState extends State<GalleryPage>
     _tabController = TabController(length: 2, vsync: this);
     showFlashingCircle = widget.showFlashingCircle;
     _loadImages();
+    _loadCaptureOffsets();
     _stabilizedScrollController.addListener(_onStabilizedScroll);
     _tabController.addListener(_onTabChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant GalleryPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Always reload date stamp settings when widget updates
+    // This ensures settings are refreshed after Settings sheet is closed
+    reloadDateStampSettings();
+
+    // Reload offsets if image lists changed (new photos imported/deleted)
+    if (widget.imageFilesStr != oldWidget.imageFilesStr ||
+        widget.stabilizedImageFilesStr != oldWidget.stabilizedImageFilesStr) {
+      _loadCaptureOffsets();
+    }
   }
 
   void _onTabChanged() {
@@ -231,8 +291,9 @@ class GalleryPageState extends State<GalleryPage>
   }
 
   Future<void> _showChangeDateDialog(String currentTimestamp) async {
-    DateTime initialDate =
-        DateTime.fromMillisecondsSinceEpoch(int.parse(currentTimestamp));
+    DateTime initialDate = DateTime.fromMillisecondsSinceEpoch(
+      int.parse(currentTimestamp),
+    );
     DateTime? newDate = await showDatePicker(
       context: context,
       initialDate: initialDate,
@@ -259,30 +320,42 @@ class GalleryPageState extends State<GalleryPage>
   }
 
   Future<void> _changePhotoDate(
-      String oldTimestamp, String newTimestamp) async {
+    String oldTimestamp,
+    String newTimestamp,
+  ) async {
     try {
       setState(() {
         isImporting = true;
       });
       String oldRawPhotoPath =
           await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-              oldTimestamp, projectId);
+        oldTimestamp,
+        projectId,
+      );
       File oldRawFile = File(oldRawPhotoPath);
       if (!await oldRawFile.exists()) {
         throw Exception('Original file not found');
       }
       String fileExtension = path.extension(oldRawPhotoPath);
       String newRawPhotoPath = path.join(
-          path.dirname(oldRawPhotoPath), '$newTimestamp$fileExtension');
+        path.dirname(oldRawPhotoPath),
+        '$newTimestamp$fileExtension',
+      );
       await oldRawFile.rename(newRawPhotoPath);
       String oldRawThumbPath = oldRawPhotoPath.replaceAll(
-          DirUtils.photosRawDirname, DirUtils.thumbnailDirname);
-      oldRawThumbPath = path.join(path.dirname(oldRawThumbPath),
-          "${path.basenameWithoutExtension(oldRawPhotoPath)}.jpg");
+        DirUtils.photosRawDirname,
+        DirUtils.thumbnailDirname,
+      );
+      oldRawThumbPath = path.join(
+        path.dirname(oldRawThumbPath),
+        "${path.basenameWithoutExtension(oldRawPhotoPath)}.jpg",
+      );
       File oldRawThumbFile = File(oldRawThumbPath);
       if (await oldRawThumbFile.exists()) {
-        String newRawThumbPath =
-            path.join(path.dirname(oldRawThumbPath), "$newTimestamp.jpg");
+        String newRawThumbPath = path.join(
+          path.dirname(oldRawThumbPath),
+          "$newTimestamp.jpg",
+        );
         await oldRawThumbFile.rename(newRawThumbPath);
       }
       List<String> orientations = ['portrait', 'landscape'];
@@ -290,54 +363,73 @@ class GalleryPageState extends State<GalleryPage>
         try {
           String oldStabPath = await DirUtils
               .getStabilizedImagePathFromRawPathAndProjectOrientation(
-                  projectId, oldRawPhotoPath, orientation);
+            projectId,
+            oldRawPhotoPath,
+            orientation,
+          );
           File oldStabFile = File(oldStabPath);
           if (await oldStabFile.exists()) {
-            String newStabPath =
-                path.join(path.dirname(oldStabPath), '$newTimestamp.png');
+            String newStabPath = path.join(
+              path.dirname(oldStabPath),
+              '$newTimestamp.png',
+            );
             await oldStabFile.rename(newStabPath);
-            String oldStabThumbPath =
-                FaceStabilizer.getStabThumbnailPath(oldStabPath);
+            String oldStabThumbPath = FaceStabilizer.getStabThumbnailPath(
+              oldStabPath,
+            );
             File oldStabThumbFile = File(oldStabThumbPath);
             if (await oldStabThumbFile.exists()) {
-              String newStabThumbPath =
-                  FaceStabilizer.getStabThumbnailPath(newStabPath);
+              String newStabThumbPath = FaceStabilizer.getStabThumbnailPath(
+                newStabPath,
+              );
               await DirUtils.createDirectoryIfNotExists(newStabThumbPath);
               await oldStabThumbFile.rename(newStabThumbPath);
             }
           }
         } catch (e) {
-          LogService.instance
-              .log('No stabilized file found for $orientation: $e');
+          LogService.instance.log(
+            'No stabilized file found for $orientation: $e',
+          );
         }
       }
-      final oldPhotoRecord =
-          await DB.instance.getPhotoByTimestamp(oldTimestamp, projectId);
+      final oldPhotoRecord = await DB.instance.getPhotoByTimestamp(
+        oldTimestamp,
+        projectId,
+      );
       if (oldPhotoRecord == null) return;
       final int oldId = oldPhotoRecord['id'] as int;
-      int? newId = await DB.instance
-          .updatePhotoTimestamp(oldTimestamp, newTimestamp, projectId);
+      int? newId = await DB.instance.updatePhotoTimestamp(
+        oldTimestamp,
+        newTimestamp,
+        projectId,
+      );
       final String currentGuidePhoto =
           await SettingsUtil.loadSelectedGuidePhoto(projectId.toString());
       if (currentGuidePhoto == oldId.toString() && newId != null) {
         await DB.instance.setSettingByTitle(
-            "selected_guide_photo", newId.toString(), projectId.toString());
+          "selected_guide_photo",
+          newId.toString(),
+          projectId.toString(),
+        );
       }
       final int newTsInt = int.parse(newTimestamp);
-      final int newOffsetMin =
-          DateTime.fromMillisecondsSinceEpoch(newTsInt, isUtc: true)
-              .toLocal()
-              .timeZoneOffset
-              .inMinutes;
+      final int newOffsetMin = DateTime.fromMillisecondsSinceEpoch(
+        newTsInt,
+        isUtc: true,
+      ).toLocal().timeZoneOffset.inMinutes;
       await DB.instance.setCaptureOffsetMinutesByTimestamp(
-          newTimestamp, projectId, newOffsetMin);
+        newTimestamp,
+        projectId,
+        newOffsetMin,
+      );
       await _loadImages();
       await DB.instance.setNewVideoNeeded(projectId);
     } catch (e) {
       LogService.instance.log('Error changing photo date: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to change photo date: $e')));
+        SnackBar(content: Text('Failed to change photo date: $e')),
+      );
     } finally {
       setState(() {
         isImporting = false;
@@ -367,11 +459,21 @@ class GalleryPageState extends State<GalleryPage>
   Future<void> _init() async {
     final String projectOrientationRaw =
         await SettingsUtil.loadProjectOrientation(projectIdStr);
-    final int gridAxisCountRaw =
-        await SettingsUtil.loadGridAxisCount(projectIdStr);
+    final int gridAxisCountRaw = await SettingsUtil.loadGridAxisCount(
+      projectIdStr,
+    );
+    final bool galleryDateLabelsEnabledRaw =
+        await SettingsUtil.loadGalleryDateLabelsEnabled(projectIdStr);
+    final bool galleryRawDateLabelsEnabledRaw =
+        await SettingsUtil.loadGalleryRawDateLabelsEnabled(projectIdStr);
+    final String galleryDateFormatRaw =
+        await SettingsUtil.loadGalleryDateFormat(projectIdStr);
     setState(() {
       gridAxisCount = gridAxisCountRaw;
       projectOrientation = projectOrientationRaw;
+      _galleryDateLabelsEnabled = galleryDateLabelsEnabledRaw;
+      _galleryRawDateLabelsEnabled = galleryRawDateLabelsEnabledRaw;
+      _galleryDateFormat = galleryDateFormatRaw;
     });
     if (widget.userOnImportTutorial) {
       widget.setUserOnImportTutorialFalse();
@@ -411,7 +513,10 @@ class GalleryPageState extends State<GalleryPage>
   /// Handles incremental update when a single photo is stabilized.
   Future<void> _handleIncrementalStabUpdate(String timestamp) async {
     final newPath = await DirUtils.getStabilizedImagePathFromTimestamp(
-        projectId, timestamp, projectOrientation!);
+      projectId,
+      timestamp,
+      projectOrientation!,
+    );
 
     // Check if already in list (avoid duplicates)
     final currentList = widget.stabilizedImageFilesStr;
@@ -502,8 +607,10 @@ class GalleryPageState extends State<GalleryPage>
     final Uint8List? originBytes = await asset.originBytes;
     if (originBytes == null) return;
     final String originPath = (await asset.originFile)!.path;
-    final String tempOriginPhotoPath =
-        await _getTemporaryPhotoPath(asset, originPath);
+    final String tempOriginPhotoPath = await _getTemporaryPhotoPath(
+      asset,
+      originPath,
+    );
     final File tempOriginFile = File(tempOriginPhotoPath);
     if (await _isModifiedLivePhoto(asset, originPath)) {
       await _writeModifiedLivePhoto(asset, tempOriginFile);
@@ -520,7 +627,9 @@ class GalleryPageState extends State<GalleryPage>
   }
 
   Future<String> _getTemporaryPhotoPath(
-      AssetEntity asset, String originPath) async {
+    AssetEntity asset,
+    String originPath,
+  ) async {
     final String basename = path
         .basenameWithoutExtension(originPath)
         .toLowerCase()
@@ -531,13 +640,17 @@ class GalleryPageState extends State<GalleryPage>
   }
 
   Future<bool> _isModifiedLivePhoto(
-      AssetEntity asset, String originPath) async {
+    AssetEntity asset,
+    String originPath,
+  ) async {
     final String extension = path.extension(originPath).toLowerCase();
     return asset.isLivePhoto && (extension == ".jpg" || extension == ".jpeg");
   }
 
   Future<void> _writeModifiedLivePhoto(
-      AssetEntity asset, File tempOriginFile) async {
+    AssetEntity asset,
+    File tempOriginFile,
+  ) async {
     File? assetFile = await asset.file;
     var bytes = await assetFile?.readAsBytes();
     if (bytes != null) {
@@ -686,7 +799,9 @@ class GalleryPageState extends State<GalleryPage>
         Stack(
           children: [
             _buildImageGrid(
-                widget.stabilizedImageFilesStr, _stabilizedScrollController),
+              widget.stabilizedImageFilesStr,
+              _stabilizedScrollController,
+            ),
             if (!_stickyBottomEnabled && !_hasNoScrollbar())
               Positioned(
                 bottom: 16,
@@ -705,13 +820,16 @@ class GalleryPageState extends State<GalleryPage>
   }
 
   Widget _buildImageGrid(
-      List<String> imageFiles, ScrollController scrollController) {
+    List<String> imageFiles,
+    ScrollController scrollController,
+  ) {
     if (widget.stabilizedImageFilesStr.isEmpty &&
         widget.imageFilesStr.isEmpty) {
       return Center(
         child: ConstrainedBox(
-          constraints:
-              BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.8,
+          ),
           child: const YellowTipBar(
             message: "Your gallery is empty. Take or import photos to begin.",
           ),
@@ -762,8 +880,9 @@ class GalleryPageState extends State<GalleryPage>
               height: 28,
               child: CircularProgressIndicator(
                 strokeWidth: 3,
-                valueColor:
-                    AlwaysStoppedAnimation<Color>(AppColors.settingsAccent),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  AppColors.settingsAccent,
+                ),
               ),
             ),
           ),
@@ -805,7 +924,7 @@ class GalleryPageState extends State<GalleryPage>
         110,
         100,
         90,
-        80
+        80,
       ];
       final int idx = gridAxisCount.clamp(1, steps.length) - 1;
       return steps[idx];
@@ -851,7 +970,9 @@ class GalleryPageState extends State<GalleryPage>
       setState(() => isImporting = false);
       _loadImages();
       _showImportCompleteDialog(
-          successfullyImported, photosImported - successfullyImported);
+        successfullyImported,
+        photosImported - successfullyImported,
+      );
     } catch (e) {
       LogService.instance.log("ERROR CAUGHT IN PICK FILES");
     }
@@ -859,11 +980,14 @@ class GalleryPageState extends State<GalleryPage>
 
   Future<void> processPickedFile(dynamic file) async {
     await GalleryUtils.processPickedFile(
-        file, projectId, activeProcessingDateNotifier,
-        onImagesLoaded: _loadImages,
-        setProgressInMain: widget.setProgressInMain,
-        increaseSuccessfulImportCount: increaseSuccessfulImportCount,
-        increasePhotosImported: increasePhotosImported);
+      file,
+      projectId,
+      activeProcessingDateNotifier,
+      onImagesLoaded: _loadImages,
+      setProgressInMain: widget.setProgressInMain,
+      increaseSuccessfulImportCount: increaseSuccessfulImportCount,
+      increasePhotosImported: increasePhotosImported,
+    );
   }
 
   void _showImportCompleteDialog(int imported, int skipped) {
@@ -876,13 +1000,11 @@ class GalleryPageState extends State<GalleryPage>
         void closeMe() => Navigator.of(context).pop();
         return AlertDialog(
           title: const Text('Import Complete'),
-          content:
-              Text('Imported: $imported\nSkipped (Already Imported): $skipped'),
+          content: Text(
+            'Imported: $imported\nSkipped (Already Imported): $skipped',
+          ),
           actions: [
-            TextButton(
-              onPressed: () => closeMe(),
-              child: const Text('OK'),
-            ),
+            TextButton(onPressed: () => closeMe(), child: const Text('OK')),
           ],
         );
       },
@@ -919,7 +1041,10 @@ class GalleryPageState extends State<GalleryPage>
   }
 
   Widget _buildOptionsBottomSheet(
-      BuildContext context, String title, List<Widget> content) {
+    BuildContext context,
+    String title,
+    List<Widget> content,
+  ) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20.0, 12.0, 20.0, 20.0),
       decoration: const BoxDecoration(
@@ -964,8 +1089,11 @@ class GalleryPageState extends State<GalleryPage>
                     color: Colors.white.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child:
-                      const Icon(Icons.close, color: Colors.white70, size: 18),
+                  child: const Icon(
+                    Icons.close,
+                    color: Colors.white70,
+                    size: 18,
+                  ),
                 ),
               ),
             ],
@@ -1027,8 +1155,11 @@ class GalleryPageState extends State<GalleryPage>
                 ],
               ),
             ),
-            Icon(Icons.chevron_right,
-                color: Colors.white.withValues(alpha: 0.3), size: 22),
+            Icon(
+              Icons.chevron_right,
+              color: Colors.white.withValues(alpha: 0.3),
+              size: 22,
+            ),
           ],
         ),
       ),
@@ -1159,10 +1290,7 @@ class GalleryPageState extends State<GalleryPage>
                 }
               },
       ),
-      if (isDesktop) ...[
-        const SizedBox(height: 16),
-        _buildDesktopDropZone(),
-      ],
+      if (isDesktop) ...[const SizedBox(height: 16), _buildDesktopDropZone()],
     ];
     showModalBottomSheet(
       context: context,
@@ -1201,7 +1329,9 @@ class GalleryPageState extends State<GalleryPage>
         setState(() => isImporting = false);
         _loadImages();
         _showImportCompleteDialog(
-            successfullyImported, photosImported - successfullyImported);
+          successfullyImported,
+          photosImported - successfullyImported,
+        );
       },
       child: Container(
         width: double.infinity,
@@ -1295,18 +1425,22 @@ class GalleryPageState extends State<GalleryPage>
                     if (!exportRawFiles && !exportStabilizedFiles) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                            content: Text(
-                                'Please select at least one type of files to export')),
+                          content: Text(
+                            'Please select at least one type of files to export',
+                          ),
+                        ),
                       );
                       return;
                     }
                     setState(() {
                       localExportingToZip = true;
                     });
+
+                    String? dateStampTempDir;
                     try {
                       Map<String, List<String>> filesToExport = {
                         'Raw': [],
-                        'Stabilized': []
+                        'Stabilized': [],
                       };
                       if (exportRawFiles) {
                         filesToExport['Raw']!.addAll(widget.imageFilesStr);
@@ -1314,16 +1448,108 @@ class GalleryPageState extends State<GalleryPage>
                       if (exportStabilizedFiles) {
                         String stabilizedDir = await DirUtils
                             .getStabilizedDirPathFromProjectIdAndOrientation(
-                                widget.projectId, projectOrientation!);
+                          widget.projectId,
+                          projectOrientation!,
+                        );
                         List<String> stabilizedFiles =
                             await listFilesInDirectory(stabilizedDir);
-                        filesToExport['Stabilized']!.addAll(stabilizedFiles);
+
+                        // Check if date stamp export is enabled
+                        final dateStampEnabled =
+                            await SettingsUtil.loadExportDateStampEnabled(
+                          projectIdStr,
+                        );
+                        LogService.instance.log(
+                          "[EXPORT] Date stamp enabled: $dateStampEnabled, stabilized files: ${stabilizedFiles.length}",
+                        );
+
+                        if (dateStampEnabled && stabilizedFiles.isNotEmpty) {
+                          // Load date stamp settings
+                          final dateFormat =
+                              await SettingsUtil.loadExportDateStampFormat(
+                            projectIdStr,
+                          );
+                          final datePosition =
+                              await SettingsUtil.loadExportDateStampPosition(
+                            projectIdStr,
+                          );
+                          final dateSize =
+                              await SettingsUtil.loadExportDateStampSize(
+                            projectIdStr,
+                          );
+                          final dateOpacity =
+                              await SettingsUtil.loadExportDateStampOpacity(
+                            projectIdStr,
+                          );
+
+                          // Load watermark settings for overlap prevention
+                          final watermarkEnabled =
+                              await SettingsUtil.loadWatermarkSetting(
+                            projectIdStr,
+                          );
+                          final String? watermarkPos = watermarkEnabled
+                              ? (await DB.instance.getSettingValueByTitle(
+                                  'watermark_position',
+                                ))
+                                  .toLowerCase()
+                              : null;
+
+                          // Load timezone offsets for accurate date stamps
+                          final captureOffsetMap =
+                              await CaptureTimezone.loadOffsetsForFiles(
+                            stabilizedFiles,
+                            widget.projectId,
+                          );
+
+                          // Create temp directory for date-stamped files
+                          final tempBase = await DirUtils.getTemporaryDirPath();
+                          dateStampTempDir =
+                              '$tempBase/date_stamp_export_${DateTime.now().millisecondsSinceEpoch}';
+
+                          // Pre-process files with date stamps
+                          final processedMap =
+                              await DateStampUtils.processBatchWithDateStamps(
+                            inputPaths: stabilizedFiles,
+                            tempDir: dateStampTempDir,
+                            format: dateFormat,
+                            position: datePosition,
+                            sizePercent: dateSize,
+                            opacity: dateOpacity,
+                            captureOffsetMap: captureOffsetMap,
+                            watermarkPosition: watermarkPos,
+                            onProgress: (current, total) {
+                              // Show progress during pre-processing (0-30%)
+                              setExportProgress((current / total) * 30);
+                            },
+                          );
+
+                          // Use processed files for export
+                          filesToExport['Stabilized']!.addAll(
+                            stabilizedFiles.map(
+                              (original) => processedMap[original] ?? original,
+                            ),
+                          );
+                        } else {
+                          filesToExport['Stabilized']!.addAll(stabilizedFiles);
+                        }
                       }
+
+                      // Adjust progress callback to account for pre-processing
+                      void adjustedProgress(double p) {
+                        // Map export progress (0-100) to (30-100) if date stamp was used
+                        if (dateStampTempDir != null) {
+                          setExportProgress(30 + (p * 0.7));
+                        } else {
+                          setExportProgress(p);
+                        }
+                      }
+
                       String res = await GalleryUtils.exportZipFile(
-                          widget.projectId,
-                          widget.projectName,
-                          filesToExport,
-                          setExportProgress);
+                        widget.projectId,
+                        widget.projectName,
+                        filesToExport,
+                        adjustedProgress,
+                      );
                       if (res == 'success') {
                         setState(() => exportSuccessful = true);
                         if (Platform.isAndroid || Platform.isIOS) {
@@ -1333,6 +1559,15 @@ class GalleryPageState extends State<GalleryPage>
                     } catch (e) {
                       LogService.instance.log(e.toString());
                     } finally {
+                      // Clean up temp directory
+                      if (dateStampTempDir != null) {
+                        try {
+                          final dir = Directory(dateStampTempDir);
+                          if (await dir.exists()) {
+                            await dir.delete(recursive: true);
+                          }
+                        } catch (_) {}
+                      }
                       setState(() => localExportingToZip = false);
                     }
                   },
@@ -1389,8 +1624,9 @@ class GalleryPageState extends State<GalleryPage>
               height: 28,
               child: CircularProgressIndicator(
                 strokeWidth: 3,
-                valueColor:
-                    AlwaysStoppedAnimation<Color>(AppColors.settingsAccent),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  AppColors.settingsAccent,
+                ),
               ),
             ),
           ),
@@ -1459,7 +1695,9 @@ class GalleryPageState extends State<GalleryPage>
 
   Future<void> _shareZipFile() async {
     String zipFileExportPath = await DirUtils.getZipFileExportPath(
-        widget.projectId, widget.projectName);
+      widget.projectId,
+      widget.projectName,
+    );
     final params = ShareParams(files: [XFile(zipFileExportPath)]);
     final result = await SharePlus.instance.share(params);
     if (result.status == ShareResultStatus.success) {
@@ -1512,9 +1750,7 @@ class GalleryPageState extends State<GalleryPage>
           Positioned.fill(child: AbsorbPointer(child: tile)),
           if (isSelected)
             Positioned.fill(
-              child: Container(
-                color: Colors.blue.withValues(alpha: 0.3),
-              ),
+              child: Container(color: Colors.blue.withValues(alpha: 0.3)),
             ),
           Positioned(
             top: 4,
@@ -1579,10 +1815,7 @@ class GalleryPageState extends State<GalleryPage>
             const Spacer(),
             Text(
               '${_selectedPhotos.length} selected',
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 14,
-              ),
+              style: const TextStyle(color: Colors.white70, fontSize: 14),
             ),
             const Spacer(),
             IconButton(
@@ -1645,21 +1878,26 @@ class GalleryPageState extends State<GalleryPage>
     for (final imagePath in photosToDelete) {
       try {
         // For stabilized images, we need to get the raw path first
-        final bool isStabilizedImage =
-            imagePath.toLowerCase().contains('stabilized');
+        final bool isStabilizedImage = imagePath.toLowerCase().contains(
+              'stabilized',
+            );
         File toDelete;
         if (isStabilizedImage) {
           final String timestamp = path.basenameWithoutExtension(imagePath);
           final String rawPhotoPath =
               await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-                  timestamp, projectId);
+            timestamp,
+            projectId,
+          );
           toDelete = File(rawPhotoPath);
         } else {
           toDelete = File(imagePath);
         }
 
-        final bool success =
-            await ProjectUtils.deleteImage(toDelete, projectId);
+        final bool success = await ProjectUtils.deleteImage(
+          toDelete,
+          projectId,
+        );
         if (success) {
           deleted++;
           // Clear thumbnail cache
@@ -1742,16 +1980,18 @@ class GalleryPageState extends State<GalleryPage>
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(12),
-                    border:
-                        Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.08),
+                    ),
                   ),
                   child: Row(
                     children: [
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color:
-                              AppColors.settingsAccent.withValues(alpha: 0.2),
+                          color: AppColors.settingsAccent.withValues(
+                            alpha: 0.2,
+                          ),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(
@@ -1796,17 +2036,107 @@ class GalleryPageState extends State<GalleryPage>
                     setState(() {
                       localExportingToZip = true;
                     });
+
+                    String? dateStampTempDir;
                     try {
                       Map<String, List<String>> filesToExport = {
                         'Raw': selectedRaw,
-                        'Stabilized': selectedStabilized,
+                        'Stabilized': [],
                       };
+
+                      // Check if date stamp export is enabled for stabilized files
+                      if (selectedStabilized.isNotEmpty) {
+                        final dateStampEnabled =
+                            await SettingsUtil.loadExportDateStampEnabled(
+                          projectIdStr,
+                        );
+
+                        if (dateStampEnabled) {
+                          // Load date stamp settings
+                          final dateFormat =
+                              await SettingsUtil.loadExportDateStampFormat(
+                            projectIdStr,
+                          );
+                          final datePosition =
+                              await SettingsUtil.loadExportDateStampPosition(
+                            projectIdStr,
+                          );
+                          final dateSize =
+                              await SettingsUtil.loadExportDateStampSize(
+                            projectIdStr,
+                          );
+                          final dateOpacity =
+                              await SettingsUtil.loadExportDateStampOpacity(
+                            projectIdStr,
+                          );
+
+                          // Load watermark settings for overlap prevention
+                          final watermarkEnabled =
+                              await SettingsUtil.loadWatermarkSetting(
+                            projectIdStr,
+                          );
+                          final String? watermarkPos = watermarkEnabled
+                              ? (await DB.instance.getSettingValueByTitle(
+                                  'watermark_position',
+                                ))
+                                  .toLowerCase()
+                              : null;
+
+                          // Load timezone offsets for accurate date stamps
+                          final captureOffsetMap =
+                              await CaptureTimezone.loadOffsetsForFiles(
+                            selectedStabilized,
+                            widget.projectId,
+                          );
+
+                          // Create temp directory for date-stamped files
+                          final tempBase = await DirUtils.getTemporaryDirPath();
+                          dateStampTempDir =
+                              '$tempBase/date_stamp_export_${DateTime.now().millisecondsSinceEpoch}';
+
+                          // Pre-process files with date stamps
+                          final processedMap =
+                              await DateStampUtils.processBatchWithDateStamps(
+                            inputPaths: selectedStabilized,
+                            tempDir: dateStampTempDir,
+                            format: dateFormat,
+                            position: datePosition,
+                            sizePercent: dateSize,
+                            opacity: dateOpacity,
+                            captureOffsetMap: captureOffsetMap,
+                            watermarkPosition: watermarkPos,
+                            onProgress: (current, total) {
+                              setExportProgress((current / total) * 30);
+                            },
+                          );
+
+                          // Use processed files for export
+                          filesToExport['Stabilized']!.addAll(
+                            selectedStabilized.map(
+                              (original) => processedMap[original] ?? original,
+                            ),
+                          );
+                        } else {
+                          filesToExport['Stabilized']!.addAll(
+                            selectedStabilized,
+                          );
+                        }
+                      }
+
+                      // Adjust progress callback
+                      void adjustedProgress(double p) {
+                        if (dateStampTempDir != null) {
+                          setExportProgress(30 + (p * 0.7));
+                        } else {
+                          setExportProgress(p);
+                        }
+                      }
 
                       String res = await GalleryUtils.exportZipFile(
                         widget.projectId,
                         widget.projectName,
                         filesToExport,
-                        setExportProgress,
+                        adjustedProgress,
                       );
 
                       if (res == 'success') {
@@ -1818,6 +2148,15 @@ class GalleryPageState extends State<GalleryPage>
                     } catch (e) {
                       LogService.instance.log(e.toString());
                     } finally {
+                      // Clean up temp directory
+                      if (dateStampTempDir != null) {
+                        try {
+                          final dir = Directory(dateStampTempDir);
+                          if (await dir.exists()) {
+                            await dir.delete(recursive: true);
+                          }
+                        } catch (_) {}
+                      }
                       setState(() => localExportingToZip = false);
                     }
                   },
@@ -1862,19 +2201,27 @@ class GalleryPageState extends State<GalleryPage>
 
   Future<void> _retryStabilization() async {
     if (activeImagePreviewPath == null) return;
-    final String timestamp =
-        path.basenameWithoutExtension(activeImagePreviewPath!);
+    final String timestamp = path.basenameWithoutExtension(
+      activeImagePreviewPath!,
+    );
     _retryingPhotoTimestamps.add(timestamp);
     final String rawPhotoPath =
         await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-            timestamp, widget.projectId);
-    final String projectOrientation =
-        await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
+      timestamp,
+      widget.projectId,
+    );
+    final String projectOrientation = await SettingsUtil.loadProjectOrientation(
+      widget.projectId.toString(),
+    );
     final String stabilizedImagePath =
         await DirUtils.getStabilizedImagePathFromRawPathAndProjectOrientation(
-            widget.projectId, rawPhotoPath, projectOrientation);
-    final String stabThumbPath =
-        FaceStabilizer.getStabThumbnailPath(stabilizedImagePath);
+      widget.projectId,
+      rawPhotoPath,
+      projectOrientation,
+    );
+    final String stabThumbPath = FaceStabilizer.getStabThumbnailPath(
+      stabilizedImagePath,
+    );
     final File stabImageFile = File(stabilizedImagePath);
     final File stabThumbFile = File(stabThumbPath);
     if (await stabImageFile.exists()) {
@@ -1883,11 +2230,14 @@ class GalleryPageState extends State<GalleryPage>
     if (await stabThumbFile.exists()) {
       await stabThumbFile.delete();
     }
-    await DB.instance
-        .resetStabilizedColumnByTimestamp(projectOrientation, timestamp);
+    await DB.instance.resetStabilizedColumnByTimestamp(
+      projectOrientation,
+      timestamp,
+    );
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text('Retrying stabilization...')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Retrying stabilization...')));
     widget.stabCallback(); // Navigator.of(context).pop();
   }
 
@@ -1897,51 +2247,68 @@ class GalleryPageState extends State<GalleryPage>
       builder: (context) {
         return AlertDialog(
           backgroundColor: const Color(0xff121212),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8.0),
+          ),
           contentPadding: EdgeInsets.zero,
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: Icon(Icons.calendar_today,
-                    color: Colors.white.withAlpha(204), size: 18.0),
-                title: const Text('Change Date',
-                    style: TextStyle(fontSize: 12, color: Colors.white)),
+                leading: Icon(
+                  Icons.calendar_today,
+                  color: Colors.white.withAlpha(204),
+                  size: 18.0,
+                ),
+                title: const Text(
+                  'Change Date',
+                  style: TextStyle(fontSize: 12, color: Colors.white),
+                ),
                 onTap: () {
                   Navigator.of(context).pop();
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     _showChangeDateDialog(
-                        path.basenameWithoutExtension(imageFile.path));
+                      path.basenameWithoutExtension(imageFile.path),
+                    );
                   });
                 },
               ),
               const Divider(),
               ListTile(
-                leading: Icon(Icons.video_stable,
-                    color: Colors.white.withAlpha(150), size: 18.0),
-                title: const Text('Stabilize on Other Faces',
-                    style: TextStyle(fontSize: 12, color: Colors.white)),
+                leading: Icon(
+                  Icons.video_stable,
+                  color: Colors.white.withAlpha(150),
+                  size: 18.0,
+                ),
+                title: const Text(
+                  'Stabilize on Other Faces',
+                  style: TextStyle(fontSize: 12, color: Colors.white),
+                ),
                 onTap: () {
                   StabDiffFacePage stabNewFaceScreen = StabDiffFacePage(
-                      projectId: projectId,
-                      imageTimestamp:
-                          path.basenameWithoutExtension(imageFile.path),
-                      reloadImagesInGallery: _loadImages,
-                      stabCallback: widget.stabCallback,
-                      userRanOutOfSpaceCallback:
-                          widget.userRanOutOfSpaceCallback,
-                      stabilizationRunningInMain:
-                          widget.stabilizingRunningInMain);
+                    projectId: projectId,
+                    imageTimestamp: path.basenameWithoutExtension(
+                      imageFile.path,
+                    ),
+                    reloadImagesInGallery: _loadImages,
+                    stabCallback: widget.stabCallback,
+                    userRanOutOfSpaceCallback: widget.userRanOutOfSpaceCallback,
+                    stabilizationRunningInMain: widget.stabilizingRunningInMain,
+                  );
                   Utils.navigateToScreenReplace(context, stabNewFaceScreen);
                 },
               ),
               const Divider(),
               ListTile(
-                leading: Icon(Icons.refresh,
-                    color: Colors.white.withAlpha(150), size: 18.0),
-                title: const Text('Retry Stabilization',
-                    style: TextStyle(fontSize: 12, color: Colors.white)),
+                leading: Icon(
+                  Icons.refresh,
+                  color: Colors.white.withAlpha(150),
+                  size: 18.0,
+                ),
+                title: const Text(
+                  'Retry Stabilization',
+                  style: TextStyle(fontSize: 12, color: Colors.white),
+                ),
                 onTap: () {
                   Navigator.of(context).pop();
                   Future.delayed(Duration.zero, () async {
@@ -1951,29 +2318,45 @@ class GalleryPageState extends State<GalleryPage>
               ),
               const Divider(),
               ListTile(
-                leading: Icon(Icons.photo,
-                    color: Colors.white.withAlpha(150), size: 18.0),
-                title: const Text('Set as Guide Photo',
-                    style: TextStyle(fontSize: 12, color: Colors.white)),
+                leading: Icon(
+                  Icons.photo,
+                  color: Colors.white.withAlpha(150),
+                  size: 18.0,
+                ),
+                title: const Text(
+                  'Set as Guide Photo',
+                  style: TextStyle(fontSize: 12, color: Colors.white),
+                ),
                 onTap: () async {
                   Navigator.of(context).pop();
                   final photoRecord = await DB.instance.getPhotoByTimestamp(
-                      path.basenameWithoutExtension(imageFile.path), projectId);
+                    path.basenameWithoutExtension(imageFile.path),
+                    projectId,
+                  );
                   if (photoRecord != null) {
-                    await DB.instance.setSettingByTitle("selected_guide_photo",
-                        photoRecord['id'].toString(), projectId.toString());
+                    await DB.instance.setSettingByTitle(
+                      "selected_guide_photo",
+                      photoRecord['id'].toString(),
+                      projectId.toString(),
+                    );
                     if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Guide photo updated')));
+                      SnackBar(content: Text('Guide photo updated')),
+                    );
                   }
                 },
               ),
               const Divider(),
               ListTile(
-                leading: Icon(Icons.handyman,
-                    color: Colors.white.withAlpha(150), size: 18.0),
-                title: const Text('Manual Stabilization',
-                    style: TextStyle(fontSize: 12, color: Colors.white)),
+                leading: Icon(
+                  Icons.handyman,
+                  color: Colors.white.withAlpha(150),
+                  size: 18.0,
+                ),
+                title: const Text(
+                  'Manual Stabilization',
+                  style: TextStyle(fontSize: 12, color: Colors.white),
+                ),
                 onTap: () {
                   Navigator.push(
                     context,
@@ -1988,10 +2371,15 @@ class GalleryPageState extends State<GalleryPage>
               ),
               const Divider(),
               ListTile(
-                leading: Icon(Icons.delete,
-                    color: Colors.red.withAlpha(204), size: 18.0),
-                title: const Text('Delete Image',
-                    style: TextStyle(fontSize: 12, color: Colors.white)),
+                leading: Icon(
+                  Icons.delete,
+                  color: Colors.red.withAlpha(204),
+                  size: 18.0,
+                ),
+                title: const Text(
+                  'Delete Image',
+                  style: TextStyle(fontSize: 12, color: Colors.white),
+                ),
                 onTap: () {
                   Navigator.of(context).pop();
                   _showDeleteDialog(imageFile);
@@ -2004,39 +2392,59 @@ class GalleryPageState extends State<GalleryPage>
     );
   }
 
-  Widget _buildThumbnailContent({
-    required Widget imageWidget,
-    required String filepath,
-    required VoidCallback onTap,
-    required VoidCallback onLongPress,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      onLongPress: onLongPress,
-      onSecondaryTap: onLongPress,
-      child: Stack(
-        children: [imageWidget],
-      ),
-    );
-  }
-
   Widget _buildRawThumbnail(String filepath) {
+    final String timestamp = path.basenameWithoutExtension(filepath);
     final String switched = filepath.replaceAll(
       DirUtils.photosRawDirname,
       DirUtils.thumbnailDirname,
     );
     final String thumbnailPath = path.join(
       path.dirname(switched),
-      "${path.basenameWithoutExtension(filepath)}.jpg",
+      "$timestamp.jpg",
     );
-    return _buildThumbnailContent(
-      imageWidget: RawThumbnail(
-        thumbnailPath: thumbnailPath,
-        projectId: widget.projectId,
-      ),
-      filepath: filepath,
+
+    return GestureDetector(
       onTap: () => _showImagePreviewDialog(File(filepath), isStabilized: false),
       onLongPress: () => _showImageOptionsMenu(File(filepath)),
+      onSecondaryTap: () => _showImageOptionsMenu(File(filepath)),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final thumbnail = RawThumbnail(
+            thumbnailPath: thumbnailPath,
+            projectId: widget.projectId,
+          );
+
+          if (!_galleryRawDateLabelsEnabled) {
+            return thumbnail;
+          }
+
+          // Parse timestamp and format date
+          final int? timestampMs = int.tryParse(timestamp);
+          if (timestampMs == null) {
+            return thumbnail;
+          }
+
+          final String formattedDate = DateStampUtils.formatTimestamp(
+            timestampMs,
+            _galleryDateFormat,
+            captureOffsetMinutes: _captureOffsetMap[timestamp],
+          );
+
+          return Stack(
+            children: [
+              thumbnail,
+              Positioned(
+                right: 4,
+                bottom: 4,
+                child: DateStampUtils.buildGalleryDateLabel(
+                  formattedDate,
+                  constraints.maxHeight,
+                ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -2052,16 +2460,49 @@ class GalleryPageState extends State<GalleryPage>
       onTap: () => _showImagePreviewDialog(File(filepath), isStabilized: true),
       onLongPress: () => _showImageOptionsMenu(File(filepath)),
       onSecondaryTap: () => _showImageOptionsMenu(File(filepath)),
-      child: StabilizedThumbnail(
-          thumbnailPath: thumbnailPath, projectId: widget.projectId),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final thumbnail = StabilizedThumbnail(
+            thumbnailPath: thumbnailPath,
+            projectId: widget.projectId,
+          );
+
+          if (!_galleryDateLabelsEnabled) {
+            return thumbnail;
+          }
+
+          // Parse timestamp and format date
+          final int? timestampMs = int.tryParse(timestamp);
+          if (timestampMs == null) {
+            return thumbnail;
+          }
+
+          final String formattedDate = DateStampUtils.formatTimestamp(
+            timestampMs,
+            _galleryDateFormat,
+            captureOffsetMinutes: _captureOffsetMap[timestamp],
+          );
+
+          return Stack(
+            children: [
+              thumbnail,
+              Positioned(
+                right: 4,
+                bottom: 4,
+                child: DateStampUtils.buildGalleryDateLabel(
+                  formattedDate,
+                  constraints.maxHeight,
+                ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
   Future<void> _showDialog(BuildContext context, Widget dialog) async {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) => dialog,
-    );
+    showDialog(context: context, builder: (BuildContext context) => dialog);
   }
 
   void _showImagePreviewDialog(File imageFile, {required bool isStabilized}) {
@@ -2133,8 +2574,9 @@ class GalleryPageState extends State<GalleryPage>
         return AlertDialog(
           title: const Text('Information'),
           content: const Text(
-              "During stabilization, view the original photo in "
-              "the 'Originals' tab or by tapping 'Raw' on the image preview."),
+            "During stabilization, view the original photo in "
+            "the 'Originals' tab or by tapping 'Raw' on the image preview.",
+          ),
           actions: <Widget>[
             TextButton(
               child: const Text('OK'),
@@ -2148,35 +2590,40 @@ class GalleryPageState extends State<GalleryPage>
 
   Future<void> _showDeleteDialog(File image) async {
     _showDialog(
-        context,
-        AlertDialog(
-          title: const Text('Delete Image?'),
-          content: const Text('Do you want to delete this image?'),
-          actions: [
-            TextButton(
-              onPressed: Navigator.of(context).pop,
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              child: const Text('Delete'),
-              onPressed: () async {
-                Navigator.of(context).pop();
-                File toDelete = image;
-                final bool isStabilizedImage =
-                    image.path.toLowerCase().contains("stabilized");
-                if (isStabilizedImage) {
-                  final String timestamp =
-                      path.basenameWithoutExtension(image.path);
-                  final String rawPhotoPath =
-                      await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-                          timestamp, projectId);
-                  toDelete = File(rawPhotoPath);
-                }
-                await _deleteImage(toDelete);
-              },
-            ),
-          ],
-        ));
+      context,
+      AlertDialog(
+        title: const Text('Delete Image?'),
+        content: const Text('Do you want to delete this image?'),
+        actions: [
+          TextButton(
+            onPressed: Navigator.of(context).pop,
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            child: const Text('Delete'),
+            onPressed: () async {
+              Navigator.of(context).pop();
+              File toDelete = image;
+              final bool isStabilizedImage = image.path.toLowerCase().contains(
+                    "stabilized",
+                  );
+              if (isStabilizedImage) {
+                final String timestamp = path.basenameWithoutExtension(
+                  image.path,
+                );
+                final String rawPhotoPath =
+                    await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
+                  timestamp,
+                  projectId,
+                );
+                toDelete = File(rawPhotoPath);
+              }
+              await _deleteImage(toDelete);
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _deleteImage(File image) async {
@@ -2196,7 +2643,8 @@ class GalleryPageState extends State<GalleryPage>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('There was an error. Please try again.')),
+            content: Text('There was an error. Please try again.'),
+          ),
         );
       }
     }

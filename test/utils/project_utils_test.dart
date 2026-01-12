@@ -82,18 +82,21 @@ void main() {
 
   group('ProjectUtils.parseTimestampFromFilename', () {
     test('parses numeric filename', () {
-      final result =
-          ProjectUtils.parseTimestampFromFilename('/path/1704067200000.jpg');
+      final result = ProjectUtils.parseTimestampFromFilename(
+        '/path/1704067200000.jpg',
+      );
       expect(result, 1704067200000);
     });
 
     test('handles different extensions', () {
-      final result1 =
-          ProjectUtils.parseTimestampFromFilename('/path/1234567890.png');
+      final result1 = ProjectUtils.parseTimestampFromFilename(
+        '/path/1234567890.png',
+      );
       expect(result1, 1234567890);
 
-      final result2 =
-          ProjectUtils.parseTimestampFromFilename('/path/1234567890.jpeg');
+      final result2 = ProjectUtils.parseTimestampFromFilename(
+        '/path/1234567890.jpeg',
+      );
       expect(result2, 1234567890);
     });
 
@@ -108,14 +111,16 @@ void main() {
     });
 
     test('handles filename without extension', () {
-      final result =
-          ProjectUtils.parseTimestampFromFilename('/path/1234567890');
+      final result = ProjectUtils.parseTimestampFromFilename(
+        '/path/1234567890',
+      );
       expect(result, 1234567890);
     });
 
     test('handles path with numeric directory names', () {
-      final result =
-          ProjectUtils.parseTimestampFromFilename('/123/456/789.jpg');
+      final result = ProjectUtils.parseTimestampFromFilename(
+        '/123/456/789.jpg',
+      );
       expect(result, 789);
     });
   });
@@ -157,7 +162,7 @@ void main() {
 
     test('returns single date for single photo', () {
       final photos = [
-        {'timestamp': '1704067200000'}
+        {'timestamp': '1704067200000'},
       ];
       final result = ProjectUtils.getUniquePhotoDates(photos);
       expect(result.length, 1);
@@ -168,7 +173,7 @@ void main() {
       final photos = [
         {'timestamp': '1704070800000'}, // 2024-01-01 01:00:00 (later)
         {
-          'timestamp': '1704067200000'
+          'timestamp': '1704067200000',
         }, // 2024-01-01 00:00:00 (earlier, same day)
       ];
       final result = ProjectUtils.getUniquePhotoDates(photos);
@@ -203,7 +208,7 @@ void main() {
 
     test('handles missing timestamp field', () {
       final photos = [
-        {'otherField': 'value'}
+        {'otherField': 'value'},
       ];
       final result = ProjectUtils.getUniquePhotoDates(photos);
       // Should handle gracefully
@@ -212,7 +217,7 @@ void main() {
 
     test('handles null timestamp', () {
       final photos = [
-        {'timestamp': null}
+        {'timestamp': null},
       ];
       final result = ProjectUtils.getUniquePhotoDates(photos);
       expect(result, isA<List<String>>());
@@ -220,7 +225,7 @@ void main() {
 
     test('handles captureOffsetMinutes', () {
       final photos = [
-        {'timestamp': '1704067200000', 'captureOffsetMinutes': 60}
+        {'timestamp': '1704067200000', 'captureOffsetMinutes': 60},
       ];
       final result = ProjectUtils.getUniquePhotoDates(photos);
       expect(result.length, 1);
@@ -266,7 +271,9 @@ void main() {
 
     test('deletePhotoFromDatabaseAndReturnCount method exists', () {
       expect(
-          ProjectUtils.deletePhotoFromDatabaseAndReturnCount, isA<Function>());
+        ProjectUtils.deletePhotoFromDatabaseAndReturnCount,
+        isA<Function>(),
+      );
     });
 
     test('loadImageData method exists', () {

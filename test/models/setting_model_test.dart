@@ -5,11 +5,7 @@ void main() {
   group('Setting', () {
     group('constructor', () {
       test('creates instance with required fields', () {
-        const setting = Setting(
-          title: 'theme',
-          value: 'dark',
-          projectId: '1',
-        );
+        const setting = Setting(title: 'theme', value: 'dark', projectId: '1');
 
         expect(setting.title, 'theme');
         expect(setting.value, 'dark');
@@ -32,11 +28,7 @@ void main() {
       });
 
       test('creates instance with empty strings', () {
-        const setting = Setting(
-          title: '',
-          value: '',
-          projectId: '',
-        );
+        const setting = Setting(title: '', value: '', projectId: '');
 
         expect(setting.title, '');
         expect(setting.value, '');
@@ -139,11 +131,7 @@ void main() {
       });
 
       test('includes all four keys', () {
-        const setting = Setting(
-          title: 'test',
-          value: 'value',
-          projectId: '1',
-        );
+        const setting = Setting(title: 'test', value: 'value', projectId: '1');
 
         final json = setting.toJson();
 

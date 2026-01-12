@@ -81,8 +81,9 @@ class IsolatePool {
   Future<void> initialize() async {
     if (_initialized) return;
 
-    LogService.instance
-        .log('IsolatePool: Initializing with $_workerCount workers');
+    LogService.instance.log(
+      'IsolatePool: Initializing with $_workerCount workers',
+    );
 
     for (int i = 0; i < _workerCount; i++) {
       final worker = await _spawnWorker();
@@ -96,8 +97,10 @@ class IsolatePool {
   /// Spawn a new worker isolate.
   Future<_Worker> _spawnWorker() async {
     final receivePort = ReceivePort();
-    final isolate =
-        await Isolate.spawn(_workerEntryPoint, receivePort.sendPort);
+    final isolate = await Isolate.spawn(
+      _workerEntryPoint,
+      receivePort.sendPort,
+    );
 
     // First message from worker is its SendPort
     final sendPort = await receivePort.first as SendPort;
@@ -187,8 +190,11 @@ class IsolatePool {
           mat.dispose();
           return 'Decoded mat is empty';
         }
-        final (success, jpgBytes) = cv.imencode('.jpg', mat,
-            params: cv.VecI32.fromList([cv.IMWRITE_JPEG_QUALITY, 90]));
+        final (success, jpgBytes) = cv.imencode(
+          '.jpg',
+          mat,
+          params: cv.VecI32.fromList([cv.IMWRITE_JPEG_QUALITY, 90]),
+        );
         mat.dispose();
         if (success) {
           await File(filePath).writeAsBytes(jpgBytes);
@@ -209,7 +215,8 @@ class IsolatePool {
           final bg = cv.Mat.zeros(mat.rows, mat.cols, cv.MatType.CV_8UC3);
           final channels = cv.split(mat);
           final bgr = cv.merge(
-              cv.VecMat.fromList([channels[0], channels[1], channels[2]]));
+            cv.VecMat.fromList([channels[0], channels[1], channels[2]]),
+          );
           final alpha = channels[3];
           bgr.copyTo(bg, mask: alpha);
           for (final ch in channels) {
@@ -239,7 +246,8 @@ class IsolatePool {
           final bg = cv.Mat.zeros(mat.rows, mat.cols, cv.MatType.CV_8UC3);
           final channels = cv.split(mat);
           final bgr = cv.merge(
-              cv.VecMat.fromList([channels[0], channels[1], channels[2]]));
+            cv.VecMat.fromList([channels[0], channels[1], channels[2]]),
+          );
           final alpha = channels[3];
           bgr.copyTo(bg, mask: alpha);
           for (final ch in channels) {
@@ -257,8 +265,11 @@ class IsolatePool {
         final thumb = cv.resize(composited, (500, height));
         composited.dispose();
 
-        final (success, jpgBytes) = cv.imencode('.jpg', thumb,
-            params: cv.VecI32.fromList([cv.IMWRITE_JPEG_QUALITY, 90]));
+        final (success, jpgBytes) = cv.imencode(
+          '.jpg',
+          thumb,
+          params: cv.VecI32.fromList([cv.IMWRITE_JPEG_QUALITY, 90]),
+        );
         thumb.dispose();
         return success ? jpgBytes : null;
 
@@ -376,7 +387,10 @@ class IsolatePool {
   }
 
   Future<T?> _executeOnWorker<T>(
-      _Worker worker, String operation, Map<String, dynamic> params) async {
+    _Worker worker,
+    String operation,
+    Map<String, dynamic> params,
+  ) async {
     worker.isBusy = true;
 
     try {

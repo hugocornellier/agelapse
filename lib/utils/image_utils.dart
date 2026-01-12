@@ -16,8 +16,11 @@ class ImageUtils {
 
   /// Encode cv.Mat to JPEG bytes
   static Uint8List? encodeJpg(cv.Mat mat, {int quality = 90}) {
-    final (success, bytes) = cv.imencode('.jpg', mat,
-        params: cv.VecI32.fromList([cv.IMWRITE_JPEG_QUALITY, quality]));
+    final (success, bytes) = cv.imencode(
+      '.jpg',
+      mat,
+      params: cv.VecI32.fromList([cv.IMWRITE_JPEG_QUALITY, quality]),
+    );
     return success ? bytes : null;
   }
 
@@ -35,8 +38,11 @@ class ImageUtils {
   }
 
   /// Resize image to exact dimensions
-  static cv.Mat resizeExact(cv.Mat src,
-      {required int width, required int height}) {
+  static cv.Mat resizeExact(
+    cv.Mat src, {
+    required int width,
+    required int height,
+  }) {
     return cv.resize(src, (width, height));
   }
 
@@ -69,8 +75,9 @@ class ImageUtils {
     if (src.channels == 4) {
       // Split channels
       final channels = cv.split(src);
-      final bgr =
-          cv.merge(cv.VecMat.fromList([channels[0], channels[1], channels[2]]));
+      final bgr = cv.merge(
+        cv.VecMat.fromList([channels[0], channels[1], channels[2]]),
+      );
       final alpha = channels[3];
 
       // Create mask from alpha channel
@@ -94,8 +101,11 @@ class ImageUtils {
   }
 
   /// Create thumbnail (500px width by default, JPEG output)
-  static Uint8List? createThumbnail(Uint8List imageBytes,
-      {int width = 500, int quality = 90}) {
+  static Uint8List? createThumbnail(
+    Uint8List imageBytes, {
+    int width = 500,
+    int quality = 90,
+  }) {
     final mat = decode(imageBytes);
     if (mat.isEmpty) {
       mat.dispose();
@@ -112,8 +122,11 @@ class ImageUtils {
   }
 
   /// Create thumbnail from PNG with black background composite (for stabilized images)
-  static Uint8List? createThumbnailFromPng(Uint8List pngBytes,
-      {int width = 500, int quality = 90}) {
+  static Uint8List? createThumbnailFromPng(
+    Uint8List pngBytes, {
+    int width = 500,
+    int quality = 90,
+  }) {
     final mat = decodeWithAlpha(pngBytes);
     if (mat.isEmpty) {
       mat.dispose();
@@ -222,7 +235,8 @@ class ImageUtils {
   /// Get image dimensions in an isolate (non-blocking)
   /// Returns (width, height) or null if decoding fails
   static Future<(int, int)?> getImageDimensionsInIsolate(
-      Uint8List bytes) async {
+    Uint8List bytes,
+  ) async {
     return await compute(_getImageDimensions, bytes);
   }
 

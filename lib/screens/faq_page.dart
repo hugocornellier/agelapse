@@ -6,9 +6,7 @@ class FAQPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('F.A.Q.'),
-      ),
+      appBar: AppBar(title: const Text('F.A.Q.')),
       body: Container(
         color: Colors.black54,
         child: ListView(
@@ -60,16 +58,13 @@ class FAQItem extends StatelessWidget {
           children: [
             Text(
               question,
-              style:
-                  const TextStyle(fontSize: 15.0, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8.0),
-            Text(
-              answer,
               style: const TextStyle(
-                fontSize: 14.0,
+                fontSize: 15.0,
+                fontWeight: FontWeight.bold,
               ),
             ),
+            const SizedBox(height: 8.0),
+            Text(answer, style: const TextStyle(fontSize: 14.0)),
           ],
         ),
       ),

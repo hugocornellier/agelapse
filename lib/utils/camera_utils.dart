@@ -18,8 +18,9 @@ import 'heic_utils.dart';
 class CameraUtils {
   static Future<bool> loadSaveToCameraRollSetting() async {
     try {
-      String saveToCameraRollStr =
-          await DB.instance.getSettingValueByTitle('save_to_camera_roll');
+      String saveToCameraRollStr = await DB.instance.getSettingValueByTitle(
+        'save_to_camera_roll',
+      );
       return bool.tryParse(saveToCameraRollStr) ?? false;
     } catch (e) {
       debugPrint('Failed to load watermark setting: $e');
@@ -42,10 +43,7 @@ class CameraUtils {
     }
 
     ReceivePort receivePort = ReceivePort();
-    var params = {
-      'sendPort': receivePort.sendPort,
-      'filePath': filePath,
-    };
+    var params = {'sendPort': receivePort.sendPort, 'filePath': filePath};
 
     Uint8List? bytes;
     try {
@@ -62,7 +60,9 @@ class CameraUtils {
   }
 
   static Future<String> saveImageToFileSystemInIsolate(
-      String saveToPath, String xFilePath) async {
+    String saveToPath,
+    String xFilePath,
+  ) async {
     Future<void> saveImageIsolateOperation(Map<String, dynamic> params) async {
       SendPort sendPort = params['sendPort'];
       String saveToPath = params['saveToPath'];
@@ -89,10 +89,15 @@ class CameraUtils {
   }
 
   static Future<String> saveImageToFileSystem(
-      XFile image, String timestamp, int projectId) async {
+    XFile image,
+    String timestamp,
+    int projectId,
+  ) async {
     final String rawPhotoDirPath = await DirUtils.getRawPhotoDirPath(projectId);
-    final String imagePath =
-        path.join(rawPhotoDirPath, "$timestamp${path.extension(image.path)}");
+    final String imagePath = path.join(
+      rawPhotoDirPath,
+      "$timestamp${path.extension(image.path)}",
+    );
     await DirUtils.createDirectoryIfNotExists(imagePath);
 
     await saveImageToFileSystemInIsolate(imagePath, image.path);
@@ -154,60 +159,80 @@ class CameraUtils {
       final int? newPhotoLength = await image?.length();
       LogService.instance.log("[savePhoto] File size: $newPhotoLength bytes");
       if (newPhotoLength == null) {
-        LogService.instance
-            .log("[savePhoto] SKIP: File size is null for $filename");
+        LogService.instance.log(
+          "[savePhoto] SKIP: File size is null for $filename",
+        );
         return false;
       }
 
       if (imageTimestampFromExif != null) {
         timestamp = imageTimestampFromExif.toString();
         LogService.instance.log(
-            "[savePhoto] Checking for duplicate with timestamp: $timestamp, size: $newPhotoLength");
-        bool photoExists =
-            await DB.instance.doesPhotoExistByTimestamp(timestamp, projectId);
+          "[savePhoto] Checking for duplicate with timestamp: $timestamp, size: $newPhotoLength",
+        );
+        bool photoExists = await DB.instance.doesPhotoExistByTimestamp(
+          timestamp,
+          projectId,
+        );
         while (photoExists) {
           final Map<String, dynamic> existingPhoto =
-              (await DB.instance.getPhotosByTimestamp(timestamp, projectId))
+              (await DB.instance.getPhotosByTimestamp(
+            timestamp,
+            projectId,
+          ))
                   .first;
           LogService.instance.log(
-              "[savePhoto] Found existing photo at timestamp $timestamp with size: ${existingPhoto['imageLength']}");
+            "[savePhoto] Found existing photo at timestamp $timestamp with size: ${existingPhoto['imageLength']}",
+          );
           if (newPhotoLength == existingPhoto['imageLength']) {
             LogService.instance.log(
-                "[savePhoto] SKIP DUPLICATE: $filename has same timestamp AND size as existing photo");
+              "[savePhoto] SKIP DUPLICATE: $filename has same timestamp AND size as existing photo",
+            );
             return false;
           }
 
           final int timestampPlusPlus = int.parse(timestamp) + 1;
           LogService.instance.log(
-              "[savePhoto] Different size, incrementing timestamp: $timestamp -> $timestampPlusPlus");
+            "[savePhoto] Different size, incrementing timestamp: $timestamp -> $timestampPlusPlus",
+          );
           timestamp = timestampPlusPlus.toString();
-          photoExists =
-              await DB.instance.doesPhotoExistByTimestamp(timestamp, projectId);
+          photoExists = await DB.instance.doesPhotoExistByTimestamp(
+            timestamp,
+            projectId,
+          );
         }
         LogService.instance.log(
-            "[savePhoto] No duplicate found, proceeding with timestamp: $timestamp");
+          "[savePhoto] No duplicate found, proceeding with timestamp: $timestamp",
+        );
       }
 
       String imgPath = image!.path;
       String extension = path.extension(imgPath).toLowerCase();
-      LogService.instance
-          .log("[savePhoto] Processing file: $imgPath (extension: $extension)");
+      LogService.instance.log(
+        "[savePhoto] Processing file: $imgPath (extension: $extension)",
+      );
 
       if (extension == ".heic" || extension == ".heif") {
-        LogService.instance
-            .log("[savePhoto] HEIC/HEIF detected, converting to JPG");
+        LogService.instance.log(
+          "[savePhoto] HEIC/HEIF detected, converting to JPG",
+        );
         final String heicPath = imgPath;
         final String jpgPath = path.setExtension(heicPath, ".jpg");
 
         if (Platform.isMacOS) {
           // macOS: use built-in sips command
-          final result = await Process.run(
-            'sips',
-            ['-s', 'format', 'jpeg', heicPath, '--out', jpgPath],
-          );
+          final result = await Process.run('sips', [
+            '-s',
+            'format',
+            'jpeg',
+            heicPath,
+            '--out',
+            jpgPath,
+          ]);
           if (result.exitCode != 0 || !await File(jpgPath).exists()) {
             LogService.instance.log(
-                "[savePhoto] SKIP: HEIC conversion failed (sips) for $filename");
+              "[savePhoto] SKIP: HEIC conversion failed (sips) for $filename",
+            );
             return false;
           }
         } else if (Platform.isWindows) {
@@ -215,7 +240,8 @@ class CameraUtils {
           final success = await HeicUtils.convertHeicToJpgAt(heicPath, jpgPath);
           if (!success) {
             LogService.instance.log(
-                "[savePhoto] SKIP: HEIC conversion failed (HeicUtils) for $filename");
+              "[savePhoto] SKIP: HEIC conversion failed (HeicUtils) for $filename",
+            );
             return false;
           }
         } else if (Platform.isLinux) {
@@ -229,12 +255,14 @@ class CameraUtils {
             );
             if (!await File(jpgPath).exists()) {
               LogService.instance.log(
-                  "[savePhoto] SKIP: HEIC conversion failed (HeifConverter) for $filename");
+                "[savePhoto] SKIP: HEIC conversion failed (HeifConverter) for $filename",
+              );
               return false;
             }
           } catch (e) {
             LogService.instance.log(
-                "[savePhoto] SKIP: HEIC conversion exception: $e for $filename");
+              "[savePhoto] SKIP: HEIC conversion exception: $e for $filename",
+            );
             return false;
           }
         } else {
@@ -247,17 +275,20 @@ class CameraUtils {
             );
             if (!await File(jpgPath).exists()) {
               LogService.instance.log(
-                  "[savePhoto] SKIP: HEIC conversion failed (HeifConverter) for $filename");
+                "[savePhoto] SKIP: HEIC conversion failed (HeifConverter) for $filename",
+              );
               return false;
             }
           } catch (e) {
             LogService.instance.log(
-                "[savePhoto] SKIP: HEIC conversion exception: $e for $filename");
+              "[savePhoto] SKIP: HEIC conversion exception: $e for $filename",
+            );
             return false;
           }
         }
-        LogService.instance
-            .log("[savePhoto] HEIC conversion successful: $jpgPath");
+        LogService.instance.log(
+          "[savePhoto] HEIC conversion successful: $jpgPath",
+        );
         imgPath = jpgPath;
         extension = ".jpg";
       }
@@ -267,12 +298,14 @@ class CameraUtils {
         LogService.instance.log("[savePhoto] Reading bytes from: $imgPath");
         bytes = await CameraUtils.readBytesInIsolate(imgPath);
       } else {
-        LogService.instance
-            .log("[savePhoto] Using pre-loaded bytes (${bytes.length} bytes)");
+        LogService.instance.log(
+          "[savePhoto] Using pre-loaded bytes (${bytes.length} bytes)",
+        );
       }
       if (bytes == null) {
-        LogService.instance
-            .log("[savePhoto] SKIP: Failed to read bytes from $filename");
+        LogService.instance.log(
+          "[savePhoto] SKIP: Failed to read bytes from $filename",
+        );
         return false;
       }
       LogService.instance.log("[savePhoto] Read ${bytes.length} bytes");
@@ -280,13 +313,15 @@ class CameraUtils {
       LogService.instance.log("[savePhoto] Decoding image with OpenCV");
       cv.Mat rawImage = cv.imdecode(bytes, cv.IMREAD_COLOR);
       if (rawImage.isEmpty) {
-        LogService.instance
-            .log("[savePhoto] SKIP: OpenCV failed to decode image $filename");
+        LogService.instance.log(
+          "[savePhoto] SKIP: OpenCV failed to decode image $filename",
+        );
         rawImage.dispose();
         return false;
       }
       LogService.instance.log(
-          "[savePhoto] OpenCV decoded: ${rawImage.width}x${rawImage.height}");
+        "[savePhoto] OpenCV decoded: ${rawImage.width}x${rawImage.height}",
+      );
 
       if (deviceOrientation != null) {
         cv.Mat rotated;
@@ -337,35 +372,49 @@ class CameraUtils {
               ? "landscape"
               : "square";
 
-      await DB.instance.addPhoto(timestamp, projectId, extension,
-          newPhotoLength, path.basename(imgPath), orientation);
+      await DB.instance.addPhoto(
+        timestamp,
+        projectId,
+        extension,
+        newPhotoLength,
+        path.basename(imgPath),
+        orientation,
+      );
 
       if (refreshSettings != null) {
         refreshSettings();
       }
 
       await CameraUtils.saveImageToFileSystem(
-          XFile(imgPath), timestamp, projectId);
+        XFile(imgPath),
+        timestamp,
+        projectId,
+      );
 
       final String thumbnailPath = path.join(
-          await DirUtils.getThumbnailDirPath(projectId), "$timestamp.jpg");
+        await DirUtils.getThumbnailDirPath(projectId),
+        "$timestamp.jpg",
+      );
       await DirUtils.createDirectoryIfNotExists(thumbnailPath);
 
       LogService.instance.log("[savePhoto] Creating thumbnail: $thumbnailPath");
       bool result = await _createThumbnailForNewImage(thumbnailPath, rawImage);
       rawImage.dispose();
       if (!result) {
-        LogService.instance
-            .log("[savePhoto] SKIP: Thumbnail creation failed for $filename");
+        LogService.instance.log(
+          "[savePhoto] SKIP: Thumbnail creation failed for $filename",
+        );
         return false;
       }
 
-      ThumbnailService.instance.emit(ThumbnailEvent(
-        thumbnailPath: thumbnailPath,
-        status: ThumbnailStatus.success,
-        projectId: projectId,
-        timestamp: timestamp.toString(),
-      ));
+      ThumbnailService.instance.emit(
+        ThumbnailEvent(
+          thumbnailPath: thumbnailPath,
+          status: ThumbnailStatus.success,
+          projectId: projectId,
+          timestamp: timestamp.toString(),
+        ),
+      );
 
       bytes = null;
 
@@ -379,7 +428,8 @@ class CameraUtils {
       }
 
       LogService.instance.log(
-          "[savePhoto] SUCCESS: $filename imported with timestamp $timestamp");
+        "[savePhoto] SUCCESS: $filename imported with timestamp $timestamp",
+      );
       return true;
     } catch (e, stackTrace) {
       LogService.instance.log("[savePhoto] EXCEPTION for $filename: $e");
@@ -391,20 +441,27 @@ class CameraUtils {
   }
 
   static Future<bool> _createThumbnailForNewImage(
-      String thumbnailPath, cv.Mat rawImage) async {
+    String thumbnailPath,
+    cv.Mat rawImage,
+  ) async {
     return _createThumbnailFromRawImage(rawImage, thumbnailPath);
   }
 
   static Future<bool> _createThumbnailFromRawImage(
-      cv.Mat rawImage, String thumbnailPath) async {
+    cv.Mat rawImage,
+    String thumbnailPath,
+  ) async {
     // Resize to 500px width maintaining aspect ratio
     final aspectRatio = rawImage.rows / rawImage.cols;
     final height = (500 * aspectRatio).round();
     final thumbnail = cv.resize(rawImage, (500, height));
 
     final File thumbnailFile = File(thumbnailPath);
-    final (success, encodedJpgBytes) = cv.imencode('.jpg', thumbnail,
-        params: cv.VecI32.fromList([cv.IMWRITE_JPEG_QUALITY, 90]));
+    final (success, encodedJpgBytes) = cv.imencode(
+      '.jpg',
+      thumbnail,
+      params: cv.VecI32.fromList([cv.IMWRITE_JPEG_QUALITY, 90]),
+    );
     thumbnail.dispose();
 
     if (!success) return false;

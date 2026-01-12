@@ -50,8 +50,11 @@ void main() {
       final hasApp = materialAppFinder.evaluate().isNotEmpty ||
           scaffoldFinder.evaluate().isNotEmpty;
 
-      expect(hasApp, isTrue,
-          reason: 'App should display some UI after initialization');
+      expect(
+        hasApp,
+        isTrue,
+        reason: 'App should display some UI after initialization',
+      );
     });
 
     testWidgets('fresh install flow navigates correctly', (tester) async {
@@ -78,8 +81,11 @@ void main() {
           // Look for "Create New Project" header text
           final createNewProjectText = find.text('Create New Project');
           if (createNewProjectText.evaluate().isNotEmpty) {
-            expect(createNewProjectText, findsOneWidget,
-                reason: 'Should show Create New Project page');
+            expect(
+              createNewProjectText,
+              findsOneWidget,
+              reason: 'Should show Create New Project page',
+            );
           }
           // If we can't find it, the test still passes since we navigated
         }
@@ -127,8 +133,11 @@ void main() {
 
       // Verify project was created in database
       final projects = await DB.instance.getAllProjects();
-      expect(projects, isNotEmpty,
-          reason: 'Project should be saved to database');
+      expect(
+        projects,
+        isNotEmpty,
+        reason: 'Project should be saved to database',
+      );
     });
 
     testWidgets('main navigation loads with existing project', (tester) async {
@@ -164,12 +173,18 @@ void main() {
         // Check if we at least have some app structure
         final hasScaffold = find.byType(Scaffold).evaluate().isNotEmpty;
         final hasMaterialApp = find.byType(MaterialApp).evaluate().isNotEmpty;
-        expect(hasScaffold || hasMaterialApp, isTrue,
-            reason:
-                'App should display UI structure even if navigation not visible');
+        expect(
+          hasScaffold || hasMaterialApp,
+          isTrue,
+          reason:
+              'App should display UI structure even if navigation not visible',
+        );
       } else {
-        expect(hasNavigation, isTrue,
-            reason: 'Should show main navigation when default project exists');
+        expect(
+          hasNavigation,
+          isTrue,
+          reason: 'Should show main navigation when default project exists',
+        );
       }
     });
 
@@ -201,8 +216,11 @@ void main() {
           await tester.pump(const Duration(seconds: 2));
 
           // Verify app didn't crash - we should still have a scaffold
-          expect(find.byType(Scaffold), findsWidgets,
-              reason: 'Tapping $icon should not crash the app');
+          expect(
+            find.byType(Scaffold),
+            findsWidgets,
+            reason: 'Tapping $icon should not crash the app',
+          );
           successfulTabs++;
         }
       }
@@ -210,9 +228,12 @@ void main() {
       // If no tabs were found, check if we at least have a scaffold (app is running)
       if (successfulTabs == 0) {
         final hasScaffold = find.byType(Scaffold).evaluate().isNotEmpty;
-        expect(hasScaffold, isTrue,
-            reason:
-                'App should at least show a scaffold if navigation tabs not found');
+        expect(
+          hasScaffold,
+          isTrue,
+          reason:
+              'App should at least show a scaffold if navigation tabs not found',
+        );
       }
     });
 
@@ -232,8 +253,11 @@ void main() {
         await tester.pumpAndSettle(const Duration(seconds: 3));
 
         // Gallery should load without crashing
-        expect(find.byType(Scaffold), findsWidgets,
-            reason: 'Gallery page should load without crash');
+        expect(
+          find.byType(Scaffold),
+          findsWidgets,
+          reason: 'Gallery page should load without crash',
+        );
       } else {
         // If no gallery icon, just verify app is running with some UI
         final hasApp = find.byType(MaterialApp).evaluate().isNotEmpty ||
@@ -258,8 +282,11 @@ void main() {
         await tester.pumpAndSettle(const Duration(seconds: 2));
 
         // Project page should show some content
-        expect(find.byType(Scaffold), findsWidgets,
-            reason: 'Project page should display correctly');
+        expect(
+          find.byType(Scaffold),
+          findsWidgets,
+          reason: 'Project page should display correctly',
+        );
       } else {
         // If no home icon, just verify app is running with some UI
         final hasApp = find.byType(MaterialApp).evaluate().isNotEmpty ||
@@ -284,8 +311,11 @@ void main() {
         await tester.pumpAndSettle(const Duration(seconds: 2));
 
         // Info page should load without crashing
-        expect(find.byType(Scaffold), findsWidgets,
-            reason: 'Info page should load without crash');
+        expect(
+          find.byType(Scaffold),
+          findsWidgets,
+          reason: 'Info page should load without crash',
+        );
       } else {
         // If no info icon, just verify app is running with some UI
         final hasApp = find.byType(MaterialApp).evaluate().isNotEmpty ||
@@ -333,7 +363,9 @@ Future<void> _ensureProjectExists({bool setAsDefault = false}) async {
   }
 
   if (setAsDefault) {
-    await DB.instance
-        .setSettingByTitle('default_project', projectId.toString());
+    await DB.instance.setSettingByTitle(
+      'default_project',
+      projectId.toString(),
+    );
   }
 }

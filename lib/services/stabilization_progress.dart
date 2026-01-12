@@ -49,9 +49,8 @@ class StabilizationProgress {
   });
 
   /// Creates an idle state with no active operation.
-  factory StabilizationProgress.idle() => const StabilizationProgress(
-        state: StabilizationState.idle,
-      );
+  factory StabilizationProgress.idle() =>
+      const StabilizationProgress(state: StabilizationState.idle);
 
   /// Creates a preparing state when initializing.
   factory StabilizationProgress.preparing({int? projectId}) =>

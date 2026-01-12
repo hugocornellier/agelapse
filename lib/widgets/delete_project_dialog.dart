@@ -102,8 +102,11 @@ class _DeleteProjectDialogContentState
                       color: Colors.white.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.close,
-                        color: Colors.white70, size: 18),
+                    child: const Icon(
+                      Icons.close,
+                      color: Colors.white70,
+                      size: 18,
+                    ),
                   ),
                 ),
               ],
@@ -115,9 +118,7 @@ class _DeleteProjectDialogContentState
               decoration: BoxDecoration(
                 color: _dangerRed.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: _dangerRed.withValues(alpha: 0.2),
-                ),
+                border: Border.all(color: _dangerRed.withValues(alpha: 0.2)),
               ),
               child: Row(
                 children: [

@@ -101,10 +101,7 @@ class SettingListTile extends StatelessWidget {
           ),
         ),
         if (showDivider ?? false)
-          const Divider(
-            height: 1,
-            color: AppColors.settingsDivider,
-          ),
+          const Divider(height: 1, color: AppColors.settingsDivider),
       ],
     );
   }

@@ -37,6 +37,12 @@ The face detection model used by AgeLapse is platform-dependent. On Mobile, Goog
 
 ## What's New / Changelog
 
+### v2.3.0
+- Date stamps on photos, thumbnails and output video (optional)
+  - Display capture dates on gallery thumbnails and/or burn them into exported photos and output video
+  - Customize format (e.g., `Jan 1, 2024`, `2024-01-01`, `01/01/24`)
+  - Configure in the new "Date Stamp" section in Settings
+
 ### v2.2.1
 - 8K + custom resolution output support
 - Performance optimizations & improvements

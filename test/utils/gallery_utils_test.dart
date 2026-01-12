@@ -87,8 +87,10 @@ void main() {
     });
 
     test('parses date from filename with prefix', () {
-      final result =
-          GalleryUtils.parseAndFormatDate('IMG_2024-03-15_001', notifier);
+      final result = GalleryUtils.parseAndFormatDate(
+        'IMG_2024-03-15_001',
+        notifier,
+      );
       expect(result, isNotNull);
       // The regex may match different parts - just verify we get a valid date
       expect(result!.year, greaterThanOrEqualTo(2000));
@@ -97,8 +99,10 @@ void main() {
     });
 
     test('parses date from filename with suffix', () {
-      final result =
-          GalleryUtils.parseAndFormatDate('2024-12-25_photo', notifier);
+      final result = GalleryUtils.parseAndFormatDate(
+        '2024-12-25_photo',
+        notifier,
+      );
       expect(result, isNotNull);
       expect(result!.year, 2024);
       expect(result.month, 12);
@@ -113,8 +117,10 @@ void main() {
     });
 
     test('returns null for non-date string', () {
-      final result =
-          GalleryUtils.parseAndFormatDate('random_file_name', notifier);
+      final result = GalleryUtils.parseAndFormatDate(
+        'random_file_name',
+        notifier,
+      );
       expect(result, isNull);
     });
 
@@ -132,8 +138,10 @@ void main() {
     });
 
     test('parses date with full month name', () {
-      final result =
-          GalleryUtils.parseAndFormatDate('15 January 2024', notifier);
+      final result = GalleryUtils.parseAndFormatDate(
+        '15 January 2024',
+        notifier,
+      );
       expect(result, isNotNull);
       expect(result!.year, 2024);
       expect(result.month, 1);
@@ -143,9 +151,7 @@ void main() {
 
   group('GalleryUtils parseExifDate', () {
     test('parses standard EXIF date format', () async {
-      final exifData = {
-        'EXIF DateTimeOriginal': '2024:01:15 10:30:45',
-      };
+      final exifData = {'EXIF DateTimeOriginal': '2024:01:15 10:30:45'};
 
       final (failed, timestamp) = await GalleryUtils.parseExifDate(exifData);
 
@@ -159,9 +165,7 @@ void main() {
     });
 
     test('parses Image DateTime when DateTimeOriginal is missing', () async {
-      final exifData = {
-        'Image DateTime': '2024:06:20 15:45:30',
-      };
+      final exifData = {'Image DateTime': '2024:06:20 15:45:30'};
 
       final (failed, timestamp) = await GalleryUtils.parseExifDate(exifData);
 
@@ -284,7 +288,7 @@ void main() {
         'Sep',
         'Oct',
         'Nov',
-        'Dec'
+        'Dec',
       ];
 
       expect(monthNames.length, 12);

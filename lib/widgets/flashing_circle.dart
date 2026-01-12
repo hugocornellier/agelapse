@@ -4,8 +4,11 @@ class FlashingCircle extends StatefulWidget {
   final double diameter;
   final Offset position;
 
-  const FlashingCircle(
-      {super.key, required this.diameter, required this.position});
+  const FlashingCircle({
+    super.key,
+    required this.diameter,
+    required this.position,
+  });
 
   @override
   FlashingCircleState createState() => FlashingCircleState();
@@ -43,9 +46,9 @@ class FlashingCircleState extends State<FlashingCircle>
             height: widget.diameter,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.blue.withAlpha(128 +
-                  (128 * _controller.value)
-                      .round()), // Equivalent to opacity 0.5-1.0 range
+              color: Colors.blue.withAlpha(
+                128 + (128 * _controller.value).round(),
+              ), // Equivalent to opacity 0.5-1.0 range
             ),
           ),
         );

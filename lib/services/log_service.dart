@@ -62,7 +62,8 @@ class LogService {
 
       final trimmedContent = content.substring(cutPoint + 1);
       await _logFile!.writeAsString(
-          '--- Log truncated (exceeded ${maxLogSizeBytes ~/ (1024 * 1024)}MB) ---\n$trimmedContent');
+        '--- Log truncated (exceeded ${maxLogSizeBytes ~/ (1024 * 1024)}MB) ---\n$trimmedContent',
+      );
     }
   }
 
@@ -138,10 +139,7 @@ class LogService {
         await exportFile.writeAsString(exportContent);
 
         await SharePlus.instance.share(
-          ShareParams(
-            files: [XFile(exportPath)],
-            subject: 'AgeLapse Logs',
-          ),
+          ShareParams(files: [XFile(exportPath)], subject: 'AgeLapse Logs'),
         );
       }
     }
@@ -157,11 +155,13 @@ class LogService {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
       sb.writeln(
-          'App Version: ${packageInfo.version} (${packageInfo.buildNumber})');
+        'App Version: ${packageInfo.version} (${packageInfo.buildNumber})',
+      );
     } catch (_) {}
 
     sb.writeln(
-        'Platform: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}');
+      'Platform: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}',
+    );
 
     try {
       final deviceInfo = DeviceInfoPlugin();
@@ -169,7 +169,8 @@ class LogService {
         final info = await deviceInfo.androidInfo;
         sb.writeln('Device: ${info.manufacturer} ${info.model}');
         sb.writeln(
-            'Android: ${info.version.release} (SDK ${info.version.sdkInt})');
+          'Android: ${info.version.release} (SDK ${info.version.sdkInt})',
+        );
         sb.writeln('Supported ABIs: ${info.supportedAbis.join(', ')}');
       } else if (Platform.isIOS) {
         final info = await deviceInfo.iosInfo;

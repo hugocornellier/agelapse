@@ -58,8 +58,9 @@ class StabilizedThumbnail extends StatefulWidget {
   /// Thumbnail: .../stabilized/portrait/thumbnails/123.jpg
   /// Full image: .../stabilized/portrait/123.png
   String get stabilizedImagePath {
-    final dir =
-        path.dirname(path.dirname(thumbnailPath)); // Go up from thumbnails/
+    final dir = path.dirname(
+      path.dirname(thumbnailPath),
+    ); // Go up from thumbnails/
     final basename = path.basenameWithoutExtension(thumbnailPath);
     return path.join(dir, '$basename.png');
   }
@@ -111,8 +112,9 @@ class StabilizedThumbnailState extends State<StabilizedThumbnail> {
     _checkedInitial = true;
 
     // 1. Check cache first (for widgets mounting after event fired)
-    final cachedStatus =
-        ThumbnailService.instance.getStatus(widget.thumbnailPath);
+    final cachedStatus = ThumbnailService.instance.getStatus(
+      widget.thumbnailPath,
+    );
     if (cachedStatus != null) {
       if (cachedStatus == ThumbnailStatus.success) {
         // Verify file actually exists before trusting cache
@@ -150,10 +152,13 @@ class StabilizedThumbnailState extends State<StabilizedThumbnail> {
     }
 
     // 3. Check DB for failure flags (single query, not polling)
-    final String timestamp =
-        path.basenameWithoutExtension(widget.thumbnailPath);
-    final photo =
-        await DB.instance.getPhotoByTimestamp(timestamp, widget.projectId);
+    final String timestamp = path.basenameWithoutExtension(
+      widget.thumbnailPath,
+    );
+    final photo = await DB.instance.getPhotoByTimestamp(
+      timestamp,
+      widget.projectId,
+    );
     if (photo != null && mounted) {
       if (photo['noFacesFound'] == 1) {
         setState(() => _status = ThumbnailStatus.noFacesFound);
@@ -277,8 +282,9 @@ class StabilizedImagePreviewState extends State<StabilizedImagePreview> {
     _checkedInitial = true;
 
     // 1. Check cache first
-    final cachedStatus =
-        ThumbnailService.instance.getStatus(widget.thumbnailPath);
+    final cachedStatus = ThumbnailService.instance.getStatus(
+      widget.thumbnailPath,
+    );
     if (cachedStatus != null) {
       if (mounted) setState(() => _status = cachedStatus);
       return;
@@ -292,10 +298,13 @@ class StabilizedImagePreviewState extends State<StabilizedImagePreview> {
     }
 
     // 3. Check DB for failure flags
-    final String timestamp =
-        path.basenameWithoutExtension(widget.thumbnailPath);
-    final photo =
-        await DB.instance.getPhotoByTimestamp(timestamp, widget.projectId);
+    final String timestamp = path.basenameWithoutExtension(
+      widget.thumbnailPath,
+    );
+    final photo = await DB.instance.getPhotoByTimestamp(
+      timestamp,
+      widget.projectId,
+    );
     if (photo != null && mounted) {
       if (photo['noFacesFound'] == 1) {
         setState(() => _status = ThumbnailStatus.noFacesFound);
@@ -328,7 +337,7 @@ class StabilizedImagePreviewState extends State<StabilizedImagePreview> {
               style: TextStyle(color: Colors.white),
             ),
             SizedBox(height: 10),
-            Text('View raw photo by tapping "RAW"')
+            Text('View raw photo by tapping "RAW"'),
           ],
         ),
       );
@@ -441,8 +450,9 @@ class RawThumbnailState extends State<RawThumbnail> {
     _checkedInitial = true;
 
     // 1. Check cache first
-    final cachedStatus =
-        ThumbnailService.instance.getStatus(widget.thumbnailPath);
+    final cachedStatus = ThumbnailService.instance.getStatus(
+      widget.thumbnailPath,
+    );
     if (cachedStatus == ThumbnailStatus.success) {
       if (mounted) setState(() => _ready = true);
       return;

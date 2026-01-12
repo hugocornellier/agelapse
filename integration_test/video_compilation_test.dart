@@ -143,12 +143,18 @@ void main() {
         'landscape',
       );
       final videoFile = File(videoPath);
-      expect(await videoFile.exists(), isTrue,
-          reason: 'Video output file should exist');
+      expect(
+        await videoFile.exists(),
+        isTrue,
+        reason: 'Video output file should exist',
+      );
 
       final videoSize = await videoFile.length();
-      expect(videoSize, greaterThan(1000),
-          reason: 'Video file should have reasonable size');
+      expect(
+        videoSize,
+        greaterThan(1000),
+        reason: 'Video file should have reasonable size',
+      );
     });
 
     testWidgets('compiles video at 4K resolution', (tester) async {
@@ -193,8 +199,11 @@ void main() {
         'landscape',
       );
       final videoFile = File(videoPath);
-      expect(await videoFile.exists(), isTrue,
-          reason: 'Video output file should exist');
+      expect(
+        await videoFile.exists(),
+        isTrue,
+        reason: 'Video output file should exist',
+      );
     });
 
     testWidgets('compiles video at 8K resolution using HEVC', (tester) async {
@@ -237,8 +246,11 @@ void main() {
         null,
       );
 
-      expect(success, isTrue,
-          reason: '8K video compilation should succeed using HEVC encoder');
+      expect(
+        success,
+        isTrue,
+        reason: '8K video compilation should succeed using HEVC encoder',
+      );
 
       // Verify output file exists
       final videoPath = await DirUtils.getVideoOutputPath(
@@ -246,12 +258,18 @@ void main() {
         'landscape',
       );
       final videoFile = File(videoPath);
-      expect(await videoFile.exists(), isTrue,
-          reason: 'Video output file should exist');
+      expect(
+        await videoFile.exists(),
+        isTrue,
+        reason: 'Video output file should exist',
+      );
 
       final videoSize = await videoFile.length();
-      expect(videoSize, greaterThan(1000),
-          reason: 'Video file should have reasonable size');
+      expect(
+        videoSize,
+        greaterThan(1000),
+        reason: 'Video file should have reasonable size',
+      );
     });
 
     testWidgets('compiles portrait video', (tester) async {
@@ -287,8 +305,11 @@ void main() {
         null,
       );
 
-      expect(success, isTrue,
-          reason: 'Portrait video compilation should succeed');
+      expect(
+        success,
+        isTrue,
+        reason: 'Portrait video compilation should succeed',
+      );
 
       // Verify output file exists
       final videoPath = await DirUtils.getVideoOutputPath(
@@ -296,8 +317,11 @@ void main() {
         'portrait',
       );
       final videoFile = File(videoPath);
-      expect(await videoFile.exists(), isTrue,
-          reason: 'Video output file should exist');
+      expect(
+        await videoFile.exists(),
+        isTrue,
+        reason: 'Video output file should exist',
+      );
     });
 
     testWidgets('handles empty project gracefully', (tester) async {
@@ -318,8 +342,11 @@ void main() {
         null,
       );
 
-      expect(success, isFalse,
-          reason: 'Empty project should return false, not crash');
+      expect(
+        success,
+        isFalse,
+        reason: 'Empty project should return false, not crash',
+      );
     });
   });
 }

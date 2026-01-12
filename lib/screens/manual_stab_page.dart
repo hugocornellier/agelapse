@@ -101,12 +101,15 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
   }
 
   Future<void> init() async {
-    projectOrientation =
-        await SettingsUtil.loadProjectOrientation(widget.projectId.toString());
-    String resolution =
-        await SettingsUtil.loadVideoResolution(widget.projectId.toString());
-    aspectRatio =
-        await SettingsUtil.loadAspectRatio(widget.projectId.toString());
+    projectOrientation = await SettingsUtil.loadProjectOrientation(
+      widget.projectId.toString(),
+    );
+    String resolution = await SettingsUtil.loadVideoResolution(
+      widget.projectId.toString(),
+    );
+    aspectRatio = await SettingsUtil.loadAspectRatio(
+      widget.projectId.toString(),
+    );
 
     final dims = StabUtils.getOutputDimensions(
       resolution,
@@ -133,8 +136,9 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
     final File rawFile = File(localRawPath);
     if (await rawFile.exists()) {
       _rawImageBytes = await rawFile.readAsBytes();
-      final dims =
-          await ImageUtils.getImageDimensionsInIsolate(_rawImageBytes!);
+      final dims = await ImageUtils.getImageDimensionsInIsolate(
+        _rawImageBytes!,
+      );
       if (dims != null) {
         _rawImageWidth = dims.$1;
         final double defaultScale = canvasWidth / _rawImageWidth!.toDouble();
@@ -143,8 +147,10 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
       }
     }
 
-    _faceStabilizer =
-        FaceStabilizer(widget.projectId, () => LogService.instance.log("Test"));
+    _faceStabilizer = FaceStabilizer(
+      widget.projectId,
+      () => LogService.instance.log("Test"),
+    );
     await _faceStabilizer!.init();
 
     await _loadSavedTransformAndBootPreview();
@@ -225,10 +231,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
           decoration: BoxDecoration(
             color: AppColors.settingsCardBackground,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppColors.settingsCardBorder,
-              width: 1,
-            ),
+            border: Border.all(color: AppColors.settingsCardBorder, width: 1),
           ),
           child: const Icon(
             Icons.arrow_back,
@@ -247,10 +250,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
             decoration: BoxDecoration(
               color: AppColors.settingsCardBackground,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: AppColors.settingsCardBorder,
-                width: 1,
-              ),
+              border: Border.all(color: AppColors.settingsCardBorder, width: 1),
             ),
             child: const Icon(
               Icons.help_outline_rounded,
@@ -262,10 +262,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
       ],
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(1),
-        child: Container(
-          height: 1,
-          color: AppColors.settingsDivider,
-        ),
+        child: Container(height: 1, color: AppColors.settingsDivider),
       ),
     );
   }
@@ -275,9 +272,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.settingsCardBackground,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
             Icon(
@@ -357,10 +352,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
           decoration: BoxDecoration(
             color: AppColors.settingsCardBackground,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: AppColors.settingsCardBorder,
-              width: 1,
-            ),
+            border: Border.all(color: AppColors.settingsCardBorder, width: 1),
           ),
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -421,11 +413,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
       children: [
         Row(
           children: [
-            Icon(
-              icon,
-              size: 14,
-              color: AppColors.settingsTextTertiary,
-            ),
+            Icon(icon, size: 14, color: AppColors.settingsTextTertiary),
             const SizedBox(width: 6),
             Text(
               label,
@@ -446,7 +434,9 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
           child: TextField(
             controller: controller,
             keyboardType: const TextInputType.numberWithOptions(
-                decimal: true, signed: true),
+              decimal: true,
+              signed: true,
+            ),
             onEditingComplete: _validateInputs,
             style: const TextStyle(
               fontSize: 16,
@@ -454,8 +444,10 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
               fontWeight: FontWeight.w500,
             ),
             decoration: InputDecoration(
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 14,
+              ),
               border: InputBorder.none,
               hintText: '0',
               hintStyle: TextStyle(
@@ -526,10 +518,14 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final double aspectRatioValue = _canvasHeight! / _canvasWidth!;
-              final double availableWidth =
-                  (constraints.maxWidth - 24).clamp(0.0, double.infinity);
-              final double availableHeight =
-                  (constraints.maxHeight - 24).clamp(0.0, double.infinity);
+              final double availableWidth = (constraints.maxWidth - 24).clamp(
+                0.0,
+                double.infinity,
+              );
+              final double availableHeight = (constraints.maxHeight - 24).clamp(
+                0.0,
+                double.infinity,
+              );
 
               if (availableWidth == 0 || availableHeight == 0) {
                 return const SizedBox.shrink();
@@ -566,15 +562,16 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
                         ),
                         CustomPaint(
                           painter: GridPainterSE(
-                              (_rightEyeXGoal! - _leftEyeXGoal!) /
-                                  (2 * _canvasWidth!),
-                              _bothEyesYGoal! / _canvasHeight!,
-                              null,
-                              null,
-                              null,
-                              aspectRatio,
-                              projectOrientation,
-                              hideToolTip: true),
+                            (_rightEyeXGoal! - _leftEyeXGoal!) /
+                                (2 * _canvasWidth!),
+                            _bothEyesYGoal! / _canvasHeight!,
+                            null,
+                            null,
+                            null,
+                            aspectRatio,
+                            projectOrientation,
+                            hideToolTip: true,
+                          ),
                           child: SizedBox(
                             width: previewWidth,
                             height: previewHeight,
@@ -689,8 +686,10 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
 
   Future<void> _loadSavedTransformAndBootPreview() async {
     final String timestamp = p.basenameWithoutExtension(rawPhotoPath);
-    final Map<String, dynamic>? row =
-        await DB.instance.getPhotoByTimestamp(timestamp, widget.projectId);
+    final Map<String, dynamic>? row = await DB.instance.getPhotoByTimestamp(
+      timestamp,
+      widget.projectId,
+    );
     final String prefix = DB.instance.getStabilizedColumn(projectOrientation);
 
     double tx = 0;
@@ -742,9 +741,13 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
     }
   }
 
-  Future<void> processRequest(double? translateX, double? translateY,
-      double? scaleFactor, double? rotationDegrees,
-      {bool save = false}) async {
+  Future<void> processRequest(
+    double? translateX,
+    double? translateY,
+    double? scaleFactor,
+    double? rotationDegrees, {
+    bool save = false,
+  }) async {
     final int requestId = ++_currentRequestId;
     if (mounted) {
       setState(() {
@@ -781,12 +784,17 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
       if (save && _faceStabilizer != null) {
         final String projectOrientation =
             await SettingsUtil.loadProjectOrientation(
-                widget.projectId.toString());
+          widget.projectId.toString(),
+        );
         final String stabilizedPhotoPath =
             await StabUtils.getStabilizedImagePath(
-                rawPhotoPath, widget.projectId, projectOrientation);
-        final String stabThumbPath =
-            FaceStabilizer.getStabThumbnailPath(stabilizedPhotoPath);
+          rawPhotoPath,
+          widget.projectId,
+          projectOrientation,
+        );
+        final String stabThumbPath = FaceStabilizer.getStabThumbnailPath(
+          stabilizedPhotoPath,
+        );
 
         final File stabImageFile = File(stabilizedPhotoPath);
         final File stabThumbFile = File(stabThumbPath);
@@ -804,7 +812,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
           scaleFactor: scaleFactor,
         );
         await _faceStabilizer!.createStabThumbnail(
-            stabilizedPhotoPath.replaceAll('.jpg', '.png'));
+          stabilizedPhotoPath.replaceAll('.jpg', '.png'),
+        );
       }
 
       if (requestId != _currentRequestId ||
@@ -959,10 +968,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
           decoration: BoxDecoration(
             color: AppColors.settingsCardBackground,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppColors.settingsCardBorder,
-              width: 1,
-            ),
+            border: Border.all(color: AppColors.settingsCardBorder, width: 1),
           ),
           child: IconButton(
             icon: Icon(icon, size: 22),
@@ -984,10 +990,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
       decoration: BoxDecoration(
         color: AppColors.settingsBackground,
         border: Border(
-          top: BorderSide(
-            color: AppColors.settingsDivider,
-            width: 1,
-          ),
+          top: BorderSide(color: AppColors.settingsDivider, width: 1),
         ),
       ),
       child: SafeArea(

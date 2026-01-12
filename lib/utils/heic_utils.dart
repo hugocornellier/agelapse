@@ -48,14 +48,17 @@ class HeicUtils {
       LogService.instance.log('[HEIC] Extracting bundled heicConverter.exe...');
       try {
         final bytes = await rootBundle.load(_winHeicConverterAssetPath);
-        await File(exePath)
-            .writeAsBytes(bytes.buffer.asUint8List(), flush: true);
+        await File(
+          exePath,
+        ).writeAsBytes(bytes.buffer.asUint8List(), flush: true);
         await File(markerPath).writeAsString(_currentVersion, flush: true);
-        LogService.instance
-            .log('[HEIC] heicConverter.exe extracted to: $exePath');
+        LogService.instance.log(
+          '[HEIC] heicConverter.exe extracted to: $exePath',
+        );
       } catch (e) {
-        LogService.instance
-            .log('[HEIC] ERROR extracting heicConverter.exe: $e');
+        LogService.instance.log(
+          '[HEIC] ERROR extracting heicConverter.exe: $e',
+        );
         return '';
       }
     }
@@ -66,8 +69,11 @@ class HeicUtils {
 
   /// Converts HEIC to JPG on Windows using bundled HeicConverter.exe.
   /// Outputs directly to targetDir, returns the output JPG path or null if failed.
-  static Future<String?> _convertHeic(String heicPath, String targetDir,
-      {int quality = 95}) async {
+  static Future<String?> _convertHeic(
+    String heicPath,
+    String targetDir, {
+    int quality = 95,
+  }) async {
     if (!Platform.isWindows) return null;
 
     final exePath = await _ensureBundledHeicConverter();
@@ -77,44 +83,50 @@ class HeicUtils {
     final outputName = '${path.basenameWithoutExtension(heicPath)}.jpg';
     final outputPath = path.join(targetDir, outputName);
 
-    final result = await Process.run(
-      exePath,
-      [
-        '--files',
-        heicPath,
-        '-t',
-        targetDir,
-        '-q',
-        quality.toString(),
-        '--not-recursive',
-        '--skip-prompt'
-      ],
-    );
+    final result = await Process.run(exePath, [
+      '--files',
+      heicPath,
+      '-t',
+      targetDir,
+      '-q',
+      quality.toString(),
+      '--not-recursive',
+      '--skip-prompt',
+    ]);
 
     if (result.exitCode == 0 && await File(outputPath).exists()) {
       return outputPath;
     }
 
     LogService.instance.log(
-        '[HEIC] Conversion failed (exit code ${result.exitCode}): ${result.stderr}');
+      '[HEIC] Conversion failed (exit code ${result.exitCode}): ${result.stderr}',
+    );
     return null;
   }
 
   /// Converts HEIC to JPG, outputting next to the original file.
   /// Returns the output JPG path, or null if conversion failed.
-  static Future<String?> convertHeicToJpg(String heicPath,
-      {int quality = 95}) async {
+  static Future<String?> convertHeicToJpg(
+    String heicPath, {
+    int quality = 95,
+  }) async {
     return _convertHeic(heicPath, path.dirname(heicPath), quality: quality);
   }
 
   /// Converts HEIC to JPG at a specific output path.
-  static Future<bool> convertHeicToJpgAt(String heicPath, String outputJpgPath,
-      {int quality = 95}) async {
+  static Future<bool> convertHeicToJpgAt(
+    String heicPath,
+    String outputJpgPath, {
+    int quality = 95,
+  }) async {
     final targetDir = path.dirname(outputJpgPath);
     final desiredName = path.basename(outputJpgPath);
 
-    final convertedPath =
-        await _convertHeic(heicPath, targetDir, quality: quality);
+    final convertedPath = await _convertHeic(
+      heicPath,
+      targetDir,
+      quality: quality,
+    );
     if (convertedPath == null) return false;
 
     // Rename if the desired filename differs from what heicConverter produced

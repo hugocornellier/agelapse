@@ -34,8 +34,10 @@ class StabUpdateEvent {
   });
 
   /// A photo was stabilized during normal progress.
-  factory StabUpdateEvent.photoStabilized(int photoIndex,
-          {String? timestamp}) =>
+  factory StabUpdateEvent.photoStabilized(
+    int photoIndex, {
+    String? timestamp,
+  }) =>
       StabUpdateEvent._(
         type: StabUpdateType.photoStabilized,
         photoIndex: photoIndex,
@@ -43,24 +45,20 @@ class StabUpdateEvent {
       );
 
   /// All photos have been stabilized.
-  factory StabUpdateEvent.stabilizationComplete() => const StabUpdateEvent._(
-        type: StabUpdateType.stabilizationComplete,
-      );
+  factory StabUpdateEvent.stabilizationComplete() =>
+      const StabUpdateEvent._(type: StabUpdateType.stabilizationComplete);
 
   /// Video compilation finished.
-  factory StabUpdateEvent.videoComplete() => const StabUpdateEvent._(
-        type: StabUpdateType.videoComplete,
-      );
+  factory StabUpdateEvent.videoComplete() =>
+      const StabUpdateEvent._(type: StabUpdateType.videoComplete);
 
   /// Operation was cancelled.
-  factory StabUpdateEvent.cancelled() => const StabUpdateEvent._(
-        type: StabUpdateType.cancelled,
-      );
+  factory StabUpdateEvent.cancelled() =>
+      const StabUpdateEvent._(type: StabUpdateType.cancelled);
 
   /// An error occurred.
-  factory StabUpdateEvent.error() => const StabUpdateEvent._(
-        type: StabUpdateType.error,
-      );
+  factory StabUpdateEvent.error() =>
+      const StabUpdateEvent._(type: StabUpdateType.error);
 
   /// Whether this is a "completion" type event that should force UI refresh.
   bool get isCompletionEvent =>

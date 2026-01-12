@@ -112,8 +112,9 @@ class StabilizationService {
     _totalPhotos = unstabilizedPhotos.length;
 
     if (_totalPhotos == 0) {
-      LogService.instance
-          .log('StabilizationService: No photos to stabilize, checking video');
+      LogService.instance.log(
+        'StabilizationService: No photos to stabilize, checking video',
+      );
       final needsVideo = await _checkIfVideoNeeded(projectId);
       if (needsVideo) {
         _state = StabilizationState.compilingVideo;
@@ -142,15 +143,19 @@ class StabilizationService {
 
       final allPhotos = await DB.instance.getPhotosByProjectID(projectId);
       _stabilizedAtStart = await DB.instance.getStabilizedPhotoCountByProjectID(
-          projectId, _currentSettings!.projectOrientation);
+        projectId,
+        _currentSettings!.projectOrientation,
+      );
 
       _state = StabilizationState.stabilizing;
-      _emitProgress(StabilizationProgress.stabilizing(
-        currentPhoto: 0,
-        totalPhotos: _totalPhotos,
-        progressPercent: 0,
-        projectId: projectId,
-      ));
+      _emitProgress(
+        StabilizationProgress.stabilizing(
+          currentPhoto: 0,
+          totalPhotos: _totalPhotos,
+          progressPercent: 0,
+          projectId: projectId,
+        ),
+      );
 
       // Stabilize each photo
       final Stopwatch stopwatch = Stopwatch()..start();
@@ -160,10 +165,14 @@ class StabilizationService {
         _currentToken?.throwIfCancelled();
 
         LogService.instance.log(
-            'StabilizationService: Stabilizing photo ${_currentPhoto + 1}/$_totalPhotos');
+          'StabilizationService: Stabilizing photo ${_currentPhoto + 1}/$_totalPhotos',
+        );
 
-        final result =
-            await _stabilizePhoto(_currentStabilizer!, photo, _currentToken);
+        final result = await _stabilizePhoto(
+          _currentStabilizer!,
+          photo,
+          _currentToken,
+        );
 
         if (result.cancelled) {
           throw CancelledException('User cancelled');
@@ -196,14 +205,16 @@ class StabilizationService {
         if (pct >= 100) pct = 99;
         if (pct < 0) pct = 0;
 
-        _emitProgress(StabilizationProgress.stabilizing(
-          currentPhoto: _currentPhoto,
-          totalPhotos: _totalPhotos,
-          progressPercent: pct,
-          eta: _eta,
-          projectId: projectId,
-          lastStabilizedTimestamp: photo['timestamp']?.toString(),
-        ));
+        _emitProgress(
+          StabilizationProgress.stabilizing(
+            currentPhoto: _currentPhoto,
+            totalPhotos: _totalPhotos,
+            progressPercent: pct,
+            eta: _eta,
+            projectId: projectId,
+            lastStabilizedTimestamp: photo['timestamp']?.toString(),
+          ),
+        );
       }
 
       stopwatch.stop();
@@ -232,7 +243,8 @@ class StabilizationService {
     } catch (e) {
       LogService.instance.log('StabilizationService: Error - $e');
       _emitProgress(
-          StabilizationProgress.error(e.toString(), projectId: projectId));
+        StabilizationProgress.error(e.toString(), projectId: projectId),
+      );
       _state = StabilizationState.error;
       return false;
     } finally {
@@ -261,11 +273,13 @@ class StabilizationService {
     // Emit cancelling state IMMEDIATELY for UI feedback
     if (_state.isVideoPhase) {
       _emitProgress(
-          StabilizationProgress.cancellingVideo(projectId: _currentProjectId));
+        StabilizationProgress.cancellingVideo(projectId: _currentProjectId),
+      );
       _state = StabilizationState.cancellingVideo;
     } else {
       _emitProgress(
-          StabilizationProgress.cancelling(projectId: _currentProjectId));
+        StabilizationProgress.cancelling(projectId: _currentProjectId),
+      );
       _state = StabilizationState.cancelling;
     }
 
@@ -297,16 +311,21 @@ class StabilizationService {
     if (!_state.isFinished) {
       _state = StabilizationState.cancelled;
       _emitProgress(
-          StabilizationProgress.cancelled(projectId: _currentProjectId));
+        StabilizationProgress.cancelled(projectId: _currentProjectId),
+      );
     }
   }
 
   /// Restart stabilization (cancel current and start fresh).
-  Future<bool> restart(int projectId,
-      {VoidCallback? onUserRanOutOfSpace}) async {
+  Future<bool> restart(
+    int projectId, {
+    VoidCallback? onUserRanOutOfSpace,
+  }) async {
     await cancelAndWait();
-    return startStabilization(projectId,
-        onUserRanOutOfSpace: onUserRanOutOfSpace);
+    return startStabilization(
+      projectId,
+      onUserRanOutOfSpace: onUserRanOutOfSpace,
+    );
   }
 
   // ==================== Private Methods ====================
@@ -331,8 +350,9 @@ class StabilizationService {
       );
     } catch (e) {
       if (e is CancelledException) rethrow;
-      LogService.instance
-          .log('StabilizationService: Error stabilizing photo - $e');
+      LogService.instance.log(
+        'StabilizationService: Error stabilizing photo - $e',
+      );
       return StabilizationResult(success: false);
     }
   }
@@ -342,7 +362,9 @@ class StabilizationService {
     // This detects if user changed settings since photos were stabilized
     final freshSettings = await StabilizationSettings.load(projectId);
     final allPhotos = await DB.instance.getStabilizedPhotosByProjectID(
-        projectId, freshSettings.projectOrientation);
+      projectId,
+      freshSettings.projectOrientation,
+    );
 
     final columnName = freshSettings.projectOrientation == 'portrait'
         ? "stabilizedPortraitOffsetX"
@@ -354,7 +376,11 @@ class StabilizationService {
 
       if (photo[columnName] != currentOffsetX) {
         await _reStabilizePhoto(
-            stabilizer, photo, projectId, freshSettings.projectOrientation);
+          stabilizer,
+          photo,
+          projectId,
+          freshSettings.projectOrientation,
+        );
       }
     }
   }
@@ -366,7 +392,9 @@ class StabilizationService {
     String projectOrientation,
   ) async {
     await DB.instance.resetStabilizedColumnByTimestamp(
-        projectOrientation, photo['timestamp']);
+      projectOrientation,
+      photo['timestamp'],
+    );
 
     try {
       final rawPhotoPath =
@@ -382,8 +410,9 @@ class StabilizationService {
       }
     } catch (e) {
       if (e is CancelledException) rethrow;
-      LogService.instance
-          .log('StabilizationService: Error re-stabilizing photo - $e');
+      LogService.instance.log(
+        'StabilizationService: Error re-stabilizing photo - $e',
+      );
     }
   }
 
@@ -391,8 +420,9 @@ class StabilizationService {
   /// Used to determine if we should show progress UI when no photos need stabilizing.
   Future<bool> _checkIfVideoNeeded(int projectId) async {
     try {
-      final newestVideo =
-          await DB.instance.getNewestVideoByProjectId(projectId);
+      final newestVideo = await DB.instance.getNewestVideoByProjectId(
+        projectId,
+      );
       // Use cached settings if available, otherwise load fresh
       final orientation = _currentSettings?.projectOrientation ??
           await SettingsUtil.loadProjectOrientation(projectId.toString());
@@ -400,16 +430,19 @@ class StabilizationService {
           .getStabilizedPhotoCountByProjectID(projectId, orientation);
 
       final videoIsNull = newestVideo == null;
-      final settingsHaveChanged =
-          await VideoUtils.videoOutputSettingsChanged(projectId, newestVideo);
+      final settingsHaveChanged = await VideoUtils.videoOutputSettingsChanged(
+        projectId,
+        newestVideo,
+      );
       final newVideoNeededRaw = await DB.instance.getNewVideoNeeded(projectId);
       final newVideoNeeded = newVideoNeededRaw == 1;
 
       return newVideoNeeded ||
           ((videoIsNull || settingsHaveChanged) && stabPhotoCount > 1);
     } catch (e) {
-      LogService.instance
-          .log('StabilizationService: Error checking if video needed - $e');
+      LogService.instance.log(
+        'StabilizationService: Error checking if video needed - $e',
+      );
       return false;
     }
   }
@@ -418,8 +451,9 @@ class StabilizationService {
     try {
       _currentToken?.throwIfCancelled();
 
-      final newestVideo =
-          await DB.instance.getNewestVideoByProjectId(projectId);
+      final newestVideo = await DB.instance.getNewestVideoByProjectId(
+        projectId,
+      );
       // Use cached settings if available, otherwise load fresh
       final orientation = _currentSettings?.projectOrientation ??
           await SettingsUtil.loadProjectOrientation(projectId.toString());
@@ -427,8 +461,10 @@ class StabilizationService {
           .getStabilizedPhotoCountByProjectID(projectId, orientation);
 
       final videoIsNull = newestVideo == null;
-      final settingsHaveChanged =
-          await VideoUtils.videoOutputSettingsChanged(projectId, newestVideo);
+      final settingsHaveChanged = await VideoUtils.videoOutputSettingsChanged(
+        projectId,
+        newestVideo,
+      );
       final newPhotosStabilized = _successfullyStabilized > 0;
       final newVideoNeededRaw = await DB.instance.getNewVideoNeeded(projectId);
       final newVideoNeeded = newVideoNeededRaw == 1;
@@ -437,12 +473,14 @@ class StabilizationService {
           ((videoIsNull || settingsHaveChanged || newPhotosStabilized) &&
               stabPhotoCount > 1)) {
         _state = StabilizationState.compilingVideo;
-        _emitProgress(StabilizationProgress.compilingVideo(
-          currentFrame: 0,
-          totalFrames: stabPhotoCount,
-          progressPercent: 0,
-          projectId: projectId,
-        ));
+        _emitProgress(
+          StabilizationProgress.compilingVideo(
+            currentFrame: 0,
+            totalFrames: stabPhotoCount,
+            progressPercent: 0,
+            projectId: projectId,
+          ),
+        );
 
         _currentToken?.throwIfCancelled();
 
@@ -452,12 +490,14 @@ class StabilizationService {
             final pct = stabPhotoCount > 0
                 ? ((currentFrame * 100) ~/ stabPhotoCount)
                 : 0;
-            _emitProgress(StabilizationProgress.compilingVideo(
-              currentFrame: currentFrame,
-              totalFrames: stabPhotoCount,
-              progressPercent: pct,
-              projectId: projectId,
-            ));
+            _emitProgress(
+              StabilizationProgress.compilingVideo(
+                currentFrame: currentFrame,
+                totalFrames: stabPhotoCount,
+                progressPercent: pct,
+                projectId: projectId,
+              ),
+            );
           },
         );
 
@@ -465,13 +505,15 @@ class StabilizationService {
           DB.instance.setNewVideoNotNeeded(projectId);
         }
 
-        LogService.instance
-            .log('StabilizationService: Video creation result - $result');
+        LogService.instance.log(
+          'StabilizationService: Video creation result - $result',
+        );
       }
     } catch (e) {
       if (e is CancelledException) rethrow;
-      LogService.instance
-          .log('StabilizationService: Error creating video - $e');
+      LogService.instance.log(
+        'StabilizationService: Error creating video - $e',
+      );
     }
   }
 

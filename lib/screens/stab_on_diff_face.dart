@@ -58,8 +58,10 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
     });
 
     rawImagePath = await _getRawPhotoPath();
-    faceStabilizer =
-        FaceStabilizer(widget.projectId, widget.userRanOutOfSpaceCallback);
+    faceStabilizer = FaceStabilizer(
+      widget.projectId,
+      widget.userRanOutOfSpaceCallback,
+    );
     await faceStabilizer.init();
 
     final bytes = await CameraUtils.readBytesInIsolate(rawImagePath);
@@ -85,8 +87,10 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
     });
 
     List<dynamic>? facesRaw = await faceStabilizer.getFacesFromRawPhotoPath(
-        rawImagePath, imageWidth,
-        filterByFaceSize: false);
+      rawImagePath,
+      imageWidth,
+      filterByFaceSize: false,
+    );
 
     if (facesRaw == null) {
       setState(() {
@@ -110,7 +114,9 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
   }
 
   void _handleContourTapped(
-      dynamic tappedFace, VoidCallback userRanOutOfSpaceCallback) async {
+    dynamic tappedFace,
+    VoidCallback userRanOutOfSpaceCallback,
+  ) async {
     final bool? userConfirmed = await _showConfirmationDialog();
     if (userConfirmed!) {
       setState(() {
@@ -246,10 +252,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
           decoration: BoxDecoration(
             color: AppColors.settingsCardBackground,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppColors.settingsCardBorder,
-              width: 1,
-            ),
+            border: Border.all(color: AppColors.settingsCardBorder, width: 1),
           ),
           child: const Icon(
             Icons.arrow_back,
@@ -268,10 +271,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
             decoration: BoxDecoration(
               color: AppColors.settingsCardBackground,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: AppColors.settingsCardBorder,
-                width: 1,
-              ),
+              border: Border.all(color: AppColors.settingsCardBorder, width: 1),
             ),
             child: const Icon(
               Icons.help_outline_rounded,
@@ -283,10 +283,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
       ],
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(1),
-        child: Container(
-          height: 1,
-          color: AppColors.settingsDivider,
-        ),
+        child: Container(height: 1, color: AppColors.settingsDivider),
       ),
     );
   }
@@ -296,9 +293,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.settingsCardBackground,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
             Icon(
@@ -356,7 +351,9 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
                 ? LayoutBuilder(
                     builder: (context, constraints) {
                       return _buildImageWithContours(
-                          constraints, widget.userRanOutOfSpaceCallback);
+                        constraints,
+                        widget.userRanOutOfSpaceCallback,
+                      );
                     },
                   )
                 : Column(
@@ -424,10 +421,15 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
   }
 
   Widget _buildImageWithContours(
-      BoxConstraints constraints, VoidCallback userRanOutOfSpaceCallback) {
+    BoxConstraints constraints,
+    VoidCallback userRanOutOfSpaceCallback,
+  ) {
     final displaySize = _calculateDisplaySize(constraints);
     final contourRects = FaceContourPainter.calculateContours(
-        faces, originalImageSize, displaySize);
+      faces,
+      originalImageSize,
+      displaySize,
+    );
 
     faceContours = faces
         .asMap()
@@ -449,8 +451,13 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
             painter: FaceContourPainter(faces, originalImageSize, displaySize),
             size: displaySize,
           ),
-          ...faceContours.map((entry) => _buildContourRect(
-              entry.value, entry.key, userRanOutOfSpaceCallback)),
+          ...faceContours.map(
+            (entry) => _buildContourRect(
+              entry.value,
+              entry.key,
+              userRanOutOfSpaceCallback,
+            ),
+          ),
         ],
       ),
     );
@@ -462,15 +469,22 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
 
     if (imageAspectRatio > displayAspectRatio) {
       return Size(
-          constraints.maxWidth, constraints.maxWidth / imageAspectRatio);
+        constraints.maxWidth,
+        constraints.maxWidth / imageAspectRatio,
+      );
     } else {
       return Size(
-          constraints.maxHeight * imageAspectRatio, constraints.maxHeight);
+        constraints.maxHeight * imageAspectRatio,
+        constraints.maxHeight,
+      );
     }
   }
 
   Widget _buildContourRect(
-      Rect rect, dynamic face, VoidCallback userRanOutOfSpaceCallback) {
+    Rect rect,
+    dynamic face,
+    VoidCallback userRanOutOfSpaceCallback,
+  ) {
     return Positioned(
       left: rect.left,
       top: rect.top,
@@ -478,9 +492,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
       height: rect.height,
       child: GestureDetector(
         onTap: () => _handleContourTapped(face, userRanOutOfSpaceCallback),
-        child: Container(
-          color: Colors.blue.withAlpha(77),
-        ),
+        child: Container(color: Colors.blue.withAlpha(77)),
       ),
     );
   }
@@ -494,7 +506,10 @@ class FaceContourPainter extends CustomPainter {
   FaceContourPainter(this.faces, this.originalImageSize, this.displaySize);
 
   static List<Rect> calculateContours(
-      List<dynamic> faces, Size originalImageSize, Size displaySize) {
+    List<dynamic> faces,
+    Size originalImageSize,
+    Size displaySize,
+  ) {
     final double scaleX = displaySize.width / originalImageSize.width;
     final double scaleY = displaySize.height / originalImageSize.height;
     return faces.map((face) {

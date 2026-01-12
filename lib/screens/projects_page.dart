@@ -27,9 +27,7 @@ class ProjectsPageState extends State<ProjectsPage> {
     final bool isDesktop =
         !kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
     if (!isDesktop) {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-      ]);
+      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     }
     _getProjects();
   }
@@ -59,10 +57,7 @@ class ProjectsPageState extends State<ProjectsPage> {
         _projects.isEmpty ? const Color(0xff151517) : Colors.black;
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: backgroundColor,
-        toolbarHeight: 0,
-      ),
+      appBar: AppBar(backgroundColor: backgroundColor, toolbarHeight: 0),
       backgroundColor: backgroundColor,
       body: bodyContents,
     );
@@ -105,10 +100,7 @@ class ProjectsPageState extends State<ProjectsPage> {
             '\n\n'
             '100% free, forever.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.white,
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.white),
           ),
         ),
         const SizedBox(height: 24),
@@ -138,7 +130,10 @@ class ProjectsPageState extends State<ProjectsPage> {
         child: Text(
           text.toUpperCase(),
           style: const TextStyle(
-              fontSize: 15, color: Colors.white, fontWeight: FontWeight.bold),
+            fontSize: 15,
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );
@@ -147,9 +142,7 @@ class ProjectsPageState extends State<ProjectsPage> {
   void openWelcomePagePartTwo() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(
-        builder: (context) => const WelcomePagePartTwo(),
-      ),
+      MaterialPageRoute(builder: (context) => const WelcomePagePartTwo()),
     );
   }
 
@@ -182,11 +175,7 @@ class ProjectsPageState extends State<ProjectsPage> {
   Widget _buildWaveImage() {
     const String imagePath = 'assets/images/wave-tc.png';
 
-    return Image.asset(
-      imagePath,
-      width: double.infinity,
-      fit: BoxFit.cover,
-    );
+    return Image.asset(imagePath, width: double.infinity, fit: BoxFit.cover);
   }
 
   Widget _buildWelcomePage() {
@@ -208,10 +197,7 @@ class ProjectsPageState extends State<ProjectsPage> {
             '\n\n'
             '100% free, forever.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.white,
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.white),
           ),
         ),
         const SizedBox(height: 36),

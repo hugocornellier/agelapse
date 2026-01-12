@@ -78,7 +78,7 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
                     child: Text('Name', style: TextStyle(color: Colors.grey)),
                   ),
                   _buildTextField(),
-                  _buildActionButton()
+                  _buildActionButton(),
                 ],
               ),
             ),
@@ -96,11 +96,14 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
                     children: [
                       const Row(
                         children: [
-                          Text('Create New Project',
-                              style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white)),
+                          Text(
+                            'Create New Project',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
                         ],
                       ),
                       if (widget.showCloseButton)
@@ -194,8 +197,10 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
               borderRadius: BorderRadius.circular(6.0),
               borderSide: BorderSide.none,
             ),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 14.0,
+            ),
           ),
         ),
       ),
@@ -231,11 +236,14 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
     );
 
     try {
-      final String defaultProject =
-          await DB.instance.getSettingValueByTitle('default_project');
+      final String defaultProject = await DB.instance.getSettingValueByTitle(
+        'default_project',
+      );
       if (defaultProject == "none") {
-        await DB.instance
-            .setSettingByTitle('default_project', projectId.toString());
+        await DB.instance.setSettingByTitle(
+          'default_project',
+          projectId.toString(),
+        );
       }
     } catch (e) {
       LogService.instance.log("Error while setting new default project: $e");
@@ -248,11 +256,16 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
         final dailyNotificationTime =
             fivePMLocalTime.millisecondsSinceEpoch.toString();
 
-        await DB.instance.setSettingByTitle('daily_notification_time',
-            dailyNotificationTime, projectId.toString());
+        await DB.instance.setSettingByTitle(
+          'daily_notification_time',
+          dailyNotificationTime,
+          projectId.toString(),
+        );
         await NotificationUtil.initializeNotifications();
         await NotificationUtil.scheduleDailyNotification(
-            projectId, dailyNotificationTime);
+          projectId,
+          dailyNotificationTime,
+        );
       } catch (e) {
         LogService.instance.log("Error while setting up notifications: $e");
       }
@@ -287,7 +300,10 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
         child: const Text(
           "CREATE",
           style: TextStyle(
-              fontSize: 15, color: Colors.white, fontWeight: FontWeight.bold),
+            fontSize: 15,
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );

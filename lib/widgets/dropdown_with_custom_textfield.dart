@@ -86,7 +86,10 @@ class DropdownWithCustomTextFieldState
 
   void _updateSetting(int newValue) {
     DB.instance.setSettingByTitle(
-        'framerate', newValue.toString(), widget.projectId.toString());
+      'framerate',
+      newValue.toString(),
+      widget.projectId.toString(),
+    );
   }
 
   @override
@@ -156,15 +159,16 @@ class DropdownWithCustomTextFieldState
             color: AppColors.settingsTextPrimary,
           ),
           items: defaultValues
-              .map<DropdownMenuItem<int>>((int value) => DropdownMenuItem<int>(
-                    value: value,
-                    child: Text(value.toString()),
-                  ))
+              .map<DropdownMenuItem<int>>(
+                (int value) => DropdownMenuItem<int>(
+                  value: value,
+                  child: Text(value.toString()),
+                ),
+              )
               .toList()
-            ..add(const DropdownMenuItem<int>(
-              value: -1,
-              child: Text('Custom'),
-            )),
+            ..add(
+              const DropdownMenuItem<int>(value: -1, child: Text('Custom')),
+            ),
         ),
       ),
     );

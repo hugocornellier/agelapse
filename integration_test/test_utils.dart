@@ -64,13 +64,16 @@ Future<String> getFixturePathAsync(String relativePath) async {
     }
 
     if (byteData == null) {
-      throw Exception('Asset not found. Tried paths: ${pathsToTry.join(", ")}. '
-          'Ensure assets are declared in pubspec.yaml under flutter > assets');
+      throw Exception(
+        'Asset not found. Tried paths: ${pathsToTry.join(", ")}. '
+        'Ensure assets are declared in pubspec.yaml under flutter > assets',
+      );
     }
 
     final tempDir = await getTemporaryDirectory();
-    final tempFile =
-        File(p.join(tempDir.path, 'test_fixtures', normalizedPath));
+    final tempFile = File(
+      p.join(tempDir.path, 'test_fixtures', normalizedPath),
+    );
 
     // Create parent directories if needed
     await tempFile.parent.create(recursive: true);
@@ -103,8 +106,9 @@ String getFixturePath(String relativePath) {
       return _fixtureCache[assetPath]!;
     }
     throw StateError(
-        'On mobile platforms, call getFixturePathAsync() first to extract the asset. '
-        'Sync access is only available after async extraction.');
+      'On mobile platforms, call getFixturePathAsync() first to extract the asset. '
+      'Sync access is only available after async extraction.',
+    );
   }
   return p.join(getProjectRoot(), 'assets', 'test_fixtures', relativePath);
 }

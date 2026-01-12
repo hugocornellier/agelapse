@@ -36,10 +36,7 @@ void main() {
     });
 
     test('FAQItem is a StatelessWidget', () {
-      const widget = FAQItem(
-        question: 'Question?',
-        answer: 'Answer.',
-      );
+      const widget = FAQItem(question: 'Question?', answer: 'Answer.');
 
       expect(widget, isA<StatelessWidget>());
     });

@@ -161,8 +161,9 @@ class ProjectPageState extends State<ProjectPage> {
     framerate = await SettingsUtil.loadFramerate(widget.projectId.toString());
   }
 
-  Future<bool> _waitForCache(
-      {Duration timeout = const Duration(seconds: 30)}) async {
+  Future<bool> _waitForCache({
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
     if (widget.settingsCache != null) return true;
 
     final deadline = DateTime.now().add(timeout);
@@ -180,9 +181,7 @@ class ProjectPageState extends State<ProjectPage> {
     if (_loading) {
       return const Scaffold(
         backgroundColor: Color(0xff0F0F0F),
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
+        body: Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -220,8 +219,10 @@ class ProjectPageState extends State<ProjectPage> {
       backgroundColor: const Color(0xff0F0F0F),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          final double rightPaneWidth =
-              (constraints.maxWidth * 0.42).clamp(480.0, 840.0);
+          final double rightPaneWidth = (constraints.maxWidth * 0.42).clamp(
+            480.0,
+            840.0,
+          );
 
           final double leftMaxWidth =
               (constraints.maxWidth - rightPaneWidth - 1).clamp(800.0, 1160.0);
@@ -240,8 +241,10 @@ class ProjectPageState extends State<ProjectPage> {
                                 !cache.hasOpenedNonEmptyGallery ||
                                 !cache.hasTakenMoreThanOnePhoto ||
                                 !cache.hasViewedFirstVideo
-                            ? _buildNoPhotosContent(context,
-                                includeOutput: false)
+                            ? _buildNoPhotosContent(
+                                context,
+                                includeOutput: false,
+                              )
                             : _buildDashboardSection(includeOutput: false),
                       ),
                     ),
@@ -272,8 +275,10 @@ class ProjectPageState extends State<ProjectPage> {
     );
   }
 
-  Widget _buildNoPhotosContent(BuildContext context,
-      {bool includeOutput = true}) {
+  Widget _buildNoPhotosContent(
+    BuildContext context, {
+    bool includeOutput = true,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -327,22 +332,11 @@ class ProjectPageState extends State<ProjectPage> {
         const Row(
           children: <Widget>[
             SizedBox(width: 8),
-            Expanded(
-              child: Divider(
-                height: 0.8,
-              ),
-            ),
+            Expanded(child: Divider(height: 0.8)),
             SizedBox(width: 8),
-            Text(
-              "OR",
-              style: TextStyle(color: Colors.grey, fontSize: 11),
-            ),
+            Text("OR", style: TextStyle(color: Colors.grey, fontSize: 11)),
             SizedBox(width: 8),
-            Expanded(
-              child: Divider(
-                height: 0.8,
-              ),
-            ),
+            Expanded(child: Divider(height: 0.8)),
             SizedBox(width: 8),
           ],
         ),
@@ -423,11 +417,7 @@ class ProjectPageState extends State<ProjectPage> {
         children: [
           Row(
             children: [
-              Icon(
-                icon,
-                size: 18,
-                color: AppColors.settingsTextSecondary,
-              ),
+              Icon(icon, size: 18, color: AppColors.settingsTextSecondary),
               const SizedBox(width: 8),
               Text(
                 title.toUpperCase(),
@@ -554,7 +544,7 @@ class ProjectPageState extends State<ProjectPage> {
         _buildSectionTitle('Output', ''),
         const SizedBox(height: 21),
         _buildOutputContent(),
-        const SizedBox(height: 64)
+        const SizedBox(height: 64),
       ],
     );
   }
@@ -615,7 +605,8 @@ class ProjectPageState extends State<ProjectPage> {
                   outputImageLoader.guideImage,
                   outputImageLoader.aspectRatio!,
                   outputImageLoader.projectOrientation!,
-                  hideToolTip: true),
+                  hideToolTip: true,
+                ),
         ),
         const SizedBox(height: 12.0),
         Row(
@@ -644,8 +635,9 @@ class ProjectPageState extends State<ProjectPage> {
     int maxDecimalPlaces = 1,
     double fontSize = 17.5,
   }) {
-    final String roundedOffset =
-        (value * 100).toStringAsFixed(maxDecimalPlaces);
+    final String roundedOffset = (value * 100).toStringAsFixed(
+      maxDecimalPlaces,
+    );
 
     return SizedBox(
       width: width,
@@ -714,10 +706,7 @@ class ProjectPageState extends State<ProjectPage> {
         Row(
           children: [
             Flexible(
-              child: StatsCard(
-                title: "Streak",
-                value: cache.streak.toString(),
-              ),
+              child: StatsCard(title: "Streak", value: cache.streak.toString()),
             ),
             const SizedBox(width: 16.0),
             Flexible(
@@ -774,10 +763,7 @@ class CardBuilder extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.settingsCardBackground,
         borderRadius: BorderRadius.circular(14.0),
-        border: Border.all(
-          color: AppColors.settingsCardBorder,
-          width: 1,
-        ),
+        border: Border.all(color: AppColors.settingsCardBorder, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -841,12 +827,7 @@ class StatsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CardBuilder(
-      children: [
-        TextRowBuilder(
-          title: title,
-          value: value,
-        ),
-      ],
+      children: [TextRowBuilder(title: title, value: value)],
     );
   }
 }
@@ -876,19 +857,29 @@ class SpecialCard extends StatelessWidget {
       children: [
         _buildSettingsRow("Framerate", "$framerate FPS"),
         _buildSettingsRow(
-            "Orientation", _capitalizeFirstLetter(projectOrientation)),
+          "Orientation",
+          _capitalizeFirstLetter(projectOrientation),
+        ),
         _buildSettingsRow("Resolution", resolution),
         _buildSettingsRow("Aspect ratio", aspectRatio),
         _buildSettingsRow(
-            "Stabilization", _capitalizeFirstLetter(stabilizationMode)),
-        _buildSettingsRow("Watermark", watermarkEnabled ? "Yes" : "No",
-            showDivider: false),
+          "Stabilization",
+          _capitalizeFirstLetter(stabilizationMode),
+        ),
+        _buildSettingsRow(
+          "Watermark",
+          watermarkEnabled ? "Yes" : "No",
+          showDivider: false,
+        ),
       ],
     );
   }
 
-  Widget _buildSettingsRow(String title, String value,
-      {bool showDivider = true}) {
+  Widget _buildSettingsRow(
+    String title,
+    String value, {
+    bool showDivider = true,
+  }) {
     return Column(
       children: [
         Padding(

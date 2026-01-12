@@ -6,9 +6,7 @@ void main() {
   group('StabilizationProgress', () {
     group('constructor', () {
       test('creates instance with required state', () {
-        const progress = StabilizationProgress(
-          state: StabilizationState.idle,
-        );
+        const progress = StabilizationProgress(state: StabilizationState.idle);
 
         expect(progress.state, StabilizationState.idle);
         expect(progress.currentPhoto, 0);
@@ -184,10 +182,7 @@ void main() {
           progressPercent: 50,
         );
 
-        final copy = original.copyWith(
-          currentPhoto: 6,
-          progressPercent: 60,
-        );
+        final copy = original.copyWith(currentPhoto: 6, progressPercent: 60);
 
         expect(copy.currentPhoto, 6);
         expect(copy.progressPercent, 60);
@@ -319,8 +314,10 @@ void main() {
           progressPercent: 50,
         );
 
-        expect(progress.toString(),
-            contains('state: StabilizationState.stabilizing'));
+        expect(
+          progress.toString(),
+          contains('state: StabilizationState.stabilizing'),
+        );
       });
 
       test('includes photo progress', () {

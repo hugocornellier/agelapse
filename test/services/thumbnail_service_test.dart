@@ -80,7 +80,9 @@ void main() {
         service.emit(event);
 
         expect(
-            service.getStatus('/path/to/thumb.jpg'), ThumbnailStatus.success);
+          service.getStatus('/path/to/thumb.jpg'),
+          ThumbnailStatus.success,
+        );
       });
     });
 
@@ -117,7 +119,9 @@ void main() {
         service.emit(event);
 
         expect(
-            service.getStatus('/test/path.jpg'), ThumbnailStatus.noFacesFound);
+          service.getStatus('/test/path.jpg'),
+          ThumbnailStatus.noFacesFound,
+        );
       });
 
       test('updates cache on re-emit for same path', () {
@@ -149,12 +153,14 @@ void main() {
         final sub1 = service.stream.listen(events1.add);
         final sub2 = service.stream.listen(events2.add);
 
-        service.emit(ThumbnailEvent(
-          thumbnailPath: '/path.jpg',
-          status: ThumbnailStatus.success,
-          projectId: 1,
-          timestamp: '2024-01-01',
-        ));
+        service.emit(
+          ThumbnailEvent(
+            thumbnailPath: '/path.jpg',
+            status: ThumbnailStatus.success,
+            projectId: 1,
+            timestamp: '2024-01-01',
+          ),
+        );
 
         await Future.delayed(Duration.zero);
 
@@ -168,18 +174,22 @@ void main() {
 
     group('clearCache()', () {
       test('removes specific entry from cache', () {
-        service.emit(ThumbnailEvent(
-          thumbnailPath: '/path1.jpg',
-          status: ThumbnailStatus.success,
-          projectId: 1,
-          timestamp: '2024-01-01',
-        ));
-        service.emit(ThumbnailEvent(
-          thumbnailPath: '/path2.jpg',
-          status: ThumbnailStatus.success,
-          projectId: 1,
-          timestamp: '2024-01-01',
-        ));
+        service.emit(
+          ThumbnailEvent(
+            thumbnailPath: '/path1.jpg',
+            status: ThumbnailStatus.success,
+            projectId: 1,
+            timestamp: '2024-01-01',
+          ),
+        );
+        service.emit(
+          ThumbnailEvent(
+            thumbnailPath: '/path2.jpg',
+            status: ThumbnailStatus.success,
+            projectId: 1,
+            timestamp: '2024-01-01',
+          ),
+        );
 
         service.clearCache('/path1.jpg');
 
@@ -195,24 +205,30 @@ void main() {
 
     group('clearAllCache()', () {
       test('removes all entries from cache', () {
-        service.emit(ThumbnailEvent(
-          thumbnailPath: '/path1.jpg',
-          status: ThumbnailStatus.success,
-          projectId: 1,
-          timestamp: '2024-01-01',
-        ));
-        service.emit(ThumbnailEvent(
-          thumbnailPath: '/path2.jpg',
-          status: ThumbnailStatus.noFacesFound,
-          projectId: 2,
-          timestamp: '2024-01-02',
-        ));
-        service.emit(ThumbnailEvent(
-          thumbnailPath: '/path3.jpg',
-          status: ThumbnailStatus.stabFailed,
-          projectId: 3,
-          timestamp: '2024-01-03',
-        ));
+        service.emit(
+          ThumbnailEvent(
+            thumbnailPath: '/path1.jpg',
+            status: ThumbnailStatus.success,
+            projectId: 1,
+            timestamp: '2024-01-01',
+          ),
+        );
+        service.emit(
+          ThumbnailEvent(
+            thumbnailPath: '/path2.jpg',
+            status: ThumbnailStatus.noFacesFound,
+            projectId: 2,
+            timestamp: '2024-01-02',
+          ),
+        );
+        service.emit(
+          ThumbnailEvent(
+            thumbnailPath: '/path3.jpg',
+            status: ThumbnailStatus.stabFailed,
+            projectId: 3,
+            timestamp: '2024-01-03',
+          ),
+        );
 
         service.clearAllCache();
 
@@ -222,21 +238,25 @@ void main() {
       });
 
       test('can emit and cache after clear', () {
-        service.emit(ThumbnailEvent(
-          thumbnailPath: '/path.jpg',
-          status: ThumbnailStatus.success,
-          projectId: 1,
-          timestamp: '2024-01-01',
-        ));
+        service.emit(
+          ThumbnailEvent(
+            thumbnailPath: '/path.jpg',
+            status: ThumbnailStatus.success,
+            projectId: 1,
+            timestamp: '2024-01-01',
+          ),
+        );
 
         service.clearAllCache();
 
-        service.emit(ThumbnailEvent(
-          thumbnailPath: '/path.jpg',
-          status: ThumbnailStatus.noFacesFound,
-          projectId: 1,
-          timestamp: '2024-01-02',
-        ));
+        service.emit(
+          ThumbnailEvent(
+            thumbnailPath: '/path.jpg',
+            status: ThumbnailStatus.noFacesFound,
+            projectId: 1,
+            timestamp: '2024-01-02',
+          ),
+        );
 
         expect(service.getStatus('/path.jpg'), ThumbnailStatus.noFacesFound);
       });
@@ -250,12 +270,14 @@ void main() {
         service.stream.first.then(completer1.complete);
         service.stream.first.then(completer2.complete);
 
-        service.emit(ThumbnailEvent(
-          thumbnailPath: '/path.jpg',
-          status: ThumbnailStatus.success,
-          projectId: 1,
-          timestamp: '2024-01-01',
-        ));
+        service.emit(
+          ThumbnailEvent(
+            thumbnailPath: '/path.jpg',
+            status: ThumbnailStatus.success,
+            projectId: 1,
+            timestamp: '2024-01-01',
+          ),
+        );
 
         final result1 = await completer1.future;
         final result2 = await completer2.future;
@@ -270,24 +292,30 @@ void main() {
             .where((e) => e.projectId == 1)
             .listen(project1Events.add);
 
-        service.emit(ThumbnailEvent(
-          thumbnailPath: '/p1.jpg',
-          status: ThumbnailStatus.success,
-          projectId: 1,
-          timestamp: '2024-01-01',
-        ));
-        service.emit(ThumbnailEvent(
-          thumbnailPath: '/p2.jpg',
-          status: ThumbnailStatus.success,
-          projectId: 2,
-          timestamp: '2024-01-01',
-        ));
-        service.emit(ThumbnailEvent(
-          thumbnailPath: '/p3.jpg',
-          status: ThumbnailStatus.success,
-          projectId: 1,
-          timestamp: '2024-01-01',
-        ));
+        service.emit(
+          ThumbnailEvent(
+            thumbnailPath: '/p1.jpg',
+            status: ThumbnailStatus.success,
+            projectId: 1,
+            timestamp: '2024-01-01',
+          ),
+        );
+        service.emit(
+          ThumbnailEvent(
+            thumbnailPath: '/p2.jpg',
+            status: ThumbnailStatus.success,
+            projectId: 2,
+            timestamp: '2024-01-01',
+          ),
+        );
+        service.emit(
+          ThumbnailEvent(
+            thumbnailPath: '/p3.jpg',
+            status: ThumbnailStatus.success,
+            projectId: 1,
+            timestamp: '2024-01-01',
+          ),
+        );
 
         await Future.delayed(Duration.zero);
 
@@ -301,10 +329,7 @@ void main() {
     group('dispose()', () {
       test('closes the stream', () async {
         bool streamDone = false;
-        service.stream.listen(
-          (_) {},
-          onDone: () => streamDone = true,
-        );
+        service.stream.listen((_) {}, onDone: () => streamDone = true);
 
         service.dispose();
 

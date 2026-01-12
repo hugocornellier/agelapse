@@ -12,14 +12,15 @@ class GridPainterSE extends CustomPainter {
   final bool hideToolTip;
 
   GridPainterSE(
-      this.offsetX,
-      this.offsetY,
-      this.ghostImageOffsetX,
-      this.ghostImageOffsetY,
-      this.guideImage,
-      this.aspectRatio,
-      this.projectOrientation,
-      {this.hideToolTip = false});
+    this.offsetX,
+    this.offsetY,
+    this.ghostImageOffsetX,
+    this.ghostImageOffsetY,
+    this.guideImage,
+    this.aspectRatio,
+    this.projectOrientation, {
+    this.hideToolTip = false,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -49,8 +50,12 @@ class GridPainterSE extends CustomPainter {
         width: scaledWidth,
         height: scaledHeight,
       );
-      canvas.drawImageRect(guideImage!,
-          Offset.zero & Size(imageWidth, imageHeight), rect, imagePaint);
+      canvas.drawImageRect(
+        guideImage!,
+        Offset.zero & Size(imageWidth, imageHeight),
+        rect,
+        imagePaint,
+      );
     }
 
     final paint = Paint()
@@ -81,17 +86,35 @@ class GridPainterSE extends CustomPainter {
     canvas.drawLine(const Offset(0, 0), Offset(0, lineLength), cornerPaint);
     canvas.drawLine(const Offset(0, 0), Offset(lineLength, 0), cornerPaint);
     canvas.drawLine(
-        Offset(size.width, 0), Offset(size.width, lineLength), cornerPaint);
+      Offset(size.width, 0),
+      Offset(size.width, lineLength),
+      cornerPaint,
+    );
     canvas.drawLine(
-        Offset(size.width, 0), Offset(size.width - lineLength, 0), cornerPaint);
-    canvas.drawLine(Offset(0, size.height), Offset(0, size.height - lineLength),
-        cornerPaint);
+      Offset(size.width, 0),
+      Offset(size.width - lineLength, 0),
+      cornerPaint,
+    );
     canvas.drawLine(
-        Offset(0, size.height), Offset(lineLength, size.height), cornerPaint);
-    canvas.drawLine(Offset(size.width, size.height),
-        Offset(size.width, size.height - lineLength), cornerPaint);
-    canvas.drawLine(Offset(size.width, size.height),
-        Offset(size.width - lineLength, size.height), cornerPaint);
+      Offset(0, size.height),
+      Offset(0, size.height - lineLength),
+      cornerPaint,
+    );
+    canvas.drawLine(
+      Offset(0, size.height),
+      Offset(lineLength, size.height),
+      cornerPaint,
+    );
+    canvas.drawLine(
+      Offset(size.width, size.height),
+      Offset(size.width, size.height - lineLength),
+      cornerPaint,
+    );
+    canvas.drawLine(
+      Offset(size.width, size.height),
+      Offset(size.width - lineLength, size.height),
+      cornerPaint,
+    );
 
     if (!hideToolTip) {
       // Draw text background rectangle
@@ -107,10 +130,7 @@ class GridPainterSE extends CustomPainter {
       final textPainter = TextPainter(
         text: TextSpan(
           text: text,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-          ),
+          style: const TextStyle(color: Colors.white, fontSize: 14),
         ),
         textDirection: TextDirection.ltr,
       );
@@ -129,13 +149,18 @@ class GridPainterSE extends CustomPainter {
 
       // Draw text on top of the rectangle
       textPainter.paint(
-          canvas, const Offset(10 + textPadding, 10 + textPadding));
+        canvas,
+        const Offset(10 + textPadding, 10 + textPadding),
+      );
       textPainter.dispose();
     }
   }
 
   double _calculateImageScale(
-      double canvasWidth, double imageWidth, double imageHeight) {
+    double canvasWidth,
+    double imageWidth,
+    double imageHeight,
+  ) {
     return (canvasWidth * offsetX) / (imageWidth * ghostImageOffsetX!);
   }
 

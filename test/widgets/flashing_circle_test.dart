@@ -10,20 +10,14 @@ void main() {
     });
 
     test('FlashingCircle stores required parameters', () {
-      const widget = FlashingCircle(
-        diameter: 20,
-        position: Offset(100, 100),
-      );
+      const widget = FlashingCircle(diameter: 20, position: Offset(100, 100));
 
       expect(widget.diameter, 20);
       expect(widget.position, const Offset(100, 100));
     });
 
     test('FlashingCircle creates state', () {
-      const widget = FlashingCircle(
-        diameter: 20,
-        position: Offset(100, 100),
-      );
+      const widget = FlashingCircle(diameter: 20, position: Offset(100, 100));
 
       expect(widget.createState(), isA<FlashingCircleState>());
     });
@@ -31,37 +25,25 @@ void main() {
 
   group('FlashingCircle Diameter Values', () {
     test('handles small diameter', () {
-      const widget = FlashingCircle(
-        diameter: 5,
-        position: Offset.zero,
-      );
+      const widget = FlashingCircle(diameter: 5, position: Offset.zero);
 
       expect(widget.diameter, 5);
     });
 
     test('handles large diameter', () {
-      const widget = FlashingCircle(
-        diameter: 200,
-        position: Offset.zero,
-      );
+      const widget = FlashingCircle(diameter: 200, position: Offset.zero);
 
       expect(widget.diameter, 200);
     });
 
     test('handles zero diameter', () {
-      const widget = FlashingCircle(
-        diameter: 0,
-        position: Offset.zero,
-      );
+      const widget = FlashingCircle(diameter: 0, position: Offset.zero);
 
       expect(widget.diameter, 0);
     });
 
     test('handles fractional diameter', () {
-      const widget = FlashingCircle(
-        diameter: 15.5,
-        position: Offset.zero,
-      );
+      const widget = FlashingCircle(diameter: 15.5, position: Offset.zero);
 
       expect(widget.diameter, 15.5);
     });
@@ -69,30 +51,21 @@ void main() {
 
   group('FlashingCircle Position Values', () {
     test('handles origin position', () {
-      const widget = FlashingCircle(
-        diameter: 20,
-        position: Offset.zero,
-      );
+      const widget = FlashingCircle(diameter: 20, position: Offset.zero);
 
       expect(widget.position.dx, 0);
       expect(widget.position.dy, 0);
     });
 
     test('handles positive position', () {
-      const widget = FlashingCircle(
-        diameter: 20,
-        position: Offset(150, 200),
-      );
+      const widget = FlashingCircle(diameter: 20, position: Offset(150, 200));
 
       expect(widget.position.dx, 150);
       expect(widget.position.dy, 200);
     });
 
     test('handles negative position', () {
-      const widget = FlashingCircle(
-        diameter: 20,
-        position: Offset(-50, -100),
-      );
+      const widget = FlashingCircle(diameter: 20, position: Offset(-50, -100));
 
       expect(widget.position.dx, -50);
       expect(widget.position.dy, -100);
@@ -141,10 +114,7 @@ void main() {
         const MaterialApp(
           home: Stack(
             children: [
-              FlashingCircle(
-                diameter: 20,
-                position: Offset(100, 100),
-              ),
+              FlashingCircle(diameter: 20, position: Offset(100, 100)),
             ],
           ),
         ),
@@ -158,10 +128,7 @@ void main() {
         const MaterialApp(
           home: Stack(
             children: [
-              FlashingCircle(
-                diameter: 20,
-                position: Offset(100, 100),
-              ),
+              FlashingCircle(diameter: 20, position: Offset(100, 100)),
             ],
           ),
         ),
@@ -177,12 +144,7 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: Stack(
-            children: [
-              FlashingCircle(
-                diameter: 30,
-                position: Offset(50, 50),
-              ),
-            ],
+            children: [FlashingCircle(diameter: 30, position: Offset(50, 50))],
           ),
         ),
       );
@@ -206,10 +168,7 @@ void main() {
         const MaterialApp(
           home: Stack(
             children: [
-              FlashingCircle(
-                diameter: 20,
-                position: Offset(100, 100),
-              ),
+              FlashingCircle(diameter: 20, position: Offset(100, 100)),
             ],
           ),
         ),
@@ -228,10 +187,7 @@ void main() {
         const MaterialApp(
           home: Stack(
             children: [
-              FlashingCircle(
-                diameter: 20,
-                position: Offset(100, 100),
-              ),
+              FlashingCircle(diameter: 20, position: Offset(100, 100)),
             ],
           ),
         ),
@@ -241,9 +197,7 @@ void main() {
 
       // Replace with different widget to trigger dispose
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(body: Text('Replaced')),
-        ),
+        const MaterialApp(home: Scaffold(body: Text('Replaced'))),
       );
 
       // Should not throw

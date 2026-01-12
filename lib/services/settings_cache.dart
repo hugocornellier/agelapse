@@ -73,8 +73,11 @@ class SettingsCache {
       SettingsUtil.loadVideoResolution(projectId.toString()),
       SettingsUtil.loadWatermarkSetting(projectId.toString()),
       SettingsUtil.loadStabilizationMode(),
-      ProjectUtils.loadSvgImage('assets/images/person-grey.svg',
-          width: 400, height: 480),
+      ProjectUtils.loadSvgImage(
+        'assets/images/person-grey.svg',
+        width: 400,
+        height: 480,
+      ),
       SettingsUtil.loadOffsetXCurrentOrientation(projectId.toString()),
       SettingsUtil.loadOffsetYCurrentOrientation(projectId.toString()),
       SettingsUtil.hasSeenGuideModeTut(projectId.toString()),
@@ -107,8 +110,9 @@ class SettingsCache {
           : '',
       lengthInDays: firstPhotoTimestamp != null && latestPhotoTimestamp != null
           ? ProjectUtils.calculateDateDifference(
-                      firstPhotoTimestamp, latestPhotoTimestamp)
-                  .inDays +
+                firstPhotoTimestamp,
+                latestPhotoTimestamp,
+              ).inDays +
               1
           : 0,
       projectOrientation: settings[8] as String,
@@ -144,8 +148,11 @@ class SettingsCache {
       resolution: defaults['video_resolution']!,
       watermarkEnabled: defaults['enable_watermark'] == 'true',
       stabilizationMode: defaults['stabilization_mode']!,
-      image: await ProjectUtils.loadSvgImage('assets/images/person-grey.svg',
-          width: 400, height: 480),
+      image: await ProjectUtils.loadSvgImage(
+        'assets/images/person-grey.svg',
+        width: 400,
+        height: 480,
+      ),
       eyeOffsetX: double.parse(defaults['eyeOffsetXPortrait']!),
       eyeOffsetY: double.parse(defaults['eyeOffsetYPortrait']!),
     );

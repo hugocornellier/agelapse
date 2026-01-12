@@ -194,11 +194,7 @@ void main() {
 
       test('does nothing when callback is null', () {
         // Should not throw
-        VideoUtils.parseFFmpegOutput(
-          'frame=  100 fps=30',
-          15,
-          null,
-        );
+        VideoUtils.parseFFmpegOutput('frame=  100 fps=30', 15, null);
       });
 
       test('does nothing when no frame found in output', () {

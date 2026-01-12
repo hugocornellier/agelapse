@@ -50,10 +50,16 @@ void main() {
 
     test('all default values are non-null strings', () {
       for (final entry in DB.defaultValues.entries) {
-        expect(entry.value, isNotNull,
-            reason: '${entry.key} should not be null');
-        expect(entry.value, isA<String>(),
-            reason: '${entry.key} should be a String');
+        expect(
+          entry.value,
+          isNotNull,
+          reason: '${entry.key} should not be null',
+        );
+        expect(
+          entry.value,
+          isA<String>(),
+          reason: '${entry.key} should be a String',
+        );
       }
     });
   });
@@ -108,10 +114,12 @@ void main() {
 
   group('DB Eye Offset Defaults', () {
     test('portrait eye offsets are correctly positioned', () {
-      final eyeOffsetXPortrait =
-          double.parse(DB.defaultValues['eyeOffsetXPortrait']!);
-      final eyeOffsetYPortrait =
-          double.parse(DB.defaultValues['eyeOffsetYPortrait']!);
+      final eyeOffsetXPortrait = double.parse(
+        DB.defaultValues['eyeOffsetXPortrait']!,
+      );
+      final eyeOffsetYPortrait = double.parse(
+        DB.defaultValues['eyeOffsetYPortrait']!,
+      );
 
       // X offset should be small (eyes close to center)
       expect(eyeOffsetXPortrait, greaterThan(0));
@@ -123,10 +131,12 @@ void main() {
     });
 
     test('landscape eye offsets are correctly positioned', () {
-      final eyeOffsetXLandscape =
-          double.parse(DB.defaultValues['eyeOffsetXLandscape']!);
-      final eyeOffsetYLandscape =
-          double.parse(DB.defaultValues['eyeOffsetYLandscape']!);
+      final eyeOffsetXLandscape = double.parse(
+        DB.defaultValues['eyeOffsetXLandscape']!,
+      );
+      final eyeOffsetYLandscape = double.parse(
+        DB.defaultValues['eyeOffsetYLandscape']!,
+      );
 
       // Landscape X offset should be smaller than portrait (wider frame)
       expect(eyeOffsetXLandscape, greaterThan(0));
@@ -137,10 +147,12 @@ void main() {
     });
 
     test('portrait X offset is larger than landscape X offset', () {
-      final eyeOffsetXPortrait =
-          double.parse(DB.defaultValues['eyeOffsetXPortrait']!);
-      final eyeOffsetXLandscape =
-          double.parse(DB.defaultValues['eyeOffsetXLandscape']!);
+      final eyeOffsetXPortrait = double.parse(
+        DB.defaultValues['eyeOffsetXPortrait']!,
+      );
+      final eyeOffsetXLandscape = double.parse(
+        DB.defaultValues['eyeOffsetXLandscape']!,
+      );
 
       expect(eyeOffsetXPortrait, greaterThan(eyeOffsetXLandscape));
     });
@@ -172,8 +184,12 @@ void main() {
     test('watermark position is valid', () {
       final position = DB.defaultValues['watermark_position']!;
       expect(
-        ['lower left', 'lower right', 'upper left', 'upper right']
-            .contains(position),
+        [
+          'lower left',
+          'lower right',
+          'upper left',
+          'upper right',
+        ].contains(position),
         isTrue,
       );
     });

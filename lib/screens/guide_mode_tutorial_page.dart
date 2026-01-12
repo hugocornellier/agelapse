@@ -74,10 +74,7 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
   }
 
   Container _buildBody() {
-    return Container(
-      color: appBarColor,
-      child: _buildGuideModeTutorialPage(),
-    );
+    return Container(color: appBarColor, child: _buildGuideModeTutorialPage());
   }
 
   Widget _buildGuideModeTutorialPage() {
@@ -90,11 +87,13 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
             style: TextStyle(fontSize: 13.5),
             children: [
               TextSpan(
-                  text: 'Ghost Mode: ',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+                text: 'Ghost Mode: ',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               TextSpan(
-                  text:
-                      'Overlay a faint, stabilized photo. Align your face with the ghost image.'),
+                text:
+                    'Overlay a faint, stabilized photo. Align your face with the ghost image.',
+              ),
             ],
           ),
         );
@@ -106,11 +105,13 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
             style: TextStyle(fontSize: 13.5),
             children: [
               TextSpan(
-                  text: 'Grid Mode: ',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+                text: 'Grid Mode: ',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               TextSpan(
-                  text:
-                      'Align eyes on intersecting points. Tap "Modify Grid" to customize.'),
+                text:
+                    'Align eyes on intersecting points. Tap "Modify Grid" to customize.',
+              ),
             ],
           ),
         );
@@ -122,11 +123,13 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
             style: TextStyle(fontSize: 13.5),
             children: [
               TextSpan(
-                  text: 'Grid Mode (Ghost): ',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+                text: 'Grid Mode (Ghost): ',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               TextSpan(
-                  text:
-                      'combines grid lines with a ghost image for precise alignment.'),
+                text:
+                    'combines grid lines with a ghost image for precise alignment.',
+              ),
             ],
           ),
         );
@@ -134,10 +137,7 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
       default:
         tipText = RichText(
           textAlign: TextAlign.center,
-          text: const TextSpan(
-            style: TextStyle(fontSize: 13.5),
-            text: '',
-          ),
+          text: const TextSpan(style: TextStyle(fontSize: 13.5), text: ''),
         );
     }
 
@@ -160,7 +160,9 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
                 color: const Color(0xff212121),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0, vertical: 8.0),
+                    horizontal: 16.0,
+                    vertical: 8.0,
+                  ),
                   child: Column(
                     children: [
                       const SizedBox(height: 16),

@@ -91,13 +91,21 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
 
     // 2. Save new settings
     await DB.instance.setSettingByTitle(
-        offSetXColName!, _offsetX.toString(), widget.projectId.toString());
+      offSetXColName!,
+      _offsetX.toString(),
+      widget.projectId.toString(),
+    );
     await DB.instance.setSettingByTitle(
-        offSetYColName!, _offsetY.toString(), widget.projectId.toString());
+      offSetYColName!,
+      _offsetY.toString(),
+      widget.projectId.toString(),
+    );
 
     // 3. Reset DB + delete files (resetStabilizationStatusForProject handles deletion)
     await DB.instance.resetStabilizationStatusForProject(
-        widget.projectId, projectOrientation);
+      widget.projectId,
+      projectOrientation,
+    );
 
     // 4. Clear ALL caches
     PaintingBinding.instance.imageCache.clear();
@@ -272,9 +280,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.settingsCardBackground,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
             Icon(
@@ -358,10 +364,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
           decoration: BoxDecoration(
             color: AppColors.settingsCardBackground,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppColors.settingsCardBorder,
-              width: 1,
-            ),
+            border: Border.all(color: AppColors.settingsCardBorder, width: 1),
           ),
           child: const Icon(
             Icons.arrow_back,
@@ -380,10 +383,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
             decoration: BoxDecoration(
               color: AppColors.settingsCardBackground,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: AppColors.settingsCardBorder,
-                width: 1,
-              ),
+              border: Border.all(color: AppColors.settingsCardBorder, width: 1),
             ),
             child: const Icon(
               Icons.help_outline_rounded,
@@ -399,7 +399,9 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                 : () async {
                     final bool shouldProceed =
                         await Utils.showConfirmChangeDialog(
-                            context, "eye position");
+                      context,
+                      "eye position",
+                    );
                     if (shouldProceed) await _saveChanges();
                   },
             child: Container(
@@ -440,10 +442,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
       ],
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(1),
-        child: Container(
-          height: 1,
-          color: AppColors.settingsDivider,
-        ),
+        child: Container(height: 1, color: AppColors.settingsDivider),
       ),
     );
   }
@@ -458,10 +457,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
         decoration: BoxDecoration(
           color: AppColors.settingsCardBackground,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: AppColors.settingsCardBorder,
-            width: 1,
-          ),
+          border: Border.all(color: AppColors.settingsCardBorder, width: 1),
         ),
         child: Row(
           children: [

@@ -90,8 +90,9 @@ void main() {
         expect(pressed, isTrue);
       });
 
-      testWidgets('uses default background color when not provided',
-          (tester) async {
+      testWidgets('uses default background color when not provided', (
+        tester,
+      ) async {
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
@@ -108,8 +109,9 @@ void main() {
           ),
         );
 
-        final button =
-            tester.widget<ElevatedButton>(find.byType(ElevatedButton));
+        final button = tester.widget<ElevatedButton>(
+          find.byType(ElevatedButton),
+        );
         expect(button.style, isNotNull);
       });
 
@@ -131,8 +133,9 @@ void main() {
           ),
         );
 
-        final button =
-            tester.widget<ElevatedButton>(find.byType(ElevatedButton));
+        final button = tester.widget<ElevatedButton>(
+          find.byType(ElevatedButton),
+        );
         expect(button.style, isNotNull);
       });
 
@@ -176,11 +179,12 @@ void main() {
 
         // Should have a Row inside the ElevatedButton
         expect(
-            find.descendant(
-              of: find.byType(ElevatedButton),
-              matching: find.byType(Row),
-            ),
-            findsOneWidget);
+          find.descendant(
+            of: find.byType(ElevatedButton),
+            matching: find.byType(Row),
+          ),
+          findsOneWidget,
+        );
       });
     });
   });

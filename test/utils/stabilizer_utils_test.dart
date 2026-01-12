@@ -135,54 +135,56 @@ void main() {
           StabUtils.getOutputDimensions('7000x7000', '16:9', 'landscape'),
           (7000, 7000),
         );
-        expect(
-          StabUtils.getOutputDimensions('7000x7000', '16:9', 'portrait'),
-          (7000, 7000),
-        );
+        expect(StabUtils.getOutputDimensions('7000x7000', '16:9', 'portrait'), (
+          7000,
+          7000,
+        ));
         // Aspect ratio and orientation should be ignored for custom
-        expect(
-          StabUtils.getOutputDimensions('1920x1080', '4:3', 'portrait'),
-          (1920, 1080),
-        );
+        expect(StabUtils.getOutputDimensions('1920x1080', '4:3', 'portrait'), (
+          1920,
+          1080,
+        ));
       });
 
-      test('calculates dimensions from preset + aspect ratio + orientation',
-          () {
-        // 1080p landscape 16:9 -> 1920x1080
-        expect(
-          StabUtils.getOutputDimensions('1080p', '16:9', 'landscape'),
-          (1920, 1080),
-        );
-        // 1080p portrait 16:9 -> 1080x1920
-        expect(
-          StabUtils.getOutputDimensions('1080p', '16:9', 'portrait'),
-          (1080, 1920),
-        );
-        // 4K landscape 16:9 -> 4096x2304
-        expect(
-          StabUtils.getOutputDimensions('4K', '16:9', 'landscape'),
-          (4096, 2304),
-        );
-        // 1080p landscape 4:3 -> 1440x1080
-        expect(
-          StabUtils.getOutputDimensions('1080p', '4:3', 'landscape'),
-          (1440, 1080),
-        );
-      });
+      test(
+        'calculates dimensions from preset + aspect ratio + orientation',
+        () {
+          // 1080p landscape 16:9 -> 1920x1080
+          expect(StabUtils.getOutputDimensions('1080p', '16:9', 'landscape'), (
+            1920,
+            1080,
+          ));
+          // 1080p portrait 16:9 -> 1080x1920
+          expect(StabUtils.getOutputDimensions('1080p', '16:9', 'portrait'), (
+            1080,
+            1920,
+          ));
+          // 4K landscape 16:9 -> 4096x2304
+          expect(StabUtils.getOutputDimensions('4K', '16:9', 'landscape'), (
+            4096,
+            2304,
+          ));
+          // 1080p landscape 4:3 -> 1440x1080
+          expect(StabUtils.getOutputDimensions('1080p', '4:3', 'landscape'), (
+            1440,
+            1080,
+          ));
+        },
+      );
 
       test('handles case-insensitive orientation', () {
-        expect(
-          StabUtils.getOutputDimensions('1080p', '16:9', 'Landscape'),
-          (1920, 1080),
-        );
-        expect(
-          StabUtils.getOutputDimensions('1080p', '16:9', 'LANDSCAPE'),
-          (1920, 1080),
-        );
-        expect(
-          StabUtils.getOutputDimensions('1080p', '16:9', 'Portrait'),
-          (1080, 1920),
-        );
+        expect(StabUtils.getOutputDimensions('1080p', '16:9', 'Landscape'), (
+          1920,
+          1080,
+        ));
+        expect(StabUtils.getOutputDimensions('1080p', '16:9', 'LANDSCAPE'), (
+          1920,
+          1080,
+        ));
+        expect(StabUtils.getOutputDimensions('1080p', '16:9', 'Portrait'), (
+          1080,
+          1920,
+        ));
       });
 
       test('returns null for invalid resolution', () {
@@ -190,10 +192,7 @@ void main() {
           StabUtils.getOutputDimensions('invalid', '16:9', 'landscape'),
           isNull,
         );
-        expect(
-          StabUtils.getOutputDimensions('', '16:9', 'landscape'),
-          isNull,
-        );
+        expect(StabUtils.getOutputDimensions('', '16:9', 'landscape'), isNull);
       });
 
       test('returns null for invalid aspect ratio', () {
@@ -207,7 +206,9 @@ void main() {
     group('getAspectRatioAsDecimal()', () {
       test('parses "16:9" correctly', () {
         expect(
-            StabUtils.getAspectRatioAsDecimal('16:9'), closeTo(1.778, 0.001));
+          StabUtils.getAspectRatioAsDecimal('16:9'),
+          closeTo(1.778, 0.001),
+        );
       });
 
       test('parses "4:3" correctly', () {
@@ -220,12 +221,16 @@ void main() {
 
       test('parses "9:16" correctly (portrait)', () {
         expect(
-            StabUtils.getAspectRatioAsDecimal('9:16'), closeTo(0.5625, 0.001));
+          StabUtils.getAspectRatioAsDecimal('9:16'),
+          closeTo(0.5625, 0.001),
+        );
       });
 
       test('parses "21:9" ultrawide correctly', () {
         expect(
-            StabUtils.getAspectRatioAsDecimal('21:9'), closeTo(2.333, 0.001));
+          StabUtils.getAspectRatioAsDecimal('21:9'),
+          closeTo(2.333, 0.001),
+        );
       });
 
       test('returns null for string without colon', () {
@@ -244,9 +249,13 @@ void main() {
       test('handles whitespace in numbers', () {
         // Implementation trims/handles whitespace
         expect(
-            StabUtils.getAspectRatioAsDecimal(' 16:9'), closeTo(1.778, 0.001));
+          StabUtils.getAspectRatioAsDecimal(' 16:9'),
+          closeTo(1.778, 0.001),
+        );
         expect(
-            StabUtils.getAspectRatioAsDecimal('16 :9'), closeTo(1.778, 0.001));
+          StabUtils.getAspectRatioAsDecimal('16 :9'),
+          closeTo(1.778, 0.001),
+        );
       });
     });
 
