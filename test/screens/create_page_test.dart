@@ -198,17 +198,6 @@ void main() {
     });
   });
 
-  group('AnimatedIconDemo Widget', () {
-    test('AnimatedIconDemo can be instantiated', () {
-      expect(const AnimatedIconDemo(), isA<AnimatedIconDemo>());
-    });
-
-    test('AnimatedIconDemo creates state', () {
-      const widget = AnimatedIconDemo();
-      expect(widget.createState(), isA<AnimatedIconDemoState>());
-    });
-  });
-
   group('FadeInOutIcon Widget', () {
     test('FadeInOutIcon can be instantiated', () {
       expect(const FadeInOutIcon(), isA<FadeInOutIcon>());

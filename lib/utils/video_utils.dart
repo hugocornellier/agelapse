@@ -582,8 +582,9 @@ class VideoUtils {
         vCodec = 'libx264';
         codecTag = '-tag:v avc1';
       } else if (needsHevc) {
-        // Use HEVC (H.265) for high resolutions on macOS/iOS - VideoToolbox HEVC supports 8K+
-        vCodec = 'hevc_videotoolbox';
+        // Use HEVC (H.265) for high resolutions on macOS/iOS
+        // -allow_sw 1 enables software fallback when hardware encoder doesn't support resolution (e.g. 8K)
+        vCodec = 'hevc_videotoolbox -allow_sw 1';
         codecTag = '-tag:v hvc1';
       } else {
         vCodec = 'h264_videotoolbox';

@@ -481,7 +481,11 @@ class MainNavigationState extends State<MainNavigation> {
   }
 
   void openGallery() => _onItemTapped(3);
-  bool onCreatePageDuringLoading() => _selectedIndex == 3 && !_hideNavBar;
+  // Show header on CreatePage when: navbar not hidden OR actively stabilizing/compiling
+  // This ensures header shows during loading even after a settings-triggered reset
+  bool onCreatePageDuringLoading() =>
+      _selectedIndex == 3 &&
+      (!_hideNavBar || _stabilizingActive || _videoCreationActive);
 
   @override
   Widget build(BuildContext context) {

@@ -299,6 +299,7 @@ class DB {
     'stabilization_mode': 'slow',
     // Date stamp settings
     'gallery_date_labels_enabled': 'false',
+    'gallery_raw_date_labels_enabled': 'false',
     'gallery_date_format': 'MM/yy',
     'export_date_stamp_enabled': 'false',
     'export_date_stamp_format': 'MMM dd, yyyy',

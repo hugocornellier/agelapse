@@ -27,6 +27,7 @@ class DropdownWithCustomTextField extends StatefulWidget {
 class DropdownWithCustomTextFieldState
     extends State<DropdownWithCustomTextField> {
   late int currentValue;
+  late int _lastCommittedValue;
   late bool isCustom;
   TextEditingController? _controller;
   final FocusNode _focusNode = FocusNode();
@@ -36,17 +37,51 @@ class DropdownWithCustomTextFieldState
   void initState() {
     super.initState();
     currentValue = widget.initialValue;
+    _lastCommittedValue = widget.initialValue;
     isCustom = !defaultValues.contains(currentValue);
     if (isCustom) {
       _controller = TextEditingController(text: currentValue.toString());
     }
+    _focusNode.addListener(_onFocusChanged);
   }
 
   @override
   void dispose() {
+    _focusNode.removeListener(_onFocusChanged);
     _controller?.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  void _onFocusChanged() {
+    if (!_focusNode.hasFocus && isCustom) {
+      _commitCustomValue();
+    }
+  }
+
+  void _commitCustomValue() {
+    final text = _controller?.text.trim() ?? '';
+    final intValue = int.tryParse(text);
+
+    // Validate: must be a number between 1 and 120
+    if (intValue == null || intValue < 1 || intValue > 120) {
+      // Invalid - revert to last committed value
+      _controller?.text = _lastCommittedValue.toString();
+      return;
+    }
+
+    // Check if value actually changed
+    if (intValue == _lastCommittedValue) {
+      return;
+    }
+
+    // Update state and notify
+    setState(() {
+      currentValue = intValue;
+      _lastCommittedValue = intValue;
+    });
+    _updateSetting(intValue);
+    widget.onChanged(intValue);
   }
 
   void _handleDropdownChanged(int? newValue) {
@@ -70,6 +105,7 @@ class DropdownWithCustomTextFieldState
     setState(() {
       isCustom = false;
       currentValue = newValue;
+      _lastCommittedValue = newValue;
       _controller?.dispose();
       _controller = null;
     });
@@ -131,6 +167,7 @@ class DropdownWithCustomTextFieldState
         keyboardType: const TextInputType.numberWithOptions(decimal: false),
         textInputAction: TextInputAction.done,
         onChanged: _handleCustomInputChanged,
+        onSubmitted: (_) => _commitCustomValue(),
       ),
     );
   }

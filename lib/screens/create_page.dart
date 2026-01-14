@@ -83,6 +83,7 @@ class CreatePageState extends State<CreatePage>
   double dragCurrentY = 0.0;
   bool showOverlayIcon = false;
   IconData overlayIcon = Icons.play_arrow;
+  bool _isWaiting = false;
   late AnimationController _animationController;
   late Animation<double> _opacityAnimation;
 
@@ -104,40 +105,89 @@ class CreatePageState extends State<CreatePage>
 
   @override
   void dispose() {
-    _videoPlayerController?.dispose();
-    _chewieController?.dispose();
-    _mediaKitPlayer?.dispose();
+    _disposeVideoControllers();
     _animationController.dispose();
 
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
+  void _disposeVideoControllers() {
+    _chewieController?.dispose();
+    _chewieController = null;
+
+    _videoPlayerController?.dispose();
+    _videoPlayerController = null;
+
+    _mediaKitPlayer?.dispose();
+    _mediaKitPlayer = null;
+    _mediaKitController = null;
+  }
+
+  @override
+  void didUpdateWidget(CreatePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // Detect transition: not compiling → compiling (either stabilization or video)
+    final wasIdle = !oldWidget.stabilizingRunningInMain &&
+        !oldWidget.videoCreationActiveInMain;
+    final nowActive =
+        widget.stabilizingRunningInMain || widget.videoCreationActiveInMain;
+
+    // If we were showing the video and compilation started, reset to loading state
+    if (loadingComplete && !lessThan2Photos && wasIdle && nowActive) {
+      _resetToLoadingState();
+    }
+  }
+
+  void _resetToLoadingState() {
+    // Dispose existing video controllers
+    _disposeVideoControllers();
+
+    // Reset state flags
+    setState(() {
+      loadingComplete = false;
+      videoPlayerBuilt = false;
+      loadingText = "";
+    });
+
+    // Re-enter waiting loop
+    waitForMain();
+  }
+
   Future<void> waitForMain() async {
-    final List<Map<String, dynamic>> rawPhotos =
-        await DB.instance.getPhotosByProjectID(widget.projectId);
+    // Prevent concurrent executions
+    if (_isWaiting) return;
+    _isWaiting = true;
 
-    // Check if there are no photos
-    if (rawPhotos.length < 2) {
-      setState(() {
-        lessThan2Photos = true;
-        loadingComplete = true;
-      });
-      return;
+    try {
+      final List<Map<String, dynamic>> rawPhotos =
+          await DB.instance.getPhotosByProjectID(widget.projectId);
+
+      // Check if there are no photos
+      if (rawPhotos.length < 2) {
+        setState(() {
+          lessThan2Photos = true;
+          loadingComplete = true;
+        });
+        return;
+      }
+
+      while (
+          widget.stabilizingRunningInMain || widget.videoCreationActiveInMain) {
+        await Future.delayed(const Duration(milliseconds: 300));
+        photoCount = await getStabilizedPhotoCount();
+        final double percentUnrounded = widget.currentFrame / photoCount! * 100;
+        final num percent = num.parse(percentUnrounded.toStringAsFixed(1));
+        setState(() {
+          loadingText = "Compiling video...\n$percent% complete";
+        });
+      }
+
+      setupVideoPlayer();
+    } finally {
+      _isWaiting = false;
     }
-
-    while (
-        widget.stabilizingRunningInMain || widget.videoCreationActiveInMain) {
-      await Future.delayed(const Duration(milliseconds: 300));
-      photoCount = await getStabilizedPhotoCount();
-      final double percentUnrounded = widget.currentFrame / photoCount! * 100;
-      final num percent = num.parse(percentUnrounded.toStringAsFixed(1));
-      setState(() {
-        loadingText = "Compiling video...\n$percent% complete";
-      });
-    }
-
-    setupVideoPlayer();
   }
 
   Future<void> _maybeEncodeWindowsVideo() async {
@@ -419,33 +469,107 @@ class CreatePageState extends State<CreatePage>
       return _buildNoPhotosMessage();
     }
 
+    final bool isStabilizing = widget.stabilizingRunningInMain;
+    final int percent = isStabilizing
+        ? widget.progressPercent
+        : (photoCount != null && photoCount! > 0)
+            ? ((widget.currentFrame * 100) ~/ photoCount!)
+            : 0;
+    final double progressValue = percent.clamp(0, 100) / 100.0;
+
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          if (widget.stabilizingRunningInMain) ...[
-            const AnimatedIconDemo(),
-            const SizedBox(height: 64),
-            const Text(
-              "Stabilizing...",
-              style: TextStyle(fontSize: 21.0, color: Colors.grey),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Container(
+          padding: const EdgeInsets.all(32),
+          decoration: BoxDecoration(
+            color: AppColors.settingsCardBackground,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: AppColors.settingsCardBorder,
+              width: 1,
             ),
-            const SizedBox(height: 8),
-            Text(
-              "${widget.progressPercent}%",
-              style: const TextStyle(
-                fontSize: 24.0,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Circular progress with percentage
+              SizedBox(
+                width: 120,
+                height: 120,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    SizedBox(
+                      width: 120,
+                      height: 120,
+                      child: CircularProgressIndicator(
+                        value: progressValue,
+                        strokeWidth: 8,
+                        backgroundColor: AppColors.settingsCardBorder,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          isStabilizing
+                              ? AppColors.lightBlue
+                              : AppColors.settingsAccent,
+                        ),
+                      ),
+                    ),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '$percent%',
+                          style: const TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.settingsTextPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ] else ...[
-            const CircularProgressIndicator(),
-            const SizedBox(height: 30),
-            Text(loadingText),
-          ],
-        ],
+              const SizedBox(height: 24),
+              // Status text
+              Text(
+                isStabilizing ? 'Stabilizing' : 'Compiling Video',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.settingsTextPrimary,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                isStabilizing
+                    ? 'Aligning photos for smooth playback'
+                    : 'Your video will be available here when complete',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.settingsTextSecondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              // Linear progress bar
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: progressValue,
+                  minHeight: 6,
+                  backgroundColor: AppColors.settingsCardBorder,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    isStabilizing
+                        ? AppColors.lightBlue
+                        : AppColors.settingsAccent,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -745,67 +869,6 @@ class FadeInOutIconState extends State<FadeInOutIcon>
           child: const Icon(Icons.video_stable, size: 100.0),
         );
       },
-    );
-  }
-}
-
-class AnimatedIconDemo extends StatefulWidget {
-  const AnimatedIconDemo({super.key});
-
-  @override
-  AnimatedIconDemoState createState() => AnimatedIconDemoState();
-}
-
-class AnimatedIconDemoState extends State<AnimatedIconDemo>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(seconds: 3),
-      vsync: this,
-    )..repeat(reverse: true);
-
-    _animation = Tween<double>(
-      begin: -0.26, // -30 degrees in radians
-      end: 0.26, // 30 degrees in radians
-    ).animate(_controller);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Container(
-          width: 177.78,
-          height: 133.335,
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade700, width: 14.0),
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-        AnimatedBuilder(
-          animation: _animation,
-          builder: (context, child) {
-            return Transform.rotate(angle: _animation.value, child: child);
-          },
-          child: Container(
-            width: 88.88,
-            height: 50,
-            color: AppColors.lightBlue,
-          ),
-        ),
-      ],
     );
   }
 }

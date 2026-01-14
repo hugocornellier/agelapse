@@ -24,6 +24,7 @@ import '../../utils/date_stamp_utils.dart';
 import '../../utils/capture_timezone.dart';
 import '../../utils/utils.dart';
 import '../../widgets/yellow_tip_bar.dart';
+import '../../widgets/gallery_date_stamp_provider.dart';
 import '../manual_stab_page.dart';
 import '../stab_on_diff_face.dart';
 import 'gallery_widgets.dart';
@@ -660,112 +661,122 @@ class GalleryPageState extends State<GalleryPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.darkGrey,
-      extendBodyBehindAppBar: true,
-      body: Column(
-        children: [
-          _buildCustomHeader(context),
-          Expanded(
-            child: GestureDetector(
-              onScaleStart: (details) {
-                if (Platform.isAndroid || Platform.isIOS) {
-                  _previousScale = _scale;
-                }
-              },
-              onScaleUpdate: (details) {
-                if (Platform.isAndroid || Platform.isIOS) {
-                  setState(() {
-                    _scale = _previousScale * details.scale;
-                    const int maxSteps = 5;
-                    gridAxisCount = (4 / _scale).clamp(1, maxSteps).toInt();
-                  });
-                }
-              },
-              child: Stack(
-                children: [
-                  (!isImporting && !widget.importRunningInMain)
-                      ? _buildTabBarView()
-                      : _buildLoadingView(),
-                  if (!_isSelectionMode)
-                    Positioned(
-                      top: 7,
-                      right: 8,
-                      child: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).primaryColor,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.3),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: PopupMenuButton<String>(
-                          icon: const Icon(Icons.more_vert, size: 20.0),
-                          padding: EdgeInsets.zero,
-                          onSelected: (value) {
-                            switch (value) {
-                              case 'import':
-                                if (isImporting) {
-                                  _showImportingDialog();
-                                } else {
-                                  _showImportOptionsBottomSheet(context);
-                                }
-                                break;
-                              case 'export':
-                                _showExportOptionsBottomSheet(context);
-                                break;
-                              case 'select':
-                                setState(() => _isSelectionMode = true);
-                                break;
-                            }
-                          },
-                          itemBuilder: (context) => [
-                            const PopupMenuItem(
-                              value: 'import',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.upload, size: 20),
-                                  SizedBox(width: 12),
-                                  Text('Import'),
-                                ],
+    final dateStampConfig = GalleryDateStampConfig(
+      stabilizedLabelsEnabled: _galleryDateLabelsEnabled,
+      rawLabelsEnabled: _galleryRawDateLabelsEnabled,
+      dateFormat: _galleryDateFormat,
+      captureOffsetMap: _captureOffsetMap,
+    );
+
+    return GalleryDateStampProvider(
+      config: dateStampConfig,
+      child: Scaffold(
+        backgroundColor: AppColors.darkGrey,
+        extendBodyBehindAppBar: true,
+        body: Column(
+          children: [
+            _buildCustomHeader(context),
+            Expanded(
+              child: GestureDetector(
+                onScaleStart: (details) {
+                  if (Platform.isAndroid || Platform.isIOS) {
+                    _previousScale = _scale;
+                  }
+                },
+                onScaleUpdate: (details) {
+                  if (Platform.isAndroid || Platform.isIOS) {
+                    setState(() {
+                      _scale = _previousScale * details.scale;
+                      const int maxSteps = 5;
+                      gridAxisCount = (4 / _scale).clamp(1, maxSteps).toInt();
+                    });
+                  }
+                },
+                child: Stack(
+                  children: [
+                    (!isImporting && !widget.importRunningInMain)
+                        ? _buildTabBarView()
+                        : _buildLoadingView(),
+                    if (!_isSelectionMode)
+                      Positioned(
+                        top: 7,
+                        right: 8,
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).primaryColor,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.3),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
                               ),
-                            ),
-                            const PopupMenuItem(
-                              value: 'export',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.download, size: 20),
-                                  SizedBox(width: 12),
-                                  Text('Export'),
-                                ],
+                            ],
+                          ),
+                          child: PopupMenuButton<String>(
+                            icon: const Icon(Icons.more_vert, size: 20.0),
+                            padding: EdgeInsets.zero,
+                            onSelected: (value) {
+                              switch (value) {
+                                case 'import':
+                                  if (isImporting) {
+                                    _showImportingDialog();
+                                  } else {
+                                    _showImportOptionsBottomSheet(context);
+                                  }
+                                  break;
+                                case 'export':
+                                  _showExportOptionsBottomSheet(context);
+                                  break;
+                                case 'select':
+                                  setState(() => _isSelectionMode = true);
+                                  break;
+                              }
+                            },
+                            itemBuilder: (context) => [
+                              const PopupMenuItem(
+                                value: 'import',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.upload, size: 20),
+                                    SizedBox(width: 12),
+                                    Text('Import'),
+                                  ],
+                                ),
                               ),
-                            ),
-                            const PopupMenuItem(
-                              value: 'select',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.check_circle_outline, size: 20),
-                                  SizedBox(width: 12),
-                                  Text('Select'),
-                                ],
+                              const PopupMenuItem(
+                                value: 'export',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.download, size: 20),
+                                    SizedBox(width: 12),
+                                    Text('Export'),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                              const PopupMenuItem(
+                                value: 'select',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.check_circle_outline, size: 20),
+                                    SizedBox(width: 12),
+                                    Text('Select'),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-          if (_isSelectionMode) _buildSelectionActionBar(),
-        ],
+            if (_isSelectionMode) _buildSelectionActionBar(),
+          ],
+        ),
       ),
     );
   }
@@ -2414,7 +2425,10 @@ class GalleryPageState extends State<GalleryPage>
             projectId: widget.projectId,
           );
 
-          if (!_galleryRawDateLabelsEnabled) {
+          // Access settings via InheritedWidget - creates dependency
+          final config = GalleryDateStampProvider.of(context);
+
+          if (!config.rawLabelsEnabled) {
             return thumbnail;
           }
 
@@ -2426,8 +2440,8 @@ class GalleryPageState extends State<GalleryPage>
 
           final String formattedDate = DateStampUtils.formatTimestamp(
             timestampMs,
-            _galleryDateFormat,
-            captureOffsetMinutes: _captureOffsetMap[timestamp],
+            config.dateFormat,
+            captureOffsetMinutes: config.captureOffsetMap[timestamp],
           );
 
           return Stack(
@@ -2467,7 +2481,10 @@ class GalleryPageState extends State<GalleryPage>
             projectId: widget.projectId,
           );
 
-          if (!_galleryDateLabelsEnabled) {
+          // Access settings via InheritedWidget - creates dependency
+          final config = GalleryDateStampProvider.of(context);
+
+          if (!config.stabilizedLabelsEnabled) {
             return thumbnail;
           }
 
@@ -2479,8 +2496,8 @@ class GalleryPageState extends State<GalleryPage>
 
           final String formattedDate = DateStampUtils.formatTimestamp(
             timestampMs,
-            _galleryDateFormat,
-            captureOffsetMinutes: _captureOffsetMap[timestamp],
+            config.dateFormat,
+            captureOffsetMinutes: config.captureOffsetMap[timestamp],
           );
 
           return Stack(
