@@ -333,12 +333,12 @@ class GalleryUtils {
       onShowInfoDialog();
     }
 
-    // Sort newest first (descending by filename/timestamp)
+    // Sort oldest first (ascending by filename/timestamp)
     rawImagePaths.sort(
-      (b, a) => b.split('/').last.compareTo(a.split('/').last),
+      (a, b) => a.split('/').last.compareTo(b.split('/').last),
     );
     stabImagePaths.sort(
-      (b, a) => b.split('/').last.compareTo(a.split('/').last),
+      (a, b) => a.split('/').last.compareTo(b.split('/').last),
     );
 
     await _prefetchThumbnailStatuses(stabImagePaths, projectId);

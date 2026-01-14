@@ -8,6 +8,7 @@ import 'package:path/path.dart' as path;
 import 'dart:ui' as ui;
 
 import '../services/database_helper.dart';
+import '../services/face_stabilizer.dart';
 import '../services/log_service.dart';
 import '../services/stabilization_service.dart';
 import '../services/thumbnail_service.dart';
@@ -43,7 +44,8 @@ class ProjectUtils {
   }
 
   /// Deletes a project and all associated data.
-  /// This includes: database record, notifications, and all project files.
+  /// This includes: database records (Photos, Videos, Settings, Project),
+  /// notifications, and all project files.
   static Future<void> deleteProject(int projectId) async {
     // 1. Cancel any active stabilization FIRST (prevents race condition/crash)
     await StabilizationService.instance.cancelAndWait();
@@ -53,23 +55,34 @@ class ProjectUtils {
     PaintingBinding.instance.imageCache.clear();
     PaintingBinding.instance.imageCache.clearLiveImages();
 
-    // 3. Reset default project if this was the default
+    // 3. Reset default project if this was the default (before cascade delete)
     final String defaultProject = await DB.instance.getSettingValueByTitle(
       'default_project',
     );
     if (defaultProject == projectId.toString()) {
-      DB.instance.setSettingByTitle('default_project', 'none');
+      await DB.instance.setSettingByTitle('default_project', 'none');
     }
 
-    // 4. Delete from database
-    final int result = await DB.instance.deleteProject(projectId);
-    if (result > 0) {
+    // 4. Delete all database records (Photos, Videos, Settings, Project) atomically
+    final bool dbSuccess = await DB.instance.deleteProjectCascade(projectId);
+    if (dbSuccess) {
       await NotificationUtil.cancelNotification(projectId);
     }
 
     // 5. Delete project directory and all files (now safe - stabilization stopped)
+    // Done AFTER DB deletion so if this fails, at least DB is clean.
+    // Orphaned files are less problematic than orphaned DB records.
     final String projectDirPath = await DirUtils.getProjectDirPath(projectId);
-    await DirUtils.deleteDirectoryContents(Directory(projectDirPath));
+    try {
+      await DirUtils.deleteDirectoryContents(Directory(projectDirPath));
+      final projectDir = Directory(projectDirPath);
+      if (await projectDir.exists()) {
+        await projectDir.delete(recursive: true);
+      }
+    } catch (e) {
+      LogService.instance.log('Failed to delete project directory: $e');
+      // Non-fatal: orphaned files will be ignored
+    }
   }
 
   static Future<void> deleteFile(File file) async => await file.delete();
@@ -81,6 +94,7 @@ class ProjectUtils {
     try {
       final int rowsDeleted = await deletePhotoFromDatabaseAndReturnCount(
         image.path,
+        projectId,
       );
       if (rowsDeleted == 0) {
         LogService.instance.log(
@@ -98,6 +112,8 @@ class ProjectUtils {
     // DB deletion succeeded. Now try to delete files.
     // If file deletion fails, that's OK - orphaned files will be cleaned up
     // during video export when we validate against the database.
+    final String timestamp = path.basenameWithoutExtension(image.path);
+
     try {
       await deletePngFileIfExists(image);
     } catch (e) {
@@ -106,11 +122,44 @@ class ProjectUtils {
       );
     }
 
+    // Delete raw thumbnail
+    try {
+      final String thumbnailDir = await DirUtils.getThumbnailDirPath(projectId);
+      final String rawThumbPath = path.join(thumbnailDir, '$timestamp.jpg');
+      final File rawThumb = File(rawThumbPath);
+      if (await rawThumb.exists()) {
+        await rawThumb.delete();
+      }
+    } catch (e) {
+      LogService.instance.log(
+        "Failed to delete raw thumbnail (will be cleaned up later): ${image.path}, Error: $e",
+      );
+    }
+
     try {
       await deleteStabilizedFileIfExists(image, projectId);
     } catch (e) {
       LogService.instance.log(
         "Failed to delete stabilized files (will be cleaned up later): ${image.path}, Error: $e",
+      );
+    }
+
+    // Delete stabilized thumbnails (both orientations)
+    try {
+      final String stabDirPath = await DirUtils.getStabilizedDirPath(projectId);
+      for (final orientation in ['portrait', 'landscape']) {
+        final String stabPath =
+            path.join(stabDirPath, orientation, '$timestamp.png');
+        final String stabThumbPath =
+            FaceStabilizer.getStabThumbnailPath(stabPath);
+        final File stabThumb = File(stabThumbPath);
+        if (await stabThumb.exists()) {
+          await stabThumb.delete();
+        }
+      }
+    } catch (e) {
+      LogService.instance.log(
+        "Failed to delete stabilized thumbnails (will be cleaned up later): ${image.path}, Error: $e",
       );
     }
 
@@ -211,14 +260,16 @@ class ProjectUtils {
     }
   }
 
-  static Future<void> deletePhotoFromDatabase(String path) async {
-    final timestamp = parseTimestampFromFilename(path);
-    await DB.instance.deletePhoto(timestamp);
+  static Future<void> deletePhotoFromDatabase(
+      String filePath, int projectId) async {
+    final timestamp = parseTimestampFromFilename(filePath);
+    await DB.instance.deletePhoto(timestamp, projectId);
   }
 
-  static Future<int> deletePhotoFromDatabaseAndReturnCount(String path) async {
-    final timestamp = parseTimestampFromFilename(path);
-    return await DB.instance.deletePhoto(timestamp);
+  static Future<int> deletePhotoFromDatabaseAndReturnCount(
+      String filePath, int projectId) async {
+    final timestamp = parseTimestampFromFilename(filePath);
+    return await DB.instance.deletePhoto(timestamp, projectId);
   }
 
   /// Returns unique photo dates in descending order (newest first).

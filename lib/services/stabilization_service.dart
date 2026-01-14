@@ -394,6 +394,7 @@ class StabilizationService {
     await DB.instance.resetStabilizedColumnByTimestamp(
       projectOrientation,
       photo['timestamp'],
+      projectId,
     );
 
     try {

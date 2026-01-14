@@ -65,10 +65,12 @@ class CameraGridOverlayState extends State<CameraGridOverlay> {
       final offsetXDataRaw = await DB.instance.getPhotoColumnValueByTimestamp(
         timestamp,
         stabColOffsetX,
+        widget.projectId,
       );
       final offsetYDataRaw = await DB.instance.getPhotoColumnValueByTimestamp(
         timestamp,
         stabColOffsetY,
+        widget.projectId,
       );
       final offsetXData = double.tryParse(offsetXDataRaw);
       final offsetYData = double.tryParse(offsetYDataRaw);

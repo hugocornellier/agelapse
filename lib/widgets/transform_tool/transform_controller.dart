@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import 'transform_gesture_handler.dart';
 import 'transform_handle.dart';
+import 'transform_history.dart';
 import 'transform_state.dart';
 
 /// Controller for managing transform state and handling gestures.
@@ -25,6 +26,12 @@ class TransformController extends ChangeNotifier {
   /// Base scale factor for database value conversion
   final double baseScale;
 
+  /// History manager for undo/redo support
+  final TransformHistory _history;
+
+  /// Whether history is enabled (can be disabled for programmatic changes)
+  bool historyEnabled;
+
   TransformController({
     required TransformState initialState,
     required this.baseScale,
@@ -33,7 +40,10 @@ class TransformController extends ChangeNotifier {
     this.handleHitRadius = 14.0,
     this.rotationHandleDistance = 30.0,
     this.rotationZoneRadius = 25.0,
-  }) : _state = initialState;
+    this.historyEnabled = true,
+    int maxHistorySize = 100,
+  })  : _state = initialState,
+        _history = TransformHistory(maxHistorySize: maxHistorySize);
 
   /// Create controller from database values
   factory TransformController.fromDatabaseValues({
@@ -74,12 +84,58 @@ class TransformController extends ChangeNotifier {
   /// Effective scale factor (actual multiplier including base scale)
   double get effectiveScaleFactor => _state.scale * baseScale;
 
+  /// Whether undo is available
+  bool get canUndo => _history.canUndo;
+
+  /// Whether redo is available
+  bool get canRedo => _history.canRedo;
+
   /// Update the state and notify listeners
   void _updateState(TransformState newState) {
     if (_state != newState) {
       _state = newState;
       notifyListeners();
     }
+  }
+
+  /// Commit the current state to history.
+  ///
+  /// Call this after completing an action that should be undoable.
+  /// This is automatically called at the end of gestures, but should be
+  /// called manually after text field changes or other discrete actions.
+  void commitToHistory() {
+    if (historyEnabled) {
+      _history.push(_state);
+    }
+  }
+
+  /// Undo the last action.
+  ///
+  /// Returns true if undo was successful, false if nothing to undo.
+  bool undo() {
+    final previousState = _history.undo(_state);
+    if (previousState != null) {
+      _updateState(previousState);
+      return true;
+    }
+    return false;
+  }
+
+  /// Redo the last undone action.
+  ///
+  /// Returns true if redo was successful, false if nothing to redo.
+  bool redo() {
+    final nextState = _history.redo(_state);
+    if (nextState != null) {
+      _updateState(nextState);
+      return true;
+    }
+    return false;
+  }
+
+  /// Clear all history (both undo and redo stacks)
+  void clearHistory() {
+    _history.clear();
   }
 
   /// Begin a gesture operation.
@@ -90,6 +146,12 @@ class TransformController extends ChangeNotifier {
     _activeHandle = handle;
     _dragStartState = _state;
     _dragStartPosition = position;
+
+    // Push current state to history before starting the gesture
+    // This allows undo to restore the pre-gesture state
+    if (historyEnabled && handle != TransformHandle.none) {
+      _history.push(_state);
+    }
   }
 
   /// Update an ongoing gesture.

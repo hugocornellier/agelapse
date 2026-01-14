@@ -596,14 +596,15 @@ void main() {
         );
 
         // Initially not favorite
-        var isFav = await DB.instance.isFavoritePhoto('7000000001');
+        var isFav =
+            await DB.instance.isFavoritePhoto('7000000001', testProjectId!);
         expect(isFav, isFalse);
 
         // Set as favorite
-        await DB.instance.setPhotoAsFavorite('7000000001');
+        await DB.instance.setPhotoAsFavorite('7000000001', testProjectId!);
 
         // Should now be favorite
-        isFav = await DB.instance.isFavoritePhoto('7000000001');
+        isFav = await DB.instance.isFavoritePhoto('7000000001', testProjectId!);
         expect(isFav, isTrue);
       });
     });

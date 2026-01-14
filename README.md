@@ -38,10 +38,20 @@ The face detection model used by AgeLapse is platform-dependent. On Mobile, Goog
 ## What's New / Changelog
 
 ### v2.3.0
+
+#### New Features
 - Date stamps on photos, thumbnails and output video (optional)
   - Display capture dates on gallery thumbnails and/or burn them into exported photos and output video
   - Customize format (e.g., `Jan 1, 2024`, `2024-01-01`, `01/01/24`)
   - Configure in the new "Date Stamp" section in Settings
+
+#### Improvements
+- Improved manual stabilization page
+  - New visual transform tool - drag, resize, and rotate photos directly with your mouse or finger. Thanks to the users who suggested this.
+  - Save/reset buttons with unsaved changes warning
+
+#### Bug Fixes
+- Fixed bug that caused thumbnails to not automatically refresh after "Manual Stabilization" or "Retry Stabilization" actions.
 
 ### v2.2.1
 - 8K + custom resolution output support
