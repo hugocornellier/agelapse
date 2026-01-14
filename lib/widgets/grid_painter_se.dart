@@ -10,6 +10,7 @@ class GridPainterSE extends CustomPainter {
   final String aspectRatio;
   final String projectOrientation;
   final bool hideToolTip;
+  final bool hideCorners;
 
   GridPainterSE(
     this.offsetX,
@@ -20,6 +21,7 @@ class GridPainterSE extends CustomPainter {
     this.aspectRatio,
     this.projectOrientation, {
     this.hideToolTip = false,
+    this.hideCorners = false,
   });
 
   @override
@@ -58,10 +60,14 @@ class GridPainterSE extends CustomPainter {
       );
     }
 
+    // Scale stroke width proportionally to canvas size so it looks consistent
+    // when scaled down by FittedBox (2px at 1920px width as reference)
+    final scaledStrokeWidth = size.width * 0.0015;
+
     final paint = Paint()
       ..color =
           Colors.lightBlueAccent.withAlpha(128) // Equivalent to opacity 0.5
-      ..strokeWidth = 2;
+      ..strokeWidth = scaledStrokeWidth.clamp(2.0, 20.0);
 
     final offsetXInPixels = size.width * offsetX;
     final centerX = size.width / 2;
@@ -76,45 +82,47 @@ class GridPainterSE extends CustomPainter {
     canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
 
     // Draw corners
-    final cornerPaint = Paint()
-      ..color = const Color(0xff924904)
-      ..strokeWidth = 2.5
-      ..style = PaintingStyle.stroke;
+    if (!hideCorners) {
+      final cornerPaint = Paint()
+        ..color = const Color(0xff924904)
+        ..strokeWidth = (scaledStrokeWidth * 1.25).clamp(2.5, 25.0)
+        ..style = PaintingStyle.stroke;
 
-    final double lineLength = 0.15 * size.width;
+      final double lineLength = 0.15 * size.width;
 
-    canvas.drawLine(const Offset(0, 0), Offset(0, lineLength), cornerPaint);
-    canvas.drawLine(const Offset(0, 0), Offset(lineLength, 0), cornerPaint);
-    canvas.drawLine(
-      Offset(size.width, 0),
-      Offset(size.width, lineLength),
-      cornerPaint,
-    );
-    canvas.drawLine(
-      Offset(size.width, 0),
-      Offset(size.width - lineLength, 0),
-      cornerPaint,
-    );
-    canvas.drawLine(
-      Offset(0, size.height),
-      Offset(0, size.height - lineLength),
-      cornerPaint,
-    );
-    canvas.drawLine(
-      Offset(0, size.height),
-      Offset(lineLength, size.height),
-      cornerPaint,
-    );
-    canvas.drawLine(
-      Offset(size.width, size.height),
-      Offset(size.width, size.height - lineLength),
-      cornerPaint,
-    );
-    canvas.drawLine(
-      Offset(size.width, size.height),
-      Offset(size.width - lineLength, size.height),
-      cornerPaint,
-    );
+      canvas.drawLine(const Offset(0, 0), Offset(0, lineLength), cornerPaint);
+      canvas.drawLine(const Offset(0, 0), Offset(lineLength, 0), cornerPaint);
+      canvas.drawLine(
+        Offset(size.width, 0),
+        Offset(size.width, lineLength),
+        cornerPaint,
+      );
+      canvas.drawLine(
+        Offset(size.width, 0),
+        Offset(size.width - lineLength, 0),
+        cornerPaint,
+      );
+      canvas.drawLine(
+        Offset(0, size.height),
+        Offset(0, size.height - lineLength),
+        cornerPaint,
+      );
+      canvas.drawLine(
+        Offset(0, size.height),
+        Offset(lineLength, size.height),
+        cornerPaint,
+      );
+      canvas.drawLine(
+        Offset(size.width, size.height),
+        Offset(size.width, size.height - lineLength),
+        cornerPaint,
+      );
+      canvas.drawLine(
+        Offset(size.width, size.height),
+        Offset(size.width - lineLength, size.height),
+        cornerPaint,
+      );
+    }
 
     if (!hideToolTip) {
       // Draw text background rectangle
@@ -173,6 +181,7 @@ class GridPainterSE extends CustomPainter {
         guideImage != oldDelegate.guideImage ||
         aspectRatio != oldDelegate.aspectRatio ||
         projectOrientation != oldDelegate.projectOrientation ||
-        hideToolTip != oldDelegate.hideToolTip;
+        hideToolTip != oldDelegate.hideToolTip ||
+        hideCorners != oldDelegate.hideCorners;
   }
 }

@@ -13,6 +13,7 @@ import '../utils/image_utils.dart';
 import '../utils/settings_utils.dart';
 import '../utils/stabilizer_utils/stabilizer_utils.dart';
 import '../widgets/grid_painter_se.dart';
+import '../widgets/transform_tool/transform_tool_exports.dart';
 
 class ManualStabilizationPage extends StatefulWidget {
   final String imagePath;
@@ -30,7 +31,6 @@ class ManualStabilizationPage extends StatefulWidget {
 
 class ManualStabilizationPageState extends State<ManualStabilizationPage> {
   String rawPhotoPath = "";
-  Uint8List? _stabilizedImageBytes;
   FaceStabilizer? _faceStabilizer;
   int? _canvasWidth;
   int? _canvasHeight;
@@ -61,9 +61,29 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
   final Map<String, Timer?> _holdTimers = {};
   final Map<String, bool> _recentlyHeld = {};
   bool _suppressListener = false;
+  bool _updatingFromTextField = false;
   DateTime? _lastApplyAt;
   final Duration _applyThrottle = const Duration(milliseconds: 140);
   final Duration _repeatInterval = const Duration(milliseconds: 60);
+
+  // Transform tool controller
+  TransformController? _transformController;
+  int? _rawImageHeight;
+
+  // Save/unsaved state management
+  bool _hasUnsavedChanges = false;
+  bool _isSaving = false;
+  bool _showCheckmark = false;
+  Timer? _checkmarkTimer;
+
+  // Saved values (last committed to database)
+  double _savedTx = 0;
+  double _savedTy = 0;
+  double _savedMult = 1;
+  double _savedRot = 0;
+
+  // Controls section collapsed state
+  bool _controlsExpanded = true;
 
   @override
   void initState() {
@@ -84,6 +104,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
   @override
   void dispose() {
     _debounce?.cancel();
+    _checkmarkTimer?.cancel();
     for (final t in _holdTimers.values) {
       t?.cancel();
     }
@@ -97,6 +118,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
     _inputController3.dispose();
     _inputController4.dispose();
     _faceStabilizer?.dispose();
+    _transformController?.dispose();
     super.dispose();
   }
 
@@ -141,6 +163,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
       );
       if (dims != null) {
         _rawImageWidth = dims.$1;
+        _rawImageHeight = dims.$2;
         final double defaultScale = canvasWidth / _rawImageWidth!.toDouble();
         _baseScale = defaultScale;
         _inputController3.text = '1';
@@ -158,53 +181,75 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.settingsBackground,
-      appBar: _buildAppBar(),
-      body: GestureDetector(
-        onTap: () => FocusScope.of(context).unfocus(),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            const double minPreviewHeight = 300;
-            const double controlsEstimatedHeight = 220; // controls + spacing
-            final double availableForPreview = constraints.maxHeight -
-                32 -
-                controlsEstimatedHeight; // 32 for padding
+    return PopScope(
+      canPop: !_hasUnsavedChanges,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
 
-            if (availableForPreview >= minPreviewHeight) {
-              // Enough space - use Expanded layout
-              return Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildControlsSection(),
-                    const SizedBox(height: 20),
-                    Expanded(child: _buildPreviewSection()),
-                  ],
-                ),
-              );
-            } else {
-              // Not enough space - use scrollable layout with min height
-              return SingleChildScrollView(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildControlsSection(),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      height: minPreviewHeight,
-                      child: _buildPreviewSection(),
-                    ),
-                  ],
-                ),
-              );
+        if (_hasUnsavedChanges) {
+          bool? saveChanges = await _showUnsavedChangesDialog();
+
+          if (saveChanges == true) {
+            await _saveChanges();
+            if (context.mounted) {
+              Navigator.of(context).pop();
             }
-          },
+          } else if (saveChanges == false) {
+            if (context.mounted) {
+              Navigator.of(context).pop();
+            }
+          }
+          // null = user cancelled, do nothing
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.settingsBackground,
+        appBar: _buildAppBar(),
+        body: GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              const double minPreviewHeight = 300;
+              const double controlsEstimatedHeight = 220; // controls + spacing
+              final double availableForPreview = constraints.maxHeight -
+                  32 -
+                  controlsEstimatedHeight; // 32 for padding
+
+              if (availableForPreview >= minPreviewHeight) {
+                // Enough space - use Expanded layout
+                return Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildControlsSection(),
+                      const SizedBox(height: 20),
+                      Expanded(child: _buildPreviewSection()),
+                    ],
+                  ),
+                );
+              } else {
+                // Not enough space - use scrollable layout with min height
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildControlsSection(),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        height: minPreviewHeight,
+                        child: _buildPreviewSection(),
+                      ),
+                    ],
+                  ),
+                );
+              }
+            },
+          ),
         ),
+        bottomNavigationBar: _buildToolbar(context),
       ),
-      bottomNavigationBar: _buildToolbar(context),
     );
   }
 
@@ -225,7 +270,20 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
         ),
       ),
       leading: GestureDetector(
-        onTap: () => Navigator.pop(context),
+        onTap: () {
+          if (_hasUnsavedChanges) {
+            _showUnsavedChangesDialog().then((saveChanges) async {
+              if (saveChanges == true) {
+                await _saveChanges();
+                if (mounted) Navigator.of(context).pop();
+              } else if (saveChanges == false) {
+                if (mounted) Navigator.of(context).pop();
+              }
+            });
+          } else {
+            Navigator.pop(context);
+          }
+        },
         child: Container(
           margin: const EdgeInsets.all(8),
           decoration: BoxDecoration(
@@ -241,6 +299,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
         ),
       ),
       actions: [
+        // Help button
         GestureDetector(
           onTap: _showHelpDialog,
           child: Container(
@@ -259,6 +318,100 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
             ),
           ),
         ),
+        // Reset button (only when unsaved changes exist)
+        if (_hasUnsavedChanges)
+          GestureDetector(
+            onTap: _isSaving
+                ? null
+                : () async {
+                    final bool? shouldReset = await _showResetConfirmDialog();
+                    if (shouldReset == true) {
+                      await _resetChanges();
+                    }
+                  },
+            child: Container(
+              width: 44,
+              height: 44,
+              margin: const EdgeInsets.only(right: 8),
+              decoration: BoxDecoration(
+                color: AppColors.settingsCardBorder.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.settingsCardBorder,
+                  width: 1,
+                ),
+              ),
+              child: const Icon(
+                Icons.restore_rounded,
+                color: AppColors.settingsTextSecondary,
+                size: 22,
+              ),
+            ),
+          ),
+        // Save button (only when unsaved changes exist)
+        if (_hasUnsavedChanges)
+          Builder(
+            builder: (context) {
+              final isWide = MediaQuery.of(context).size.width > 600;
+              return GestureDetector(
+                onTap: _isSaving ? null : _saveChanges,
+                child: Container(
+                  height: 44,
+                  padding: EdgeInsets.symmetric(horizontal: isWide ? 16 : 11),
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    color: _showCheckmark
+                        ? Colors.green.withValues(alpha: 0.15)
+                        : AppColors.settingsAccent.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _showCheckmark
+                          ? Colors.green.withValues(alpha: 0.3)
+                          : AppColors.settingsAccent.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_isSaving)
+                        const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.settingsAccent,
+                          ),
+                        )
+                      else
+                        Icon(
+                          _showCheckmark
+                              ? Icons.check_circle_rounded
+                              : Icons.save_rounded,
+                          color: _showCheckmark
+                              ? Colors.green
+                              : AppColors.settingsAccent,
+                          size: 22,
+                        ),
+                      if (isWide) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          _showCheckmark ? 'Saved' : 'Save Changes',
+                          style: TextStyle(
+                            color: _showCheckmark
+                                ? Colors.green
+                                : AppColors.settingsAccent,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
       ],
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(1),
@@ -326,78 +479,148 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 12),
-          child: Row(
-            children: [
-              Icon(
-                Icons.tune_rounded,
-                size: 18,
-                color: AppColors.settingsTextSecondary,
+        // Collapsible header
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: () => setState(() => _controlsExpanded = !_controlsExpanded),
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 4, bottom: 12),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.tune_rounded,
+                    size: 18,
+                    color: AppColors.settingsTextSecondary,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'TRANSFORM CONTROLS',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.settingsTextSecondary,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  AnimatedRotation(
+                    turns: _controlsExpanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 20,
+                      color: AppColors.settingsTextSecondary,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              const Text(
-                'TRANSFORM CONTROLS',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.settingsTextSecondary,
-                  letterSpacing: 1.2,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
-        Container(
-          decoration: BoxDecoration(
-            color: AppColors.settingsCardBackground,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.settingsCardBorder, width: 1),
+        // Collapsible content
+        AnimatedCrossFade(
+          firstChild: LayoutBuilder(
+            builder: (context, constraints) {
+              // Use 4 columns when width > 500px (desktop/tablet landscape)
+              final bool useWideLayout = constraints.maxWidth > 500;
+
+              return Container(
+                decoration: BoxDecoration(
+                  color: AppColors.settingsCardBackground,
+                  borderRadius: BorderRadius.circular(14),
+                  border:
+                      Border.all(color: AppColors.settingsCardBorder, width: 1),
+                ),
+                padding: const EdgeInsets.all(16),
+                child: useWideLayout
+                    ? Row(
+                        children: [
+                          Expanded(
+                            child: _buildInputField(
+                              controller: _inputController1,
+                              label: 'Horiz. Offset',
+                              icon: Icons.swap_horiz_rounded,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildInputField(
+                              controller: _inputController2,
+                              label: 'Vert. Offset',
+                              icon: Icons.swap_vert_rounded,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildInputField(
+                              controller: _inputController3,
+                              label: 'Scale Factor',
+                              icon: Icons.zoom_in_rounded,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildInputField(
+                              controller: _inputController4,
+                              label: 'Rotation',
+                              icon: Icons.rotate_right_rounded,
+                            ),
+                          ),
+                        ],
+                      )
+                    : Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildInputField(
+                                  controller: _inputController1,
+                                  label: 'Horiz. Offset',
+                                  icon: Icons.swap_horiz_rounded,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildInputField(
+                                  controller: _inputController2,
+                                  label: 'Vert. Offset',
+                                  icon: Icons.swap_vert_rounded,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildInputField(
+                                  controller: _inputController3,
+                                  label: 'Scale Factor',
+                                  icon: Icons.zoom_in_rounded,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildInputField(
+                                  controller: _inputController4,
+                                  label: 'Rotation',
+                                  icon: Icons.rotate_right_rounded,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+              );
+            },
           ),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildInputField(
-                      controller: _inputController1,
-                      label: 'Horiz. Offset',
-                      icon: Icons.swap_horiz_rounded,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildInputField(
-                      controller: _inputController2,
-                      label: 'Vert. Offset',
-                      icon: Icons.swap_vert_rounded,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildInputField(
-                      controller: _inputController3,
-                      label: 'Scale Factor',
-                      icon: Icons.zoom_in_rounded,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildInputField(
-                      controller: _inputController4,
-                      label: 'Rotation',
-                      icon: Icons.rotate_right_rounded,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+          secondChild: const SizedBox.shrink(),
+          crossFadeState: _controlsExpanded
+              ? CrossFadeState.showFirst
+              : CrossFadeState.showSecond,
+          duration: const Duration(milliseconds: 200),
         ),
       ],
     );
@@ -461,7 +684,10 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
   }
 
   Widget _buildPreviewSection() {
-    if (_stabilizedImageBytes == null ||
+    // Wait for all required data
+    if (_rawImageBytes == null ||
+        _rawImageWidth == null ||
+        _rawImageHeight == null ||
         _canvasWidth == null ||
         _canvasHeight == null ||
         _leftEyeXGoal == null ||
@@ -539,6 +765,9 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
                 previewWidth = previewHeight / aspectRatioValue;
               }
 
+              // Initialize transform controller with OUTPUT dimensions (not preview)
+              _initTransformControllerIfNeeded();
+
               return Container(
                 decoration: BoxDecoration(
                   color: AppColors.settingsCardBackground,
@@ -552,32 +781,52 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
                 child: Center(
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Stack(
-                      children: [
-                        Image.memory(
-                          _stabilizedImageBytes!,
-                          width: previewWidth,
-                          height: previewHeight,
-                          fit: BoxFit.fill,
+                    child: FittedBox(
+                      fit: BoxFit.contain,
+                      child: SizedBox(
+                        width: _canvasWidth!.toDouble(),
+                        height: _canvasHeight!.toDouble(),
+                        child: Stack(
+                          children: [
+                            // TransformTool at OUTPUT dimensions
+                            Positioned.fill(
+                              child: TransformTool(
+                                imageBytes: _rawImageBytes!,
+                                canvasSize: Size(_canvasWidth!.toDouble(),
+                                    _canvasHeight!.toDouble()),
+                                imageSize: Size(_rawImageWidth!.toDouble(),
+                                    _rawImageHeight!.toDouble()),
+                                baseScale: _baseScale,
+                                controller: _transformController,
+                                onChanged: _onTransformChanged,
+                                onChangeEnd: _onTransformChangeEnd,
+                                showRotationHandle: true,
+                                maintainAspectRatio: true,
+                              ),
+                            ),
+                            // Grid overlay - scales together with TransformTool
+                            // IgnorePointer lets events pass through to TransformTool
+                            Positioned.fill(
+                              child: IgnorePointer(
+                                child: CustomPaint(
+                                  painter: GridPainterSE(
+                                    (_rightEyeXGoal! - _leftEyeXGoal!) /
+                                        (2 * _canvasWidth!),
+                                    _bothEyesYGoal! / _canvasHeight!,
+                                    null,
+                                    null,
+                                    null,
+                                    aspectRatio,
+                                    projectOrientation,
+                                    hideToolTip: true,
+                                    hideCorners: true,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        CustomPaint(
-                          painter: GridPainterSE(
-                            (_rightEyeXGoal! - _leftEyeXGoal!) /
-                                (2 * _canvasWidth!),
-                            _bothEyesYGoal! / _canvasHeight!,
-                            null,
-                            null,
-                            null,
-                            aspectRatio,
-                            projectOrientation,
-                            hideToolTip: true,
-                          ),
-                          child: SizedBox(
-                            width: previewWidth,
-                            height: previewHeight,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -587,6 +836,292 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
         ),
       ],
     );
+  }
+
+  void _initTransformControllerIfNeeded() {
+    if (_transformController != null) return;
+
+    final tx = double.tryParse(_inputController1.text) ?? 0;
+    final ty = double.tryParse(_inputController2.text) ?? 0;
+    final mult = double.tryParse(_inputController3.text) ?? 1;
+    final rot = double.tryParse(_inputController4.text) ?? 0;
+
+    // Use OUTPUT dimensions so coordinates match database/OpenCV
+    final outputWidth = _canvasWidth!.toDouble();
+    final outputHeight = _canvasHeight!.toDouble();
+
+    final initialState = TransformState(
+      translateX: tx,
+      translateY: ty,
+      scale: mult,
+      rotation: rot,
+      pivot: Offset(outputWidth / 2, outputHeight / 2),
+      imageSize: Size(_rawImageWidth!.toDouble(), _rawImageHeight!.toDouble()),
+      canvasSize: Size(outputWidth, outputHeight),
+      baseScale: _baseScale,
+    );
+
+    _transformController = TransformController(
+      initialState: initialState,
+      baseScale: _baseScale,
+      maintainAspectRatio: true,
+    );
+
+    _transformController!.addListener(_onTransformControllerChanged);
+  }
+
+  void _onTransformControllerChanged() {
+    if (_transformController == null) return;
+    // Skip updating text fields if the change came from text field input
+    if (_updatingFromTextField) return;
+
+    final state = _transformController!.state;
+
+    // Update text fields (suppress listener to prevent loop)
+    _suppressListener = true;
+    _inputController1.text = state.translateX.round().toString();
+    _inputController2.text = state.translateY.round().toString();
+    _inputController3.text = state.scale.toStringAsFixed(2);
+    _inputController4.text = state.rotation.toStringAsFixed(2);
+    _suppressListener = false;
+  }
+
+  void _onTransformChanged(TransformState state) {
+    // Called during drag - throttled preview update
+    final now = DateTime.now();
+    if (_lastApplyAt == null ||
+        now.difference(_lastApplyAt!) >= _applyThrottle) {
+      _lastApplyAt = now;
+      processRequest(
+        state.translateX,
+        state.translateY,
+        state.scale * _baseScale,
+        state.rotation,
+        save: false,
+      );
+    }
+  }
+
+  void _onTransformChangeEnd(TransformState state) {
+    // Called when gesture ends - update preview (no autosave)
+    processRequest(
+      state.translateX,
+      state.translateY,
+      state.scale * _baseScale,
+      state.rotation,
+      save: false,
+    );
+    _checkForUnsavedChanges();
+  }
+
+  void _checkForUnsavedChanges() {
+    final tx = double.tryParse(_inputController1.text) ?? 0;
+    final ty = double.tryParse(_inputController2.text) ?? 0;
+    final mult = double.tryParse(_inputController3.text) ?? 1;
+    final rot = double.tryParse(_inputController4.text) ?? 0;
+
+    const double tolerance = 0.0001;
+    final bool hasChanges = (tx - _savedTx).abs() > tolerance ||
+        (ty - _savedTy).abs() > tolerance ||
+        (mult - _savedMult).abs() > tolerance ||
+        (rot - _savedRot).abs() > tolerance;
+
+    if (hasChanges != _hasUnsavedChanges) {
+      setState(() => _hasUnsavedChanges = hasChanges);
+    }
+  }
+
+  Future<void> _saveChanges() async {
+    setState(() => _isSaving = true);
+
+    try {
+      final tx = double.tryParse(_inputController1.text) ?? 0;
+      final ty = double.tryParse(_inputController2.text) ?? 0;
+      final mult = double.tryParse(_inputController3.text) ?? 1;
+      final rot = double.tryParse(_inputController4.text) ?? 0;
+      final sc = mult * _baseScale;
+
+      // Save via processRequest
+      await processRequest(tx, ty, sc, rot, save: true);
+
+      // Update saved state
+      _savedTx = tx;
+      _savedTy = ty;
+      _savedMult = mult;
+      _savedRot = rot;
+
+      setState(() {
+        _isSaving = false;
+        _hasUnsavedChanges = false;
+        _showCheckmark = true;
+      });
+
+      // Hide checkmark after 2 seconds
+      _checkmarkTimer?.cancel();
+      _checkmarkTimer = Timer(const Duration(seconds: 2), () {
+        if (mounted) setState(() => _showCheckmark = false);
+      });
+    } catch (e) {
+      setState(() => _isSaving = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to save changes')),
+        );
+      }
+    }
+  }
+
+  Future<bool?> _showUnsavedChangesDialog() {
+    return showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppColors.settingsCardBackground,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Row(
+            children: [
+              Icon(
+                Icons.save_outlined,
+                color: AppColors.settingsAccent,
+                size: 24,
+              ),
+              SizedBox(width: 12),
+              Text(
+                'Unsaved Changes',
+                style: TextStyle(
+                  color: AppColors.settingsTextPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          content: const Text(
+            'You have unsaved changes. Do you want to save them before leaving?',
+            style: TextStyle(
+              color: AppColors.settingsTextSecondary,
+              fontSize: 14,
+              height: 1.5,
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text(
+                'Discard',
+                style: TextStyle(
+                  color: AppColors.settingsTextSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+            TextButton(
+              child: const Text(
+                'Save',
+                style: TextStyle(
+                  color: AppColors.settingsAccent,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              onPressed: () => Navigator.of(context).pop(true),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<bool?> _showResetConfirmDialog() {
+    return showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppColors.settingsCardBackground,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Row(
+            children: [
+              Icon(
+                Icons.restore_rounded,
+                color: AppColors.orange,
+                size: 24,
+              ),
+              SizedBox(width: 12),
+              Text(
+                'Reset Changes?',
+                style: TextStyle(
+                  color: AppColors.settingsTextPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          content: const Text(
+            'This will revert all changes to the last saved state.',
+            style: TextStyle(
+              color: AppColors.settingsTextSecondary,
+              fontSize: 14,
+              height: 1.5,
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  color: AppColors.settingsTextSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+            TextButton(
+              child: const Text(
+                'Reset',
+                style: TextStyle(
+                  color: AppColors.orange,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              onPressed: () => Navigator.of(context).pop(true),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _resetChanges() async {
+    // Restore saved values to text controllers
+    _suppressListener = true;
+    _inputController1.text = _savedTx.round().toString();
+    _inputController2.text = _savedTy.round().toString();
+    _inputController3.text = _savedMult.toStringAsFixed(2);
+    _inputController4.text = _savedRot.toStringAsFixed(2);
+    _suppressListener = false;
+
+    // Update transform controller
+    _transformController?.setTransform(
+      translateX: _savedTx,
+      translateY: _savedTy,
+      scale: _savedMult,
+      rotation: _savedRot,
+    );
+
+    // Regenerate preview
+    await processRequest(
+      _savedTx,
+      _savedTy,
+      _savedMult * _baseScale,
+      _savedRot,
+      save: false,
+    );
+
+    setState(() => _hasUnsavedChanges = false);
   }
 
   Widget _buildPreviewHeader() {
@@ -724,6 +1259,13 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
       _lastTy = ty;
       _lastMult = mult;
       _lastRot = rot;
+
+      // Store as saved values (for reset/unsaved detection)
+      _savedTx = tx;
+      _savedTy = ty;
+      _savedMult = mult;
+      _savedRot = rot;
+      _hasUnsavedChanges = false;
     });
   }
 
@@ -776,10 +1318,6 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
       if (requestId != _currentRequestId || !mounted) {
         return;
       }
-
-      setState(() {
-        _stabilizedImageBytes = imageBytesStabilized;
-      });
 
       if (save && _faceStabilizer != null) {
         final String projectOrientation =
@@ -887,7 +1425,18 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
               (_lastRot == null || (_lastRot! - (rot ?? 0)).abs() > tolerance);
 
       if (changed) {
-        processRequest(tx, ty, sc, rot, save: true);
+        // Update the transform controller so TransformTool re-renders
+        // Use flag to prevent _onTransformControllerChanged from overwriting text fields
+        _updatingFromTextField = true;
+        _transformController?.setTransform(
+          translateX: tx ?? 0,
+          translateY: ty ?? 0,
+          scale: mult,
+          rotation: rot ?? 0,
+        );
+        _updatingFromTextField = false;
+        processRequest(tx, ty, sc, rot, save: false);
+        _checkForUnsavedChanges();
       }
     });
   }
@@ -904,12 +1453,25 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
     _inputController2.text = ty.toString();
     _suppressListener = false;
 
+    double mult = double.tryParse(_inputController3.text) ?? 1.0;
+    double? rot = double.tryParse(_inputController4.text);
+
+    // Update transform controller so TransformTool re-renders immediately
+    // Use flag to prevent _onTransformControllerChanged from overwriting text fields
+    _updatingFromTextField = true;
+    _transformController?.setTransform(
+      translateX: tx,
+      translateY: ty,
+      scale: mult,
+      rotation: rot ?? 0,
+    );
+    _updatingFromTextField = false;
+    _checkForUnsavedChanges();
+
     final now = DateTime.now();
     if (_lastApplyAt == null ||
         now.difference(_lastApplyAt!) >= _applyThrottle) {
       _lastApplyAt = now;
-      double mult = double.tryParse(_inputController3.text) ?? 1.0;
-      double? rot = double.tryParse(_inputController4.text);
       double? sc = _baseScale * mult;
       processRequest(tx, ty, sc, rot);
     }
@@ -928,7 +1490,18 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
       double mult = double.tryParse(_inputController3.text) ?? 1.0;
       double? rot = double.tryParse(_inputController4.text);
       double sc = _baseScale * mult;
-      processRequest(tx, ty, sc, rot, save: true);
+      // Update transform controller so TransformTool re-renders
+      // Use flag to prevent _onTransformControllerChanged from overwriting text fields
+      _updatingFromTextField = true;
+      _transformController?.setTransform(
+        translateX: tx ?? 0,
+        translateY: ty ?? 0,
+        scale: mult,
+        rotation: rot ?? 0,
+      );
+      _updatingFromTextField = false;
+      processRequest(tx, ty, sc, rot, save: false);
+      _checkForUnsavedChanges();
     }
 
     void startHold(String key, VoidCallback onTick) {
