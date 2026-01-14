@@ -10,6 +10,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../services/database_helper.dart';
 import '../../services/face_stabilizer.dart';
+import '../../services/thumbnail_service.dart';
 import '../../styles/styles.dart';
 import '../../utils/dir_utils.dart';
 import '../../utils/utils.dart';
@@ -1142,6 +1143,16 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
       stabilizedImagePath,
     );
 
+    // Clear caches BEFORE deleting files
+    ThumbnailService.instance.clearCache(stabThumbPath);
+
+    // Evict specific images from Flutter's cache
+    final stabImageProvider = FileImage(File(stabilizedImagePath));
+    final stabThumbProvider = FileImage(File(stabThumbPath));
+    stabImageProvider.evict();
+    stabThumbProvider.evict();
+
+    // Delete files
     final stabImageFile = File(stabilizedImagePath);
     final stabThumbFile = File(stabThumbPath);
     if (await stabImageFile.exists()) {
@@ -1151,9 +1162,11 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
       await stabThumbFile.delete();
     }
 
+    // Reset DB
     await DB.instance.resetStabilizedColumnByTimestamp(
       widget.projectOrientation,
       timestamp,
+      widget.projectId,
     );
 
     if (mounted) {
@@ -1194,6 +1207,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
         builder: (context) => ManualStabilizationPage(
           imagePath: imageFile.path,
           projectId: widget.projectId,
+          onSaveComplete: widget.loadImages,
         ),
       ),
     );
@@ -1254,7 +1268,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     await _deleteAllRelatedFiles(toDelete);
 
     // Remove from database
-    await DB.instance.deletePhoto(int.parse(timestamp));
+    await DB.instance.deletePhoto(int.parse(timestamp), widget.projectId);
 
     // Reload images
     await widget.loadImages();

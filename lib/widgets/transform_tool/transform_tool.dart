@@ -62,6 +62,11 @@ class TransformTool extends StatefulWidget {
   /// Whether this is running on a touch device (larger hit targets)
   final bool? isTouchDevice;
 
+  /// Scale factor from canvas resolution to display size.
+  /// Used to counter-scale handle sizes so they appear consistent on screen.
+  /// displayScale = previewWidth / canvasWidth
+  final double displayScale;
+
   const TransformTool({
     super.key,
     required this.imageBytes,
@@ -77,6 +82,7 @@ class TransformTool extends StatefulWidget {
     this.maintainAspectRatio = true,
     this.controller,
     this.isTouchDevice,
+    this.displayScale = 1.0,
   });
 
   @override
@@ -239,7 +245,7 @@ class TransformToolState extends State<TransformTool> {
 
     return Semantics(
       label:
-          'Image transform tool. Use arrow keys to move, brackets to rotate, plus minus to scale.',
+          'Image transform tool. Use arrow keys to move, brackets to rotate, plus minus to scale. Command Z to undo, Command Shift Z to redo.',
       value: _buildAccessibilityValue(),
       child: Focus(
         focusNode: _focusNode,
@@ -254,6 +260,10 @@ class TransformToolState extends State<TransformTool> {
           onHover: widget.enabled ? _onHover : null,
           onExit: (_) => setState(() => _hoveredHandle = TransformHandle.none),
           child: GestureDetector(
+            // Request focus on any tap/click to enable keyboard shortcuts
+            // This fires before pan detection, ensuring focus is grabbed
+            // even if the user just clicks without dragging
+            onTapDown: widget.enabled ? (_) => _focusNode.requestFocus() : null,
             onPanStart: widget.enabled ? _onPanStart : null,
             onPanUpdate: widget.enabled ? _onPanUpdate : null,
             onPanEnd: widget.enabled ? _onPanEnd : null,
@@ -289,6 +299,7 @@ class TransformToolState extends State<TransformTool> {
                           handleSize: handleSize,
                           edgeHandleSize: edgeHandleSize,
                           rotationHandleSize: rotationHandleSize,
+                          displayScale: widget.displayScale,
                         ),
                       ),
                     ),
@@ -303,9 +314,9 @@ class TransformToolState extends State<TransformTool> {
 
   String _buildAccessibilityValue() {
     final state = _controller.state;
-    return 'Position: ${state.translateX.round()}, ${state.translateY.round()}. '
+    return 'Position: ${state.translateX.toStringAsFixed(1)}, ${state.translateY.toStringAsFixed(1)}. '
         'Scale: ${(state.scale * 100).round()}%. '
-        'Rotation: ${state.rotation.round()} degrees.';
+        'Rotation: ${state.rotation.toStringAsFixed(1)} degrees.';
   }
 
   void _onHover(PointerHoverEvent event) {
@@ -357,29 +368,35 @@ class TransformToolState extends State<TransformTool> {
     switch (event.logicalKey) {
       // Arrow keys for nudging position
       case LogicalKeyboardKey.arrowLeft:
+        _controller.commitToHistory();
         _controller.nudge(-nudgeAmount, 0);
         _announceChange('Moved left ${nudgeAmount.round()} pixels');
         break;
       case LogicalKeyboardKey.arrowRight:
+        _controller.commitToHistory();
         _controller.nudge(nudgeAmount, 0);
         _announceChange('Moved right ${nudgeAmount.round()} pixels');
         break;
       case LogicalKeyboardKey.arrowUp:
+        _controller.commitToHistory();
         _controller.nudge(0, -nudgeAmount);
         _announceChange('Moved up ${nudgeAmount.round()} pixels');
         break;
       case LogicalKeyboardKey.arrowDown:
+        _controller.commitToHistory();
         _controller.nudge(0, nudgeAmount);
         _announceChange('Moved down ${nudgeAmount.round()} pixels');
         break;
 
       // Bracket keys for rotation
       case LogicalKeyboardKey.bracketLeft:
+        _controller.commitToHistory();
         _controller.adjustRotation(-rotateAmount);
         _announceChange(
             'Rotated ${rotateAmount.round()} degrees counter-clockwise');
         break;
       case LogicalKeyboardKey.bracketRight:
+        _controller.commitToHistory();
         _controller.adjustRotation(rotateAmount);
         _announceChange('Rotated ${rotateAmount.round()} degrees clockwise');
         break;
@@ -388,11 +405,13 @@ class TransformToolState extends State<TransformTool> {
       case LogicalKeyboardKey.equal: // + key
       case LogicalKeyboardKey.add:
       case LogicalKeyboardKey.numpadAdd:
+        _controller.commitToHistory();
         _controller.adjustScale(scaleAmount);
         _announceChange('Scaled up ${scaleAmount.round()}%');
         break;
       case LogicalKeyboardKey.minus:
       case LogicalKeyboardKey.numpadSubtract:
+        _controller.commitToHistory();
         _controller.adjustScale(-scaleAmount);
         _announceChange('Scaled down ${scaleAmount.round()}%');
         break;
@@ -408,6 +427,7 @@ class TransformToolState extends State<TransformTool> {
       // Ctrl/Cmd+R to reset
       case LogicalKeyboardKey.keyR:
         if (ctrlOrCmd) {
+          _controller.commitToHistory();
           _controller.reset();
           _announceChange('Transform reset');
         } else {
@@ -419,6 +439,7 @@ class TransformToolState extends State<TransformTool> {
       case LogicalKeyboardKey.digit0:
       case LogicalKeyboardKey.numpad0:
         if (ctrlOrCmd) {
+          _controller.commitToHistory();
           _controller.fitToCanvas();
           _announceChange('Fit to canvas');
         } else {
@@ -428,8 +449,39 @@ class TransformToolState extends State<TransformTool> {
 
       // Home key to reset
       case LogicalKeyboardKey.home:
+        _controller.commitToHistory();
         _controller.reset();
         _announceChange('Transform reset');
+        break;
+
+      // Ctrl/Cmd+Z to undo
+      case LogicalKeyboardKey.keyZ:
+        if (ctrlOrCmd) {
+          if (shiftHeld) {
+            // Cmd+Shift+Z = Redo (macOS standard)
+            if (_controller.redo()) {
+              _announceChange('Redo');
+            }
+          } else {
+            // Cmd+Z = Undo
+            if (_controller.undo()) {
+              _announceChange('Undo');
+            }
+          }
+        } else {
+          handled = false;
+        }
+        break;
+
+      // Ctrl+Y to redo (Windows standard)
+      case LogicalKeyboardKey.keyY:
+        if (ctrlOrCmd) {
+          if (_controller.redo()) {
+            _announceChange('Redo');
+          }
+        } else {
+          handled = false;
+        }
         break;
 
       default:

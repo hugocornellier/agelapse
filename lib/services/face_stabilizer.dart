@@ -390,6 +390,7 @@ class FaceStabilizer {
       if (stabFaces != null && stabFaces.isEmpty) {
         await DB.instance.setPhotoNoFacesFound(
           path.basenameWithoutExtension(rawPhotoPath),
+          projectId,
         );
         unawaited(
           _emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.noFacesFound),
@@ -432,6 +433,7 @@ class FaceStabilizer {
     if (eyes.length < 2 || eyes[0] == null || eyes[1] == null) {
       await DB.instance.setPhotoNoFacesFound(
         path.basenameWithoutExtension(rawPhotoPath),
+        projectId,
       );
       unawaited(
         _emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.noFacesFound),
@@ -1721,7 +1723,7 @@ class FaceStabilizer {
     List<String> toDelete,
   ) async {
     final String timestamp = path.basenameWithoutExtension(rawPhotoPath);
-    await DB.instance.setPhotoStabFailed(timestamp);
+    await DB.instance.setPhotoStabFailed(timestamp, projectId);
     unawaited(_emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.stabFailed));
 
     final String failureDir = await DirUtils.getFailureDirPath(projectId);
@@ -1810,7 +1812,7 @@ class FaceStabilizer {
     if (result2.success) return true;
     if (result2.cancelled) return false;
 
-    await DB.instance.setPhotoNoFacesFound(timestamp);
+    await DB.instance.setPhotoNoFacesFound(timestamp, projectId);
     unawaited(
       _emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.noFacesFound),
     );
@@ -2012,6 +2014,7 @@ class FaceStabilizer {
     if (eyes.length < 2 || eyes[0] == null || eyes[1] == null) {
       await DB.instance.setPhotoNoFacesFound(
         path.basenameWithoutExtension(rawPhotoPath),
+        projectId,
       );
       unawaited(
         _emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.noFacesFound),

@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import '../services/face_stabilizer.dart';
 import '../services/database_helper.dart';
 import '../services/log_service.dart';
+import '../services/thumbnail_service.dart';
 import '../styles/styles.dart';
 import '../utils/dir_utils.dart';
 import '../utils/image_utils.dart';
@@ -18,11 +19,13 @@ import '../widgets/transform_tool/transform_tool_exports.dart';
 class ManualStabilizationPage extends StatefulWidget {
   final String imagePath;
   final int projectId;
+  final Future<void> Function()? onSaveComplete;
 
   const ManualStabilizationPage({
     super.key,
     required this.imagePath,
     required this.projectId,
+    this.onSaveComplete,
   });
 
   @override
@@ -447,8 +450,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
         content: const SingleChildScrollView(
           child: Text(
             'Goal: Center each pupil on its vertical line and place both pupils exactly on the horizontal line.\n\n'
-            'Horiz. Offset (whole number, +/-)\nShifts the image left/right. Increase to move the face right, decrease to move left.\n\n'
-            'Vert. Offset (whole number, +/-)\nShifts the image up/down. Increase to move the face up, decrease to move down.\n\n'
+            'Horiz. Offset (decimal, +/-)\nShifts the image left/right. Increase to move the face right, decrease to move left.\n\n'
+            'Vert. Offset (decimal, +/-)\nShifts the image up/down. Increase to move the face up, decrease to move down.\n\n'
             'Scale Factor (positive decimal)\nZooms in or out. Values > 1 enlarge, values between 0 and 1 shrink.\n\n'
             'Rotation (decimal, +/-)\nTilts the image. Positive values rotate clockwise, negative counter-clockwise.\n\n'
             'Use the toolbar arrows or type exact numbers. Keep adjusting until the pupils touch all three guides.',
@@ -768,6 +771,10 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
               // Initialize transform controller with OUTPUT dimensions (not preview)
               _initTransformControllerIfNeeded();
 
+              // Calculate display scale for counter-scaling handle sizes
+              // This ensures handles appear consistent regardless of resolution
+              final displayScale = previewWidth / _canvasWidth!.toDouble();
+
               return Container(
                 decoration: BoxDecoration(
                   color: AppColors.settingsCardBackground,
@@ -779,52 +786,59 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
                 ),
                 padding: const EdgeInsets.all(12),
                 child: Center(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: FittedBox(
-                      fit: BoxFit.contain,
-                      child: SizedBox(
-                        width: _canvasWidth!.toDouble(),
-                        height: _canvasHeight!.toDouble(),
-                        child: Stack(
-                          children: [
-                            // TransformTool at OUTPUT dimensions
-                            Positioned.fill(
-                              child: TransformTool(
-                                imageBytes: _rawImageBytes!,
-                                canvasSize: Size(_canvasWidth!.toDouble(),
-                                    _canvasHeight!.toDouble()),
-                                imageSize: Size(_rawImageWidth!.toDouble(),
-                                    _rawImageHeight!.toDouble()),
-                                baseScale: _baseScale,
-                                controller: _transformController,
-                                onChanged: _onTransformChanged,
-                                onChangeEnd: _onTransformChangeEnd,
-                                showRotationHandle: true,
-                                maintainAspectRatio: true,
+                  // SizedBox with calculated dimensions forces FittedBox to
+                  // expand and fill available space (scales UP, not just down)
+                  child: SizedBox(
+                    width: previewWidth,
+                    height: previewHeight,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: FittedBox(
+                        fit: BoxFit.contain,
+                        child: SizedBox(
+                          width: _canvasWidth!.toDouble(),
+                          height: _canvasHeight!.toDouble(),
+                          child: Stack(
+                            children: [
+                              // TransformTool at OUTPUT dimensions
+                              Positioned.fill(
+                                child: TransformTool(
+                                  imageBytes: _rawImageBytes!,
+                                  canvasSize: Size(_canvasWidth!.toDouble(),
+                                      _canvasHeight!.toDouble()),
+                                  imageSize: Size(_rawImageWidth!.toDouble(),
+                                      _rawImageHeight!.toDouble()),
+                                  baseScale: _baseScale,
+                                  controller: _transformController,
+                                  onChanged: _onTransformChanged,
+                                  onChangeEnd: _onTransformChangeEnd,
+                                  showRotationHandle: true,
+                                  maintainAspectRatio: true,
+                                  displayScale: displayScale,
+                                ),
                               ),
-                            ),
-                            // Grid overlay - scales together with TransformTool
-                            // IgnorePointer lets events pass through to TransformTool
-                            Positioned.fill(
-                              child: IgnorePointer(
-                                child: CustomPaint(
-                                  painter: GridPainterSE(
-                                    (_rightEyeXGoal! - _leftEyeXGoal!) /
-                                        (2 * _canvasWidth!),
-                                    _bothEyesYGoal! / _canvasHeight!,
-                                    null,
-                                    null,
-                                    null,
-                                    aspectRatio,
-                                    projectOrientation,
-                                    hideToolTip: true,
-                                    hideCorners: true,
+                              // Grid overlay - scales together with TransformTool
+                              // IgnorePointer lets events pass through to TransformTool
+                              Positioned.fill(
+                                child: IgnorePointer(
+                                  child: CustomPaint(
+                                    painter: GridPainterSE(
+                                      (_rightEyeXGoal! - _leftEyeXGoal!) /
+                                          (2 * _canvasWidth!),
+                                      _bothEyesYGoal! / _canvasHeight!,
+                                      null,
+                                      null,
+                                      null,
+                                      aspectRatio,
+                                      projectOrientation,
+                                      hideToolTip: true,
+                                      hideCorners: true,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -879,8 +893,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
 
     // Update text fields (suppress listener to prevent loop)
     _suppressListener = true;
-    _inputController1.text = state.translateX.round().toString();
-    _inputController2.text = state.translateY.round().toString();
+    _inputController1.text = state.translateX.toStringAsFixed(1);
+    _inputController2.text = state.translateY.toStringAsFixed(1);
     _inputController3.text = state.scale.toStringAsFixed(2);
     _inputController4.text = state.rotation.toStringAsFixed(2);
     _suppressListener = false;
@@ -955,6 +969,9 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
         _hasUnsavedChanges = false;
         _showCheckmark = true;
       });
+
+      // Notify gallery to reload with updated images
+      await widget.onSaveComplete?.call();
 
       // Hide checkmark after 2 seconds
       _checkmarkTimer?.cancel();
@@ -1098,8 +1115,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
   Future<void> _resetChanges() async {
     // Restore saved values to text controllers
     _suppressListener = true;
-    _inputController1.text = _savedTx.round().toString();
-    _inputController2.text = _savedTy.round().toString();
+    _inputController1.text = _savedTx.toStringAsFixed(1);
+    _inputController2.text = _savedTy.toStringAsFixed(1);
     _inputController3.text = _savedMult.toStringAsFixed(2);
     _inputController4.text = _savedRot.toStringAsFixed(2);
     _suppressListener = false;
@@ -1159,7 +1176,6 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
     );
   }
 
-  bool _isWholeNumber(String s) => RegExp(r'^-?\d+$').hasMatch(s);
   bool _isPositiveDecimal(String s) =>
       RegExp(r'^\d+(\.\d+)?$').hasMatch(s) && double.parse(s) > 0;
   bool _isSignedDecimal(String s) => RegExp(r'^-?\d+(\.\d+)?$').hasMatch(s);
@@ -1193,7 +1209,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
           ),
           content: Text(
             'Please check these fields:\n\n${fields.map((f) => '• $f').join('\n')}\n\n'
-            'Horiz./Vert. Offset: whole numbers like -10 or 25\n'
+            'Horiz./Vert. Offset: numbers like -10.5 or 25\n'
             'Scale Factor: positive numbers like 1 or 2.5\n'
             'Rotation: any number like -1.5 or 30',
             style: const TextStyle(
@@ -1246,8 +1262,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
     final double mult = sc / _baseScale;
 
     _suppressListener = true;
-    _inputController1.text = tx.round().toString();
-    _inputController2.text = ty.round().toString();
+    _inputController1.text = tx.toStringAsFixed(1);
+    _inputController2.text = ty.toStringAsFixed(1);
     _inputController3.text = mult.toStringAsFixed(2);
     _inputController4.text = rot.toStringAsFixed(2);
     _suppressListener = false;
@@ -1272,8 +1288,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
   void _validateInputs() {
     FocusScope.of(context).unfocus();
     final List<String> invalid = [];
-    if (!_isWholeNumber(_inputController1.text)) invalid.add('Horiz. Offset');
-    if (!_isWholeNumber(_inputController2.text)) invalid.add('Vert. Offset');
+    if (!_isSignedDecimal(_inputController1.text)) invalid.add('Horiz. Offset');
+    if (!_isSignedDecimal(_inputController2.text)) invalid.add('Vert. Offset');
     if (!_isPositiveDecimal(_inputController3.text)) {
       invalid.add('Scale Factor');
     }
@@ -1352,6 +1368,11 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
         await _faceStabilizer!.createStabThumbnail(
           stabilizedPhotoPath.replaceAll('.jpg', '.png'),
         );
+
+        // Clear caches so gallery shows updated images
+        FileImage(File(stabilizedPhotoPath)).evict();
+        FileImage(File(stabThumbPath)).evict();
+        ThumbnailService.instance.clearCache(stabThumbPath);
       }
 
       if (requestId != _currentRequestId ||
@@ -1388,6 +1409,9 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
   }
 
   void _adjustScale(double delta) {
+    // Commit to history before making changes (for undo support)
+    _transformController?.commitToHistory();
+
     double mult = double.tryParse(_inputController3.text) ?? 1.0;
     mult += delta;
     if (mult < 0.01) mult = 0.01;
@@ -1402,6 +1426,40 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
       double? tx = double.tryParse(_inputController1.text);
       double? ty = double.tryParse(_inputController2.text);
       double? rot = double.tryParse(_inputController4.text);
+      double? sc = _baseScale * mult;
+      processRequest(tx, ty, sc, rot);
+    }
+  }
+
+  void _adjustRotation(double delta) {
+    // Commit to history before making changes (for undo support)
+    _transformController?.commitToHistory();
+
+    double rot = double.tryParse(_inputController4.text) ?? 0.0;
+    rot += delta;
+    _suppressListener = true;
+    _inputController4.text = rot.toStringAsFixed(2);
+    _suppressListener = false;
+
+    double mult = double.tryParse(_inputController3.text) ?? 1.0;
+
+    // Update transform controller so TransformTool re-renders immediately
+    _updatingFromTextField = true;
+    _transformController?.setTransform(
+      translateX: double.tryParse(_inputController1.text) ?? 0,
+      translateY: double.tryParse(_inputController2.text) ?? 0,
+      scale: mult,
+      rotation: rot,
+    );
+    _updatingFromTextField = false;
+    _checkForUnsavedChanges();
+
+    final now = DateTime.now();
+    if (_lastApplyAt == null ||
+        now.difference(_lastApplyAt!) >= _applyThrottle) {
+      _lastApplyAt = now;
+      double? tx = double.tryParse(_inputController1.text);
+      double? ty = double.tryParse(_inputController2.text);
       double? sc = _baseScale * mult;
       processRequest(tx, ty, sc, rot);
     }
@@ -1425,6 +1483,9 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
               (_lastRot == null || (_lastRot! - (rot ?? 0)).abs() > tolerance);
 
       if (changed) {
+        // Commit to history before making changes (for undo support)
+        _transformController?.commitToHistory();
+
         // Update the transform controller so TransformTool re-renders
         // Use flag to prevent _onTransformControllerChanged from overwriting text fields
         _updatingFromTextField = true;
@@ -1441,7 +1502,10 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
     });
   }
 
-  void _adjustOffsets({int dx = 0, int dy = 0}) {
+  void _adjustOffsets({double dx = 0, double dy = 0}) {
+    // Commit to history before making changes (for undo support)
+    _transformController?.commitToHistory();
+
     double tx = double.tryParse(_inputController1.text) ?? 0;
     double ty = double.tryParse(_inputController2.text) ?? 0;
 
@@ -1449,8 +1513,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
     ty += dy;
 
     _suppressListener = true;
-    _inputController1.text = tx.toString();
-    _inputController2.text = ty.toString();
+    _inputController1.text = tx.toStringAsFixed(1);
+    _inputController2.text = ty.toStringAsFixed(1);
     _suppressListener = false;
 
     double mult = double.tryParse(_inputController3.text) ?? 1.0;
@@ -1596,6 +1660,31 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
                       icon: Icons.add_rounded,
                       onTap: () => _adjustScale(0.01),
                       onHold: () => _adjustScale(0.01),
+                    ),
+                  ],
+                ),
+              ),
+              // Rotation controls
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.settingsCardBorder.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  children: [
+                    buildToolbarButton(
+                      key: 'rotateCCW',
+                      icon: Icons.rotate_left_rounded,
+                      onTap: () => _adjustRotation(-0.1),
+                      onHold: () => _adjustRotation(-0.1),
+                    ),
+                    const SizedBox(width: 4),
+                    buildToolbarButton(
+                      key: 'rotateCW',
+                      icon: Icons.rotate_right_rounded,
+                      onTap: () => _adjustRotation(0.1),
+                      onHold: () => _adjustRotation(0.1),
                     ),
                   ],
                 ),

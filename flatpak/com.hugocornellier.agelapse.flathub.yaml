@@ -145,45 +145,45 @@ modules:
       # Pre-built Flutter bundle from GitHub release
       # TODO: Update URL and sha256 after uploading to GitHub releases
       - type: archive
-        url: https://github.com/hugocornellier/agelapse/releases/download/v2.3.0/agelapse-linux-bundle.tar.gz
-        sha256: "REPLACE_WITH_SHA256_HASH"
+        url: https://github.com/hugocornellier/agelapse/releases/download/agelapse-v2.3.0-flatpak-sources/agelapse-linux-v2.3.0-bundle.tar.gz
+        sha256: 17beab5e4478324adcfc10f7bf5824d5480a95ec30a76fdae9b9f92a89da98bd
         dest: bundle
 
       # Wrapper script
       - type: file
         url: https://raw.githubusercontent.com/hugocornellier/agelapse/main/flatpak/agelapse.sh
-        sha256: "REPLACE_WITH_SHA256_HASH"
+        sha256: 47b6623716c29c1b02f0c62c9cdc591053027a06b1da993e26341a1033fdd2f8
 
       # Desktop entry
       - type: file
         url: https://raw.githubusercontent.com/hugocornellier/agelapse/main/flatpak/com.hugocornellier.agelapse.desktop
-        sha256: "REPLACE_WITH_SHA256_HASH"
+        sha256: ed7f6c93de9e8179f16f0f1b49611bb434c45907fb3fc4431d9ff5f5345a9e3e
 
       # Icons - fetched individually
       - type: file
         url: https://raw.githubusercontent.com/hugocornellier/agelapse/main/flatpak/icons/256x256/agelapse.png
-        sha256: "REPLACE_WITH_SHA256_HASH"
+        sha256: d3255a6fc1d7e1498455dcf7b1a2a3131431cc5323f926c82ee64b48f4e5a7ff
         dest: icons/256x256
         dest-filename: agelapse.png
 
       - type: file
         url: https://raw.githubusercontent.com/hugocornellier/agelapse/main/flatpak/icons/128x128/agelapse.png
-        sha256: "REPLACE_WITH_SHA256_HASH"
+        sha256: 51be79a1d299f77f533aa18b85dda6041afb8c6f9fc0ddb63941c2cc5cc4a5b1
         dest: icons/128x128
         dest-filename: agelapse.png
 
       - type: file
         url: https://raw.githubusercontent.com/hugocornellier/agelapse/main/flatpak/icons/64x64/agelapse.png
-        sha256: "REPLACE_WITH_SHA256_HASH"
+        sha256: e234514f7f2755ddc475dbeb4243b4669fbea767d86b32bac0784289ad8a24f0
         dest: icons/64x64
         dest-filename: agelapse.png
 
       # App metadata
       - type: file
         url: https://raw.githubusercontent.com/hugocornellier/agelapse/main/flatpak/com.hugocornellier.agelapse.metainfo.xml
-        sha256: "REPLACE_WITH_SHA256_HASH"
+        sha256: 0c49282366971344dd9ffdc2777d2505e3d30abdbe052c249c7c90cf8d8d1dc4
 
       # License file
       - type: file
         url: https://raw.githubusercontent.com/hugocornellier/agelapse/main/LICENSE
-        sha256: "REPLACE_WITH_SHA256_HASH"
+        sha256: 3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986

@@ -17,5 +17,6 @@ export 'transform_controller.dart';
 export 'transform_gesture_handler.dart';
 export 'transform_handle.dart';
 export 'transform_handle_painter.dart';
+export 'transform_history.dart';
 export 'transform_state.dart';
 export 'transform_tool.dart';

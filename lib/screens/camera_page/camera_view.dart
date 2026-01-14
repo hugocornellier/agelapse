@@ -354,6 +354,8 @@ class _CameraViewState extends State<CameraView> {
     await CameraUtils.flashAndVibrate();
     setState(() => _showFlash = false);
 
+    String? debugPath; // Track for cleanup on macOS
+
     try {
       if (Platform.isMacOS) {
         try {
@@ -364,7 +366,7 @@ class _CameraViewState extends State<CameraView> {
             LogService.instance.log('macOS: photo bytes are null');
             return;
           }
-          final String debugPath =
+          debugPath =
               '${Directory.systemTemp.path}/camera_debug_${DateTime.now().millisecondsSinceEpoch}.jpg';
           await File(debugPath).writeAsBytes(bytes, flush: true);
           final bool exists = await File(debugPath).exists();
@@ -424,6 +426,18 @@ class _CameraViewState extends State<CameraView> {
     } finally {
       _pictureTakingCompleter?.complete();
       _pictureTakingCompleter = null;
+
+      // Clean up macOS debug image
+      if (debugPath != null) {
+        try {
+          final file = File(debugPath);
+          if (await file.exists()) {
+            await file.delete();
+          }
+        } catch (_) {
+          // Best-effort cleanup
+        }
+      }
     }
   }
 
@@ -1176,10 +1190,12 @@ class CameraGridOverlayState extends State<CameraGridOverlay> {
       final offsetXDataRaw = await DB.instance.getPhotoColumnValueByTimestamp(
         timestamp,
         stabColOffsetX,
+        widget.projectId,
       );
       final offsetYDataRaw = await DB.instance.getPhotoColumnValueByTimestamp(
         timestamp,
         stabColOffsetY,
+        widget.projectId,
       );
       final offsetXData = double.tryParse(offsetXDataRaw);
       final offsetYData = double.tryParse(offsetYDataRaw);

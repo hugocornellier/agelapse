@@ -443,8 +443,54 @@ class GalleryPageState extends State<GalleryPage>
       projectId: projectId,
       projectIdStr: projectIdStr,
       onImagesLoaded: (rawImages, stabImageFiles) async {
-        widget.setRawAndStabPhotoStates(rawImages, stabImageFiles);
-        _retryingPhotoTimestamps.clear();
+        var finalStabFiles = stabImageFiles;
+
+        // Preserve paths for photos being retried (files temporarily deleted)
+        if (_retryingPhotoTimestamps.isNotEmpty) {
+          final diskTimestamps = stabImageFiles
+              .map((p) => path.basenameWithoutExtension(p))
+              .toSet();
+
+          // Find retry paths not in the new disk scan
+          final pathsToPreserve = <String>[];
+          for (final ts in _retryingPhotoTimestamps) {
+            if (!diskTimestamps.contains(ts)) {
+              // Find this path in the current list
+              final existingPath = widget.stabilizedImageFilesStr
+                  .where((p) => path.basenameWithoutExtension(p) == ts)
+                  .firstOrNull;
+              if (existingPath != null) {
+                pathsToPreserve.add(existingPath);
+              }
+            }
+          }
+
+          if (pathsToPreserve.isNotEmpty) {
+            // Merge: use disk scan as base, insert preserved paths at their original positions
+            final currentList = widget.stabilizedImageFilesStr;
+            final mergedList = <String>[];
+            final diskSet = stabImageFiles.toSet();
+            final preserveSet = pathsToPreserve.toSet();
+
+            // Walk through current list order, include items from disk or preserve set
+            for (final p in currentList) {
+              if (diskSet.contains(p) || preserveSet.contains(p)) {
+                mergedList.add(p);
+                diskSet.remove(p);
+                preserveSet.remove(p);
+              }
+            }
+            // Add any remaining disk items (shouldn't happen, but just in case)
+            mergedList.addAll(diskSet);
+
+            finalStabFiles = mergedList;
+          }
+
+          // Clear retry flags for photos that now have files on disk
+          _retryingPhotoTimestamps.removeWhere(diskTimestamps.contains);
+        }
+
+        widget.setRawAndStabPhotoStates(rawImages, finalStabFiles);
       },
       onShowInfoDialog: () => showInfoDialog(context),
     );
@@ -513,23 +559,39 @@ class GalleryPageState extends State<GalleryPage>
 
   /// Handles incremental update when a single photo is stabilized.
   Future<void> _handleIncrementalStabUpdate(String timestamp) async {
+    // Check if this is a retry completion - if so, clear the flag and rebuild
+    final isRetry = _retryingPhotoTimestamps.contains(timestamp);
+    if (isRetry) {
+      setState(() {
+        _retryingPhotoTimestamps.remove(timestamp);
+      });
+      // For retries, the path is already in the list - just rebuild to show new thumbnail
+      return;
+    }
+
     final newPath = await DirUtils.getStabilizedImagePathFromTimestamp(
       projectId,
       timestamp,
       projectOrientation!,
     );
 
-    // Check if already in list (avoid duplicates)
+    // Check if already in list by timestamp (avoid duplicates)
     final currentList = widget.stabilizedImageFilesStr;
-    if (currentList.contains(newPath)) return;
+    final alreadyInList = currentList.any(
+      (p) => path.basenameWithoutExtension(p) == timestamp,
+    );
+    if (alreadyInList) return;
 
     final newList = List<String>.from(currentList);
+    final timestampInt = int.tryParse(timestamp) ?? 0;
     int low = 0;
     int high = newList.length;
     while (low < high) {
       final mid = (low + high) ~/ 2;
       final midTimestamp = path.basenameWithoutExtension(newList[mid]);
-      if (midTimestamp.compareTo(timestamp) < 0) {
+      final midInt = int.tryParse(midTimestamp) ?? 0;
+      // List is sorted ascending (oldest first), so insert after items with smaller timestamps
+      if (midInt < timestampInt) {
         low = mid + 1;
       } else {
         high = mid;
@@ -851,9 +913,16 @@ class GalleryPageState extends State<GalleryPage>
         scrollController == _stabilizedScrollController;
     final List<String> files =
         isStabilizedTab ? widget.stabilizedImageFilesStr : imageFiles;
-    final int itemCount = isStabilizedTab && widget.stabilizingRunningInMain
-        ? files.length + 1
-        : files.length;
+
+    // Only show end-of-grid FlashingBox if there are NEW photos being stabilized,
+    // not just retries. If all raw photos are already in stabilized list, it's only retries.
+    final bool onlyRetrying = _retryingPhotoTimestamps.isNotEmpty &&
+        widget.imageFilesStr.length == widget.stabilizedImageFilesStr.length;
+    final bool showStabProgressIndicator =
+        isStabilizedTab && widget.stabilizingRunningInMain && !onlyRetrying;
+
+    final int itemCount =
+        showStabProgressIndicator ? files.length + 1 : files.length;
     return GridView.builder(
       padding: EdgeInsets.zero,
       controller: scrollController,
@@ -864,9 +933,8 @@ class GalleryPageState extends State<GalleryPage>
       ),
       itemCount: itemCount,
       itemBuilder: (context, index) {
-        if (isStabilizedTab &&
-            index == widget.stabilizedImageFilesStr.length &&
-            widget.stabilizingRunningInMain) {
+        if (showStabProgressIndicator &&
+            index == widget.stabilizedImageFilesStr.length) {
           return const FlashingBox();
         } else {
           return _buildImageTile(files[index]);
@@ -2210,12 +2278,10 @@ class GalleryPageState extends State<GalleryPage>
     );
   }
 
-  Future<void> _retryStabilization() async {
-    if (activeImagePreviewPath == null) return;
-    final String timestamp = path.basenameWithoutExtension(
-      activeImagePreviewPath!,
-    );
-    _retryingPhotoTimestamps.add(timestamp);
+  Future<void> _retryStabilization(String imagePath) async {
+    final String timestamp = path.basenameWithoutExtension(imagePath);
+
+    // Get paths first (before setState)
     final String rawPhotoPath =
         await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
       timestamp,
@@ -2233,6 +2299,22 @@ class GalleryPageState extends State<GalleryPage>
     final String stabThumbPath = FaceStabilizer.getStabThumbnailPath(
       stabilizedImagePath,
     );
+
+    // Clear caches BEFORE deleting files
+    ThumbnailService.instance.clearCache(stabThumbPath);
+
+    // Evict specific images from Flutter's cache
+    final stabImageProvider = FileImage(File(stabilizedImagePath));
+    final stabThumbProvider = FileImage(File(stabThumbPath));
+    stabImageProvider.evict();
+    stabThumbProvider.evict();
+
+    // Update state to show loader immediately
+    setState(() {
+      _retryingPhotoTimestamps.add(timestamp);
+    });
+
+    // Delete files
     final File stabImageFile = File(stabilizedImagePath);
     final File stabThumbFile = File(stabThumbPath);
     if (await stabImageFile.exists()) {
@@ -2241,15 +2323,20 @@ class GalleryPageState extends State<GalleryPage>
     if (await stabThumbFile.exists()) {
       await stabThumbFile.delete();
     }
+
+    // Reset DB
     await DB.instance.resetStabilizedColumnByTimestamp(
       projectOrientation,
       timestamp,
+      widget.projectId,
     );
+
+    // Trigger re-stabilization
     if (!mounted) return;
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text('Retrying stabilization...')));
-    widget.stabCallback(); // Navigator.of(context).pop();
+    ).showSnackBar(const SnackBar(content: Text('Retrying stabilization...')));
+    widget.stabCallback();
   }
 
   Future<void> _showImageOptionsMenu(File imageFile) async {
@@ -2323,7 +2410,7 @@ class GalleryPageState extends State<GalleryPage>
                 onTap: () {
                   Navigator.of(context).pop();
                   Future.delayed(Duration.zero, () async {
-                    await _retryStabilization();
+                    await _retryStabilization(imageFile.path);
                   });
                 },
               ),
@@ -2375,6 +2462,7 @@ class GalleryPageState extends State<GalleryPage>
                       builder: (context) => ManualStabilizationPage(
                         imagePath: imageFile.path,
                         projectId: widget.projectId,
+                        onSaveComplete: _loadImages,
                       ),
                     ),
                   );

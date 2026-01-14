@@ -21,6 +21,16 @@ class TransformHandlePainter extends CustomPainter {
   final bool showCornerHandles;
   final bool showEdgeHandles;
 
+  /// Scale factor from canvas resolution to display size.
+  /// Used to counter-scale handle sizes so they appear consistent on screen
+  /// regardless of canvas resolution (e.g., 1080p vs 8K).
+  ///
+  /// displayScale = previewWidth / canvasWidth
+  /// - If < 1: preview is smaller than canvas, handles drawn larger
+  /// - If > 1: preview is larger than canvas, handles drawn smaller
+  /// - If = 1: no scaling needed
+  final double displayScale;
+
   // Visual configuration
   final Color boundingBoxColor;
   final Color handleFillColor;
@@ -44,6 +54,7 @@ class TransformHandlePainter extends CustomPainter {
     this.showPivotPoint = false,
     this.showCornerHandles = true,
     this.showEdgeHandles = true,
+    this.displayScale = 1.0,
     this.boundingBoxColor = const Color(0xB3FFFFFF), // White at 70% opacity
     this.handleFillColor = Colors.white,
     this.handleStrokeColor = const Color(0xFF333333), // Dark gray border
@@ -58,6 +69,15 @@ class TransformHandlePainter extends CustomPainter {
     this.rotationHandleDistance = 30.0,
     this.handleStrokeWidth = 1.5,
   });
+
+  // Effective sizes after counter-scaling for display
+  double get _effectiveHandleSize => handleSize / displayScale;
+  double get _effectiveEdgeHandleSize => edgeHandleSize / displayScale;
+  double get _effectiveRotationHandleSize => rotationHandleSize / displayScale;
+  double get _effectiveRotationHandleDistance =>
+      rotationHandleDistance / displayScale;
+  double get _effectiveBoundingBoxWidth => boundingBoxWidth / displayScale;
+  double get _effectiveHandleStrokeWidth => handleStrokeWidth / displayScale;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -79,7 +99,7 @@ class TransformHandlePainter extends CustomPainter {
     final paint = Paint()
       ..color = boundingBoxColor
       ..style = PaintingStyle.stroke
-      ..strokeWidth = boundingBoxWidth;
+      ..strokeWidth = _effectiveBoundingBoxWidth;
 
     final path = Path()
       ..moveTo(corners[0].dx, corners[0].dy)
@@ -106,7 +126,7 @@ class TransformHandlePainter extends CustomPainter {
         _drawSquareHandle(
           canvas,
           position,
-          handleSize,
+          _effectiveHandleSize,
           isActive: isActive,
           isHovered: isHovered,
           rotation: state.rotationRadians,
@@ -125,7 +145,7 @@ class TransformHandlePainter extends CustomPainter {
         _drawCircleHandle(
           canvas,
           position,
-          edgeHandleSize / 2,
+          _effectiveEdgeHandleSize / 2,
           isActive: isActive,
           isHovered: isHovered,
         );
@@ -200,7 +220,7 @@ class TransformHandlePainter extends CustomPainter {
       Paint()
         ..color = strokeColor
         ..style = PaintingStyle.stroke
-        ..strokeWidth = handleStrokeWidth,
+        ..strokeWidth = _effectiveHandleStrokeWidth,
     );
   }
 
@@ -246,7 +266,7 @@ class TransformHandlePainter extends CustomPainter {
       Paint()
         ..color = strokeColor
         ..style = PaintingStyle.stroke
-        ..strokeWidth = handleStrokeWidth,
+        ..strokeWidth = _effectiveHandleStrokeWidth,
     );
   }
 
@@ -255,24 +275,25 @@ class TransformHandlePainter extends CustomPainter {
 
     final topMidpoint = state.edgeMidpoints[0];
     final rotationHandlePos =
-        state.getRotationHandlePosition(rotationHandleDistance);
+        state.getRotationHandlePosition(_effectiveRotationHandleDistance);
 
     final paint = Paint()
       ..color = const Color(0x99666666) // Subtle gray at 60% opacity
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
+      ..strokeWidth = _effectiveBoundingBoxWidth;
 
     // Draw solid line connector
     canvas.drawLine(topMidpoint, rotationHandlePos, paint);
   }
 
   void _drawRotationHandle(Canvas canvas) {
-    final position = state.getRotationHandlePosition(rotationHandleDistance);
+    final position =
+        state.getRotationHandlePosition(_effectiveRotationHandleDistance);
     final isActive = activeHandle == TransformHandle.rotationHandle;
     final isHovered = hoveredHandle == TransformHandle.rotationHandle;
 
-    final radius =
-        (isActive ? rotationHandleSize * 1.2 : rotationHandleSize) / 2;
+    final baseSize = _effectiveRotationHandleSize;
+    final radius = (isActive ? baseSize * 1.2 : baseSize) / 2;
 
     // Determine colors
     final fillColor = isActive
@@ -308,7 +329,7 @@ class TransformHandlePainter extends CustomPainter {
       Paint()
         ..color = strokeColor
         ..style = PaintingStyle.stroke
-        ..strokeWidth = handleStrokeWidth,
+        ..strokeWidth = _effectiveHandleStrokeWidth,
     );
 
     // Draw rotation icon (curved arrow)
@@ -320,7 +341,7 @@ class TransformHandlePainter extends CustomPainter {
     final paint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5
+      ..strokeWidth = _effectiveHandleStrokeWidth
       ..strokeCap = StrokeCap.round;
 
     // Draw a small curved arrow
@@ -362,12 +383,12 @@ class TransformHandlePainter extends CustomPainter {
 
   void _drawPivotPoint(Canvas canvas) {
     final pivot = state.pivot;
-    final size = 6.0;
+    final size = 6.0 / displayScale;
 
     final paint = Paint()
       ..color = pivotColor
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
+      ..strokeWidth = _effectiveHandleStrokeWidth;
 
     // Draw crosshair
     canvas.drawLine(
@@ -382,7 +403,7 @@ class TransformHandlePainter extends CustomPainter {
     );
 
     // Draw center circle
-    canvas.drawCircle(pivot, 3, paint);
+    canvas.drawCircle(pivot, 3.0 / displayScale, paint);
   }
 
   @override
@@ -393,7 +414,8 @@ class TransformHandlePainter extends CustomPainter {
         showRotationHandle != oldDelegate.showRotationHandle ||
         showPivotPoint != oldDelegate.showPivotPoint ||
         showCornerHandles != oldDelegate.showCornerHandles ||
-        showEdgeHandles != oldDelegate.showEdgeHandles;
+        showEdgeHandles != oldDelegate.showEdgeHandles ||
+        displayScale != oldDelegate.displayScale;
   }
 }
 

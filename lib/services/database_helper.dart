@@ -9,6 +9,7 @@ import '../utils/dir_utils.dart';
 import '../utils/notification_util.dart';
 import '../utils/settings_utils.dart';
 import '../utils/test_mode.dart' as test_config;
+import 'log_service.dart';
 
 class DB {
   static final DB _instance = DB._internal();
@@ -199,6 +200,31 @@ class DB {
   Future<int> deleteProject(int id) async {
     final db = await database;
     return await db.delete(projectTable, where: 'id = ?', whereArgs: [id]);
+  }
+
+  /// Deletes all database records associated with a project atomically.
+  /// Uses a transaction to ensure atomicity - either all deletions
+  /// succeed or none do.
+  ///
+  /// Deletes from: Photos, Videos, Setting tables, then Projects table.
+  /// Returns true if deletion was successful.
+  Future<bool> deleteProjectCascade(int projectId) async {
+    final db = await database;
+    try {
+      await db.transaction((txn) async {
+        await txn
+            .delete(photoTable, where: 'projectID = ?', whereArgs: [projectId]);
+        await txn
+            .delete(videoTable, where: 'projectID = ?', whereArgs: [projectId]);
+        await txn.delete(settingTable,
+            where: 'projectID = ?', whereArgs: [projectId.toString()]);
+        await txn.delete(projectTable, where: 'id = ?', whereArgs: [projectId]);
+      });
+      return true;
+    } catch (e) {
+      LogService.instance.log('Failed to delete project cascade: $e');
+      return false;
+    }
   }
 
   Future<String?> getProjectTypeByProjectId(int projectId) async {
@@ -490,13 +516,13 @@ class DB {
     }
   }
 
-  Future<bool> isFavoritePhoto(String timestamp) async {
+  Future<bool> isFavoritePhoto(String timestamp, int projectId) async {
     final db = await database;
     final results = await db.query(
       photoTable,
       columns: ['favorite'],
-      where: 'timestamp = ?',
-      whereArgs: [timestamp],
+      where: 'timestamp = ? AND projectID = ?',
+      whereArgs: [timestamp, projectId],
       limit: 1,
     );
 
@@ -536,22 +562,22 @@ class DB {
     return newId;
   }
 
-  Future<void> setPhotoAsFavorite(String timestamp) async {
+  Future<void> setPhotoAsFavorite(String timestamp, int projectId) async {
     final db = await database;
     await db.update(
       photoTable,
       {'favorite': 1},
-      where: 'timestamp = ?',
-      whereArgs: [timestamp],
+      where: 'timestamp = ? AND projectID = ?',
+      whereArgs: [timestamp, projectId],
     );
   }
 
-  Future<int> deletePhoto(int timestamp) async {
+  Future<int> deletePhoto(int timestamp, int projectId) async {
     final db = await database;
     return await db.delete(
       photoTable,
-      where: 'timestamp = ?',
-      whereArgs: [timestamp],
+      where: 'timestamp = ? AND projectID = ?',
+      whereArgs: [timestamp, projectId],
     );
   }
 
@@ -631,14 +657,15 @@ class DB {
   Future<void> resetStabilizedColumnByTimestamp(
     String projectOrientation,
     String timestamp,
+    int projectId,
   ) async {
     final db = await database;
     final String stabilizedColumn = getStabilizedColumn(projectOrientation);
     await db.update(
       photoTable,
       {stabilizedColumn: 0},
-      where: 'timestamp = ?',
-      whereArgs: [timestamp],
+      where: 'timestamp = ? AND projectID = ?',
+      whereArgs: [timestamp, projectId],
     );
   }
 
@@ -727,13 +754,14 @@ class DB {
   Future<dynamic> getPhotoColumnValueByTimestamp(
     String timestamp,
     String columnName,
+    int projectId,
   ) async {
     final db = await database;
     final results = await db.query(
       photoTable,
       columns: [columnName],
-      where: 'timestamp = ?',
-      whereArgs: [timestamp],
+      where: 'timestamp = ? AND projectID = ?',
+      whereArgs: [timestamp, projectId],
       limit: 1,
     );
 
@@ -762,23 +790,23 @@ class DB {
     );
   }
 
-  Future<void> setPhotoNoFacesFound(String timestamp) async {
+  Future<void> setPhotoNoFacesFound(String timestamp, int projectId) async {
     final db = await database;
     await db.update(
       photoTable,
       {'noFacesFound': 1},
-      where: 'timestamp = ?',
-      whereArgs: [timestamp],
+      where: 'timestamp = ? AND projectID = ?',
+      whereArgs: [timestamp, projectId],
     );
   }
 
-  Future<void> setPhotoStabFailed(String timestamp) async {
+  Future<void> setPhotoStabFailed(String timestamp, int projectId) async {
     final db = await database;
     await db.update(
       photoTable,
       {'stabFailed': 1},
-      where: 'timestamp = ?',
-      whereArgs: [timestamp],
+      where: 'timestamp = ? AND projectID = ?',
+      whereArgs: [timestamp, projectId],
     );
   }
 

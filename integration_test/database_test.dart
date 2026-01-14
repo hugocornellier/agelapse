@@ -449,7 +449,7 @@ void main() {
           'portrait',
         );
 
-        await DB.instance.setPhotoNoFacesFound('6666666666');
+        await DB.instance.setPhotoNoFacesFound('6666666666', projectId);
 
         final photo = await DB.instance.getPhotoByTimestamp(
           '6666666666',
@@ -476,12 +476,12 @@ void main() {
           'portrait',
         );
 
-        var isFav = await DB.instance.isFavoritePhoto('8888888888');
+        var isFav = await DB.instance.isFavoritePhoto('8888888888', projectId);
         expect(isFav, isFalse);
 
-        await DB.instance.setPhotoAsFavorite('8888888888');
+        await DB.instance.setPhotoAsFavorite('8888888888', projectId);
 
-        isFav = await DB.instance.isFavoritePhoto('8888888888');
+        isFav = await DB.instance.isFavoritePhoto('8888888888', projectId);
         expect(isFav, isTrue);
       });
 

@@ -153,6 +153,8 @@ class CameraUtils {
   }) async {
     String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
     final String filename = path.basename(image?.path ?? 'unknown');
+    String?
+        heicPathToDelete; // Track original HEIC for cleanup after conversion
     try {
       LogService.instance.log("[savePhoto] START: $filename");
 
@@ -289,6 +291,7 @@ class CameraUtils {
         LogService.instance.log(
           "[savePhoto] HEIC conversion successful: $jpgPath",
         );
+        heicPathToDelete = heicPath; // Mark original for cleanup
         imgPath = jpgPath;
         extension = ".jpg";
       }
@@ -437,6 +440,23 @@ class CameraUtils {
       return false;
     } finally {
       bytes = null;
+
+      // Clean up original HEIC file after successful conversion
+      if (heicPathToDelete != null) {
+        try {
+          final heicFile = File(heicPathToDelete);
+          if (await heicFile.exists()) {
+            await heicFile.delete();
+            LogService.instance.log(
+              '[savePhoto] Deleted original HEIC: $heicPathToDelete',
+            );
+          }
+        } catch (e) {
+          LogService.instance.log(
+            '[savePhoto] Failed to delete HEIC (non-fatal): $e',
+          );
+        }
+      }
     }
   }
 

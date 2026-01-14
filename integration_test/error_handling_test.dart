@@ -270,7 +270,7 @@ void main() {
         expect(count, 3);
 
         // Delete one
-        await DB.instance.deletePhoto(2);
+        await DB.instance.deletePhoto(2, projectId);
 
         count = await DB.instance.getPhotoCountByProjectID(projectId);
         expect(count, 2);
@@ -382,7 +382,7 @@ void main() {
         expect(unstab.length, 1);
 
         // Mark the other as no faces found
-        await DB.instance.setPhotoNoFacesFound('2');
+        await DB.instance.setPhotoNoFacesFound('2', projectId);
 
         unstab = await DB.instance.getUnstabilizedPhotos(projectId, 'portrait');
         expect(unstab.length, 0); // Both are "processed" now
