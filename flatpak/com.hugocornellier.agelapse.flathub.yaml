@@ -145,7 +145,7 @@ modules:
       # Pre-built Flutter bundle from GitHub release
       # TODO: Update URL and sha256 after uploading to GitHub releases
       - type: archive
-        url: https://github.com/hugocornellier/agelapse/releases/download/agelapse-v2.3.0-flatpak-sources/agelapse-linux-v2.3.0-bundle.tar.gz
+        url: https://github.com/hugocornellier/agelapse/releases/download/agelapse-v2.3.0/agelapse-linux-v2.3.0-bundle.tar.gz
         sha256: 17beab5e4478324adcfc10f7bf5824d5480a95ec30a76fdae9b9f92a89da98bd
         dest: bundle
 
