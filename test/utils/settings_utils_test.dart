@@ -28,6 +28,17 @@ void main() {
       }
     });
 
+    test('loadCameraTimer returns Future<int>', () async {
+      final result = SettingsUtil.loadCameraTimer('1');
+      expect(result, isA<Future<int>>());
+      // Await to handle async error (path_provider not available in tests)
+      try {
+        await result;
+      } on MissingPluginException {
+        // Expected in test environment without path_provider
+      }
+    });
+
     test('loadNotificationSetting returns Future<bool>', () {
       final result = SettingsUtil.loadNotificationSetting();
       expect(result, isA<Future<bool>>());

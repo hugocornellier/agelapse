@@ -154,6 +154,31 @@ class SettingsUtil {
     );
   }
 
+  /// Load auto-compile video setting (per-project).
+  /// When enabled, video is automatically compiled after stabilization.
+  /// When disabled, user must manually trigger compilation from Create page.
+  static Future<bool> loadAutoCompileVideo(String projectId) async {
+    try {
+      String value = await DB.instance.getSettingValueByTitle(
+        'auto_compile_video',
+        projectId,
+      );
+      return value.toLowerCase() == 'true';
+    } catch (e) {
+      return true; // Default to enabled for backwards compatibility
+    }
+  }
+
+  /// Save auto-compile video setting (per-project).
+  static Future<void> setAutoCompileVideo(
+      String projectId, bool enabled) async {
+    await DB.instance.setSettingByTitle(
+      'auto_compile_video',
+      enabled.toString(),
+      projectId,
+    );
+  }
+
   static Future<String> loadSelectedGuidePhoto(String projectId) async {
     return await DB.instance.getSettingValueByTitle(
       'selected_guide_photo',
@@ -376,6 +401,28 @@ class SettingsUtil {
     }
   }
 
+  /// Load gallery grid mode for desktop: 'auto' or 'manual'
+  /// Returns 'auto' on mobile (setting not applicable)
+  static Future<String> loadGalleryGridMode(String projectId) async {
+    final bool isDesktop =
+        Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+    if (!isDesktop) return 'auto';
+
+    try {
+      return await DB.instance.getSettingValueByTitle(
+        'gallery_grid_mode',
+        projectId,
+      );
+    } catch (_) {
+      return 'auto';
+    }
+  }
+
+  /// Save gallery grid mode for desktop
+  static Future<void> setGalleryGridMode(String projectId, String mode) async {
+    await DB.instance.setSettingByTitle('gallery_grid_mode', mode, projectId);
+  }
+
   static Future<int> loadGridModeIndex(String projectId) async {
     final String gridModeIndexAsStr;
     gridModeIndexAsStr = await DB.instance.getSettingValueByTitle(
@@ -406,6 +453,21 @@ class SettingsUtil {
 
   static Future<void> saveStabilizationMode(String mode) async {
     await DB.instance.setSettingByTitle('stabilization_mode', mode);
+  }
+
+  // ==================== Camera Timer ====================
+
+  /// Load camera timer duration (per-project): 0 = off, 3 = 3s, 10 = 10s
+  static Future<int> loadCameraTimer(String projectId) async {
+    try {
+      String timerValue = await DB.instance.getSettingValueByTitle(
+        'camera_timer_duration',
+        projectId,
+      );
+      return int.tryParse(timerValue) ?? 0;
+    } catch (e) {
+      return 0;
+    }
   }
 
   // ==================== Date Stamp Settings ====================

@@ -6,7 +6,7 @@ set(APPLICATION_ID "com.hugocornellier.agelapse")
 
 cmake_policy(SET CMP0063 NEW)
 
-set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
+set(CMAKE_INSTALL_RPATH "$ORIGIN/lib:$ORIGIN/../lib:/usr/lib:/usr/lib/x86_64-linux-gnu:/usr/lib/aarch64-linux-gnu")
 
 if(FLUTTER_TARGET_PLATFORM_SYSROOT)
   set(CMAKE_SYSROOT ${FLUTTER_TARGET_PLATFORM_SYSROOT})

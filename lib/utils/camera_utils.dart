@@ -128,15 +128,29 @@ class CameraUtils {
     }
   }
 
-  static Future<void> flashAndVibrate() async {
-    var hasVibrator = await Vibration.hasVibrator();
-    if (hasVibrator) {
-      LogService.instance.log("vibrating");
-      Vibration.vibrate(duration: 500, amplitude: 155);
-    } else {
-      LogService.instance.log("no vibrate");
+  /// Triggers haptic feedback after successful photo capture.
+  /// Only triggers on mobile platforms (iOS/Android).
+  /// Uses a short, strong vibration pattern for clear feedback.
+  static Future<void> triggerCaptureHaptic() async {
+    // Only vibrate on mobile platforms
+    if (!Platform.isAndroid && !Platform.isIOS) return;
+
+    try {
+      final hasVibrator = await Vibration.hasVibrator();
+      if (hasVibrator == true) {
+        // Short, strong vibration for capture feedback
+        await Vibration.vibrate(duration: 100, amplitude: 200);
+      }
+    } catch (e) {
+      // Vibration not available, continue silently
+      LogService.instance.log('Vibration error: $e');
     }
-    await Future.delayed(const Duration(milliseconds: 50));
+  }
+
+  /// @deprecated Use [triggerCaptureHaptic] instead.
+  /// Kept for backwards compatibility.
+  static Future<void> flashAndVibrate() async {
+    await triggerCaptureHaptic();
   }
 
   static Future<bool> savePhoto(
@@ -346,7 +360,7 @@ class CameraUtils {
           final (success, encoded) = cv.imencode('.jpg', rawImage);
           if (success) bytes = encoded;
         }
-        await File(imgPath).writeAsBytes(bytes);
+        await File(imgPath).writeAsBytes(bytes, flush: true);
       }
 
       if (applyMirroring) {
@@ -360,7 +374,7 @@ class CameraUtils {
           final (success, encoded) = cv.imencode('.jpg', rawImage);
           if (success) bytes = encoded;
         }
-        await File(imgPath).writeAsBytes(bytes);
+        await File(imgPath).writeAsBytes(bytes, flush: true);
       }
 
       int importedImageWidth = rawImage.cols;

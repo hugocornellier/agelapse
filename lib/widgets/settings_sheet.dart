@@ -81,6 +81,7 @@ class SettingsSheetState extends State<SettingsSheet> {
   String watermarkOpacity = "0.7";
   String resolution = "1080p";
   String aspectRatio = "16:9";
+  bool _autoCompileVideo = true;
   bool _isCustomResolution = false;
   String? _customResolutionError;
   final TextEditingController _customWidthController = TextEditingController();
@@ -91,6 +92,11 @@ class SettingsSheetState extends State<SettingsSheet> {
   int gridCount = 4;
   int _gridModeIndex = 0;
   String _stabilizationMode = 'slow';
+
+  // Gallery grid mode (desktop only)
+  String _galleryGridMode = 'auto';
+  final TextEditingController _manualColumnController = TextEditingController();
+  String? _manualColumnError;
 
   // Date stamp settings
   bool _galleryDateLabelsEnabled = false;
@@ -150,6 +156,7 @@ class SettingsSheetState extends State<SettingsSheet> {
     _customHeightController.dispose();
     _galleryCustomFormatController.dispose();
     _exportCustomFormatController.dispose();
+    _manualColumnController.dispose();
     super.dispose();
   }
 
@@ -252,6 +259,7 @@ class SettingsSheetState extends State<SettingsSheet> {
       SettingsUtil.loadAspectRatio(projectIdStr),
       SettingsUtil.loadFramerate(projectIdStr),
       SettingsUtil.loadProjectOrientation(projectIdStr),
+      SettingsUtil.loadAutoCompileVideo(projectIdStr),
     ]);
 
     resolution = results[0] as String;
@@ -260,6 +268,7 @@ class SettingsSheetState extends State<SettingsSheet> {
     final poSetting = results[3] as String;
     projectOrientation =
         poSetting[0].toUpperCase() + poSetting.substring(1).toLowerCase();
+    _autoCompileVideo = results[4] as bool;
 
     // Detect if resolution is custom (not a preset)
     _isCustomResolution = !_presetResolutions.contains(resolution);
@@ -308,9 +317,15 @@ class SettingsSheetState extends State<SettingsSheet> {
   }
 
   Future<int> _initializeGridCount() async {
-    gridCount = await SettingsUtil.loadGridAxisCount(
-      widget.projectId.toString(),
-    );
+    final projectIdStr = widget.projectId.toString();
+    final results = await Future.wait([
+      SettingsUtil.loadGridAxisCount(projectIdStr),
+      SettingsUtil.loadGalleryGridMode(projectIdStr),
+    ]);
+
+    gridCount = results[0] as int;
+    _galleryGridMode = results[1] as String;
+    _manualColumnController.text = gridCount.toString();
     setState(() {});
     return gridCount;
   }
@@ -450,7 +465,8 @@ class SettingsSheetState extends State<SettingsSheet> {
                         Icons.camera_alt_outlined,
                         _buildCameraSettings,
                       ),
-                    if (!widget.onlyShowVideoSettings)
+                    if (!widget.onlyShowVideoSettings &&
+                        (Platform.isAndroid || Platform.isIOS))
                       _buildSettingsSection(
                         'Notifications',
                         Icons.notifications_outlined,
@@ -465,15 +481,15 @@ class SettingsSheetState extends State<SettingsSheet> {
                       ),
                     if (!widget.onlyShowNotificationSettings)
                       _buildSettingsSection(
-                        'Watermark',
-                        Icons.branding_watermark_outlined,
-                        _buildWatermarkSettings,
-                      ),
-                    if (!widget.onlyShowNotificationSettings)
-                      _buildSettingsSection(
                         'Date Stamp',
                         Icons.calendar_today_outlined,
                         _buildDateStampSettings,
+                      ),
+                    if (!widget.onlyShowNotificationSettings)
+                      _buildSettingsSection(
+                        'Watermark',
+                        Icons.branding_watermark_outlined,
+                        _buildWatermarkSettings,
                       ),
                     if (!widget.onlyShowVideoSettings &&
                         !widget.onlyShowNotificationSettings)
@@ -857,62 +873,235 @@ class SettingsSheetState extends State<SettingsSheet> {
   }
 
   Widget _buildGallerySettings() {
+    final bool isDesktop =
+        Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+
     return Column(
       children: [
-        SettingListTile(
-          title: 'Grid columns',
-          contentWidget: FutureBuilder<int>(
-            future: _gridCountFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                );
-              } else if (snapshot.hasError) {
-                return const Text('Error');
-              } else if (snapshot.hasData) {
-                return StatefulBuilder(
-                  builder: (context, setState) {
-                    final bool isDesktop = Platform.isMacOS ||
-                        Platform.isWindows ||
-                        Platform.isLinux;
-                    final int maxSteps = isDesktop ? 12 : 5;
-
-                    return CustomDropdownButton<int>(
-                      value: gridCount.clamp(1, maxSteps),
-                      items: List.generate(maxSteps, (index) {
-                        return DropdownMenuItem<int>(
-                          value: index + 1,
-                          child: Text('${index + 1}'),
-                        );
-                      }),
-                      onChanged: (int? value) async {
-                        if (value != null) {
-                          setState(() {
-                            gridCount = value;
-                          });
-                          await DB.instance.setSettingByTitle(
-                            'gridAxisCount',
-                            value.toString(),
-                            widget.projectId.toString(),
-                          );
-                          widget.refreshSettings();
-                        }
-                      },
-                    );
+        // Grid Mode dropdown - desktop only
+        if (isDesktop)
+          SettingListTile(
+            title: 'Grid mode',
+            showDivider: true,
+            contentWidget: FutureBuilder<int>(
+              future: _gridCountFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  );
+                }
+                return CustomDropdownButton<String>(
+                  value: _galleryGridMode,
+                  items: const [
+                    DropdownMenuItem<String>(
+                      value: 'auto',
+                      child: Text('Auto'),
+                    ),
+                    DropdownMenuItem<String>(
+                      value: 'manual',
+                      child: Text('Manual'),
+                    ),
+                  ],
+                  onChanged: (String? value) async {
+                    if (value != null && value != _galleryGridMode) {
+                      setState(() {
+                        _galleryGridMode = value;
+                        _manualColumnError = null;
+                      });
+                      await SettingsUtil.setGalleryGridMode(
+                        widget.projectId.toString(),
+                        value,
+                      );
+                      widget.refreshSettings();
+                    }
                   },
                 );
-              }
-              return const Text('Error');
-            },
+              },
+            ),
+            infoContent:
+                'Auto: Tiles resize based on window width with optimized sizing.\n\n'
+                'Manual: Displays an exact number of columns regardless of window size.',
+            showInfo: true,
           ),
-          infoContent: '',
-          showInfo: false,
-        ),
+
+        // Grid columns control - behavior depends on mode and platform
+        _buildGridColumnsControl(isDesktop),
       ],
     );
+  }
+
+  Widget _buildGridColumnsControl(bool isDesktop) {
+    final bool showManualInput = isDesktop && _galleryGridMode == 'manual';
+
+    return SettingListTile(
+      title: 'Grid columns',
+      showDivider: false,
+      contentWidget: FutureBuilder<int>(
+        future: _gridCountFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            );
+          } else if (snapshot.hasError) {
+            return const Text('Error');
+          } else if (snapshot.hasData) {
+            if (showManualInput) {
+              return _buildManualColumnInput();
+            } else {
+              return _buildColumnDropdown(isDesktop);
+            }
+          }
+          return const Text('Error');
+        },
+      ),
+      infoContent: isDesktop && _galleryGridMode == 'manual'
+          ? 'Enter the exact number of columns to display (1-12).'
+          : 'Choose how many columns of photos to display in the gallery grid.',
+      showInfo: true,
+    );
+  }
+
+  Widget _buildColumnDropdown(bool isDesktop) {
+    return StatefulBuilder(
+      builder: (context, setLocalState) {
+        final int maxSteps = isDesktop ? 12 : 5;
+
+        return CustomDropdownButton<int>(
+          value: gridCount.clamp(1, maxSteps),
+          items: List.generate(maxSteps, (index) {
+            return DropdownMenuItem<int>(
+              value: index + 1,
+              child: Text('${index + 1}'),
+            );
+          }),
+          onChanged: (int? value) async {
+            if (value != null) {
+              setLocalState(() {
+                gridCount = value;
+              });
+              setState(() {
+                gridCount = value;
+              });
+              await DB.instance.setSettingByTitle(
+                'gridAxisCount',
+                value.toString(),
+                widget.projectId.toString(),
+              );
+              widget.refreshSettings();
+            }
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildManualColumnInput() {
+    return StatefulBuilder(
+      builder: (context, setLocalState) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 60,
+              child: TextField(
+                controller: _manualColumnController,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(2),
+                ],
+                style: const TextStyle(
+                  color: AppColors.settingsTextPrimary,
+                  fontSize: 14,
+                ),
+                decoration: InputDecoration(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 8,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(
+                      color: _manualColumnError != null
+                          ? Colors.red
+                          : AppColors.settingsTextTertiary,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(
+                      color: _manualColumnError != null
+                          ? Colors.red
+                          : AppColors.settingsTextTertiary,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(
+                      color: AppColors.settingsAccent,
+                    ),
+                  ),
+                ),
+                onSubmitted: (_) => _applyManualColumnCount(setLocalState),
+                onChanged: (_) {
+                  if (_manualColumnError != null) {
+                    setLocalState(() => _manualColumnError = null);
+                    setState(() => _manualColumnError = null);
+                  }
+                },
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.check, size: 20),
+              color: AppColors.settingsAccent,
+              onPressed: () => _applyManualColumnCount(setLocalState),
+              tooltip: 'Apply',
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _applyManualColumnCount(StateSetter setLocalState) async {
+    final input = _manualColumnController.text.trim();
+    final parsed = int.tryParse(input);
+
+    if (parsed == null || input.isEmpty) {
+      setLocalState(() => _manualColumnError = 'Enter a number');
+      setState(() => _manualColumnError = 'Enter a number');
+      return;
+    }
+    if (parsed < 1 || parsed > 12) {
+      setLocalState(() => _manualColumnError = 'Must be 1-12');
+      setState(() => _manualColumnError = 'Must be 1-12');
+      _manualColumnController.text = gridCount.toString();
+      return;
+    }
+
+    setLocalState(() {
+      _manualColumnError = null;
+      gridCount = parsed;
+    });
+    setState(() {
+      _manualColumnError = null;
+      gridCount = parsed;
+    });
+
+    await DB.instance.setSettingByTitle(
+      'gridAxisCount',
+      parsed.toString(),
+      widget.projectId.toString(),
+    );
+    widget.refreshSettings();
   }
 
   Widget _buildStabilizationSettings() {
@@ -931,7 +1120,28 @@ class SettingsSheetState extends State<SettingsSheet> {
           _buildOutputResolutionDisplay(),
         ],
         _buildFramerateDropdown(framerate ?? 30),
+        _buildAutoCompileVideoSwitch(),
       ],
+    );
+  }
+
+  Widget _buildAutoCompileVideoSwitch() {
+    return BoolSettingSwitch(
+      title: 'Auto-compile video',
+      initialValue: _autoCompileVideo,
+      showDivider: false,
+      showInfo: true,
+      infoContent:
+          'When enabled, your video is automatically updated after each photo you take.\n\n'
+          'Turn this off if you have a large project and want to save time. '
+          'You can then manually compile your video from the Create tab whenever you\'re ready.',
+      onChanged: (bool value) async {
+        setState(() => _autoCompileVideo = value);
+        await SettingsUtil.setAutoCompileVideo(
+          widget.projectId.toString(),
+          value,
+        );
+      },
     );
   }
 
@@ -1560,7 +1770,8 @@ class SettingsSheetState extends State<SettingsSheet> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildGridModeDropdown(),
-        _buildSaveToCameraRollSwitch(saveToCameraRoll),
+        if (Platform.isAndroid || Platform.isIOS)
+          _buildSaveToCameraRollSwitch(saveToCameraRoll),
         BoolSettingSwitch(
           title: 'Mirror front camera',
           initialValue: cameraMirror,

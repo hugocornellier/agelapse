@@ -448,6 +448,7 @@ class MainNavigationState extends State<MainNavigation> {
           refreshSettings: refreshSettings,
           clearRawAndStabPhotos: clearRawAndStabPhotos,
           settingsCache: _settingsCache,
+          minutesRemaining: minutesRemaining,
         ),
         InfoPage(
           projectId: widget.projectId,

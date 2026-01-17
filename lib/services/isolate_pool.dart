@@ -261,8 +261,12 @@ class IsolatePool {
         mat.dispose();
 
         final aspectRatio = composited.rows / composited.cols;
-        final height = (500 * aspectRatio).round();
-        final thumb = cv.resize(composited, (500, height));
+        final height = (800 * aspectRatio).round();
+        final thumb = cv.resize(
+          composited,
+          (800, height),
+          interpolation: cv.INTER_CUBIC,
+        );
         composited.dispose();
 
         final (success, jpgBytes) = cv.imencode(
@@ -337,6 +341,7 @@ class IsolatePool {
           srcMat,
           rotMat,
           (canvasWidth, canvasHeight),
+          flags: cv.INTER_CUBIC,
           borderMode: cv.BORDER_CONSTANT,
           borderValue: cv.Scalar.black,
         );

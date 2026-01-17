@@ -90,6 +90,7 @@ class StabilizationProgress {
     required int currentFrame,
     required int totalFrames,
     required int progressPercent,
+    String? eta,
     int? projectId,
   }) =>
       StabilizationProgress(
@@ -97,6 +98,7 @@ class StabilizationProgress {
         currentFrame: currentFrame,
         totalFrames: totalFrames,
         progressPercent: progressPercent,
+        eta: eta,
         projectId: projectId,
       );
 

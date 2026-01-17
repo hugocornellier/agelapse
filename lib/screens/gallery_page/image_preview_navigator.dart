@@ -4,13 +4,10 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
-import 'package:device_info_plus/device_info_plus.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../services/database_helper.dart';
 import '../../services/face_stabilizer.dart';
-import '../../services/thumbnail_service.dart';
 import '../../styles/styles.dart';
 import '../../utils/dir_utils.dart';
 import '../../utils/utils.dart';
@@ -18,9 +15,13 @@ import '../../utils/camera_utils.dart';
 import '../../utils/settings_utils.dart';
 import '../../utils/date_stamp_utils.dart';
 import '../../utils/capture_timezone.dart';
+import '../../utils/gallery_photo_operations.dart';
+import '../../utils/gallery_permission_handler.dart';
+import '../../utils/gallery_dialog_utils.dart';
 import '../manual_stab_page.dart';
 import '../stab_on_diff_face.dart';
 import 'gallery_widgets.dart';
+import 'gallery_image_menu.dart';
 
 class ImagePreviewNavigator extends StatefulWidget {
   final List<String> rawImageFiles;
@@ -905,22 +906,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
   }
 
   Future<void> _checkAndRequestPermissions() async {
-    if (Platform.isAndroid) {
-      final DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
-      final AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
-      final int sdkInt = androidInfo.version.sdkInt;
-      try {
-        if (sdkInt >= 33) {
-          await Permission.photos.request();
-          await Permission.videos.request();
-          await Permission.audio.request();
-        } else {
-          await Permission.storage.request();
-        }
-      } catch (e) {
-        // Ignore permission errors
-      }
-    }
+    await GalleryPermissionHandler.requestGalleryPermissions();
   }
 
   Future<void> _showOptionsMenu() async {
@@ -928,96 +914,16 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
 
     final imageFile = File(_currentImagePath);
 
-    await showDialog(
+    await GalleryImageMenu.show(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: AppColors.settingsCardBackground,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          contentPadding: EdgeInsets.zero,
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildMenuItem(
-                icon: Icons.calendar_today,
-                title: 'Change Date',
-                onTap: () {
-                  Navigator.of(dialogContext).pop();
-                  _showChangeDateDialog();
-                },
-              ),
-              const Divider(height: 1, color: AppColors.settingsDivider),
-              _buildMenuItem(
-                icon: Icons.video_stable,
-                title: 'Stabilize on Other Faces',
-                onTap: () {
-                  Navigator.of(dialogContext).pop();
-                  _navigateToStabDiffFace(imageFile);
-                },
-              ),
-              const Divider(height: 1, color: AppColors.settingsDivider),
-              _buildMenuItem(
-                icon: Icons.refresh,
-                title: 'Retry Stabilization',
-                onTap: () {
-                  Navigator.of(dialogContext).pop();
-                  _retryStabilization();
-                },
-              ),
-              const Divider(height: 1, color: AppColors.settingsDivider),
-              _buildMenuItem(
-                icon: Icons.photo,
-                title: 'Set as Guide Photo',
-                onTap: () {
-                  Navigator.of(dialogContext).pop();
-                  _setAsGuidePhoto();
-                },
-              ),
-              const Divider(height: 1, color: AppColors.settingsDivider),
-              _buildMenuItem(
-                icon: Icons.handyman,
-                title: 'Manual Stabilization',
-                onTap: () {
-                  Navigator.of(dialogContext).pop();
-                  _navigateToManualStabilization(imageFile);
-                },
-              ),
-              const Divider(height: 1, color: AppColors.settingsDivider),
-              _buildMenuItem(
-                icon: Icons.delete,
-                title: 'Delete Image',
-                iconColor: Colors.red,
-                onTap: () {
-                  Navigator.of(dialogContext).pop();
-                  _showDeleteDialog(imageFile);
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildMenuItem({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-    Color? iconColor,
-  }) {
-    return ListTile(
-      leading: Icon(
-        icon,
-        color: iconColor ?? AppColors.settingsTextSecondary,
-        size: 20,
-      ),
-      title: Text(
-        title,
-        style: TextStyle(fontSize: 14, color: AppColors.settingsTextPrimary),
-      ),
-      onTap: onTap,
+      imageFile: imageFile,
+      useAppColors: true,
+      onChangeDate: _showChangeDateDialog,
+      onStabDiffFace: () => _navigateToStabDiffFace(imageFile),
+      onRetryStab: _retryStabilization,
+      onSetGuidePhoto: _setAsGuidePhoto,
+      onManualStab: () => _navigateToManualStabilization(imageFile),
+      onDelete: () => _showDeleteDialog(imageFile),
     );
   }
 
@@ -1133,40 +1039,11 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
       timestamp,
       widget.projectId,
     );
-    final stabilizedImagePath =
-        await DirUtils.getStabilizedImagePathFromRawPathAndProjectOrientation(
-      widget.projectId,
-      rawPhotoPath,
-      widget.projectOrientation,
-    );
-    final stabThumbPath = FaceStabilizer.getStabThumbnailPath(
-      stabilizedImagePath,
-    );
 
-    // Clear caches BEFORE deleting files
-    ThumbnailService.instance.clearCache(stabThumbPath);
-
-    // Evict specific images from Flutter's cache
-    final stabImageProvider = FileImage(File(stabilizedImagePath));
-    final stabThumbProvider = FileImage(File(stabThumbPath));
-    stabImageProvider.evict();
-    stabThumbProvider.evict();
-
-    // Delete files
-    final stabImageFile = File(stabilizedImagePath);
-    final stabThumbFile = File(stabThumbPath);
-    if (await stabImageFile.exists()) {
-      await stabImageFile.delete();
-    }
-    if (await stabThumbFile.exists()) {
-      await stabThumbFile.delete();
-    }
-
-    // Reset DB
-    await DB.instance.resetStabilizedColumnByTimestamp(
-      widget.projectOrientation,
-      timestamp,
-      widget.projectId,
+    await GalleryPhotoOperations.retryStabilization(
+      imagePath: rawPhotoPath,
+      projectId: widget.projectId,
+      projectOrientation: widget.projectOrientation,
     );
 
     if (mounted) {
@@ -1182,21 +1059,15 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     final timestamp = _currentTimestamp;
     if (timestamp.isEmpty) return;
 
-    final photoRecord = await DB.instance.getPhotoByTimestamp(
-      timestamp,
-      widget.projectId,
+    final success = await GalleryPhotoOperations.setAsGuidePhoto(
+      timestamp: timestamp,
+      projectId: widget.projectId,
     );
-    if (photoRecord != null) {
-      await DB.instance.setSettingByTitle(
-        "selected_guide_photo",
-        photoRecord['id'].toString(),
-        widget.projectId.toString(),
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Guide photo updated')));
-      }
+
+    if (success && mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Guide photo updated')));
     }
   }
 
@@ -1214,31 +1085,9 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
   }
 
   Future<void> _showDeleteDialog(File imageFile) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: AppColors.settingsCardBackground,
-          title: Text(
-            'Delete Image?',
-            style: TextStyle(color: AppColors.settingsTextPrimary),
-          ),
-          content: Text(
-            'Do you want to delete this image?',
-            style: TextStyle(color: AppColors.settingsTextSecondary),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Delete', style: TextStyle(color: Colors.red)),
-            ),
-          ],
-        );
-      },
+    final confirmed = await GalleryDialogUtils.showDeleteConfirmation(
+      context,
+      useAppColors: true,
     );
 
     if (confirmed == true && mounted) {
@@ -1247,28 +1096,19 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
   }
 
   Future<void> _deleteImage(File imageFile) async {
-    final isStabilizedImage = imageFile.path.toLowerCase().contains(
-          "stabilized",
+    final success = await GalleryPhotoOperations.deletePhoto(
+      imageFile: imageFile,
+      projectId: widget.projectId,
+    );
+
+    if (!success) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to delete image')),
         );
-    File toDelete = imageFile;
-
-    if (isStabilizedImage) {
-      final timestamp = path.basenameWithoutExtension(imageFile.path);
-      final rawPhotoPath =
-          await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-        timestamp,
-        widget.projectId,
-      );
-      toDelete = File(rawPhotoPath);
+      }
+      return;
     }
-
-    final timestamp = path.basenameWithoutExtension(toDelete.path);
-
-    // Delete all related files
-    await _deleteAllRelatedFiles(toDelete);
-
-    // Remove from database
-    await DB.instance.deletePhoto(int.parse(timestamp), widget.projectId);
 
     // Reload images
     await widget.loadImages();
@@ -1280,37 +1120,6 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
       final newIndex = _currentIndex.clamp(0, _currentList.length - 1);
       setState(() => _currentIndex = newIndex);
       _pageController.jumpToPage(newIndex);
-    }
-  }
-
-  Future<void> _deleteAllRelatedFiles(File rawFile) async {
-    // Delete raw file
-    if (await rawFile.exists()) {
-      await rawFile.delete();
-    }
-
-    // Delete raw thumbnail
-    final rawThumbPath = rawFile.path
-        .replaceAll(DirUtils.photosRawDirname, DirUtils.thumbnailDirname)
-        .replaceAll(path.extension(rawFile.path), '.jpg');
-    if (await File(rawThumbPath).exists()) {
-      await File(rawThumbPath).delete();
-    }
-
-    // Delete stabilized image and thumbnail
-    final stabPath =
-        await DirUtils.getStabilizedImagePathFromRawPathAndProjectOrientation(
-      widget.projectId,
-      rawFile.path,
-      widget.projectOrientation,
-    );
-    if (await File(stabPath).exists()) {
-      await File(stabPath).delete();
-    }
-
-    final stabThumbPath = FaceStabilizer.getStabThumbnailPath(stabPath);
-    if (await File(stabThumbPath).exists()) {
-      await File(stabThumbPath).delete();
     }
   }
 }

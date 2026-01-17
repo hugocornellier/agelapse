@@ -1,6 +1,6 @@
 display_name: "AgeLapse"
 package_name: "agelapse"
-version: "2.3.0"
+version: "2.4.0"
 architecture: "amd64"
 
 section: "utils"
@@ -18,7 +18,7 @@ icon: "linux/packaging/deb/agelapse.png"
 
 dependencies:
   - ffmpeg
-  - mpv
+  - libmpv2 | libmpv1
 
 generic_name: "Timelapse Creator"
 categories:

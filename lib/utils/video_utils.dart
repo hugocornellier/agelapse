@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart' as kit;
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import '../services/ffmpeg_process_manager.dart';
 import '../services/log_service.dart';
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit_config.dart' as kitcfg;
@@ -31,6 +32,66 @@ class _DateRange {
 
 class VideoUtils {
   static int currentFrame = 1;
+
+  // Throttling for progress updates (max 10 updates/sec = 100ms interval)
+  static DateTime _lastProgressUpdate = DateTime.fromMillisecondsSinceEpoch(0);
+  static const Duration _progressThrottleInterval = Duration(milliseconds: 100);
+
+  // Throttling for FFmpeg log output
+  static int _logLineCount = 0;
+  static const int _logEveryNthLine =
+      5; // Log every 5th line for progress visibility
+
+  // ETA tracking for video compilation
+  static final Stopwatch _videoStopwatch = Stopwatch();
+  static int _totalFramesForEta = 0;
+
+  /// Resets the video compilation stopwatch. Call before starting compilation.
+  static void resetVideoStopwatch(int totalFrames) {
+    _videoStopwatch.reset();
+    _videoStopwatch.start();
+    _totalFramesForEta = totalFrames;
+  }
+
+  /// Stops the video compilation stopwatch. Call after compilation completes.
+  static void stopVideoStopwatch() {
+    _videoStopwatch.stop();
+  }
+
+  /// Resets the progress throttle state. For testing only.
+  @visibleForTesting
+  static void resetProgressThrottle() {
+    _lastProgressUpdate = DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
+  /// Calculates the ETA for video compilation based on frames processed.
+  /// Returns a formatted string like "2m 30s" or null if not enough data.
+  static String? calculateVideoEta(int framesProcessed) {
+    if (framesProcessed <= 0 || _totalFramesForEta <= 0) return null;
+    if (!_videoStopwatch.isRunning) return null;
+
+    final elapsedMs = _videoStopwatch.elapsedMilliseconds;
+    if (elapsedMs < 500) return null; // Wait for at least 500ms of data
+
+    final avgTimePerFrame = elapsedMs / framesProcessed;
+    final remainingFrames = _totalFramesForEta - framesProcessed;
+    if (remainingFrames <= 0) return "0m 0s";
+
+    final estimatedRemainingMs = (avgTimePerFrame * remainingFrames).toInt();
+    return _formatDuration(estimatedRemainingMs);
+  }
+
+  /// Formats milliseconds into a human-readable duration string.
+  static String _formatDuration(int milliseconds) {
+    final hours = milliseconds ~/ (1000 * 60 * 60);
+    final minutes = (milliseconds % (1000 * 60 * 60)) ~/ (1000 * 60);
+    final seconds = (milliseconds % (1000 * 60)) ~/ 1000;
+
+    if (hours > 0) {
+      return '${hours}h ${minutes}m ${seconds}s';
+    }
+    return '${minutes}m ${seconds}s';
+  }
 
   /// Generate a drawtext filter string for date stamps.
   /// Returns the filter string, or null if date stamp is disabled.
@@ -628,18 +689,30 @@ class VideoUtils {
               runInShell: false);
           FFmpegProcessManager.instance.registerProcess(proc);
 
+          // Reset throttle counters for new compilation
+          _logLineCount = 0;
+          _lastProgressUpdate = DateTime.now();
+
           proc.stdout
               .transform(utf8.decoder)
               .transform(const LineSplitter())
               .listen((line) {
-            LogService.instance.log("[FFMPEG] $line");
+            // Throttle stdout logging
+            _logLineCount++;
+            if (_logLineCount % _logEveryNthLine == 0) {
+              LogService.instance.log("[FFMPEG] $line");
+            }
           });
           proc.stderr
               .transform(utf8.decoder)
               .transform(const LineSplitter())
               .listen((line) {
-            LogService.instance.log("[FFMPEG] $line");
+            // Always parse for progress, but throttle logging
             parseFFmpegOutput(line, framerate, setCurrentFrame);
+            _logLineCount++;
+            if (_logLineCount % _logEveryNthLine == 0) {
+              LogService.instance.log("[FFMPEG] $line");
+            }
           });
 
           final code = await proc.exitCode;
@@ -676,10 +749,20 @@ class VideoUtils {
           LogService.instance.log(
             "[VIDEO] Using mobile (FFmpegKit) encoding path",
           );
+
+          // Reset throttle counters for new compilation
+          _logLineCount = 0;
+          _lastProgressUpdate = DateTime.now();
+
           kitcfg.FFmpegKitConfig.enableLogCallback((kitlog.Log log) {
             final String output = log.getMessage();
+            // Always parse for progress (internally throttled)
             parseFFmpegOutput(output, framerate, setCurrentFrame);
-            LogService.instance.log("[FFMPEG] $output");
+            // Throttle logging to reduce UI thread load
+            _logLineCount++;
+            if (_logLineCount % _logEveryNthLine == 0) {
+              LogService.instance.log("[FFMPEG] $output");
+            }
           });
 
           LogService.instance.log(
@@ -788,6 +871,8 @@ class VideoUtils {
     return framerates.last;
   }
 
+  /// Parses FFmpeg output to extract frame progress.
+  /// Throttled to max 10 updates/second to prevent UI lag.
   static void parseFFmpegOutput(
     String output,
     int framerate,
@@ -797,11 +882,20 @@ class VideoUtils {
     final match = frameRegex.allMatches(output).isNotEmpty
         ? frameRegex.allMatches(output).last
         : null;
-    if (match == null || setCurrentFrame == null) return;
+    if (match == null) return;
+
     final int videoFrame = int.parse(match.group(1)!);
     final int currFrame = videoFrame ~/ (30 / framerate);
     currentFrame = currFrame;
-    setCurrentFrame(currentFrame);
+
+    // Throttle callback to prevent UI lag (max 10 updates/sec)
+    if (setCurrentFrame != null) {
+      final now = DateTime.now();
+      if (now.difference(_lastProgressUpdate) >= _progressThrottleInterval) {
+        _lastProgressUpdate = now;
+        setCurrentFrame(currentFrame);
+      }
+    }
   }
 
   static Future<int> getStabilizedPhotoCount(int projectId) async {
@@ -1083,25 +1177,40 @@ class VideoUtils {
       );
       final int originalFileCount = files.length;
       final List<String> validFiles = [];
+      final List<String> orphanedFiles = [];
+
       for (final filePath in files) {
         final filename = path.basenameWithoutExtension(filePath);
         final timestamp = int.tryParse(filename);
         if (timestamp != null && validTimestamps.contains(timestamp)) {
           validFiles.add(filePath);
         } else {
-          // Orphaned file: exists in filesystem but not in DB - delete it
-          LogService.instance.log(
-            "[VIDEO] Cleaning up orphaned file (not in DB): $filePath",
-          );
-          try {
-            await File(filePath).delete();
-          } catch (e) {
-            LogService.instance.log(
-              "[VIDEO] Failed to delete orphaned file: $e",
-            );
-          }
+          orphanedFiles.add(filePath);
         }
       }
+
+      // Delete orphaned files in parallel (batched to avoid overwhelming filesystem)
+      if (orphanedFiles.isNotEmpty) {
+        LogService.instance.log(
+          "[VIDEO] Cleaning up ${orphanedFiles.length} orphaned files in parallel",
+        );
+        const int batchSize = 20;
+        for (int i = 0; i < orphanedFiles.length; i += batchSize) {
+          final batch = orphanedFiles.skip(i).take(batchSize);
+          await Future.wait(
+            batch.map((filePath) async {
+              try {
+                await File(filePath).delete();
+              } catch (e) {
+                LogService.instance.log(
+                  "[VIDEO] Failed to delete orphaned file: $e",
+                );
+              }
+            }),
+          );
+        }
+      }
+
       final int orphansRemoved = originalFileCount - validFiles.length;
       files = validFiles;
       LogService.instance.log(

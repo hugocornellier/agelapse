@@ -319,7 +319,9 @@ class DB {
     'guideOffsetYPortrait': '0.421875',
     'guideOffsetYLandscape': '0.421875',
     'gridAxisCount': '5',
+    'gallery_grid_mode': 'auto', // 'auto' or 'manual' (desktop only)
     'video_resolution': '1080p',
+    'auto_compile_video': 'true',
     'aspect_ratio': '16:9',
     'selected_guide_photo': 'not set',
     'stabilization_mode': 'slow',
@@ -332,6 +334,8 @@ class DB {
     'export_date_stamp_position': 'lower right',
     'export_date_stamp_size': '3',
     'export_date_stamp_opacity': '1.0',
+    // Camera timer
+    'camera_timer_duration': '0',
   };
 
   Future<Map<String, dynamic>?> getSettingByTitle(

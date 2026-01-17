@@ -452,6 +452,11 @@ class StabilizationService {
     try {
       _currentToken?.throwIfCancelled();
 
+      // Check if auto-compile is enabled
+      final autoCompileEnabled = await SettingsUtil.loadAutoCompileVideo(
+        projectId.toString(),
+      );
+
       final newestVideo = await DB.instance.getNewestVideoByProjectId(
         projectId,
       );
@@ -470,9 +475,22 @@ class StabilizationService {
       final newVideoNeededRaw = await DB.instance.getNewVideoNeeded(projectId);
       final newVideoNeeded = newVideoNeededRaw == 1;
 
-      if (newVideoNeeded ||
+      // Determine if video compilation is needed
+      final shouldCompile = newVideoNeeded ||
           ((videoIsNull || settingsHaveChanged || newPhotosStabilized) &&
-              stabPhotoCount > 1)) {
+              stabPhotoCount > 1);
+
+      // If auto-compile is disabled, mark that new video is needed but skip compilation
+      if (!autoCompileEnabled && shouldCompile) {
+        LogService.instance.log(
+          'StabilizationService: Auto-compile disabled, skipping video compilation',
+        );
+        // Mark that a new video is needed so user can compile manually
+        await DB.instance.setNewVideoNeeded(projectId);
+        return;
+      }
+
+      if (shouldCompile) {
         _state = StabilizationState.compilingVideo;
         _emitProgress(
           StabilizationProgress.compilingVideo(
@@ -485,22 +503,30 @@ class StabilizationService {
 
         _currentToken?.throwIfCancelled();
 
+        // Start ETA tracking for video compilation
+        VideoUtils.resetVideoStopwatch(stabPhotoCount);
+
         final result = await VideoUtils.createTimelapseFromProjectId(
           projectId,
           (currentFrame) {
             final pct = stabPhotoCount > 0
                 ? ((currentFrame * 100) ~/ stabPhotoCount)
                 : 0;
+            final eta = VideoUtils.calculateVideoEta(currentFrame);
             _emitProgress(
               StabilizationProgress.compilingVideo(
                 currentFrame: currentFrame,
                 totalFrames: stabPhotoCount,
                 progressPercent: pct,
+                eta: eta,
                 projectId: projectId,
               ),
             );
           },
         );
+
+        // Stop ETA tracking
+        VideoUtils.stopVideoStopwatch();
 
         if (newVideoNeeded && result) {
           DB.instance.setNewVideoNotNeeded(projectId);

@@ -34,7 +34,7 @@ class ImageUtils {
   static cv.Mat resize(cv.Mat src, {required int width}) {
     final aspectRatio = src.rows / src.cols;
     final height = (width * aspectRatio).round();
-    return cv.resize(src, (width, height));
+    return cv.resize(src, (width, height), interpolation: cv.INTER_CUBIC);
   }
 
   /// Resize image to exact dimensions
@@ -43,7 +43,7 @@ class ImageUtils {
     required int width,
     required int height,
   }) {
-    return cv.resize(src, (width, height));
+    return cv.resize(src, (width, height), interpolation: cv.INTER_CUBIC);
   }
 
   /// Rotate 90 degrees clockwise

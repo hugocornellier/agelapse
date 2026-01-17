@@ -53,7 +53,8 @@ class ProgressWidget extends StatelessWidget {
           ),
         ] else if (videoCreationActiveInMain && selectedIndex != 3) ...[
           InProgress(
-            message: "Compiling video... $progressPercentAsStr",
+            message:
+                "Compiling video • $progressPercentAsStr • $minutesRemainingDisplay",
             goToPage: goToPage,
           ),
         ],

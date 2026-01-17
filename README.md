@@ -37,6 +37,23 @@ The face detection model used by AgeLapse is platform-dependent. On Mobile, Goog
 
 ## What's New / Changelog
 
+### v2.4.0
+
+#### New Features
+- Camera timer. Thanks to all users who requested this.
+  - Optional 3s or 10s countdown before taking photos
+  - Visual overlay with feedback
+- Toggle for automatic video compilation. Thanks to the user who suggested this. 
+  - Disable auto re-compilation after taking photos 
+  - Manually compile from the Create tab when ready
+
+#### Improvements
+- Added ETA to video compilation step
+
+#### Bug Fixes
+- Fixed camera mirroring on macOS
+- Fixed Linux camera initialization with proper libmpv bundling
+
 ### v2.3.0
 
 #### New Features

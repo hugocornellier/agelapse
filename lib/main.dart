@@ -45,7 +45,7 @@ Future<void> _main() async {
 
     const Size minDefault = Size(840, 450);
     const Size minIntro = Size(840, 750);
-    final Size initialDefault = hasProjects ? const Size(1200, 750) : minIntro;
+    final Size initialDefault = hasProjects ? const Size(1440, 900) : minIntro;
 
     final Size startSize = hasProjects
         ? initialDefault
@@ -60,7 +60,7 @@ Future<void> _main() async {
       size: startSize,
       minimumSize: hasProjects ? minDefault : minIntro,
       center: true,
-      title: 'AgeLapse v2.3.0',
+      title: 'AgeLapse v2.4.0',
     );
 
     await windowManager.waitUntilReadyToShow(options, () async {

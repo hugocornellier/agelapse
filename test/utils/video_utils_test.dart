@@ -169,6 +169,10 @@ void main() {
     });
 
     group('parseFFmpegOutput', () {
+      setUp(() {
+        VideoUtils.resetProgressThrottle();
+      });
+
       test('parses frame number from ffmpeg output', () {
         int? capturedFrame;
         VideoUtils.parseFFmpegOutput(
@@ -228,6 +232,9 @@ void main() {
           (frame) => capturedFrame = frame,
         );
         expect(capturedFrame, 60);
+
+        // Reset throttle for second call
+        VideoUtils.resetProgressThrottle();
 
         // Test with framerate 6 (5x slower)
         VideoUtils.parseFFmpegOutput(

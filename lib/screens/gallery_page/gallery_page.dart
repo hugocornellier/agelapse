@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:path/path.dart' as path;
 import 'package:permission_handler/permission_handler.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:wechat_assets_picker/wechat_assets_picker.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import '../../services/database_helper.dart';
@@ -28,6 +27,9 @@ import '../../widgets/gallery_date_stamp_provider.dart';
 import '../manual_stab_page.dart';
 import '../stab_on_diff_face.dart';
 import 'gallery_widgets.dart';
+import 'gallery_bottom_sheets.dart';
+import 'gallery_image_menu.dart';
+import 'gallery_export_handler.dart';
 import 'image_preview_navigator.dart';
 
 class GalleryPage extends StatefulWidget {
@@ -117,6 +119,7 @@ class GalleryPageState extends State<GalleryPage>
   VoidCallback? closeImportingDialog;
   int photosImported = 0, successfullyImported = 0;
   int gridAxisCount = int.parse(DB.defaultValues['gridAxisCount']!);
+  String _galleryGridMode = 'auto';
   double progress = 0;
   bool _isMounted = false;
   int _stabCount = 0;
@@ -509,6 +512,8 @@ class GalleryPageState extends State<GalleryPage>
     final int gridAxisCountRaw = await SettingsUtil.loadGridAxisCount(
       projectIdStr,
     );
+    final String galleryGridModeRaw =
+        await SettingsUtil.loadGalleryGridMode(projectIdStr);
     final bool galleryDateLabelsEnabledRaw =
         await SettingsUtil.loadGalleryDateLabelsEnabled(projectIdStr);
     final bool galleryRawDateLabelsEnabledRaw =
@@ -517,6 +522,7 @@ class GalleryPageState extends State<GalleryPage>
         await SettingsUtil.loadGalleryDateFormat(projectIdStr);
     setState(() {
       gridAxisCount = gridAxisCountRaw;
+      _galleryGridMode = galleryGridModeRaw;
       projectOrientation = projectOrientationRaw;
       _galleryDateLabelsEnabled = galleryDateLabelsEnabledRaw;
       _galleryRawDateLabelsEnabled = galleryRawDateLabelsEnabledRaw;
@@ -990,7 +996,15 @@ class GalleryPageState extends State<GalleryPage>
   double _tileExtentForGridCount(BuildContext context) {
     final bool isDesktop =
         Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+
     if (isDesktop) {
+      if (_galleryGridMode == 'manual') {
+        // Manual mode: use width / gridAxisCount (like mobile)
+        final double width = MediaQuery.of(context).size.width;
+        return width / gridAxisCount;
+      }
+
+      // Auto mode: use fixed pixel steps (existing behavior)
       const List<double> steps = [
         480,
         360,
@@ -1008,6 +1022,7 @@ class GalleryPageState extends State<GalleryPage>
       final int idx = gridAxisCount.clamp(1, steps.length) - 1;
       return steps[idx];
     } else {
+      // Mobile: always use width / gridAxisCount
       final double width = MediaQuery.of(context).size.width;
       return width / gridAxisCount;
     }
@@ -1119,225 +1134,13 @@ class GalleryPageState extends State<GalleryPage>
     );
   }
 
-  Widget _buildOptionsBottomSheet(
-    BuildContext context,
-    String title,
-    List<Widget> content,
-  ) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20.0, 12.0, 20.0, 20.0),
-      decoration: const BoxDecoration(
-        color: Color(0xff1a1a1a),
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(20.0),
-          topRight: Radius.circular(20.0),
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.white24,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                  letterSpacing: -0.3,
-                ),
-              ),
-              GestureDetector(
-                onTap: () => Navigator.of(context).pop(),
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.close,
-                    color: Colors.white70,
-                    size: 18,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          ...content,
-          const SizedBox(height: 8),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildImportOptionTile({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback? onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: Colors.white, size: 22),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.5),
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.chevron_right,
-              color: Colors.white.withValues(alpha: 0.3),
-              size: 22,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildExportOptionToggle({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required bool isSelected,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return GestureDetector(
-      onTap: () => onChanged(!isSelected),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? Colors.white.withValues(alpha: 0.08)
-              : Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected
-                ? AppColors.settingsAccent.withValues(alpha: 0.5)
-                : Colors.white.withValues(alpha: 0.08),
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? AppColors.settingsAccent.withValues(alpha: 0.2)
-                    : Colors.white.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                icon,
-                color: isSelected ? AppColors.settingsAccent : Colors.white,
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.5),
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                color:
-                    isSelected ? AppColors.settingsAccent : Colors.transparent,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: isSelected
-                      ? AppColors.settingsAccent
-                      : Colors.white.withValues(alpha: 0.3),
-                  width: 2,
-                ),
-              ),
-              child: isSelected
-                  ? const Icon(Icons.check, color: Colors.white, size: 16)
-                  : null,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _showImportOptionsBottomSheet(BuildContext context) {
     final bool isMobile = Platform.isAndroid || Platform.isIOS;
     final bool isDesktop =
         Platform.isMacOS || Platform.isWindows || Platform.isLinux;
     final List<Widget> content = [
       if (isMobile) ...[
-        _buildImportOptionTile(
+        GalleryBottomSheets.buildImportOptionTile(
           icon: Icons.photo_library_outlined,
           title: 'Photo Library',
           subtitle: 'Select photos from your device',
@@ -1354,7 +1157,7 @@ class GalleryPageState extends State<GalleryPage>
         ),
         const SizedBox(height: 10),
       ],
-      _buildImportOptionTile(
+      GalleryBottomSheets.buildImportOptionTile(
         icon: Icons.folder_outlined,
         title: isDesktop ? 'Browse Files' : 'Files',
         subtitle:
@@ -1375,7 +1178,8 @@ class GalleryPageState extends State<GalleryPage>
       context: context,
       backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
-        return _buildOptionsBottomSheet(context, 'Import Photos', content);
+        return GalleryBottomSheets.buildOptionsSheet(
+            context, 'Import Photos', content);
       },
     );
   }
@@ -1463,338 +1267,15 @@ class GalleryPageState extends State<GalleryPage>
   }
 
   void _showExportOptionsBottomSheet(BuildContext context) {
-    bool exportRawFiles = true;
-    bool exportStabilizedFiles = false;
-    showModalBottomSheet(
+    GalleryExportHandler.showExportOptionsSheet(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext context) {
-        bool localExportingToZip = false;
-        bool exportSuccessful = false;
-        double exportProgressPercent = 0;
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) {
-            void setExportProgress(double exportProgressIn) {
-              setState(() {
-                exportProgressPercent = (exportProgressIn * 10).round() / 10;
-              });
-            }
-
-            List<Widget> content = [
-              if (!localExportingToZip && !exportSuccessful) ...[
-                _buildExportOptionToggle(
-                  icon: Icons.image_outlined,
-                  title: 'Raw Photos',
-                  subtitle: 'Original unprocessed images',
-                  isSelected: exportRawFiles,
-                  onChanged: (value) => setState(() => exportRawFiles = value),
-                ),
-                const SizedBox(height: 10),
-                _buildExportOptionToggle(
-                  icon: Icons.auto_fix_high_outlined,
-                  title: 'Stabilized Photos',
-                  subtitle: 'Face-aligned processed images',
-                  isSelected: exportStabilizedFiles,
-                  onChanged: (value) =>
-                      setState(() => exportStabilizedFiles = value),
-                ),
-                const SizedBox(height: 20),
-                GestureDetector(
-                  onTap: () async {
-                    if (!exportRawFiles && !exportStabilizedFiles) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Please select at least one type of files to export',
-                          ),
-                        ),
-                      );
-                      return;
-                    }
-                    setState(() {
-                      localExportingToZip = true;
-                    });
-
-                    String? dateStampTempDir;
-                    try {
-                      Map<String, List<String>> filesToExport = {
-                        'Raw': [],
-                        'Stabilized': [],
-                      };
-                      if (exportRawFiles) {
-                        filesToExport['Raw']!.addAll(widget.imageFilesStr);
-                      }
-                      if (exportStabilizedFiles) {
-                        String stabilizedDir = await DirUtils
-                            .getStabilizedDirPathFromProjectIdAndOrientation(
-                          widget.projectId,
-                          projectOrientation!,
-                        );
-                        List<String> stabilizedFiles =
-                            await listFilesInDirectory(stabilizedDir);
-
-                        // Check if date stamp export is enabled
-                        final dateStampEnabled =
-                            await SettingsUtil.loadExportDateStampEnabled(
-                          projectIdStr,
-                        );
-                        LogService.instance.log(
-                          "[EXPORT] Date stamp enabled: $dateStampEnabled, stabilized files: ${stabilizedFiles.length}",
-                        );
-
-                        if (dateStampEnabled && stabilizedFiles.isNotEmpty) {
-                          // Load date stamp settings
-                          final dateFormat =
-                              await SettingsUtil.loadExportDateStampFormat(
-                            projectIdStr,
-                          );
-                          final datePosition =
-                              await SettingsUtil.loadExportDateStampPosition(
-                            projectIdStr,
-                          );
-                          final dateSize =
-                              await SettingsUtil.loadExportDateStampSize(
-                            projectIdStr,
-                          );
-                          final dateOpacity =
-                              await SettingsUtil.loadExportDateStampOpacity(
-                            projectIdStr,
-                          );
-
-                          // Load watermark settings for overlap prevention
-                          final watermarkEnabled =
-                              await SettingsUtil.loadWatermarkSetting(
-                            projectIdStr,
-                          );
-                          final String? watermarkPos = watermarkEnabled
-                              ? (await DB.instance.getSettingValueByTitle(
-                                  'watermark_position',
-                                ))
-                                  .toLowerCase()
-                              : null;
-
-                          // Load timezone offsets for accurate date stamps
-                          final captureOffsetMap =
-                              await CaptureTimezone.loadOffsetsForFiles(
-                            stabilizedFiles,
-                            widget.projectId,
-                          );
-
-                          // Create temp directory for date-stamped files
-                          final tempBase = await DirUtils.getTemporaryDirPath();
-                          dateStampTempDir =
-                              '$tempBase/date_stamp_export_${DateTime.now().millisecondsSinceEpoch}';
-
-                          // Pre-process files with date stamps
-                          final processedMap =
-                              await DateStampUtils.processBatchWithDateStamps(
-                            inputPaths: stabilizedFiles,
-                            tempDir: dateStampTempDir,
-                            format: dateFormat,
-                            position: datePosition,
-                            sizePercent: dateSize,
-                            opacity: dateOpacity,
-                            captureOffsetMap: captureOffsetMap,
-                            watermarkPosition: watermarkPos,
-                            onProgress: (current, total) {
-                              // Show progress during pre-processing (0-30%)
-                              setExportProgress((current / total) * 30);
-                            },
-                          );
-
-                          // Use processed files for export
-                          filesToExport['Stabilized']!.addAll(
-                            stabilizedFiles.map(
-                              (original) => processedMap[original] ?? original,
-                            ),
-                          );
-                        } else {
-                          filesToExport['Stabilized']!.addAll(stabilizedFiles);
-                        }
-                      }
-
-                      // Adjust progress callback to account for pre-processing
-                      void adjustedProgress(double p) {
-                        // Map export progress (0-100) to (30-100) if date stamp was used
-                        if (dateStampTempDir != null) {
-                          setExportProgress(30 + (p * 0.7));
-                        } else {
-                          setExportProgress(p);
-                        }
-                      }
-
-                      String res = await GalleryUtils.exportZipFile(
-                        widget.projectId,
-                        widget.projectName,
-                        filesToExport,
-                        adjustedProgress,
-                      );
-                      if (res == 'success') {
-                        setState(() => exportSuccessful = true);
-                        if (Platform.isAndroid || Platform.isIOS) {
-                          _shareZipFile();
-                        }
-                      }
-                    } catch (e) {
-                      LogService.instance.log(e.toString());
-                    } finally {
-                      // Clean up temp directory
-                      if (dateStampTempDir != null) {
-                        try {
-                          final dir = Directory(dateStampTempDir);
-                          if (await dir.exists()) {
-                            await dir.delete(recursive: true);
-                          }
-                        } catch (_) {}
-                      }
-                      setState(() => localExportingToZip = false);
-                    }
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    decoration: BoxDecoration(
-                      color: (exportRawFiles || exportStabilizedFiles)
-                          ? AppColors.settingsAccent
-                          : AppColors.settingsAccent.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Center(
-                      child: Text(
-                        'Export to ZIP',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-              if (localExportingToZip) ...[
-                _buildExportProgressIndicator(exportProgressPercent),
-              ],
-              if (!localExportingToZip && exportSuccessful) ...[
-                _buildExportSuccessState(),
-              ],
-            ];
-            return _buildOptionsBottomSheet(context, 'Export Photos', content);
-          },
-        );
-      },
+      projectId: widget.projectId,
+      projectName: widget.projectName,
+      projectIdStr: projectIdStr,
+      projectOrientation: projectOrientation,
+      rawImageFiles: widget.imageFilesStr,
+      listFilesInDirectory: GalleryExportHandler.listFilesInDirectory,
     );
-  }
-
-  Widget _buildExportProgressIndicator(double progressPercent) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: SizedBox(
-              width: 28,
-              height: 28,
-              child: CircularProgressIndicator(
-                strokeWidth: 3,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  AppColors.settingsAccent,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Exporting...',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.9),
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '$progressPercent%',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.5),
-              fontSize: 14,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildExportSuccessState() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xff4CD964).withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.check_circle_outline,
-              color: Color(0xff4CD964),
-              size: 32,
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Export Complete!',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Your photos have been exported to a ZIP file',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.5),
-              fontSize: 13,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _shareZipFile() async {
-    String zipFileExportPath = await DirUtils.getZipFileExportPath(
-      widget.projectId,
-      widget.projectName,
-    );
-    final params = ShareParams(files: [XFile(zipFileExportPath)]);
-    final result = await SharePlus.instance.share(params);
-    if (result.status == ShareResultStatus.success) {
-      // LogService.instance.log('Share success.');
-    }
-  }
-
-  static Future<List<String>> listFilesInDirectory(String dirPath) async {
-    Directory directory = Directory(dirPath);
-    List<String> filePaths = [];
-    if (await directory.exists()) {
-      await for (final file in directory.list()) {
-        if (file is File) {
-          filePaths.add(file.path);
-        }
-      }
-    }
-    return filePaths;
   }
 
   Widget _buildImageTile(String imagePath) {
@@ -2221,7 +1702,10 @@ class GalleryPageState extends State<GalleryPage>
                       if (res == 'success') {
                         setState(() => exportSuccessful = true);
                         if (Platform.isAndroid || Platform.isIOS) {
-                          _shareZipFile();
+                          GalleryExportHandler.shareZipFile(
+                            widget.projectId,
+                            widget.projectName,
+                          );
                         }
                       }
                     } catch (e) {
@@ -2260,14 +1744,15 @@ class GalleryPageState extends State<GalleryPage>
                 ),
               ],
               if (localExportingToZip) ...[
-                _buildExportProgressIndicator(exportProgressPercent),
+                GalleryBottomSheets.buildExportProgressIndicator(
+                    exportProgressPercent),
               ],
               if (!localExportingToZip && exportSuccessful) ...[
-                _buildExportSuccessState(),
+                GalleryBottomSheets.buildExportSuccessState(),
               ],
             ];
 
-            return _buildOptionsBottomSheet(
+            return GalleryBottomSheets.buildOptionsSheet(
               context,
               'Export Selected',
               content,
@@ -2340,243 +1825,115 @@ class GalleryPageState extends State<GalleryPage>
   }
 
   Future<void> _showImageOptionsMenu(File imageFile) async {
-    await showDialog(
+    final timestamp = path.basenameWithoutExtension(imageFile.path);
+    await GalleryImageMenu.show(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xff121212),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8.0),
-          ),
-          contentPadding: EdgeInsets.zero,
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: Icon(
-                  Icons.calendar_today,
-                  color: Colors.white.withAlpha(204),
-                  size: 18.0,
-                ),
-                title: const Text(
-                  'Change Date',
-                  style: TextStyle(fontSize: 12, color: Colors.white),
-                ),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    _showChangeDateDialog(
-                      path.basenameWithoutExtension(imageFile.path),
-                    );
-                  });
-                },
-              ),
-              const Divider(),
-              ListTile(
-                leading: Icon(
-                  Icons.video_stable,
-                  color: Colors.white.withAlpha(150),
-                  size: 18.0,
-                ),
-                title: const Text(
-                  'Stabilize on Other Faces',
-                  style: TextStyle(fontSize: 12, color: Colors.white),
-                ),
-                onTap: () {
-                  StabDiffFacePage stabNewFaceScreen = StabDiffFacePage(
-                    projectId: projectId,
-                    imageTimestamp: path.basenameWithoutExtension(
-                      imageFile.path,
-                    ),
-                    reloadImagesInGallery: _loadImages,
-                    stabCallback: widget.stabCallback,
-                    userRanOutOfSpaceCallback: widget.userRanOutOfSpaceCallback,
-                    stabilizationRunningInMain: widget.stabilizingRunningInMain,
-                  );
-                  Utils.navigateToScreenReplace(context, stabNewFaceScreen);
-                },
-              ),
-              const Divider(),
-              ListTile(
-                leading: Icon(
-                  Icons.refresh,
-                  color: Colors.white.withAlpha(150),
-                  size: 18.0,
-                ),
-                title: const Text(
-                  'Retry Stabilization',
-                  style: TextStyle(fontSize: 12, color: Colors.white),
-                ),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  Future.delayed(Duration.zero, () async {
-                    await _retryStabilization(imageFile.path);
-                  });
-                },
-              ),
-              const Divider(),
-              ListTile(
-                leading: Icon(
-                  Icons.photo,
-                  color: Colors.white.withAlpha(150),
-                  size: 18.0,
-                ),
-                title: const Text(
-                  'Set as Guide Photo',
-                  style: TextStyle(fontSize: 12, color: Colors.white),
-                ),
-                onTap: () async {
-                  Navigator.of(context).pop();
-                  final photoRecord = await DB.instance.getPhotoByTimestamp(
-                    path.basenameWithoutExtension(imageFile.path),
-                    projectId,
-                  );
-                  if (photoRecord != null) {
-                    await DB.instance.setSettingByTitle(
-                      "selected_guide_photo",
-                      photoRecord['id'].toString(),
-                      projectId.toString(),
-                    );
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Guide photo updated')),
-                    );
-                  }
-                },
-              ),
-              const Divider(),
-              ListTile(
-                leading: Icon(
-                  Icons.handyman,
-                  color: Colors.white.withAlpha(150),
-                  size: 18.0,
-                ),
-                title: const Text(
-                  'Manual Stabilization',
-                  style: TextStyle(fontSize: 12, color: Colors.white),
-                ),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ManualStabilizationPage(
-                        imagePath: imageFile.path,
-                        projectId: widget.projectId,
-                        onSaveComplete: _loadImages,
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const Divider(),
-              ListTile(
-                leading: Icon(
-                  Icons.delete,
-                  color: Colors.red.withAlpha(204),
-                  size: 18.0,
-                ),
-                title: const Text(
-                  'Delete Image',
-                  style: TextStyle(fontSize: 12, color: Colors.white),
-                ),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _showDeleteDialog(imageFile);
-                },
-              ),
-            ],
+      imageFile: imageFile,
+      onChangeDate: () {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _showChangeDateDialog(timestamp);
+        });
+      },
+      onStabDiffFace: () {
+        StabDiffFacePage stabNewFaceScreen = StabDiffFacePage(
+          projectId: projectId,
+          imageTimestamp: timestamp,
+          reloadImagesInGallery: _loadImages,
+          stabCallback: widget.stabCallback,
+          userRanOutOfSpaceCallback: widget.userRanOutOfSpaceCallback,
+          stabilizationRunningInMain: widget.stabilizingRunningInMain,
+        );
+        Utils.navigateToScreenReplace(context, stabNewFaceScreen);
+      },
+      onRetryStab: () {
+        Future.delayed(Duration.zero, () async {
+          await _retryStabilization(imageFile.path);
+        });
+      },
+      onSetGuidePhoto: () async {
+        final photoRecord = await DB.instance.getPhotoByTimestamp(
+          timestamp,
+          projectId,
+        );
+        if (photoRecord != null) {
+          await DB.instance.setSettingByTitle(
+            "selected_guide_photo",
+            photoRecord['id'].toString(),
+            projectId.toString(),
+          );
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Guide photo updated')),
+          );
+        }
+      },
+      onManualStab: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ManualStabilizationPage(
+              imagePath: imageFile.path,
+              projectId: widget.projectId,
+              onSaveComplete: _loadImages,
+            ),
           ),
         );
       },
-    );
-  }
-
-  Widget _buildRawThumbnail(String filepath) {
-    final String timestamp = path.basenameWithoutExtension(filepath);
-    final String switched = filepath.replaceAll(
-      DirUtils.photosRawDirname,
-      DirUtils.thumbnailDirname,
-    );
-    final String thumbnailPath = path.join(
-      path.dirname(switched),
-      "$timestamp.jpg",
-    );
-
-    return GestureDetector(
-      onTap: () => _showImagePreviewDialog(File(filepath), isStabilized: false),
-      onLongPress: () => _showImageOptionsMenu(File(filepath)),
-      onSecondaryTap: () => _showImageOptionsMenu(File(filepath)),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final thumbnail = RawThumbnail(
-            thumbnailPath: thumbnailPath,
-            projectId: widget.projectId,
-          );
-
-          // Access settings via InheritedWidget - creates dependency
-          final config = GalleryDateStampProvider.of(context);
-
-          if (!config.rawLabelsEnabled) {
-            return thumbnail;
-          }
-
-          // Parse timestamp and format date
-          final int? timestampMs = int.tryParse(timestamp);
-          if (timestampMs == null) {
-            return thumbnail;
-          }
-
-          final String formattedDate = DateStampUtils.formatTimestamp(
-            timestampMs,
-            config.dateFormat,
-            captureOffsetMinutes: config.captureOffsetMap[timestamp],
-          );
-
-          return Stack(
-            children: [
-              thumbnail,
-              Positioned(
-                right: 4,
-                bottom: 4,
-                child: DateStampUtils.buildGalleryDateLabel(
-                  formattedDate,
-                  constraints.maxHeight,
-                ),
-              ),
-            ],
-          );
-        },
-      ),
+      onDelete: () => _showDeleteDialog(imageFile),
     );
   }
 
   final Set<String> _retryingPhotoTimestamps = {};
 
-  Widget _buildStabilizedThumbnail(String filepath) {
+  Widget _buildRawThumbnail(String filepath) =>
+      _buildThumbnailInternal(filepath, isStabilized: false);
+
+  Widget _buildStabilizedThumbnail(String filepath) =>
+      _buildThumbnailInternal(filepath, isStabilized: true);
+
+  Widget _buildThumbnailInternal(String filepath,
+      {required bool isStabilized}) {
     final String timestamp = path.basenameWithoutExtension(filepath);
-    if (_retryingPhotoTimestamps.contains(timestamp)) {
+
+    // Show loading indicator for retrying stabilized photos
+    if (isStabilized && _retryingPhotoTimestamps.contains(timestamp)) {
       return const FlashingBox();
     }
-    final String thumbnailPath = FaceStabilizer.getStabThumbnailPath(filepath);
+
+    // Compute thumbnail path based on photo type
+    final String thumbnailPath;
+    if (isStabilized) {
+      thumbnailPath = FaceStabilizer.getStabThumbnailPath(filepath);
+    } else {
+      final String switched = filepath.replaceAll(
+        DirUtils.photosRawDirname,
+        DirUtils.thumbnailDirname,
+      );
+      thumbnailPath = path.join(path.dirname(switched), "$timestamp.jpg");
+    }
+
     return GestureDetector(
-      onTap: () => _showImagePreviewDialog(File(filepath), isStabilized: true),
+      onTap: () =>
+          _showImagePreviewDialog(File(filepath), isStabilized: isStabilized),
       onLongPress: () => _showImageOptionsMenu(File(filepath)),
       onSecondaryTap: () => _showImageOptionsMenu(File(filepath)),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final thumbnail = StabilizedThumbnail(
-            thumbnailPath: thumbnailPath,
-            projectId: widget.projectId,
-          );
+          final Widget thumbnail = isStabilized
+              ? StabilizedThumbnail(
+                  thumbnailPath: thumbnailPath, projectId: widget.projectId)
+              : RawThumbnail(
+                  thumbnailPath: thumbnailPath, projectId: widget.projectId);
 
-          // Access settings via InheritedWidget - creates dependency
           final config = GalleryDateStampProvider.of(context);
+          final bool labelsEnabled = isStabilized
+              ? config.stabilizedLabelsEnabled
+              : config.rawLabelsEnabled;
 
-          if (!config.stabilizedLabelsEnabled) {
+          if (!labelsEnabled) {
             return thumbnail;
           }
 
-          // Parse timestamp and format date
           final int? timestampMs = int.tryParse(timestamp);
           if (timestampMs == null) {
             return thumbnail;

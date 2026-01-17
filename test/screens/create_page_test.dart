@@ -26,6 +26,7 @@ void main() {
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
         settingsCache: null,
+        minutesRemaining: '',
       );
 
       expect(widget.projectId, 1);
@@ -57,6 +58,7 @@ void main() {
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
         settingsCache: null,
+        minutesRemaining: '',
       );
 
       expect(widget.createState(), isA<CreatePageState>());
@@ -82,6 +84,7 @@ void main() {
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
         settingsCache: null,
+        minutesRemaining: '',
       );
 
       expect(widget.stabilizingRunningInMain, isTrue);
@@ -106,6 +109,7 @@ void main() {
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
         settingsCache: null,
+        minutesRemaining: '',
       );
 
       expect(widget.videoCreationActiveInMain, isTrue);
@@ -135,6 +139,7 @@ void main() {
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
         settingsCache: null,
+        minutesRemaining: '',
       );
 
       widget.goToPage(2);
@@ -163,6 +168,7 @@ void main() {
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
         settingsCache: null,
+        minutesRemaining: '',
       );
 
       await widget.cancelStabCallback();
@@ -191,6 +197,7 @@ void main() {
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
         settingsCache: null,
+        minutesRemaining: '',
       );
 
       await widget.hideNavBar();

@@ -590,10 +590,14 @@ class StabUtils {
           }
           mat.dispose();
 
-          // Resize to 500px width
+          // Resize to 800px width with high-quality interpolation
           final aspectRatio = composited.rows / composited.cols;
-          final height = (500 * aspectRatio).round();
-          final thumb = cv.resize(composited, (500, height));
+          final height = (800 * aspectRatio).round();
+          final thumb = cv.resize(
+            composited,
+            (800, height),
+            interpolation: cv.INTER_CUBIC,
+          );
           composited.dispose();
 
           final (success, jpgBytes) = cv.imencode(
@@ -1177,11 +1181,12 @@ class StabUtils {
     rotMat.set<double>(0, 2, rotMat.at<double>(0, 2) + offsetX);
     rotMat.set<double>(1, 2, rotMat.at<double>(1, 2) + offsetY);
 
-    // Apply affine transformation
+    // Apply affine transformation with cubic interpolation for smooth edges
     final cv.Mat dst = cv.warpAffine(
       srcMat,
       rotMat,
       (canvasWidth, canvasHeight),
+      flags: cv.INTER_CUBIC,
       borderMode: cv.BORDER_CONSTANT,
       borderValue: cv.Scalar.black,
     );
@@ -1233,6 +1238,7 @@ class StabUtils {
         srcMat,
         rotMat,
         (canvasWidth, canvasHeight),
+        flags: cv.INTER_CUBIC,
         borderMode: cv.BORDER_CONSTANT,
         borderValue: cv.Scalar.black,
       );

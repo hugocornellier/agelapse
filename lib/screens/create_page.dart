@@ -36,6 +36,7 @@ class CreatePage extends StatefulWidget {
   final Future<void> Function() refreshSettings;
   final void Function() clearRawAndStabPhotos;
   final SettingsCache? settingsCache;
+  final String minutesRemaining;
 
   const CreatePage({
     super.key,
@@ -55,6 +56,7 @@ class CreatePage extends StatefulWidget {
     required this.refreshSettings,
     required this.clearRawAndStabPhotos,
     required this.settingsCache,
+    required this.minutesRemaining,
   });
 
   @override
@@ -86,6 +88,13 @@ class CreatePageState extends State<CreatePage>
   bool _isWaiting = false;
   late AnimationController _animationController;
   late Animation<double> _opacityAnimation;
+
+  // Manual compile state (when auto-compile is disabled)
+  bool _autoCompileEnabled = true;
+  bool _manualCompileInProgress = false;
+  bool _videoExists = false;
+  DateTime? _lastVideoDate;
+  int _newPhotosSinceLastVideo = 0;
 
   @override
   void initState() {
@@ -173,21 +182,140 @@ class CreatePageState extends State<CreatePage>
         return;
       }
 
+      // Load auto-compile setting
+      _autoCompileEnabled = await SettingsUtil.loadAutoCompileVideo(
+        widget.projectId.toString(),
+      );
+
+      // Cache photo count before polling loop - it won't change during compilation
+      photoCount = await getStabilizedPhotoCount();
+
+      // If manual compile is in progress, show progress UI
+      if (_manualCompileInProgress) {
+        // Wait handled by _triggerManualCompilation
+        return;
+      }
+
       while (
           widget.stabilizingRunningInMain || widget.videoCreationActiveInMain) {
         await Future.delayed(const Duration(milliseconds: 300));
-        photoCount = await getStabilizedPhotoCount();
         final double percentUnrounded = widget.currentFrame / photoCount! * 100;
-        final num percent = num.parse(percentUnrounded.toStringAsFixed(1));
+        final String percent = percentUnrounded.toStringAsFixed(1);
+        final String etaDisplay = widget.minutesRemaining.isNotEmpty
+            ? widget.minutesRemaining
+            : "Calculating ETA";
         setState(() {
-          loadingText = "Compiling video...\n$percent% complete";
+          loadingText = "Compiling video...\n$percent% complete\n$etaDisplay";
         });
+      }
+
+      // Check if auto-compile is disabled - show manual compile options
+      if (!_autoCompileEnabled) {
+        await _checkVideoState();
+        if (!_videoExists) {
+          // No video exists, show compile button only
+          setState(() {
+            loadingComplete = true;
+          });
+          return;
+        }
+        // Video exists, show two-option UI
+        setState(() {
+          loadingComplete = true;
+        });
+        return;
       }
 
       setupVideoPlayer();
     } finally {
       _isWaiting = false;
     }
+  }
+
+  /// Checks if a video exists and gets metadata for the manual compile UI.
+  Future<void> _checkVideoState() async {
+    final String projectOrientation = await SettingsUtil.loadProjectOrientation(
+      widget.projectId.toString(),
+    );
+    final String videoPath = await DirUtils.getVideoOutputPath(
+      widget.projectId,
+      projectOrientation,
+    );
+    final File videoFile = File(videoPath);
+
+    _videoExists = await videoFile.exists() && await videoFile.length() > 0;
+
+    if (_videoExists) {
+      // Get video modification date
+      final stat = await videoFile.stat();
+      _lastVideoDate = stat.modified;
+
+      // Get newest video from DB to calculate new photos since
+      final newestVideo = await DB.instance.getNewestVideoByProjectId(
+        widget.projectId,
+      );
+      if (newestVideo != null) {
+        final int videoPhotoCount = newestVideo['photoCount'] ?? 0;
+        final int currentPhotoCount = photoCount ?? 0;
+        _newPhotosSinceLastVideo = currentPhotoCount - videoPhotoCount;
+        if (_newPhotosSinceLastVideo < 0) _newPhotosSinceLastVideo = 0;
+      }
+    }
+  }
+
+  /// Triggers manual video compilation when auto-compile is disabled.
+  Future<void> _triggerManualCompilation() async {
+    setState(() {
+      _manualCompileInProgress = true;
+      loadingComplete = false;
+      loadingText = "Preparing to compile...";
+    });
+
+    // Start ETA tracking
+    final int totalFrames = photoCount ?? 0;
+    VideoUtils.resetVideoStopwatch(totalFrames);
+
+    final result = await VideoUtils.createTimelapseFromProjectId(
+      widget.projectId,
+      (frame) {
+        final double percentUnrounded =
+            totalFrames > 0 ? (frame / totalFrames * 100) : 0;
+        final String percent = percentUnrounded.toStringAsFixed(1);
+        final String? eta = VideoUtils.calculateVideoEta(frame);
+        final String etaDisplay = eta ?? "Calculating ETA";
+        if (mounted) {
+          setState(() {
+            loadingText = "Compiling video...\n$percent% complete\n$etaDisplay";
+          });
+        }
+      },
+    );
+
+    VideoUtils.stopVideoStopwatch();
+
+    if (result) {
+      // Mark that video is no longer needed
+      DB.instance.setNewVideoNotNeeded(widget.projectId);
+    }
+
+    setState(() {
+      _manualCompileInProgress = false;
+    });
+
+    // Now setup the video player to show the newly compiled video
+    if (result) {
+      setupVideoPlayer();
+    } else {
+      setState(() {
+        loadingComplete = true;
+        loadingText = "Failed to compile video";
+      });
+    }
+  }
+
+  /// Views the last compiled video without recompiling.
+  void _viewLastVideo() {
+    setupVideoPlayer();
   }
 
   Future<void> _maybeEncodeWindowsVideo() async {
@@ -469,6 +597,14 @@ class CreatePageState extends State<CreatePage>
       return _buildNoPhotosMessage();
     }
 
+    // If auto-compile is disabled and not currently compiling, show manual options
+    if (!_autoCompileEnabled &&
+        !_manualCompileInProgress &&
+        !widget.stabilizingRunningInMain &&
+        !widget.videoCreationActiveInMain) {
+      return _buildManualCompileOptions();
+    }
+
     final bool isStabilizing = widget.stabilizingRunningInMain;
     final int percent = isStabilizing
         ? widget.progressPercent
@@ -565,6 +701,129 @@ class CreatePageState extends State<CreatePage>
                         ? AppColors.lightBlue
                         : AppColors.settingsAccent,
                   ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Builds the manual compile options UI when auto-compile is disabled.
+  Widget _buildManualCompileOptions() {
+    final String dateStr = _lastVideoDate != null
+        ? '${_lastVideoDate!.month}/${_lastVideoDate!.day}/${_lastVideoDate!.year}'
+        : 'Unknown';
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Container(
+          padding: const EdgeInsets.all(32),
+          decoration: BoxDecoration(
+            color: AppColors.settingsCardBackground,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: AppColors.settingsCardBorder,
+              width: 1,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.videocam_outlined,
+                size: 64,
+                color: AppColors.settingsTextSecondary,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _videoExists ? 'Video Available' : 'No Video Yet',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.settingsTextPrimary,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (_videoExists) ...[
+                Text(
+                  'Last compiled: $dateStr',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppColors.settingsTextSecondary,
+                  ),
+                ),
+                if (_newPhotosSinceLastVideo > 0) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    '$_newPhotosSinceLastVideo new photo${_newPhotosSinceLastVideo == 1 ? '' : 's'} since then',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: AppColors.settingsAccent,
+                    ),
+                  ),
+                ],
+              ] else ...[
+                Text(
+                  'You have ${photoCount ?? 0} stabilized photos',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppColors.settingsTextSecondary,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 24),
+              if (_videoExists) ...[
+                // View Last Video button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _viewLastVideo,
+                    icon: const Icon(Icons.play_arrow),
+                    label: const Text('View Last Video'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.settingsAccent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              // Compile New Video button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _triggerManualCompilation,
+                  icon: const Icon(Icons.refresh),
+                  label: Text(
+                      _videoExists ? 'Compile New Video' : 'Compile Video'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _videoExists
+                        ? AppColors.settingsCardBorder
+                        : AppColors.settingsAccent,
+                    foregroundColor: _videoExists
+                        ? AppColors.settingsTextPrimary
+                        : Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Auto-compile is disabled in Settings',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.settingsTextSecondary.withValues(alpha: 0.7),
                 ),
               ),
             ],

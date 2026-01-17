@@ -12,7 +12,6 @@ targets:
     deb:
       depends:
         - ffmpeg
-        - mpv
         - libmpv2 | libmpv1
       section: utils
       priority: optional
@@ -20,8 +19,9 @@ targets:
       homepage: "https://github.com/hugocornellier/agelapse"
       description: "AgeLapse - create stabilized aging timelapses"
       install_path: /opt/agelapse
-      bin:
-        - source: agelapse
-          symlink: /usr/bin/agelapse
+      postinstall_scripts:
+        - linux/packaging/deb/postinst.sh
+      preremove_scripts:
+        - linux/packaging/deb/prerm.sh
       desktop_file: packaging/linux/com.hugocornellier.agelapse.desktop
       icon: packaging/linux/icons/agelapse.png
