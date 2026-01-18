@@ -16,6 +16,7 @@ void main() {
         cancelStabCallback: () async {},
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
+        recompileVideoCallback: () async {},
         settingsCache: null,
       );
 
@@ -32,6 +33,7 @@ void main() {
         cancelStabCallback: () async {},
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
+        recompileVideoCallback: () async {},
         settingsCache: null,
       );
 
@@ -50,6 +52,7 @@ void main() {
         cancelStabCallback: () async {},
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
+        recompileVideoCallback: () async {},
         settingsCache: null,
       );
 
@@ -69,6 +72,7 @@ void main() {
         },
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
+        recompileVideoCallback: () async {},
         settingsCache: null,
       );
 
@@ -88,6 +92,7 @@ void main() {
           refreshCalled = true;
         },
         clearRawAndStabPhotos: () {},
+        recompileVideoCallback: () async {},
         settingsCache: null,
       );
 
@@ -107,6 +112,7 @@ void main() {
         clearRawAndStabPhotos: () {
           clearCalled = true;
         },
+        recompileVideoCallback: () async {},
         settingsCache: null,
       );
 
@@ -122,6 +128,7 @@ void main() {
         cancelStabCallback: () async {},
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
+        recompileVideoCallback: () async {},
         settingsCache: null,
       );
 
@@ -132,6 +139,7 @@ void main() {
         cancelStabCallback: () async {},
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
+        recompileVideoCallback: () async {},
         settingsCache: null,
       );
 
@@ -149,6 +157,7 @@ void main() {
         cancelStabCallback: () async {},
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
+        recompileVideoCallback: () async {},
         settingsCache: null,
       );
 

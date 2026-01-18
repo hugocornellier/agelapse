@@ -30,6 +30,21 @@ class _DateRange {
   _DateRange(this.date, this.startFrame, this.endFrame);
 }
 
+/// Data class for date stamp overlay filter info
+class DateStampOverlayInfo {
+  final String filterComplex;
+  final List<String> pngInputPaths;
+  final String tempDir;
+  final String outputMapLabel;
+
+  DateStampOverlayInfo({
+    required this.filterComplex,
+    required this.pngInputPaths,
+    required this.tempDir,
+    required this.outputMapLabel,
+  });
+}
+
 class VideoUtils {
   static int currentFrame = 1;
 
@@ -93,10 +108,10 @@ class VideoUtils {
     return '${minutes}m ${seconds}s';
   }
 
-  /// Generate a drawtext filter string for date stamps.
-  /// Returns the filter string, or null if date stamp is disabled.
-  /// This approach uses frame numbers instead of time, avoiding precision issues.
-  static Future<String?> _generateDateStampFilter({
+  /// Generate date stamp overlay info with PNG assets.
+  /// Returns DateStampOverlayInfo with filter_complex and PNG paths, or null if disabled.
+  /// This approach renders date stamps as PNGs with rounded corners matching gallery style.
+  static Future<DateStampOverlayInfo?> _generateDateStampOverlay({
     required int projectId,
     required String framesDir,
     required String orientation,
@@ -112,7 +127,7 @@ class VideoUtils {
     if (!dateStampEnabled) return null;
 
     LogService.instance
-        .log("[VIDEO] Date stamp enabled, generating drawtext filter");
+        .log("[VIDEO] Date stamp enabled, generating PNG overlay filter");
 
     // Load date stamp settings
     final dateFormat = await SettingsUtil.loadExportDateStampFormat(
@@ -122,9 +137,6 @@ class VideoUtils {
       projectIdStr,
     );
     final dateSize = await SettingsUtil.loadExportDateStampSize(projectIdStr);
-    final dateOpacity = await SettingsUtil.loadExportDateStampOpacity(
-      projectIdStr,
-    );
 
     // Load watermark settings for collision avoidance
     final watermarkEnabled = await SettingsUtil.loadWatermarkSetting(
@@ -159,54 +171,13 @@ class VideoUtils {
     if (files.isEmpty) return null;
 
     LogService.instance
-        .log("[VIDEO] Drawtext: Processing ${files.length} files");
+        .log("[VIDEO] DateStamp overlay: Processing ${files.length} files");
 
     // Load timezone offsets for accurate date stamps
     final captureOffsetMap = await CaptureTimezone.loadOffsetsForFiles(
       files,
       projectId,
     );
-
-    // Calculate font size (percentage of video height)
-    final fontSize = (videoHeight * dateSize / 100).round();
-
-    // Calculate position
-    int marginV = (videoHeight * 0.02).round();
-    int marginH = (videoWidth * 0.02).round();
-
-    // Check for watermark collision and adjust margin
-    final bool sameCornerAsWatermark =
-        watermarkPos != null && datePosition.toLowerCase() == watermarkPos;
-    if (sameCornerAsWatermark) {
-      marginV += (videoHeight * 0.05).round();
-    }
-
-    // Determine x and y position expressions for drawtext
-    String xPos, yPos;
-    switch (datePosition.toLowerCase()) {
-      case 'lower right':
-        xPos = 'w-tw-$marginH';
-        yPos = 'h-th-$marginV';
-        break;
-      case 'lower left':
-        xPos = '$marginH';
-        yPos = 'h-th-$marginV';
-        break;
-      case 'upper right':
-        xPos = 'w-tw-$marginH';
-        yPos = '$marginV';
-        break;
-      case 'upper left':
-        xPos = '$marginH';
-        yPos = '$marginV';
-        break;
-      default:
-        xPos = 'w-tw-$marginH';
-        yPos = 'h-th-$marginV';
-    }
-
-    // Convert opacity to alpha (0-1 for drawtext)
-    final alphaValue = dateOpacity.toStringAsFixed(2);
 
     // Build list of dates for each frame
     final List<String> frameDates = [];
@@ -254,34 +225,111 @@ class VideoUtils {
     }
 
     LogService.instance
-        .log("[VIDEO] Date ranges: ${dateRanges.length} unique ranges");
+        .log("[VIDEO] Date ranges: ${dateRanges.length} unique dates");
 
-    // Build drawtext filter chain
-    // Each unique date gets a drawtext filter with enable condition based on frame number
+    // Get unique dates for PNG generation
+    final uniqueDates = dateRanges.map((r) => r.date).toSet().toList();
+
+    // Generate date stamp PNG assets
+    final tempBaseDir = (await getTemporaryDirectory()).path;
+    final assets = await DateStampUtils.generateDateStampAssets(
+      uniqueDates: uniqueDates,
+      videoHeight: videoHeight,
+      sizePercent: dateSize,
+      baseTempDir: tempBaseDir,
+    );
+
+    if (assets == null || assets.dateToPath.isEmpty) {
+      LogService.instance.log("[VIDEO] Failed to generate date stamp PNGs");
+      return null;
+    }
+
+    // Fixed 8px margin to exactly match image preview
+    int marginV = 8;
+    int marginH = 8;
+
+    // Check for watermark collision and adjust margin
+    final bool sameCornerAsWatermark =
+        watermarkPos != null && datePosition.toLowerCase() == watermarkPos;
+    if (sameCornerAsWatermark) {
+      marginV += (videoHeight * 0.05).round();
+    }
+
+    // Build overlay filter chain
+    // Input 0 is the video frames, inputs 1+ are the date stamp PNGs
+    final List<String> pngPaths = [];
+    final Map<String, int> dateToInputIndex = {};
+
+    // Assign input indices to each unique date PNG
+    for (int i = 0; i < uniqueDates.length; i++) {
+      final date = uniqueDates[i];
+      final pngPath = assets.dateToPath[date];
+      if (pngPath != null) {
+        pngPaths.add(pngPath);
+        dateToInputIndex[date] = pngPaths.length; // 1-indexed (0 is video)
+      }
+    }
+
+    // Build filter_complex string
+    // Each overlay: [prev][inputN]overlay=x:y:enable='between(n,start,end)'[outN]
     final filterParts = <String>[];
-    for (final range in dateRanges) {
-      // Escape special characters for FFmpeg filter
-      final escapedDate = range.date
-          .replaceAll('\\', '\\\\')
-          .replaceAll("'", "'\\''")
-          .replaceAll(':', '\\:');
+    String currentLabel = '0'; // Start with input 0 (video)
+
+    for (int i = 0; i < dateRanges.length; i++) {
+      final range = dateRanges[i];
+      final inputIndex = dateToInputIndex[range.date];
+      if (inputIndex == null) continue;
 
       final enableExpr = range.startFrame == range.endFrame
           ? "eq(n\\,${range.startFrame})"
           : "between(n\\,${range.startFrame}\\,${range.endFrame})";
 
+      // Calculate x,y position based on corner setting
+      // For overlay, we position relative to video dimensions
+      String xExpr, yExpr;
+      switch (datePosition.toLowerCase()) {
+        case 'lower right':
+          xExpr = 'W-w-$marginH';
+          yExpr = 'H-h-$marginV';
+          break;
+        case 'lower left':
+          xExpr = '$marginH';
+          yExpr = 'H-h-$marginV';
+          break;
+        case 'upper right':
+          xExpr = 'W-w-$marginH';
+          yExpr = '$marginV';
+          break;
+        case 'upper left':
+          xExpr = '$marginH';
+          yExpr = '$marginV';
+          break;
+        default:
+          xExpr = 'W-w-$marginH';
+          yExpr = 'H-h-$marginV';
+      }
+
+      final nextLabel = 't$i';
       filterParts.add(
-          "drawtext=text='$escapedDate':fontfile=/System/Library/Fonts/Helvetica.ttc"
-          ":fontsize=$fontSize:fontcolor=white@$alphaValue"
-          ":borderw=2:bordercolor=black@$alphaValue"
-          ":x=$xPos:y=$yPos:enable='$enableExpr'");
+          "[$currentLabel][$inputIndex]overlay=x=$xExpr:y=$yExpr:enable='$enableExpr'[$nextLabel]");
+      currentLabel = nextLabel;
     }
 
-    final filterString = filterParts.join(',');
-    LogService.instance
-        .log("[VIDEO] Drawtext filter length: ${filterString.length} chars");
+    if (filterParts.isEmpty) {
+      LogService.instance.log("[VIDEO] No overlay filters generated");
+      return null;
+    }
 
-    return filterString;
+    final filterComplex = filterParts.join(';');
+    LogService.instance.log(
+        "[VIDEO] Overlay filter_complex: ${filterComplex.length} chars, ${pngPaths.length} PNGs");
+
+    return DateStampOverlayInfo(
+      filterComplex: filterComplex,
+      pngInputPaths: pngPaths,
+      tempDir: assets.tempDir,
+      outputMapLabel: currentLabel,
+    );
   }
 
   /// Get video dimensions from the first frame in a directory
@@ -492,7 +540,7 @@ class VideoUtils {
             projectOrientation,
           );
 
-          // Get frame dimensions for drawtext filter
+          // Get frame dimensions for date stamp overlay
           final dimensions = await _getFrameDimensions(framesDir);
           if (dimensions == null) {
             LogService.instance
@@ -501,8 +549,8 @@ class VideoUtils {
           }
           final (videoWidth, videoHeight) = dimensions;
 
-          // Generate drawtext filter for date stamps (if enabled)
-          final dateStampFilter = await _generateDateStampFilter(
+          // Generate date stamp overlay with PNG assets (if enabled)
+          final dateStampOverlay = await _generateDateStampOverlay(
             projectId: projectId,
             framesDir: framesDir,
             orientation: projectOrientation,
@@ -518,8 +566,23 @@ class VideoUtils {
             orientation: projectOrientation,
             onLog: (line) => LogService.instance.log("[FFMPEG] $line"),
             onProgress: setCurrentFrame,
-            dateStampFilter: dateStampFilter,
+            dateStampOverlay: dateStampOverlay,
           );
+
+          // Clean up date stamp temp PNGs
+          if (dateStampOverlay != null) {
+            try {
+              final tempDir = Directory(dateStampOverlay.tempDir);
+              if (await tempDir.exists()) {
+                await tempDir.delete(recursive: true);
+                LogService.instance
+                    .log("[VIDEO] Cleaned up date stamp temp PNGs");
+              }
+            } catch (e) {
+              LogService.instance
+                  .log("[VIDEO] Failed to clean up date stamp PNGs: $e");
+            }
+          }
           LogService.instance.log("[VIDEO] _encodeWindows returned: $ok");
           if (ok) {
             final String resolution = await SettingsUtil.loadVideoResolution(
@@ -568,7 +631,7 @@ class VideoUtils {
         projectOrientation,
       );
 
-      // Get frame dimensions for ASS subtitle generation
+      // Get frame dimensions for date stamp overlay
       final dimensions = await _getFrameDimensions(framesDir);
       if (dimensions == null) {
         LogService.instance
@@ -577,9 +640,8 @@ class VideoUtils {
       }
       final (videoWidth, videoHeight) = dimensions;
 
-      // Generate drawtext filter for date stamps (if enabled)
-      // This uses frame numbers instead of time, avoiding precision issues
-      String? dateStampFilter = await _generateDateStampFilter(
+      // Generate date stamp overlay with PNG assets (if enabled)
+      final dateStampOverlay = await _generateDateStampOverlay(
         projectId: projectId,
         framesDir: framesDir,
         orientation: projectOrientation,
@@ -587,8 +649,18 @@ class VideoUtils {
         videoHeight: videoHeight,
       );
 
-      // Build watermark filter components
+      // Build input arguments (video frames + date stamp PNGs + watermark)
+      String dateStampInputs = "";
+      if (dateStampOverlay != null) {
+        for (final pngPath in dateStampOverlay.pngInputPaths) {
+          dateStampInputs += "-i \"$pngPath\" ";
+        }
+      }
+
+      // Build watermark input
       String watermarkInput = "";
+      int watermarkInputIndex =
+          1 + (dateStampOverlay?.pngInputPaths.length ?? 0);
       String? watermarkFilterPart;
       if (watermarkEnabled &&
           Utils.isImage(watermarkFilePath) &&
@@ -607,18 +679,25 @@ class VideoUtils {
 
       // Build combined filter string
       String filterArgs = "";
-      if (watermarkFilterPart != null && dateStampFilter != null) {
-        // Both watermark and date stamp
-        // Apply drawtext first, then watermark overlay
-        final wmFilter = watermarkFilterPart.replaceFirst('[0:v]', '[dated]');
+      String mapArg = "";
+      if (dateStampOverlay != null && watermarkFilterPart != null) {
+        // Both date stamp overlay and watermark
+        // Chain: video -> date stamp overlays -> watermark overlay
+        final wmFilter = watermarkFilterPart
+            .replaceFirst('[0:v]', '[${dateStampOverlay.outputMapLabel}]')
+            .replaceFirst('[1:v]', '[$watermarkInputIndex:v]');
         filterArgs =
-            "-filter_complex \"[0:v]$dateStampFilter[dated];$wmFilter\"";
+            "-filter_complex \"${dateStampOverlay.filterComplex};$wmFilter\"";
+        // Extract output label from watermark filter (usually ends with [out] or similar)
+        final wmOutMatch = RegExp(r'\[(\w+)\]$').firstMatch(wmFilter);
+        mapArg = wmOutMatch != null ? "-map \"[${wmOutMatch.group(1)}]\"" : "";
+      } else if (dateStampOverlay != null) {
+        // Only date stamp overlay
+        filterArgs = "-filter_complex \"${dateStampOverlay.filterComplex}\"";
+        mapArg = "-map \"[${dateStampOverlay.outputMapLabel}]\"";
       } else if (watermarkFilterPart != null) {
         // Only watermark
         filterArgs = "-filter_complex \"$watermarkFilterPart\"";
-      } else if (dateStampFilter != null) {
-        // Only date stamp
-        filterArgs = "-vf \"$dateStampFilter\"";
       }
 
       final String listPath = await _buildConcatListFromDir(
@@ -655,9 +734,10 @@ class VideoUtils {
       String ffmpegCommand = "-y "
           "-f concat -safe 0 "
           "-i \"$listPath\" "
+          "$dateStampInputs"
           "$watermarkInput "
           "-vsync cfr -r 30 "
-          "$filterArgs "
+          "$filterArgs $mapArg "
           "-c:v $vCodec $vtRate "
           "-g 240 -movflags +faststart $codecTag "
           "-pix_fmt yuv420p "
@@ -806,6 +886,21 @@ class VideoUtils {
         LogService.instance.log("[VIDEO] ERROR in video compilation: $e");
         LogService.instance.log("[VIDEO] Stack trace: $stackTrace");
       }
+
+      // Clean up date stamp temp PNGs
+      if (dateStampOverlay != null) {
+        try {
+          final tempDir = Directory(dateStampOverlay.tempDir);
+          if (await tempDir.exists()) {
+            await tempDir.delete(recursive: true);
+            LogService.instance.log("[VIDEO] Cleaned up date stamp temp PNGs");
+          }
+        } catch (e) {
+          LogService.instance
+              .log("[VIDEO] Failed to clean up date stamp PNGs: $e");
+        }
+      }
+
       return success;
     } catch (e, stackTrace) {
       LogService.instance.log("[VIDEO] ERROR in createTimelapse: $e");
@@ -1291,14 +1386,15 @@ class VideoUtils {
     required String orientation,
     void Function(String line)? onLog,
     void Function(int frameIndex)? onProgress,
-    String? dateStampFilter,
+    DateStampOverlayInfo? dateStampOverlay,
   }) async {
     LogService.instance.log("[VIDEO] _encodeWindows started");
     LogService.instance.log("[VIDEO] framesDir: $framesDir");
     LogService.instance.log("[VIDEO] outputPath: $outputPath");
     LogService.instance.log("[VIDEO] fps: $fps");
-    if (dateStampFilter != null) {
-      LogService.instance.log("[VIDEO] Date stamp filter enabled");
+    if (dateStampOverlay != null) {
+      LogService.instance.log(
+          "[VIDEO] Date stamp overlay enabled with ${dateStampOverlay.pngInputPaths.length} PNGs");
     }
 
     final exe = await _resolveFfmpegPath();
@@ -1330,22 +1426,31 @@ class VideoUtils {
       "[VIDEO] Resolution: $resolution, Profile: $profile, Level: $level, Bitrate: ${kbps}k",
     );
 
-    // Use the drawtext filter for date stamps if provided
-    final String? videoFilter = dateStampFilter;
+    // Build FFmpeg arguments with overlay inputs if date stamp is enabled
+    final args = <String>['-y'];
 
-    final args = <String>[
-      '-y',
-      '-f',
-      'concat',
-      '-safe',
-      '0',
-      '-i',
-      listPath,
+    // Add video frames input (input 0)
+    args.addAll(['-f', 'concat', '-safe', '0', '-i', listPath]);
+
+    // Add date stamp PNG inputs (inputs 1, 2, 3, ...)
+    if (dateStampOverlay != null) {
+      for (final pngPath in dateStampOverlay.pngInputPaths) {
+        args.addAll(['-i', pngPath]);
+      }
+    }
+
+    // Add filter (either filter_complex for overlay or nothing)
+    if (dateStampOverlay != null) {
+      args.addAll(['-filter_complex', dateStampOverlay.filterComplex]);
+      args.addAll(['-map', '[${dateStampOverlay.outputMapLabel}]']);
+    }
+
+    // Video settings
+    args.addAll([
       '-vsync',
       'cfr',
       '-r',
       '$fps',
-      if (videoFilter != null) ...['-vf', videoFilter],
       '-pix_fmt',
       'yuv420p',
       '-c:v',
@@ -1363,7 +1468,7 @@ class VideoUtils {
       '-movflags',
       '+faststart',
       outputPath,
-    ];
+    ]);
 
     LogService.instance.log("[VIDEO] ffmpeg arguments: ${args.join(' ')}");
     LogService.instance.log("[VIDEO] Starting ffmpeg process...");

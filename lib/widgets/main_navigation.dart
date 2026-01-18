@@ -312,7 +312,6 @@ class MainNavigationState extends State<MainNavigation> {
           'landscape',
           projectIdStr,
         );
-        DB.instance.setSettingByTitle("aspect_ratio", "4:3", projectIdStr);
       } else {
         LogService.instance.log(
           "[processPickedFiles] importedPhotosOrientation == 'landscape' NOT true. importedPhotosOrientation = $importedPhotosOrientation",
@@ -382,6 +381,19 @@ class MainNavigationState extends State<MainNavigation> {
     // No waiting needed - state updates come via stream
   }
 
+  /// Trigger video recompilation immediately.
+  ///
+  /// Called when date stamp settings change. Sets the newVideoNeeded flag
+  /// and immediately triggers the stabilization service which will compile
+  /// the video (skipping stabilization if no photos need it).
+  Future<void> _recompileVideo() async {
+    LogService.instance.log("[MainNavigation] Triggering video recompilation");
+    await DB.instance.setNewVideoNeeded(widget.projectId);
+    // Trigger the stabilization service to immediately start video compilation
+    // (it will skip stabilization if no photos need it)
+    await _startStabilization();
+  }
+
   List<Widget> get _widgetOptions => [
         ProjectPage(
           projectId: widget.projectId,
@@ -394,6 +406,7 @@ class MainNavigationState extends State<MainNavigation> {
           settingsCache: _settingsCache,
           refreshSettings: refreshSettings,
           clearRawAndStabPhotos: clearRawAndStabPhotos,
+          recompileVideoCallback: _recompileVideo,
           photoTakenToday: _photoTakenToday,
           stabUpdateStream: _stabUpdateController.stream,
         ),
@@ -447,6 +460,7 @@ class MainNavigationState extends State<MainNavigation> {
           progressPercent: progressPercent,
           refreshSettings: refreshSettings,
           clearRawAndStabPhotos: clearRawAndStabPhotos,
+          recompileVideoCallback: _recompileVideo,
           settingsCache: _settingsCache,
           minutesRemaining: minutesRemaining,
         ),
@@ -516,6 +530,7 @@ class MainNavigationState extends State<MainNavigation> {
         settingsCache: _settingsCache,
         refreshSettings: refreshSettings,
         clearRawAndStabPhotos: clearRawAndStabPhotos,
+        recompileVideoCallback: _recompileVideo,
         minutesRemaining: minutesRemaining,
         userRanOutOfSpace: _userRanOutOfSpace,
         stabUpdateStream: _stabUpdateController.stream,

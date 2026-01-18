@@ -12,6 +12,7 @@ class SetUpNotificationsPage extends StatefulWidget {
   final Future<void> Function() cancelStabCallback;
   final Future<void> Function() refreshSettings;
   final void Function() clearRawAndStabPhotos;
+  final Future<void> Function() recompileVideoCallback;
   final SettingsCache? settingsCache;
 
   const SetUpNotificationsPage({
@@ -22,6 +23,7 @@ class SetUpNotificationsPage extends StatefulWidget {
     required this.cancelStabCallback,
     required this.refreshSettings,
     required this.clearRawAndStabPhotos,
+    required this.recompileVideoCallback,
     required this.settingsCache,
   });
 
@@ -137,6 +139,7 @@ class SetUpNotificationsPageState extends State<SetUpNotificationsPage> {
           onlyShowNotificationSettings: true,
           refreshSettings: widget.refreshSettings,
           clearRawAndStabPhotos: widget.clearRawAndStabPhotos,
+          recompileVideoCallback: widget.recompileVideoCallback,
         );
       },
     );

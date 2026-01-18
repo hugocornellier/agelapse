@@ -451,7 +451,8 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
             _exportDateStampFormat,
             captureOffsetMinutes: _captureOffsetMap[timestamp],
           );
-          imageWidget = _buildImageWithDateOverlay(imageWidget, formattedDate);
+          imageWidget =
+              _buildImageWithDateOverlay(imageWidget, formattedDate, imagePath);
         }
       }
 
@@ -462,7 +463,8 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     }
   }
 
-  Widget _buildImageWithDateOverlay(Widget imageWidget, String dateText) {
+  Widget _buildImageWithDateOverlay(
+      Widget imageWidget, String dateText, String imagePath) {
     // Calculate position based on setting
     Alignment alignment;
     switch (_exportDateStampPosition.toLowerCase()) {
@@ -484,54 +486,87 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Calculate proportional font size to match export appearance
-        // Export uses sizePercent of image height; preview uses constraints
-        final previewFontSize =
-            (constraints.maxHeight * _exportDateStampSize / 100).clamp(
-          10.0,
-          24.0,
-        );
+        // Calculate font size based on ACTUAL image dimensions, matching video output exactly
+        // We need to compute what the displayed image height will be
+        return FutureBuilder<ui.Image>(
+          future: _loadImageDimensions(imagePath),
+          builder: (context, snapshot) {
+            double previewFontSize = 14.0; // Default fallback
 
-        return Stack(
-          children: [
-            imageWidget,
-            Positioned.fill(
-              child: Align(
-                alignment: alignment,
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      dateText,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: previewFontSize,
-                        fontWeight: FontWeight.w500,
-                        shadows: const [
-                          Shadow(
-                            offset: Offset(1, 1),
-                            blurRadius: 2,
-                            color: Colors.black54,
+            if (snapshot.hasData) {
+              final image = snapshot.data!;
+              final imageWidth = image.width.toDouble();
+              final imageHeight = image.height.toDouble();
+
+              // Calculate how image scales to fit container (matching _buildResizableImage constraints)
+              final containerMaxWidth = MediaQuery.of(context).size.width * 0.9;
+              final containerMaxHeight =
+                  MediaQuery.of(context).size.height * 0.65;
+
+              // Compute scale factor (same as BoxFit.contain)
+              final scaleX = containerMaxWidth / imageWidth;
+              final scaleY = containerMaxHeight / imageHeight;
+              final scale = scaleX < scaleY ? scaleX : scaleY;
+
+              // Displayed image height
+              final displayedHeight = imageHeight * scale;
+
+              // Font size: same formula as video output
+              // Video uses: (videoHeight * sizePercent / 100).clamp(12.0, 200.0)
+              // For preview, we use displayed height with same percentage
+              previewFontSize = (displayedHeight * _exportDateStampSize / 100)
+                  .clamp(10.0, 48.0);
+            }
+
+            return Stack(
+              children: [
+                imageWidget,
+                Positioned.fill(
+                  child: Align(
+                    alignment: alignment,
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          dateText,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: previewFontSize,
+                            fontWeight: FontWeight.w500,
+                            shadows: const [
+                              Shadow(
+                                offset: Offset(1, 1),
+                                blurRadius: 2,
+                                color: Colors.black54,
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ),
-          ],
+              ],
+            );
+          },
         );
       },
     );
+  }
+
+  Future<ui.Image> _loadImageDimensions(String imagePath) async {
+    final bytes = await File(imagePath).readAsBytes();
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    return frame.image;
   }
 
   Widget _buildResizableImage(File imageFile) {
@@ -1027,7 +1062,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
       userRanOutOfSpaceCallback: widget.userRanOutOfSpaceCallback,
       stabilizationRunningInMain: widget.stabilizingRunningInMain,
     );
-    Utils.navigateToScreenReplace(context, screen);
+    Utils.navigateToScreen(context, screen);
   }
 
   Future<void> _retryStabilization() async {

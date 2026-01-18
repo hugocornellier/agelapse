@@ -6,16 +6,19 @@ import '../services/log_service.dart';
 import '../styles/styles.dart';
 import '../utils/notification_util.dart';
 import '../utils/test_mode.dart' as test_config;
+import '../utils/window_utils.dart';
 import 'main_navigation.dart';
 
 class CreateProjectSheet extends StatefulWidget {
   final bool isDefaultProject;
   final bool showCloseButton;
+  final bool isFullPage;
 
   const CreateProjectSheet({
     super.key,
     required this.isDefaultProject,
     this.showCloseButton = true,
+    this.isFullPage = false,
   });
 
   @override
@@ -46,6 +49,64 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.isFullPage) {
+      return _buildFullPageLayout();
+    }
+    return _buildSheetLayout();
+  }
+
+  Widget _buildFullPageLayout() {
+    return SafeArea(
+      top: false,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: IntrinsicHeight(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 32),
+                      const Text(
+                        'Create New Project',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 48),
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 16.0),
+                        child:
+                            Text('Pose', style: TextStyle(color: Colors.grey)),
+                      ),
+                      _buildImageSelector(),
+                      const SizedBox(height: 32),
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 0.0),
+                        child:
+                            Text('Name', style: TextStyle(color: Colors.grey)),
+                      ),
+                      _buildTextField(),
+                      const Spacer(),
+                      _buildActionButton(),
+                      const SizedBox(height: 48),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSheetLayout() {
     return Container(
       padding: const EdgeInsets.all(16.0),
       height: 500,
@@ -269,6 +330,11 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
       } catch (e) {
         LogService.instance.log("Error while setting up notifications: $e");
       }
+    }
+
+    // Transition window to default state after completing welcome flow
+    if (widget.isFullPage) {
+      await WindowUtils.transitionToDefaultWindowState();
     }
 
     if (!mounted) return;

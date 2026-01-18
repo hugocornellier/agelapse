@@ -1238,7 +1238,7 @@ class _CameraViewState extends State<CameraView>
                   : Platform.isWindows
                       // Windows: use FittedBox.contain - show full frame, letterbox as needed
                       ? Transform.scale(
-                          scaleX: isMirrored ? -1 : 1,
+                          scaleX: isMirrored ? 1 : -1,
                           child: AspectRatio(
                             aspectRatio: camera.aspectRatio,
                             child: CameraPreview(_controller!, child: null),

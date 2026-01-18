@@ -126,7 +126,10 @@ class WelcomePagePartTwoState extends State<WelcomePagePartTwo> {
   void navigateToNextPage({bool? takingGuidePhoto}) {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (context) => const CreateProjectPage(showCloseButton: false),
+        builder: (context) => const CreateProjectPage(
+          showCloseButton: false,
+          isFullPage: true,
+        ),
       ),
     );
   }

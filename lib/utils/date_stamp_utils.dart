@@ -647,4 +647,163 @@ Examples
     );
     return result;
   }
+
+  /// Render a date stamp as a transparent PNG matching the image preview style exactly.
+  /// Returns the PNG bytes, or null on failure.
+  /// [dateText] - The formatted date string to render
+  /// [videoHeight] - Height of the video for scaling the font size
+  /// [sizePercent] - Font size as percentage of video height (1-6)
+  static Future<ui.Image?> renderDateStampImage({
+    required String dateText,
+    required int videoHeight,
+    required int sizePercent,
+  }) async {
+    try {
+      // Calculate font size (percentage of video height, matching preview)
+      final fontSize = (videoHeight * sizePercent / 100).clamp(12.0, 200.0);
+
+      // Fixed padding and border radius to match image preview exactly
+      const double paddingH = 8.0;
+      const double paddingV = 4.0;
+      const double borderRadius = 4.0;
+
+      // Measure text to determine image dimensions
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: dateText,
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: FontWeight.w500,
+            color: Colors.white,
+            height: 1.0,
+            shadows: const [
+              Shadow(
+                offset: Offset(1, 1),
+                blurRadius: 2,
+                color: Color(0x8A000000), // Colors.black54
+              ),
+            ],
+          ),
+        ),
+        textDirection: ui.TextDirection.ltr,
+      );
+      textPainter.layout();
+
+      // Calculate image dimensions (text + padding)
+      final imageWidth = (textPainter.width + paddingH * 2).ceil();
+      final imageHeight = (textPainter.height + paddingV * 2).ceil();
+
+      // Create a picture recorder to draw on
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder);
+
+      // Draw rounded rectangle background (50% opacity black, matching preview)
+      final backgroundPaint = Paint()
+        ..color = Colors.black.withValues(alpha: 0.5)
+        ..style = PaintingStyle.fill;
+
+      final rrect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(0, 0, imageWidth.toDouble(), imageHeight.toDouble()),
+        Radius.circular(borderRadius),
+      );
+      canvas.drawRRect(rrect, backgroundPaint);
+
+      // Draw text centered in the box
+      textPainter.paint(canvas, Offset(paddingH, paddingV));
+
+      // Convert to image
+      final picture = recorder.endRecording();
+      final image = await picture.toImage(imageWidth, imageHeight);
+
+      return image;
+    } catch (e) {
+      LogService.instance.log("[DATE_STAMP] renderDateStampImage failed: $e");
+      return null;
+    }
+  }
+
+  /// Render a date stamp PNG and save to file.
+  /// Returns true if successful.
+  static Future<bool> renderDateStampPng({
+    required String dateText,
+    required String outputPath,
+    required int videoHeight,
+    required int sizePercent,
+  }) async {
+    try {
+      final image = await renderDateStampImage(
+        dateText: dateText,
+        videoHeight: videoHeight,
+        sizePercent: sizePercent,
+      );
+      if (image == null) return false;
+
+      // Encode to PNG
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) return false;
+
+      // Write to file
+      final file = File(outputPath);
+      await file.writeAsBytes(byteData.buffer.asUint8List());
+
+      return true;
+    } catch (e) {
+      LogService.instance.log("[DATE_STAMP] renderDateStampPng failed: $e");
+      return false;
+    }
+  }
+
+  /// Generate date stamp PNG assets for video overlay.
+  /// Returns a map of date text -> PNG file path, or null on failure.
+  /// Also returns the temp directory path for cleanup.
+  static Future<({Map<String, String> dateToPath, String tempDir})?>
+      generateDateStampAssets({
+    required List<String> uniqueDates,
+    required int videoHeight,
+    required int sizePercent,
+    required String baseTempDir,
+  }) async {
+    try {
+      // Create temp directory for date stamp PNGs
+      final tempDir = Directory(
+          '$baseTempDir/date_stamps_${DateTime.now().millisecondsSinceEpoch}');
+      await tempDir.create(recursive: true);
+
+      final Map<String, String> dateToPath = {};
+
+      for (int i = 0; i < uniqueDates.length; i++) {
+        final dateText = uniqueDates[i];
+        if (dateText.isEmpty) continue;
+
+        // Create safe filename from date text
+        final safeFilename = dateText
+            .replaceAll(RegExp(r'[^\w\s-]'), '_')
+            .replaceAll(RegExp(r'\s+'), '_');
+        final outputPath = '${tempDir.path}/date_${i}_$safeFilename.png';
+
+        final success = await renderDateStampPng(
+          dateText: dateText,
+          outputPath: outputPath,
+          videoHeight: videoHeight,
+          sizePercent: sizePercent,
+        );
+
+        if (success) {
+          dateToPath[dateText] = outputPath;
+        } else {
+          LogService.instance.log("[DATE_STAMP] Failed to render: $dateText");
+        }
+      }
+
+      LogService.instance.log(
+        "[DATE_STAMP] Generated ${dateToPath.length}/${uniqueDates.length} date stamp PNGs",
+      );
+
+      return (dateToPath: dateToPath, tempDir: tempDir.path);
+    } catch (e) {
+      LogService.instance
+          .log("[DATE_STAMP] generateDateStampAssets failed: $e");
+      return null;
+    }
+  }
 }

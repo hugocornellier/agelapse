@@ -215,7 +215,7 @@ void main() {
 
       // AlertDialog should appear with info content
       expect(find.text('This is detailed info'), findsOneWidget);
-      expect(find.text('OK'), findsOneWidget);
+      expect(find.text('Got it'), findsOneWidget);
     });
 
     testWidgets('info dialog can be dismissed', (tester) async {
@@ -235,7 +235,7 @@ void main() {
       await tester.tap(find.byIcon(Icons.info_outline_rounded));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('OK'));
+      await tester.tap(find.text('Got it'));
       await tester.pumpAndSettle();
 
       // Dialog should be dismissed

@@ -23,6 +23,7 @@ class CustomAppBar extends StatefulWidget {
   final Future<void> Function() cancelStabCallback;
   final Future<void> Function() refreshSettings;
   final void Function() clearRawAndStabPhotos;
+  final Future<void> Function() recompileVideoCallback;
   final SettingsCache? settingsCache;
   final String minutesRemaining;
   final bool userRanOutOfSpace;
@@ -41,6 +42,7 @@ class CustomAppBar extends StatefulWidget {
     required this.cancelStabCallback,
     required this.refreshSettings,
     required this.clearRawAndStabPhotos,
+    required this.recompileVideoCallback,
     required this.settingsCache,
     required this.minutesRemaining,
     required this.userRanOutOfSpace,
@@ -254,6 +256,7 @@ class CustomAppBarState extends State<CustomAppBar> {
     Future<void> Function() cancelStabCallback,
     Future<void> Function() refreshSettingsIn,
     void Function() clearRawAndStabPhotos,
+    Future<void> Function() recompileVideoCallback,
     SettingsCache? settingsCache,
   ) {
     showModalBottomSheet(
@@ -271,6 +274,7 @@ class CustomAppBarState extends State<CustomAppBar> {
           cancelStabCallback: cancelStabCallback,
           refreshSettings: refreshSettingsIn,
           clearRawAndStabPhotos: clearRawAndStabPhotos,
+          recompileVideoCallback: recompileVideoCallback,
         );
       },
     );
@@ -387,6 +391,7 @@ class CustomAppBarState extends State<CustomAppBar> {
                       widget.cancelStabCallback,
                       widget.refreshSettings,
                       widget.clearRawAndStabPhotos,
+                      widget.recompileVideoCallback,
                       widget.settingsCache,
                     ),
                   ),

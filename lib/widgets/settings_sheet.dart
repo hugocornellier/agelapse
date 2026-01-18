@@ -20,6 +20,7 @@ import '../utils/utils.dart';
 import 'bool_setting_switch.dart';
 import 'custom_dropdown_button.dart';
 import '../screens/projects_page.dart';
+import 'confirm_action_dialog.dart';
 import 'delete_project_dialog.dart';
 import 'dropdown_with_custom_textfield.dart';
 import 'main_navigation.dart';
@@ -33,6 +34,7 @@ class SettingsSheet extends StatefulWidget {
   final Future<void> Function() cancelStabCallback;
   final Future<void> Function() refreshSettings;
   final void Function() clearRawAndStabPhotos;
+  final Future<void> Function() recompileVideoCallback;
 
   const SettingsSheet({
     super.key,
@@ -43,6 +45,7 @@ class SettingsSheet extends StatefulWidget {
     required this.cancelStabCallback,
     required this.refreshSettings,
     required this.clearRawAndStabPhotos,
+    required this.recompileVideoCallback,
   });
 
   @override
@@ -1366,13 +1369,23 @@ class SettingsSheetState extends State<SettingsSheet> {
           initialValue: _exportDateStampEnabled,
           showDivider: true,
           onChanged: (bool value) async {
+            // Show confirmation dialog when enabling or disabling
+            final shouldProceed = await ConfirmActionDialog.showRecompileVideo(
+              context,
+              value
+                  ? 'settings (enabling date stamps)'
+                  : 'settings (disabling date stamps)',
+            );
+            if (!shouldProceed) return;
+
             setState(() => _exportDateStampEnabled = value);
             await DB.instance.setSettingByTitle(
               'export_date_stamp_enabled',
               value.toString(),
               widget.projectId.toString(),
             );
-            widget.refreshSettings();
+            await widget.refreshSettings();
+            await widget.recompileVideoCallback();
           },
         ),
         // Export position dropdown
@@ -1402,13 +1415,21 @@ class SettingsSheetState extends State<SettingsSheet> {
             onChanged: _exportDateStampEnabled
                 ? (String? value) async {
                     if (value != null) {
+                      final shouldProceed =
+                          await ConfirmActionDialog.showRecompileVideo(
+                        context,
+                        'position',
+                      );
+                      if (!shouldProceed) return;
+
                       setState(() => _exportDateStampPosition = value);
                       await DB.instance.setSettingByTitle(
                         'export_date_stamp_position',
                         value,
                         widget.projectId.toString(),
                       );
-                      widget.refreshSettings();
+                      await widget.refreshSettings();
+                      await widget.recompileVideoCallback();
                     }
                   }
                 : null,
@@ -1474,13 +1495,20 @@ class SettingsSheetState extends State<SettingsSheet> {
             onChanged: _exportDateStampEnabled
                 ? (String? value) async {
                     if (value == DateStampUtils.exportFormatCustom) {
-                      // Switch to custom mode
+                      // Switch to custom mode (no confirmation needed, just UI change)
                       setState(() {
                         _isExportCustomFormat = true;
                         _exportCustomFormatController.text =
                             _exportDateStampFormat;
                       });
                     } else if (value != null) {
+                      final shouldProceed =
+                          await ConfirmActionDialog.showRecompileVideo(
+                        context,
+                        'format',
+                      );
+                      if (!shouldProceed) return;
+
                       setState(() {
                         _isExportCustomFormat = false;
                         _exportDateStampFormat = value;
@@ -1491,7 +1519,8 @@ class SettingsSheetState extends State<SettingsSheet> {
                         value,
                         widget.projectId.toString(),
                       );
-                      widget.refreshSettings();
+                      await widget.refreshSettings();
+                      await widget.recompileVideoCallback();
                     }
                   }
                 : null,
@@ -1514,6 +1543,13 @@ class SettingsSheetState extends State<SettingsSheet> {
             onSubmit: (value) async {
               final error = DateStampUtils.validateExportFormat(value);
               if (error == null) {
+                final shouldProceed =
+                    await ConfirmActionDialog.showRecompileVideo(
+                  context,
+                  'format',
+                );
+                if (!shouldProceed) return;
+
                 setState(() {
                   _exportDateStampFormat = value;
                   _exportCustomFormatError = null;
@@ -1523,7 +1559,8 @@ class SettingsSheetState extends State<SettingsSheet> {
                   value,
                   widget.projectId.toString(),
                 );
-                widget.refreshSettings();
+                await widget.refreshSettings();
+                await widget.recompileVideoCallback();
               } else {
                 setState(() => _exportCustomFormatError = error);
               }
@@ -1542,13 +1579,21 @@ class SettingsSheetState extends State<SettingsSheet> {
             onChanged: _exportDateStampEnabled
                 ? (int? value) async {
                     if (value != null) {
+                      final shouldProceed =
+                          await ConfirmActionDialog.showRecompileVideo(
+                        context,
+                        'size',
+                      );
+                      if (!shouldProceed) return;
+
                       setState(() => _exportDateStampSize = value);
                       await DB.instance.setSettingByTitle(
                         'export_date_stamp_size',
                         value.toString(),
                         widget.projectId.toString(),
                       );
-                      widget.refreshSettings();
+                      await widget.refreshSettings();
+                      await widget.recompileVideoCallback();
                     }
                   }
                 : null,
@@ -1572,13 +1617,21 @@ class SettingsSheetState extends State<SettingsSheet> {
             onChanged: _exportDateStampEnabled
                 ? (double? value) async {
                     if (value != null) {
+                      final shouldProceed =
+                          await ConfirmActionDialog.showRecompileVideo(
+                        context,
+                        'opacity',
+                      );
+                      if (!shouldProceed) return;
+
                       setState(() => _exportDateStampOpacity = value);
                       await DB.instance.setSettingByTitle(
                         'export_date_stamp_opacity',
                         value.toString(),
                         widget.projectId.toString(),
                       );
-                      widget.refreshSettings();
+                      await widget.refreshSettings();
+                      await widget.recompileVideoCallback();
                     }
                   }
                 : null,

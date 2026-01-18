@@ -19,6 +19,7 @@ import '../theme/theme.dart';
 import '../services/database_import_ffi.dart';
 import '../utils/dir_utils.dart';
 import '../utils/test_mode.dart' as test_config;
+import 'constants/window_constants.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -43,22 +44,14 @@ Future<void> _main() async {
         await DB.instance.getAllProjects();
     final bool hasProjects = projects.isNotEmpty;
 
-    const Size minDefault = Size(840, 450);
-    const Size minIntro = Size(840, 750);
-    final Size initialDefault = hasProjects ? const Size(1440, 900) : minIntro;
-
-    final Size startSize = hasProjects
-        ? initialDefault
-        : Size(
-            initialDefault.width,
-            initialDefault.height < minIntro.height
-                ? minIntro.height
-                : initialDefault.height,
-          );
+    final Size startSize =
+        hasProjects ? kWindowSizeDefault : kWindowSizeWelcome;
+    final Size minSize =
+        hasProjects ? kWindowMinSizeDefault : kWindowMinSizeWelcome;
 
     final options = WindowOptions(
       size: startSize,
-      minimumSize: hasProjects ? minDefault : minIntro,
+      minimumSize: minSize,
       center: true,
       title: 'AgeLapse v2.4.0',
     );
@@ -71,8 +64,10 @@ Future<void> _main() async {
 
       if (!hasProjects) {
         final currentSize = await windowManager.getSize();
-        if (currentSize.height < minIntro.height) {
-          await windowManager.setSize(Size(currentSize.width, minIntro.height));
+        if (currentSize.height < kWindowMinSizeWelcome.height) {
+          await windowManager.setSize(
+            Size(currentSize.width, kWindowMinSizeWelcome.height),
+          );
         }
       }
     });

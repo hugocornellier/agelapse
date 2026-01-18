@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../styles/styles.dart';
+import '../widgets/info_dialog.dart';
 
 /// Common dialog builders for gallery operations.
 /// Consolidates duplicate dialog patterns from gallery_page.dart and image_preview_navigator.dart.
@@ -71,22 +72,12 @@ class GalleryDialogUtils {
     required int imported,
     required int skipped,
   }) {
-    showDialog(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: const Text('Import Complete'),
-          content: Text(
-            'Imported: $imported\nSkipped (Already Imported): $skipped',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('OK'),
-            ),
-          ],
-        );
-      },
+    showStyledInfoDialog(
+      context,
+      'Imported: $imported\nSkipped (already imported): $skipped',
+      title: 'Import Complete',
+      icon: Icons.check_circle_outline_rounded,
+      iconColor: Colors.green,
     );
   }
 

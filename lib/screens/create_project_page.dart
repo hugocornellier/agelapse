@@ -3,8 +3,13 @@ import '../widgets/create_project_sheet.dart';
 
 class CreateProjectPage extends StatefulWidget {
   final bool showCloseButton;
+  final bool isFullPage;
 
-  const CreateProjectPage({super.key, this.showCloseButton = true});
+  const CreateProjectPage({
+    super.key,
+    this.showCloseButton = true,
+    this.isFullPage = false,
+  });
 
   @override
   CreateProjectPageState createState() => CreateProjectPageState();
@@ -22,6 +27,7 @@ class CreateProjectPageState extends State<CreateProjectPage> {
       body: CreateProjectSheet(
         isDefaultProject: false,
         showCloseButton: widget.showCloseButton,
+        isFullPage: widget.isFullPage,
       ),
     );
   }

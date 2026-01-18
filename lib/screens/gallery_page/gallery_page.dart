@@ -24,6 +24,7 @@ import '../../utils/capture_timezone.dart';
 import '../../utils/utils.dart';
 import '../../widgets/yellow_tip_bar.dart';
 import '../../widgets/gallery_date_stamp_provider.dart';
+import '../../widgets/info_dialog.dart';
 import '../manual_stab_page.dart';
 import '../stab_on_diff_face.dart';
 import 'gallery_widgets.dart';
@@ -786,6 +787,11 @@ class GalleryPageState extends State<GalleryPage>
                           child: PopupMenuButton<String>(
                             icon: const Icon(Icons.more_vert, size: 20.0),
                             padding: EdgeInsets.zero,
+                            color: const Color(0xff1a1a1a),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            offset: const Offset(0, 48),
                             onSelected: (value) {
                               switch (value) {
                                 case 'import':
@@ -804,35 +810,22 @@ class GalleryPageState extends State<GalleryPage>
                               }
                             },
                             itemBuilder: (context) => [
-                              const PopupMenuItem(
+                              _buildModernMenuItem(
                                 value: 'import',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.upload, size: 20),
-                                    SizedBox(width: 12),
-                                    Text('Import'),
-                                  ],
-                                ),
+                                icon: Icons.file_upload_outlined,
+                                label: 'Import',
                               ),
-                              const PopupMenuItem(
+                              const PopupMenuDivider(height: 1),
+                              _buildModernMenuItem(
                                 value: 'export',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.download, size: 20),
-                                    SizedBox(width: 12),
-                                    Text('Export'),
-                                  ],
-                                ),
+                                icon: Icons.file_download_outlined,
+                                label: 'Export',
                               ),
-                              const PopupMenuItem(
+                              const PopupMenuDivider(height: 1),
+                              _buildModernMenuItem(
                                 value: 'select',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.check_circle_outline, size: 20),
-                                    SizedBox(width: 12),
-                                    Text('Select'),
-                                  ],
-                                ),
+                                icon: Icons.check_circle_outline,
+                                label: 'Select',
                               ),
                             ],
                           ),
@@ -1088,20 +1081,12 @@ class GalleryPageState extends State<GalleryPage>
     if (importingDialogActive) {
       closeImportingDialog!();
     }
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        void closeMe() => Navigator.of(context).pop();
-        return AlertDialog(
-          title: const Text('Import Complete'),
-          content: Text(
-            'Imported: $imported\nSkipped (Already Imported): $skipped',
-          ),
-          actions: [
-            TextButton(onPressed: () => closeMe(), child: const Text('OK')),
-          ],
-        );
-      },
+    showStyledInfoDialog(
+      context,
+      'Imported: $imported\nSkipped (already imported): $skipped',
+      title: 'Import Complete',
+      icon: Icons.check_circle_outline_rounded,
+      iconColor: Colors.green,
     );
   }
 
@@ -1131,6 +1116,38 @@ class GalleryPageState extends State<GalleryPage>
           ],
         );
       },
+    );
+  }
+
+  PopupMenuItem<String> _buildModernMenuItem({
+    required String value,
+    required IconData icon,
+    required String label,
+  }) {
+    return PopupMenuItem<String>(
+      value: value,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: Colors.white, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1843,7 +1860,7 @@ class GalleryPageState extends State<GalleryPage>
           userRanOutOfSpaceCallback: widget.userRanOutOfSpaceCallback,
           stabilizationRunningInMain: widget.stabilizingRunningInMain,
         );
-        Utils.navigateToScreenReplace(context, stabNewFaceScreen);
+        Utils.navigateToScreen(context, stabNewFaceScreen);
       },
       onRetryStab: () {
         Future.delayed(Duration.zero, () async {

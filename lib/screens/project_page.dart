@@ -9,6 +9,7 @@ import '../utils/settings_utils.dart';
 import '../utils/utils.dart';
 import '../widgets/fancy_button.dart';
 import '../widgets/grid_painter_se.dart';
+import '../widgets/info_tooltip_icon.dart';
 import '../widgets/settings_sheet.dart';
 import '../utils/output_image_loader.dart';
 import 'create_first_video_page.dart';
@@ -26,6 +27,7 @@ class ProjectPage extends StatefulWidget {
   final SettingsCache? settingsCache;
   final Future<void> Function() refreshSettings;
   final void Function() clearRawAndStabPhotos;
+  final Future<void> Function() recompileVideoCallback;
   final bool photoTakenToday;
   final Stream<StabUpdateEvent>? stabUpdateStream;
 
@@ -41,6 +43,7 @@ class ProjectPage extends StatefulWidget {
     required this.settingsCache,
     required this.refreshSettings,
     required this.clearRawAndStabPhotos,
+    required this.recompileVideoCallback,
     required this.photoTakenToday,
     this.stabUpdateStream,
   });
@@ -471,6 +474,7 @@ class ProjectPageState extends State<ProjectPage> {
           stabCallback: widget.stabCallback,
           refreshSettings: widget.refreshSettings,
           clearRawAndStabPhotos: widget.clearRawAndStabPhotos,
+          recompileVideoCallback: widget.recompileVideoCallback,
         );
       },
     );
@@ -615,12 +619,18 @@ class ProjectPageState extends State<ProjectPage> {
               title: "Inter-Eye\nDistance",
               value: outputImageLoader.offsetX * 2,
               width: isLandscape ? landscapeCardWidth : null,
+              showInfo: true,
+              infoContent:
+                  'The spacing between the eye guide lines, shown as a percentage of the image width. Adjust in Settings → Eye Position.\n\nEx: 7% on a 1920px wide image → 1920 × 0.07 = 134px between eye guides.',
             ),
             const SizedBox(width: 8.0),
             _buildOffsetCard(
               title: "Vertical\nOffset",
               value: outputImageLoader.offsetY,
               width: isLandscape ? landscapeCardWidth : null,
+              showInfo: true,
+              infoContent:
+                  'How far down the eye guide line sits, shown as a percentage of the image height. Adjust in Settings → Eye Position.\n\nEx: 40% on a 1080px tall image → 1080 × 0.40 = 432px from the top of the image.',
             ),
           ],
         ),
@@ -634,6 +644,8 @@ class ProjectPageState extends State<ProjectPage> {
     double? width,
     int maxDecimalPlaces = 1,
     double fontSize = 17.5,
+    bool showInfo = false,
+    String? infoContent,
   }) {
     final String roundedOffset = (value * 100).toStringAsFixed(
       maxDecimalPlaces,
@@ -649,13 +661,19 @@ class ProjectPageState extends State<ProjectPage> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  color: Colors.grey,
-                  fontSize: 13,
-                  height: 0.99,
-                ),
+              Row(
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 13,
+                      height: 0.99,
+                    ),
+                  ),
+                  if (showInfo && infoContent != null)
+                    InfoTooltipIcon(content: infoContent),
+                ],
               ),
               const SizedBox(height: 8.0),
               Column(

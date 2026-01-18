@@ -20,6 +20,7 @@ void main() {
         settingsCache: null,
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
+        recompileVideoCallback: () async {},
         photoTakenToday: false,
       );
 
@@ -41,6 +42,7 @@ void main() {
         settingsCache: null,
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
+        recompileVideoCallback: () async {},
         photoTakenToday: true,
         stabUpdateStream: null,
       );
@@ -79,6 +81,7 @@ void main() {
         clearRawAndStabPhotos: () {
           clearCalled = true;
         },
+        recompileVideoCallback: () async {},
         photoTakenToday: false,
       );
 
@@ -110,6 +113,7 @@ void main() {
         settingsCache: null,
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
+        recompileVideoCallback: () async {},
         photoTakenToday: false,
       );
 
@@ -130,6 +134,7 @@ void main() {
         settingsCache: null,
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
+        recompileVideoCallback: () async {},
         photoTakenToday: false,
       );
 
@@ -148,6 +153,7 @@ void main() {
         settingsCache: null,
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
+        recompileVideoCallback: () async {},
         photoTakenToday: true,
       );
 
@@ -168,6 +174,7 @@ void main() {
         settingsCache: null,
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
+        recompileVideoCallback: () async {},
         photoTakenToday: false,
       );
 
@@ -186,6 +193,7 @@ void main() {
         settingsCache: null,
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
+        recompileVideoCallback: () async {},
         photoTakenToday: false,
       );
 

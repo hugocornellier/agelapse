@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../styles/styles.dart';
+import 'info_tooltip_icon.dart';
 
 class SettingListTile extends StatelessWidget {
   final String title;
@@ -18,40 +19,6 @@ class SettingListTile extends StatelessWidget {
     this.disabled,
     this.showDivider,
   });
-
-  void _showInfoDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: AppColors.settingsCardBackground,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          content: Text(
-            infoContent ?? "No additional information.",
-            style: const TextStyle(
-              color: AppColors.settingsTextPrimary,
-              fontSize: 14,
-              height: 1.5,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text(
-                "OK",
-                style: TextStyle(
-                  color: AppColors.settingsAccent,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -79,18 +46,9 @@ class SettingListTile extends StatelessWidget {
                       ),
                     ),
                     if (showInfo ?? false)
-                      GestureDetector(
-                        onTap: () => _showInfoDialog(context),
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 6),
-                          child: Icon(
-                            Icons.info_outline_rounded,
-                            size: 18,
-                            color: isDisabled
-                                ? AppColors.settingsTextTertiary
-                                : AppColors.settingsTextSecondary,
-                          ),
-                        ),
+                      InfoTooltipIcon(
+                        content: infoContent ?? "No additional information.",
+                        disabled: isDisabled,
                       ),
                   ],
                 ),

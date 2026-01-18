@@ -25,6 +25,7 @@ void main() {
         stabCallback: () async {},
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
+        recompileVideoCallback: () async {},
         settingsCache: null,
         minutesRemaining: '',
       );
@@ -57,6 +58,7 @@ void main() {
         stabCallback: () async {},
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
+        recompileVideoCallback: () async {},
         settingsCache: null,
         minutesRemaining: '',
       );
@@ -83,6 +85,7 @@ void main() {
         stabCallback: () async {},
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
+        recompileVideoCallback: () async {},
         settingsCache: null,
         minutesRemaining: '',
       );
@@ -108,6 +111,7 @@ void main() {
         stabCallback: () async {},
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
+        recompileVideoCallback: () async {},
         settingsCache: null,
         minutesRemaining: '',
       );
@@ -138,6 +142,7 @@ void main() {
         stabCallback: () async {},
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
+        recompileVideoCallback: () async {},
         settingsCache: null,
         minutesRemaining: '',
       );
@@ -167,6 +172,7 @@ void main() {
         stabCallback: () async {},
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
+        recompileVideoCallback: () async {},
         settingsCache: null,
         minutesRemaining: '',
       );
@@ -196,6 +202,7 @@ void main() {
         stabCallback: () async {},
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
+        recompileVideoCallback: () async {},
         settingsCache: null,
         minutesRemaining: '',
       );

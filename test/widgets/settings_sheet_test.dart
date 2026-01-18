@@ -17,6 +17,7 @@ void main() {
         cancelStabCallback: () async {},
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
+        recompileVideoCallback: () async {},
       );
 
       expect(widget.projectId, 1);
@@ -32,6 +33,7 @@ void main() {
         cancelStabCallback: () async {},
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
+        recompileVideoCallback: () async {},
       );
 
       expect(widget.onlyShowVideoSettings, isTrue);
@@ -46,6 +48,7 @@ void main() {
         cancelStabCallback: () async {},
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
+        recompileVideoCallback: () async {},
       );
 
       expect(widget.onlyShowVideoSettings, isFalse);
@@ -57,6 +60,7 @@ void main() {
       bool cancelCalled = false;
       bool refreshCalled = false;
       bool clearCalled = false;
+      bool recompileCalled = false;
 
       final widget = SettingsSheet(
         projectId: 4,
@@ -72,6 +76,9 @@ void main() {
         clearRawAndStabPhotos: () {
           clearCalled = true;
         },
+        recompileVideoCallback: () async {
+          recompileCalled = true;
+        },
       );
 
       // Verify callbacks are accessible
@@ -79,11 +86,13 @@ void main() {
       widget.cancelStabCallback();
       widget.refreshSettings();
       widget.clearRawAndStabPhotos();
+      widget.recompileVideoCallback();
 
       expect(stabCalled, isTrue);
       expect(cancelCalled, isTrue);
       expect(refreshCalled, isTrue);
       expect(clearCalled, isTrue);
+      expect(recompileCalled, isTrue);
     });
   });
 
@@ -95,6 +104,7 @@ void main() {
         cancelStabCallback: () async {},
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
+        recompileVideoCallback: () async {},
       );
 
       expect(widget.createState(), isA<SettingsSheetState>());

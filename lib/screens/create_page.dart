@@ -35,6 +35,7 @@ class CreatePage extends StatefulWidget {
   final Future<void> Function() stabCallback;
   final Future<void> Function() refreshSettings;
   final void Function() clearRawAndStabPhotos;
+  final Future<void> Function() recompileVideoCallback;
   final SettingsCache? settingsCache;
   final String minutesRemaining;
 
@@ -55,6 +56,7 @@ class CreatePage extends StatefulWidget {
     required this.stabCallback,
     required this.refreshSettings,
     required this.clearRawAndStabPhotos,
+    required this.recompileVideoCallback,
     required this.settingsCache,
     required this.minutesRemaining,
   });
@@ -984,6 +986,7 @@ class CreatePageState extends State<CreatePage>
           stabCallback: widget.stabCallback,
           refreshSettings: widget.refreshSettings,
           clearRawAndStabPhotos: widget.clearRawAndStabPhotos,
+          recompileVideoCallback: widget.recompileVideoCallback,
         );
       },
     );
