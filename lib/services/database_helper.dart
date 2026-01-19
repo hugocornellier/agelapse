@@ -24,6 +24,7 @@ class DB {
   static const String photoTable = "Photos";
   static const String projectTable = "Projects";
   static const String videoTable = "Videos";
+  static const String customFontTable = "CustomFonts";
 
   DB._internal();
 
@@ -104,6 +105,14 @@ class DB {
           "photoCount INTEGER NOT NULL, "
           "framerate INTEGER NOT NULL, "
           "timestampCreated INTEGER NOT NULL"
+          ");",
+      customFontTable: "CREATE TABLE $customFontTable("
+          "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+          "displayName TEXT NOT NULL UNIQUE, "
+          "familyName TEXT NOT NULL UNIQUE, "
+          "filePath TEXT NOT NULL, "
+          "fileSize INTEGER NOT NULL, "
+          "installedAt INTEGER NOT NULL"
           ");",
     };
 
@@ -334,6 +343,8 @@ class DB {
     'export_date_stamp_position': 'lower right',
     'export_date_stamp_size': '3',
     'export_date_stamp_opacity': '1.0',
+    'gallery_date_stamp_font': 'Inter',
+    'export_date_stamp_font': '_same_as_gallery',
     // Camera timer
     'camera_timer_duration': '0',
   };
@@ -1205,4 +1216,153 @@ class DB {
     );
     return results.isNotEmpty ? results.first : null;
   }
+
+  /* ┌──────────────────────┐
+     │                      │
+     │    Custom Fonts      │
+     │                      │
+     └──────────────────────┘ */
+
+  /// Add a custom font to the database.
+  /// Returns the ID of the inserted font.
+  Future<int> addCustomFont({
+    required String displayName,
+    required String familyName,
+    required String filePath,
+    required int fileSize,
+  }) async {
+    final db = await database;
+    final installedAt = DateTime.now().millisecondsSinceEpoch;
+    return await db.insert(
+      customFontTable,
+      {
+        'displayName': displayName,
+        'familyName': familyName,
+        'filePath': filePath,
+        'fileSize': fileSize,
+        'installedAt': installedAt,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  /// Get all custom fonts from the database.
+  Future<List<CustomFont>> getAllCustomFonts() async {
+    final db = await database;
+    final List<Map<String, dynamic>> results = await db.query(
+      customFontTable,
+      orderBy: 'displayName ASC',
+    );
+    return results.map((row) => CustomFont.fromJson(row)).toList();
+  }
+
+  /// Get a custom font by its ID.
+  Future<CustomFont?> getCustomFontById(int id) async {
+    final db = await database;
+    final results = await db.query(
+      customFontTable,
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (results.isEmpty) return null;
+    return CustomFont.fromJson(results.first);
+  }
+
+  /// Get a custom font by its family name.
+  Future<CustomFont?> getCustomFontByFamilyName(String familyName) async {
+    final db = await database;
+    final results = await db.query(
+      customFontTable,
+      where: 'familyName = ?',
+      whereArgs: [familyName],
+      limit: 1,
+    );
+    if (results.isEmpty) return null;
+    return CustomFont.fromJson(results.first);
+  }
+
+  /// Get a custom font by its display name.
+  Future<CustomFont?> getCustomFontByDisplayName(String displayName) async {
+    final db = await database;
+    final results = await db.query(
+      customFontTable,
+      where: 'displayName = ?',
+      whereArgs: [displayName],
+      limit: 1,
+    );
+    if (results.isEmpty) return null;
+    return CustomFont.fromJson(results.first);
+  }
+
+  /// Delete a custom font by its ID.
+  Future<int> deleteCustomFont(int id) async {
+    final db = await database;
+    return await db.delete(
+      customFontTable,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  /// Update the display name of a custom font.
+  Future<int> updateCustomFontDisplayName(int id, String newDisplayName) async {
+    final db = await database;
+    return await db.update(
+      customFontTable,
+      {'displayName': newDisplayName},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  /// Get the count of installed custom fonts.
+  Future<int> getCustomFontCount() async {
+    final db = await database;
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM $customFontTable',
+    );
+    return result.first['count'] as int? ?? 0;
+  }
+}
+
+/// Represents a custom font installed by the user.
+/// This class is defined here to avoid circular imports with custom_font_manager.dart.
+class CustomFont {
+  final int id;
+  final String displayName;
+  final String familyName;
+  final String filePath;
+  final int fileSize;
+  final int installedAt;
+
+  const CustomFont({
+    required this.id,
+    required this.displayName,
+    required this.familyName,
+    required this.filePath,
+    required this.fileSize,
+    required this.installedAt,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'displayName': displayName,
+        'familyName': familyName,
+        'filePath': filePath,
+        'fileSize': fileSize,
+        'installedAt': installedAt,
+      };
+
+  factory CustomFont.fromJson(Map<String, dynamic> json) => CustomFont(
+        id: json['id'] as int,
+        displayName: json['displayName'] as String,
+        familyName: json['familyName'] as String,
+        filePath: json['filePath'] as String,
+        fileSize: json['fileSize'] as int,
+        installedAt: json['installedAt'] as int,
+      );
+
+  @override
+  String toString() => 'CustomFont($displayName, $familyName)';
 }

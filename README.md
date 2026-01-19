@@ -40,6 +40,7 @@ The face detection model used by AgeLapse is platform-dependent. On Mobile, Goog
 ### v2.4.0
 
 #### New Features
+- Customizable font for date stamps. 
 - Camera timer. Thanks to all users who requested this.
   - Optional 3s or 10s countdown before taking photos
   - Visual overlay with feedback

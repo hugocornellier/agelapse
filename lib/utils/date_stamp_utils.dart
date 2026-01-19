@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../services/custom_font_manager.dart';
 import '../services/log_service.dart';
 import 'capture_timezone.dart';
 
@@ -58,6 +59,122 @@ class DateStampUtils {
   static const String defaultPosition = positionLowerRight;
   static const double defaultOpacity = 1.0;
   static const int defaultSizePercent = 3;
+
+  // Font options (bundled, copyright-free fonts)
+  static const String fontInter = 'Inter';
+  static const String fontRoboto = 'Roboto';
+  static const String fontSourceSans = 'SourceSans3';
+  static const String fontNunito = 'Nunito';
+  static const String fontJetBrainsMono = 'JetBrainsMono';
+  static const String fontSameAsGallery = '_same_as_gallery';
+
+  /// Marker value for "Custom (TTF/OTF)" option in dropdown.
+  /// When selected, triggers file picker to import a custom font.
+  static const String fontCustomMarker = '_custom_font';
+
+  // Default font
+  static const String defaultFont = fontInter;
+
+  // All bundled fonts (for dropdown - doesn't include custom fonts)
+  static const List<String> bundledFonts = [
+    fontInter,
+    fontRoboto,
+    fontSourceSans,
+    fontNunito,
+    fontJetBrainsMono,
+  ];
+
+  // Legacy alias for bundledFonts (for backwards compatibility)
+  static const List<String> availableFonts = bundledFonts;
+
+  /// Get display name for font option (synchronous version for bundled fonts).
+  /// For custom fonts, use getFontDisplayNameAsync.
+  static String getFontDisplayName(String font) {
+    switch (font) {
+      case fontInter:
+        return 'Inter';
+      case fontRoboto:
+        return 'Roboto';
+      case fontSourceSans:
+        return 'Source Sans';
+      case fontNunito:
+        return 'Nunito';
+      case fontJetBrainsMono:
+        return 'JetBrains Mono';
+      case fontSameAsGallery:
+        return 'Same as thumbnail';
+      case fontCustomMarker:
+        return 'Custom (TTF/OTF)';
+      default:
+        // Check if it's a custom font (starts with prefix)
+        if (isCustomFont(font)) {
+          // For synchronous calls, return a placeholder
+          // Use getFontDisplayNameAsync for proper display name
+          return 'Custom Font';
+        }
+        return 'Inter';
+    }
+  }
+
+  /// Get display name for font option (async version that handles custom fonts).
+  static Future<String> getFontDisplayNameAsync(String font) async {
+    // First check bundled fonts
+    if (!isCustomFont(font)) {
+      return getFontDisplayName(font);
+    }
+
+    // It's a custom font - get display name from CustomFontManager
+    final customFont =
+        await CustomFontManager.instance.getCustomFontByFamilyName(font);
+    if (customFont != null) {
+      return customFont.displayName;
+    }
+
+    // Fallback
+    return 'Custom Font';
+  }
+
+  /// Check if a font family name is a custom font.
+  static bool isCustomFont(String fontFamily) {
+    return fontFamily.startsWith(CustomFontManager.customFontPrefix);
+  }
+
+  /// Check if a font family name is a bundled font.
+  static bool isBundledFont(String fontFamily) {
+    return bundledFonts.contains(fontFamily);
+  }
+
+  /// Get all available fonts (bundled + custom).
+  /// Returns a list of font family names.
+  static Future<List<String>> getAllAvailableFonts() async {
+    final customFonts = await CustomFontManager.instance.getAllCustomFonts();
+    final customFamilyNames = customFonts.map((f) => f.familyName).toList();
+    return [...bundledFonts, ...customFamilyNames];
+  }
+
+  /// Resolve a font family to ensure it's available.
+  /// Returns the font family if valid, or the default font.
+  static Future<String> resolveFontFamily(String fontFamily) async {
+    // Bundled fonts are always available
+    if (isBundledFont(fontFamily)) {
+      return fontFamily;
+    }
+
+    // Check if custom font is available
+    if (isCustomFont(fontFamily)) {
+      final resolved =
+          await CustomFontManager.instance.resolveFontFamily(fontFamily);
+      return resolved;
+    }
+
+    // Unknown font, return default
+    return defaultFont;
+  }
+
+  /// Resolve export font - handles "same as gallery" logic.
+  static String resolveExportFont(String exportFont, String galleryFont) {
+    return exportFont == fontSameAsGallery ? galleryFont : exportFont;
+  }
 
   /// Format a timestamp using the specified format pattern.
   /// [timestampMs] - Unix timestamp in milliseconds (UTC)
@@ -138,8 +255,9 @@ class DateStampUtils {
 
   /// Get text style for gallery thumbnail date labels.
   /// Uses a semi-transparent background pill for readability.
-  static TextStyle getGalleryLabelStyle(double fontSize) {
+  static TextStyle getGalleryLabelStyle(double fontSize, {String? fontFamily}) {
     return TextStyle(
+      fontFamily: fontFamily ?? defaultFont,
       fontSize: fontSize,
       fontWeight: FontWeight.w500,
       color: Colors.white,
@@ -151,8 +269,13 @@ class DateStampUtils {
 
   /// Get text style for export date stamp.
   /// Includes text shadow for readability on any background.
-  static TextStyle getExportTextStyle(double fontSize, double opacity) {
+  static TextStyle getExportTextStyle(
+    double fontSize,
+    double opacity, {
+    String? fontFamily,
+  }) {
     return TextStyle(
+      fontFamily: fontFamily ?? defaultFont,
       fontSize: fontSize,
       fontWeight: FontWeight.w600,
       color: Colors.white.withValues(alpha: opacity),
@@ -174,7 +297,12 @@ class DateStampUtils {
   /// Build a gallery date label widget with background pill.
   /// [date] - Formatted date string
   /// [thumbnailHeight] - Height of the thumbnail for scaling
-  static Widget buildGalleryDateLabel(String date, double thumbnailHeight) {
+  /// [fontFamily] - Optional font family (defaults to Inter)
+  static Widget buildGalleryDateLabel(
+    String date,
+    double thumbnailHeight, {
+    String? fontFamily,
+  }) {
     // Scale font size based on thumbnail height, minimum 8px
     final fontSize = (thumbnailHeight * 0.12).clamp(8.0, 14.0);
 
@@ -187,6 +315,7 @@ class DateStampUtils {
       child: Text(
         date,
         style: TextStyle(
+          fontFamily: fontFamily ?? defaultFont,
           fontSize: fontSize,
           fontWeight: FontWeight.w500,
           color: Colors.white,
@@ -445,6 +574,7 @@ Examples
   /// Returns true if successful, false otherwise.
   /// This function must be called from the main isolate (requires Flutter engine).
   /// [watermarkVerticalOffset] - Additional Y offset to avoid overlapping with watermark
+  /// [fontFamily] - Font family for date stamp text (defaults to Inter)
   static Future<bool> compositeDate({
     required String inputPath,
     required String outputPath,
@@ -453,6 +583,7 @@ Examples
     required int sizePercent,
     required double opacity,
     double watermarkVerticalOffset = 0.0,
+    String? fontFamily,
   }) async {
     try {
       LogService.instance.log(
@@ -490,6 +621,7 @@ Examples
         text: TextSpan(
           text: dateText,
           style: TextStyle(
+            fontFamily: fontFamily ?? defaultFont,
             fontSize: fontSize,
             fontWeight: FontWeight.w600,
             color: Colors.white.withValues(alpha: opacity),
@@ -563,6 +695,7 @@ Examples
   /// Files that fail processing will not be included in the map.
   /// [captureOffsetMap] - Map of timestamp -> captureOffsetMinutes for accurate timezone handling
   /// [watermarkPosition] - If provided, date stamp will be offset to avoid overlap with watermark
+  /// [fontFamily] - Font family for date stamp text (defaults to Inter)
   static Future<Map<String, String>> processBatchWithDateStamps({
     required List<String> inputPaths,
     required String tempDir,
@@ -573,6 +706,7 @@ Examples
     Map<String, int?>? captureOffsetMap,
     String? watermarkPosition,
     void Function(int current, int total)? onProgress,
+    String? fontFamily,
   }) async {
     LogService.instance.log(
       "[DATE_STAMP] processBatchWithDateStamps called: ${inputPaths.length} files, format=$format, position=$position",
@@ -633,6 +767,7 @@ Examples
         sizePercent: sizePercent,
         opacity: opacity,
         watermarkVerticalOffset: watermarkOffset,
+        fontFamily: fontFamily,
       );
 
       if (success) {
@@ -653,10 +788,12 @@ Examples
   /// [dateText] - The formatted date string to render
   /// [videoHeight] - Height of the video for scaling the font size
   /// [sizePercent] - Font size as percentage of video height (1-6)
+  /// [fontFamily] - Font family for date stamp text (defaults to Inter)
   static Future<ui.Image?> renderDateStampImage({
     required String dateText,
     required int videoHeight,
     required int sizePercent,
+    String? fontFamily,
   }) async {
     try {
       // Calculate font size (percentage of video height, matching preview)
@@ -672,6 +809,7 @@ Examples
         text: TextSpan(
           text: dateText,
           style: TextStyle(
+            fontFamily: fontFamily ?? defaultFont,
             fontSize: fontSize,
             fontWeight: FontWeight.w500,
             color: Colors.white,
@@ -724,17 +862,20 @@ Examples
 
   /// Render a date stamp PNG and save to file.
   /// Returns true if successful.
+  /// [fontFamily] - Font family for date stamp text (defaults to Inter)
   static Future<bool> renderDateStampPng({
     required String dateText,
     required String outputPath,
     required int videoHeight,
     required int sizePercent,
+    String? fontFamily,
   }) async {
     try {
       final image = await renderDateStampImage(
         dateText: dateText,
         videoHeight: videoHeight,
         sizePercent: sizePercent,
+        fontFamily: fontFamily,
       );
       if (image == null) return false;
 
@@ -756,12 +897,14 @@ Examples
   /// Generate date stamp PNG assets for video overlay.
   /// Returns a map of date text -> PNG file path, or null on failure.
   /// Also returns the temp directory path for cleanup.
+  /// [fontFamily] - Font family for date stamp text (defaults to Inter)
   static Future<({Map<String, String> dateToPath, String tempDir})?>
       generateDateStampAssets({
     required List<String> uniqueDates,
     required int videoHeight,
     required int sizePercent,
     required String baseTempDir,
+    String? fontFamily,
   }) async {
     try {
       // Create temp directory for date stamp PNGs
@@ -786,6 +929,7 @@ Examples
           outputPath: outputPath,
           videoHeight: videoHeight,
           sizePercent: sizePercent,
+          fontFamily: fontFamily,
         );
 
         if (success) {

@@ -9,6 +9,7 @@ import 'package:window_manager/window_manager.dart';
 
 import 'dart:io' show Platform;
 
+import '../services/custom_font_manager.dart';
 import '../services/settings_cache.dart';
 import '../screens/projects_page.dart';
 import '../services/database_helper.dart';
@@ -38,6 +39,8 @@ Future<void> _main() async {
 
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     await DB.instance.createTablesIfNotExist();
+    // Initialize custom fonts after database is ready
+    await CustomFontManager.instance.initialize();
     await windowManager.ensureInitialized();
 
     final List<Map<String, dynamic>> projects =
@@ -99,6 +102,9 @@ Future<void> _initializeApp() async {
   }
 
   await Future.wait(futures);
+
+  // Initialize custom fonts after database is ready
+  await CustomFontManager.instance.initialize();
 }
 
 Future<void> initializeNotifications() async {

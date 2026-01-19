@@ -95,6 +95,45 @@ flutter:
     - assets/test_fixtures/sample_faces/
     - assets/test_fixtures/sample-avif.avif
     - assets/test_fixtures/sample-heic.HEIC
+    # Font licenses (for legal compliance)
+    - assets/fonts/Inter/OFL.txt
+    - assets/fonts/Roboto/LICENSE.txt
+    - assets/fonts/SourceSans3/OFL.txt
+    - assets/fonts/Nunito/OFL.txt
+    - assets/fonts/JetBrainsMono/OFL.txt
+
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter/Inter-Regular.ttf
+        - asset: assets/fonts/Inter/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter/Inter-SemiBold.ttf
+          weight: 600
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto/Roboto-Regular.ttf
+        - asset: assets/fonts/Roboto/Roboto-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Roboto/Roboto-Bold.ttf
+          weight: 700
+    - family: SourceSans3
+      fonts:
+        - asset: assets/fonts/SourceSans3/SourceSans3-Regular.ttf
+        - asset: assets/fonts/SourceSans3/SourceSans3-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/SourceSans3/SourceSans3-SemiBold.ttf
+          weight: 600
+    - family: Nunito
+      fonts:
+        - asset: assets/fonts/Nunito/Nunito-Variable.ttf
+    - family: JetBrainsMono
+      fonts:
+        - asset: assets/fonts/JetBrainsMono/JetBrainsMono-Regular.ttf
+        - asset: assets/fonts/JetBrainsMono/JetBrainsMono-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/JetBrainsMono/JetBrainsMono-Bold.ttf
+          weight: 700
 
 flutter_icons:
   android: true

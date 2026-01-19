@@ -25,6 +25,7 @@ import '../../utils/utils.dart';
 import '../../widgets/yellow_tip_bar.dart';
 import '../../widgets/gallery_date_stamp_provider.dart';
 import '../../widgets/info_dialog.dart';
+import '../../widgets/confirm_action_dialog.dart';
 import '../manual_stab_page.dart';
 import '../stab_on_diff_face.dart';
 import 'gallery_widgets.dart';
@@ -61,6 +62,7 @@ class GalleryPage extends StatefulWidget {
     Future<void> Function(dynamic file) processFileCallback,
   ) processPickedFiles;
   final Future<void> Function() refreshSettings;
+  final Future<void> Function() recompileVideoCallback;
   final String minutesRemaining;
   final bool userRanOutOfSpace;
   final Stream<StabUpdateEvent>? stabUpdateStream;
@@ -88,6 +90,7 @@ class GalleryPage extends StatefulWidget {
     required this.setRawAndStabPhotoStates,
     required this.settingsCache,
     required this.refreshSettings,
+    required this.recompileVideoCallback,
     required this.minutesRemaining,
     this.stabUpdateStream,
   });
@@ -139,22 +142,31 @@ class GalleryPageState extends State<GalleryPage>
   bool _galleryDateLabelsEnabled = false;
   bool _galleryRawDateLabelsEnabled = false;
   String _galleryDateFormat = DateStampUtils.galleryFormatMMYY;
+  String _galleryDateFont = DateStampUtils.defaultFont;
 
   // Cache for capture timezone offsets (timestamp -> offset minutes)
   Map<String, int?> _captureOffsetMap = {};
 
-  /// Reload date stamp settings from DB. Call this after settings change.
-  Future<void> reloadDateStampSettings() async {
+  /// Reload all gallery settings from DB. Call this after settings change.
+  Future<void> reloadGallerySettings() async {
     final results = await Future.wait([
+      SettingsUtil.loadGridAxisCount(projectIdStr),
+      SettingsUtil.loadGalleryGridMode(projectIdStr),
+      SettingsUtil.loadProjectOrientation(projectIdStr),
       SettingsUtil.loadGalleryDateLabelsEnabled(projectIdStr),
       SettingsUtil.loadGalleryRawDateLabelsEnabled(projectIdStr),
       SettingsUtil.loadGalleryDateFormat(projectIdStr),
+      SettingsUtil.loadGalleryDateStampFont(projectIdStr),
     ]);
     if (mounted) {
       setState(() {
-        _galleryDateLabelsEnabled = results[0] as bool;
-        _galleryRawDateLabelsEnabled = results[1] as bool;
-        _galleryDateFormat = results[2] as String;
+        gridAxisCount = results[0] as int;
+        _galleryGridMode = results[1] as String;
+        projectOrientation = results[2] as String;
+        _galleryDateLabelsEnabled = results[3] as bool;
+        _galleryRawDateLabelsEnabled = results[4] as bool;
+        _galleryDateFormat = results[5] as String;
+        _galleryDateFont = results[6] as String;
       });
     }
   }
@@ -246,9 +258,9 @@ class GalleryPageState extends State<GalleryPage>
   @override
   void didUpdateWidget(covariant GalleryPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Always reload date stamp settings when widget updates
+    // Always reload gallery settings when widget updates
     // This ensures settings are refreshed after Settings sheet is closed
-    reloadDateStampSettings();
+    reloadGallerySettings();
 
     // Reload offsets if image lists changed (new photos imported/deleted)
     if (widget.imageFilesStr != oldWidget.imageFilesStr ||
@@ -313,6 +325,7 @@ class GalleryPageState extends State<GalleryPage>
       initialTime: initialTime,
     );
     if (newTime == null) return;
+    if (!mounted) return;
     DateTime newDateTime = DateTime(
       newDate.year,
       newDate.month,
@@ -321,17 +334,74 @@ class GalleryPageState extends State<GalleryPage>
       newTime.minute,
     );
     String newTimestamp = newDateTime.millisecondsSinceEpoch.toString();
-    await _changePhotoDate(currentTimestamp, newTimestamp);
+
+    // Check if this would change the photo order
+    final orderChanged = _wouldChangeOrder(currentTimestamp, newTimestamp);
+
+    // Check if the formatted date stamp text would change
+    bool dateStampTextChanged = false;
+    final exportStampsEnabled =
+        await SettingsUtil.loadExportDateStampEnabled(projectIdStr);
+
+    if (exportStampsEnabled && !orderChanged) {
+      // Only check text if stamps are enabled and order didn't change
+      final format = await SettingsUtil.loadExportDateStampFormat(projectIdStr);
+      final oldText = DateStampUtils.formatTimestamp(
+        int.parse(currentTimestamp),
+        format,
+      );
+      final newText = DateStampUtils.formatTimestamp(
+        int.parse(newTimestamp),
+        format,
+      );
+      dateStampTextChanged = oldText != newText;
+    }
+
+    // Determine if we need to show a confirmation dialog and recompile
+    final needsRecompile = orderChanged || dateStampTextChanged;
+
+    if (needsRecompile) {
+      if (!mounted) return;
+      final confirmed = await ConfirmActionDialog.showDateChangeRecompile(
+        context,
+        orderChanged: orderChanged,
+      );
+      if (!confirmed) return;
+    }
+
+    await _changePhotoDate(currentTimestamp, newTimestamp, needsRecompile);
+  }
+
+  /// Checks if changing a photo's timestamp would change its position in the sorted list.
+  bool _wouldChangeOrder(String oldTimestamp, String newTimestamp) {
+    final currentFiles = widget.imageFilesStr;
+    if (currentFiles.length <= 1) return false;
+
+    // Get all timestamps except the one being changed
+    final timestamps = currentFiles
+        .map((f) => path.basenameWithoutExtension(f))
+        .where((t) => t != oldTimestamp)
+        .toList();
+
+    // Find the old position
+    final allTimestamps =
+        currentFiles.map((f) => path.basenameWithoutExtension(f)).toList();
+    final oldIndex = allTimestamps.indexOf(oldTimestamp);
+
+    // Add the new timestamp and sort to find new position
+    timestamps.add(newTimestamp);
+    timestamps.sort();
+    final newIndex = timestamps.indexOf(newTimestamp);
+
+    return oldIndex != newIndex;
   }
 
   Future<void> _changePhotoDate(
     String oldTimestamp,
     String newTimestamp,
+    bool needsRecompile,
   ) async {
     try {
-      setState(() {
-        isImporting = true;
-      });
       String oldRawPhotoPath =
           await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
         oldTimestamp,
@@ -428,17 +498,17 @@ class GalleryPageState extends State<GalleryPage>
         newOffsetMin,
       );
       await _loadImages();
-      await DB.instance.setNewVideoNeeded(projectId);
+
+      // Trigger video recompilation if needed
+      if (needsRecompile) {
+        await widget.recompileVideoCallback();
+      }
     } catch (e) {
       LogService.instance.log('Error changing photo date: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to change photo date: $e')),
       );
-    } finally {
-      setState(() {
-        isImporting = false;
-      });
     }
   }
 
@@ -508,27 +578,7 @@ class GalleryPageState extends State<GalleryPage>
 
   List<File> cloneList(List list) => List.from(list);
   Future<void> _init() async {
-    final String projectOrientationRaw =
-        await SettingsUtil.loadProjectOrientation(projectIdStr);
-    final int gridAxisCountRaw = await SettingsUtil.loadGridAxisCount(
-      projectIdStr,
-    );
-    final String galleryGridModeRaw =
-        await SettingsUtil.loadGalleryGridMode(projectIdStr);
-    final bool galleryDateLabelsEnabledRaw =
-        await SettingsUtil.loadGalleryDateLabelsEnabled(projectIdStr);
-    final bool galleryRawDateLabelsEnabledRaw =
-        await SettingsUtil.loadGalleryRawDateLabelsEnabled(projectIdStr);
-    final String galleryDateFormatRaw =
-        await SettingsUtil.loadGalleryDateFormat(projectIdStr);
-    setState(() {
-      gridAxisCount = gridAxisCountRaw;
-      _galleryGridMode = galleryGridModeRaw;
-      projectOrientation = projectOrientationRaw;
-      _galleryDateLabelsEnabled = galleryDateLabelsEnabledRaw;
-      _galleryRawDateLabelsEnabled = galleryRawDateLabelsEnabledRaw;
-      _galleryDateFormat = galleryDateFormatRaw;
-    });
+    await reloadGallerySettings();
     if (widget.userOnImportTutorial) {
       widget.setUserOnImportTutorialFalse();
       if (mounted) _showImportOptionsBottomSheet(context);
@@ -735,6 +785,7 @@ class GalleryPageState extends State<GalleryPage>
       rawLabelsEnabled: _galleryRawDateLabelsEnabled,
       dateFormat: _galleryDateFormat,
       captureOffsetMap: _captureOffsetMap,
+      fontFamily: _galleryDateFont,
     );
 
     return GalleryDateStampProvider(
@@ -987,38 +1038,11 @@ class GalleryPageState extends State<GalleryPage>
   }
 
   double _tileExtentForGridCount(BuildContext context) {
-    final bool isDesktop =
-        Platform.isMacOS || Platform.isWindows || Platform.isLinux;
-
-    if (isDesktop) {
-      if (_galleryGridMode == 'manual') {
-        // Manual mode: use width / gridAxisCount (like mobile)
-        final double width = MediaQuery.of(context).size.width;
-        return width / gridAxisCount;
-      }
-
-      // Auto mode: use fixed pixel steps (existing behavior)
-      const List<double> steps = [
-        480,
-        360,
-        280,
-        220,
-        180,
-        160,
-        140,
-        120,
-        110,
-        100,
-        90,
-        80,
-      ];
-      final int idx = gridAxisCount.clamp(1, steps.length) - 1;
-      return steps[idx];
-    } else {
-      // Mobile: always use width / gridAxisCount
-      final double width = MediaQuery.of(context).size.width;
-      return width / gridAxisCount;
+    if (_galleryGridMode == 'auto') {
+      return 180;
     }
+    final double width = MediaQuery.of(context).size.width;
+    return width / gridAxisCount;
   }
 
   void increaseSuccessfulImportCount() => successfullyImported++;
@@ -1971,6 +1995,7 @@ class GalleryPageState extends State<GalleryPage>
                 child: DateStampUtils.buildGalleryDateLabel(
                   formattedDate,
                   constraints.maxHeight,
+                  fontFamily: config.fontFamily,
                 ),
               ),
             ],
@@ -2005,6 +2030,7 @@ class GalleryPageState extends State<GalleryPage>
           userRanOutOfSpaceCallback: widget.userRanOutOfSpaceCallback,
           stabilizingRunningInMain: widget.stabilizingRunningInMain,
           loadImages: _loadImages,
+          recompileVideoCallback: widget.recompileVideoCallback,
         ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);

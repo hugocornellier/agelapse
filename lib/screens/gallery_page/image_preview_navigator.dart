@@ -18,6 +18,7 @@ import '../../utils/capture_timezone.dart';
 import '../../utils/gallery_photo_operations.dart';
 import '../../utils/gallery_permission_handler.dart';
 import '../../utils/gallery_dialog_utils.dart';
+import '../../widgets/confirm_action_dialog.dart';
 import '../manual_stab_page.dart';
 import '../stab_on_diff_face.dart';
 import 'gallery_widgets.dart';
@@ -34,6 +35,7 @@ class ImagePreviewNavigator extends StatefulWidget {
   final VoidCallback userRanOutOfSpaceCallback;
   final bool stabilizingRunningInMain;
   final Future<void> Function() loadImages;
+  final Future<void> Function() recompileVideoCallback;
 
   const ImagePreviewNavigator({
     super.key,
@@ -47,6 +49,7 @@ class ImagePreviewNavigator extends StatefulWidget {
     required this.userRanOutOfSpaceCallback,
     required this.stabilizingRunningInMain,
     required this.loadImages,
+    required this.recompileVideoCallback,
   });
 
   @override
@@ -78,6 +81,8 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
   String _exportDateStampFormat = DateStampUtils.exportFormatLong;
   int _exportDateStampSize = DateStampUtils.defaultSizePercent;
   double _exportDateStampOpacity = DateStampUtils.defaultOpacity;
+  String _exportDateStampFont = DateStampUtils.fontSameAsGallery;
+  String _galleryDateStampFont = DateStampUtils.defaultFont;
 
   // Cache for capture timezone offsets (timestamp -> offset minutes)
   Map<String, int?> _captureOffsetMap = {};
@@ -103,6 +108,9 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     final format = await SettingsUtil.loadExportDateStampFormat(projectIdStr);
     final size = await SettingsUtil.loadExportDateStampSize(projectIdStr);
     final opacity = await SettingsUtil.loadExportDateStampOpacity(projectIdStr);
+    final exportFont = await SettingsUtil.loadExportDateStampFont(projectIdStr);
+    final galleryFont =
+        await SettingsUtil.loadGalleryDateStampFont(projectIdStr);
     if (mounted) {
       setState(() {
         _exportDateStampEnabled = enabled;
@@ -110,6 +118,8 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
         _exportDateStampFormat = format;
         _exportDateStampSize = size;
         _exportDateStampOpacity = opacity;
+        _exportDateStampFont = exportFont;
+        _galleryDateStampFont = galleryFont;
       });
     }
   }
@@ -538,6 +548,10 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
                         child: Text(
                           dateText,
                           style: TextStyle(
+                            fontFamily: DateStampUtils.resolveExportFont(
+                              _exportDateStampFont,
+                              _galleryDateStampFont,
+                            ),
                             color: Colors.white,
                             fontSize: previewFontSize,
                             fontWeight: FontWeight.w500,
@@ -802,6 +816,10 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
             sizePercent: _exportDateStampSize,
             opacity: _exportDateStampOpacity,
             watermarkVerticalOffset: watermarkOffset,
+            fontFamily: DateStampUtils.resolveExportFont(
+              _exportDateStampFont,
+              _galleryDateStampFont,
+            ),
           );
 
           if (success) {
@@ -992,12 +1010,73 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
       newTime.minute,
     );
     String newTimestamp = newDateTime.millisecondsSinceEpoch.toString();
-    await _changePhotoDate(timestamp, newTimestamp);
+
+    // Check if this would change the photo order
+    final orderChanged = _wouldChangeOrder(timestamp, newTimestamp);
+
+    // Check if the formatted date stamp text would change
+    bool dateStampTextChanged = false;
+    final projectIdStr = widget.projectId.toString();
+    final exportStampsEnabled =
+        await SettingsUtil.loadExportDateStampEnabled(projectIdStr);
+
+    if (exportStampsEnabled && !orderChanged) {
+      // Only check text if stamps are enabled and order didn't change
+      final format = await SettingsUtil.loadExportDateStampFormat(projectIdStr);
+      final oldText = DateStampUtils.formatTimestamp(
+        int.parse(timestamp),
+        format,
+      );
+      final newText = DateStampUtils.formatTimestamp(
+        int.parse(newTimestamp),
+        format,
+      );
+      dateStampTextChanged = oldText != newText;
+    }
+
+    // Determine if we need to show a confirmation dialog and recompile
+    final needsRecompile = orderChanged || dateStampTextChanged;
+
+    if (needsRecompile) {
+      if (!mounted) return;
+      final confirmed = await ConfirmActionDialog.showDateChangeRecompile(
+        context,
+        orderChanged: orderChanged,
+      );
+      if (!confirmed) return;
+    }
+
+    await _changePhotoDate(timestamp, newTimestamp, needsRecompile);
+  }
+
+  /// Checks if changing a photo's timestamp would change its position in the sorted list.
+  bool _wouldChangeOrder(String oldTimestamp, String newTimestamp) {
+    final currentFiles = widget.rawImageFiles;
+    if (currentFiles.length <= 1) return false;
+
+    // Get all timestamps except the one being changed
+    final timestamps = currentFiles
+        .map((f) => path.basenameWithoutExtension(f))
+        .where((t) => t != oldTimestamp)
+        .toList();
+
+    // Find the old position
+    final allTimestamps =
+        currentFiles.map((f) => path.basenameWithoutExtension(f)).toList();
+    final oldIndex = allTimestamps.indexOf(oldTimestamp);
+
+    // Add the new timestamp and sort to find new position
+    timestamps.add(newTimestamp);
+    timestamps.sort();
+    final newIndex = timestamps.indexOf(newTimestamp);
+
+    return oldIndex != newIndex;
   }
 
   Future<void> _changePhotoDate(
     String currentTimestamp,
     String newTimestamp,
+    bool needsRecompile,
   ) async {
     // Update database
     await DB.instance.updatePhotoTimestamp(
@@ -1009,8 +1088,14 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     // Rename files
     await _renamePhotoFiles(currentTimestamp, newTimestamp);
 
-    // Reload images and close navigator
+    // Reload images
     await widget.loadImages();
+
+    // Trigger video recompilation if needed
+    if (needsRecompile) {
+      await widget.recompileVideoCallback();
+    }
+
     if (mounted) {
       Navigator.of(context).pop();
       ScaffoldMessenger.of(

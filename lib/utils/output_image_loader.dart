@@ -171,6 +171,26 @@ class OutputImageLoader {
     return dims.$2 / dims.$1;
   }
 
+  /// Get the output resolution as a formatted string (e.g., "1920 × 1080").
+  /// Returns null if settings are not loaded.
+  String? getResolutionString() {
+    if (resolution == null ||
+        aspectRatio == null ||
+        projectOrientation == null) {
+      return null;
+    }
+
+    final dims = StabUtils.getOutputDimensions(
+      resolution!,
+      aspectRatio!,
+      projectOrientation!,
+    );
+
+    if (dims == null) return null;
+
+    return '${dims.$1} × ${dims.$2}';
+  }
+
   Future<void> _initializeImageDirectory() async {
     try {
       final Map<String, Object?>? guidePhoto = await DirUtils.getGuidePhoto(

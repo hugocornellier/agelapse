@@ -27,6 +27,8 @@ class SettingsCache {
   ui.Image? image;
   double eyeOffsetX;
   double eyeOffsetY;
+  bool galleryDateLabelsEnabled;
+  bool exportDateStampEnabled;
 
   SettingsCache({
     required this.hasOpenedNonEmptyGallery,
@@ -50,6 +52,8 @@ class SettingsCache {
     required this.image,
     required this.eyeOffsetX,
     required this.eyeOffsetY,
+    required this.galleryDateLabelsEnabled,
+    required this.exportDateStampEnabled,
   });
 
   /// Dispose native resources. Call this when the cache is no longer needed.
@@ -82,6 +86,8 @@ class SettingsCache {
       SettingsUtil.loadOffsetYCurrentOrientation(projectId.toString()),
       SettingsUtil.hasSeenGuideModeTut(projectId.toString()),
       SettingsUtil.hasTakenFirstPhoto(projectId.toString()),
+      SettingsUtil.loadGalleryDateLabelsEnabled(projectId.toString()),
+      SettingsUtil.loadExportDateStampEnabled(projectId.toString()),
     ]);
 
     final int photoCount = settings[2] as int;
@@ -123,6 +129,8 @@ class SettingsCache {
       image: settings[13] as ui.Image,
       eyeOffsetX: double.parse(settings[14] as String),
       eyeOffsetY: double.parse(settings[15] as String),
+      galleryDateLabelsEnabled: settings[18] as bool? ?? false,
+      exportDateStampEnabled: settings[19] as bool? ?? false,
     );
   }
 
@@ -155,6 +163,8 @@ class SettingsCache {
       ),
       eyeOffsetX: double.parse(defaults['eyeOffsetXPortrait']!),
       eyeOffsetY: double.parse(defaults['eyeOffsetYPortrait']!),
+      galleryDateLabelsEnabled: false,
+      exportDateStampEnabled: false,
     );
   }
 }

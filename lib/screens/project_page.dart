@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../services/settings_cache.dart';
 import '../services/stab_update_event.dart';
@@ -10,7 +9,6 @@ import '../utils/utils.dart';
 import '../widgets/fancy_button.dart';
 import '../widgets/grid_painter_se.dart';
 import '../widgets/info_tooltip_icon.dart';
-import '../widgets/settings_sheet.dart';
 import '../utils/output_image_loader.dart';
 import 'create_first_video_page.dart';
 import 'guide_mode_tutorial_page.dart';
@@ -189,89 +187,29 @@ class ProjectPageState extends State<ProjectPage> {
     }
 
     final cache = widget.settingsCache!;
-    final bool isDesktop = _isDesktop;
-
-    if (!isDesktop) {
-      return Scaffold(
-        backgroundColor: const Color(0xff0F0F0F),
-        body: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: cache.noPhotos ||
-                              !cache.hasOpenedNonEmptyGallery ||
-                              !cache.hasTakenMoreThanOnePhoto ||
-                              !cache.hasViewedFirstVideo
-                          ? _buildNoPhotosContent(context, includeOutput: true)
-                          : _buildDashboardContent(),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
 
     return Scaffold(
       backgroundColor: const Color(0xff0F0F0F),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          final double rightPaneWidth = (constraints.maxWidth * 0.42).clamp(
-            480.0,
-            840.0,
-          );
+          final screenWidth = constraints.maxWidth;
+          final maxContentWidth = screenWidth.clamp(0.0, 1200.0);
 
-          final double leftMaxWidth =
-              (constraints.maxWidth - rightPaneWidth - 1).clamp(800.0, 1160.0);
-
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(maxWidth: leftMaxWidth),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        child: cache.noPhotos ||
-                                !cache.hasOpenedNonEmptyGallery ||
-                                !cache.hasTakenMoreThanOnePhoto ||
-                                !cache.hasViewedFirstVideo
-                            ? _buildNoPhotosContent(
-                                context,
-                                includeOutput: false,
-                              )
-                            : _buildDashboardSection(includeOutput: false),
-                      ),
-                    ),
-                  ),
+          return SingleChildScrollView(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: maxContentWidth),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: cache.noPhotos ||
+                          !cache.hasOpenedNonEmptyGallery ||
+                          !cache.hasTakenMoreThanOnePhoto ||
+                          !cache.hasViewedFirstVideo
+                      ? _buildNoPhotosContent(context, includeOutput: true)
+                      : _buildDashboardContent(),
                 ),
               ),
-              const SizedBox(
-                width: 1,
-                child: VerticalDivider(
-                  width: 1,
-                  thickness: 1,
-                  color: Color(0xff1E1E1E),
-                ),
-              ),
-              SizedBox(
-                width: rightPaneWidth,
-                child: SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: _buildOutputSectionForWidth(rightPaneWidth - 32.0),
-                  ),
-                ),
-              ),
-            ],
+            ),
           );
         },
       ),
@@ -290,7 +228,7 @@ class ProjectPageState extends State<ProjectPage> {
         const SizedBox(height: 21),
         ..._buildStepButtons(context, _determineStep()),
         const SizedBox(height: 40),
-        _buildDashboardSection(includeOutput: includeOutput),
+        _buildDashboardSection(),
       ],
     );
   }
@@ -431,110 +369,28 @@ class ProjectPageState extends State<ProjectPage> {
                   letterSpacing: 1.2,
                 ),
               ),
+              if (title == 'Output')
+                const InfoTooltipIcon(
+                  content:
+                      'Tap the gear icon in the upper-right to change these values.',
+                ),
             ],
           ),
-          if (title == 'Output')
-            GestureDetector(
-              onTap: () => _openSettings(context),
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: AppColors.settingsCardBorder,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.tune,
-                  size: 18,
-                  color: AppColors.settingsTextSecondary,
-                ),
-              ),
-            ),
         ],
       ),
     );
   }
 
-  bool get _isDesktop {
-    if (kIsWeb) return false;
-    final platform = defaultTargetPlatform;
-    return platform == TargetPlatform.macOS ||
-        platform == TargetPlatform.windows ||
-        platform == TargetPlatform.linux;
-  }
-
-  void _openSettings(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) {
-        return SettingsSheet(
-          projectId: widget.projectId,
-          onlyShowVideoSettings: true,
-          cancelStabCallback: widget.cancelStabCallback,
-          stabCallback: widget.stabCallback,
-          refreshSettings: widget.refreshSettings,
-          clearRawAndStabPhotos: widget.clearRawAndStabPhotos,
-          recompileVideoCallback: widget.recompileVideoCallback,
-        );
-      },
-    );
-  }
-
-  Widget _buildDashboardSection({bool includeOutput = true}) {
+  Widget _buildDashboardSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (!widget.settingsCache!.noPhotos) ...[const SizedBox(height: 30)],
+        if (!widget.settingsCache!.noPhotos) const SizedBox(height: 30),
         _buildSectionTitle('Dashboard', ''),
-        const SizedBox(height: 21),
+        const SizedBox(height: 16),
         dashboardWidget(),
-        const SizedBox(height: 30),
-        if (includeOutput) _buildOutputSection(),
-      ],
-    );
-  }
-
-  Widget _buildOutputSectionForWidth(double availableWidth) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 30),
-        _buildSectionTitle('Output', ''),
-        const SizedBox(height: 21),
-        _buildOutputContentForWidth(availableWidth),
-        const SizedBox(height: 64),
-      ],
-    );
-  }
-
-  Widget _buildOutputContentForWidth(double paneWidth) {
-    final isLandscape = widget.settingsCache!.projectOrientation == "landscape";
-    final double sideLength = paneWidth * (isLandscape ? 0.5 : 0.43);
-    final double landscapeCardWidth = (sideLength - 8.0) / 2;
-
-    return Column(
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildImageAndOffsetCards(
-              sideLength: sideLength,
-              landscapeCardWidth: landscapeCardWidth,
-              isLandscape: isLandscape,
-            ),
-            const SizedBox(width: 16.0),
-            Flexible(
-              child: SpecialCard(
-                projectOrientation: widget.settingsCache!.projectOrientation,
-                aspectRatio: widget.settingsCache!.aspectRatio,
-                resolution: widget.settingsCache!.resolution,
-                watermarkEnabled: widget.settingsCache!.watermarkEnabled,
-                stabilizationMode: widget.settingsCache!.stabilizationMode,
-                framerate: framerate,
-              ),
-            ),
-          ],
-        ),
+        const SizedBox(height: 32),
+        _buildOutputSection(),
       ],
     );
   }
@@ -542,166 +398,283 @@ class ProjectPageState extends State<ProjectPage> {
   Widget _buildOutputSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.start,
       children: [
-        const SizedBox(height: 30),
         _buildSectionTitle('Output', ''),
-        const SizedBox(height: 21),
-        _buildOutputContent(),
+        const SizedBox(height: 16),
+        _buildModernOutputContent(),
         const SizedBox(height: 64),
       ],
     );
   }
 
-  Widget _buildOutputContent() {
-    final screenWidth = MediaQuery.of(context).size.width;
+  Widget _buildModernOutputContent() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth;
+        final isLandscape =
+            widget.settingsCache!.projectOrientation == "landscape";
 
-    final isLandscape = widget.settingsCache!.projectOrientation == "landscape";
-    final double sideLength = screenWidth * (isLandscape ? 0.5 : 0.43);
-    final double landscapeCardWidth = (sideLength - 8.0) / 2;
+        // Calculate preview size - max 400px wide for portrait, 500px for landscape
+        final maxPreviewWidth = isLandscape ? 500.0 : 320.0;
+        final previewWidth = availableWidth.clamp(200.0, maxPreviewWidth);
+        final aspectRatioValue = outputImageLoader.getDisplayAspectRatio();
+        final previewHeight = previewWidth * aspectRatioValue;
 
-    return Column(
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        final resolutionString = outputImageLoader.getResolutionString();
+
+        return Column(
           children: [
-            _buildImageAndOffsetCards(
-              sideLength: sideLength,
-              landscapeCardWidth: landscapeCardWidth,
-              isLandscape: isLandscape,
-            ),
-            const SizedBox(width: 16.0),
-            Flexible(
-              child: SpecialCard(
-                projectOrientation: widget.settingsCache!.projectOrientation,
-                aspectRatio: widget.settingsCache!.aspectRatio,
-                resolution: widget.settingsCache!.resolution,
-                watermarkEnabled: widget.settingsCache!.watermarkEnabled,
-                stabilizationMode: widget.settingsCache!.stabilizationMode,
-                framerate: framerate,
+            // Output settings chips - now above the preview
+            _buildOutputSettingsChips(availableWidth),
+
+            const SizedBox(height: 20),
+
+            // Centered preview image
+            Center(
+              child: Column(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppColors.settingsCardBorder,
+                        width: 1,
+                      ),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(7),
+                      child: CustomPaint(
+                        size: Size(previewWidth, previewHeight),
+                        painter: outputImageLoader.guideImage == null
+                            ? null
+                            : GridPainterSE(
+                                outputImageLoader.offsetX,
+                                outputImageLoader.offsetY,
+                                outputImageLoader.ghostImageOffsetX,
+                                outputImageLoader.ghostImageOffsetY,
+                                outputImageLoader.guideImage,
+                                outputImageLoader.aspectRatio!,
+                                outputImageLoader.projectOrientation!,
+                                hideToolTip: true,
+                              ),
+                      ),
+                    ),
+                  ),
+                  if (resolutionString != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Text(
+                        resolutionString,
+                        style: TextStyle(
+                          color: Colors.grey.shade500,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
+
+            const SizedBox(height: 16),
+
+            // Offset cards
+            _buildOffsetCardsRow(availableWidth),
           ],
-        ),
-      ],
+        );
+      },
     );
   }
 
-  Widget _buildImageAndOffsetCards({
-    required double sideLength,
-    required double landscapeCardWidth,
-    required bool isLandscape,
-  }) {
-    // Use actual output dimensions (handles custom resolutions)
-    final double aspectRatioValue = outputImageLoader.getDisplayAspectRatio();
+  String _getDateStampValue() {
+    final cache = widget.settingsCache!;
+    if (cache.exportDateStampEnabled) {
+      return "On";
+    } else if (cache.galleryDateLabelsEnabled) {
+      return "Thumbnails";
+    }
+    return "Off";
+  }
+
+  Widget _buildOutputSettingsChips(double availableWidth) {
+    final cache = widget.settingsCache!;
+
+    final chips = [
+      _OutputChip(label: "Framerate", value: "$framerate FPS"),
+      _OutputChip(
+        label: "Orientation",
+        value: _capitalizeFirstLetter(cache.projectOrientation),
+      ),
+      _OutputChip(label: "Aspect", value: cache.aspectRatio),
+      _OutputChip(
+        label: "Stabilization",
+        value: _capitalizeFirstLetter(cache.stabilizationMode),
+      ),
+      _OutputChip(
+        label: "Watermark",
+        value: cache.watermarkEnabled ? "On" : "Off",
+      ),
+      _OutputChip(
+        label: "Date Stamp",
+        value: _getDateStampValue(),
+      ),
+    ];
+
+    // Wide layout: all chips in a single row
+    if (availableWidth >= 700) {
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        alignment: WrapAlignment.center,
+        children: chips.map((chip) => _buildChipWidget(chip)).toList(),
+      );
+    }
+
+    // Narrow layout: split into two rows of 3 chips each
+    final firstRow = chips.sublist(0, 3);
+    final secondRow = chips.sublist(3, 6);
 
     return Column(
       children: [
-        CustomPaint(
-          size: Size(sideLength, aspectRatioValue * sideLength),
-          painter: outputImageLoader.guideImage == null
-              ? null
-              : GridPainterSE(
-                  outputImageLoader.offsetX,
-                  outputImageLoader.offsetY,
-                  outputImageLoader.ghostImageOffsetX,
-                  outputImageLoader.ghostImageOffsetY,
-                  outputImageLoader.guideImage,
-                  outputImageLoader.aspectRatio!,
-                  outputImageLoader.projectOrientation!,
-                  hideToolTip: true,
-                ),
-        ),
-        const SizedBox(height: 12.0),
         Row(
-          children: [
-            _buildOffsetCard(
-              title: "Inter-Eye\nDistance",
-              value: outputImageLoader.offsetX * 2,
-              width: isLandscape ? landscapeCardWidth : null,
-              showInfo: true,
-              infoContent:
-                  'The spacing between the eye guide lines, shown as a percentage of the image width. Adjust in Settings → Eye Position.\n\nEx: 7% on a 1920px wide image → 1920 × 0.07 = 134px between eye guides.',
-            ),
-            const SizedBox(width: 8.0),
-            _buildOffsetCard(
-              title: "Vertical\nOffset",
-              value: outputImageLoader.offsetY,
-              width: isLandscape ? landscapeCardWidth : null,
-              showInfo: true,
-              infoContent:
-                  'How far down the eye guide line sits, shown as a percentage of the image height. Adjust in Settings → Eye Position.\n\nEx: 40% on a 1080px tall image → 1080 × 0.40 = 432px from the top of the image.',
-            ),
-          ],
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: firstRow
+              .map((chip) => Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: _buildChipWidget(chip),
+                  ))
+              .toList(),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: secondRow
+              .map((chip) => Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: _buildChipWidget(chip),
+                  ))
+              .toList(),
         ),
       ],
     );
   }
 
-  Widget _buildOffsetCard({
-    required String title,
-    required double value,
-    double? width,
-    int maxDecimalPlaces = 1,
-    double fontSize = 17.5,
-    bool showInfo = false,
-    String? infoContent,
-  }) {
-    final String roundedOffset = (value * 100).toStringAsFixed(
-      maxDecimalPlaces,
-    );
-
-    return SizedBox(
-      width: width,
-      child: CardBuilder(
-        padding: title == "Inter-Eye\nDistance" || title == "Vertical\nOffset"
-            ? const EdgeInsets.all(12.0)
-            : const EdgeInsets.all(16.0),
+  Widget _buildChipWidget(_OutputChip chip) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.settingsCardBackground,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.settingsCardBorder, width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 13,
-                      height: 0.99,
-                    ),
-                  ),
-                  if (showInfo && infoContent != null)
-                    InfoTooltipIcon(content: infoContent),
-                ],
-              ),
-              const SizedBox(height: 8.0),
-              Column(
-                children: [
-                  Text(
-                    "${roundedOffset.trim()} %",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: fontSize,
-                      fontWeight: FontWeight.normal,
-                    ),
-                  ),
-                  Text(
-                    title == "Inter-Eye\nDistance"
-                        ? 'of image width'
-                        : 'of image height',
-                    style: const TextStyle(
-                      color: Colors.grey, // Change this line
-                      fontSize: 7, // Very tiny text
-                    ),
-                  ),
-                ],
-              ),
-            ],
+          Text(
+            chip.label,
+            style: TextStyle(
+              color: Colors.grey.shade500,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            chip.value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildOffsetCardsRow(double availableWidth) {
+    final offsetCards = [
+      _buildCompactOffsetCard(
+        title: "Eye Distance",
+        value: outputImageLoader.offsetX * 2,
+        subtitle: "of width",
+        infoContent:
+            'The spacing between the eye guide lines, shown as a percentage of the image width. Adjust in Settings → Eye Position.',
+      ),
+      _buildCompactOffsetCard(
+        title: "Vertical Offset",
+        value: outputImageLoader.offsetY,
+        subtitle: "of height",
+        infoContent:
+            'How far down the eye guide line sits, shown as a percentage of the image height. Adjust in Settings → Eye Position.',
+      ),
+    ];
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        offsetCards[0],
+        const SizedBox(width: 12),
+        offsetCards[1],
+      ],
+    );
+  }
+
+  Widget _buildCompactOffsetCard({
+    required String title,
+    required double value,
+    required String subtitle,
+    String? infoContent,
+  }) {
+    final String roundedOffset = (value * 100).toStringAsFixed(1);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.settingsCardBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.settingsCardBorder, width: 1),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: Colors.grey.shade500,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              if (infoContent != null) InfoTooltipIcon(content: infoContent),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            "$roundedOffset%",
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Text(
+            subtitle,
+            style: TextStyle(
+              color: Colors.grey.shade600,
+              fontSize: 10,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _capitalizeFirstLetter(String input) {
+    if (input.isEmpty) return input;
+    return input[0].toUpperCase() + input.substring(1).toLowerCase();
   }
 
   int _determineStep() {
@@ -718,42 +691,55 @@ class ProjectPageState extends State<ProjectPage> {
 
   Widget dashboardWidget() {
     final cache = widget.settingsCache!;
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.start,
-      children: [
-        Row(
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final useWideLayout = constraints.maxWidth >= 700;
+
+        final cards = [
+          StatsCard(title: "Streak", value: cache.streak.toString()),
+          StatsCard(
+            title: "Photo today",
+            value: widget.photoTakenToday ? "Yes" : "No",
+          ),
+          StatsCard(title: "Photos", value: cache.photoCount.toString()),
+          StatsCard(
+            title: "Timespan",
+            value: "${cache.lengthInDays} days",
+          ),
+        ];
+
+        if (useWideLayout) {
+          return Row(
+            children: [
+              for (int i = 0; i < cards.length; i++) ...[
+                Expanded(child: cards[i]),
+                if (i < cards.length - 1) const SizedBox(width: 12.0),
+              ],
+            ],
+          );
+        }
+
+        return Column(
           children: [
-            Flexible(
-              child: StatsCard(title: "Streak", value: cache.streak.toString()),
+            Row(
+              children: [
+                Expanded(child: cards[0]),
+                const SizedBox(width: 12.0),
+                Expanded(child: cards[1]),
+              ],
             ),
-            const SizedBox(width: 16.0),
-            Flexible(
-              child: StatsCard(
-                title: "Photo taken today",
-                value: widget.photoTakenToday ? "Yes" : "No",
-              ),
+            const SizedBox(height: 12.0),
+            Row(
+              children: [
+                Expanded(child: cards[2]),
+                const SizedBox(width: 12.0),
+                Expanded(child: cards[3]),
+              ],
             ),
           ],
-        ),
-        const SizedBox(height: 16.0),
-        Row(
-          children: [
-            Flexible(
-              child: StatsCard(
-                title: "Photos",
-                value: cache.photoCount.toString(),
-              ),
-            ),
-            const SizedBox(width: 16.0),
-            Flexible(
-              child: StatsCard(
-                title: "Timespan (days)",
-                value: cache.lengthInDays.toString(),
-              ),
-            ),
-          ],
-        ),
-      ],
+        );
+      },
     );
   }
 }
@@ -946,4 +932,11 @@ class SpecialCard extends StatelessWidget {
     if (input.isEmpty) return input;
     return input[0].toUpperCase() + input.substring(1).toLowerCase();
   }
+}
+
+class _OutputChip {
+  final String label;
+  final String value;
+
+  const _OutputChip({required this.label, required this.value});
 }

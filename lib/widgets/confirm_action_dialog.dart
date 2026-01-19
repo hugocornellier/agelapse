@@ -65,6 +65,37 @@ class ConfirmActionDialog extends StatelessWidget {
     );
   }
 
+  /// Shows a confirmation dialog for date changes that affect the video.
+  ///
+  /// [orderChanged] - true if the photo sequence will change
+  /// [dateStampChanged] - true if only the date stamp text will change (no reorder)
+  static Future<bool> showDateChangeRecompile(
+    BuildContext context, {
+    required bool orderChanged,
+  }) async {
+    final String description;
+    final String warning;
+
+    if (orderChanged) {
+      description = 'Changing this date will reorder your photos.';
+      warning =
+          'Your video will be recompiled with the new photo sequence.\nYour photos will not be affected.';
+    } else {
+      description =
+          'Changing this date will update the date stamp on this frame.';
+      warning =
+          'Your video will be recompiled with the new date.\nYour photos will not be affected.';
+    }
+
+    return await _show(
+      context,
+      title: 'Recompile Video?',
+      description: description,
+      warningIcon: Icons.movie_outlined,
+      warningText: warning,
+    );
+  }
+
   /// Internal method to show the dialog with the given parameters.
   static Future<bool> _show(
     BuildContext context, {

@@ -433,6 +433,7 @@ class MainNavigationState extends State<MainNavigation> {
           setRawAndStabPhotoStates: setRawAndStabPhotoStates,
           settingsCache: _settingsCache,
           refreshSettings: refreshSettings,
+          recompileVideoCallback: _recompileVideo,
           userRanOutOfSpace: _userRanOutOfSpace,
           stabUpdateStream: _stabUpdateController.stream,
         ),

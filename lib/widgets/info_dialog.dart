@@ -35,29 +35,34 @@ void showStyledInfoDialog(
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: displayColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  displayIcon,
-                  color: displayColor,
-                  size: 24,
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: displayColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    displayIcon,
+                    color: displayColor,
+                    size: 24,
+                  ),
                 ),
               ),
               if (title != null) ...[
                 const SizedBox(height: 12),
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: displayColor,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                Center(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      color: displayColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
                 ),
               ],
               const SizedBox(height: 16),

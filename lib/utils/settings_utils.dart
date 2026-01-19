@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../services/custom_font_manager.dart';
 import '../utils/utils.dart';
 import '../utils/date_stamp_utils.dart';
 
@@ -394,20 +395,15 @@ class SettingsUtil {
       final int parsed = int.tryParse(s) ?? 4;
       final bool isDesktop =
           Platform.isMacOS || Platform.isWindows || Platform.isLinux;
-      final int maxSteps = isDesktop ? 12 : 5;
+      final int maxSteps = isDesktop ? 12 : 6;
       return parsed.clamp(1, maxSteps);
     } catch (_) {
       return 4;
     }
   }
 
-  /// Load gallery grid mode for desktop: 'auto' or 'manual'
-  /// Returns 'auto' on mobile (setting not applicable)
+  /// Load gallery grid mode: 'auto' or 'manual'
   static Future<String> loadGalleryGridMode(String projectId) async {
-    final bool isDesktop =
-        Platform.isMacOS || Platform.isWindows || Platform.isLinux;
-    if (!isDesktop) return 'auto';
-
     try {
       return await DB.instance.getSettingValueByTitle(
         'gallery_grid_mode',
@@ -418,7 +414,7 @@ class SettingsUtil {
     }
   }
 
-  /// Save gallery grid mode for desktop
+  /// Save gallery grid mode
   static Future<void> setGalleryGridMode(String projectId, String mode) async {
     await DB.instance.setSettingByTitle('gallery_grid_mode', mode, projectId);
   }
@@ -576,6 +572,109 @@ class SettingsUtil {
     }
   }
 
+  /// Load gallery date stamp font (per-project)
+  /// Validates that the font exists (bundled or custom) and returns default if not.
+  static Future<String> loadGalleryDateStampFont(String projectId) async {
+    try {
+      String font = await DB.instance.getSettingValueByTitle(
+        'gallery_date_stamp_font',
+        projectId,
+      );
+
+      if (font.isEmpty) {
+        return DateStampUtils.defaultFont;
+      }
+
+      // Check if it's a bundled font
+      if (DateStampUtils.isBundledFont(font)) {
+        return font;
+      }
+
+      // Check if it's a custom font that still exists
+      if (DateStampUtils.isCustomFont(font)) {
+        final isAvailable =
+            await CustomFontManager.instance.isFontAvailable(font);
+        if (isAvailable) {
+          return font;
+        }
+        // Custom font no longer exists, reset to default
+        debugPrint('Custom font $font no longer available, using default');
+        await DB.instance.setSettingByTitle(
+          'gallery_date_stamp_font',
+          DateStampUtils.defaultFont,
+          projectId,
+        );
+        return DateStampUtils.defaultFont;
+      }
+
+      return DateStampUtils.defaultFont;
+    } catch (e) {
+      return DateStampUtils.defaultFont;
+    }
+  }
+
+  /// Load export date stamp font (per-project)
+  /// Returns "_same_as_gallery" or a specific font name
+  /// Validates that custom fonts still exist.
+  static Future<String> loadExportDateStampFont(String projectId) async {
+    try {
+      String font = await DB.instance.getSettingValueByTitle(
+        'export_date_stamp_font',
+        projectId,
+      );
+
+      if (font.isEmpty) {
+        return DateStampUtils.fontSameAsGallery;
+      }
+
+      // Check special values
+      if (font == DateStampUtils.fontSameAsGallery) {
+        return font;
+      }
+
+      // Check if it's a bundled font
+      if (DateStampUtils.isBundledFont(font)) {
+        return font;
+      }
+
+      // Check if it's a custom font that still exists
+      if (DateStampUtils.isCustomFont(font)) {
+        final isAvailable =
+            await CustomFontManager.instance.isFontAvailable(font);
+        if (isAvailable) {
+          return font;
+        }
+        // Custom font no longer exists, reset to "same as gallery"
+        debugPrint(
+            'Custom font $font no longer available, using same as gallery');
+        await DB.instance.setSettingByTitle(
+          'export_date_stamp_font',
+          DateStampUtils.fontSameAsGallery,
+          projectId,
+        );
+        return DateStampUtils.fontSameAsGallery;
+      }
+
+      return DateStampUtils.fontSameAsGallery;
+    } catch (e) {
+      return DateStampUtils.fontSameAsGallery;
+    }
+  }
+
+  /// Save gallery date stamp font (per-project)
+  static Future<void> setGalleryDateStampFont(
+      String projectId, String font) async {
+    await DB.instance
+        .setSettingByTitle('gallery_date_stamp_font', font, projectId);
+  }
+
+  /// Save export date stamp font (per-project)
+  static Future<void> setExportDateStampFont(
+      String projectId, String font) async {
+    await DB.instance
+        .setSettingByTitle('export_date_stamp_font', font, projectId);
+  }
+
   /// Load all date stamp settings at once for efficiency
   static Future<DateStampSettings> loadAllDateStampSettings(
     String projectId,
@@ -589,6 +688,8 @@ class SettingsUtil {
       loadExportDateStampFormat(projectId),
       loadExportDateStampSize(projectId),
       loadExportDateStampOpacity(projectId),
+      loadGalleryDateStampFont(projectId),
+      loadExportDateStampFont(projectId),
     ]);
 
     return DateStampSettings(
@@ -600,6 +701,8 @@ class SettingsUtil {
       exportFormat: results[5] as String,
       exportSizePercent: results[6] as int,
       exportOpacity: results[7] as double,
+      galleryFont: results[8] as String,
+      exportFont: results[9] as String,
     );
   }
 }
@@ -614,6 +717,8 @@ class DateStampSettings {
   final String exportFormat;
   final int exportSizePercent;
   final double exportOpacity;
+  final String galleryFont;
+  final String exportFont;
 
   const DateStampSettings({
     required this.galleryLabelsEnabled,
@@ -624,7 +729,13 @@ class DateStampSettings {
     required this.exportFormat,
     required this.exportSizePercent,
     required this.exportOpacity,
+    required this.galleryFont,
+    required this.exportFont,
   });
+
+  /// Get resolved export font (handles "same as gallery" logic)
+  String get resolvedExportFont =>
+      DateStampUtils.resolveExportFont(exportFont, galleryFont);
 
   /// Default settings
   static const DateStampSettings defaults = DateStampSettings(
@@ -636,5 +747,7 @@ class DateStampSettings {
     exportFormat: DateStampUtils.exportFormatLong,
     exportSizePercent: 3,
     exportOpacity: 1.0,
+    galleryFont: DateStampUtils.defaultFont,
+    exportFont: DateStampUtils.fontSameAsGallery,
   );
 }

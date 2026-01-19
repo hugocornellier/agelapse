@@ -137,6 +137,11 @@ class VideoUtils {
       projectIdStr,
     );
     final dateSize = await SettingsUtil.loadExportDateStampSize(projectIdStr);
+    final exportFont = await SettingsUtil.loadExportDateStampFont(projectIdStr);
+    final galleryFont =
+        await SettingsUtil.loadGalleryDateStampFont(projectIdStr);
+    final resolvedFont =
+        DateStampUtils.resolveExportFont(exportFont, galleryFont);
 
     // Load watermark settings for collision avoidance
     final watermarkEnabled = await SettingsUtil.loadWatermarkSetting(
@@ -237,6 +242,7 @@ class VideoUtils {
       videoHeight: videoHeight,
       sizePercent: dateSize,
       baseTempDir: tempBaseDir,
+      fontFamily: resolvedFont,
     );
 
     if (assets == null || assets.dateToPath.isEmpty) {

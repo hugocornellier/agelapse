@@ -221,6 +221,12 @@ class GalleryExportHandler {
               await SettingsUtil.loadExportDateStampSize(projectIdStr);
           final dateOpacity =
               await SettingsUtil.loadExportDateStampOpacity(projectIdStr);
+          final exportFont =
+              await SettingsUtil.loadExportDateStampFont(projectIdStr);
+          final galleryFont =
+              await SettingsUtil.loadGalleryDateStampFont(projectIdStr);
+          final resolvedFont =
+              DateStampUtils.resolveExportFont(exportFont, galleryFont);
 
           // Load watermark settings for overlap prevention
           final watermarkEnabled =
@@ -255,6 +261,7 @@ class GalleryExportHandler {
               // Show progress during pre-processing (0-30%)
               setExportProgress((current / total) * 30);
             },
+            fontFamily: resolvedFont,
           );
 
           // Use processed files for export
@@ -357,6 +364,12 @@ class GalleryExportHandler {
               await SettingsUtil.loadExportDateStampSize(projectIdStr);
           final dateOpacity =
               await SettingsUtil.loadExportDateStampOpacity(projectIdStr);
+          final exportFont =
+              await SettingsUtil.loadExportDateStampFont(projectIdStr);
+          final galleryFont =
+              await SettingsUtil.loadGalleryDateStampFont(projectIdStr);
+          final resolvedFont =
+              DateStampUtils.resolveExportFont(exportFont, galleryFont);
 
           // Load watermark settings
           final watermarkEnabled =
@@ -390,6 +403,7 @@ class GalleryExportHandler {
             onProgress: (current, total) {
               setExportProgress((current / total) * 30);
             },
+            fontFamily: resolvedFont,
           );
 
           // Replace with processed files

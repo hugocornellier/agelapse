@@ -6,6 +6,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:opencv_dart/opencv_dart.dart' as cv;
 import '../screens/set_eye_position_page.dart';
+import '../services/custom_font_manager.dart';
 import '../services/database_helper.dart';
 import '../services/log_service.dart';
 import '../services/thumbnail_service.dart';
@@ -95,21 +96,23 @@ class SettingsSheetState extends State<SettingsSheet> {
   int gridCount = 4;
   int _gridModeIndex = 0;
   String _stabilizationMode = 'slow';
-
-  // Gallery grid mode (desktop only)
   String _galleryGridMode = 'auto';
-  final TextEditingController _manualColumnController = TextEditingController();
-  String? _manualColumnError;
 
   // Date stamp settings
   bool _galleryDateLabelsEnabled = false;
   bool _galleryRawDateLabelsEnabled = false;
   String _galleryDateFormat = DateStampUtils.galleryFormatMMYY;
+  String _galleryDateStampFont = DateStampUtils.defaultFont;
   bool _exportDateStampEnabled = false;
   String _exportDateStampPosition = DateStampUtils.positionLowerRight;
   String _exportDateStampFormat = DateStampUtils.exportFormatLong;
   int _exportDateStampSize = 3;
   double _exportDateStampOpacity = 1.0;
+  String _exportDateStampFont = DateStampUtils.fontSameAsGallery;
+
+  // Custom fonts state
+  List<CustomFont> _customFonts = [];
+  bool _isLoadingCustomFonts = false;
 
   // Custom format controllers and state
   final TextEditingController _galleryCustomFormatController =
@@ -159,7 +162,6 @@ class SettingsSheetState extends State<SettingsSheet> {
     _customHeightController.dispose();
     _galleryCustomFormatController.dispose();
     _exportCustomFormatController.dispose();
-    _manualColumnController.dispose();
     super.dispose();
   }
 
@@ -325,10 +327,8 @@ class SettingsSheetState extends State<SettingsSheet> {
       SettingsUtil.loadGridAxisCount(projectIdStr),
       SettingsUtil.loadGalleryGridMode(projectIdStr),
     ]);
-
     gridCount = results[0] as int;
     _galleryGridMode = results[1] as String;
-    _manualColumnController.text = gridCount.toString();
     setState(() {});
     return gridCount;
   }
@@ -341,11 +341,13 @@ class SettingsSheetState extends State<SettingsSheet> {
     _galleryDateLabelsEnabled = settings.galleryLabelsEnabled;
     _galleryRawDateLabelsEnabled = settings.galleryRawLabelsEnabled;
     _galleryDateFormat = settings.galleryFormat;
+    _galleryDateStampFont = settings.galleryFont;
     _exportDateStampEnabled = settings.exportEnabled;
     _exportDateStampPosition = settings.exportPosition;
     _exportDateStampFormat = settings.exportFormat;
     _exportDateStampSize = settings.exportSizePercent;
     _exportDateStampOpacity = settings.exportOpacity;
+    _exportDateStampFont = settings.exportFont;
 
     // Check if gallery format is custom (not a preset)
     _isGalleryCustomFormat =
@@ -361,7 +363,481 @@ class SettingsSheetState extends State<SettingsSheet> {
       _exportCustomFormatController.text = _exportDateStampFormat;
     }
 
+    // Load custom fonts
+    await _loadCustomFonts();
+
     setState(() {});
+  }
+
+  /// Load all installed custom fonts.
+  Future<void> _loadCustomFonts() async {
+    _customFonts = await CustomFontManager.instance.getAllCustomFonts();
+  }
+
+  /// Import a custom font from file picker.
+  /// Returns the family name of the installed font, or null if cancelled.
+  Future<String?> _importCustomFont() async {
+    setState(() => _isLoadingCustomFonts = true);
+
+    try {
+      // Open file picker for TTF/OTF files
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['ttf', 'otf'],
+        dialogTitle: 'Select a font file (TTF or OTF)',
+      );
+
+      if (result == null || result.files.isEmpty) {
+        setState(() => _isLoadingCustomFonts = false);
+        return null;
+      }
+
+      final filePath = result.files.first.path;
+      if (filePath == null) {
+        setState(() => _isLoadingCustomFonts = false);
+        return null;
+      }
+
+      // Validate the font file
+      final validation =
+          await CustomFontManager.instance.validateFontFile(filePath);
+      if (!validation.isValid) {
+        setState(() => _isLoadingCustomFonts = false);
+        if (mounted) {
+          _showFontErrorDialog(validation.errorMessage ?? 'Invalid font file');
+        }
+        return null;
+      }
+
+      // Show dialog to confirm font name
+      final displayName =
+          await _showFontNameDialog(validation.suggestedName ?? 'Custom Font');
+      if (displayName == null) {
+        setState(() => _isLoadingCustomFonts = false);
+        return null;
+      }
+
+      // Install the font
+      final font =
+          await CustomFontManager.instance.installFont(filePath, displayName);
+
+      // Refresh custom fonts list
+      await _loadCustomFonts();
+      setState(() => _isLoadingCustomFonts = false);
+
+      return font.familyName;
+    } catch (e) {
+      setState(() => _isLoadingCustomFonts = false);
+      if (mounted) {
+        _showFontErrorDialog(e.toString());
+      }
+      return null;
+    }
+  }
+
+  /// Show dialog to enter/confirm custom font name.
+  Future<String?> _showFontNameDialog(String suggestedName) async {
+    final controller = TextEditingController(text: suggestedName);
+    String? error;
+
+    return showDialog<String>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: AppColors.settingsCardBackground,
+          title: const Text('Name Your Font'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Enter a display name for this font:',
+                style: TextStyle(color: AppColors.settingsTextSecondary),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                maxLength: 30,
+                decoration: InputDecoration(
+                  hintText: 'Font name',
+                  errorText: error,
+                  counterText: '',
+                  border: const OutlineInputBorder(),
+                  focusedBorder: const OutlineInputBorder(
+                    borderSide: BorderSide(color: AppColors.settingsAccent),
+                  ),
+                ),
+                onChanged: (value) {
+                  if (error != null) {
+                    setDialogState(() => error = null);
+                  }
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(null),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                final name = controller.text.trim();
+                if (name.isEmpty) {
+                  setDialogState(() => error = 'Name cannot be empty');
+                  return;
+                }
+                // Check if name already exists
+                final existing = await CustomFontManager.instance
+                    .getCustomFontByDisplayName(name);
+                if (existing != null) {
+                  setDialogState(
+                      () => error = 'A font with this name already exists');
+                  return;
+                }
+                if (context.mounted) {
+                  Navigator.of(context).pop(name);
+                }
+              },
+              child: const Text('Install'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Show error dialog for font operations.
+  void _showFontErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.settingsCardBackground,
+        title: const Text('Font Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Show dialog to manage custom fonts (view/delete).
+  Future<void> _showManageFontsDialog() async {
+    await showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          backgroundColor: AppColors.settingsCardBackground,
+          title: const Text('Custom Fonts'),
+          content: SizedBox(
+            width: 300,
+            child: _customFonts.isEmpty
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Text(
+                      'No custom fonts installed.\n\nSelect "Custom (TTF/OTF)" from the font dropdown to import a font.',
+                      style: TextStyle(color: AppColors.settingsTextSecondary),
+                    ),
+                  )
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: _customFonts.map((font) {
+                      // Check if this font is currently in use
+                      final isInUse =
+                          _galleryDateStampFont == font.familyName ||
+                              _exportDateStampFont == font.familyName;
+
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                font.displayName,
+                                style: TextStyle(fontFamily: font.familyName),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (isInUse)
+                              const Padding(
+                                padding: EdgeInsets.only(left: 4),
+                                child: Icon(
+                                  Icons.check_circle,
+                                  size: 14,
+                                  color: AppColors.settingsAccent,
+                                ),
+                              ),
+                          ],
+                        ),
+                        subtitle: Text(
+                          '${(font.fileSize / 1024).toStringAsFixed(1)} KB',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.settingsTextSecondary,
+                          ),
+                        ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 20),
+                          onPressed: () async {
+                            final confirm =
+                                await _showDeleteFontConfirmation(font);
+                            if (confirm == true) {
+                              await _handleFontDeletion(font);
+                              setDialogState(() {});
+                              // Close dialog if all fonts deleted
+                              if (_customFonts.isEmpty &&
+                                  dialogContext.mounted) {
+                                Navigator.of(dialogContext).pop();
+                              }
+                            }
+                          },
+                        ),
+                      );
+                    }).toList(),
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Show confirmation dialog before deleting a font.
+  Future<bool?> _showDeleteFontConfirmation(CustomFont font) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.settingsCardBackground,
+        title: const Text('Delete Font?'),
+        content: Text(
+          'Are you sure you want to delete "${font.displayName}"?\n\n'
+          'Any projects using this font will revert to the default font.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Handle font deletion and reset project settings if needed.
+  Future<void> _handleFontDeletion(CustomFont font) async {
+    await CustomFontManager.instance.uninstallFont(font);
+
+    // Check if this project was using the deleted font
+    final projectIdStr = widget.projectId.toString();
+    bool needsRefresh = false;
+
+    // Check gallery font
+    if (_galleryDateStampFont == font.familyName) {
+      _galleryDateStampFont = DateStampUtils.defaultFont;
+      await DB.instance.setSettingByTitle(
+        'gallery_date_stamp_font',
+        DateStampUtils.defaultFont,
+        projectIdStr,
+      );
+      needsRefresh = true;
+    }
+
+    // Check export font
+    if (_exportDateStampFont == font.familyName) {
+      _exportDateStampFont = DateStampUtils.fontSameAsGallery;
+      await DB.instance.setSettingByTitle(
+        'export_date_stamp_font',
+        DateStampUtils.fontSameAsGallery,
+        projectIdStr,
+      );
+      needsRefresh = true;
+    }
+
+    await _loadCustomFonts();
+
+    if (needsRefresh) {
+      await widget.refreshSettings();
+      // Recompile video if export was affected
+      if (_exportDateStampEnabled) {
+        await widget.recompileVideoCallback();
+      }
+    }
+
+    setState(() {});
+  }
+
+  /// Build font dropdown items including custom fonts and import option.
+  List<DropdownMenuItem<String>> _buildFontDropdownItems({
+    bool includeCustomMarker = true,
+    bool includeSameAsGallery = false,
+  }) {
+    final items = <DropdownMenuItem<String>>[];
+
+    // Add "Same as thumbnail" option if requested (for export font)
+    if (includeSameAsGallery) {
+      items.add(
+        DropdownMenuItem<String>(
+          value: DateStampUtils.fontSameAsGallery,
+          child: Text(DateStampUtils.getFontDisplayName(
+              DateStampUtils.fontSameAsGallery)),
+        ),
+      );
+    }
+
+    // Add bundled fonts
+    for (final font in DateStampUtils.bundledFonts) {
+      items.add(
+        DropdownMenuItem<String>(
+          value: font,
+          child: Text(
+            DateStampUtils.getFontDisplayName(font),
+            style: TextStyle(fontFamily: font),
+          ),
+        ),
+      );
+    }
+
+    // Add custom fonts
+    for (final font in _customFonts) {
+      items.add(
+        DropdownMenuItem<String>(
+          value: font.familyName,
+          child: Text(
+            '${font.displayName} \u2605', // Star character
+            style: TextStyle(fontFamily: font.familyName),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      );
+    }
+
+    // Add "Custom (TTF/OTF)" import option
+    if (includeCustomMarker) {
+      items.add(
+        DropdownMenuItem<String>(
+          value: DateStampUtils.fontCustomMarker,
+          child: const Text('+ Custom (TTF/OTF)'),
+        ),
+      );
+    }
+
+    return items;
+  }
+
+  /// Handle font selection, including importing custom fonts.
+  Future<void> _handleGalleryFontSelection(String? value) async {
+    if (value == null) return;
+
+    // Check if user wants to import a custom font
+    if (value == DateStampUtils.fontCustomMarker) {
+      final familyName = await _importCustomFont();
+      if (familyName != null && mounted) {
+        // Use the newly imported font
+        final affectsExport = _exportDateStampEnabled &&
+            _exportDateStampFont == DateStampUtils.fontSameAsGallery;
+        if (affectsExport) {
+          final shouldProceed = await ConfirmActionDialog.showRecompileVideo(
+            context,
+            'font',
+          );
+          if (!shouldProceed) return;
+        }
+
+        setState(() => _galleryDateStampFont = familyName);
+        await DB.instance.setSettingByTitle(
+          'gallery_date_stamp_font',
+          familyName,
+          widget.projectId.toString(),
+        );
+        await widget.refreshSettings();
+
+        if (affectsExport) {
+          await widget.recompileVideoCallback();
+        }
+      }
+      return;
+    }
+
+    // Regular font selection
+    final affectsExport = _exportDateStampEnabled &&
+        _exportDateStampFont == DateStampUtils.fontSameAsGallery;
+    if (affectsExport) {
+      final shouldProceed = await ConfirmActionDialog.showRecompileVideo(
+        context,
+        'font',
+      );
+      if (!shouldProceed) return;
+    }
+
+    setState(() => _galleryDateStampFont = value);
+    await DB.instance.setSettingByTitle(
+      'gallery_date_stamp_font',
+      value,
+      widget.projectId.toString(),
+    );
+    await widget.refreshSettings();
+
+    if (affectsExport) {
+      await widget.recompileVideoCallback();
+    }
+  }
+
+  /// Handle export font selection, including importing custom fonts.
+  Future<void> _handleExportFontSelection(String? value) async {
+    if (value == null) return;
+
+    // Check if user wants to import a custom font
+    if (value == DateStampUtils.fontCustomMarker) {
+      final familyName = await _importCustomFont();
+      if (familyName != null && mounted) {
+        final shouldProceed = await ConfirmActionDialog.showRecompileVideo(
+          context,
+          'font',
+        );
+        if (!shouldProceed) return;
+
+        setState(() => _exportDateStampFont = familyName);
+        await DB.instance.setSettingByTitle(
+          'export_date_stamp_font',
+          familyName,
+          widget.projectId.toString(),
+        );
+        await widget.refreshSettings();
+        await widget.recompileVideoCallback();
+      }
+      return;
+    }
+
+    // Regular font selection
+    final shouldProceed = await ConfirmActionDialog.showRecompileVideo(
+      context,
+      'font',
+    );
+    if (!shouldProceed) return;
+
+    setState(() => _exportDateStampFont = value);
+    await DB.instance.setSettingByTitle(
+      'export_date_stamp_font',
+      value,
+      widget.projectId.toString(),
+    );
+    await widget.refreshSettings();
+    await widget.recompileVideoCallback();
   }
 
   void _updateSetting(String title, bool value) {
@@ -881,64 +1357,61 @@ class SettingsSheetState extends State<SettingsSheet> {
 
     return Column(
       children: [
-        // Grid Mode dropdown - desktop only
-        if (isDesktop)
-          SettingListTile(
-            title: 'Grid mode',
-            showDivider: true,
-            contentWidget: FutureBuilder<int>(
-              future: _gridCountFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  );
-                }
-                return CustomDropdownButton<String>(
-                  value: _galleryGridMode,
-                  items: const [
-                    DropdownMenuItem<String>(
-                      value: 'auto',
-                      child: Text('Auto'),
-                    ),
-                    DropdownMenuItem<String>(
-                      value: 'manual',
-                      child: Text('Manual'),
-                    ),
-                  ],
-                  onChanged: (String? value) async {
-                    if (value != null && value != _galleryGridMode) {
-                      setState(() {
-                        _galleryGridMode = value;
-                        _manualColumnError = null;
-                      });
-                      await SettingsUtil.setGalleryGridMode(
-                        widget.projectId.toString(),
-                        value,
-                      );
-                      widget.refreshSettings();
-                    }
-                  },
-                );
-              },
-            ),
-            infoContent:
-                'Auto: Tiles resize based on window width with optimized sizing.\n\n'
-                'Manual: Displays an exact number of columns regardless of window size.',
-            showInfo: true,
-          ),
-
-        // Grid columns control - behavior depends on mode and platform
-        _buildGridColumnsControl(isDesktop),
+        _buildGalleryGridModeDropdown(),
+        if (_galleryGridMode == 'manual') _buildGridColumnsControl(isDesktop),
       ],
     );
   }
 
-  Widget _buildGridColumnsControl(bool isDesktop) {
-    final bool showManualInput = isDesktop && _galleryGridMode == 'manual';
+  Widget _buildGalleryGridModeDropdown() {
+    return SettingListTile(
+      title: 'Grid mode',
+      showDivider: _galleryGridMode == 'manual',
+      contentWidget: FutureBuilder<int>(
+        future: _gridCountFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            );
+          }
+          return CustomDropdownButton<String>(
+            value: _galleryGridMode,
+            items: const [
+              DropdownMenuItem<String>(
+                value: 'auto',
+                child: Text('Auto'),
+              ),
+              DropdownMenuItem<String>(
+                value: 'manual',
+                child: Text('Manual'),
+              ),
+            ],
+            onChanged: (String? value) async {
+              if (value != null && value != _galleryGridMode) {
+                setState(() {
+                  _galleryGridMode = value;
+                });
+                await SettingsUtil.setGalleryGridMode(
+                  widget.projectId.toString(),
+                  value,
+                );
+                widget.refreshSettings();
+              }
+            },
+          );
+        },
+      ),
+      infoContent:
+          'Auto: Tiles resize based on window width with optimized sizing.\n\n'
+          'Manual: Displays an exact number of columns regardless of window size.',
+      showInfo: true,
+    );
+  }
 
+  Widget _buildGridColumnsControl(bool isDesktop) {
     return SettingListTile(
       title: 'Grid columns',
       showDivider: false,
@@ -954,18 +1427,13 @@ class SettingsSheetState extends State<SettingsSheet> {
           } else if (snapshot.hasError) {
             return const Text('Error');
           } else if (snapshot.hasData) {
-            if (showManualInput) {
-              return _buildManualColumnInput();
-            } else {
-              return _buildColumnDropdown(isDesktop);
-            }
+            return _buildColumnDropdown(isDesktop);
           }
           return const Text('Error');
         },
       ),
-      infoContent: isDesktop && _galleryGridMode == 'manual'
-          ? 'Enter the exact number of columns to display (1-12).'
-          : 'Choose how many columns of photos to display in the gallery grid.',
+      infoContent:
+          'Choose how many columns of photos to display in the gallery grid.',
       showInfo: true,
     );
   }
@@ -973,7 +1441,7 @@ class SettingsSheetState extends State<SettingsSheet> {
   Widget _buildColumnDropdown(bool isDesktop) {
     return StatefulBuilder(
       builder: (context, setLocalState) {
-        final int maxSteps = isDesktop ? 12 : 5;
+        final int maxSteps = isDesktop ? 12 : 6;
 
         return CustomDropdownButton<int>(
           value: gridCount.clamp(1, maxSteps),
@@ -1002,109 +1470,6 @@ class SettingsSheetState extends State<SettingsSheet> {
         );
       },
     );
-  }
-
-  Widget _buildManualColumnInput() {
-    return StatefulBuilder(
-      builder: (context, setLocalState) {
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 60,
-              child: TextField(
-                controller: _manualColumnController,
-                keyboardType: TextInputType.number,
-                textAlign: TextAlign.center,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(2),
-                ],
-                style: const TextStyle(
-                  color: AppColors.settingsTextPrimary,
-                  fontSize: 14,
-                ),
-                decoration: InputDecoration(
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 8,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: _manualColumnError != null
-                          ? Colors.red
-                          : AppColors.settingsTextTertiary,
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: _manualColumnError != null
-                          ? Colors.red
-                          : AppColors.settingsTextTertiary,
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(
-                      color: AppColors.settingsAccent,
-                    ),
-                  ),
-                ),
-                onSubmitted: (_) => _applyManualColumnCount(setLocalState),
-                onChanged: (_) {
-                  if (_manualColumnError != null) {
-                    setLocalState(() => _manualColumnError = null);
-                    setState(() => _manualColumnError = null);
-                  }
-                },
-              ),
-            ),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(Icons.check, size: 20),
-              color: AppColors.settingsAccent,
-              onPressed: () => _applyManualColumnCount(setLocalState),
-              tooltip: 'Apply',
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _applyManualColumnCount(StateSetter setLocalState) async {
-    final input = _manualColumnController.text.trim();
-    final parsed = int.tryParse(input);
-
-    if (parsed == null || input.isEmpty) {
-      setLocalState(() => _manualColumnError = 'Enter a number');
-      setState(() => _manualColumnError = 'Enter a number');
-      return;
-    }
-    if (parsed < 1 || parsed > 12) {
-      setLocalState(() => _manualColumnError = 'Must be 1-12');
-      setState(() => _manualColumnError = 'Must be 1-12');
-      _manualColumnController.text = gridCount.toString();
-      return;
-    }
-
-    setLocalState(() {
-      _manualColumnError = null;
-      gridCount = parsed;
-    });
-    setState(() {
-      _manualColumnError = null;
-      gridCount = parsed;
-    });
-
-    await DB.instance.setSettingByTitle(
-      'gridAxisCount',
-      parsed.toString(),
-      widget.projectId.toString(),
-    );
-    widget.refreshSettings();
   }
 
   Widget _buildStabilizationSettings() {
@@ -1350,6 +1715,45 @@ class SettingsSheetState extends State<SettingsSheet> {
               }
             },
           ),
+        // Gallery font dropdown (includes custom fonts and import option)
+        SettingListTile(
+          title: 'Font',
+          showDivider: _customFonts.isEmpty,
+          contentWidget: _isLoadingCustomFonts
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : CustomDropdownButton<String>(
+                  value: _galleryDateStampFont,
+                  items: _buildFontDropdownItems(),
+                  onChanged:
+                      galleryEnabled ? _handleGalleryFontSelection : null,
+                ),
+          infoContent:
+              'Select "Custom (TTF/OTF)" to import your own font file.',
+          showInfo: true,
+          disabled: !galleryEnabled,
+        ),
+        // Manage custom fonts button (shown when custom fonts exist)
+        if (_customFonts.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
+            child: TextButton.icon(
+              onPressed: galleryEnabled ? _showManageFontsDialog : null,
+              icon: const Icon(Icons.settings, size: 16),
+              label: Text(
+                'Manage ${_customFonts.length} custom font${_customFonts.length == 1 ? '' : 's'}',
+                style: const TextStyle(fontSize: 13),
+              ),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.settingsAccent,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+            ),
+          ),
 
         // Export section header
         Padding(
@@ -1566,6 +1970,27 @@ class SettingsSheetState extends State<SettingsSheet> {
               }
             },
           ),
+        // Export font dropdown (includes custom fonts and import option)
+        SettingListTile(
+          title: 'Font',
+          showDivider: true,
+          contentWidget: _isLoadingCustomFonts
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : CustomDropdownButton<String>(
+                  value: _exportDateStampFont,
+                  items: _buildFontDropdownItems(includeSameAsGallery: true),
+                  onChanged: _exportDateStampEnabled
+                      ? _handleExportFontSelection
+                      : null,
+                ),
+          infoContent: '',
+          showInfo: false,
+          disabled: !_exportDateStampEnabled,
+        ),
         // Export size dropdown
         SettingListTile(
           title: 'Size',

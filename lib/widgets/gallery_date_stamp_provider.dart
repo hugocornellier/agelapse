@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/date_stamp_utils.dart';
 
 /// Immutable configuration for gallery date stamp display.
 ///
@@ -21,11 +22,15 @@ class GalleryDateStampConfig {
   /// Reference equality is used for comparison (not deep equality).
   final Map<String, int?> captureOffsetMap;
 
+  /// Font family for date labels (e.g., 'Inter', 'Roboto').
+  final String fontFamily;
+
   const GalleryDateStampConfig({
     required this.stabilizedLabelsEnabled,
     required this.rawLabelsEnabled,
     required this.dateFormat,
     required this.captureOffsetMap,
+    required this.fontFamily,
   });
 
   /// Disabled/default configuration used during initialization.
@@ -34,6 +39,7 @@ class GalleryDateStampConfig {
     rawLabelsEnabled: false,
     dateFormat: 'MM/yy',
     captureOffsetMap: {},
+    fontFamily: DateStampUtils.defaultFont,
   );
 
   /// Efficient equality check.
@@ -45,6 +51,7 @@ class GalleryDateStampConfig {
           stabilizedLabelsEnabled == other.stabilizedLabelsEnabled &&
           rawLabelsEnabled == other.rawLabelsEnabled &&
           dateFormat == other.dateFormat &&
+          fontFamily == other.fontFamily &&
           identical(captureOffsetMap, other.captureOffsetMap);
 
   @override
@@ -52,6 +59,7 @@ class GalleryDateStampConfig {
         stabilizedLabelsEnabled,
         rawLabelsEnabled,
         dateFormat,
+        fontFamily,
         identityHashCode(captureOffsetMap),
       );
 
@@ -61,6 +69,7 @@ class GalleryDateStampConfig {
     bool? rawLabelsEnabled,
     String? dateFormat,
     Map<String, int?>? captureOffsetMap,
+    String? fontFamily,
   }) {
     return GalleryDateStampConfig(
       stabilizedLabelsEnabled:
@@ -68,6 +77,7 @@ class GalleryDateStampConfig {
       rawLabelsEnabled: rawLabelsEnabled ?? this.rawLabelsEnabled,
       dateFormat: dateFormat ?? this.dateFormat,
       captureOffsetMap: captureOffsetMap ?? this.captureOffsetMap,
+      fontFamily: fontFamily ?? this.fontFamily,
     );
   }
 }

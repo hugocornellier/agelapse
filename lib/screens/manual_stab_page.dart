@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import '../services/face_stabilizer.dart';
 import '../services/database_helper.dart';
 import '../services/log_service.dart';
+import '../services/stabilization_service.dart';
 import '../services/thumbnail_service.dart';
 import '../styles/styles.dart';
 import '../utils/dir_utils.dart';
@@ -32,7 +33,11 @@ class ManualStabilizationPage extends StatefulWidget {
   ManualStabilizationPageState createState() => ManualStabilizationPageState();
 }
 
-class ManualStabilizationPageState extends State<ManualStabilizationPage> {
+/// Phases of the save operation for visual feedback.
+enum _SavePhase { idle, saving, success }
+
+class ManualStabilizationPageState extends State<ManualStabilizationPage>
+    with SingleTickerProviderStateMixin {
   String rawPhotoPath = "";
   FaceStabilizer? _faceStabilizer;
   int? _canvasWidth;
@@ -75,9 +80,9 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
 
   // Save/unsaved state management
   bool _hasUnsavedChanges = false;
-  bool _isSaving = false;
-  bool _showCheckmark = false;
-  Timer? _checkmarkTimer;
+  _SavePhase _savePhase = _SavePhase.idle;
+  late AnimationController _checkmarkAnimController;
+  late Animation<double> _checkmarkScaleAnim;
 
   // Saved values (last committed to database)
   double _savedTx = 0;
@@ -101,13 +106,27 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
     _inputController3.addListener(_onParamChanged);
     _inputController4.addListener(_onParamChanged);
 
+    // Initialize checkmark animation (pop/bounce effect)
+    _checkmarkAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _checkmarkScaleAnim = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.2), weight: 60),
+      TweenSequenceItem(tween: Tween(begin: 1.2, end: 0.9), weight: 20),
+      TweenSequenceItem(tween: Tween(begin: 0.9, end: 1.0), weight: 20),
+    ]).animate(CurvedAnimation(
+      parent: _checkmarkAnimController,
+      curve: Curves.easeOut,
+    ));
+
     init();
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
-    _checkmarkTimer?.cancel();
+    _checkmarkAnimController.dispose();
     for (final t in _holdTimers.values) {
       t?.cancel();
     }
@@ -184,19 +203,23 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isSaving = _savePhase != _SavePhase.idle;
+
     return PopScope(
-      canPop: !_hasUnsavedChanges,
+      // Block back navigation during save operation
+      canPop: !_hasUnsavedChanges && !isSaving,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
+
+        // Don't allow any navigation during save
+        if (isSaving) return;
 
         if (_hasUnsavedChanges) {
           bool? saveChanges = await _showUnsavedChangesDialog();
 
           if (saveChanges == true) {
             await _saveChanges();
-            if (context.mounted) {
-              Navigator.of(context).pop();
-            }
+            // Don't pop here - _saveChanges handles navigation
           } else if (saveChanges == false) {
             if (context.mounted) {
               Navigator.of(context).pop();
@@ -205,53 +228,157 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
           // null = user cancelled, do nothing
         }
       },
-      child: Scaffold(
-        backgroundColor: AppColors.settingsBackground,
-        appBar: _buildAppBar(),
-        body: GestureDetector(
-          onTap: () => FocusScope.of(context).unfocus(),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              const double minPreviewHeight = 300;
-              const double controlsEstimatedHeight = 220; // controls + spacing
-              final double availableForPreview = constraints.maxHeight -
-                  32 -
-                  controlsEstimatedHeight; // 32 for padding
+      child: Stack(
+        children: [
+          // Main content - absorb pointer during save
+          AbsorbPointer(
+            absorbing: isSaving,
+            child: Scaffold(
+              backgroundColor: AppColors.settingsBackground,
+              appBar: _buildAppBar(),
+              body: GestureDetector(
+                onTap: () => FocusScope.of(context).unfocus(),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    const double minPreviewHeight = 300;
+                    const double controlsEstimatedHeight =
+                        220; // controls + spacing
+                    final double availableForPreview = constraints.maxHeight -
+                        32 -
+                        controlsEstimatedHeight; // 32 for padding
 
-              if (availableForPreview >= minPreviewHeight) {
-                // Enough space - use Expanded layout
-                return Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildControlsSection(),
-                      const SizedBox(height: 20),
-                      Expanded(child: _buildPreviewSection()),
-                    ],
-                  ),
-                );
-              } else {
-                // Not enough space - use scrollable layout with min height
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildControlsSection(),
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        height: minPreviewHeight,
-                        child: _buildPreviewSection(),
-                      ),
-                    ],
-                  ),
-                );
-              }
-            },
+                    if (availableForPreview >= minPreviewHeight) {
+                      // Enough space - use Expanded layout
+                      return Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildControlsSection(),
+                            const SizedBox(height: 20),
+                            Expanded(child: _buildPreviewSection()),
+                          ],
+                        ),
+                      );
+                    } else {
+                      // Not enough space - use scrollable layout with min height
+                      return SingleChildScrollView(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildControlsSection(),
+                            const SizedBox(height: 20),
+                            SizedBox(
+                              height: minPreviewHeight,
+                              child: _buildPreviewSection(),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ),
+              bottomNavigationBar: _buildToolbar(context),
+            ),
+          ),
+          // Save overlay
+          if (isSaving) _buildSaveOverlay(),
+        ],
+      ),
+    );
+  }
+
+  /// Builds the full-screen save overlay showing "Saving..." or checkmark.
+  Widget _buildSaveOverlay() {
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black.withValues(alpha: 0.6),
+        child: Center(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            child: _savePhase == _SavePhase.saving
+                ? _buildSavingIndicator()
+                : _buildSuccessCheckmark(),
           ),
         ),
-        bottomNavigationBar: _buildToolbar(context),
+      ),
+    );
+  }
+
+  /// "Saving..." indicator with spinner.
+  Widget _buildSavingIndicator() {
+    return Container(
+      key: const ValueKey('saving'),
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+      decoration: BoxDecoration(
+        color: AppColors.settingsCardBackground,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              color: AppColors.settingsAccent,
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Saving...',
+            style: TextStyle(
+              color: AppColors.settingsTextPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              decoration: TextDecoration.none,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Green checkmark badge with pop animation.
+  Widget _buildSuccessCheckmark() {
+    return AnimatedBuilder(
+      key: const ValueKey('success'),
+      animation: _checkmarkScaleAnim,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _checkmarkScaleAnim.value,
+          child: child,
+        );
+      },
+      child: Container(
+        width: 80,
+        height: 80,
+        decoration: BoxDecoration(
+          color: const Color(0xFF22C55E), // Green-500
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF22C55E).withValues(alpha: 0.4),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: const Icon(
+          Icons.check_rounded,
+          color: Colors.white,
+          size: 44,
+        ),
       ),
     );
   }
@@ -274,11 +401,14 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
       ),
       leading: GestureDetector(
         onTap: () {
+          // Block back during save
+          if (_savePhase != _SavePhase.idle) return;
+
           if (_hasUnsavedChanges) {
             _showUnsavedChangesDialog().then((saveChanges) async {
               if (saveChanges == true) {
                 await _saveChanges();
-                if (mounted) Navigator.of(context).pop();
+                // _saveChanges handles navigation
               } else if (saveChanges == false) {
                 if (mounted) Navigator.of(context).pop();
               }
@@ -321,17 +451,15 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
             ),
           ),
         ),
-        // Reset button (only when unsaved changes exist)
-        if (_hasUnsavedChanges)
+        // Reset button (only when unsaved changes exist and not saving)
+        if (_hasUnsavedChanges && _savePhase == _SavePhase.idle)
           GestureDetector(
-            onTap: _isSaving
-                ? null
-                : () async {
-                    final bool? shouldReset = await _showResetConfirmDialog();
-                    if (shouldReset == true) {
-                      await _resetChanges();
-                    }
-                  },
+            onTap: () async {
+              final bool? shouldReset = await _showResetConfirmDialog();
+              if (shouldReset == true) {
+                await _resetChanges();
+              }
+            },
             child: Container(
               width: 44,
               height: 44,
@@ -351,59 +479,39 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
               ),
             ),
           ),
-        // Save button (only when unsaved changes exist)
-        if (_hasUnsavedChanges)
+        // Save button (only when unsaved changes exist and not saving)
+        if (_hasUnsavedChanges && _savePhase == _SavePhase.idle)
           Builder(
             builder: (context) {
               final isWide = MediaQuery.of(context).size.width > 600;
               return GestureDetector(
-                onTap: _isSaving ? null : _saveChanges,
+                onTap: _saveChanges,
                 child: Container(
                   height: 44,
                   padding: EdgeInsets.symmetric(horizontal: isWide ? 16 : 11),
                   margin: const EdgeInsets.only(right: 8),
                   decoration: BoxDecoration(
-                    color: _showCheckmark
-                        ? Colors.green.withValues(alpha: 0.15)
-                        : AppColors.settingsAccent.withValues(alpha: 0.15),
+                    color: AppColors.settingsAccent.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: _showCheckmark
-                          ? Colors.green.withValues(alpha: 0.3)
-                          : AppColors.settingsAccent.withValues(alpha: 0.3),
+                      color: AppColors.settingsAccent.withValues(alpha: 0.3),
                       width: 1,
                     ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (_isSaving)
-                        const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppColors.settingsAccent,
-                          ),
-                        )
-                      else
-                        Icon(
-                          _showCheckmark
-                              ? Icons.check_circle_rounded
-                              : Icons.save_rounded,
-                          color: _showCheckmark
-                              ? Colors.green
-                              : AppColors.settingsAccent,
-                          size: 22,
-                        ),
+                      const Icon(
+                        Icons.save_rounded,
+                        color: AppColors.settingsAccent,
+                        size: 22,
+                      ),
                       if (isWide) ...[
                         const SizedBox(width: 8),
-                        Text(
-                          _showCheckmark ? 'Saved' : 'Save Changes',
+                        const Text(
+                          'Save Changes',
                           style: TextStyle(
-                            color: _showCheckmark
-                                ? Colors.green
-                                : AppColors.settingsAccent,
+                            color: AppColors.settingsAccent,
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                           ),
@@ -946,7 +1054,12 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
   }
 
   Future<void> _saveChanges() async {
-    setState(() => _isSaving = true);
+    // Phase 1: Show "Saving..." overlay
+    setState(() => _savePhase = _SavePhase.saving);
+
+    // Track minimum display time for "Saving..." (0.5s)
+    final minSavingDisplayFuture =
+        Future.delayed(const Duration(milliseconds: 500));
 
     try {
       final tx = double.tryParse(_inputController1.text) ?? 0;
@@ -963,23 +1076,38 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage> {
       _savedTy = ty;
       _savedMult = mult;
       _savedRot = rot;
-
-      setState(() {
-        _isSaving = false;
-        _hasUnsavedChanges = false;
-        _showCheckmark = true;
-      });
+      _hasUnsavedChanges = false;
 
       // Notify gallery to reload with updated images
       await widget.onSaveComplete?.call();
 
-      // Hide checkmark after 2 seconds
-      _checkmarkTimer?.cancel();
-      _checkmarkTimer = Timer(const Duration(seconds: 2), () {
-        if (mounted) setState(() => _showCheckmark = false);
-      });
+      // Trigger auto-compile video check (mirrors retry stabilization behavior)
+      await DB.instance.setNewVideoNeeded(widget.projectId);
+
+      // If stabilization batch is already active, the flag is enough - video will
+      // compile when batch finishes. Otherwise, trigger compilation directly.
+      if (!StabilizationService.instance.isActive) {
+        unawaited(
+            StabilizationService.instance.startStabilization(widget.projectId));
+      }
+
+      // Wait for minimum "Saving..." display time
+      await minSavingDisplayFuture;
+      if (!mounted) return;
+
+      // Phase 2: Show success checkmark with animation
+      _checkmarkAnimController.reset();
+      setState(() => _savePhase = _SavePhase.success);
+      await _checkmarkAnimController.forward();
+
+      // Brief pause to admire the checkmark
+      await Future.delayed(const Duration(milliseconds: 600));
+      if (!mounted) return;
+
+      // Phase 3: Pop back to gallery
+      Navigator.of(context).pop();
     } catch (e) {
-      setState(() => _isSaving = false);
+      setState(() => _savePhase = _SavePhase.idle);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Failed to save changes')),
