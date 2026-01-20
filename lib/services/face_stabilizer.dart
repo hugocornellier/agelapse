@@ -84,6 +84,7 @@ class FaceStabilizer {
   late double eyeOffsetX;
   late double eyeOffsetY;
   late StabilizationMode stabilizationMode;
+  late List<int> backgroundColorBGR;
 
   // Face embedding tracking for identity-based face matching
   int? _currentFaceCount;
@@ -151,6 +152,7 @@ class FaceStabilizer {
     );
     eyeOffsetX = settings.eyeOffsetX;
     eyeOffsetY = settings.eyeOffsetY;
+    backgroundColorBGR = settings.backgroundColorBGR;
 
     if (projectType != "face") {
       final PoseDetector poseDetector = PoseDetector(
@@ -260,6 +262,7 @@ class FaceStabilizer {
         canvasHeight,
         token: token,
         srcId: srcId,
+        backgroundColorBGR: backgroundColorBGR,
       );
       if (imageBytesStabilized == null) {
         return StabilizationResult(success: false);
@@ -749,6 +752,7 @@ class FaceStabilizer {
       canvasHeight,
       token: token,
       srcId: srcId,
+      backgroundColorBGR: backgroundColorBGR,
     );
     if (twoPassBytes == null) {
       return (
@@ -846,6 +850,7 @@ class FaceStabilizer {
           canvasHeight,
           token: token,
           srcId: srcId,
+          backgroundColorBGR: backgroundColorBGR,
         );
 
         if (threePassBytes != null) {
@@ -934,6 +939,7 @@ class FaceStabilizer {
           canvasHeight,
           token: token,
           srcId: srcId,
+          backgroundColorBGR: backgroundColorBGR,
         );
 
         if (fourPassBytes != null) {
@@ -1159,6 +1165,7 @@ class FaceStabilizer {
         canvasHeight,
         token: token,
         srcId: srcId,
+        backgroundColorBGR: backgroundColorBGR,
       );
 
       if (rotPassBytes == null) break;
@@ -1270,6 +1277,7 @@ class FaceStabilizer {
         canvasHeight,
         token: token,
         srcId: srcId,
+        backgroundColorBGR: backgroundColorBGR,
       );
 
       if (scalePassBytes == null) break;
@@ -1402,6 +1410,7 @@ class FaceStabilizer {
         canvasHeight,
         token: token,
         srcId: srcId,
+        backgroundColorBGR: backgroundColorBGR,
       );
 
       if (transPassBytes == null) break;
@@ -1542,6 +1551,7 @@ class FaceStabilizer {
           canvasHeight,
           token: token,
           srcId: srcId,
+          backgroundColorBGR: backgroundColorBGR,
         );
 
         if (cleanupBytes != null) {

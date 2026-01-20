@@ -334,6 +334,7 @@ class DB {
     'aspect_ratio': '16:9',
     'selected_guide_photo': 'not set',
     'stabilization_mode': 'slow',
+    'background_color': '#000000', // Stabilization background fill color (hex)
     // Date stamp settings
     'gallery_date_labels_enabled': 'false',
     'gallery_raw_date_labels_enabled': 'false',

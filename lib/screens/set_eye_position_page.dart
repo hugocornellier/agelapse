@@ -719,7 +719,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
             'This screen controls where eyes are positioned in the output frame.\n\n'
             'Drag the horizontal guide line up or down to adjust the vertical eye position.\n\n'
             'Drag the vertical guide lines left or right to adjust the horizontal eye spacing.\n\n'
-            'Photos are transformed so that detected eyes align to these positions, ensuring consistent framing across all images in your timelapse.',
+            'Your photos are transformed so that detected eyes align to these positions.',
             style: TextStyle(
               color: AppColors.settingsTextSecondary,
               fontSize: 14,
@@ -1044,6 +1044,8 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                               outputImageLoader.aspectRatio!,
                               outputImageLoader.projectOrientation!,
                               hideToolTip: true,
+                              backgroundColor:
+                                  outputImageLoader.backgroundColor,
                             ),
                             child: SizedBox(
                               width: adjustedWidth,

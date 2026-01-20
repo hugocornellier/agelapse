@@ -297,6 +297,7 @@ class IsolatePool {
         final canvasWidth = params['canvasWidth'] as int;
         final canvasHeight = params['canvasHeight'] as int;
         final srcId = params['srcId'] as String?;
+        final backgroundColorBGR = params['backgroundColorBGR'] as List<int>?;
 
         // Use cached source Mat if available and matching, otherwise decode
         cv.Mat srcMat;
@@ -337,13 +338,23 @@ class IsolatePool {
         rotMat.set<double>(0, 2, rotMat.at<double>(0, 2) + offsetX);
         rotMat.set<double>(1, 2, rotMat.at<double>(1, 2) + offsetY);
 
+        // Create border color scalar (default to black)
+        final borderValue = backgroundColorBGR != null
+            ? cv.Scalar(
+                backgroundColorBGR[0].toDouble(),
+                backgroundColorBGR[1].toDouble(),
+                backgroundColorBGR[2].toDouble(),
+                255.0,
+              )
+            : cv.Scalar.black;
+
         final dst = cv.warpAffine(
           srcMat,
           rotMat,
           (canvasWidth, canvasHeight),
           flags: cv.INTER_CUBIC,
           borderMode: cv.BORDER_CONSTANT,
-          borderValue: cv.Scalar.black,
+          borderValue: borderValue,
         );
 
         final (success, bytes) = cv.imencode('.png', dst);

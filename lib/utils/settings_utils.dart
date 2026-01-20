@@ -451,6 +451,42 @@ class SettingsUtil {
     await DB.instance.setSettingByTitle('stabilization_mode', mode);
   }
 
+  // ==================== Background Color ====================
+
+  /// Default background color for stabilization (black)
+  static const String fallbackBackgroundColor = '#000000';
+
+  /// Load background color setting (per-project).
+  /// Returns hex string like '#FF0000' for red.
+  static Future<String> loadBackgroundColor(String projectId) async {
+    try {
+      final value = await DB.instance.getSettingValueByTitle(
+        'background_color',
+        projectId,
+      );
+      // Validate hex format
+      if (value.startsWith('#') && (value.length == 7 || value.length == 9)) {
+        return value.toUpperCase();
+      }
+      return fallbackBackgroundColor;
+    } catch (e) {
+      return fallbackBackgroundColor;
+    }
+  }
+
+  /// Save background color setting (per-project).
+  /// Expects hex string like '#FF0000' for red.
+  static Future<void> saveBackgroundColor(
+    String projectId,
+    String hexColor,
+  ) async {
+    await DB.instance.setSettingByTitle(
+      'background_color',
+      hexColor.toUpperCase(),
+      projectId,
+    );
+  }
+
   // ==================== Camera Timer ====================
 
   /// Load camera timer duration (per-project): 0 = off, 3 = 3s, 10 = 10s

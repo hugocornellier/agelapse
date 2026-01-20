@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:opencv_dart/opencv_dart.dart' as cv;
 import '../screens/set_eye_position_page.dart';
 import '../services/custom_font_manager.dart';
@@ -97,6 +98,7 @@ class SettingsSheetState extends State<SettingsSheet> {
   int _gridModeIndex = 0;
   String _stabilizationMode = 'slow';
   String _galleryGridMode = 'auto';
+  String _backgroundColor = '#000000';
 
   // Date stamp settings
   bool _galleryDateLabelsEnabled = false;
@@ -265,6 +267,7 @@ class SettingsSheetState extends State<SettingsSheet> {
       SettingsUtil.loadFramerate(projectIdStr),
       SettingsUtil.loadProjectOrientation(projectIdStr),
       SettingsUtil.loadAutoCompileVideo(projectIdStr),
+      SettingsUtil.loadBackgroundColor(projectIdStr),
     ]);
 
     resolution = results[0] as String;
@@ -274,6 +277,7 @@ class SettingsSheetState extends State<SettingsSheet> {
     projectOrientation =
         poSetting[0].toUpperCase() + poSetting.substring(1).toLowerCase();
     _autoCompileVideo = results[4] as bool;
+    _backgroundColor = results[5] as String;
 
     // Detect if resolution is custom (not a preset)
     _isCustomResolution = !_presetResolutions.contains(resolution);
@@ -1474,7 +1478,11 @@ class SettingsSheetState extends State<SettingsSheet> {
 
   Widget _buildStabilizationSettings() {
     return Column(
-      children: [_buildStabilizationModeDropdown(), _buildEyeScaleButton()],
+      children: [
+        _buildStabilizationModeDropdown(),
+        _buildEyeScaleButton(),
+        _buildBackgroundColorPicker(),
+      ],
     );
   }
 
@@ -2832,6 +2840,173 @@ class SettingsSheetState extends State<SettingsSheet> {
           'Controls where eyes are positioned in the output frame. Photos are transformed so that detected eyes align to this position, and the video output is consistent across frames.',
       showInfo: true,
     );
+  }
+
+  Widget _buildBackgroundColorPicker() {
+    return SettingListTile(
+      title: 'Background colour',
+      showDivider: false,
+      contentWidget: GestureDetector(
+        onTap: _showColorPickerDialog,
+        child: Container(
+          width: 44,
+          height: 32,
+          decoration: BoxDecoration(
+            color: _hexToColor(_backgroundColor),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: AppColors.settingsCardBorder,
+              width: 1,
+            ),
+          ),
+          child: _backgroundColor.toUpperCase() == '#000000'
+              ? null
+              : Center(
+                  child: Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.3),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+        ),
+      ),
+      infoContent:
+          'The fill colour for areas not covered by the transformed image. '
+          'This appears as the border colour when photos are rotated or scaled '
+          'during stabilization.',
+      showInfo: true,
+    );
+  }
+
+  /// Converts a hex string like '#FF0000' to a Flutter Color.
+  Color _hexToColor(String hex) {
+    hex = hex.replaceFirst('#', '');
+    if (hex.length == 6) {
+      hex = 'FF$hex'; // Add full opacity
+    }
+    return Color(int.parse(hex, radix: 16));
+  }
+
+  /// Converts a Flutter Color to a hex string like '#FF0000'.
+  String _colorToHex(Color color) {
+    final r = (color.r * 255.0).round().clamp(0, 255);
+    final g = (color.g * 255.0).round().clamp(0, 255);
+    final b = (color.b * 255.0).round().clamp(0, 255);
+    return '#${r.toRadixString(16).padLeft(2, '0')}'
+            '${g.toRadixString(16).padLeft(2, '0')}'
+            '${b.toRadixString(16).padLeft(2, '0')}'
+        .toUpperCase();
+  }
+
+  Future<void> _showColorPickerDialog() async {
+    Color pickerColor = _hexToColor(_backgroundColor);
+    Color? selectedColor;
+
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppColors.settingsCardBackground,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Row(
+            children: [
+              Icon(
+                Icons.palette_outlined,
+                color: AppColors.settingsAccent,
+                size: 24,
+              ),
+              SizedBox(width: 12),
+              Text(
+                'Background Colour',
+                style: TextStyle(
+                  color: AppColors.settingsTextPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: ColorPicker(
+              pickerColor: pickerColor,
+              onColorChanged: (Color color) {
+                pickerColor = color;
+              },
+              enableAlpha: false,
+              hexInputBar: true,
+              labelTypes: const [],
+              pickerAreaHeightPercent: 0.7,
+              displayThumbColor: true,
+              portraitOnly: true,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  color: AppColors.settingsTextSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            GestureDetector(
+              onTap: () {
+                selectedColor = pickerColor;
+                Navigator.of(context).pop();
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.settingsAccent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'Select',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (selectedColor != null && mounted) {
+      final newHex = _colorToHex(selectedColor!);
+      if (newHex != _backgroundColor) {
+        final bool shouldProceed = await Utils.showConfirmChangeDialog(
+          context,
+          "background colour",
+        );
+
+        if (shouldProceed && mounted) {
+          setState(() => _backgroundColor = newHex);
+
+          await widget.cancelStabCallback();
+          await SettingsUtil.saveBackgroundColor(
+            widget.projectId.toString(),
+            newHex,
+          );
+          await widget.refreshSettings();
+
+          await resetStabStatusAndRestartStabilization();
+        }
+      }
+    }
   }
 
   Widget _buildWatermarkSwitch() {

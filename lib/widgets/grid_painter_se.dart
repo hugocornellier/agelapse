@@ -11,6 +11,7 @@ class GridPainterSE extends CustomPainter {
   final String projectOrientation;
   final bool hideToolTip;
   final bool hideCorners;
+  final Color? backgroundColor;
 
   GridPainterSE(
     this.offsetX,
@@ -22,12 +23,21 @@ class GridPainterSE extends CustomPainter {
     this.projectOrientation, {
     this.hideToolTip = false,
     this.hideCorners = false,
+    this.backgroundColor,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     // Clip to canvas bounds to prevent guide image from spilling outside frame
     canvas.clipRect(Offset.zero & size);
+
+    // Paint background color first (for areas not covered by the image)
+    if (backgroundColor != null) {
+      canvas.drawRect(
+        Offset.zero & size,
+        Paint()..color = backgroundColor!,
+      );
+    }
 
     if (guideImage != null &&
         ghostImageOffsetX != null &&
@@ -182,6 +192,7 @@ class GridPainterSE extends CustomPainter {
         aspectRatio != oldDelegate.aspectRatio ||
         projectOrientation != oldDelegate.projectOrientation ||
         hideToolTip != oldDelegate.hideToolTip ||
-        hideCorners != oldDelegate.hideCorners;
+        hideCorners != oldDelegate.hideCorners ||
+        backgroundColor != oldDelegate.backgroundColor;
   }
 }

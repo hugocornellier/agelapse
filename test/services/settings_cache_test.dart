@@ -28,6 +28,8 @@ void main() {
         image: null,
         eyeOffsetX: 0.5,
         eyeOffsetY: 0.5,
+        exportDateStampEnabled: false,
+        galleryDateLabelsEnabled: false,
       );
 
       expect(cache, isNotNull);
@@ -57,6 +59,8 @@ void main() {
         image: null,
         eyeOffsetX: 0.3,
         eyeOffsetY: 0.4,
+        exportDateStampEnabled: false,
+        galleryDateLabelsEnabled: false,
       );
 
       expect(cache.hasOpenedNonEmptyGallery, isTrue);
@@ -93,6 +97,8 @@ void main() {
         image: null,
         eyeOffsetX: 0.123,
         eyeOffsetY: 0.456,
+        exportDateStampEnabled: false,
+        galleryDateLabelsEnabled: false,
       );
 
       expect(cache.streak, 7);
@@ -125,6 +131,8 @@ void main() {
         image: null,
         eyeOffsetX: 0.5,
         eyeOffsetY: 0.5,
+        exportDateStampEnabled: false,
+        galleryDateLabelsEnabled: false,
       );
 
       expect(cache.firstPhotoDate, '2024-01-15');
@@ -158,6 +166,8 @@ void main() {
         image: null,
         eyeOffsetX: 0.5,
         eyeOffsetY: 0.5,
+        exportDateStampEnabled: false,
+        galleryDateLabelsEnabled: false,
       );
 
       expect(cache.isLightTheme, isNull);
@@ -188,6 +198,8 @@ void main() {
         image: null,
         eyeOffsetX: 0.5,
         eyeOffsetY: 0.5,
+        exportDateStampEnabled: false,
+        galleryDateLabelsEnabled: false,
       );
 
       // dispose should not throw when image is null
@@ -217,6 +229,8 @@ void main() {
         image: null,
         eyeOffsetX: 0.5,
         eyeOffsetY: 0.5,
+        exportDateStampEnabled: false,
+        galleryDateLabelsEnabled: false,
       );
 
       cache.dispose();
@@ -258,6 +272,8 @@ void main() {
         image: null,
         eyeOffsetX: 0.5,
         eyeOffsetY: 0.5,
+        exportDateStampEnabled: false,
+        galleryDateLabelsEnabled: false,
       );
 
       expect(cache.streak, 0);
@@ -287,6 +303,8 @@ void main() {
         image: null,
         eyeOffsetX: 0.5,
         eyeOffsetY: 0.5,
+        exportDateStampEnabled: false,
+        galleryDateLabelsEnabled: false,
       );
 
       expect(cache.streak, 365);
@@ -316,6 +334,8 @@ void main() {
         image: null,
         eyeOffsetX: 0.5,
         eyeOffsetY: 0.5,
+        exportDateStampEnabled: false,
+        galleryDateLabelsEnabled: false,
       );
 
       expect(cache.firstPhotoDate, isEmpty);
@@ -345,6 +365,8 @@ void main() {
         image: null,
         eyeOffsetX: -0.5,
         eyeOffsetY: -0.3,
+        exportDateStampEnabled: false,
+        galleryDateLabelsEnabled: false,
       );
 
       expect(cache.eyeOffsetX, -0.5);

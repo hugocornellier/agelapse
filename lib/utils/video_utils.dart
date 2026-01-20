@@ -417,8 +417,15 @@ class VideoUtils {
   }
 
   /// Check if resolution requires HEVC encoder (H.264 VideoToolbox doesn't support 8K)
-  /// Returns true for 8K preset or custom resolutions with short side > 2304 (4K)
-  static bool _resolutionNeedsHevc(String resolution) {
+  /// Returns true for 8K preset or custom resolutions with any dimension > 4096
+  static bool _resolutionNeedsHevc(String resolution,
+      {int? actualWidth, int? actualHeight}) {
+    // Check actual frame dimensions first (most accurate)
+    if (actualWidth != null && actualHeight != null) {
+      // VideoToolbox H.264 limit is ~4096 on any dimension
+      if (actualWidth > 4096 || actualHeight > 4096) return true;
+    }
+
     if (resolution == "8K") return true;
     if (resolution == "4K" || resolution == "1080p") return false;
 
@@ -427,13 +434,17 @@ class VideoUtils {
     if (match != null) {
       final w = int.parse(match.group(1)!);
       final h = int.parse(match.group(2)!);
-      final shortSide = w < h ? w : h;
-      return shortSide > 2304;
+      // Check if either dimension exceeds H.264 VideoToolbox limit
+      return w > 4096 || h > 4096;
     }
 
-    // Custom resolution: parse short side and check if above 4K threshold
+    // Custom resolution: parse short side and estimate long side
     final shortSide = double.tryParse(resolution);
-    if (shortSide != null && shortSide > 2304) return true;
+    if (shortSide != null) {
+      // Estimate long side assuming 16:9 aspect ratio
+      final estimatedLongSide = shortSide * (16 / 9);
+      if (shortSide > 4096 || estimatedLongSide > 4096) return true;
+    }
 
     return false;
   }
@@ -721,7 +732,8 @@ class VideoUtils {
           "-b:v ${kbps}k -maxrate ${(kbps * 1.5).round()}k -bufsize ${(kbps * 3).round()}k";
       // Use HEVC hardware encoder for high resolutions on macOS/iOS (h264_videotoolbox doesn't support 8K)
       // Use libx264 on Android (FFmpegKit has it)
-      final bool needsHevc = _resolutionNeedsHevc(resolution);
+      final bool needsHevc = _resolutionNeedsHevc(resolution,
+          actualWidth: videoWidth, actualHeight: videoHeight);
       final String vCodec;
       final String codecTag;
       if (Platform.isAndroid) {

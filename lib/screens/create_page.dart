@@ -177,6 +177,7 @@ class CreatePageState extends State<CreatePage>
 
       // Check if there are no photos
       if (rawPhotos.length < 2) {
+        if (!mounted) return;
         setState(() {
           lessThan2Photos = true;
           loadingComplete = true;
@@ -201,6 +202,7 @@ class CreatePageState extends State<CreatePage>
       while (
           widget.stabilizingRunningInMain || widget.videoCreationActiveInMain) {
         await Future.delayed(const Duration(milliseconds: 300));
+        if (!mounted) return;
         final double percentUnrounded = widget.currentFrame / photoCount! * 100;
         final String percent = percentUnrounded.toStringAsFixed(1);
         final String etaDisplay = widget.minutesRemaining.isNotEmpty
@@ -214,6 +216,7 @@ class CreatePageState extends State<CreatePage>
       // Check if auto-compile is disabled - show manual compile options
       if (!_autoCompileEnabled) {
         await _checkVideoState();
+        if (!mounted) return;
         if (!_videoExists) {
           // No video exists, show compile button only
           setState(() {
@@ -320,7 +323,11 @@ class CreatePageState extends State<CreatePage>
     setupVideoPlayer();
   }
 
-  Future<void> _maybeEncodeWindowsVideo() async {
+  /// Checks if a video file exists and is valid.
+  /// Previously this would create videos directly, but that bypassed progress
+  /// tracking. Now video creation is handled exclusively by the stabilization
+  /// service (which properly emits progress events) or manual compilation.
+  Future<bool> _checkVideoFileExists() async {
     final String projectOrientation = await SettingsUtil.loadProjectOrientation(
       widget.projectId.toString(),
     );
@@ -330,22 +337,23 @@ class CreatePageState extends State<CreatePage>
     );
     final File outFile = File(videoPath);
 
-    if (await outFile.exists() && await outFile.length() > 0) return;
-
-    final bool ok = await VideoUtils.createTimelapseFromProjectId(
-      widget.projectId,
-      null,
-    );
-
-    if (!ok) {
-      setState(() {
-        loadingText = "ffmpeg failed to create video";
-      });
-    }
+    final exists = await outFile.exists() && await outFile.length() > 0;
+    debugPrint(
+        '[CreatePage] _checkVideoFileExists: path=$videoPath, exists=$exists');
+    return exists;
   }
 
   Future<void> setupVideoPlayer() async {
-    await _maybeEncodeWindowsVideo();
+    // Check if video file exists - don't create directly, let stabilization service handle it
+    final videoExists = await _checkVideoFileExists();
+    if (!videoExists) {
+      debugPrint(
+          '[CreatePage] setupVideoPlayer: Video file does not exist, returning');
+      setState(() {
+        loadingText = "Video is being compiled...";
+      });
+      return;
+    }
 
     String projectOrientation = await SettingsUtil.loadProjectOrientation(
       widget.projectId.toString(),
@@ -355,13 +363,6 @@ class CreatePageState extends State<CreatePage>
       projectOrientation,
     );
     final File videoFile = File(videoPath);
-
-    if (!await videoFile.exists() || await videoFile.length() == 0) {
-      setState(() {
-        loadingText = "Could not create video file";
-      });
-      return;
-    }
 
     // On Linux, use media_kit directly with texture scaling for 8K support
     if (Platform.isLinux) {

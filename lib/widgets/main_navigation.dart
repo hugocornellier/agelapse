@@ -104,6 +104,8 @@ class MainNavigationState extends State<MainNavigation> {
     ) {
       if (mounted) {
         final prevState = _stabProgress.state;
+        debugPrint(
+            '[MainNavigation] Received progress: ${progress.state.name}, prevState: ${prevState.name}');
         setState(() => _stabProgress = progress);
 
         // Emit typed events for UI components (gallery, app bar, project page)

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -117,7 +118,25 @@ class StabilizationService {
       );
       final needsVideo = await _checkIfVideoNeeded(projectId);
       if (needsVideo) {
+        // Get frame count for progress indicator
+        final orientation =
+            await SettingsUtil.loadProjectOrientation(projectId.toString());
+        final stabPhotoCount = await DB.instance
+            .getStabilizedPhotoCountByProjectID(projectId, orientation);
+
+        LogService.instance.log(
+          'StabilizationService: Video needed, emitting compilingVideo state with $stabPhotoCount frames',
+        );
         _state = StabilizationState.compilingVideo;
+        // Emit initial progress so UI shows "Compiling video..." immediately
+        _emitProgress(
+          StabilizationProgress.compilingVideo(
+            currentFrame: 0,
+            totalFrames: stabPhotoCount,
+            progressPercent: 0,
+            projectId: projectId,
+          ),
+        );
         await _tryCreateVideo(projectId);
         _emitProgress(StabilizationProgress.completed(projectId: projectId));
         _state = StabilizationState.completed;
@@ -430,7 +449,12 @@ class StabilizationService {
       final stabPhotoCount = await DB.instance
           .getStabilizedPhotoCountByProjectID(projectId, orientation);
 
-      final videoIsNull = newestVideo == null;
+      // Check if video FILE actually exists on disk (not just DB record)
+      final videoPath =
+          await DirUtils.getVideoOutputPath(projectId, orientation);
+      final videoFileExists = await File(videoPath).exists();
+
+      final videoIsNull = newestVideo == null || !videoFileExists;
       final settingsHaveChanged = await VideoUtils.videoOutputSettingsChanged(
         projectId,
         newestVideo,
@@ -438,8 +462,18 @@ class StabilizationService {
       final newVideoNeededRaw = await DB.instance.getNewVideoNeeded(projectId);
       final newVideoNeeded = newVideoNeededRaw == 1;
 
-      return newVideoNeeded ||
+      final result = newVideoNeeded ||
           ((videoIsNull || settingsHaveChanged) && stabPhotoCount > 1);
+
+      LogService.instance.log(
+        'StabilizationService: _checkIfVideoNeeded - '
+        'newestVideo=${newestVideo != null}, videoFileExists=$videoFileExists, '
+        'videoIsNull=$videoIsNull, settingsChanged=$settingsHaveChanged, '
+        'newVideoNeeded=$newVideoNeeded, stabPhotoCount=$stabPhotoCount, '
+        'result=$result',
+      );
+
+      return result;
     } catch (e) {
       LogService.instance.log(
         'StabilizationService: Error checking if video needed - $e',
@@ -466,7 +500,12 @@ class StabilizationService {
       final stabPhotoCount = await DB.instance
           .getStabilizedPhotoCountByProjectID(projectId, orientation);
 
-      final videoIsNull = newestVideo == null;
+      // Check if video FILE actually exists on disk (not just DB record)
+      final videoPath =
+          await DirUtils.getVideoOutputPath(projectId, orientation);
+      final videoFileExists = await File(videoPath).exists();
+
+      final videoIsNull = newestVideo == null || !videoFileExists;
       final settingsHaveChanged = await VideoUtils.videoOutputSettingsChanged(
         projectId,
         newestVideo,
@@ -479,6 +518,13 @@ class StabilizationService {
       final shouldCompile = newVideoNeeded ||
           ((videoIsNull || settingsHaveChanged || newPhotosStabilized) &&
               stabPhotoCount > 1);
+
+      LogService.instance.log(
+        'StabilizationService: _tryCreateVideo - '
+        'videoFileExists=$videoFileExists, videoIsNull=$videoIsNull, '
+        'settingsChanged=$settingsHaveChanged, newPhotosStabilized=$newPhotosStabilized, '
+        'newVideoNeeded=$newVideoNeeded, shouldCompile=$shouldCompile',
+      );
 
       // If auto-compile is disabled, mark that new video is needed but skip compilation
       if (!autoCompileEnabled && shouldCompile) {
@@ -553,7 +599,14 @@ class StabilizationService {
   void _emitProgress(StabilizationProgress progress) {
     _state = progress.state;
     if (!_progressController.isClosed) {
+      LogService.instance.log(
+        'StabilizationService: Emitting progress state=${progress.state.name}',
+      );
       _progressController.add(progress);
+    } else {
+      LogService.instance.log(
+        'StabilizationService: WARNING - progressController is closed, cannot emit ${progress.state.name}',
+      );
     }
   }
 

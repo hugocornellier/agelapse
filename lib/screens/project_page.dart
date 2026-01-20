@@ -456,6 +456,8 @@ class ProjectPageState extends State<ProjectPage> {
                                 outputImageLoader.aspectRatio!,
                                 outputImageLoader.projectOrientation!,
                                 hideToolTip: true,
+                                backgroundColor:
+                                    outputImageLoader.backgroundColor,
                               ),
                       ),
                     ),

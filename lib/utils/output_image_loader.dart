@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 
 import '../services/database_helper.dart';
 import '../services/log_service.dart';
@@ -20,6 +20,7 @@ class OutputImageLoader {
   double? ghostImageOffsetX;
   double? ghostImageOffsetY;
   ui.Image? guideImage;
+  Color backgroundColor = Colors.black;
 
   /// Track if we have loaded a real stabilized guide image (vs placeholder)
   bool hasRealGuideImage = false;
@@ -142,8 +143,22 @@ class OutputImageLoader {
     aspectRatio = await SettingsUtil.loadAspectRatio(projectId.toString());
     resolution = await SettingsUtil.loadVideoResolution(projectId.toString());
 
+    // Load background color
+    final bgColorHex =
+        await SettingsUtil.loadBackgroundColor(projectId.toString());
+    backgroundColor = _hexToColor(bgColorHex);
+
     offsetX = double.parse(offsetXSettingVal);
     offsetY = double.parse(offsetYSettingVal);
+  }
+
+  /// Converts a hex string like '#FF0000' to a Flutter Color.
+  Color _hexToColor(String hex) {
+    hex = hex.replaceFirst('#', '');
+    if (hex.length == 6) {
+      hex = 'FF$hex'; // Add full opacity
+    }
+    return Color(int.parse(hex, radix: 16));
   }
 
   /// Get the display aspect ratio (height/width) for fitting the output preview.

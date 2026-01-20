@@ -25,13 +25,22 @@ class ProgressWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isCalculating = progressPercent <= 0;
     String progressPercentAsStr =
         "${progressPercent > 100 ? 100 : progressPercent}%";
 
     String minutesRemainingDisplay =
         (minutesRemaining != null && minutesRemaining!.isNotEmpty)
             ? minutesRemaining!
-            : "Calculating ETA";
+            : "Calculating ETA...";
+
+    String stabilizingMessage = isCalculating
+        ? "Stabilizing • Calculating ETA..."
+        : "Stabilizing • $progressPercentAsStr • $minutesRemainingDisplay";
+
+    String compilingMessage = isCalculating
+        ? "Compiling video • Calculating ETA..."
+        : "Compiling video • $progressPercentAsStr • $minutesRemainingDisplay";
 
     return Column(
       children: [
@@ -42,19 +51,19 @@ class ProgressWidget extends StatelessWidget {
           ),
         ] else if (importRunningInMain && selectedIndex != 3) ...[
           InProgress(
-            message: "Importing... $progressPercentAsStr",
+            message: isCalculating
+                ? "Importing..."
+                : "Importing... $progressPercentAsStr",
             goToPage: goToPage,
           ),
         ] else if (stabilizingRunningInMain && selectedIndex != 3) ...[
           InProgress(
-            message:
-                "Stabilizing • $progressPercentAsStr • $minutesRemainingDisplay",
+            message: stabilizingMessage,
             goToPage: goToPage,
           ),
         ] else if (videoCreationActiveInMain && selectedIndex != 3) ...[
           InProgress(
-            message:
-                "Compiling video • $progressPercentAsStr • $minutesRemainingDisplay",
+            message: compilingMessage,
             goToPage: goToPage,
           ),
         ],

@@ -1155,6 +1155,9 @@ class StabUtils {
   }
 
   /// Generate stabilized image bytes using OpenCV warpAffine (desktop only)
+  ///
+  /// [backgroundColorBGR] is an optional list of [B, G, R] values for the
+  /// background fill color. Defaults to black if not provided.
   static Uint8List? generateStabilizedImageBytesCV(
     cv.Mat srcMat,
     double rotationDegrees,
@@ -1162,8 +1165,9 @@ class StabUtils {
     double translateX,
     double translateY,
     int canvasWidth,
-    int canvasHeight,
-  ) {
+    int canvasHeight, {
+    List<int>? backgroundColorBGR,
+  }) {
     final int iw = srcMat.cols;
     final int ih = srcMat.rows;
 
@@ -1181,6 +1185,16 @@ class StabUtils {
     rotMat.set<double>(0, 2, rotMat.at<double>(0, 2) + offsetX);
     rotMat.set<double>(1, 2, rotMat.at<double>(1, 2) + offsetY);
 
+    // Create border color scalar (default to black)
+    final borderValue = backgroundColorBGR != null
+        ? cv.Scalar(
+            backgroundColorBGR[0].toDouble(), // B
+            backgroundColorBGR[1].toDouble(), // G
+            backgroundColorBGR[2].toDouble(), // R
+            255.0, // A
+          )
+        : cv.Scalar.black;
+
     // Apply affine transformation with cubic interpolation for smooth edges
     final cv.Mat dst = cv.warpAffine(
       srcMat,
@@ -1188,7 +1202,7 @@ class StabUtils {
       (canvasWidth, canvasHeight),
       flags: cv.INTER_CUBIC,
       borderMode: cv.BORDER_CONSTANT,
-      borderValue: cv.Scalar.black,
+      borderValue: borderValue,
     );
 
     // Encode to PNG
@@ -1211,6 +1225,8 @@ class StabUtils {
     final double translateY = params['translateY'];
     final int canvasWidth = params['canvasWidth'];
     final int canvasHeight = params['canvasHeight'];
+    final List<int>? backgroundColorBGR =
+        params['backgroundColorBGR'] as List<int>?;
 
     try {
       final cv.Mat srcMat = cv.imdecode(srcBytes, cv.IMREAD_COLOR);
@@ -1234,13 +1250,23 @@ class StabUtils {
       rotMat.set<double>(0, 2, rotMat.at<double>(0, 2) + offsetX);
       rotMat.set<double>(1, 2, rotMat.at<double>(1, 2) + offsetY);
 
+      // Create border color scalar (default to black)
+      final borderValue = backgroundColorBGR != null
+          ? cv.Scalar(
+              backgroundColorBGR[0].toDouble(),
+              backgroundColorBGR[1].toDouble(),
+              backgroundColorBGR[2].toDouble(),
+              255.0,
+            )
+          : cv.Scalar.black;
+
       final cv.Mat dst = cv.warpAffine(
         srcMat,
         rotMat,
         (canvasWidth, canvasHeight),
         flags: cv.INTER_CUBIC,
         borderMode: cv.BORDER_CONSTANT,
-        borderValue: cv.Scalar.black,
+        borderValue: borderValue,
       );
 
       final (bool success, Uint8List bytes) = cv.imencode('.png', dst);
@@ -1260,6 +1286,9 @@ class StabUtils {
   ///
   /// When [srcId] is provided, the decoded source Mat is cached in the worker.
   /// Call [IsolatePool.instance.clearMatCache()] after finishing each photo.
+  ///
+  /// [backgroundColorBGR] is an optional list of [B, G, R] values for the
+  /// background fill color. Defaults to black if not provided.
   static Future<Uint8List?> generateStabilizedImageBytesCVAsync(
     Uint8List srcBytes,
     double rotationDegrees,
@@ -1270,6 +1299,7 @@ class StabUtils {
     int canvasHeight, {
     CancellationToken? token,
     String? srcId,
+    List<int>? backgroundColorBGR,
   }) async {
     token?.throwIfCancelled();
 
@@ -1283,6 +1313,7 @@ class StabUtils {
         'canvasWidth': canvasWidth,
         'canvasHeight': canvasHeight,
         'srcId': srcId,
+        'backgroundColorBGR': backgroundColorBGR,
       });
     }
 
@@ -1297,6 +1328,7 @@ class StabUtils {
       'translateY': translateY,
       'canvasWidth': canvasWidth,
       'canvasHeight': canvasHeight,
+      'backgroundColorBGR': backgroundColorBGR,
     };
 
     final isolate = await Isolate.spawn(_stabilizeCVIsolate, params);
