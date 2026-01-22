@@ -602,11 +602,6 @@ class DB {
     return await db.delete(photoTable);
   }
 
-  Future<List<Map<String, dynamic>>> getAllPhotos() async {
-    final db = await database;
-    return await db.query(photoTable);
-  }
-
   Future<String?> checkAllPhotoOrientations() async {
     final db = await database;
     final result = await db.rawQuery('''
@@ -1022,6 +1017,23 @@ class DB {
       photoTable,
       where: '$stabilizedColumn = ? AND projectID = ?',
       whereArgs: [1, projectId],
+    );
+  }
+
+  /// Get stabilized photos that need re-stabilization due to settings change.
+  /// Returns photos where stored OffsetX doesn't match the current setting.
+  Future<List<Map<String, dynamic>>> getPhotosNeedingRestabilization(
+    int projectId,
+    String projectOrientation,
+    String currentOffsetX,
+  ) async {
+    final db = await database;
+    final String stabilizedColumn = getStabilizedColumn(projectOrientation);
+    return await db.query(
+      photoTable,
+      where:
+          '$stabilizedColumn = ? AND projectID = ? AND ${stabilizedColumn}OffsetX != ?',
+      whereArgs: [1, projectId, currentOffsetX],
     );
   }
 

@@ -96,6 +96,8 @@ class TransformToolState extends State<TransformTool> {
   TransformHandle _hoveredHandle = TransformHandle.none;
   ui.Image? _decodedImage;
   bool _imageLoading = true;
+  int _decodeGeneration =
+      0; // Track decode requests for race condition handling
 
   // For keyboard input
   final FocusNode _focusNode = FocusNode();
@@ -149,17 +151,26 @@ class TransformToolState extends State<TransformTool> {
   }
 
   Future<void> _decodeImage() async {
+    final int generation = ++_decodeGeneration;
+
     try {
       final codec = await ui.instantiateImageCodec(widget.imageBytes);
       final frame = await codec.getNextFrame();
-      if (mounted) {
-        setState(() {
-          _decodedImage = frame.image;
-          _imageLoading = false;
-        });
+      codec.dispose();
+
+      // Check if this decode is still relevant (not superseded by newer request)
+      if (!mounted || generation != _decodeGeneration) {
+        frame.image.dispose();
+        return;
       }
+
+      setState(() {
+        _decodedImage?.dispose();
+        _decodedImage = frame.image;
+        _imageLoading = false;
+      });
     } catch (e) {
-      if (mounted) {
+      if (mounted && generation == _decodeGeneration) {
         setState(() {
           _imageLoading = false;
         });
@@ -205,6 +216,7 @@ class TransformToolState extends State<TransformTool> {
       _controller.dispose();
     }
     _focusNode.dispose();
+    _decodedImage?.dispose();
     super.dispose();
   }
 

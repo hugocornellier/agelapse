@@ -431,7 +431,7 @@ class FaceStabilizer {
       ); // No multi-pass for fallback
     }
 
-    List<Point<double>?> eyes = _filterAndCenterEyes(stabFaces);
+    List<Point<double>?> eyes = await _filterAndCenterEyesAsync(stabFaces);
 
     if (eyes.length < 2 || eyes[0] == null || eyes[1] == null) {
       await DB.instance.setPhotoNoFacesFound(
@@ -785,7 +785,8 @@ class FaceStabilizer {
       );
     }
 
-    List<Point<double>?> twoPassEyes = _filterAndCenterEyes(twoPassFaces);
+    List<Point<double>?> twoPassEyes =
+        await _filterAndCenterEyesAsync(twoPassFaces);
 
     if (twoPassEyes.length >= 2 &&
         twoPassEyes[0] != null &&
@@ -861,7 +862,8 @@ class FaceStabilizer {
           );
 
           if (threePassFaces != null) {
-            List<Point<double>?> threePassEyes = _filterAndCenterEyes(
+            List<Point<double>?> threePassEyes =
+                await _filterAndCenterEyesAsync(
               threePassFaces,
             );
 
@@ -950,7 +952,7 @@ class FaceStabilizer {
           );
 
           if (fourPassFaces != null) {
-            List<Point<double>?> fourPassEyes = _filterAndCenterEyes(
+            List<Point<double>?> fourPassEyes = await _filterAndCenterEyesAsync(
               fourPassFaces,
             );
 
@@ -1181,7 +1183,8 @@ class FaceStabilizer {
         break;
       }
 
-      List<Point<double>?> rotPassEyes = _filterAndCenterEyes(rotPassFaces);
+      List<Point<double>?> rotPassEyes =
+          await _filterAndCenterEyesAsync(rotPassFaces);
 
       if (rotPassEyes.length < 2 ||
           rotPassEyes[0] == null ||
@@ -1293,7 +1296,8 @@ class FaceStabilizer {
         break;
       }
 
-      List<Point<double>?> scalePassEyes = _filterAndCenterEyes(scalePassFaces);
+      List<Point<double>?> scalePassEyes =
+          await _filterAndCenterEyesAsync(scalePassFaces);
 
       if (scalePassEyes.length < 2 ||
           scalePassEyes[0] == null ||
@@ -1426,7 +1430,8 @@ class FaceStabilizer {
         break;
       }
 
-      List<Point<double>?> transPassEyes = _filterAndCenterEyes(transPassFaces);
+      List<Point<double>?> transPassEyes =
+          await _filterAndCenterEyesAsync(transPassFaces);
 
       if (transPassEyes.length < 2 ||
           transPassEyes[0] == null ||
@@ -1562,7 +1567,7 @@ class FaceStabilizer {
           );
 
           if (cleanupFaces != null) {
-            List<Point<double>?> cleanupEyes = _filterAndCenterEyes(
+            List<Point<double>?> cleanupEyes = await _filterAndCenterEyesAsync(
               cleanupFaces,
             );
 
@@ -1984,13 +1989,13 @@ class FaceStabilizer {
 
     List<dynamic> facesToUse = faces;
     if (targetBoundingBox != null) {
-      final idx = _pickFaceIndexByBox(faces, targetBoundingBox);
+      final idx = await _pickFaceIndexByBoxAsync(faces, targetBoundingBox);
       if (idx != -1) {
         facesToUse = [faces[idx]];
       }
     }
 
-    eyes = getEyesFromFaces(facesToUse);
+    eyes = await getEyesFromFacesAsync(facesToUse);
 
     if (facesToUse.length > 1) {
       // Multiple faces detected - try embedding-based selection first
@@ -2010,14 +2015,16 @@ class FaceStabilizer {
           eyes = [eyes[li]!, eyes[ri]!];
         } else {
           // Fallback to centermost if eyes extraction failed for matched face
-          eyes = getCentermostEyes(eyes, facesToUse, imgWidth, imgHeight);
+          eyes = await getCentermostEyesAsync(
+              eyes, facesToUse, imgWidth, imgHeight);
         }
       } else {
         // No embedding reference found - fallback to centermost
         LogService.instance.log(
           "No embedding reference found, using centermost face",
         );
-        eyes = getCentermostEyes(eyes, facesToUse, imgWidth, imgHeight);
+        eyes =
+            await getCentermostEyesAsync(eyes, facesToUse, imgWidth, imgHeight);
       }
     }
 
@@ -2130,48 +2137,111 @@ class FaceStabilizer {
     }
   }
 
-  int _pickFaceIndexByBox(List<dynamic> faces, Rect targetBox) {
-    double bestIoU = 0.0;
-    int bestIdx = -1;
+  // ============================================================
+  // ISOLATE-BACKED COORDINATE PROCESSING METHODS
+  // ============================================================
 
-    for (int i = 0; i < faces.length; i++) {
-      final Rect bb = faces[i].boundingBox as Rect;
-      final double iou = _rectIoU(bb, targetBox);
-      if (iou > bestIoU) {
-        bestIoU = iou;
-        bestIdx = i;
-      }
-    }
+  /// Isolate-backed version of _filterAndCenterEyes.
+  Future<List<Point<double>?>> _filterAndCenterEyesAsync(
+      List<dynamic> stabFaces) async {
+    if (stabFaces.isEmpty) return [];
 
-    if (bestIdx != -1) return bestIdx;
+    final facesData = stabFaces.map((f) => (f as FaceLike).toMap()).toList();
 
-    double bestDist = double.infinity;
-    for (int i = 0; i < faces.length; i++) {
-      final Rect bb = faces[i].boundingBox as Rect;
-      final dx = bb.center.dx - targetBox.center.dx;
-      final dy = bb.center.dy - targetBox.center.dy;
-      final d2 = dx * dx + dy * dy;
-      if (d2 < bestDist) {
-        bestDist = d2;
-        bestIdx = i;
-      }
-    }
-    return bestIdx;
+    final result = await IsolatePool.instance.execute<List<dynamic>>(
+      'filterAndCenterEyes',
+      {
+        'faces': facesData,
+        'imgWidth': canvasWidth,
+        'imgHeight': canvasHeight,
+        'eyeDistanceGoal': eyeDistanceGoal,
+      },
+    );
+
+    if (result == null || result.isEmpty) return [];
+
+    return result.map((e) {
+      if (e == null) return null;
+      final list = e as List;
+      return Point<double>(
+          (list[0] as num).toDouble(), (list[1] as num).toDouble());
+    }).toList();
   }
 
-  double _rectIoU(Rect a, Rect b) {
-    final double x1 = (a.left > b.left) ? a.left : b.left;
-    final double y1 = (a.top > b.top) ? a.top : b.top;
-    final double x2 = (a.right < b.right) ? a.right : b.right;
-    final double y2 = (a.bottom < b.bottom) ? a.bottom : b.bottom;
+  /// Isolate-backed version of getEyesFromFaces.
+  Future<List<Point<double>?>> getEyesFromFacesAsync(
+      List<dynamic> faces) async {
+    if (faces.isEmpty) return [];
 
-    final double w = (x2 - x1);
-    final double h = (y2 - y1);
-    if (w <= 0 || h <= 0) return 0.0;
+    final facesData = faces.map((f) => (f as FaceLike).toMap()).toList();
 
-    final double inter = w * h;
-    final double union = a.width * a.height + b.width * b.height - inter;
-    return union <= 0 ? 0.0 : inter / union;
+    final result = await IsolatePool.instance.execute<List<dynamic>>(
+      'getEyesFromFaces',
+      {'faces': facesData},
+    );
+
+    if (result == null) return [];
+
+    return result.map((e) {
+      if (e == null) return null;
+      final list = e as List;
+      return Point<double>(
+          (list[0] as num).toDouble(), (list[1] as num).toDouble());
+    }).toList();
+  }
+
+  /// Isolate-backed version of getCentermostEyes.
+  Future<List<Point<double>>> getCentermostEyesAsync(
+    List<Point<double>?> eyes,
+    List<dynamic> faces,
+    int imgWidth,
+    int imgHeight,
+  ) async {
+    if (eyes.isEmpty || faces.isEmpty) return [];
+
+    final eyesData = eyes.map((e) => e != null ? [e.x, e.y] : null).toList();
+    final facesData = faces.map((f) => (f as FaceLike).toMap()).toList();
+
+    final result = await IsolatePool.instance.execute<List<dynamic>>(
+      'getCentermostEyes',
+      {
+        'eyes': eyesData,
+        'faces': facesData,
+        'imgWidth': imgWidth,
+        'imgHeight': imgHeight,
+      },
+    );
+
+    if (result == null || result.isEmpty) return [];
+
+    return result.map((e) {
+      final list = e as List;
+      return Point<double>(
+          (list[0] as num).toDouble(), (list[1] as num).toDouble());
+    }).toList();
+  }
+
+  /// Isolate-backed version of _pickFaceIndexByBox.
+  Future<int> _pickFaceIndexByBoxAsync(
+      List<dynamic> faces, Rect targetBox) async {
+    if (faces.isEmpty) return -1;
+
+    final facesData = faces.map((f) => (f as FaceLike).toMap()).toList();
+
+    final result = await IsolatePool.instance.execute<int>(
+      'pickFaceIndexByBox',
+      {
+        'faces': facesData,
+        'targetBox': [
+          targetBox.left,
+          targetBox.top,
+          targetBox.right,
+          targetBox.bottom
+        ],
+      },
+    );
+
+    return result ?? -1;
   }
 
   Future<(double?, double?)> _calculateRotationAngleAndScalePregnancy(
@@ -2388,40 +2458,6 @@ class FaceStabilizer {
     final double newTranslateX = translateX - overshotAverageX.toDouble();
     final double newTranslateY = translateY - overshotAverageY.toDouble();
     return (newTranslateX, newTranslateY);
-  }
-
-  List<Point<double>?> _filterAndCenterEyes(List<dynamic> stabFaces) {
-    final List<Point<double>?> allEyes = getEyesFromFaces(stabFaces);
-    final List<Point<double>> validPairs = <Point<double>>[];
-    final List<dynamic> validFaces = <dynamic>[];
-
-    for (int faceIdx = 0; faceIdx < stabFaces.length; faceIdx++) {
-      final int li = 2 * faceIdx;
-      final int ri = li + 1;
-      if (ri >= allEyes.length) break;
-
-      final Point<double>? leftEye = allEyes[li];
-      final Point<double>? rightEye = allEyes[ri];
-      if (leftEye == null || rightEye == null) continue;
-
-      if ((rightEye.x - leftEye.x).abs() > 0.75 * eyeDistanceGoal) {
-        validPairs
-          ..add(leftEye)
-          ..add(rightEye);
-        validFaces.add(stabFaces[faceIdx]);
-      }
-    }
-
-    if (validFaces.length > 1 && validPairs.length > 2) {
-      return getCentermostEyes(
-        validPairs,
-        validFaces,
-        canvasWidth,
-        canvasHeight,
-      );
-    }
-
-    return validPairs;
   }
 
   String _cleanUpPhotoPath(String photoPath) {

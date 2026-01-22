@@ -69,6 +69,7 @@ class GalleryPage extends StatefulWidget {
     List<String> imageFiles,
     List<String> stabilizedImageFiles,
   ) setRawAndStabPhotoStates;
+  final void Function(String stabilizedImagePath) addStabilizedImagePath;
   final Future<void> Function(
     FilePickerResult? pickedFiles,
     Future<void> Function(dynamic file) processFileCallback,
@@ -101,6 +102,7 @@ class GalleryPage extends StatefulWidget {
     required this.imageFilesStr,
     required this.stabilizedImageFilesStr,
     required this.setRawAndStabPhotoStates,
+    required this.addStabilizedImagePath,
     required this.settingsCache,
     required this.refreshSettings,
     required this.recompileVideoCallback,
@@ -276,9 +278,12 @@ class GalleryPageState extends State<GalleryPage>
   @override
   void didUpdateWidget(covariant GalleryPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Always reload gallery settings when widget updates
-    // This ensures settings are refreshed after Settings sheet is closed
-    reloadGallerySettings();
+
+    // Only reload settings when settingsCache reference changes
+    // (indicates parent called refreshSettings after settings were modified)
+    if (widget.settingsCache != oldWidget.settingsCache) {
+      reloadGallerySettings();
+    }
 
     // Reload offsets if image lists changed (new photos imported/deleted)
     if (widget.imageFilesStr != oldWidget.imageFilesStr ||
@@ -395,16 +400,13 @@ class GalleryPageState extends State<GalleryPage>
     final currentFiles = widget.imageFilesStr;
     if (currentFiles.length <= 1) return false;
 
-    // Get all timestamps except the one being changed
-    final timestamps = currentFiles
-        .map((f) => path.basenameWithoutExtension(f))
-        .where((t) => t != oldTimestamp)
-        .toList();
-
-    // Find the old position
+    // Extract all timestamps once
     final allTimestamps =
         currentFiles.map((f) => path.basenameWithoutExtension(f)).toList();
     final oldIndex = allTimestamps.indexOf(oldTimestamp);
+
+    // Filter to get timestamps without the one being changed
+    final timestamps = allTimestamps.where((t) => t != oldTimestamp).toList();
 
     // Add the new timestamp and sort to find new position
     timestamps.add(newTimestamp);
@@ -660,31 +662,7 @@ class GalleryPageState extends State<GalleryPage>
       projectOrientation!,
     );
 
-    // Check if already in list by timestamp (avoid duplicates)
-    final currentList = widget.stabilizedImageFilesStr;
-    final alreadyInList = currentList.any(
-      (p) => path.basenameWithoutExtension(p) == timestamp,
-    );
-    if (alreadyInList) return;
-
-    final newList = List<String>.from(currentList);
-    final timestampInt = int.tryParse(timestamp) ?? 0;
-    int low = 0;
-    int high = newList.length;
-    while (low < high) {
-      final mid = (low + high) ~/ 2;
-      final midTimestamp = path.basenameWithoutExtension(newList[mid]);
-      final midInt = int.tryParse(midTimestamp) ?? 0;
-      // List is sorted ascending (oldest first), so insert after items with smaller timestamps
-      if (midInt < timestampInt) {
-        low = mid + 1;
-      } else {
-        high = mid;
-      }
-    }
-
-    newList.insert(low, newPath);
-    widget.setRawAndStabPhotoStates(widget.imageFilesStr, newList);
+    widget.addStabilizedImagePath(newPath);
 
     if (_stickyBottomEnabled) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1058,7 +1036,7 @@ class GalleryPageState extends State<GalleryPage>
           Text(
             preparingImport
                 ? 'Scanning folders'
-                : '${widget.progressPercent < 10 ? widget.progressPercent.toStringAsFixed(1) : widget.progressPercent.toStringAsFixed(0)}%',
+                : '${widget.progressPercent.toStringAsFixed(1)}%',
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.5),
               fontSize: 14,

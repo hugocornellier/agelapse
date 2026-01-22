@@ -380,27 +380,24 @@ class StabilizationService {
     // Load fresh settings to compare against stored offsets in photos
     // This detects if user changed settings since photos were stabilized
     final freshSettings = await StabilizationSettings.load(projectId);
-    final allPhotos = await DB.instance.getStabilizedPhotosByProjectID(
-      projectId,
-      freshSettings.projectOrientation,
-    );
-
-    final columnName = freshSettings.projectOrientation == 'portrait'
-        ? "stabilizedPortraitOffsetX"
-        : "stabilizedLandscapeOffsetX";
     final currentOffsetX = freshSettings.eyeOffsetX.toString();
 
-    for (var photo in allPhotos) {
+    final photosNeedingRestab =
+        await DB.instance.getPhotosNeedingRestabilization(
+      projectId,
+      freshSettings.projectOrientation,
+      currentOffsetX,
+    );
+
+    for (var photo in photosNeedingRestab) {
       _currentToken?.throwIfCancelled();
 
-      if (photo[columnName] != currentOffsetX) {
-        await _reStabilizePhoto(
-          stabilizer,
-          photo,
-          projectId,
-          freshSettings.projectOrientation,
-        );
-      }
+      await _reStabilizePhoto(
+        stabilizer,
+        photo,
+        projectId,
+        freshSettings.projectOrientation,
+      );
     }
   }
 

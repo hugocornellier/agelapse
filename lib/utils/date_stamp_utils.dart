@@ -75,6 +75,9 @@ class DateStampUtils {
   // Default font
   static const String defaultFont = fontInter;
 
+  // DateFormat cache to avoid creating new instances during builds
+  static final Map<String, DateFormat> _formatCache = {};
+
   // All bundled fonts (for dropdown - doesn't include custom fonts)
   static const List<String> bundledFonts = [
     fontInter,
@@ -191,10 +194,15 @@ class DateStampUtils {
     );
 
     try {
-      return DateFormat(format).format(dateTime);
+      // Use cached formatter to avoid allocation during builds
+      final formatter =
+          _formatCache.putIfAbsent(format, () => DateFormat(format));
+      return formatter.format(dateTime);
     } catch (e) {
       // Fallback to ISO format if pattern is invalid
-      return DateFormat(exportFormatISO).format(dateTime);
+      final fallback = _formatCache.putIfAbsent(
+          exportFormatISO, () => DateFormat(exportFormatISO));
+      return fallback.format(dateTime);
     }
   }
 

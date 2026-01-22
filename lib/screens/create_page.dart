@@ -657,7 +657,7 @@ class CreatePageState extends State<CreatePage>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          '${percent < 10 ? percent.toStringAsFixed(1) : percent.toStringAsFixed(0)}%',
+                          '${percent.toStringAsFixed(1)}%',
                           style: const TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.bold,

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:opencv_dart/opencv_dart.dart' as cv;
@@ -373,9 +374,270 @@ class IsolatePool {
         onCacheClear?.call();
         return 'Cache cleared';
 
+      case 'filterAndCenterEyes':
+        return _filterAndCenterEyesIsolate(params);
+
+      case 'getEyesFromFaces':
+        return _getEyesFromFacesIsolate(params);
+
+      case 'getCentermostEyes':
+        return _getCentermostEyesIsolate(params);
+
+      case 'pickFaceIndexByBox':
+        return _pickFaceIndexByBoxIsolate(params);
+
       default:
         throw UnsupportedError('Unknown operation: $operation');
     }
+  }
+
+  // ============================================================
+  // COORDINATE PROCESSING ISOLATE FUNCTIONS
+  // ============================================================
+
+  /// Isolate implementation: Extract eye coordinates from serialized faces.
+  static List<List<double>?> _getEyesFromFacesIsolate(
+      Map<String, dynamic> params) {
+    final facesData = params['faces'] as List;
+    final List<List<double>?> eyes = [];
+
+    for (final faceMap in facesData) {
+      final Map<String, dynamic> f = faceMap as Map<String, dynamic>;
+      final leftEyeData = f['leftEye'] as List?;
+      final rightEyeData = f['rightEye'] as List?;
+
+      List<double>? a = leftEyeData != null
+          ? [
+              (leftEyeData[0] as num).toDouble(),
+              (leftEyeData[1] as num).toDouble()
+            ]
+          : null;
+      List<double>? b = rightEyeData != null
+          ? [
+              (rightEyeData[0] as num).toDouble(),
+              (rightEyeData[1] as num).toDouble()
+            ]
+          : null;
+
+      // Fallback to bounding box estimation if eyes missing
+      if (a == null || b == null) {
+        final bbox = f['bbox'] as List;
+        final left = (bbox[0] as num).toDouble();
+        final top = (bbox[1] as num).toDouble();
+        final right = (bbox[2] as num).toDouble();
+        final bottom = (bbox[3] as num).toDouble();
+        final width = right - left;
+        final height = bottom - top;
+        final ey = top + height * 0.42;
+        a = [left + width * 0.33, ey];
+        b = [left + width * 0.67, ey];
+      }
+
+      // Ensure left eye is actually on the left
+      if (a[0] > b[0]) {
+        final tmp = a;
+        a = b;
+        b = tmp;
+      }
+
+      eyes.add(a);
+      eyes.add(b);
+    }
+
+    return eyes;
+  }
+
+  /// Isolate implementation: Get centermost eyes from multiple faces.
+  static List<List<double>> _getCentermostEyesIsolate(
+      Map<String, dynamic> params) {
+    final eyesData = params['eyes'] as List;
+    final facesData = params['faces'] as List;
+    final imgWidth = params['imgWidth'] as int;
+    final imgHeight = params['imgHeight'] as int;
+
+    // Convert serialized data to working format
+    final List<List<double>?> eyes = eyesData
+        .map((e) => e != null
+            ? [(e[0] as num).toDouble(), (e[1] as num).toDouble()]
+            : null)
+        .toList();
+
+    // Filter to faces with detected eyes
+    final validFaces = <Map<String, dynamic>>[];
+    for (final faceMap in facesData) {
+      final f = faceMap as Map<String, dynamic>;
+      if (f['leftEye'] != null && f['rightEye'] != null) {
+        validFaces.add(f);
+      }
+    }
+
+    final double marginPx = max(4.0, imgWidth * 0.01);
+
+    bool touchesEdge(List bbox) {
+      final left = (bbox[0] as num).toDouble();
+      final top = (bbox[1] as num).toDouble();
+      final right = (bbox[2] as num).toDouble();
+      final bottom = (bbox[3] as num).toDouble();
+      return left <= marginPx ||
+          top <= marginPx ||
+          right >= imgWidth - marginPx ||
+          bottom >= imgHeight - marginPx;
+    }
+
+    double calcHorizontalProximity(List<double> point) {
+      final centerX = imgWidth ~/ 2;
+      return (point[0] - centerX).abs();
+    }
+
+    double smallestDistance = double.infinity;
+    List<List<double>> centeredEyes = [];
+
+    final int pairCount = eyes.length ~/ 2;
+    final int limit =
+        validFaces.length < pairCount ? validFaces.length : pairCount;
+
+    for (var i = 0; i < limit; i++) {
+      final bbox = validFaces[i]['bbox'] as List;
+      if (touchesEdge(bbox)) continue;
+
+      final int li = 2 * i, ri = li + 1;
+      final leftEye = eyes[li];
+      final rightEye = eyes[ri];
+      if (leftEye == null || rightEye == null) continue;
+
+      final double distance =
+          calcHorizontalProximity(leftEye) + calcHorizontalProximity(rightEye);
+
+      if (distance < smallestDistance) {
+        smallestDistance = distance;
+        centeredEyes = [leftEye, rightEye];
+      }
+    }
+
+    // Fallback to first valid pair
+    if (centeredEyes.isEmpty &&
+        eyes.length >= 2 &&
+        eyes[0] != null &&
+        eyes[1] != null) {
+      centeredEyes = [eyes[0]!, eyes[1]!];
+    }
+
+    return centeredEyes;
+  }
+
+  /// Isolate implementation: Filter eyes and get centermost if multiple faces.
+  static List<List<double>?> _filterAndCenterEyesIsolate(
+      Map<String, dynamic> params) {
+    final facesData = params['faces'] as List;
+    final imgWidth = params['imgWidth'] as int;
+    final imgHeight = params['imgHeight'] as int;
+    final eyeDistanceGoal = (params['eyeDistanceGoal'] as num).toDouble();
+
+    // Get all eyes from faces
+    final allEyes = _getEyesFromFacesIsolate({'faces': facesData});
+
+    final List<List<double>> validPairs = [];
+    final List<Map<String, dynamic>> validFaces = [];
+
+    for (int faceIdx = 0; faceIdx < facesData.length; faceIdx++) {
+      final int li = 2 * faceIdx;
+      final int ri = li + 1;
+      if (ri >= allEyes.length) break;
+
+      final leftEye = allEyes[li];
+      final rightEye = allEyes[ri];
+      if (leftEye == null || rightEye == null) continue;
+
+      // Check eye distance validity
+      if ((rightEye[0] - leftEye[0]).abs() > 0.75 * eyeDistanceGoal) {
+        validPairs.add(leftEye);
+        validPairs.add(rightEye);
+        validFaces.add(facesData[faceIdx] as Map<String, dynamic>);
+      }
+    }
+
+    // If multiple valid faces, get centermost
+    if (validFaces.length > 1 && validPairs.length > 2) {
+      return _getCentermostEyesIsolate({
+        'eyes': validPairs,
+        'faces': validFaces,
+        'imgWidth': imgWidth,
+        'imgHeight': imgHeight,
+      });
+    }
+
+    return validPairs.isEmpty ? [] : validPairs;
+  }
+
+  /// Isolate implementation: Pick face index by bounding box IoU.
+  static int _pickFaceIndexByBoxIsolate(Map<String, dynamic> params) {
+    final facesData = params['faces'] as List;
+    final targetBbox = params['targetBox'] as List;
+    final targetLeft = (targetBbox[0] as num).toDouble();
+    final targetTop = (targetBbox[1] as num).toDouble();
+    final targetRight = (targetBbox[2] as num).toDouble();
+    final targetBottom = (targetBbox[3] as num).toDouble();
+    final targetCenterX = (targetLeft + targetRight) / 2;
+    final targetCenterY = (targetTop + targetBottom) / 2;
+
+    double rectIoU(List bbox) {
+      final aLeft = (bbox[0] as num).toDouble();
+      final aTop = (bbox[1] as num).toDouble();
+      final aRight = (bbox[2] as num).toDouble();
+      final aBottom = (bbox[3] as num).toDouble();
+
+      final x1 = aLeft > targetLeft ? aLeft : targetLeft;
+      final y1 = aTop > targetTop ? aTop : targetTop;
+      final x2 = aRight < targetRight ? aRight : targetRight;
+      final y2 = aBottom < targetBottom ? aBottom : targetBottom;
+
+      final w = x2 - x1;
+      final h = y2 - y1;
+      if (w <= 0 || h <= 0) return 0.0;
+
+      final inter = w * h;
+      final areaA = (aRight - aLeft) * (aBottom - aTop);
+      final areaB = (targetRight - targetLeft) * (targetBottom - targetTop);
+      final union = areaA + areaB - inter;
+      return union <= 0 ? 0.0 : inter / union;
+    }
+
+    double bestIoU = 0.0;
+    int bestIdx = -1;
+
+    for (int i = 0; i < facesData.length; i++) {
+      final face = facesData[i] as Map<String, dynamic>;
+      final bbox = face['bbox'] as List;
+      final iou = rectIoU(bbox);
+      if (iou > bestIoU) {
+        bestIoU = iou;
+        bestIdx = i;
+      }
+    }
+
+    if (bestIdx != -1) return bestIdx;
+
+    // Fallback to distance-based selection
+    double bestDist = double.infinity;
+    for (int i = 0; i < facesData.length; i++) {
+      final face = facesData[i] as Map<String, dynamic>;
+      final bbox = face['bbox'] as List;
+      final left = (bbox[0] as num).toDouble();
+      final top = (bbox[1] as num).toDouble();
+      final right = (bbox[2] as num).toDouble();
+      final bottom = (bbox[3] as num).toDouble();
+      final centerX = (left + right) / 2;
+      final centerY = (top + bottom) / 2;
+      final dx = centerX - targetCenterX;
+      final dy = centerY - targetCenterY;
+      final d2 = dx * dx + dy * dy;
+      if (d2 < bestDist) {
+        bestDist = d2;
+        bestIdx = i;
+      }
+    }
+
+    return bestIdx;
   }
 
   /// Execute an operation on a pooled worker.

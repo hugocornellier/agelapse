@@ -26,9 +26,7 @@ class ProgressWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final clampedPercent = progressPercent > 100 ? 100.0 : progressPercent;
-    final progressPercentAsStr = clampedPercent < 10
-        ? "${clampedPercent.toStringAsFixed(1)}%"
-        : "${clampedPercent.toStringAsFixed(0)}%";
+    final progressPercentAsStr = "${clampedPercent.toStringAsFixed(1)}%";
 
     final bool hasEta =
         minutesRemaining != null && minutesRemaining!.isNotEmpty;

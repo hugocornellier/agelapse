@@ -217,6 +217,35 @@ class MainNavigationState extends State<MainNavigation> {
     });
   }
 
+  void addStabilizedImagePath(String stabilizedImagePath) {
+    if (!mounted) return;
+    final newTimestamp = path.basenameWithoutExtension(stabilizedImagePath);
+    final alreadyInList = _stabilizedImageFiles.any(
+      (p) => path.basenameWithoutExtension(p) == newTimestamp,
+    );
+    if (alreadyInList) return;
+
+    setState(() {
+      final newList = List<String>.from(_stabilizedImageFiles);
+      final timestampInt = int.tryParse(newTimestamp) ?? 0;
+      int low = 0;
+      int high = newList.length;
+      while (low < high) {
+        final mid = (low + high) ~/ 2;
+        final midTimestamp = path.basenameWithoutExtension(newList[mid]);
+        final midInt = int.tryParse(midTimestamp) ?? 0;
+        // List is sorted ascending (oldest first), so insert after items with smaller timestamps
+        if (midInt < timestampInt) {
+          low = mid + 1;
+        } else {
+          high = mid;
+        }
+      }
+      newList.insert(low, stabilizedImagePath);
+      _stabilizedImageFiles = newList;
+    });
+  }
+
   void clearRawAndStabPhotos() {
     if (!mounted) return;
     setState(() {
@@ -454,6 +483,7 @@ class MainNavigationState extends State<MainNavigation> {
           imageFilesStr: _imageFiles,
           stabilizedImageFilesStr: _stabilizedImageFiles,
           setRawAndStabPhotoStates: setRawAndStabPhotoStates,
+          addStabilizedImagePath: addStabilizedImagePath,
           settingsCache: _settingsCache,
           refreshSettings: refreshSettings,
           recompileVideoCallback: _recompileVideo,

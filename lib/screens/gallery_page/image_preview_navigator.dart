@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
@@ -22,6 +23,174 @@ import '../manual_stab_page.dart';
 import '../stab_on_diff_face.dart';
 import 'gallery_widgets.dart';
 import 'gallery_image_menu.dart';
+
+/// Top-level function for compute() - extracts image dimensions from file header.
+/// Runs in isolate to avoid blocking UI thread with image decoding.
+/// Supports: PNG, JPEG, WebP (VP8/VP8L/VP8X), BMP, GIF.
+/// Returns [width, height] as a list, or [0, 0] on failure.
+List<int> _extractImageDimensions(String imagePath) {
+  try {
+    final file = File(imagePath);
+    if (!file.existsSync()) return [0, 0];
+
+    // Read first 32KB - enough for any image header
+    final raf = file.openSync();
+    final headerSize = 32768;
+    final actualSize = raf.lengthSync();
+    final bytesToRead = actualSize < headerSize ? actualSize : headerSize;
+    final bytes = raf.readSync(bytesToRead);
+    raf.closeSync();
+
+    if (bytes.length < 30) return [0, 0];
+
+    // PNG: 89 50 4E 47 0D 0A 1A 0A
+    if (bytes[0] == 0x89 &&
+        bytes[1] == 0x50 &&
+        bytes[2] == 0x4E &&
+        bytes[3] == 0x47) {
+      // Width at bytes 16-19, height at bytes 20-23 (big-endian)
+      final width =
+          (bytes[16] << 24) | (bytes[17] << 16) | (bytes[18] << 8) | bytes[19];
+      final height =
+          (bytes[20] << 24) | (bytes[21] << 16) | (bytes[22] << 8) | bytes[23];
+      return [width, height];
+    }
+
+    // JPEG: FF D8 FF
+    if (bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF) {
+      for (int i = 2; i < bytes.length - 9; i++) {
+        if (bytes[i] == 0xFF) {
+          final marker = bytes[i + 1];
+          // SOF markers contain dimensions
+          if ((marker >= 0xC0 && marker <= 0xC3) ||
+              (marker >= 0xC5 && marker <= 0xC7) ||
+              (marker >= 0xC9 && marker <= 0xCB) ||
+              (marker >= 0xCD && marker <= 0xCF)) {
+            final height = (bytes[i + 5] << 8) | bytes[i + 6];
+            final width = (bytes[i + 7] << 8) | bytes[i + 8];
+            if (width > 0 && height > 0) {
+              return [width, height];
+            }
+          }
+          // Skip to next marker
+          if (i + 3 < bytes.length &&
+              marker != 0x00 &&
+              marker != 0xFF &&
+              marker != 0xD8 &&
+              marker != 0xD9) {
+            final segmentLength = (bytes[i + 2] << 8) | bytes[i + 3];
+            i += segmentLength + 1;
+          }
+        }
+      }
+    }
+
+    // WebP: RIFF....WEBP
+    if (bytes[0] == 0x52 &&
+        bytes[1] == 0x49 &&
+        bytes[2] == 0x46 &&
+        bytes[3] == 0x46 &&
+        bytes[8] == 0x57 &&
+        bytes[9] == 0x45 &&
+        bytes[10] == 0x42 &&
+        bytes[11] == 0x50) {
+      // VP8X (extended format) - most common for modern WebP
+      if (bytes[12] == 0x56 &&
+          bytes[13] == 0x50 &&
+          bytes[14] == 0x38 &&
+          bytes[15] == 0x58) {
+        // Canvas dimensions at bytes 24-26 (width-1) and 27-29 (height-1)
+        final width = (bytes[24] | (bytes[25] << 8) | (bytes[26] << 16)) + 1;
+        final height = (bytes[27] | (bytes[28] << 8) | (bytes[29] << 16)) + 1;
+        return [width, height];
+      }
+      // VP8L (lossless)
+      if (bytes[12] == 0x56 &&
+          bytes[13] == 0x50 &&
+          bytes[14] == 0x38 &&
+          bytes[15] == 0x4C) {
+        // Signature byte 0x2F at offset 20, then 28 bits of width/height
+        if (bytes.length > 24 && bytes[20] == 0x2F) {
+          // Width: bits 0-13, Height: bits 14-27 (little-endian, packed)
+          final b1 = bytes[21];
+          final b2 = bytes[22];
+          final b3 = bytes[23];
+          final b4 = bytes[24];
+          final width = ((b1 | (b2 << 8)) & 0x3FFF) + 1;
+          final height =
+              (((b2 >> 6) | (b3 << 2) | ((b4 & 0xF) << 10)) & 0x3FFF) + 1;
+          return [width, height];
+        }
+      }
+      // VP8 (lossy) - "VP8 " with space
+      if (bytes[12] == 0x56 &&
+          bytes[13] == 0x50 &&
+          bytes[14] == 0x38 &&
+          bytes[15] == 0x20) {
+        // Find keyframe start code: 9D 01 2A
+        for (int i = 20; i < bytes.length - 7; i++) {
+          if (bytes[i] == 0x9D &&
+              bytes[i + 1] == 0x01 &&
+              bytes[i + 2] == 0x2A) {
+            // Width at i+3 (14 bits), height at i+5 (14 bits), little-endian
+            final width = (bytes[i + 3] | (bytes[i + 4] << 8)) & 0x3FFF;
+            final height = (bytes[i + 5] | (bytes[i + 6] << 8)) & 0x3FFF;
+            if (width > 0 && height > 0) {
+              return [width, height];
+            }
+          }
+        }
+      }
+    }
+
+    // BMP: 42 4D ("BM")
+    if (bytes[0] == 0x42 && bytes[1] == 0x4D) {
+      // DIB header size at offset 14 determines version
+      final dibHeaderSize =
+          bytes[14] | (bytes[15] << 8) | (bytes[16] << 16) | (bytes[17] << 24);
+      if (dibHeaderSize == 12) {
+        // BITMAPCOREHEADER (Windows 2.x / OS/2 1.x) - 16-bit dimensions
+        final width = bytes[18] | (bytes[19] << 8);
+        final height = bytes[20] | (bytes[21] << 8);
+        return [width, height];
+      } else if (dibHeaderSize >= 40) {
+        // BITMAPINFOHEADER+ (Windows 3.x+) - 32-bit signed dimensions
+        int width = bytes[18] |
+            (bytes[19] << 8) |
+            (bytes[20] << 16) |
+            (bytes[21] << 24);
+        int height = bytes[22] |
+            (bytes[23] << 8) |
+            (bytes[24] << 16) |
+            (bytes[25] << 24);
+        // Handle signed int32 (negative height = top-down DIB)
+        if (height & 0x80000000 != 0) {
+          height = -((~height + 1) & 0xFFFFFFFF);
+        }
+        if (width & 0x80000000 != 0) {
+          width = -((~width + 1) & 0xFFFFFFFF);
+        }
+        return [width.abs(), height.abs()];
+      }
+    }
+
+    // GIF: 47 49 46 38 ("GIF8")
+    if (bytes[0] == 0x47 &&
+        bytes[1] == 0x49 &&
+        bytes[2] == 0x46 &&
+        bytes[3] == 0x38) {
+      // Width at bytes 6-7, height at bytes 8-9 (little-endian)
+      final width = bytes[6] | (bytes[7] << 8);
+      final height = bytes[8] | (bytes[9] << 8);
+      return [width, height];
+    }
+
+    // Unsupported format (HEIC, AVIF, TIFF, etc.) - return 0,0 for fallback
+    return [0, 0];
+  } catch (e) {
+    return [0, 0];
+  }
+}
 
 class ImagePreviewNavigator extends StatefulWidget {
   final List<String> rawImageFiles;
@@ -99,26 +268,18 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
   }
 
   Future<void> _loadDateStampSettings() async {
-    final projectIdStr = widget.projectId.toString();
-    final enabled = await SettingsUtil.loadExportDateStampEnabled(projectIdStr);
-    final position = await SettingsUtil.loadExportDateStampPosition(
-      projectIdStr,
+    final settings = await SettingsUtil.loadAllDateStampSettings(
+      widget.projectId.toString(),
     );
-    final format = await SettingsUtil.loadExportDateStampFormat(projectIdStr);
-    final size = await SettingsUtil.loadExportDateStampSize(projectIdStr);
-    final opacity = await SettingsUtil.loadExportDateStampOpacity(projectIdStr);
-    final exportFont = await SettingsUtil.loadExportDateStampFont(projectIdStr);
-    final galleryFont =
-        await SettingsUtil.loadGalleryDateStampFont(projectIdStr);
     if (mounted) {
       setState(() {
-        _exportDateStampEnabled = enabled;
-        _exportDateStampPosition = position;
-        _exportDateStampFormat = format;
-        _exportDateStampSize = size;
-        _exportDateStampOpacity = opacity;
-        _exportDateStampFont = exportFont;
-        _galleryDateStampFont = galleryFont;
+        _exportDateStampEnabled = settings.exportEnabled;
+        _exportDateStampPosition = settings.exportPosition;
+        _exportDateStampFormat = settings.exportFormat;
+        _exportDateStampSize = settings.exportSizePercent;
+        _exportDateStampOpacity = settings.exportOpacity;
+        _exportDateStampFont = settings.exportFont;
+        _galleryDateStampFont = settings.galleryFont;
       });
     }
   }
@@ -283,15 +444,30 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     }
 
     try {
+      // Fast path: extract dimensions in isolate via header parsing
+      // Supports PNG, JPEG, WebP, BMP, GIF
+      final dimensions = await compute(_extractImageDimensions, imagePath);
+      if (dimensions[0] > 0 && dimensions[1] > 0) {
+        final size = Size(dimensions[0].toDouble(), dimensions[1].toDouble());
+        _dimensionsCache[imagePath] = size;
+        return size;
+      }
+
+      // Slow path: main-thread full decode for unsupported formats
+      // (HEIC, AVIF, TIFF, etc. that require complex parsing)
       final file = File(imagePath);
       if (!await file.exists()) {
         return const Size(0, 0);
       }
-      final Uint8List bytes = await file.readAsBytes();
-      final Completer<ui.Image> completer = Completer();
-      ui.decodeImageFromList(bytes, completer.complete);
-      final image = await completer.future;
-      final size = Size(image.width.toDouble(), image.height.toDouble());
+      final bytes = await file.readAsBytes();
+      final codec = await ui.instantiateImageCodec(bytes);
+      final frame = await codec.getNextFrame();
+      final size = Size(
+        frame.image.width.toDouble(),
+        frame.image.height.toDouble(),
+      );
+      frame.image.dispose();
+      codec.dispose();
       _dimensionsCache[imagePath] = size;
       return size;
     } catch (e) {
@@ -497,15 +673,14 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
       builder: (context, constraints) {
         // Calculate font size based on ACTUAL image dimensions, matching video output exactly
         // We need to compute what the displayed image height will be
-        return FutureBuilder<ui.Image>(
-          future: _loadImageDimensions(imagePath),
+        return FutureBuilder<Size>(
+          future: _getImageDimensions(imagePath),
           builder: (context, snapshot) {
             double previewFontSize = 14.0; // Default fallback
 
-            if (snapshot.hasData) {
-              final image = snapshot.data!;
-              final imageWidth = image.width.toDouble();
-              final imageHeight = image.height.toDouble();
+            if (snapshot.hasData && snapshot.data != Size.zero) {
+              final imageWidth = snapshot.data!.width;
+              final imageHeight = snapshot.data!.height;
 
               // Calculate how image scales to fit container (matching _buildResizableImage constraints)
               final containerMaxWidth = MediaQuery.of(context).size.width * 0.9;
@@ -573,13 +748,6 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
         );
       },
     );
-  }
-
-  Future<ui.Image> _loadImageDimensions(String imagePath) async {
-    final bytes = await File(imagePath).readAsBytes();
-    final codec = await ui.instantiateImageCodec(bytes);
-    final frame = await codec.getNextFrame();
-    return frame.image;
   }
 
   Widget _buildResizableImage(File imageFile) {
@@ -1053,16 +1221,13 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     final currentFiles = widget.rawImageFiles;
     if (currentFiles.length <= 1) return false;
 
-    // Get all timestamps except the one being changed
-    final timestamps = currentFiles
-        .map((f) => path.basenameWithoutExtension(f))
-        .where((t) => t != oldTimestamp)
-        .toList();
-
-    // Find the old position
+    // Extract all timestamps once
     final allTimestamps =
         currentFiles.map((f) => path.basenameWithoutExtension(f)).toList();
     final oldIndex = allTimestamps.indexOf(oldTimestamp);
+
+    // Filter to get timestamps without the one being changed
+    final timestamps = allTimestamps.where((t) => t != oldTimestamp).toList();
 
     // Add the new timestamp and sort to find new position
     timestamps.add(newTimestamp);

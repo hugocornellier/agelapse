@@ -35,6 +35,41 @@ class FaceLike {
     required this.leftEye,
     required this.rightEye,
   });
+
+  /// Serialize to isolate-safe map.
+  Map<String, dynamic> toMap() => {
+        'bbox': [
+          boundingBox.left,
+          boundingBox.top,
+          boundingBox.right,
+          boundingBox.bottom
+        ],
+        'leftEye': leftEye != null ? [leftEye!.x, leftEye!.y] : null,
+        'rightEye': rightEye != null ? [rightEye!.x, rightEye!.y] : null,
+      };
+
+  /// Deserialize from isolate-safe map.
+  factory FaceLike.fromMap(Map<String, dynamic> m) {
+    final bbox = m['bbox'] as List;
+    final left = m['leftEye'] as List?;
+    final right = m['rightEye'] as List?;
+    return FaceLike(
+      boundingBox: Rect.fromLTRB(
+        (bbox[0] as num).toDouble(),
+        (bbox[1] as num).toDouble(),
+        (bbox[2] as num).toDouble(),
+        (bbox[3] as num).toDouble(),
+      ),
+      leftEye: left != null
+          ? Point<double>(
+              (left[0] as num).toDouble(), (left[1] as num).toDouble())
+          : null,
+      rightEye: right != null
+          ? Point<double>(
+              (right[0] as num).toDouble(), (right[1] as num).toDouble())
+          : null,
+    );
+  }
 }
 
 class StabUtils {

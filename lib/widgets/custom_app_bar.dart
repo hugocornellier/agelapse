@@ -55,6 +55,7 @@ class CustomAppBar extends StatefulWidget {
 
 class CustomAppBarState extends State<CustomAppBar> {
   String projectImagePath = '';
+  bool _projectImageExists = false;
 
   StreamSubscription<StabUpdateEvent>? _stabUpdateSubscription;
   Timer? _profileImageDebounce;
@@ -108,6 +109,7 @@ class CustomAppBarState extends State<CustomAppBar> {
 
         setState(() {
           projectImagePath = '';
+          _projectImageExists = false;
         });
       }
     }
@@ -241,6 +243,7 @@ class CustomAppBarState extends State<CustomAppBar> {
       imageProvider.evict();
       setState(() {
         projectImagePath = imagePath;
+        _projectImageExists = true;
       });
     } else {
       LogService.instance.log(
@@ -345,8 +348,7 @@ class CustomAppBarState extends State<CustomAppBar> {
                   InkWell(
                     onTap: () =>
                         _showProjectSelectionModal(context, widget.projectId),
-                    child: projectImagePath.isNotEmpty &&
-                            File(projectImagePath).existsSync()
+                    child: projectImagePath.isNotEmpty && _projectImageExists
                         ? CircleAvatar(
                             backgroundImage: FileImage(File(projectImagePath)),
                             onBackgroundImageError: (exception, stackTrace) {
@@ -364,6 +366,7 @@ class CustomAppBarState extends State<CustomAppBar> {
                                     );
                                     setState(() {
                                       projectImagePath = '';
+                                      _projectImageExists = false;
                                     });
                                   }
                                 });
