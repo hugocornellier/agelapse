@@ -8,15 +8,25 @@ import '../styles/styles.dart';
 /// [title] - Optional title text displayed below the icon
 /// [icon] - Optional icon to display (defaults to info_outline_rounded)
 /// [iconColor] - Optional icon/title color (defaults to settingsAccent)
+/// [primaryActionLabel] - Optional label for a prominent primary action button
+/// [onPrimaryAction] - Callback when primary action is tapped (dialog auto-closes)
+/// [dismissLabel] - Label for the dismiss button (defaults to "Got it", or "Close" if primary action exists)
 void showStyledInfoDialog(
   BuildContext context,
   String content, {
   String? title,
   IconData? icon,
   Color? iconColor,
+  String? primaryActionLabel,
+  VoidCallback? onPrimaryAction,
+  String? dismissLabel,
 }) {
   final displayIcon = icon ?? Icons.info_outline_rounded;
   final displayColor = iconColor ?? AppColors.settingsAccent;
+  final hasPrimaryAction =
+      primaryActionLabel != null && onPrimaryAction != null;
+  final effectiveDismissLabel =
+      dismissLabel ?? (hasPrimaryAction ? "Close" : "Got it");
 
   showDialog(
     context: context,
@@ -76,21 +86,52 @@ void showStyledInfoDialog(
                 textAlign: TextAlign.left,
               ),
               const SizedBox(height: 20),
+              if (hasPrimaryAction) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      onPrimaryAction();
+                    },
+                    style: TextButton.styleFrom(
+                      backgroundColor: displayColor,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: Text(
+                      primaryActionLabel,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
               SizedBox(
                 width: double.infinity,
                 child: TextButton(
                   onPressed: () => Navigator.of(context).pop(),
                   style: TextButton.styleFrom(
-                    backgroundColor: Colors.white.withValues(alpha: 0.08),
+                    backgroundColor: hasPrimaryAction
+                        ? Colors.transparent
+                        : Colors.white.withValues(alpha: 0.08),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  child: const Text(
-                    "Got it",
+                  child: Text(
+                    effectiveDismissLabel,
                     style: TextStyle(
-                      color: Colors.white,
+                      color: hasPrimaryAction
+                          ? Colors.white.withValues(alpha: 0.5)
+                          : Colors.white,
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                     ),

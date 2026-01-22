@@ -17,7 +17,6 @@ import '../../utils/date_stamp_utils.dart';
 import '../../utils/capture_timezone.dart';
 import '../../utils/gallery_photo_operations.dart';
 import '../../utils/gallery_permission_handler.dart';
-import '../../utils/gallery_dialog_utils.dart';
 import '../../widgets/confirm_action_dialog.dart';
 import '../manual_stab_page.dart';
 import '../stab_on_diff_face.dart';
@@ -1205,17 +1204,32 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
   }
 
   Future<void> _showDeleteDialog(File imageFile) async {
-    final confirmed = await GalleryDialogUtils.showDeleteConfirmation(
-      context,
-      useAppColors: true,
-    );
+    final int totalPhotos = widget.rawImageFiles.length;
+    final int remainingAfterDelete = totalPhotos - 1;
+    final bool shouldRecompile = remainingAfterDelete >= 2;
 
-    if (confirmed == true && mounted) {
-      await _deleteImage(imageFile);
+    final bool confirmed;
+    if (shouldRecompile) {
+      confirmed = await ConfirmActionDialog.showDeleteRecompile(
+        context,
+        photoCount: 1,
+      );
+    } else {
+      confirmed = await ConfirmActionDialog.showDeleteSimple(
+        context,
+        photoCount: 1,
+      );
+    }
+
+    if (confirmed && mounted) {
+      await _deleteImage(imageFile, triggerRecompile: shouldRecompile);
     }
   }
 
-  Future<void> _deleteImage(File imageFile) async {
+  Future<void> _deleteImage(
+    File imageFile, {
+    required bool triggerRecompile,
+  }) async {
     final success = await GalleryPhotoOperations.deletePhoto(
       imageFile: imageFile,
       projectId: widget.projectId,
@@ -1232,6 +1246,11 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
 
     // Reload images
     await widget.loadImages();
+
+    // Trigger video recompilation if enough photos remain
+    if (triggerRecompile) {
+      await widget.recompileVideoCallback();
+    }
 
     // Navigate to adjacent or close if no images left
     if (_currentList.isEmpty) {

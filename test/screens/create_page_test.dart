@@ -21,7 +21,7 @@ void main() {
         goToPage: (index) {},
         prevIndex: 0,
         hideNavBar: () async {},
-        progressPercent: 50,
+        progressPercent: 50.0,
         stabCallback: () async {},
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
@@ -38,7 +38,7 @@ void main() {
       expect(widget.photoIndex, 0);
       expect(widget.currentFrame, 0);
       expect(widget.prevIndex, 0);
-      expect(widget.progressPercent, 50);
+      expect(widget.progressPercent, 50.0);
     });
 
     test('CreatePage creates state', () {
@@ -54,7 +54,7 @@ void main() {
         goToPage: (index) {},
         prevIndex: 0,
         hideNavBar: () async {},
-        progressPercent: 0,
+        progressPercent: 0.0,
         stabCallback: () async {},
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
@@ -81,7 +81,7 @@ void main() {
         goToPage: (index) {},
         prevIndex: 0,
         hideNavBar: () async {},
-        progressPercent: 50,
+        progressPercent: 50.0,
         stabCallback: () async {},
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
@@ -91,7 +91,7 @@ void main() {
       );
 
       expect(widget.stabilizingRunningInMain, isTrue);
-      expect(widget.progressPercent, 50);
+      expect(widget.progressPercent, 50.0);
     });
 
     test('handles video creation state', () {
@@ -107,7 +107,7 @@ void main() {
         goToPage: (index) {},
         prevIndex: 0,
         hideNavBar: () async {},
-        progressPercent: 100,
+        progressPercent: 100.0,
         stabCallback: () async {},
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
@@ -138,7 +138,7 @@ void main() {
         },
         prevIndex: 0,
         hideNavBar: () async {},
-        progressPercent: 0,
+        progressPercent: 0.0,
         stabCallback: () async {},
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
@@ -168,7 +168,7 @@ void main() {
         goToPage: (index) {},
         prevIndex: 0,
         hideNavBar: () async {},
-        progressPercent: 0,
+        progressPercent: 0.0,
         stabCallback: () async {},
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
@@ -198,7 +198,7 @@ void main() {
         hideNavBar: () async {
           hideCalled = true;
         },
-        progressPercent: 0,
+        progressPercent: 0.0,
         stabCallback: () async {},
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},

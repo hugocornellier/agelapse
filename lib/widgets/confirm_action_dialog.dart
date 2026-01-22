@@ -8,8 +8,9 @@ import 'package:flutter/material.dart';
 class ConfirmActionDialog extends StatelessWidget {
   final String title;
   final String description;
-  final IconData warningIcon;
-  final String warningText;
+  final IconData? warningIcon;
+  final String? warningText;
+  final IconData titleIcon;
   final String cancelText;
   final String confirmText;
 
@@ -17,8 +18,9 @@ class ConfirmActionDialog extends StatelessWidget {
     super.key,
     required this.title,
     required this.description,
-    required this.warningIcon,
-    required this.warningText,
+    this.warningIcon,
+    this.warningText,
+    this.titleIcon = Icons.warning_amber_rounded,
     this.cancelText = 'Cancel',
     this.confirmText = 'Proceed Anyway',
   });
@@ -96,13 +98,61 @@ class ConfirmActionDialog extends StatelessWidget {
     );
   }
 
+  /// Shows a confirmation dialog for photo deletion that will trigger video recompilation.
+  ///
+  /// [photoCount] - number of photos being deleted (1 for single, >1 for batch)
+  /// Use this when remaining photos >= 2 (video can still be compiled).
+  static Future<bool> showDeleteRecompile(
+    BuildContext context, {
+    required int photoCount,
+  }) async {
+    final bool isSingle = photoCount == 1;
+    final String photoText = isSingle ? 'this photo' : '$photoCount photos';
+    final String description =
+        'Are you sure you want to delete $photoText? This cannot be undone.';
+
+    return await _show(
+      context,
+      title: 'Delete ${isSingle ? 'Photo' : 'Photos'}?',
+      description: description,
+      warningIcon: Icons.movie_outlined,
+      warningText:
+          'Your video will be recompiled without the deleted ${isSingle ? 'photo' : 'photos'}.',
+      titleIcon: Icons.delete_outline_rounded,
+      confirmText: 'Delete',
+    );
+  }
+
+  /// Shows a simple confirmation dialog for photo deletion without video warning.
+  ///
+  /// [photoCount] - number of photos being deleted (1 for single, >1 for batch)
+  /// Use this when remaining photos < 2 (no video to recompile).
+  static Future<bool> showDeleteSimple(
+    BuildContext context, {
+    required int photoCount,
+  }) async {
+    final bool isSingle = photoCount == 1;
+    final String photoText = isSingle ? 'this photo' : '$photoCount photos';
+    final String description =
+        'Are you sure you want to delete $photoText? This cannot be undone.';
+
+    return await _show(
+      context,
+      title: 'Delete ${isSingle ? 'Photo' : 'Photos'}?',
+      description: description,
+      titleIcon: Icons.delete_outline_rounded,
+      confirmText: 'Delete',
+    );
+  }
+
   /// Internal method to show the dialog with the given parameters.
   static Future<bool> _show(
     BuildContext context, {
     required String title,
     required String description,
-    required IconData warningIcon,
-    required String warningText,
+    IconData? warningIcon,
+    String? warningText,
+    IconData titleIcon = Icons.warning_amber_rounded,
     String cancelText = 'Cancel',
     String confirmText = 'Proceed Anyway',
   }) async {
@@ -114,6 +164,7 @@ class ConfirmActionDialog extends StatelessWidget {
               description: description,
               warningIcon: warningIcon,
               warningText: warningText,
+              titleIcon: titleIcon,
               cancelText: cancelText,
               confirmText: confirmText,
             );
@@ -138,8 +189,8 @@ class ConfirmActionDialog extends StatelessWidget {
               color: _dangerColorLight,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(
-              Icons.warning_amber_rounded,
+            child: Icon(
+              titleIcon,
               color: _dangerColor,
               size: 22,
             ),
@@ -167,36 +218,38 @@ class ConfirmActionDialog extends StatelessWidget {
               height: 1.5,
             ),
           ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: _dangerColorLight,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: _dangerColorBorder, width: 1),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  warningIcon,
-                  color: _dangerColor,
-                  size: 20,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    warningText,
-                    style: const TextStyle(
-                      color: _dangerColor,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      height: 1.4,
+          if (warningText != null && warningIcon != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _dangerColorLight,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: _dangerColorBorder, width: 1),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    warningIcon,
+                    color: _dangerColor,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      warningText!,
+                      style: const TextStyle(
+                        color: _dangerColor,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        height: 1.4,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+          ],
         ],
       ),
       actions: [

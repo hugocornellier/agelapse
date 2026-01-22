@@ -17,7 +17,9 @@ dependencies:
   camera_macos: ^0.0.9
   camera_windows: ^0.2.5
   chewie: ^1.13.0
-  desktop_drop: ^0.7.0
+  desktop_drop:
+    git:
+      url: https://github.com/hugocornellier/desktop_drop_custom.git
   device_info_plus: ^12.3.0
   exif_reader: ^4.1.0
   face_detection_tflite: ^4.4.1

@@ -5,7 +5,6 @@ import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:heif_converter/heif_converter.dart';
 import 'package:path/path.dart' as path;
-import 'package:opencv_dart/opencv_dart.dart' as cv;
 import 'package:saver_gallery/saver_gallery.dart';
 import 'package:vibration/vibration.dart';
 
@@ -14,6 +13,7 @@ import '../services/log_service.dart';
 import '../services/thumbnail_service.dart';
 import 'dir_utils.dart';
 import 'heic_utils.dart';
+import 'image_processing_isolate.dart';
 
 class CameraUtils {
   static Future<bool> loadSaveToCameraRollSetting() async {
@@ -170,22 +170,13 @@ class CameraUtils {
     String?
         heicPathToDelete; // Track original HEIC for cleanup after conversion
     try {
-      LogService.instance.log("[savePhoto] START: $filename");
-
       final int? newPhotoLength = await image?.length();
-      LogService.instance.log("[savePhoto] File size: $newPhotoLength bytes");
       if (newPhotoLength == null) {
-        LogService.instance.log(
-          "[savePhoto] SKIP: File size is null for $filename",
-        );
         return false;
       }
 
       if (imageTimestampFromExif != null) {
         timestamp = imageTimestampFromExif.toString();
-        LogService.instance.log(
-          "[savePhoto] Checking for duplicate with timestamp: $timestamp, size: $newPhotoLength",
-        );
         bool photoExists = await DB.instance.doesPhotoExistByTimestamp(
           timestamp,
           projectId,
@@ -197,41 +188,23 @@ class CameraUtils {
             projectId,
           ))
                   .first;
-          LogService.instance.log(
-            "[savePhoto] Found existing photo at timestamp $timestamp with size: ${existingPhoto['imageLength']}",
-          );
           if (newPhotoLength == existingPhoto['imageLength']) {
-            LogService.instance.log(
-              "[savePhoto] SKIP DUPLICATE: $filename has same timestamp AND size as existing photo",
-            );
-            return false;
+            return false; // Duplicate
           }
 
           final int timestampPlusPlus = int.parse(timestamp) + 1;
-          LogService.instance.log(
-            "[savePhoto] Different size, incrementing timestamp: $timestamp -> $timestampPlusPlus",
-          );
           timestamp = timestampPlusPlus.toString();
           photoExists = await DB.instance.doesPhotoExistByTimestamp(
             timestamp,
             projectId,
           );
         }
-        LogService.instance.log(
-          "[savePhoto] No duplicate found, proceeding with timestamp: $timestamp",
-        );
       }
 
       String imgPath = image!.path;
       String extension = path.extension(imgPath).toLowerCase();
-      LogService.instance.log(
-        "[savePhoto] Processing file: $imgPath (extension: $extension)",
-      );
 
       if (extension == ".heic" || extension == ".heif") {
-        LogService.instance.log(
-          "[savePhoto] HEIC/HEIF detected, converting to JPG",
-        );
         final String heicPath = imgPath;
         final String jpgPath = path.setExtension(heicPath, ".jpg");
 
@@ -246,23 +219,16 @@ class CameraUtils {
             jpgPath,
           ]);
           if (result.exitCode != 0 || !await File(jpgPath).exists()) {
-            LogService.instance.log(
-              "[savePhoto] SKIP: HEIC conversion failed (sips) for $filename",
-            );
             return false;
           }
         } else if (Platform.isWindows) {
           // Windows: use bundled HeicConverter.exe
           final success = await HeicUtils.convertHeicToJpgAt(heicPath, jpgPath);
           if (!success) {
-            LogService.instance.log(
-              "[savePhoto] SKIP: HEIC conversion failed (HeicUtils) for $filename",
-            );
             return false;
           }
         } else if (Platform.isLinux) {
-          // Linux (both .deb and Flatpak): use heif_converter package
-          // This is a pure Dart/native implementation, no external binary needed
+          // Linux: use heif_converter package
           try {
             await HeifConverter.convert(
               heicPath,
@@ -270,15 +236,9 @@ class CameraUtils {
               format: 'jpeg',
             );
             if (!await File(jpgPath).exists()) {
-              LogService.instance.log(
-                "[savePhoto] SKIP: HEIC conversion failed (HeifConverter) for $filename",
-              );
               return false;
             }
-          } catch (e) {
-            LogService.instance.log(
-              "[savePhoto] SKIP: HEIC conversion exception: $e for $filename",
-            );
+          } catch (_) {
             return false;
           }
         } else {
@@ -290,21 +250,12 @@ class CameraUtils {
               format: 'jpeg',
             );
             if (!await File(jpgPath).exists()) {
-              LogService.instance.log(
-                "[savePhoto] SKIP: HEIC conversion failed (HeifConverter) for $filename",
-              );
               return false;
             }
-          } catch (e) {
-            LogService.instance.log(
-              "[savePhoto] SKIP: HEIC conversion exception: $e for $filename",
-            );
+          } catch (_) {
             return false;
           }
         }
-        LogService.instance.log(
-          "[savePhoto] HEIC conversion successful: $jpgPath",
-        );
         heicPathToDelete = heicPath; // Mark original for cleanup
         imgPath = jpgPath;
         extension = ".jpg";
@@ -312,76 +263,35 @@ class CameraUtils {
 
       // Only re-read if bytes weren't provided OR if conversion changed the file path
       if (bytes == null || imgPath != image.path) {
-        LogService.instance.log("[savePhoto] Reading bytes from: $imgPath");
         bytes = await CameraUtils.readBytesInIsolate(imgPath);
-      } else {
-        LogService.instance.log(
-          "[savePhoto] Using pre-loaded bytes (${bytes.length} bytes)",
-        );
       }
       if (bytes == null) {
-        LogService.instance.log(
-          "[savePhoto] SKIP: Failed to read bytes from $filename",
-        );
         return false;
       }
-      LogService.instance.log("[savePhoto] Read ${bytes.length} bytes");
 
-      LogService.instance.log("[savePhoto] Decoding image with OpenCV");
-      cv.Mat rawImage = cv.imdecode(bytes, cv.IMREAD_COLOR);
-      if (rawImage.isEmpty) {
-        LogService.instance.log(
-          "[savePhoto] SKIP: OpenCV failed to decode image $filename",
-        );
-        rawImage.dispose();
-        return false;
-      }
-      LogService.instance.log(
-        "[savePhoto] OpenCV decoded: ${rawImage.width}x${rawImage.height}",
+      // Process image in isolate (decode, rotate, flip, create thumbnail)
+      // This moves CPU-intensive OpenCV operations off the main thread
+      final processingInput = ImageProcessingInput(
+        bytes: bytes,
+        rotation: deviceOrientation,
+        applyMirroring: applyMirroring,
+        extension: extension,
       );
 
-      if (deviceOrientation != null) {
-        cv.Mat rotated;
-        if (deviceOrientation == "Landscape Left") {
-          rotated = cv.rotate(rawImage, cv.ROTATE_90_CLOCKWISE);
-        } else if (deviceOrientation == "Landscape Right") {
-          rotated = cv.rotate(rawImage, cv.ROTATE_90_COUNTERCLOCKWISE);
-        } else {
-          rotated = rawImage;
-        }
-        if (rotated != rawImage) {
-          rawImage.dispose();
-          rawImage = rotated;
-        }
-        if (extension == ".png") {
-          final (success, encoded) = cv.imencode('.png', rawImage);
-          if (success) bytes = encoded;
-        } else {
-          final (success, encoded) = cv.imencode('.jpg', rawImage);
-          if (success) bytes = encoded;
-        }
-        await File(imgPath).writeAsBytes(bytes, flush: true);
+      final processingOutput = await processImageSafely(processingInput);
+
+      if (!processingOutput.success) {
+        return false;
       }
 
-      if (applyMirroring) {
-        final flipped = cv.flip(rawImage, 1); // 1 = horizontal flip
-        rawImage.dispose();
-        rawImage = flipped;
-        if (extension == ".png") {
-          final (success, encoded) = cv.imencode('.png', rawImage);
-          if (success) bytes = encoded;
-        } else {
-          final (success, encoded) = cv.imencode('.jpg', rawImage);
-          if (success) bytes = encoded;
-        }
-        await File(imgPath).writeAsBytes(bytes, flush: true);
+      // Write processed image if rotation/mirroring was applied
+      if (processingOutput.processedBytes != null) {
+        await File(imgPath)
+            .writeAsBytes(processingOutput.processedBytes!, flush: true);
       }
 
-      int importedImageWidth = rawImage.cols;
-      int importedImageHeight = rawImage.rows;
-
-      double aspectRatio = importedImageWidth / importedImageHeight;
-      aspectRatio = aspectRatio > 1 ? aspectRatio : 1 / aspectRatio;
+      int importedImageWidth = processingOutput.width;
+      int importedImageHeight = processingOutput.height;
 
       String orientation = importedImageHeight > importedImageWidth
           ? "portrait"
@@ -414,15 +324,11 @@ class CameraUtils {
       );
       await DirUtils.createDirectoryIfNotExists(thumbnailPath);
 
-      LogService.instance.log("[savePhoto] Creating thumbnail: $thumbnailPath");
-      bool result = await _createThumbnailForNewImage(thumbnailPath, rawImage);
-      rawImage.dispose();
-      if (!result) {
-        LogService.instance.log(
-          "[savePhoto] SKIP: Thumbnail creation failed for $filename",
-        );
+      // Write thumbnail (already created in isolate)
+      if (processingOutput.thumbnailBytes == null) {
         return false;
       }
+      await File(thumbnailPath).writeAsBytes(processingOutput.thumbnailBytes!);
 
       ThumbnailService.instance.emit(
         ThumbnailEvent(
@@ -444,13 +350,9 @@ class CameraUtils {
         increaseSuccessfulImportCount();
       }
 
-      LogService.instance.log(
-        "[savePhoto] SUCCESS: $filename imported with timestamp $timestamp",
-      );
+      LogService.instance.log('[Import] $filename');
       return true;
-    } catch (e, stackTrace) {
-      LogService.instance.log("[savePhoto] EXCEPTION for $filename: $e");
-      LogService.instance.log("[savePhoto] Stack trace: $stackTrace");
+    } catch (_) {
       return false;
     } finally {
       bytes = null;
@@ -461,45 +363,9 @@ class CameraUtils {
           final heicFile = File(heicPathToDelete);
           if (await heicFile.exists()) {
             await heicFile.delete();
-            LogService.instance.log(
-              '[savePhoto] Deleted original HEIC: $heicPathToDelete',
-            );
           }
-        } catch (e) {
-          LogService.instance.log(
-            '[savePhoto] Failed to delete HEIC (non-fatal): $e',
-          );
-        }
+        } catch (_) {}
       }
     }
-  }
-
-  static Future<bool> _createThumbnailForNewImage(
-    String thumbnailPath,
-    cv.Mat rawImage,
-  ) async {
-    return _createThumbnailFromRawImage(rawImage, thumbnailPath);
-  }
-
-  static Future<bool> _createThumbnailFromRawImage(
-    cv.Mat rawImage,
-    String thumbnailPath,
-  ) async {
-    // Resize to 500px width maintaining aspect ratio
-    final aspectRatio = rawImage.rows / rawImage.cols;
-    final height = (500 * aspectRatio).round();
-    final thumbnail = cv.resize(rawImage, (500, height));
-
-    final File thumbnailFile = File(thumbnailPath);
-    final (success, encodedJpgBytes) = cv.imencode(
-      '.jpg',
-      thumbnail,
-      params: cv.VecI32.fromList([cv.IMWRITE_JPEG_QUALITY, 90]),
-    );
-    thumbnail.dispose();
-
-    if (!success) return false;
-    await thumbnailFile.writeAsBytes(encodedJpgBytes);
-    return true;
   }
 }

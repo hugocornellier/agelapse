@@ -13,7 +13,7 @@ void main() {
         stabilizingRunningInMain: true,
         videoCreationActiveInMain: false,
         importRunningInMain: false,
-        progressPercent: 50,
+        progressPercent: 50.0,
         goToPage: (index) {},
         userRanOutOfSpace: false,
       );
@@ -21,7 +21,7 @@ void main() {
       expect(widget.stabilizingRunningInMain, isTrue);
       expect(widget.videoCreationActiveInMain, isFalse);
       expect(widget.importRunningInMain, isFalse);
-      expect(widget.progressPercent, 50);
+      expect(widget.progressPercent, 50.0);
       expect(widget.userRanOutOfSpace, isFalse);
     });
 
@@ -30,7 +30,7 @@ void main() {
         stabilizingRunningInMain: false,
         videoCreationActiveInMain: false,
         importRunningInMain: false,
-        progressPercent: 0,
+        progressPercent: 0.0,
         goToPage: (index) {},
         selectedIndex: 2,
         userRanOutOfSpace: false,
@@ -44,7 +44,7 @@ void main() {
         stabilizingRunningInMain: true,
         videoCreationActiveInMain: false,
         importRunningInMain: false,
-        progressPercent: 75,
+        progressPercent: 75.0,
         goToPage: (index) {},
         minutesRemaining: '5m 30s',
         userRanOutOfSpace: false,
@@ -58,7 +58,7 @@ void main() {
         stabilizingRunningInMain: false,
         videoCreationActiveInMain: false,
         importRunningInMain: false,
-        progressPercent: 0,
+        progressPercent: 0.0,
         goToPage: (index) {},
         userRanOutOfSpace: false,
       );
@@ -73,7 +73,7 @@ void main() {
         stabilizingRunningInMain: false,
         videoCreationActiveInMain: false,
         importRunningInMain: false,
-        progressPercent: 0,
+        progressPercent: 0.0,
         goToPage: (index) {
           receivedIndex = index;
         },
@@ -92,7 +92,7 @@ void main() {
         stabilizingRunningInMain: true,
         videoCreationActiveInMain: false,
         importRunningInMain: false,
-        progressPercent: 30,
+        progressPercent: 30.0,
         goToPage: (index) {},
         userRanOutOfSpace: false,
       );
@@ -105,7 +105,7 @@ void main() {
         stabilizingRunningInMain: false,
         videoCreationActiveInMain: true,
         importRunningInMain: false,
-        progressPercent: 60,
+        progressPercent: 60.0,
         goToPage: (index) {},
         userRanOutOfSpace: false,
       );
@@ -118,7 +118,7 @@ void main() {
         stabilizingRunningInMain: false,
         videoCreationActiveInMain: false,
         importRunningInMain: true,
-        progressPercent: 90,
+        progressPercent: 90.0,
         goToPage: (index) {},
         userRanOutOfSpace: false,
       );
@@ -131,7 +131,7 @@ void main() {
         stabilizingRunningInMain: false,
         videoCreationActiveInMain: false,
         importRunningInMain: false,
-        progressPercent: 0,
+        progressPercent: 0.0,
         goToPage: (index) {},
         userRanOutOfSpace: true,
       );
@@ -146,12 +146,12 @@ void main() {
         stabilizingRunningInMain: true,
         videoCreationActiveInMain: false,
         importRunningInMain: false,
-        progressPercent: 0,
+        progressPercent: 0.0,
         goToPage: (index) {},
         userRanOutOfSpace: false,
       );
 
-      expect(widget.progressPercent, 0);
+      expect(widget.progressPercent, 0.0);
     });
 
     test('handles 100% progress', () {
@@ -159,12 +159,12 @@ void main() {
         stabilizingRunningInMain: true,
         videoCreationActiveInMain: false,
         importRunningInMain: false,
-        progressPercent: 100,
+        progressPercent: 100.0,
         goToPage: (index) {},
         userRanOutOfSpace: false,
       );
 
-      expect(widget.progressPercent, 100);
+      expect(widget.progressPercent, 100.0);
     });
 
     test('handles progress over 100%', () {
@@ -173,12 +173,12 @@ void main() {
         stabilizingRunningInMain: true,
         videoCreationActiveInMain: false,
         importRunningInMain: false,
-        progressPercent: 150,
+        progressPercent: 150.0,
         goToPage: (index) {},
         userRanOutOfSpace: false,
       );
 
-      expect(widget.progressPercent, 150);
+      expect(widget.progressPercent, 150.0);
     });
   });
 }

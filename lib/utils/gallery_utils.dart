@@ -7,15 +7,14 @@ import 'package:archive/archive_io.dart';
 import 'package:async_zip/async_zip.dart';
 import 'package:exif_reader/exif_reader.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_avif/flutter_avif.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as path;
-import 'package:flutter/services.dart';
 import 'package:file_selector/file_selector.dart';
 
 import '../services/database_helper.dart';
 import '../services/face_stabilizer.dart';
-import '../services/log_service.dart';
 import '../services/image_processor.dart';
 import '../services/thumbnail_service.dart';
 import 'camera_utils.dart';
@@ -24,7 +23,151 @@ import 'image_utils.dart';
 import 'settings_utils.dart';
 import 'utils.dart';
 
+/// Result from directory scanning operation
+class DirectoryScanResult {
+  final List<String> validImagePaths;
+  final int totalFilesScanned;
+  final int directoriesScanned;
+  final List<String> errors;
+  final bool wasCancelled;
+
+  const DirectoryScanResult({
+    required this.validImagePaths,
+    required this.totalFilesScanned,
+    required this.directoriesScanned,
+    required this.errors,
+    required this.wasCancelled,
+  });
+}
+
+/// Input for directory scanning isolate
+class DirectoryScanInput {
+  final String directoryPath;
+  final int maxRecursionDepth;
+  final int minImageSizeBytes;
+  final Set<String> allowedExtensions;
+
+  const DirectoryScanInput({
+    required this.directoryPath,
+    required this.maxRecursionDepth,
+    required this.minImageSizeBytes,
+    required this.allowedExtensions,
+  });
+}
+
+/// Top-level function for compute() - scans directory in isolate.
+/// This moves the blocking stat() syscalls off the main thread.
+DirectoryScanResult scanDirectoryIsolateEntry(DirectoryScanInput input) {
+  debugPrint('[DirScan] Starting scan in isolate: ${input.directoryPath}');
+  final dir = Directory(input.directoryPath);
+  if (!dir.existsSync()) {
+    return DirectoryScanResult(
+      validImagePaths: [],
+      totalFilesScanned: 0,
+      directoriesScanned: 0,
+      errors: ['Directory does not exist: ${input.directoryPath}'],
+      wasCancelled: false,
+    );
+  }
+
+  final List<String> validPaths = [];
+  final List<String> errors = [];
+  int filesScanned = 0;
+  int dirsScanned = 0;
+
+  void scanDir(Directory currentDir, int depth) {
+    if (depth > input.maxRecursionDepth) {
+      errors.add(
+          'Max depth (${input.maxRecursionDepth}) exceeded at: ${currentDir.path}');
+      return;
+    }
+
+    dirsScanned++;
+
+    try {
+      final entities =
+          currentDir.listSync(recursive: false, followLinks: false);
+      for (final entity in entities) {
+        final basename = path.basename(entity.path);
+
+        // Skip hidden files/directories (starting with .)
+        if (basename.startsWith('.')) continue;
+
+        // Skip macOS metadata directories
+        if (entity.path.contains('__MACOSX')) continue;
+
+        if (entity is File) {
+          filesScanned++;
+
+          // Check extension
+          final ext = path.extension(entity.path).toLowerCase();
+          if (!input.allowedExtensions.contains(ext)) continue;
+
+          // Check minimum file size
+          try {
+            final stat = entity.statSync();
+            if (stat.size < input.minImageSizeBytes) continue;
+          } catch (_) {
+            continue;
+          }
+
+          validPaths.add(entity.path);
+        } else if (entity is Directory) {
+          scanDir(entity, depth + 1);
+        }
+        // Skip Links (symlinks) for safety
+      }
+    } on FileSystemException catch (e) {
+      errors.add('Permission denied: ${currentDir.path} - ${e.message}');
+    } catch (e) {
+      errors.add('Error scanning ${currentDir.path}: $e');
+    }
+  }
+
+  scanDir(dir, 0);
+
+  // Sort alphabetically for consistent ordering (matches ZIP behavior)
+  validPaths.sort((a, b) => path.basename(a).toLowerCase().compareTo(
+        path.basename(b).toLowerCase(),
+      ));
+
+  debugPrint(
+      '[DirScan] Scan complete: ${validPaths.length} files found, $dirsScanned dirs scanned');
+
+  return DirectoryScanResult(
+    validImagePaths: validPaths,
+    totalFilesScanned: filesScanned,
+    directoriesScanned: dirsScanned,
+    errors: errors,
+    wasCancelled: false,
+  );
+}
+
 class GalleryUtils {
+  /// Maximum directory recursion depth to prevent stack overflow
+  static const int maxRecursionDepth = 50;
+
+  /// File count threshold that triggers user confirmation
+  static const int largeDirectoryThreshold = 500;
+
+  /// Minimum file size in bytes for valid images (matches ZIP processing)
+  static const int minImageSizeBytes = 10000;
+
+  /// Allowed image extensions for directory scanning
+  static const Set<String> allowedImageExtensions = {
+    '.jpg',
+    '.jpeg',
+    '.png',
+    '.webp',
+    '.bmp',
+    '.tif',
+    '.tiff',
+    '.heic',
+    '.heif',
+    '.avif',
+    '.gif',
+  };
+
   static var fileList = [];
   static int _batchTotal = 0;
   static int _batchDone = 0;
@@ -50,67 +193,34 @@ class GalleryUtils {
     String avifFilePath,
     String pngFilePath,
   ) async {
-    LogService.instance.log(
-      '[convertAvifToPng] START: $avifFilePath -> $pngFilePath',
-    );
     try {
       final File avifFile = File(avifFilePath);
-      final bool avifExists = await avifFile.exists();
-      LogService.instance.log(
-        '[convertAvifToPng] AVIF file exists: $avifExists',
-      );
-
-      if (!avifExists) {
-        LogService.instance.log('[convertAvifToPng] AVIF file not found!');
+      if (!await avifFile.exists()) {
         return false;
       }
 
       final avifBytes = await avifFile.readAsBytes();
-      LogService.instance.log(
-        '[convertAvifToPng] Read ${avifBytes.length} bytes from AVIF',
-      );
-
-      // Decode AVIF using flutter_avif (cross-platform libavif)
-      LogService.instance.log(
-        '[convertAvifToPng] Decoding AVIF with flutter_avif...',
-      );
       final List<AvifFrameInfo> frames = await decodeAvif(avifBytes);
 
       if (frames.isEmpty) {
-        LogService.instance.log(
-          '[convertAvifToPng] FAILED: flutter_avif returned no frames',
-        );
         return false;
       }
 
       final ui.Image image = frames.first.image;
-      LogService.instance.log(
-        '[convertAvifToPng] Decoded AVIF: ${image.width}x${image.height}',
-      );
 
       // Convert dart:ui Image to PNG bytes
       final ByteData? byteData = await image.toByteData(
         format: ui.ImageByteFormat.png,
       );
       if (byteData == null) {
-        LogService.instance.log(
-          '[convertAvifToPng] FAILED: toByteData returned null',
-        );
         return false;
       }
 
       final Uint8List pngBytes = byteData.buffer.asUint8List();
-      LogService.instance.log(
-        '[convertAvifToPng] Converted to PNG: ${pngBytes.length} bytes',
-      );
 
       // Write PNG to file
       final pngFile = File(pngFilePath);
       await pngFile.writeAsBytes(pngBytes);
-      final bool pngExists = await pngFile.exists();
-      LogService.instance.log(
-        '[convertAvifToPng] PNG written, exists: $pngExists, size: ${await pngFile.length()} bytes',
-      );
 
       // Dispose frames to free memory
       for (final frame in frames) {
@@ -118,9 +228,7 @@ class GalleryUtils {
       }
 
       return true;
-    } catch (e, stackTrace) {
-      LogService.instance.log('[convertAvifToPng] EXCEPTION: $e');
-      LogService.instance.log('[convertAvifToPng] Stack trace: $stackTrace');
+    } catch (_) {
       return false;
     }
   }
@@ -137,8 +245,7 @@ class GalleryUtils {
         offset = -offset;
       }
       return offset;
-    } catch (e) {
-      LogService.instance.log('Failed to parse offset: $e');
+    } catch (_) {
       return null;
     }
   }
@@ -183,14 +290,12 @@ class GalleryUtils {
 
       final String? dtStr = exifData['EXIF DateTimeOriginal']?.toString() ??
           exifData['Image DateTime']?.toString();
-      LogService.instance.log('[parseExifDate] dtStr=$dtStr');
       if (dtStr == null) return (true, null);
 
       final m = RegExp(
         r'^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})$',
       ).firstMatch(dtStr);
       if (m == null) {
-        LogService.instance.log('[parseExifDate] regex did not match dtStr');
         return (true, null);
       }
 
@@ -200,14 +305,8 @@ class GalleryUtils {
       final h = int.parse(m.group(4)!);
       final mi = int.parse(m.group(5)!);
       final s = int.parse(m.group(6)!);
-      LogService.instance.log(
-        '[parseExifDate] parsed y=$y mo=$mo d=$d h=$h mi=$mi s=$s',
-      );
 
       if (y < 1900 || mo < 1 || mo > 12 || d < 1 || d > 31) {
-        LogService.instance.log(
-          '[parseExifDate] invalid date values, rejecting',
-        );
         return (true, null);
       }
 
@@ -218,7 +317,6 @@ class GalleryUtils {
               exifData['Time Zone for Original Date']?.toString() ??
               exifData['Time Zone for Digitized Date']?.toString() ??
               exifData['Time Zone for Modification Date']?.toString();
-      LogService.instance.log('[parseExifDate] rawOffset=$rawOffset');
 
       if (rawOffset != null) {
         final norm = _normalizeOffset(rawOffset);
@@ -226,21 +324,14 @@ class GalleryUtils {
         if (offset != null) {
           final wallUtc = DateTime.utc(y, mo, d, h, mi, s);
           final utcInstant = wallUtc.subtract(offset);
-          LogService.instance.log(
-            '[parseExifDate] with offset: wallUtc=$wallUtc utcInstant=$utcInstant ms=${utcInstant.millisecondsSinceEpoch}',
-          );
           return (false, utcInstant.millisecondsSinceEpoch);
         }
       }
 
       final local = DateTime(y, mo, d, h, mi, s);
       final utcGuess = local.toUtc();
-      LogService.instance.log(
-        '[parseExifDate] no offset fallback: local=$local utcGuess=$utcGuess ms=${utcGuess.millisecondsSinceEpoch}',
-      );
       return (false, utcGuess.millisecondsSinceEpoch);
     } catch (e) {
-      LogService.instance.log('Failed to parse EXIF date: $e');
       return (true, null);
     }
   }
@@ -507,18 +598,8 @@ class GalleryUtils {
 
       increasePhotosImported(entries.length);
       if (entries.isEmpty) {
-        setProgressInMain(100); // or 0
+        setProgressInMain(100);
         return;
-      }
-
-      debugPrint(
-        '[unzip] total in zip: ${archive.files.length}',
-      ); // or the async_zip entries list length
-      debugPrint('[unzip] usable images: ${entries.length}');
-      if (entries.isEmpty) {
-        for (final f in archive.files) {
-          debugPrint('  - ${f.name} size=${f.size} isFile=${f.isFile}');
-        }
       }
 
       for (int i = 0; i < entries.length; i++) {
@@ -669,6 +750,37 @@ class GalleryUtils {
     }
   }
 
+  /// Collects valid image files from a directory recursively.
+  ///
+  /// Runs in an isolate to avoid blocking the UI during large directory scans.
+  ///
+  /// Filters using same rules as ZIP processing:
+  /// - Skip hidden files/folders (starting with `.`)
+  /// - Skip `.DS_Store`, `__MACOSX/`
+  /// - Only allow valid image extensions
+  /// - Minimum 10KB file size
+  /// - Skip symlinks (prevents loops and security issues)
+  /// - Enforce max depth of 50 levels
+  ///
+  /// Returns a [DirectoryScanResult] with found files and metadata.
+  static Future<DirectoryScanResult> collectFilesFromDirectory(
+    String directoryPath,
+  ) async {
+    debugPrint('[DirScan] Dispatching scan to isolate...');
+    final input = DirectoryScanInput(
+      directoryPath: directoryPath,
+      maxRecursionDepth: maxRecursionDepth,
+      minImageSizeBytes: minImageSizeBytes,
+      allowedExtensions: allowedImageExtensions,
+    );
+
+    // Run directory scanning in isolate to avoid UI blocking
+    final result = await compute(scanDirectoryIsolateEntry, input);
+    debugPrint(
+        '[DirScan] Isolate returned: ${result.validImagePaths.length} files');
+    return result;
+  }
+
   static Future<Map<String, dynamic>> tryReadExifFromBytes(
     Uint8List bytes,
   ) async {
@@ -703,17 +815,6 @@ class GalleryUtils {
 
         bytes = await CameraUtils.readBytesInIsolate(file.path);
         final Map<String, dynamic> data = await tryReadExifFromBytes(bytes!);
-
-        LogService.instance.log('[import] EXIF keys: ${data.keys.toList()}');
-        LogService.instance.log(
-          '[import] DateTimeOriginal: ${data['EXIF DateTimeOriginal']} CreateDate:${data['EXIF CreateDate']} ImageDateTime:${data['Image DateTime']}',
-        );
-        LogService.instance.log(
-          '[import] OffsetTimeOriginal:${data['EXIF OffsetTimeOriginal']} OffsetTime:${data['EXIF OffsetTime']} OffsetTimeDigitized:${data['EXIF OffsetTimeDigitized']}',
-        );
-        LogService.instance.log(
-          '[import] GPSDateStamp:${data['GPS GPSDateStamp']} GPSTimeStamp:${data['GPS GPSTimeStamp']}',
-        );
 
         if (data.isNotEmpty) {
           (failedToParseDateMetadata, imageTimestampFromExif) =
@@ -782,14 +883,7 @@ class GalleryUtils {
           timestamp,
           isUtc: true,
         ).toLocal().timeZoneOffset.inMinutes;
-        LogService.instance.log(
-          '[import] External timestamp provided -> utcMs:$imageTimestampFromExif offsetMin:$captureOffsetMinutes',
-        );
       }
-
-      LogService.instance.log(
-        '[import] FINAL -> utcMs:$imageTimestampFromExif captureOffsetMin:$captureOffsetMinutes failedToParse:$failedToParseDateMetadata',
-      );
 
       final bool result = await CameraUtils.savePhoto(
         file,
@@ -810,8 +904,7 @@ class GalleryUtils {
       }
 
       return result;
-    } catch (e) {
-      LogService.instance.log("Error caught $e");
+    } catch (_) {
       return false;
     } finally {
       bytes = null;

@@ -14,7 +14,7 @@ import 'progress_widget.dart';
 class CustomAppBar extends StatefulWidget {
   final int projectId;
   final Function(int) goToPage;
-  final int progressPercent;
+  final double progressPercent;
   final bool stabilizingRunningInMain;
   final bool videoCreationActiveInMain;
   final bool importRunningInMain;

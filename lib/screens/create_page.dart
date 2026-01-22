@@ -31,7 +31,7 @@ class CreatePage extends StatefulWidget {
   final void Function(int index) goToPage;
   final int prevIndex;
   final Future<void> Function() hideNavBar;
-  final int progressPercent;
+  final double progressPercent;
   final Future<void> Function() stabCallback;
   final Future<void> Function() refreshSettings;
   final void Function() clearRawAndStabPhotos;
@@ -609,12 +609,12 @@ class CreatePageState extends State<CreatePage>
     }
 
     final bool isStabilizing = widget.stabilizingRunningInMain;
-    final int percent = isStabilizing
+    final double percent = isStabilizing
         ? widget.progressPercent
         : (photoCount != null && photoCount! > 0)
-            ? ((widget.currentFrame * 100) ~/ photoCount!)
-            : 0;
-    final double progressValue = percent.clamp(0, 100) / 100.0;
+            ? (widget.currentFrame * 100.0 / photoCount!)
+            : 0.0;
+    final double progressValue = percent.clamp(0.0, 100.0) / 100.0;
 
     return Center(
       child: Padding(
@@ -657,7 +657,7 @@ class CreatePageState extends State<CreatePage>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          '$percent%',
+                          '${percent < 10 ? percent.toStringAsFixed(1) : percent.toStringAsFixed(0)}%',
                           style: const TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.bold,

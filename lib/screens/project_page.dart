@@ -257,37 +257,68 @@ class ProjectPageState extends State<ProjectPage> {
 
     return [
       if (step == 1) ...[
-        buildFancyButton(
-          text: 'Take photo',
-          icon: Icons.camera_alt,
-          onPressed: () => Utils.navigateToScreenNoAnim(
-            context,
-            TipsPage(
-              projectId: widget.projectId,
-              projectName: widget.projectName,
-              goToPage: widget.goToPage,
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        const Row(
-          children: <Widget>[
-            SizedBox(width: 8),
-            Expanded(child: Divider(height: 0.8)),
-            SizedBox(width: 8),
-            Text("OR", style: TextStyle(color: Colors.grey, fontSize: 11)),
-            SizedBox(width: 8),
-            Expanded(child: Divider(height: 0.8)),
-            SizedBox(width: 8),
-          ],
-        ),
-        const SizedBox(height: 16),
-        buildFancyButton(
-          text: 'Import photo(s)',
-          icon: Icons.file_upload,
-          onPressed: () async {
-            await widget.setUserOnImportTutorialTrue();
-            widget.goToPage(1);
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isDesktop = constraints.maxWidth >= 700;
+
+            final takePhotoButton = buildFancyButton(
+              text: 'Take photo',
+              icon: Icons.camera_alt,
+              onPressed: () => Utils.navigateToScreenNoAnim(
+                context,
+                TipsPage(
+                  projectId: widget.projectId,
+                  projectName: widget.projectName,
+                  goToPage: widget.goToPage,
+                ),
+              ),
+            );
+
+            final importButton = buildFancyButton(
+              text: 'Import photo(s)',
+              icon: Icons.file_upload,
+              onPressed: () async {
+                await widget.setUserOnImportTutorialTrue();
+                widget.goToPage(1);
+              },
+            );
+
+            if (isDesktop) {
+              return Row(
+                children: [
+                  Expanded(child: importButton),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      "OR",
+                      style: TextStyle(color: Colors.grey, fontSize: 11),
+                    ),
+                  ),
+                  Expanded(child: takePhotoButton),
+                ],
+              );
+            }
+
+            return Column(
+              children: [
+                takePhotoButton,
+                const SizedBox(height: 16),
+                const Row(
+                  children: <Widget>[
+                    SizedBox(width: 8),
+                    Expanded(child: Divider(height: 0.8)),
+                    SizedBox(width: 8),
+                    Text("OR",
+                        style: TextStyle(color: Colors.grey, fontSize: 11)),
+                    SizedBox(width: 8),
+                    Expanded(child: Divider(height: 0.8)),
+                    SizedBox(width: 8),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                importButton,
+              ],
+            );
           },
         ),
         const SizedBox(height: 16),

@@ -11,7 +11,7 @@ void main() {
         expect(progress.state, StabilizationState.idle);
         expect(progress.currentPhoto, 0);
         expect(progress.totalPhotos, 0);
-        expect(progress.progressPercent, 0);
+        expect(progress.progressPercent, 0.0);
         expect(progress.eta, isNull);
         expect(progress.errorMessage, isNull);
         expect(progress.currentFrame, isNull);
@@ -24,7 +24,7 @@ void main() {
           state: StabilizationState.stabilizing,
           currentPhoto: 5,
           totalPhotos: 10,
-          progressPercent: 50,
+          progressPercent: 50.0,
           eta: '2m 30s',
           errorMessage: 'test error',
           currentFrame: 100,
@@ -35,7 +35,7 @@ void main() {
         expect(progress.state, StabilizationState.stabilizing);
         expect(progress.currentPhoto, 5);
         expect(progress.totalPhotos, 10);
-        expect(progress.progressPercent, 50);
+        expect(progress.progressPercent, 50.0);
         expect(progress.eta, '2m 30s');
         expect(progress.errorMessage, 'test error');
         expect(progress.currentFrame, 100);
@@ -51,7 +51,7 @@ void main() {
         expect(progress.state, StabilizationState.idle);
         expect(progress.currentPhoto, 0);
         expect(progress.totalPhotos, 0);
-        expect(progress.progressPercent, 0);
+        expect(progress.progressPercent, 0.0);
       });
 
       test('preparing() creates preparing state', () {
@@ -72,7 +72,7 @@ void main() {
         final progress = StabilizationProgress.stabilizing(
           currentPhoto: 3,
           totalPhotos: 10,
-          progressPercent: 30,
+          progressPercent: 30.0,
           eta: '5m 0s',
           projectId: 2,
         );
@@ -80,7 +80,7 @@ void main() {
         expect(progress.state, StabilizationState.stabilizing);
         expect(progress.currentPhoto, 3);
         expect(progress.totalPhotos, 10);
-        expect(progress.progressPercent, 30);
+        expect(progress.progressPercent, 30.0);
         expect(progress.eta, '5m 0s');
         expect(progress.projectId, 2);
       });
@@ -96,14 +96,14 @@ void main() {
         final progress = StabilizationProgress.compilingVideo(
           currentFrame: 50,
           totalFrames: 100,
-          progressPercent: 50,
+          progressPercent: 50.0,
           projectId: 4,
         );
 
         expect(progress.state, StabilizationState.compilingVideo);
         expect(progress.currentFrame, 50);
         expect(progress.totalFrames, 100);
-        expect(progress.progressPercent, 50);
+        expect(progress.progressPercent, 50.0);
         expect(progress.projectId, 4);
       });
 
@@ -145,7 +145,7 @@ void main() {
         final original = StabilizationProgress.stabilizing(
           currentPhoto: 5,
           totalPhotos: 10,
-          progressPercent: 50,
+          progressPercent: 50.0,
           eta: '1m',
           projectId: 1,
         );
@@ -165,7 +165,7 @@ void main() {
         final original = StabilizationProgress.stabilizing(
           currentPhoto: 5,
           totalPhotos: 10,
-          progressPercent: 50,
+          progressPercent: 50.0,
         );
 
         final copy = original.copyWith(state: StabilizationState.completed);
@@ -179,13 +179,13 @@ void main() {
         final original = StabilizationProgress.stabilizing(
           currentPhoto: 5,
           totalPhotos: 10,
-          progressPercent: 50,
+          progressPercent: 50.0,
         );
 
-        final copy = original.copyWith(currentPhoto: 6, progressPercent: 60);
+        final copy = original.copyWith(currentPhoto: 6, progressPercent: 60.0);
 
         expect(copy.currentPhoto, 6);
-        expect(copy.progressPercent, 60);
+        expect(copy.progressPercent, 60.0);
         expect(copy.totalPhotos, 10); // Unchanged
         expect(copy.state, StabilizationState.stabilizing); // Unchanged
       });
@@ -197,7 +197,7 @@ void main() {
           state: StabilizationState.stabilizing,
           currentPhoto: 1,
           totalPhotos: 5,
-          progressPercent: 20,
+          progressPercent: 20.0,
           eta: '30s',
           errorMessage: 'warning',
           currentFrame: 10,
@@ -208,7 +208,7 @@ void main() {
         expect(copy.state, StabilizationState.stabilizing);
         expect(copy.currentPhoto, 1);
         expect(copy.totalPhotos, 5);
-        expect(copy.progressPercent, 20);
+        expect(copy.progressPercent, 20.0);
         expect(copy.eta, '30s');
         expect(copy.errorMessage, 'warning');
         expect(copy.currentFrame, 10);
@@ -222,14 +222,14 @@ void main() {
         final a = StabilizationProgress.stabilizing(
           currentPhoto: 5,
           totalPhotos: 10,
-          progressPercent: 50,
+          progressPercent: 50.0,
           eta: '1m',
           projectId: 1,
         );
         final b = StabilizationProgress.stabilizing(
           currentPhoto: 5,
           totalPhotos: 10,
-          progressPercent: 50,
+          progressPercent: 50.0,
           eta: '1m',
           projectId: 1,
         );
@@ -249,12 +249,12 @@ void main() {
         final a = StabilizationProgress.stabilizing(
           currentPhoto: 1,
           totalPhotos: 10,
-          progressPercent: 10,
+          progressPercent: 10.0,
         );
         final b = StabilizationProgress.stabilizing(
           currentPhoto: 2,
           totalPhotos: 10,
-          progressPercent: 10,
+          progressPercent: 10.0,
         );
 
         expect(a, isNot(equals(b)));
@@ -286,12 +286,12 @@ void main() {
         final a = StabilizationProgress.stabilizing(
           currentPhoto: 5,
           totalPhotos: 10,
-          progressPercent: 50,
+          progressPercent: 50.0,
         );
         final b = StabilizationProgress.stabilizing(
           currentPhoto: 5,
           totalPhotos: 10,
-          progressPercent: 50,
+          progressPercent: 50.0,
         );
 
         expect(a.hashCode, equals(b.hashCode));
@@ -311,7 +311,7 @@ void main() {
         final progress = StabilizationProgress.stabilizing(
           currentPhoto: 5,
           totalPhotos: 10,
-          progressPercent: 50,
+          progressPercent: 50.0,
         );
 
         expect(
@@ -324,7 +324,7 @@ void main() {
         final progress = StabilizationProgress.stabilizing(
           currentPhoto: 5,
           totalPhotos: 10,
-          progressPercent: 50,
+          progressPercent: 50.0,
         );
 
         expect(progress.toString(), contains('photo: 5/10'));
@@ -334,17 +334,17 @@ void main() {
         final progress = StabilizationProgress.stabilizing(
           currentPhoto: 5,
           totalPhotos: 10,
-          progressPercent: 50,
+          progressPercent: 50.0,
         );
 
-        expect(progress.toString(), contains('progress: 50%'));
+        expect(progress.toString(), contains('progress: 50.0%'));
       });
 
       test('includes eta when present', () {
         final progress = StabilizationProgress.stabilizing(
           currentPhoto: 5,
           totalPhotos: 10,
-          progressPercent: 50,
+          progressPercent: 50.0,
           eta: '2m 30s',
         );
 
@@ -355,7 +355,7 @@ void main() {
         final progress = StabilizationProgress.compilingVideo(
           currentFrame: 100,
           totalFrames: 200,
-          progressPercent: 50,
+          progressPercent: 50.0,
         );
 
         expect(progress.toString(), contains('frame: 100/200'));
@@ -373,7 +373,7 @@ void main() {
         final progress = StabilizationProgress.stabilizing(
           currentPhoto: 1,
           totalPhotos: 10,
-          progressPercent: 10,
+          progressPercent: 10.0,
         );
         expect(progress.state.isActive, isTrue);
         expect(progress.state.isFinished, isFalse);
@@ -383,7 +383,7 @@ void main() {
         final progress = StabilizationProgress.compilingVideo(
           currentFrame: 1,
           totalFrames: 100,
-          progressPercent: 1,
+          progressPercent: 1.0,
         );
         expect(progress.state.isVideoPhase, isTrue);
         expect(progress.state.isActive, isTrue);

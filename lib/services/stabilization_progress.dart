@@ -15,7 +15,7 @@ class StabilizationProgress {
   final int totalPhotos;
 
   /// Overall progress percentage (0-100).
-  final int progressPercent;
+  final double progressPercent;
 
   /// Estimated time remaining (formatted string, e.g., "2h 30m 15s").
   final String? eta;
@@ -39,7 +39,7 @@ class StabilizationProgress {
     required this.state,
     this.currentPhoto = 0,
     this.totalPhotos = 0,
-    this.progressPercent = 0,
+    this.progressPercent = 0.0,
     this.eta,
     this.errorMessage,
     this.currentFrame,
@@ -63,7 +63,7 @@ class StabilizationProgress {
   factory StabilizationProgress.stabilizing({
     required int currentPhoto,
     required int totalPhotos,
-    required int progressPercent,
+    required double progressPercent,
     String? eta,
     int? projectId,
     String? lastStabilizedTimestamp,
@@ -89,7 +89,7 @@ class StabilizationProgress {
   factory StabilizationProgress.compilingVideo({
     required int currentFrame,
     required int totalFrames,
-    required int progressPercent,
+    required double progressPercent,
     String? eta,
     int? projectId,
   }) =>
@@ -136,7 +136,7 @@ class StabilizationProgress {
     StabilizationState? state,
     int? currentPhoto,
     int? totalPhotos,
-    int? progressPercent,
+    double? progressPercent,
     String? eta,
     String? errorMessage,
     int? currentFrame,

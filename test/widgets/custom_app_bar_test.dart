@@ -12,7 +12,7 @@ void main() {
       final widget = CustomAppBar(
         projectId: 1,
         goToPage: (index) {},
-        progressPercent: 50,
+        progressPercent: 50.0,
         stabilizingRunningInMain: false,
         videoCreationActiveInMain: false,
         importRunningInMain: false,
@@ -28,7 +28,7 @@ void main() {
       );
 
       expect(widget.projectId, 1);
-      expect(widget.progressPercent, 50);
+      expect(widget.progressPercent, 50.0);
       expect(widget.stabilizingRunningInMain, isFalse);
       expect(widget.videoCreationActiveInMain, isFalse);
       expect(widget.importRunningInMain, isFalse);
@@ -41,7 +41,7 @@ void main() {
       final widget = CustomAppBar(
         projectId: 1,
         goToPage: (index) {},
-        progressPercent: 0,
+        progressPercent: 0.0,
         stabilizingRunningInMain: false,
         videoCreationActiveInMain: false,
         importRunningInMain: false,
@@ -68,7 +68,7 @@ void main() {
         goToPage: (index) {
           receivedIndex = index;
         },
-        progressPercent: 0,
+        progressPercent: 0.0,
         stabilizingRunningInMain: false,
         videoCreationActiveInMain: false,
         importRunningInMain: false,
@@ -91,7 +91,7 @@ void main() {
       final widget = CustomAppBar(
         projectId: 1,
         goToPage: (index) {},
-        progressPercent: 0,
+        progressPercent: 0.0,
         stabilizingRunningInMain: false,
         videoCreationActiveInMain: false,
         importRunningInMain: false,
@@ -115,7 +115,7 @@ void main() {
       final widget = CustomAppBar(
         projectId: 1,
         goToPage: (index) {},
-        progressPercent: 30,
+        progressPercent: 30.0,
         stabilizingRunningInMain: true,
         videoCreationActiveInMain: false,
         importRunningInMain: false,
@@ -138,7 +138,7 @@ void main() {
       final widget = CustomAppBar(
         projectId: 1,
         goToPage: (index) {},
-        progressPercent: 60,
+        progressPercent: 60.0,
         stabilizingRunningInMain: false,
         videoCreationActiveInMain: true,
         importRunningInMain: false,
@@ -160,7 +160,7 @@ void main() {
       final widget = CustomAppBar(
         projectId: 1,
         goToPage: (index) {},
-        progressPercent: 75,
+        progressPercent: 75.0,
         stabilizingRunningInMain: false,
         videoCreationActiveInMain: false,
         importRunningInMain: true,
@@ -182,7 +182,7 @@ void main() {
       final widget = CustomAppBar(
         projectId: 1,
         goToPage: (index) {},
-        progressPercent: 0,
+        progressPercent: 0.0,
         stabilizingRunningInMain: false,
         videoCreationActiveInMain: false,
         importRunningInMain: false,
@@ -208,7 +208,7 @@ void main() {
       final widget = CustomAppBar(
         projectId: 1,
         goToPage: (index) {},
-        progressPercent: 0,
+        progressPercent: 0.0,
         stabilizingRunningInMain: false,
         videoCreationActiveInMain: false,
         importRunningInMain: false,
@@ -235,7 +235,7 @@ void main() {
       final widget = CustomAppBar(
         projectId: 1,
         goToPage: (index) {},
-        progressPercent: 0,
+        progressPercent: 0.0,
         stabilizingRunningInMain: false,
         videoCreationActiveInMain: false,
         importRunningInMain: false,
@@ -262,7 +262,7 @@ void main() {
       final widget = CustomAppBar(
         projectId: 1,
         goToPage: (index) {},
-        progressPercent: 0,
+        progressPercent: 0.0,
         stabilizingRunningInMain: false,
         videoCreationActiveInMain: false,
         importRunningInMain: false,
@@ -289,7 +289,7 @@ void main() {
       final widget = CustomAppBar(
         projectId: 1,
         goToPage: (index) {},
-        progressPercent: 0,
+        progressPercent: 0.0,
         stabilizingRunningInMain: false,
         videoCreationActiveInMain: false,
         importRunningInMain: false,

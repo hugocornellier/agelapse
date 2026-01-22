@@ -5,7 +5,7 @@ class ProgressWidget extends StatelessWidget {
   final bool stabilizingRunningInMain;
   final bool videoCreationActiveInMain;
   final bool importRunningInMain;
-  final int progressPercent;
+  final double progressPercent;
   final Function(int) goToPage;
   final int selectedIndex;
   final String? minutesRemaining;
@@ -25,22 +25,22 @@ class ProgressWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isCalculating = progressPercent <= 0;
-    String progressPercentAsStr =
-        "${progressPercent > 100 ? 100 : progressPercent}%";
+    final clampedPercent = progressPercent > 100 ? 100.0 : progressPercent;
+    final progressPercentAsStr = clampedPercent < 10
+        ? "${clampedPercent.toStringAsFixed(1)}%"
+        : "${clampedPercent.toStringAsFixed(0)}%";
 
-    String minutesRemainingDisplay =
-        (minutesRemaining != null && minutesRemaining!.isNotEmpty)
-            ? minutesRemaining!
-            : "Calculating ETA...";
+    final bool hasEta =
+        minutesRemaining != null && minutesRemaining!.isNotEmpty;
 
-    String stabilizingMessage = isCalculating
-        ? "Stabilizing • Calculating ETA..."
-        : "Stabilizing • $progressPercentAsStr • $minutesRemainingDisplay";
+    // Only show percentage and ETA once ETA is available
+    final String stabilizingMessage = hasEta
+        ? "Stabilizing • $progressPercentAsStr • $minutesRemaining"
+        : "Stabilizing • Estimating ETA...";
 
-    String compilingMessage = isCalculating
-        ? "Compiling video • Calculating ETA..."
-        : "Compiling video • $progressPercentAsStr • $minutesRemainingDisplay";
+    final String compilingMessage = hasEta
+        ? "Compiling video • $progressPercentAsStr • $minutesRemaining"
+        : "Compiling video • Estimating ETA...";
 
     return Column(
       children: [
@@ -51,9 +51,7 @@ class ProgressWidget extends StatelessWidget {
           ),
         ] else if (importRunningInMain && selectedIndex != 3) ...[
           InProgress(
-            message: isCalculating
-                ? "Importing..."
-                : "Importing... $progressPercentAsStr",
+            message: "Importing... $progressPercentAsStr",
             goToPage: goToPage,
           ),
         ] else if (stabilizingRunningInMain && selectedIndex != 3) ...[

@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:path/path.dart' as path;
@@ -34,6 +34,17 @@ import 'gallery_image_menu.dart';
 import 'gallery_export_handler.dart';
 import 'image_preview_navigator.dart';
 
+/// Top-level function for compute() - checks if any paths are directories.
+/// Runs in isolate to avoid blocking UI when dropping many files.
+bool _checkForDirectories(List<String> paths) {
+  for (final p in paths) {
+    if (FileSystemEntity.isDirectorySync(p)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 class GalleryPage extends StatefulWidget {
   final int projectId;
   final String projectName;
@@ -46,10 +57,11 @@ class GalleryPage extends StatefulWidget {
   final bool videoCreationActiveInMain;
   final bool importRunningInMain;
   final void Function(int index) goToPage;
-  final int progressPercent;
+  final double progressPercent;
   final bool userOnImportTutorial;
   final void Function() setUserOnImportTutorialFalse;
   final void Function(int progressIn) setProgressInMain;
+  final void Function(bool value) setImportingInMain;
   final SettingsCache? settingsCache;
   final List<String> imageFilesStr;
   final List<String> stabilizedImageFilesStr;
@@ -84,6 +96,7 @@ class GalleryPage extends StatefulWidget {
     required this.setUserOnImportTutorialFalse,
     required this.importRunningInMain,
     required this.setProgressInMain,
+    required this.setImportingInMain,
     required this.processPickedFiles,
     required this.imageFilesStr,
     required this.stabilizedImageFilesStr,
@@ -111,6 +124,10 @@ class GalleryPageState extends State<GalleryPage>
   String activeButton = 'raw';
   String? projectOrientation;
   bool isImporting = false;
+  bool preparingImport = false;
+  int? dropReceivedCount; // Set when drop received, before onDragDone fires
+  bool isDraggingOver =
+      false; // True when user is dragging files over drop zone
   bool imagePreviewIsOpen = false;
   VoidCallback? closeImagePreviewCallback;
   ValueNotifier<String> activeProcessingDateNotifier = ValueNotifier<String>(
@@ -133,6 +150,7 @@ class GalleryPageState extends State<GalleryPage>
   final ScrollController _rawScrollController = ScrollController();
   StreamSubscription<StabUpdateEvent>? _stabUpdateSubscription;
   Timer? _loadImagesDebounce;
+  int _loadImagesRequestId = 0;
   bool _stickyBottomEnabled = true;
   bool _isAutoScrolling = false;
   bool _isSelectionMode = false;
@@ -513,10 +531,17 @@ class GalleryPageState extends State<GalleryPage>
   }
 
   Future<void> _loadImages() async {
+    // Guard against race conditions: capture request ID to detect if a newer
+    // request started while this one was running (stale snapshot prevention)
+    final int thisRequestId = ++_loadImagesRequestId;
+
     await GalleryUtils.loadImages(
       projectId: projectId,
       projectIdStr: projectIdStr,
       onImagesLoaded: (rawImages, stabImageFiles) async {
+        // Discard stale results if a newer request has started
+        if (thisRequestId != _loadImagesRequestId) return;
+
         var finalStabFiles = stabImageFiles;
 
         // Preserve paths for photos being retried (files temporarily deleted)
@@ -568,6 +593,9 @@ class GalleryPageState extends State<GalleryPage>
       },
       onShowInfoDialog: () => showInfoDialog(context),
     );
+
+    // Also guard scroll operation against stale requests
+    if (thisRequestId != _loadImagesRequestId) return;
 
     if (_stickyBottomEnabled) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -983,11 +1011,13 @@ class GalleryPageState extends State<GalleryPage>
       ),
       itemCount: itemCount,
       itemBuilder: (context, index) {
-        if (showStabProgressIndicator &&
-            index == widget.stabilizedImageFilesStr.length) {
+        if (showStabProgressIndicator && index == files.length) {
           return const FlashingBox();
-        } else {
+        } else if (index < files.length) {
           return _buildImageTile(files[index]);
+        } else {
+          // Defensive fallback - should never reach here after fix
+          return const SizedBox.shrink();
         }
       },
     );
@@ -1017,7 +1047,7 @@ class GalleryPageState extends State<GalleryPage>
           ),
           const SizedBox(height: 16),
           Text(
-            'Importing...',
+            preparingImport ? 'Preparing import...' : 'Importing...',
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.9),
               fontSize: 16,
@@ -1026,7 +1056,9 @@ class GalleryPageState extends State<GalleryPage>
           ),
           const SizedBox(height: 6),
           Text(
-            '${widget.progressPercent}%',
+            preparingImport
+                ? 'Scanning folders'
+                : '${widget.progressPercent < 10 ? widget.progressPercent.toStringAsFixed(1) : widget.progressPercent.toStringAsFixed(0)}%',
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.5),
               fontSize: 14,
@@ -1111,6 +1143,8 @@ class GalleryPageState extends State<GalleryPage>
       title: 'Import Complete',
       icon: Icons.check_circle_outline_rounded,
       iconColor: Colors.green,
+      primaryActionLabel: 'View Stabilized',
+      onPrimaryAction: () => _tabController.animateTo(0),
     );
   }
 
@@ -1213,98 +1247,411 @@ class GalleryPageState extends State<GalleryPage>
                 }
               },
       ),
-      if (isDesktop) ...[const SizedBox(height: 16), _buildDesktopDropZone()],
     ];
+    // Reset modal-specific state
+    isDraggingOver = false;
+    dropReceivedCount = null;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (BuildContext context) {
-        return GalleryBottomSheets.buildOptionsSheet(
-            context, 'Import Photos', content);
+      isDismissible:
+          dropReceivedCount == null, // Can't dismiss while processing
+      enableDrag: dropReceivedCount == null,
+      builder: (BuildContext modalContext) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            final List<Widget> modalContent = [
+              ...content,
+              if (isDesktop) ...[
+                const SizedBox(height: 16),
+                _buildDesktopDropZoneWithState(
+                  setModalState: setModalState,
+                  isDraggingOver: isDraggingOver,
+                  dropReceivedCount: dropReceivedCount,
+                  onDraggingChanged: (value) {
+                    isDraggingOver = value;
+                    setModalState(() {});
+                  },
+                  onDropReceivedCountChanged: (value) {
+                    dropReceivedCount = value;
+                    setModalState(() {});
+                  },
+                ),
+              ],
+            ];
+            return GalleryBottomSheets.buildOptionsSheet(
+                context, 'Import Photos', modalContent);
+          },
+        );
       },
     );
   }
 
-  Widget _buildDesktopDropZone() {
+  Widget _buildDesktopDropZoneWithState({
+    required StateSetter setModalState,
+    required bool isDraggingOver,
+    required int? dropReceivedCount,
+    required void Function(bool) onDraggingChanged,
+    required void Function(int?) onDropReceivedCountChanged,
+  }) {
     return DropTarget(
+      onDragEntered: (details) {
+        debugPrint('[Drop] onDragEntered at ${DateTime.now()}');
+        onDraggingChanged(true);
+      },
+      onDragExited: (details) {
+        debugPrint('[Drop] onDragExited at ${DateTime.now()}');
+        onDraggingChanged(false);
+      },
       onDragDone: (details) async {
+        // Reset dragging state immediately when drop occurs
+        onDraggingChanged(false);
+        debugPrint('[Drop] ========== DROP EVENT RECEIVED ==========');
+        debugPrint('[Drop] REAL TIME at start: ${DateTime.now()}');
+        debugPrint(
+            '[Drop] T+0ms: onDragDone fired, files count: ${details.files.length}');
+        final stopwatch = Stopwatch()..start();
+
+        // Reset drop received state (modal will close anyway)
+        onDropReceivedCountChanged(null);
+
         if (isImporting) return;
+        debugPrint(
+            '[Drop] T+${stopwatch.elapsedMilliseconds}ms: Popping navigator');
         Navigator.of(context).pop();
+
+        debugPrint(
+            '[Drop] T+${stopwatch.elapsedMilliseconds}ms: Calling setState for isImporting');
         setState(() {
           photosImported = 0;
           successfullyImported = 0;
           _tabController.index = 1;
           isImporting = true;
         });
+
+        debugPrint(
+            '[Drop] T+${stopwatch.elapsedMilliseconds}ms: Calling setImportingInMain(true)');
+        widget.setImportingInMain(true);
+
         if (widget.stabilizingRunningInMain) {
+          debugPrint(
+              '[Drop] T+${stopwatch.elapsedMilliseconds}ms: Cancelling stabilization');
           await widget.cancelStabCallback();
         }
-        GalleryUtils.startImportBatch(details.files.length);
-        for (final f in details.files) {
-          await processPickedFile(File(f.path));
+
+        debugPrint(
+            '[Drop] T+${stopwatch.elapsedMilliseconds}ms: Setting preparingImport = true');
+        setState(() => preparingImport = true);
+
+        debugPrint(
+            '[Drop] T+${stopwatch.elapsedMilliseconds}ms: Yielding to UI (Future.delayed)');
+        await Future.delayed(Duration.zero);
+        debugPrint(
+            '[Drop] T+${stopwatch.elapsedMilliseconds}ms: UI yield complete');
+
+        debugPrint(
+            '[Drop] T+${stopwatch.elapsedMilliseconds}ms: Getting file paths from details.files...');
+        final List<String> itemPaths =
+            details.files.map((f) => f.path).toList();
+        debugPrint(
+            '[Drop] T+${stopwatch.elapsedMilliseconds}ms: Got ${itemPaths.length} paths');
+
+        debugPrint(
+            '[Drop] T+${stopwatch.elapsedMilliseconds}ms: Starting compute() for directory check');
+        final bool hasDirectories =
+            await compute(_checkForDirectories, itemPaths);
+        debugPrint(
+            '[Drop] T+${stopwatch.elapsedMilliseconds}ms: compute() returned, hasDirectories: $hasDirectories');
+        debugPrint('[Drop] REAL TIME: ${DateTime.now()}');
+
+        if (hasDirectories) {
+          await _handleDropWithDirectories(itemPaths);
+        } else {
+          // Files-only path - done preparing, start import
+          debugPrint(
+              '[Drop] T+${stopwatch.elapsedMilliseconds}ms: Setting preparingImport = false');
+          setState(() => preparingImport = false);
+
+          debugPrint(
+              '[Drop] T+${stopwatch.elapsedMilliseconds}ms: Calling startImportBatch(${details.files.length})');
+          GalleryUtils.startImportBatch(details.files.length);
+
+          debugPrint(
+              '[Drop] T+${stopwatch.elapsedMilliseconds}ms: Starting import loop');
+          debugPrint('[Drop] REAL TIME before loop: ${DateTime.now()}');
+
+          int count = 0;
+          for (final f in details.files) {
+            if (count == 0) {
+              debugPrint(
+                  '[Drop] T+${stopwatch.elapsedMilliseconds}ms: Processing FIRST file');
+              debugPrint('[Drop] REAL TIME first file: ${DateTime.now()}');
+            }
+            await processPickedFile(File(f.path));
+            count++;
+          }
+          debugPrint(
+              '[Drop] T+${stopwatch.elapsedMilliseconds}ms: Import loop complete');
         }
+
+        // Always reset parent state even if widget is disposed
+        widget.setImportingInMain(false);
+
+        if (!mounted) return;
+
         final String projectOrientationRaw =
             await SettingsUtil.loadProjectOrientation(projectIdStr);
         setState(() {
           projectOrientation = projectOrientationRaw;
+          isImporting = false;
         });
         widget.refreshSettings();
         widget.stabCallback();
-        setState(() => isImporting = false);
         _loadImages();
         _showImportCompleteDialog(
           successfullyImported,
           photosImported - successfullyImported,
         );
       },
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 28.0, horizontal: 16.0),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.03),
+          color: isDraggingOver
+              ? Colors.blue.withValues(alpha: 0.15)
+              : Colors.white.withValues(alpha: 0.03),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: Colors.white.withValues(alpha: 0.12),
-            width: 1.5,
+            color: isDraggingOver
+                ? Colors.blue.withValues(alpha: 0.5)
+                : Colors.white.withValues(alpha: 0.12),
+            width: isDraggingOver ? 2.0 : 1.5,
             strokeAlign: BorderSide.strokeAlignInside,
           ),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                Icons.upload_file_outlined,
-                size: 26,
-                color: Colors.white.withValues(alpha: 0.7),
-              ),
+        child: dropReceivedCount != null
+            ? Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(
+                    width: 26,
+                    height: 26,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white70),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Preparing import...',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.7),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '$dropReceivedCount items',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.4),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              )
+            : isDraggingOver
+                ? Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.file_download_outlined,
+                          size: 26,
+                          color: Colors.blue.withValues(alpha: 0.9),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Release to import',
+                        style: TextStyle(
+                          color: Colors.blue.withValues(alpha: 0.9),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'drop files to begin',
+                        style: TextStyle(
+                          color: Colors.blue.withValues(alpha: 0.6),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  )
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.upload_file_outlined,
+                          size: 26,
+                          color: Colors.white.withValues(alpha: 0.7),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Drop files or folders here',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'images and folders supported',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.4),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+      ),
+    );
+  }
+
+  /// Handles drops that may contain directories.
+  /// Collects all valid images from directories, merges with dropped files,
+  /// and processes them.
+  Future<void> _handleDropWithDirectories(List<String> itemPaths) async {
+    final List<String> filePaths = [];
+    final List<String> directoryPaths = [];
+
+    // Classify items as files or directories
+    for (final itemPath in itemPaths) {
+      if (await FileSystemEntity.isDirectory(itemPath)) {
+        directoryPaths.add(itemPath);
+      } else if (await FileSystemEntity.isFile(itemPath)) {
+        filePaths.add(itemPath);
+      }
+    }
+
+    // Collect all files from directories (runs in isolate)
+    if (directoryPaths.isNotEmpty) {
+      // Show "Preparing import..." while scanning directories
+      if (mounted) {
+        setState(() => preparingImport = true);
+      }
+
+      for (final dirPath in directoryPaths) {
+        if (!mounted) return;
+
+        final scanResult =
+            await GalleryUtils.collectFilesFromDirectory(dirPath);
+
+        if (scanResult.wasCancelled) {
+          if (mounted) {
+            setState(() {
+              isImporting = false;
+              preparingImport = false;
+            });
+            widget.setImportingInMain(false);
+          }
+          return;
+        }
+
+        filePaths.addAll(scanResult.validImagePaths);
+      }
+
+      // Done scanning, switch to importing mode
+      if (mounted) {
+        setState(() => preparingImport = false);
+      }
+    }
+
+    // Confirm large imports
+    if (filePaths.length > GalleryUtils.largeDirectoryThreshold) {
+      if (!mounted) return;
+
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xff1a1a1a),
+          title: const Text(
+            'Large Import',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Text(
+            'Found ${filePaths.length} images. This may take a while.\n\n'
+            'Continue with import?',
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
             ),
-            const SizedBox(height: 12),
-            Text(
-              'Drop files here',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.7),
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'or drag and drop images',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.4),
-                fontSize: 12,
-              ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Import'),
             ),
           ],
         ),
-      ),
-    );
+      );
+
+      if (proceed != true) {
+        if (mounted) {
+          setState(() {
+            isImporting = false;
+            preparingImport = false;
+          });
+          widget.setImportingInMain(false);
+        }
+        return;
+      }
+    }
+
+    if (filePaths.isEmpty) {
+      if (mounted) {
+        setState(() {
+          isImporting = false;
+          preparingImport = false;
+        });
+        widget.setImportingInMain(false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('No valid images found in dropped items')),
+        );
+      }
+      return;
+    }
+
+    // Sort alphabetically for consistent ordering (matches ZIP behavior)
+    filePaths.sort((a, b) => path.basename(a).toLowerCase().compareTo(
+          path.basename(b).toLowerCase(),
+        ));
+
+    // Process all files
+    GalleryUtils.startImportBatch(filePaths.length);
+    for (final filePath in filePaths) {
+      if (!mounted) return;
+      await processPickedFile(File(filePath));
+    }
   }
 
   void _showExportOptionsBottomSheet(BuildContext context) {
@@ -1448,27 +1795,24 @@ class GalleryPageState extends State<GalleryPage>
 
   Future<void> _deleteSelectedPhotos() async {
     final int count = _selectedPhotos.length;
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Photos?'),
-        content: Text(
-          'Are you sure you want to delete $count photo${count == 1 ? '' : 's'}? This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
+    final int totalPhotos = widget.imageFilesStr.length;
+    final int remainingAfterDelete = totalPhotos - count;
+    final bool shouldRecompile = remainingAfterDelete >= 2;
 
-    if (confirmed != true) return;
+    final bool confirmed;
+    if (shouldRecompile) {
+      confirmed = await ConfirmActionDialog.showDeleteRecompile(
+        context,
+        photoCount: count,
+      );
+    } else {
+      confirmed = await ConfirmActionDialog.showDeleteSimple(
+        context,
+        photoCount: count,
+      );
+    }
+
+    if (!confirmed) return;
 
     setState(() => isImporting = true);
 
@@ -1522,6 +1866,11 @@ class GalleryPageState extends State<GalleryPage>
 
     await _loadImages();
     _exitSelectionMode();
+
+    // Trigger video recompilation if photos were deleted and enough remain
+    if (deleted > 0 && shouldRecompile) {
+      await widget.recompileVideoCallback();
+    }
 
     setState(() => isImporting = false);
 
@@ -2005,10 +2354,6 @@ class GalleryPageState extends State<GalleryPage>
     );
   }
 
-  Future<void> _showDialog(BuildContext context, Widget dialog) async {
-    showDialog(context: context, builder: (BuildContext context) => dialog);
-  }
-
   void _showImagePreviewDialog(File imageFile, {required bool isStabilized}) {
     final List<String> currentList =
         isStabilized ? widget.stabilizedImageFilesStr : widget.imageFilesStr;
@@ -2094,44 +2439,45 @@ class GalleryPageState extends State<GalleryPage>
   }
 
   Future<void> _showDeleteDialog(File image) async {
-    _showDialog(
-      context,
-      AlertDialog(
-        title: const Text('Delete Image?'),
-        content: const Text('Do you want to delete this image?'),
-        actions: [
-          TextButton(
-            onPressed: Navigator.of(context).pop,
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            child: const Text('Delete'),
-            onPressed: () async {
-              Navigator.of(context).pop();
-              File toDelete = image;
-              final bool isStabilizedImage = image.path.toLowerCase().contains(
-                    "stabilized",
-                  );
-              if (isStabilizedImage) {
-                final String timestamp = path.basenameWithoutExtension(
-                  image.path,
-                );
-                final String rawPhotoPath =
-                    await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-                  timestamp,
-                  projectId,
-                );
-                toDelete = File(rawPhotoPath);
-              }
-              await _deleteImage(toDelete);
-            },
-          ),
-        ],
-      ),
-    );
+    final int totalPhotos = widget.imageFilesStr.length;
+    final int remainingAfterDelete = totalPhotos - 1;
+    final bool shouldRecompile = remainingAfterDelete >= 2;
+
+    final bool confirmed;
+    if (shouldRecompile) {
+      confirmed = await ConfirmActionDialog.showDeleteRecompile(
+        context,
+        photoCount: 1,
+      );
+    } else {
+      confirmed = await ConfirmActionDialog.showDeleteSimple(
+        context,
+        photoCount: 1,
+      );
+    }
+
+    if (!confirmed || !mounted) return;
+
+    File toDelete = image;
+    final bool isStabilizedImage = image.path.toLowerCase().contains(
+          "stabilized",
+        );
+    if (isStabilizedImage) {
+      final String timestamp = path.basenameWithoutExtension(
+        image.path,
+      );
+      final String rawPhotoPath =
+          await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
+        timestamp,
+        projectId,
+      );
+      toDelete = File(rawPhotoPath);
+    }
+    await _deleteImage(toDelete, triggerRecompile: shouldRecompile);
   }
 
-  Future<void> _deleteImage(File image) async {
+  Future<void> _deleteImage(File image,
+      {required bool triggerRecompile}) async {
     final bool success = await ProjectUtils.deleteImage(image, projectId);
     if (success) {
       final String switched = image.path.replaceAll(
@@ -2144,6 +2490,9 @@ class GalleryPageState extends State<GalleryPage>
       );
       ThumbnailService.instance.clearCache(thumbnailPath);
       _loadImages();
+      if (triggerRecompile) {
+        await widget.recompileVideoCallback();
+      }
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -133,7 +133,7 @@ class StabilizationService {
           StabilizationProgress.compilingVideo(
             currentFrame: 0,
             totalFrames: stabPhotoCount,
-            progressPercent: 0,
+            progressPercent: 0.0,
             projectId: projectId,
           ),
         );
@@ -171,7 +171,7 @@ class StabilizationService {
         StabilizationProgress.stabilizing(
           currentPhoto: 0,
           totalPhotos: _totalPhotos,
-          progressPercent: 0,
+          progressPercent: 0.0,
           projectId: projectId,
         ),
       );
@@ -220,9 +220,9 @@ class StabilizationService {
         final totalPhotoCount = allPhotos.length;
         final completed = _stabilizedAtStart + _successfullyStabilized;
         var pct =
-            totalPhotoCount > 0 ? ((completed * 100) ~/ totalPhotoCount) : 0;
-        if (pct >= 100) pct = 99;
-        if (pct < 0) pct = 0;
+            totalPhotoCount > 0 ? (completed * 100.0 / totalPhotoCount) : 0.0;
+        if (pct >= 100) pct = 99.9;
+        if (pct < 0) pct = 0.0;
 
         _emitProgress(
           StabilizationProgress.stabilizing(
@@ -542,7 +542,7 @@ class StabilizationService {
           StabilizationProgress.compilingVideo(
             currentFrame: 0,
             totalFrames: stabPhotoCount,
-            progressPercent: 0,
+            progressPercent: 0.0,
             projectId: projectId,
           ),
         );
@@ -556,8 +556,8 @@ class StabilizationService {
           projectId,
           (currentFrame) {
             final pct = stabPhotoCount > 0
-                ? ((currentFrame * 100) ~/ stabPhotoCount)
-                : 0;
+                ? (currentFrame * 100.0 / stabPhotoCount)
+                : 0.0;
             final eta = VideoUtils.calculateVideoEta(currentFrame);
             _emitProgress(
               StabilizationProgress.compilingVideo(

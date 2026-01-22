@@ -84,8 +84,9 @@ class MainNavigationState extends State<MainNavigation> {
   bool get _videoCreationActive =>
       _stabProgress.state == StabilizationState.compilingVideo ||
       _stabProgress.state == StabilizationState.cancellingVideo;
-  int get progressPercent =>
-      _isImporting ? _importProgressPercent : _stabProgress.progressPercent;
+  double get progressPercent => _isImporting
+      ? _importProgressPercent.toDouble()
+      : _stabProgress.progressPercent;
   String get minutesRemaining => _stabProgress.eta ?? "";
   int get _photoIndex => _stabProgress.currentPhoto;
   int get _unstabilizedPhotoCount => _stabProgress.totalPhotos;
@@ -120,6 +121,8 @@ class MainNavigationState extends State<MainNavigation> {
             break;
           case StabilizationState.completed:
             _stabUpdateController.add(StabUpdateEvent.stabilizationComplete());
+            // Refresh master photo lists so data is fresh when gallery mounts
+            loadPhotos();
             break;
           case StabilizationState.compilingVideo:
             // Emit completion when video starts (stabilization done)
@@ -128,6 +131,8 @@ class MainNavigationState extends State<MainNavigation> {
               _stabUpdateController.add(
                 StabUpdateEvent.stabilizationComplete(),
               );
+              // Refresh master photo lists so data is fresh when gallery mounts
+              loadPhotos();
             }
             break;
           case StabilizationState.cancelled:
@@ -215,8 +220,10 @@ class MainNavigationState extends State<MainNavigation> {
   void clearRawAndStabPhotos() {
     if (!mounted) return;
     setState(() {
-      _imageFiles.clear();
-      _stabilizedImageFiles.clear();
+      // Use list replacement instead of in-place mutation to avoid
+      // race conditions if GalleryPage holds a reference during build
+      _imageFiles = [];
+      _stabilizedImageFiles = [];
     });
   }
 
@@ -348,6 +355,19 @@ class MainNavigationState extends State<MainNavigation> {
     });
   }
 
+  /// Sets the importing state from child widgets (e.g., drag-drop imports).
+  /// This ensures the progress bar displays correctly for all import paths.
+  void setImportingInMain(bool value) {
+    if (!mounted) return;
+    setState(() {
+      _isImporting = value;
+      if (!value) {
+        _importProgressPercent = 0;
+        _importMaxProgress = 0;
+      }
+    });
+  }
+
   /// Start stabilization using the centralized service.
   ///
   /// This method delegates to [StabilizationService] which handles:
@@ -430,6 +450,7 @@ class MainNavigationState extends State<MainNavigation> {
           setUserOnImportTutorialFalse: setUserOnImportTutorialFalse,
           importRunningInMain: _isImporting,
           setProgressInMain: setProgressInMain,
+          setImportingInMain: setImportingInMain,
           imageFilesStr: _imageFiles,
           stabilizedImageFilesStr: _stabilizedImageFiles,
           setRawAndStabPhotoStates: setRawAndStabPhotoStates,
