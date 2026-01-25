@@ -19,7 +19,7 @@ class TipsPage extends StatefulWidget {
 }
 
 class TipsPageState extends State<TipsPage> {
-  final Color appBarColor = const Color(0xff151517);
+  final Color appBarColor = AppColors.background;
 
   @override
   Widget build(BuildContext context) {
@@ -33,9 +33,9 @@ class TipsPageState extends State<TipsPage> {
             const Text(
               "Tips",
               style: TextStyle(
-                fontSize: 24,
+                fontSize: AppTypography.xxxl,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: AppColors.textPrimary,
               ),
             ),
             IconButton(
@@ -61,7 +61,8 @@ class TipsPageState extends State<TipsPage> {
           mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Divider(color: Colors.grey, thickness: 1, height: 16),
+            const Divider(
+                color: AppColors.textSecondary, thickness: 1, height: 16),
             Expanded(child: Container()),
             const CustomWidget(
               title: "Look At Camera Lens",
@@ -86,7 +87,7 @@ class TipsPageState extends State<TipsPage> {
                 width: 24,
                 height: 24,
                 colorFilter: const ColorFilter.mode(
-                  Colors.white,
+                  AppColors.textPrimary,
                   BlendMode.srcIn,
                 ),
               ),
@@ -106,7 +107,7 @@ class TipsPageState extends State<TipsPage> {
       child: ElevatedButton(
         onPressed: () => openCamera(),
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.darkerLightBlue,
+          backgroundColor: AppColors.accentDark,
           minimumSize: const Size(double.infinity, 50),
           padding: const EdgeInsets.symmetric(vertical: 18.0),
           shape: RoundedRectangleBorder(
@@ -116,8 +117,8 @@ class TipsPageState extends State<TipsPage> {
         child: Text(
           text.toUpperCase(),
           style: const TextStyle(
-            fontSize: 15,
-            color: Colors.white,
+            fontSize: AppTypography.lg,
+            color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -157,9 +158,9 @@ class CustomWidget extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(23.0),
       decoration: BoxDecoration(
-        color: const Color(0xff212121),
+        color: AppColors.surfaceElevated,
         borderRadius: BorderRadius.circular(16.0),
-        border: Border.all(color: Colors.grey.shade800, width: 0.7),
+        border: Border.all(color: AppColors.surfaceElevated, width: 0.7),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -167,7 +168,7 @@ class CustomWidget extends StatelessWidget {
           Row(
             children: [
               if (icon != null)
-                Icon(icon, color: Colors.white, size: 24.0)
+                Icon(icon, color: AppColors.textPrimary, size: 24.0)
               else if (svgIcon != null)
                 svgIcon!,
               const SizedBox(width: 8.0),
@@ -175,10 +176,10 @@ class CustomWidget extends StatelessWidget {
                 child: Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 18.0,
+                    fontSize: AppTypography.xl,
                     fontWeight: FontWeight.bold,
                     height: 1.0,
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                   ),
                   softWrap: true,
                   overflow: TextOverflow.visible,
@@ -190,9 +191,9 @@ class CustomWidget extends StatelessWidget {
           Text(
             description,
             style: const TextStyle(
-              fontSize: 13.7,
+              fontSize: AppTypography.md,
               height: 1.6,
-              color: Colors.white,
+              color: AppColors.textPrimary,
             ),
           ),
         ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../styles/styles.dart';
 
 class FAQPage extends StatelessWidget {
   const FAQPage({super.key});
@@ -8,7 +9,7 @@ class FAQPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('F.A.Q.')),
       body: Container(
-        color: Colors.black54,
+        color: AppColors.overlay.withValues(alpha: 0.54),
         child: ListView(
           padding: const EdgeInsets.all(16.0),
           children: const [
@@ -59,12 +60,12 @@ class FAQItem extends StatelessWidget {
             Text(
               question,
               style: const TextStyle(
-                fontSize: 15.0,
+                fontSize: AppTypography.lg,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 8.0),
-            Text(answer, style: const TextStyle(fontSize: 14.0)),
+            Text(answer, style: const TextStyle(fontSize: AppTypography.md)),
           ],
         ),
       ),

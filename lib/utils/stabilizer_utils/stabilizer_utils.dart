@@ -85,6 +85,28 @@ class StabUtils {
     }
   }
 
+  /// Validates PNG bytes by decoding and checking dimensions.
+  /// Returns (width, height) if valid, null if corrupt/invalid.
+  /// This guards against truncated cache files causing OpenCV resize failures.
+  static Future<(int, int)?> _validatePngDimensions(Uint8List bytes) async {
+    try {
+      final mat = cv.imdecode(bytes, cv.IMREAD_COLOR);
+      if (mat.isEmpty) {
+        mat.dispose();
+        return null;
+      }
+      final width = mat.cols;
+      final height = mat.rows;
+      mat.dispose();
+      if (width <= 0 || height <= 0) {
+        return null;
+      }
+      return (width, height);
+    } catch (e) {
+      return null;
+    }
+  }
+
   static Future<List<Map<String, dynamic>>> getUnstabilizedPhotos(
     int projectId,
   ) async {
@@ -256,6 +278,9 @@ class StabUtils {
         LogService.instance.log(
           "Error caught while fetching faces from bytes: $e",
         );
+        // Force reinit of face detector on next call - handles stale native state
+        // after hot restart or other isolate lifecycle issues
+        _faceDetectorIsolate = null;
         return (<FaceLike>[], <fdl.Face>[]);
       }
     });
@@ -322,6 +347,7 @@ class StabUtils {
         return filtered.isNotEmpty ? filtered : faces;
       } catch (e) {
         LogService.instance.log("Error caught while fetching faces: $e");
+        _faceDetectorIsolate = null; // Force reinit on next call
         return [];
       }
     });
@@ -355,6 +381,7 @@ class StabUtils {
         return embedding;
       } catch (e) {
         LogService.instance.log("Error extracting face embedding: $e");
+        _faceDetectorIsolate = null; // Force reinit on next call
         return null;
       }
     });
@@ -385,6 +412,7 @@ class StabUtils {
         return embeddings;
       } catch (e) {
         LogService.instance.log("Error extracting face embeddings: $e");
+        _faceDetectorIsolate = null; // Force reinit on next call
         return [];
       }
     });
@@ -453,6 +481,7 @@ class StabUtils {
         return bestIndex;
       } catch (e) {
         LogService.instance.log("Error in embedding-based face selection: $e");
+        _faceDetectorIsolate = null; // Force reinit on next call
         return 0; // Fallback to first face
       }
     });
@@ -509,15 +538,27 @@ class StabUtils {
         }
         break;
       case 'writePngFromBytes':
-        // Write bytes directly as PNG file
+        // Write bytes atomically: temp file + rename to prevent partial writes
         try {
           if (bytes != null) {
-            await File(filePath!).writeAsBytes(bytes as Uint8List);
+            final tempPath = '$filePath.tmp';
+            final tempFile = File(tempPath);
+            await tempFile.writeAsBytes(bytes as Uint8List, flush: true);
+            // Delete target first for Windows compatibility (rename fails if exists)
+            final targetFile = File(filePath!);
+            if (await targetFile.exists()) {
+              await targetFile.delete();
+            }
+            await tempFile.rename(filePath);
             sendPort.send('File written successfully');
           } else {
             sendPort.send('Bytes are null');
           }
         } catch (e) {
+          // Clean up temp file on failure
+          try {
+            await File('$filePath.tmp').delete();
+          } catch (_) {}
           sendPort.send('Error writing PNG: $e');
         }
         break;
@@ -875,12 +916,24 @@ class StabUtils {
       return null;
     }
 
-    // If PNG already cached, read and return those bytes directly
+    // If PNG already cached, read and validate before returning
     final bool pngExists = await pngFile.exists();
     if (pngExists) {
       final int len = await pngFile.length();
       if (len > 0) {
-        return await pngFile.readAsBytes();
+        final cachedBytes = await pngFile.readAsBytes();
+        // Validate cached PNG has valid dimensions (guards against truncated/corrupt cache)
+        final dims = await _validatePngDimensions(cachedBytes);
+        if (dims != null && dims.$1 > 0 && dims.$2 > 0) {
+          return cachedBytes;
+        }
+        // Cache is corrupt/invalid - delete and regenerate
+        LogService.instance.log(
+          '[preparePNG] Cached PNG invalid (dims=$dims), regenerating: $pngPath',
+        );
+        try {
+          await pngFile.delete();
+        } catch (_) {}
       }
     }
 

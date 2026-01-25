@@ -37,7 +37,7 @@ class SettingListTile extends StatelessWidget {
                       child: Text(
                         title,
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: AppTypography.lg,
                           fontWeight: FontWeight.w400,
                           color: isDisabled
                               ? AppColors.settingsTextTertiary

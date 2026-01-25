@@ -178,9 +178,18 @@ class IsolatePool {
         return success ? pngBytes : null;
 
       case 'writePngFromBytes':
+        // Atomic write: temp file + rename to prevent partial writes
         final filePath = params['filePath'] as String;
         final bytes = params['bytes'] as Uint8List;
-        await File(filePath).writeAsBytes(bytes);
+        final tempPath = '$filePath.tmp';
+        final tempFile = File(tempPath);
+        await tempFile.writeAsBytes(bytes, flush: true);
+        // Delete target first for Windows compatibility
+        final targetFile = File(filePath);
+        if (await targetFile.exists()) {
+          await targetFile.delete();
+        }
+        await tempFile.rename(filePath);
         return 'File written successfully';
 
       case 'writeJpg':

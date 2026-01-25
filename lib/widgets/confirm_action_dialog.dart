@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../styles/styles.dart';
+
 /// A reusable confirmation dialog widget for destructive or significant actions.
 ///
 /// Provides factory methods for common confirmation scenarios:
@@ -26,12 +28,12 @@ class ConfirmActionDialog extends StatelessWidget {
   });
 
   // Color constants matching existing design
-  static const _dangerColor = Color(0xFFDC2626);
-  static const _dangerColorLight = Color(0x26DC2626);
-  static const _dangerColorBorder = Color(0x4DDC2626);
-  static const _cardBackground = Color(0xFF1C1C1E);
-  static const _textPrimary = Color(0xFFF5F5F7);
-  static const _textSecondary = Color(0xFF8E8E93);
+  static const _dangerColor = AppColors.danger;
+  static final _dangerColorLight = AppColors.danger.withValues(alpha: 0.15);
+  static final _dangerColorBorder = AppColors.danger.withValues(alpha: 0.3);
+  static const _cardBackground = AppColors.surface;
+  static const _textPrimary = AppColors.textPrimary;
+  static const _textSecondary = AppColors.textSecondary;
 
   /// Shows a confirmation dialog for settings that require re-stabilization.
   ///
@@ -200,7 +202,7 @@ class ConfirmActionDialog extends StatelessWidget {
             title,
             style: const TextStyle(
               color: _textPrimary,
-              fontSize: 18,
+              fontSize: AppTypography.xl,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -214,7 +216,7 @@ class ConfirmActionDialog extends StatelessWidget {
             description,
             style: const TextStyle(
               color: _textSecondary,
-              fontSize: 14,
+              fontSize: AppTypography.md,
               height: 1.5,
             ),
           ),
@@ -240,7 +242,7 @@ class ConfirmActionDialog extends StatelessWidget {
                       warningText!,
                       style: const TextStyle(
                         color: _dangerColor,
-                        fontSize: 13,
+                        fontSize: AppTypography.sm,
                         fontWeight: FontWeight.w500,
                         height: 1.4,
                       ),
@@ -276,10 +278,10 @@ class ConfirmActionDialog extends StatelessWidget {
             ),
             child: Text(
               confirmText,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: AppColors.textPrimary,
                 fontWeight: FontWeight.w600,
-                fontSize: 14,
+                fontSize: AppTypography.md,
               ),
             ),
           ),

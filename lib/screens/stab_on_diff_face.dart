@@ -50,6 +50,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
   }
 
   Future<void> _init() async {
+    if (!mounted) return;
     setState(() {
       // Show different message if main stabilization is running (user may need to wait)
       loadingStatus = widget.stabilizationRunningInMain
@@ -65,6 +66,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
     await faceStabilizer.init();
 
     final bytes = await CameraUtils.readBytesInIsolate(rawImagePath);
+    if (!mounted) return;
     if (bytes == null) {
       setState(() {
         loadingStatus = "Failed to load image.";
@@ -73,6 +75,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
     }
 
     final dims = await StabUtils.getImageDimensionsFromBytesAsync(bytes);
+    if (!mounted) return;
     if (dims == null) {
       setState(() {
         loadingStatus = "Failed to decode image.";
@@ -92,9 +95,25 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
       filterByFaceSize: false,
     );
 
-    if (facesRaw == null) {
+    // Retry once if failed - handles rare cache corruption / isolate recovery
+    // Our safeguards (cache validation, isolate reset) run on first attempt,
+    // so retry should succeed with fresh state
+    if (facesRaw == null || facesRaw.isEmpty) {
+      await Future.delayed(const Duration(milliseconds: 150));
+      if (!mounted) return;
+      facesRaw = await faceStabilizer.getFacesFromRawPhotoPath(
+        rawImagePath,
+        imageWidth,
+        filterByFaceSize: false,
+      );
+    }
+
+    if (!mounted) return;
+    if (facesRaw == null || facesRaw.isEmpty) {
       setState(() {
-        loadingStatus = "There was an error detecting faces.";
+        loadingStatus = facesRaw == null
+            ? "There was an error detecting faces."
+            : "No faces detected in this image.";
       });
       return;
     }
@@ -184,7 +203,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
                 'Confirm Stabilization',
                 style: TextStyle(
                   color: AppColors.settingsTextPrimary,
-                  fontSize: 18,
+                  fontSize: AppTypography.xl,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -194,7 +213,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
             'Do you want to stabilize on this face?',
             style: TextStyle(
               color: AppColors.settingsTextSecondary,
-              fontSize: 14,
+              fontSize: AppTypography.md,
               height: 1.5,
             ),
           ),
@@ -240,7 +259,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
       title: const Text(
         'Stabilize on Other Face',
         style: TextStyle(
-          fontSize: 20,
+          fontSize: AppTypography.xxl,
           fontWeight: FontWeight.w600,
           color: AppColors.settingsTextPrimary,
         ),
@@ -306,7 +325,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
               'Quick Guide',
               style: TextStyle(
                 color: AppColors.settingsTextPrimary,
-                fontSize: 18,
+                fontSize: AppTypography.xl,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -315,11 +334,11 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
         content: const SingleChildScrollView(
           child: Text(
             'This screen lets you choose which face to stabilize on when multiple faces are detected in a photo.\n\n'
-            'Detected faces are highlighted with red outlines. Tap on a face to select it as the stabilization target.\n\n'
+            'Detected faces are highlighted with blue outlines. Tap on a face to select it as the stabilization target.\n\n'
             'Use this when the automatic stabilization picked the wrong person, or when you want to create a timelapse focused on someone else in the photo.',
             style: TextStyle(
               color: AppColors.settingsTextSecondary,
-              fontSize: 14,
+              fontSize: AppTypography.md,
               height: 1.6,
             ),
           ),
@@ -372,7 +391,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
                         loadingStatus,
                         style: const TextStyle(
                           color: AppColors.settingsTextSecondary,
-                          fontSize: 14,
+                          fontSize: AppTypography.md,
                         ),
                       ),
                     ],
@@ -391,7 +410,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
                         loadingStatus,
                         style: const TextStyle(
                           color: AppColors.settingsTextPrimary,
-                          fontSize: 16,
+                          fontSize: AppTypography.lg,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -402,7 +421,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
                     children: [
                       const Icon(
                         Icons.error_outline_rounded,
-                        color: AppColors.orange,
+                        color: AppColors.warningMuted,
                         size: 48,
                       ),
                       const SizedBox(height: 16),
@@ -410,7 +429,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
                         loadingStatus,
                         style: const TextStyle(
                           color: AppColors.settingsTextPrimary,
-                          fontSize: 16,
+                          fontSize: AppTypography.lg,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -492,7 +511,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
       height: rect.height,
       child: GestureDetector(
         onTap: () => _handleContourTapped(face, userRanOutOfSpaceCallback),
-        child: Container(color: Colors.blue.withAlpha(77)),
+        child: Container(color: AppColors.info.withAlpha(77)),
       ),
     );
   }
@@ -528,7 +547,7 @@ class FaceContourPainter extends CustomPainter {
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0
-      ..color = Colors.red;
+      ..color = AppColors.accentLight;
 
     final contours = calculateContours(faces, originalImageSize, displaySize);
 

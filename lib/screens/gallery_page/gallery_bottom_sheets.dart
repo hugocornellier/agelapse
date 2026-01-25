@@ -16,7 +16,7 @@ class GalleryBottomSheets {
     return Container(
       padding: const EdgeInsets.fromLTRB(20.0, 12.0, 20.0, 20.0),
       decoration: const BoxDecoration(
-        color: Color(0xff1a1a1a),
+        color: AppColors.surface,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(20.0),
           topRight: Radius.circular(20.0),
@@ -32,7 +32,7 @@ class GalleryBottomSheets {
                 width: 36,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.white24,
+                  color: AppColors.textPrimary.withValues(alpha: 0.24),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -44,9 +44,9 @@ class GalleryBottomSheets {
                 Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 20,
+                    fontSize: AppTypography.xxl,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     letterSpacing: -0.3,
                   ),
                 ),
@@ -55,12 +55,12 @@ class GalleryBottomSheets {
                   child: Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.08),
+                      color: AppColors.textPrimary.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.close,
-                      color: Colors.white70,
+                      color: AppColors.textPrimary.withValues(alpha: 0.7),
                       size: 18,
                     ),
                   ),
@@ -89,19 +89,20 @@ class GalleryBottomSheets {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
+          color: AppColors.textPrimary.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          border:
+              Border.all(color: AppColors.textPrimary.withValues(alpha: 0.08)),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.08),
+                color: AppColors.textPrimary.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: Colors.white, size: 22),
+              child: Icon(icon, color: AppColors.textPrimary, size: 22),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -110,9 +111,9 @@ class GalleryBottomSheets {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: AppTypography.lg,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -120,8 +121,8 @@ class GalleryBottomSheets {
                   Text(
                     subtitle,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.5),
-                      fontSize: 13,
+                      color: AppColors.textPrimary.withValues(alpha: 0.5),
+                      fontSize: AppTypography.sm,
                     ),
                   ),
                 ],
@@ -129,7 +130,7 @@ class GalleryBottomSheets {
             ),
             Icon(
               Icons.chevron_right,
-              color: Colors.white.withValues(alpha: 0.3),
+              color: AppColors.textPrimary.withValues(alpha: 0.3),
               size: 22,
             ),
           ],
@@ -153,13 +154,13 @@ class GalleryBottomSheets {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: isSelected
-              ? Colors.white.withValues(alpha: 0.08)
-              : Colors.white.withValues(alpha: 0.05),
+              ? AppColors.textPrimary.withValues(alpha: 0.08)
+              : AppColors.textPrimary.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected
                 ? AppColors.settingsAccent.withValues(alpha: 0.5)
-                : Colors.white.withValues(alpha: 0.08),
+                : AppColors.textPrimary.withValues(alpha: 0.08),
           ),
         ),
         child: Row(
@@ -169,12 +170,14 @@ class GalleryBottomSheets {
               decoration: BoxDecoration(
                 color: isSelected
                     ? AppColors.settingsAccent.withValues(alpha: 0.2)
-                    : Colors.white.withValues(alpha: 0.08),
+                    : AppColors.textPrimary.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
                 icon,
-                color: isSelected ? AppColors.settingsAccent : Colors.white,
+                color: isSelected
+                    ? AppColors.settingsAccent
+                    : AppColors.textPrimary,
                 size: 22,
               ),
             ),
@@ -185,9 +188,9 @@ class GalleryBottomSheets {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: AppTypography.lg,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -195,8 +198,8 @@ class GalleryBottomSheets {
                   Text(
                     subtitle,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.5),
-                      fontSize: 13,
+                      color: AppColors.textPrimary.withValues(alpha: 0.5),
+                      fontSize: AppTypography.sm,
                     ),
                   ),
                 ],
@@ -212,12 +215,12 @@ class GalleryBottomSheets {
                 border: Border.all(
                   color: isSelected
                       ? AppColors.settingsAccent
-                      : Colors.white.withValues(alpha: 0.3),
+                      : AppColors.textPrimary.withValues(alpha: 0.3),
                   width: 2,
                 ),
               ),
               child: isSelected
-                  ? const Icon(Icons.check, color: Colors.white, size: 16)
+                  ? Icon(Icons.check, color: AppColors.textPrimary, size: 16)
                   : null,
             ),
           ],
@@ -238,7 +241,7 @@ class GalleryBottomSheets {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.08),
+              color: AppColors.textPrimary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(12),
             ),
             child: SizedBox(
@@ -256,8 +259,8 @@ class GalleryBottomSheets {
           Text(
             'Exporting...',
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.9),
-              fontSize: 16,
+              color: AppColors.textPrimary.withValues(alpha: 0.9),
+              fontSize: AppTypography.lg,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -265,8 +268,8 @@ class GalleryBottomSheets {
           Text(
             '$progressPercent%',
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.5),
-              fontSize: 14,
+              color: AppColors.textPrimary.withValues(alpha: 0.5),
+              fontSize: AppTypography.md,
             ),
           ),
         ],
@@ -286,21 +289,21 @@ class GalleryBottomSheets {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xff4CD964).withValues(alpha: 0.15),
+              color: AppColors.success.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.check_circle_outline,
-              color: Color(0xff4CD964),
+              color: AppColors.success,
               size: 32,
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'Export Complete!',
             style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
+              color: AppColors.textPrimary,
+              fontSize: AppTypography.lg,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -308,8 +311,8 @@ class GalleryBottomSheets {
           Text(
             'Your photos have been exported to a ZIP file',
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.5),
-              fontSize: 13,
+              color: AppColors.textPrimary.withValues(alpha: 0.5),
+              fontSize: AppTypography.sm,
             ),
             textAlign: TextAlign.center,
           ),
@@ -331,10 +334,10 @@ class GalleryBottomSheets {
         curve: Curves.easeInOut,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.blue.withValues(alpha: 0.08),
+          color: AppColors.info.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: Colors.blue.withValues(alpha: 0.25),
+            color: AppColors.info.withValues(alpha: 0.25),
           ),
         ),
         child: Column(
@@ -344,7 +347,7 @@ class GalleryBottomSheets {
               children: [
                 Icon(
                   Icons.info_outline,
-                  color: Colors.blue.withValues(alpha: 0.9),
+                  color: AppColors.info.withValues(alpha: 0.9),
                   size: 18,
                 ),
                 const SizedBox(width: 10),
@@ -352,8 +355,8 @@ class GalleryBottomSheets {
                   child: Text(
                     'How are photo dates determined?',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      fontSize: 13,
+                      color: AppColors.textPrimary.withValues(alpha: 0.9),
+                      fontSize: AppTypography.sm,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -363,7 +366,7 @@ class GalleryBottomSheets {
                   duration: const Duration(milliseconds: 200),
                   child: Icon(
                     Icons.keyboard_arrow_down,
-                    color: Colors.white.withValues(alpha: 0.5),
+                    color: AppColors.textPrimary.withValues(alpha: 0.5),
                     size: 20,
                   ),
                 ),
@@ -396,15 +399,15 @@ class GalleryBottomSheets {
                           Text(
                             'Read full guide',
                             style: TextStyle(
-                              color: Colors.blue.withValues(alpha: 0.9),
-                              fontSize: 12,
+                              color: AppColors.info.withValues(alpha: 0.9),
+                              fontSize: AppTypography.sm,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
                           const SizedBox(width: 4),
                           Icon(
                             Icons.open_in_new,
-                            color: Colors.blue.withValues(alpha: 0.9),
+                            color: AppColors.info.withValues(alpha: 0.9),
                             size: 14,
                           ),
                         ],
@@ -434,7 +437,7 @@ class GalleryBottomSheets {
             width: 5,
             height: 5,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.5),
+              color: AppColors.textPrimary.withValues(alpha: 0.5),
               shape: BoxShape.circle,
             ),
           ),
@@ -444,8 +447,8 @@ class GalleryBottomSheets {
           child: Text(
             text,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.7),
-              fontSize: 12,
+              color: AppColors.textPrimary.withValues(alpha: 0.7),
+              fontSize: AppTypography.sm,
               height: 1.3,
             ),
           ),

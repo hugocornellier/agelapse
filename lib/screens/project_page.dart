@@ -197,16 +197,16 @@ class ProjectPageState extends State<ProjectPage> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(
-        backgroundColor: Color(0xff0F0F0F),
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     final cache = widget.settingsCache!;
 
     return Scaffold(
-      backgroundColor: const Color(0xff0F0F0F),
+      backgroundColor: AppColors.background,
       body: LayoutBuilder(
         builder: (context, constraints) {
           final screenWidth = constraints.maxWidth;
@@ -255,7 +255,7 @@ class ProjectPageState extends State<ProjectPage> {
   }
 
   List<Widget> _buildStepButtons(BuildContext context, int step) {
-    Color backgroundColor = AppColors.evenDarkerLightBlue;
+    Color backgroundColor = AppColors.accentDarker;
 
     Widget buildFancyButton({
       required String text,
@@ -266,7 +266,7 @@ class ProjectPageState extends State<ProjectPage> {
         context,
         text: text,
         icon: icon,
-        color: const Color(0xff212121),
+        color: AppColors.surfaceElevated,
         backgroundColor: backgroundColor,
         onPressed: onPressed,
       );
@@ -308,7 +308,9 @@ class ProjectPageState extends State<ProjectPage> {
                     padding: EdgeInsets.symmetric(horizontal: 16),
                     child: Text(
                       "OR",
-                      style: TextStyle(color: Colors.grey, fontSize: 11),
+                      style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: AppTypography.xs),
                     ),
                   ),
                   Expanded(child: takePhotoButton),
@@ -326,7 +328,9 @@ class ProjectPageState extends State<ProjectPage> {
                     Expanded(child: Divider(height: 0.8)),
                     SizedBox(width: 8),
                     Text("OR",
-                        style: TextStyle(color: Colors.grey, fontSize: 11)),
+                        style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: AppTypography.xs)),
                     SizedBox(width: 8),
                     Expanded(child: Divider(height: 0.8)),
                     SizedBox(width: 8),
@@ -411,7 +415,7 @@ class ProjectPageState extends State<ProjectPage> {
               Text(
                 title.toUpperCase(),
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: AppTypography.sm,
                   fontWeight: FontWeight.w600,
                   color: AppColors.settingsTextSecondary,
                   letterSpacing: 1.2,
@@ -533,8 +537,8 @@ class ProjectPageState extends State<ProjectPage> {
                       child: Text(
                         resolutionString,
                         style: TextStyle(
-                          color: Colors.grey.shade500,
-                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                          fontSize: AppTypography.sm,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -640,8 +644,8 @@ class ProjectPageState extends State<ProjectPage> {
           Text(
             chip.label,
             style: TextStyle(
-              color: Colors.grey.shade500,
-              fontSize: 12,
+              color: AppColors.textSecondary,
+              fontSize: AppTypography.sm,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -649,8 +653,8 @@ class ProjectPageState extends State<ProjectPage> {
           Text(
             chip.value,
             style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12,
+              color: AppColors.textPrimary,
+              fontSize: AppTypography.sm,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -710,8 +714,8 @@ class ProjectPageState extends State<ProjectPage> {
               Text(
                 title,
                 style: TextStyle(
-                  color: Colors.grey.shade500,
-                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                  fontSize: AppTypography.xs,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -722,16 +726,16 @@ class ProjectPageState extends State<ProjectPage> {
           Text(
             "$roundedOffset%",
             style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
+              color: AppColors.textPrimary,
+              fontSize: AppTypography.xl,
               fontWeight: FontWeight.w600,
             ),
           ),
           Text(
             subtitle,
             style: TextStyle(
-              color: Colors.grey.shade600,
-              fontSize: 10,
+              color: AppColors.textTertiary,
+              fontSize: AppTypography.xs,
             ),
           ),
         ],
@@ -865,7 +869,7 @@ class TextRowBuilder extends StatelessWidget {
           title,
           style: const TextStyle(
             color: AppColors.settingsTextSecondary,
-            fontSize: 13.7,
+            fontSize: AppTypography.md,
             height: 0.97,
           ),
         ),
@@ -878,7 +882,7 @@ class TextRowBuilder extends StatelessWidget {
               style: valueTextStyle ??
                   const TextStyle(
                     color: AppColors.settingsTextPrimary,
-                    fontSize: 24.0,
+                    fontSize: AppTypography.xxxl,
                     fontWeight: FontWeight.bold,
                   ),
             ),
@@ -963,7 +967,7 @@ class SpecialCard extends StatelessWidget {
                   title,
                   style: const TextStyle(
                     color: AppColors.settingsTextPrimary,
-                    fontSize: 13.0,
+                    fontSize: AppTypography.sm,
                     fontWeight: FontWeight.w400,
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -975,7 +979,7 @@ class SpecialCard extends StatelessWidget {
                   value,
                   style: const TextStyle(
                     color: AppColors.settingsTextSecondary,
-                    fontSize: 13.0,
+                    fontSize: AppTypography.sm,
                     fontWeight: FontWeight.w400,
                   ),
                   overflow: TextOverflow.ellipsis,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:agelapse/widgets/in_progress_widget.dart';
+import 'package:agelapse/styles/styles.dart';
 
 void main() {
   group('InProgress', () {
@@ -28,7 +29,7 @@ void main() {
       );
 
       final container = tester.widget<Container>(find.byType(Container).first);
-      expect(container.color, Colors.red);
+      expect(container.color, AppColors.danger);
     });
 
     testWidgets('uses blue background for non-error messages', (tester) async {
@@ -41,7 +42,7 @@ void main() {
       );
 
       final container = tester.widget<Container>(find.byType(Container).first);
-      expect(container.color, isNot(Colors.red));
+      expect(container.color, isNot(AppColors.danger));
     });
 
     testWidgets('has GestureDetector wrapper', (tester) async {

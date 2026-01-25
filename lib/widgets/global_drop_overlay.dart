@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../styles/styles.dart';
 
 /// A centered overlay that appears when files are dragged over the app window.
 ///
@@ -21,16 +22,16 @@ class GlobalDropOverlay extends StatelessWidget {
     // CRITICAL: IgnorePointer so DropTarget below can receive drops
     return IgnorePointer(
       child: Container(
-        color: Colors.black.withValues(alpha: 0.7),
+        color: AppColors.overlay.withValues(alpha: 0.7),
         child: Center(
           child: Container(
             width: 320,
             padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
-              color: const Color(0xff1a1a1a),
+              color: AppColors.surface,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: Colors.blue.withValues(alpha: 0.5),
+                color: AppColors.info.withValues(alpha: 0.5),
                 width: 2,
               ),
             ),
@@ -41,22 +42,22 @@ class GlobalDropOverlay extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withValues(alpha: 0.2),
+                    color: AppColors.info.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     Icons.file_download_outlined,
                     size: 48,
-                    color: Colors.blue.withValues(alpha: 0.9),
+                    color: AppColors.info.withValues(alpha: 0.9),
                   ),
                 ),
                 const SizedBox(height: 20),
                 // Title
-                const Text(
+                Text(
                   'Drop files to import',
                   style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
+                    color: AppColors.textPrimary,
+                    fontSize: AppTypography.xl,
                     fontWeight: FontWeight.w600,
                     decoration: TextDecoration.none,
                   ),
@@ -67,8 +68,8 @@ class GlobalDropOverlay extends StatelessWidget {
                   'Release anywhere in window to add photos',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontSize: 14,
+                    color: AppColors.textPrimary.withValues(alpha: 0.6),
+                    fontSize: AppTypography.md,
                     decoration: TextDecoration.none,
                   ),
                 ),

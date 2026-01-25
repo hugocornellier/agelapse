@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../styles/styles.dart';
 
 class FancyButton {
   static Widget buildElevatedButton(
@@ -11,7 +12,7 @@ class FancyButton {
   }) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
-        backgroundColor: backgroundColor ?? const Color(0xff212121),
+        backgroundColor: backgroundColor ?? AppColors.surfaceElevated,
         padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 12.0),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(32.0),
@@ -22,17 +23,18 @@ class FancyButton {
       child: Row(
         children: [
           CircleAvatar(
-            backgroundColor: Colors.black45,
-            child: Icon(icon, color: Colors.white),
+            backgroundColor: AppColors.overlay.withValues(alpha: 0.45),
+            child: Icon(icon, color: AppColors.textPrimary),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(fontSize: 15, color: Colors.white),
+              style: TextStyle(
+                  fontSize: AppTypography.lg, color: AppColors.textPrimary),
             ),
           ),
-          const Icon(Icons.arrow_forward_ios, color: Colors.white),
+          Icon(Icons.arrow_forward_ios, color: AppColors.textPrimary),
         ],
       ),
     );

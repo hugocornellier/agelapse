@@ -18,7 +18,7 @@ class TookFirstPhotoPage extends StatefulWidget {
 }
 
 class TookFirstPhotoPageState extends State<TookFirstPhotoPage> {
-  final Color appBarColor = const Color(0xff151517);
+  final Color appBarColor = AppColors.background;
 
   @override
   Widget build(BuildContext context) {
@@ -51,14 +51,15 @@ class TookFirstPhotoPageState extends State<TookFirstPhotoPage> {
             const SizedBox(height: 64),
             const Text(
               "Your First Photo",
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  fontSize: AppTypography.xxxl, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
             const Text(
               "Photos are stored in your Gallery. View the "
               "original and/or stabilized version.",
-              style: TextStyle(fontSize: 14),
+              style: TextStyle(fontSize: AppTypography.md),
               textAlign: TextAlign.center,
             ),
             Expanded(child: Container()),
@@ -66,7 +67,8 @@ class TookFirstPhotoPageState extends State<TookFirstPhotoPage> {
             const SizedBox(height: 16),
             const Text(
               "This is the beginning of something great. We can feel it!",
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+              style: TextStyle(
+                  fontSize: AppTypography.sm, color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 64),
@@ -98,7 +100,7 @@ class TookFirstPhotoPageState extends State<TookFirstPhotoPage> {
       child: ElevatedButton(
         onPressed: () => navigateToIndex(takingGuidePhoto: takingGuidePhoto),
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.darkerLightBlue,
+          backgroundColor: AppColors.accentDark,
           minimumSize: const Size(double.infinity, 50),
           padding: const EdgeInsets.symmetric(vertical: 18.0),
           shape: RoundedRectangleBorder(
@@ -108,8 +110,8 @@ class TookFirstPhotoPageState extends State<TookFirstPhotoPage> {
         child: Text(
           text.toUpperCase(),
           style: const TextStyle(
-            fontSize: 15,
-            color: Colors.white,
+            fontSize: AppTypography.lg,
+            color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),

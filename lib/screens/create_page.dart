@@ -649,7 +649,7 @@ class CreatePageState extends State<CreatePage>
                         backgroundColor: AppColors.settingsCardBorder,
                         valueColor: AlwaysStoppedAnimation<Color>(
                           isStabilizing
-                              ? AppColors.lightBlue
+                              ? AppColors.accentLight
                               : AppColors.settingsAccent,
                         ),
                       ),
@@ -660,7 +660,7 @@ class CreatePageState extends State<CreatePage>
                         Text(
                           '${percent.toStringAsFixed(1)}%',
                           style: const TextStyle(
-                            fontSize: 28,
+                            fontSize: AppTypography.display,
                             fontWeight: FontWeight.bold,
                             color: AppColors.settingsTextPrimary,
                           ),
@@ -675,7 +675,7 @@ class CreatePageState extends State<CreatePage>
               Text(
                 isStabilizing ? 'Stabilizing' : 'Compiling Video',
                 style: const TextStyle(
-                  fontSize: 20,
+                  fontSize: AppTypography.xxl,
                   fontWeight: FontWeight.w600,
                   color: AppColors.settingsTextPrimary,
                   letterSpacing: -0.5,
@@ -687,7 +687,7 @@ class CreatePageState extends State<CreatePage>
                     ? 'Aligning photos for smooth playback'
                     : 'Your video will be available here when complete',
                 style: const TextStyle(
-                  fontSize: 14,
+                  fontSize: AppTypography.md,
                   color: AppColors.settingsTextSecondary,
                 ),
                 textAlign: TextAlign.center,
@@ -702,7 +702,7 @@ class CreatePageState extends State<CreatePage>
                   backgroundColor: AppColors.settingsCardBorder,
                   valueColor: AlwaysStoppedAnimation<Color>(
                     isStabilizing
-                        ? AppColors.lightBlue
+                        ? AppColors.accentLight
                         : AppColors.settingsAccent,
                   ),
                 ),
@@ -745,7 +745,7 @@ class CreatePageState extends State<CreatePage>
               Text(
                 _videoExists ? 'Video Available' : 'No Video Yet',
                 style: const TextStyle(
-                  fontSize: 20,
+                  fontSize: AppTypography.xxl,
                   fontWeight: FontWeight.w600,
                   color: AppColors.settingsTextPrimary,
                   letterSpacing: -0.5,
@@ -756,7 +756,7 @@ class CreatePageState extends State<CreatePage>
                 Text(
                   'Last compiled: $dateStr',
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: AppTypography.md,
                     color: AppColors.settingsTextSecondary,
                   ),
                 ),
@@ -765,7 +765,7 @@ class CreatePageState extends State<CreatePage>
                   Text(
                     '$_newPhotosSinceLastVideo new photo${_newPhotosSinceLastVideo == 1 ? '' : 's'} since then',
                     style: const TextStyle(
-                      fontSize: 14,
+                      fontSize: AppTypography.md,
                       color: AppColors.settingsAccent,
                     ),
                   ),
@@ -774,7 +774,7 @@ class CreatePageState extends State<CreatePage>
                 Text(
                   'You have ${photoCount ?? 0} stabilized photos',
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: AppTypography.md,
                     color: AppColors.settingsTextSecondary,
                   ),
                 ),
@@ -790,7 +790,7 @@ class CreatePageState extends State<CreatePage>
                     label: const Text('View Last Video'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.settingsAccent,
-                      foregroundColor: Colors.white,
+                      foregroundColor: AppColors.textPrimary,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -814,7 +814,7 @@ class CreatePageState extends State<CreatePage>
                         : AppColors.settingsAccent,
                     foregroundColor: _videoExists
                         ? AppColors.settingsTextPrimary
-                        : Colors.white,
+                        : AppColors.textPrimary,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -826,7 +826,7 @@ class CreatePageState extends State<CreatePage>
               Text(
                 'Auto-compile is disabled in Settings',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: AppTypography.sm,
                   color: AppColors.settingsTextSecondary.withValues(alpha: 0.7),
                 ),
               ),
@@ -849,7 +849,7 @@ class CreatePageState extends State<CreatePage>
     return Column(
       children: [
         Container(
-          color: Colors.black,
+          color: AppColors.overlay,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
@@ -872,7 +872,7 @@ class CreatePageState extends State<CreatePage>
         ),
         Expanded(
           child: Container(
-            color: Colors.black,
+            color: AppColors.overlay,
             child: Center(
               child: GestureDetector(
                 onTap: togglePlayback,
@@ -900,10 +900,10 @@ class CreatePageState extends State<CreatePage>
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: Colors.black.withAlpha(128),
+                color: AppColors.overlay.withAlpha(128),
                 shape: BoxShape.circle,
               ),
-              child: Icon(overlayIcon, color: Colors.white, size: 50),
+              child: Icon(overlayIcon, color: AppColors.textPrimary, size: 50),
             ),
           ),
       ],
@@ -925,10 +925,11 @@ class CreatePageState extends State<CreatePage>
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: Colors.black.withAlpha(128),
+                    color: AppColors.overlay.withAlpha(128),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(overlayIcon, color: Colors.white, size: 50),
+                  child:
+                      Icon(overlayIcon, color: AppColors.textPrimary, size: 50),
                 ),
               ),
             ),
@@ -939,7 +940,7 @@ class CreatePageState extends State<CreatePage>
 
   Widget _buildActionBar() {
     return Container(
-      color: Colors.black,
+      color: AppColors.overlay,
       height: 100,
       child: Column(
         children: [
@@ -971,7 +972,7 @@ class CreatePageState extends State<CreatePage>
 
   Widget _buildIconButton(IconData icon, [VoidCallback? onTap]) {
     return IconButton(
-      icon: Icon(icon, color: Colors.white),
+      icon: Icon(icon, color: AppColors.textPrimary),
       onPressed: onTap,
     );
   }

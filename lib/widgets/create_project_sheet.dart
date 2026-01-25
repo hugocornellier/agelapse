@@ -70,26 +70,26 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 32),
-                      const Text(
+                      Text(
                         'Create New Project',
                         style: TextStyle(
-                          fontSize: 24,
+                          fontSize: AppTypography.xxxl,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 48),
                       const Padding(
                         padding: EdgeInsets.only(bottom: 16.0),
-                        child:
-                            Text('Pose', style: TextStyle(color: Colors.grey)),
+                        child: Text('Pose',
+                            style: TextStyle(color: AppColors.textSecondary)),
                       ),
                       _buildImageSelector(),
                       const SizedBox(height: 32),
                       const Padding(
                         padding: EdgeInsets.only(bottom: 0.0),
-                        child:
-                            Text('Name', style: TextStyle(color: Colors.grey)),
+                        child: Text('Name',
+                            style: TextStyle(color: AppColors.textSecondary)),
                       ),
                       _buildTextField(),
                       const Spacer(),
@@ -114,7 +114,7 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
         maxHeight: MediaQuery.of(context).size.height * 0.85,
       ),
       decoration: const BoxDecoration(
-        color: Color(0xff121212),
+        color: AppColors.background,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(16.0),
           topRight: Radius.circular(16.0),
@@ -130,13 +130,15 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
                 children: [
                   const Padding(
                     padding: EdgeInsets.only(bottom: 16.0),
-                    child: Text('Pose', style: TextStyle(color: Colors.grey)),
+                    child: Text('Pose',
+                        style: TextStyle(color: AppColors.textSecondary)),
                   ),
                   _buildImageSelector(),
                   const SizedBox(height: 16),
                   const Padding(
                     padding: EdgeInsets.only(top: 16.0, bottom: 0.0),
-                    child: Text('Name', style: TextStyle(color: Colors.grey)),
+                    child: Text('Name',
+                        style: TextStyle(color: AppColors.textSecondary)),
                   ),
                   _buildTextField(),
                   _buildActionButton(),
@@ -149,7 +151,7 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
             left: 0,
             right: 0,
             child: Container(
-              color: const Color(0xff121212),
+              color: AppColors.background,
               child: Column(
                 children: [
                   Row(
@@ -160,16 +162,16 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
                           Text(
                             'Create New Project',
                             style: TextStyle(
-                              fontSize: 22,
+                              fontSize: AppTypography.xxxl,
                               fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                              color: AppColors.textPrimary,
                             ),
                           ),
                         ],
                       ),
                       if (widget.showCloseButton)
                         IconButton(
-                          icon: const Icon(Icons.close, color: Colors.white),
+                          icon: Icon(Icons.close, color: AppColors.textPrimary),
                           onPressed: () {
                             Navigator.of(context).pop();
                           },
@@ -200,8 +202,9 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
             'assets/images/face.png', // proj type = face
             width: 100,
             height: 100,
-            color:
-                _selectedImage == 'assets/images/face.png' ? Colors.blue : null,
+            color: _selectedImage == 'assets/images/face.png'
+                ? AppColors.info
+                : null,
           ),
         ),
         GestureDetector(
@@ -214,8 +217,9 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
             'assets/images/musc.png', // proj type = body
             width: 100,
             height: 100,
-            color:
-                _selectedImage == 'assets/images/musc.png' ? Colors.blue : null,
+            color: _selectedImage == 'assets/images/musc.png'
+                ? AppColors.info
+                : null,
           ),
         ),
         GestureDetector(
@@ -228,8 +232,9 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
             'assets/images/preg.png', // proj type = body
             width: 100,
             height: 100,
-            color:
-                _selectedImage == 'assets/images/preg.png' ? Colors.blue : null,
+            color: _selectedImage == 'assets/images/preg.png'
+                ? AppColors.info
+                : null,
           ),
         ),
       ],
@@ -248,12 +253,12 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
               _createProject();
             }
           },
-          style: const TextStyle(color: Colors.white),
+          style: TextStyle(color: AppColors.textPrimary),
           decoration: InputDecoration(
             filled: true,
-            fillColor: Colors.grey[800],
+            fillColor: AppColors.surfaceElevated,
             hintText: 'Enter project name',
-            hintStyle: const TextStyle(color: Colors.grey),
+            hintStyle: const TextStyle(color: AppColors.textSecondary),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(6.0),
               borderSide: BorderSide.none,
@@ -356,18 +361,18 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
       child: ElevatedButton(
         onPressed: _createProject,
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.darkerLightBlue,
+          backgroundColor: AppColors.accentDark,
           minimumSize: const Size(double.infinity, 50),
           padding: const EdgeInsets.symmetric(vertical: 18.0),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(6.0),
           ),
         ),
-        child: const Text(
+        child: Text(
           "CREATE",
           style: TextStyle(
-            fontSize: 15,
-            color: Colors.white,
+            fontSize: AppTypography.lg,
+            color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),

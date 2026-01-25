@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 
+import '../../styles/styles.dart';
 import 'transform_controller.dart';
 import 'transform_handle.dart';
 import 'transform_handle_painter.dart';
@@ -533,7 +534,7 @@ class _TransformedImagePainter extends CustomPainter {
     // Draw background
     canvas.drawRect(
       Rect.fromLTWH(0, 0, size.width, size.height),
-      Paint()..color = Colors.black,
+      Paint()..color = AppColors.overlay,
     );
 
     if (image == null) {
@@ -590,7 +591,7 @@ class _TransformedImagePainter extends CustomPainter {
       center,
       20,
       Paint()
-        ..color = Colors.white24
+        ..color = AppColors.textPrimary.withValues(alpha: 0.24)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3,
     );

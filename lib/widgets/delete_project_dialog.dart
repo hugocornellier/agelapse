@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
-const Color _dangerRed = Color(0xffFF453A);
+import '../styles/styles.dart';
+
+const Color _dangerRed = AppColors.danger;
 
 /// Shows a type-to-confirm delete dialog for a project.
 /// Returns `true` if the user confirmed deletion, `false` otherwise.
@@ -59,7 +61,7 @@ class _DeleteProjectDialogContentState
       child: Container(
         padding: const EdgeInsets.fromLTRB(20.0, 12.0, 20.0, 20.0),
         decoration: const BoxDecoration(
-          color: Color(0xff1a1a1a),
+          color: AppColors.surface,
           borderRadius: BorderRadius.only(
             topLeft: Radius.circular(20.0),
             topRight: Radius.circular(20.0),
@@ -75,7 +77,7 @@ class _DeleteProjectDialogContentState
                 width: 36,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.white24,
+                  color: AppColors.textPrimary.withValues(alpha: 0.24),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -88,7 +90,7 @@ class _DeleteProjectDialogContentState
                 const Text(
                   'Delete Project',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: AppTypography.xl,
                     fontWeight: FontWeight.w600,
                     color: _dangerRed,
                     letterSpacing: -0.3,
@@ -99,12 +101,12 @@ class _DeleteProjectDialogContentState
                   child: Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.08),
+                      color: AppColors.textPrimary.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.close,
-                      color: Colors.white70,
+                      color: AppColors.textPrimary.withValues(alpha: 0.7),
                       size: 18,
                     ),
                   ),
@@ -132,8 +134,8 @@ class _DeleteProjectDialogContentState
                     child: Text(
                       'This will permanently delete "${widget.projectName}" and all its photos. This action cannot be undone.',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.8),
-                        fontSize: 14,
+                        color: AppColors.textPrimary.withValues(alpha: 0.8),
+                        fontSize: AppTypography.md,
                         height: 1.4,
                       ),
                     ),
@@ -146,29 +148,30 @@ class _DeleteProjectDialogContentState
             Text(
               'To confirm, type "${widget.projectName}" below:',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.7),
-                fontSize: 14,
+                color: AppColors.textPrimary.withValues(alpha: 0.7),
+                fontSize: AppTypography.md,
               ),
             ),
             const SizedBox(height: 12),
             // Text field
             Container(
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.05),
+                color: AppColors.textPrimary.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: _isNameCorrect
                       ? _dangerRed.withValues(alpha: 0.5)
-                      : Colors.white.withValues(alpha: 0.1),
+                      : AppColors.textPrimary.withValues(alpha: 0.1),
                 ),
               ),
               child: TextField(
                 controller: _controller,
-                style: const TextStyle(color: Colors.white, fontSize: 15),
+                style: TextStyle(
+                    color: AppColors.textPrimary, fontSize: AppTypography.lg),
                 decoration: InputDecoration(
                   hintText: 'Project name',
                   hintStyle: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.3),
+                    color: AppColors.textPrimary.withValues(alpha: 0.3),
                   ),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -188,15 +191,15 @@ class _DeleteProjectDialogContentState
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.08),
+                        color: AppColors.textPrimary.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Center(
+                      child: Center(
                         child: Text(
                           'Cancel',
                           style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 15,
+                            color: AppColors.textPrimary.withValues(alpha: 0.7),
+                            fontSize: AppTypography.lg,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -224,9 +227,9 @@ class _DeleteProjectDialogContentState
                           'Delete',
                           style: TextStyle(
                             color: _isNameCorrect
-                                ? Colors.white
-                                : Colors.white.withValues(alpha: 0.4),
-                            fontSize: 15,
+                                ? AppColors.textPrimary
+                                : AppColors.textPrimary.withValues(alpha: 0.4),
+                            fontSize: AppTypography.lg,
                             fontWeight: FontWeight.w600,
                           ),
                         ),

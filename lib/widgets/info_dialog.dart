@@ -37,10 +37,10 @@ void showStyledInfoDialog(
           constraints: const BoxConstraints(maxWidth: 420),
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: const Color(0xff1a1a1a),
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.08),
+              color: AppColors.textPrimary.withValues(alpha: 0.08),
             ),
           ),
           child: Column(
@@ -68,7 +68,7 @@ void showStyledInfoDialog(
                     title,
                     style: TextStyle(
                       color: displayColor,
-                      fontSize: 16,
+                      fontSize: AppTypography.lg,
                       fontWeight: FontWeight.w600,
                     ),
                     textAlign: TextAlign.center,
@@ -80,7 +80,7 @@ void showStyledInfoDialog(
                 content,
                 style: const TextStyle(
                   color: AppColors.settingsTextPrimary,
-                  fontSize: 14,
+                  fontSize: AppTypography.md,
                   height: 1.5,
                 ),
                 textAlign: TextAlign.left,
@@ -103,9 +103,9 @@ void showStyledInfoDialog(
                     ),
                     child: Text(
                       primaryActionLabel,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: AppTypography.lg,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -120,7 +120,7 @@ void showStyledInfoDialog(
                   style: TextButton.styleFrom(
                     backgroundColor: hasPrimaryAction
                         ? Colors.transparent
-                        : Colors.white.withValues(alpha: 0.08),
+                        : AppColors.textPrimary.withValues(alpha: 0.08),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -130,9 +130,9 @@ void showStyledInfoDialog(
                     effectiveDismissLabel,
                     style: TextStyle(
                       color: hasPrimaryAction
-                          ? Colors.white.withValues(alpha: 0.5)
-                          : Colors.white,
-                      fontSize: 14,
+                          ? AppColors.textPrimary.withValues(alpha: 0.5)
+                          : AppColors.textPrimary,
+                      fontSize: AppTypography.md,
                       fontWeight: FontWeight.w500,
                     ),
                   ),

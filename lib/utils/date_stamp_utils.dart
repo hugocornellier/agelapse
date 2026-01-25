@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/custom_font_manager.dart';
 import '../services/log_service.dart';
+import '../styles/styles.dart';
 import 'capture_timezone.dart';
 
 /// Utility class for date stamp formatting, positioning, and styling.
@@ -268,9 +269,12 @@ class DateStampUtils {
       fontFamily: fontFamily ?? defaultFont,
       fontSize: fontSize,
       fontWeight: FontWeight.w500,
-      color: Colors.white,
-      shadows: const [
-        Shadow(offset: Offset(0, 1), blurRadius: 2, color: Colors.black54),
+      color: AppColors.textPrimary,
+      shadows: [
+        Shadow(
+            offset: const Offset(0, 1),
+            blurRadius: 2,
+            color: AppColors.overlay.withValues(alpha: 0.54)),
       ],
     );
   }
@@ -286,17 +290,17 @@ class DateStampUtils {
       fontFamily: fontFamily ?? defaultFont,
       fontSize: fontSize,
       fontWeight: FontWeight.w600,
-      color: Colors.white.withValues(alpha: opacity),
+      color: AppColors.textPrimary.withValues(alpha: opacity),
       shadows: [
         Shadow(
           offset: const Offset(1, 1),
           blurRadius: 2,
-          color: Colors.black.withValues(alpha: opacity * 0.8),
+          color: AppColors.overlay.withValues(alpha: opacity * 0.8),
         ),
         Shadow(
           offset: const Offset(-1, -1),
           blurRadius: 2,
-          color: Colors.black.withValues(alpha: opacity * 0.5),
+          color: AppColors.overlay.withValues(alpha: opacity * 0.5),
         ),
       ],
     );
@@ -317,7 +321,7 @@ class DateStampUtils {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.5),
+        color: AppColors.overlay.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
@@ -326,7 +330,7 @@ class DateStampUtils {
           fontFamily: fontFamily ?? defaultFont,
           fontSize: fontSize,
           fontWeight: FontWeight.w500,
-          color: Colors.white,
+          color: AppColors.textPrimary,
           height: 1.0,
         ),
       ),
@@ -632,17 +636,17 @@ Examples
             fontFamily: fontFamily ?? defaultFont,
             fontSize: fontSize,
             fontWeight: FontWeight.w600,
-            color: Colors.white.withValues(alpha: opacity),
+            color: AppColors.textPrimary.withValues(alpha: opacity),
             shadows: [
               Shadow(
                 offset: const Offset(2, 2),
                 blurRadius: 3,
-                color: Colors.black.withValues(alpha: opacity * 0.8),
+                color: AppColors.overlay.withValues(alpha: opacity * 0.8),
               ),
               Shadow(
                 offset: const Offset(-1, -1),
                 blurRadius: 2,
-                color: Colors.black.withValues(alpha: opacity * 0.5),
+                color: AppColors.overlay.withValues(alpha: opacity * 0.5),
               ),
             ],
           ),
@@ -820,13 +824,13 @@ Examples
             fontFamily: fontFamily ?? defaultFont,
             fontSize: fontSize,
             fontWeight: FontWeight.w500,
-            color: Colors.white,
+            color: AppColors.textPrimary,
             height: 1.0,
-            shadows: const [
+            shadows: [
               Shadow(
-                offset: Offset(1, 1),
+                offset: const Offset(1, 1),
                 blurRadius: 2,
-                color: Color(0x8A000000), // Colors.black54
+                color: AppColors.overlay.withValues(alpha: 0.54),
               ),
             ],
           ),
@@ -845,7 +849,7 @@ Examples
 
       // Draw rounded rectangle background (50% opacity black, matching preview)
       final backgroundPaint = Paint()
-        ..color = Colors.black.withValues(alpha: 0.5)
+        ..color = AppColors.overlay.withValues(alpha: 0.5)
         ..style = PaintingStyle.fill;
 
       final rrect = RRect.fromRectAndRadius(

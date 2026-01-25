@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
 import '../../services/database_helper.dart';
 import '../../services/thumbnail_service.dart';
+import '../../styles/styles.dart';
 
 /// Result from checking thumbnail status, includes both status and thumbnail existence.
 class ThumbnailCheckResult {
@@ -159,7 +160,7 @@ class FlashingBoxState extends State<FlashingBox>
     return FadeTransition(
       opacity: _controller.drive(CurveTween(curve: Curves.easeInOut)),
       child: Container(
-        color: Colors.grey,
+        color: AppColors.textSecondary,
         width: double.infinity,
         height: double.infinity,
       ),
@@ -289,7 +290,7 @@ class StabilizedThumbnailState extends State<StabilizedThumbnail> {
             Positioned(
               top: 8.0,
               right: 8.0,
-              child: Icon(Icons.error, color: Colors.red, size: 24.0),
+              child: Icon(Icons.error, color: AppColors.danger, size: 24.0),
             ),
           ],
         ),
@@ -325,7 +326,8 @@ class StabilizedThumbnailState extends State<StabilizedThumbnail> {
       fit: BoxFit.cover,
       width: double.infinity,
       height: double.infinity,
-      errorBuilder: (context, error, stack) => Container(color: Colors.grey),
+      errorBuilder: (context, error, stack) =>
+          Container(color: AppColors.textSecondary),
     );
   }
 }
@@ -411,7 +413,7 @@ class StabilizedImagePreviewState extends State<StabilizedImagePreview> {
           children: [
             Text(
               "Image being stabilized. Please wait...",
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: AppColors.textPrimary),
             ),
             SizedBox(height: 10),
             Text('View raw photo by tapping "RAW"'),
@@ -427,11 +429,11 @@ class StabilizedImagePreviewState extends State<StabilizedImagePreview> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error, color: Colors.red, size: 50.0),
+            Icon(Icons.error, color: AppColors.danger, size: 50.0),
             SizedBox(height: 10),
             Text(
               "Stabilization failed. No faces found. Try the 'manual stabilization' option.",
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: AppColors.textPrimary),
             ),
           ],
         ),
@@ -444,11 +446,11 @@ class StabilizedImagePreviewState extends State<StabilizedImagePreview> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error, color: Colors.red, size: 50.0),
+            Icon(Icons.error, color: AppColors.danger, size: 50.0),
             SizedBox(height: 10),
             Text(
               "Stabilization failed. We were unable to stabilize facial landmarks. Try the 'manual stabilization' option.",
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: AppColors.textPrimary),
             ),
           ],
         ),
@@ -468,7 +470,7 @@ class StabilizedImagePreviewState extends State<StabilizedImagePreview> {
         children: [
           Text(
             "Unknown error occurred.",
-            style: TextStyle(color: Colors.white),
+            style: TextStyle(color: AppColors.textPrimary),
           ),
         ],
       ),
@@ -573,7 +575,8 @@ class RawThumbnailState extends State<RawThumbnail> {
       fit: BoxFit.cover,
       width: double.infinity,
       height: double.infinity,
-      errorBuilder: (context, error, stack) => Container(color: Colors.black),
+      errorBuilder: (context, error, stack) =>
+          Container(color: AppColors.overlay),
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 
+import '../../styles/styles.dart';
 import 'transform_handle.dart';
 import 'transform_state.dart';
 
@@ -56,7 +57,7 @@ class TransformHandlePainter extends CustomPainter {
     this.showEdgeHandles = true,
     this.displayScale = 1.0,
     this.boundingBoxColor = const Color(0xB3FFFFFF), // White at 70% opacity
-    this.handleFillColor = Colors.white,
+    this.handleFillColor = const Color(0xFFFFFFFF),
     this.handleStrokeColor = const Color(0xFF333333), // Dark gray border
     this.handleActiveColor = const Color(0xFF1976D2), // Darker blue when active
     this.handleHoverColor = const Color(0xFF2196F3), // Light blue on hover
@@ -201,7 +202,7 @@ class TransformHandlePainter extends CustomPainter {
     canvas.drawPath(
       shadowPath,
       Paint()
-        ..color = Colors.black.withValues(alpha: 0.3)
+        ..color = AppColors.overlay.withValues(alpha: 0.3)
         ..style = PaintingStyle.fill
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
     );
@@ -245,7 +246,7 @@ class TransformHandlePainter extends CustomPainter {
       center + const Offset(1, 1),
       actualRadius,
       Paint()
-        ..color = Colors.black.withValues(alpha: 0.3)
+        ..color = AppColors.overlay.withValues(alpha: 0.3)
         ..style = PaintingStyle.fill
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
     );
@@ -308,7 +309,7 @@ class TransformHandlePainter extends CustomPainter {
       position + const Offset(1, 1),
       radius,
       Paint()
-        ..color = Colors.black.withValues(alpha: 0.3)
+        ..color = AppColors.overlay.withValues(alpha: 0.3)
         ..style = PaintingStyle.fill
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
     );

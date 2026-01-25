@@ -97,7 +97,7 @@ class InfoPageState extends State<InfoPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.darkGrey,
+      backgroundColor: AppColors.background,
       body: Column(
         children: [
           Expanded(
@@ -116,7 +116,7 @@ class InfoPageState extends State<InfoPage>
                           context,
                           text: 'Documentation',
                           icon: Symbols.diamond_shine,
-                          color: AppColors.lessDarkGrey,
+                          color: AppColors.surfaceElevated,
                           onPressed: _openDocumentation,
                         ),
                         const SizedBox(height: 20),
@@ -124,7 +124,7 @@ class InfoPageState extends State<InfoPage>
                           context,
                           text: 'Tutorials',
                           icon: Icons.menu_book_outlined,
-                          color: AppColors.lessDarkGrey,
+                          color: AppColors.surfaceElevated,
                           onPressed: () => Utils.navigateToScreen(
                             context,
                             const TutorialPage(),
@@ -135,7 +135,7 @@ class InfoPageState extends State<InfoPage>
                           context,
                           text: 'F.A.Q.',
                           icon: Icons.question_mark,
-                          color: AppColors.lessDarkGrey,
+                          color: AppColors.surfaceElevated,
                           onPressed: () =>
                               Utils.navigateToScreen(context, FAQPage()),
                         ),
@@ -146,7 +146,7 @@ class InfoPageState extends State<InfoPage>
                           context,
                           text: 'Report Bugs',
                           icon: Icons.bug_report_sharp,
-                          color: AppColors.lessDarkGrey,
+                          color: AppColors.surfaceElevated,
                           onPressed: () => _sendEmail(
                             'agelapse+bugs@gmail.com',
                             'Bug Report',
@@ -157,7 +157,7 @@ class InfoPageState extends State<InfoPage>
                           context,
                           text: 'Suggest Features',
                           icon: Icons.info_outline,
-                          color: AppColors.lessDarkGrey,
+                          color: AppColors.surfaceElevated,
                           onPressed: () => _sendEmail(
                             'agelapse+features@gmail.com',
                             'Feature Suggestion',
@@ -168,7 +168,7 @@ class InfoPageState extends State<InfoPage>
                           context,
                           text: 'Export Logs',
                           icon: Icons.description_outlined,
-                          color: AppColors.lessDarkGrey,
+                          color: AppColors.surfaceElevated,
                           onPressed: _exportLogs,
                         ),
                       ],
@@ -189,13 +189,15 @@ class InfoPageState extends State<InfoPage>
       children: [
         Text(
           title,
-          style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w600),
+          style: const TextStyle(
+              fontSize: AppTypography.xxl, fontWeight: FontWeight.w600),
         ),
         Align(
           alignment: Alignment.centerRight,
           child: Text(
             step,
-            style: const TextStyle(fontSize: 14, color: Colors.grey),
+            style: const TextStyle(
+                fontSize: AppTypography.md, color: AppColors.textSecondary),
           ),
         ),
       ],

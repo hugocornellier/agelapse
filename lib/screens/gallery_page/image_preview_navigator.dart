@@ -538,7 +538,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
                 ),
                 style: TextStyle(
                   color: AppColors.settingsTextPrimary,
-                  fontSize: 14,
+                  fontSize: AppTypography.md,
                 ),
               );
             },
@@ -560,7 +560,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
                   '${snap.data!.width.toInt()}x${snap.data!.height.toInt()}',
                   style: TextStyle(
                     color: AppColors.settingsTextSecondary,
-                    fontSize: 12,
+                    fontSize: AppTypography.sm,
                   ),
                 );
               },
@@ -716,7 +716,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.5),
+                          color: AppColors.overlay.withValues(alpha: 0.5),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
@@ -726,14 +726,15 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
                               _exportDateStampFont,
                               _galleryDateStampFont,
                             ),
-                            color: Colors.white,
+                            color: AppColors.textPrimary,
                             fontSize: previewFontSize,
                             fontWeight: FontWeight.w500,
-                            shadows: const [
+                            shadows: [
                               Shadow(
-                                offset: Offset(1, 1),
+                                offset: const Offset(1, 1),
                                 blurRadius: 2,
-                                color: Colors.black54,
+                                color:
+                                    AppColors.overlay.withValues(alpha: 0.54),
                               ),
                             ],
                           ),
@@ -759,7 +760,8 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
       child: Image.file(
         imageFile,
         fit: BoxFit.contain,
-        errorBuilder: (context, error, stack) => Container(color: Colors.black),
+        errorBuilder: (context, error, stack) =>
+            Container(color: AppColors.overlay),
       ),
     );
   }
@@ -823,7 +825,8 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Text(
         '${_currentIndex + 1} of ${_currentList.length}',
-        style: TextStyle(color: AppColors.settingsTextSecondary, fontSize: 14),
+        style: TextStyle(
+            color: AppColors.settingsTextSecondary, fontSize: AppTypography.md),
       ),
     );
   }
@@ -860,7 +863,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
           ? Icons.hourglass_top
           : (_gallerySaveSuccessful ? Icons.check : Icons.download),
       active: _gallerySaveSuccessful,
-      activeColor: Colors.greenAccent,
+      activeColor: AppColors.success,
       onPressed: _gallerySaveIsLoading ? null : _saveImage,
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../styles/styles.dart';
 
 class FlashingCircle extends StatefulWidget {
   final double diameter;
@@ -46,7 +47,7 @@ class FlashingCircleState extends State<FlashingCircle>
             height: widget.diameter,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.blue.withAlpha(
+              color: AppColors.info.withAlpha(
                 128 + (128 * _controller.value).round(),
               ), // Equivalent to opacity 0.5-1.0 range
             ),

@@ -1,5 +1,4 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
 import '../styles/styles.dart';
 import '../widgets/setting_list_tile.dart';
 
@@ -52,7 +51,7 @@ class BoolSettingSwitchState extends State<BoolSettingSwitch> {
         value: currentValue,
         onChanged: _handleChanged,
         activeTrackColor: AppColors.settingsAccent,
-        thumbColor: Colors.white,
+        thumbColor: AppColors.textPrimary,
         inactiveTrackColor: AppColors.settingsCardBorder,
       ),
     );

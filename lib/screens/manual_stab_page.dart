@@ -295,7 +295,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
   Widget _buildSaveOverlay() {
     return Positioned.fill(
       child: Container(
-        color: Colors.black.withValues(alpha: 0.6),
+        color: AppColors.overlay.withValues(alpha: 0.6),
         child: Center(
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 200),
@@ -318,7 +318,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
+            color: AppColors.overlay.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 4),
           ),
@@ -340,7 +340,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
             'Saving...',
             style: TextStyle(
               color: AppColors.settingsTextPrimary,
-              fontSize: 16,
+              fontSize: AppTypography.lg,
               fontWeight: FontWeight.w600,
               decoration: TextDecoration.none,
             ),
@@ -365,11 +365,11 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
         width: 80,
         height: 80,
         decoration: BoxDecoration(
-          color: const Color(0xFF22C55E), // Green-500
+          color: AppColors.success,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF22C55E).withValues(alpha: 0.4),
+              color: AppColors.success.withValues(alpha: 0.4),
               blurRadius: 24,
               offset: const Offset(0, 8),
             ),
@@ -377,7 +377,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
         ),
         child: const Icon(
           Icons.check_rounded,
-          color: Colors.white,
+          color: AppColors.textPrimary,
           size: 44,
         ),
       ),
@@ -395,7 +395,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       title: const Text(
         'Manual Stabilization',
         style: TextStyle(
-          fontSize: 20,
+          fontSize: AppTypography.xxl,
           fontWeight: FontWeight.w600,
           color: AppColors.settingsTextPrimary,
         ),
@@ -513,7 +513,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                           'Save Changes',
                           style: TextStyle(
                             color: AppColors.settingsAccent,
-                            fontSize: 14,
+                            fontSize: AppTypography.md,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -550,7 +550,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
               'Quick Guide',
               style: TextStyle(
                 color: AppColors.settingsTextPrimary,
-                fontSize: 18,
+                fontSize: AppTypography.xl,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -566,7 +566,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
             'Use the toolbar arrows or type exact numbers. Keep adjusting until the pupils touch all three guides.',
             style: TextStyle(
               color: AppColors.settingsTextSecondary,
-              fontSize: 14,
+              fontSize: AppTypography.md,
               height: 1.6,
             ),
           ),
@@ -610,7 +610,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                   const Text(
                     'TRANSFORM CONTROLS',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: AppTypography.sm,
                       fontWeight: FontWeight.w600,
                       color: AppColors.settingsTextSecondary,
                       letterSpacing: 1.2,
@@ -771,7 +771,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
               child: Text(
                 label,
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: AppTypography.sm,
                   color: AppColors.settingsTextTertiary,
                   fontWeight: FontWeight.w500,
                 ),
@@ -794,7 +794,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
             ),
             onEditingComplete: _validateInputs,
             style: const TextStyle(
-              fontSize: 16,
+              fontSize: AppTypography.lg,
               color: AppColors.settingsTextPrimary,
               fontWeight: FontWeight.w500,
             ),
@@ -856,7 +856,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                       'Loading preview...',
                       style: TextStyle(
                         color: AppColors.settingsTextSecondary,
-                        fontSize: 14,
+                        fontSize: AppTypography.md,
                       ),
                     ),
                   ],
@@ -1158,7 +1158,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                 'Unsaved Changes',
                 style: TextStyle(
                   color: AppColors.settingsTextPrimary,
-                  fontSize: 18,
+                  fontSize: AppTypography.xl,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -1168,7 +1168,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
             'You have unsaved changes. Do you want to save them before leaving?',
             style: TextStyle(
               color: AppColors.settingsTextSecondary,
-              fontSize: 14,
+              fontSize: AppTypography.md,
               height: 1.5,
             ),
           ),
@@ -1212,7 +1212,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
             children: [
               Icon(
                 Icons.restore_rounded,
-                color: AppColors.orange,
+                color: AppColors.warningMuted,
                 size: 24,
               ),
               SizedBox(width: 12),
@@ -1220,7 +1220,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                 'Reset Changes?',
                 style: TextStyle(
                   color: AppColors.settingsTextPrimary,
-                  fontSize: 18,
+                  fontSize: AppTypography.xl,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -1230,7 +1230,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
             'This will revert all changes to the last saved state.',
             style: TextStyle(
               color: AppColors.settingsTextSecondary,
-              fontSize: 14,
+              fontSize: AppTypography.md,
               height: 1.5,
             ),
           ),
@@ -1249,7 +1249,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
               child: const Text(
                 'Reset',
                 style: TextStyle(
-                  color: AppColors.orange,
+                  color: AppColors.warningMuted,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -1304,7 +1304,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
           const Text(
             'PREVIEW',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: AppTypography.sm,
               fontWeight: FontWeight.w600,
               color: AppColors.settingsTextSecondary,
               letterSpacing: 1.2,
@@ -1342,7 +1342,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
             children: [
               Icon(
                 Icons.warning_amber_rounded,
-                color: AppColors.orange,
+                color: AppColors.warningMuted,
                 size: 24,
               ),
               SizedBox(width: 12),
@@ -1350,7 +1350,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                 'Invalid Input',
                 style: TextStyle(
                   color: AppColors.settingsTextPrimary,
-                  fontSize: 18,
+                  fontSize: AppTypography.xl,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -1363,7 +1363,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
             'Rotation: any number like -1.5 or 30',
             style: const TextStyle(
               color: AppColors.settingsTextSecondary,
-              fontSize: 14,
+              fontSize: AppTypography.md,
               height: 1.5,
             ),
           ),

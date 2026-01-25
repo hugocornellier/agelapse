@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../styles/styles.dart';
 import '../widgets/create_project_sheet.dart';
 
 class CreateProjectPage extends StatefulWidget {
@@ -20,10 +21,10 @@ class CreateProjectPageState extends State<CreateProjectPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xff121212),
+        backgroundColor: AppColors.background,
         toolbarHeight: 0,
       ),
-      backgroundColor: const Color(0xff121212),
+      backgroundColor: AppColors.background,
       body: CreateProjectSheet(
         isDefaultProject: false,
         showCloseButton: widget.showCloseButton,

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../styles/styles.dart';
 import '../services/database_helper.dart';
 import '../services/face_stabilizer.dart';
 import '../services/log_service.dart';
@@ -317,11 +318,13 @@ class CustomAppBarState extends State<CustomAppBar> {
       children: [
         Container(
           padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             border: Border(
-              bottom: BorderSide(color: Color(0x7c6b6b6b), width: 0.7),
+              bottom: BorderSide(
+                  color: AppColors.surfaceElevated.withValues(alpha: 0.49),
+                  width: 0.7),
             ),
-            color: Color(0xff0F0F0F),
+            color: AppColors.background,
           ),
           child: Column(
             children: [
@@ -375,12 +378,13 @@ class CustomAppBarState extends State<CustomAppBar> {
                             backgroundColor: Colors.transparent,
                             radius: 13.5,
                           )
-                        : const CircleAvatar(
-                            backgroundColor: Color(0xFF5a5a5a),
+                        : CircleAvatar(
+                            backgroundColor: AppColors.disabled,
                             radius: 13.5,
                             child: Icon(
                               Icons.person,
-                              color: Colors.white70,
+                              color:
+                                  AppColors.textPrimary.withValues(alpha: 0.7),
                               size: 18,
                             ),
                           ),

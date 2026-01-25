@@ -25,7 +25,7 @@ class GuideModeTutorialPage extends StatefulWidget {
 }
 
 class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
-  final Color appBarColor = const Color(0xff151517);
+  final Color appBarColor = AppColors.background;
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
@@ -84,7 +84,7 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
         tipText = RichText(
           textAlign: TextAlign.center,
           text: const TextSpan(
-            style: TextStyle(fontSize: 13.5),
+            style: TextStyle(fontSize: AppTypography.md),
             children: [
               TextSpan(
                 text: 'Ghost Mode: ',
@@ -102,7 +102,7 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
         tipText = RichText(
           textAlign: TextAlign.center,
           text: const TextSpan(
-            style: TextStyle(fontSize: 13.5),
+            style: TextStyle(fontSize: AppTypography.md),
             children: [
               TextSpan(
                 text: 'Grid Mode: ',
@@ -120,7 +120,7 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
         tipText = RichText(
           textAlign: TextAlign.center,
           text: const TextSpan(
-            style: TextStyle(fontSize: 13.5),
+            style: TextStyle(fontSize: AppTypography.md),
             children: [
               TextSpan(
                 text: 'Grid Mode (Ghost): ',
@@ -137,7 +137,8 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
       default:
         tipText = RichText(
           textAlign: TextAlign.center,
-          text: const TextSpan(style: TextStyle(fontSize: 13.5), text: ''),
+          text: const TextSpan(
+              style: TextStyle(fontSize: AppTypography.md), text: ''),
         );
     }
 
@@ -150,14 +151,15 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
             const SizedBox(height: 48),
             const Text(
               "Introducing Guides",
-              style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  fontSize: AppTypography.display, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
             ClipRRect(
               borderRadius: BorderRadius.circular(16.0),
               child: Container(
-                color: const Color(0xff212121),
+                color: AppColors.surfaceElevated,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16.0,
@@ -187,8 +189,8 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
                         effect: const WormEffect(
                           dotHeight: 6,
                           dotWidth: 6,
-                          activeDotColor: Colors.white,
-                          dotColor: Colors.grey,
+                          activeDotColor: AppColors.textPrimary,
+                          dotColor: AppColors.textSecondary,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -246,7 +248,7 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
           goToCamera();
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.darkerLightBlue,
+          backgroundColor: AppColors.accentDark,
           minimumSize: const Size(double.infinity, 50),
           padding: const EdgeInsets.symmetric(vertical: 18.0),
           shape: RoundedRectangleBorder(
@@ -256,8 +258,8 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
         child: Text(
           text.toUpperCase(),
           style: const TextStyle(
-            fontSize: 15,
-            color: Colors.white,
+            fontSize: AppTypography.lg,
+            color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),

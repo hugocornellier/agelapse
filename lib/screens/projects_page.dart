@@ -54,7 +54,7 @@ class ProjectsPageState extends State<ProjectsPage> {
             : _buildProjectSelectScreen());
 
     final Color backgroundColor =
-        _projects.isEmpty ? const Color(0xff151517) : Colors.black;
+        _projects.isEmpty ? AppColors.background : AppColors.overlay;
 
     return Scaffold(
       appBar: AppBar(backgroundColor: backgroundColor, toolbarHeight: 0),
@@ -100,7 +100,8 @@ class ProjectsPageState extends State<ProjectsPage> {
             '\n\n'
             '100% free, forever.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: Colors.white),
+            style: TextStyle(
+                fontSize: AppTypography.md, color: AppColors.textPrimary),
           ),
         ),
         const SizedBox(height: 24),
@@ -120,7 +121,7 @@ class ProjectsPageState extends State<ProjectsPage> {
       child: ElevatedButton(
         onPressed: () => openWelcomePagePartTwo(),
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.darkerLightBlue,
+          backgroundColor: AppColors.accentDark,
           minimumSize: const Size(double.infinity, 50),
           padding: const EdgeInsets.symmetric(vertical: 18.0),
           shape: RoundedRectangleBorder(
@@ -130,8 +131,8 @@ class ProjectsPageState extends State<ProjectsPage> {
         child: Text(
           text.toUpperCase(),
           style: const TextStyle(
-            fontSize: 15,
-            color: Colors.white,
+            fontSize: AppTypography.lg,
+            color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -197,7 +198,8 @@ class ProjectsPageState extends State<ProjectsPage> {
             '\n\n'
             '100% free, forever.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: Colors.white),
+            style: TextStyle(
+                fontSize: AppTypography.md, color: AppColors.textPrimary),
           ),
         ),
         const SizedBox(height: 36),

@@ -155,14 +155,14 @@ class DropdownWithCustomTextFieldState
         focusNode: _focusNode,
         controller: _controller,
         style: const TextStyle(
-          fontSize: 14,
+          fontSize: AppTypography.md,
           color: AppColors.settingsTextPrimary,
         ),
         decoration: const InputDecoration(
           hintText: '1-120',
           hintStyle: TextStyle(
             color: AppColors.settingsTextTertiary,
-            fontSize: 14,
+            fontSize: AppTypography.md,
           ),
           contentPadding: EdgeInsets.zero,
           border: InputBorder.none,
@@ -196,7 +196,7 @@ class DropdownWithCustomTextFieldState
           dropdownColor: AppColors.settingsCardBackground,
           borderRadius: BorderRadius.circular(12),
           style: const TextStyle(
-            fontSize: 14,
+            fontSize: AppTypography.md,
             color: AppColors.settingsTextPrimary,
           ),
           items: defaultValues

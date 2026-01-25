@@ -32,7 +32,7 @@ class SetUpNotificationsPage extends StatefulWidget {
 }
 
 class SetUpNotificationsPageState extends State<SetUpNotificationsPage> {
-  final Color appBarColor = const Color(0xff151517);
+  final Color appBarColor = AppColors.background;
 
   @override
   Widget build(BuildContext context) {
@@ -64,13 +64,13 @@ class SetUpNotificationsPageState extends State<SetUpNotificationsPage> {
             const SizedBox(height: 64),
             const Text(
               "Notifications",
-              style: TextStyle(fontSize: 24),
+              style: TextStyle(fontSize: AppTypography.xxxl),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 40),
             const Text(
               "We will remind you at 5:00PM daily to take a photo. Configure this in Settings.",
-              style: TextStyle(fontSize: 14.5),
+              style: TextStyle(fontSize: AppTypography.lg),
               textAlign: TextAlign.center,
             ),
             Expanded(child: Container()),
@@ -105,8 +105,8 @@ class SetUpNotificationsPageState extends State<SetUpNotificationsPage> {
         onPressed: () => index == 1 ? navigateToSettings() : close(),
         style: ElevatedButton.styleFrom(
           backgroundColor: text == "Later"
-              ? Colors.grey.shade800
-              : AppColors.darkerLightBlue,
+              ? AppColors.surfaceElevated
+              : AppColors.accentDark,
           minimumSize: const Size(double.infinity, 50),
           padding: const EdgeInsets.symmetric(vertical: 18.0),
           shape: RoundedRectangleBorder(
@@ -116,8 +116,8 @@ class SetUpNotificationsPageState extends State<SetUpNotificationsPage> {
         child: Text(
           text.toUpperCase(),
           style: const TextStyle(
-            fontSize: 15,
-            color: Colors.white,
+            fontSize: AppTypography.lg,
+            color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),

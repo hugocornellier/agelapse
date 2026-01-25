@@ -38,7 +38,7 @@ class CustomDropdownButton<T> extends StatelessWidget {
               child: Text(
                 item.child is Text ? (item.child as Text).data ?? '' : '',
                 style: const TextStyle(
-                  fontSize: 14.0,
+                  fontSize: AppTypography.md,
                   color: AppColors.settingsTextPrimary,
                 ),
               ),
@@ -46,7 +46,7 @@ class CustomDropdownButton<T> extends StatelessWidget {
           }).toList(),
           onChanged: onChanged,
           style: const TextStyle(
-            fontSize: 14.0,
+            fontSize: AppTypography.md,
             color: AppColors.settingsTextPrimary,
           ),
         ),

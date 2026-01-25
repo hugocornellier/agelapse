@@ -14,7 +14,7 @@ AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 DefaultDirName={pf64}\{#MyAppName}
 DefaultGroupName={#MyAppName}
-OutputDir=dist\installer
+OutputDir=..\dist\installer
 OutputBaseFilename={#MyAppName}_Setup_{#MyAppVersion}_x64
 Compression=lzma2
 SolidCompression=yes
@@ -24,7 +24,7 @@ ArchitecturesInstallIn64BitMode=x64
 UninstallDisplayIcon={app}\{#MyAppExeName}
 SetupLogging=yes
 PrivilegesRequired=admin
-SetupIconFile=windows\runner\resources\app_icon.ico
+SetupIconFile=..\windows\runner\resources\app_icon.ico
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -34,22 +34,22 @@ Name: "{app}\blobs"; Flags: uninsalwaysuninstall
 
 [Files]
 ; Entire Flutter release output
-Source: "build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
+Source: "..\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
 ; Ensure critical Flutter runtime files (handle layout differences across Flutter versions)
 ; Top-level ICU (older/most builds)
-Source: "build\windows\x64\runner\Release\icudtl.dat"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\build\windows\x64\runner\Release\icudtl.dat"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 ; ICU sometimes lives under data\ (newer/varied builds) — also copy a top-level copy just in case
-Source: "build\windows\x64\runner\Release\data\icudtl.dat"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\build\windows\x64\runner\Release\data\icudtl.dat"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
 ; D3D compiler may or may not be emitted with your build; include if present
-Source: "build\windows\x64\runner\Release\d3dcompiler_47.dll"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\build\windows\x64\runner\Release\d3dcompiler_47.dll"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
 ; Explicitly copy the data/ tree (flutter_assets, etc.)
-Source: "build\windows\x64\runner\Release\data\*"; DestDir: "{app}\data"; Flags: recursesubdirs createallsubdirs ignoreversion
+Source: "..\build\windows\x64\runner\Release\data\*"; DestDir: "{app}\data"; Flags: recursesubdirs createallsubdirs ignoreversion
 
 ; VC++ Redist payload (optional but recommended)
-Source: "packaging\redist\VC_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
+Source: "redist\VC_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"

@@ -645,7 +645,7 @@ class MainNavigationState extends State<MainNavigation>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.red.shade700,
+        backgroundColor: AppColors.danger,
       ),
     );
   }
@@ -713,14 +713,15 @@ class MainNavigationState extends State<MainNavigation>
           : Container(
               decoration: BoxDecoration(
                 border: Border(
-                  top: BorderSide(color: Colors.grey.shade800, width: 0.7),
+                  top: BorderSide(color: AppColors.surfaceElevated, width: 0.7),
                 ),
               ),
               child: AnimatedBottomNavigationBar.builder(
                 itemCount: iconList.length,
                 tabBuilder: (int index, bool isActive) {
-                  final color =
-                      isActive ? AppColors.lightBlue : Colors.grey[300];
+                  final color = isActive
+                      ? AppColors.accentLight
+                      : AppColors.textSecondary;
                   return Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [Icon(iconList[index], size: 24, color: color)],
@@ -732,7 +733,7 @@ class MainNavigationState extends State<MainNavigation>
                 splashColor: Colors.transparent,
                 activeIndex: _selectedIndex,
                 onTap: _onItemTapped,
-                backgroundColor: const Color(0xff0F0F0F),
+                backgroundColor: AppColors.background,
               ),
             ),
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../styles/styles.dart';
 
 /// A full-screen white flash overlay that triggers on successful photo capture.
 ///
@@ -93,7 +94,8 @@ class CaptureFlashOverlayState extends State<CaptureFlashOverlay>
                 return const SizedBox.shrink();
               }
               return Container(
-                color: Colors.white.withValues(alpha: _opacityAnimation.value),
+                color: AppColors.textPrimary
+                    .withValues(alpha: _opacityAnimation.value),
               );
             },
           ),

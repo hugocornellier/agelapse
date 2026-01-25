@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../styles/styles.dart';
+import '../styles/styles.dart';
 import 'create_project_page.dart';
 
 class WelcomePagePartTwo extends StatefulWidget {
@@ -10,7 +10,7 @@ class WelcomePagePartTwo extends StatefulWidget {
 }
 
 class WelcomePagePartTwoState extends State<WelcomePagePartTwo> {
-  final Color backgroundColor = const Color(0xff151517);
+  final Color backgroundColor = AppColors.background;
 
   @override
   Widget build(BuildContext context) {
@@ -57,8 +57,8 @@ class WelcomePagePartTwoState extends State<WelcomePagePartTwo> {
                           text: TextSpan(
                             text: 'Advanced\n',
                             style: const TextStyle(
-                              fontSize: 26,
-                              color: Colors.white,
+                              fontSize: AppTypography.display,
+                              color: AppColors.textPrimary,
                               fontWeight: FontWeight.bold,
                             ),
                             children: <InlineSpan>[
@@ -67,7 +67,7 @@ class WelcomePagePartTwoState extends State<WelcomePagePartTwo> {
                                   'Auto-Stabilization',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 27.5,
+                                    fontSize: AppTypography.display,
                                   ),
                                 ),
                               ),
@@ -78,7 +78,7 @@ class WelcomePagePartTwoState extends State<WelcomePagePartTwo> {
                         const Text(
                           "AgeLapse automatically aligns every photo to create "
                           "a stabilized timelapse.",
-                          style: TextStyle(fontSize: 15),
+                          style: TextStyle(fontSize: AppTypography.lg),
                           textAlign: TextAlign.center,
                         ),
                         const Spacer(),
@@ -104,7 +104,7 @@ class WelcomePagePartTwoState extends State<WelcomePagePartTwo> {
       child: ElevatedButton(
         onPressed: () => navigateToNextPage(takingGuidePhoto: takingGuidePhoto),
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.darkerLightBlue,
+          backgroundColor: AppColors.accentDark,
           minimumSize: const Size(double.infinity, 50),
           padding: const EdgeInsets.symmetric(vertical: 18.0),
           shape: RoundedRectangleBorder(
@@ -114,8 +114,8 @@ class WelcomePagePartTwoState extends State<WelcomePagePartTwo> {
         child: Text(
           text.toUpperCase(),
           style: const TextStyle(
-            fontSize: 15,
-            color: Colors.white,
+            fontSize: AppTypography.lg,
+            color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -145,10 +145,10 @@ class GradientText extends StatelessWidget {
   Widget build(BuildContext context) {
     return ShaderMask(
       shaderCallback: (bounds) => LinearGradient(
-        colors: [Colors.blue, Colors.purple.shade500],
+        colors: [AppColors.info, Colors.purple.shade500],
         tileMode: TileMode.mirror,
       ).createShader(bounds),
-      child: Text(text, style: style.copyWith(color: Colors.white)),
+      child: Text(text, style: style.copyWith(color: AppColors.textPrimary)),
     );
   }
 }

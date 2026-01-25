@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../services/database_helper.dart';
 import '../services/log_service.dart';
+import '../styles/styles.dart';
 import '../utils/capture_timezone.dart';
 import '../utils/date_stamp_utils.dart';
 import '../utils/dir_utils.dart';
@@ -22,7 +23,7 @@ class OutputImageLoader {
   double? ghostImageOffsetX;
   double? ghostImageOffsetY;
   ui.Image? guideImage;
-  Color backgroundColor = Colors.black;
+  Color backgroundColor = AppColors.overlay;
 
   // Date stamp preview settings
   bool dateStampEnabled = false;

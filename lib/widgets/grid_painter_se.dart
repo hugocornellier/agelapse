@@ -1,5 +1,6 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import '../styles/styles.dart';
 
 class GridPainterSE extends CustomPainter {
   final double offsetX;
@@ -61,7 +62,8 @@ class GridPainterSE extends CustomPainter {
         ghostImageOffsetX != null &&
         ghostImageOffsetY != null) {
       final imagePaint = Paint()
-        ..color = Colors.white.withAlpha(242); // Equivalent to opacity 0.95
+        ..color =
+            AppColors.textPrimary.withAlpha(242); // Equivalent to opacity 0.95
       final imageWidth = guideImage!.width.toDouble();
       final imageHeight = guideImage!.height.toDouble();
       final scale = _calculateImageScale(size.width, imageWidth, imageHeight);
@@ -94,7 +96,7 @@ class GridPainterSE extends CustomPainter {
 
     final paint = Paint()
       ..color =
-          Colors.lightBlueAccent.withAlpha(128) // Equivalent to opacity 0.5
+          AppColors.accentLight.withAlpha(128) // Equivalent to opacity 0.5
       ..strokeWidth = scaledStrokeWidth.clamp(2.0, 20.0);
 
     final offsetXInPixels = size.width * offsetX;
@@ -112,7 +114,7 @@ class GridPainterSE extends CustomPainter {
     // Draw corners
     if (!hideCorners) {
       final cornerPaint = Paint()
-        ..color = const Color(0xff924904)
+        ..color = AppColors.guideCorner
         ..strokeWidth = (scaledStrokeWidth * 1.25).clamp(2.5, 25.0)
         ..style = PaintingStyle.stroke;
 
@@ -162,7 +164,7 @@ class GridPainterSE extends CustomPainter {
     if (!hideToolTip) {
       // Draw text background rectangle
       final textBackgroundPaint = Paint()
-        ..color = Colors.black.withAlpha(230) // Equivalent to opacity 0.9
+        ..color = AppColors.overlay.withAlpha(230) // Equivalent to opacity 0.9
         ..style = PaintingStyle.fill;
 
       const textPadding = 8.0;
@@ -173,7 +175,8 @@ class GridPainterSE extends CustomPainter {
       final textPainter = TextPainter(
         text: TextSpan(
           text: text,
-          style: const TextStyle(color: Colors.white, fontSize: 14),
+          style: TextStyle(
+              color: AppColors.textPrimary, fontSize: AppTypography.md),
         ),
         textDirection: TextDirection.ltr,
       );
@@ -212,17 +215,19 @@ class GridPainterSE extends CustomPainter {
           fontFamily: dateStampFontFamily,
           fontSize: fontSize,
           fontWeight: FontWeight.w600,
-          color: Colors.white.withValues(alpha: dateStampOpacity),
+          color: AppColors.textPrimary.withValues(alpha: dateStampOpacity),
           shadows: [
             Shadow(
               offset: const Offset(1, 1),
               blurRadius: 2,
-              color: Colors.black.withValues(alpha: dateStampOpacity * 0.8),
+              color:
+                  AppColors.overlay.withValues(alpha: dateStampOpacity * 0.8),
             ),
             Shadow(
               offset: const Offset(-1, -1),
               blurRadius: 2,
-              color: Colors.black.withValues(alpha: dateStampOpacity * 0.5),
+              color:
+                  AppColors.overlay.withValues(alpha: dateStampOpacity * 0.5),
             ),
           ],
         ),
@@ -273,7 +278,7 @@ class GridPainterSE extends CustomPainter {
 
     // Draw semi-transparent background pill
     final backgroundPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.5 * dateStampOpacity)
+      ..color = AppColors.overlay.withValues(alpha: 0.5 * dateStampOpacity)
       ..style = PaintingStyle.fill;
 
     final bgRect = RRect.fromRectAndRadius(

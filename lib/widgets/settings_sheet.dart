@@ -581,7 +581,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                         subtitle: Text(
                           '${(font.fileSize / 1024).toStringAsFixed(1)} KB',
                           style: const TextStyle(
-                            fontSize: 12,
+                            fontSize: AppTypography.sm,
                             color: AppColors.settingsTextSecondary,
                           ),
                         ),
@@ -634,7 +634,7 @@ class SettingsSheetState extends State<SettingsSheet> {
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
             child: const Text('Delete'),
           ),
         ],
@@ -1013,7 +1013,7 @@ class SettingsSheetState extends State<SettingsSheet> {
               const Text(
                 'Settings',
                 style: TextStyle(
-                  fontSize: 28,
+                  fontSize: AppTypography.display,
                   fontWeight: FontWeight.w700,
                   color: AppColors.settingsTextPrimary,
                   letterSpacing: -0.5,
@@ -1045,12 +1045,12 @@ class SettingsSheetState extends State<SettingsSheet> {
       child: Container(
         padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.08),
+          color: AppColors.textPrimary.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(
           widget.onlyShowNotificationSettings ? Icons.check : Icons.close,
-          color: Colors.white70,
+          color: AppColors.textPrimary.withValues(alpha: 0.7),
           size: 18,
         ),
       ),
@@ -1076,7 +1076,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                 Text(
                   title.toUpperCase(),
                   style: const TextStyle(
-                    fontSize: 12,
+                    fontSize: AppTypography.sm,
                     fontWeight: FontWeight.w600,
                     color: AppColors.settingsTextSecondary,
                     letterSpacing: 1.2,
@@ -1114,8 +1114,8 @@ class SettingsSheetState extends State<SettingsSheet> {
                     child: Text(
                       'Error loading settings',
                       style: TextStyle(
-                        color: Colors.red.shade300,
-                        fontSize: 14,
+                        color: AppColors.danger,
+                        fontSize: AppTypography.md,
                       ),
                     ),
                   );
@@ -1133,7 +1133,7 @@ class SettingsSheetState extends State<SettingsSheet> {
     );
   }
 
-  static const Color _dangerRed = Color(0xffFF453A);
+  static const Color _dangerRed = AppColors.danger;
 
   Widget _buildDangerZoneSection() {
     return Padding(
@@ -1154,7 +1154,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                 Text(
                   'DANGER ZONE',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: AppTypography.sm,
                     fontWeight: FontWeight.w600,
                     color: _dangerRed.withValues(alpha: 0.8),
                     letterSpacing: 1.2,
@@ -1180,7 +1180,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                   const Text(
                     'Delete this project',
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: AppTypography.lg,
                       fontWeight: FontWeight.w600,
                       color: AppColors.settingsTextPrimary,
                     ),
@@ -1189,7 +1189,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                   Text(
                     'Once deleted, there is no going back. This will permanently delete all photos and videos associated with this project.',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: AppTypography.md,
                       color: AppColors.settingsTextSecondary,
                       height: 1.4,
                     ),
@@ -1212,7 +1212,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                           'Delete this project',
                           style: TextStyle(
                             color: _dangerRed,
-                            fontSize: 15,
+                            fontSize: AppTypography.lg,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -1334,7 +1334,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                   Text(
                     _selectedTime.format(context),
                     style: const TextStyle(
-                      fontSize: 14,
+                      fontSize: AppTypography.md,
                       color: AppColors.settingsTextPrimary,
                     ),
                   ),
@@ -1543,7 +1543,7 @@ class SettingsSheetState extends State<SettingsSheet> {
         '${dims.$1} × ${dims.$2}',
         style: const TextStyle(
           color: AppColors.settingsTextPrimary,
-          fontSize: 14,
+          fontSize: AppTypography.md,
         ),
       ),
       infoContent:
@@ -1576,7 +1576,7 @@ class SettingsSheetState extends State<SettingsSheet> {
           child: Text(
             'Gallery Thumbnails',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: AppTypography.sm,
               fontWeight: FontWeight.w600,
               color: AppColors.settingsTextSecondary,
             ),
@@ -1754,7 +1754,7 @@ class SettingsSheetState extends State<SettingsSheet> {
               icon: const Icon(Icons.settings, size: 16),
               label: Text(
                 'Manage ${_customFonts.length} custom font${_customFonts.length == 1 ? '' : 's'}',
-                style: const TextStyle(fontSize: 13),
+                style: const TextStyle(fontSize: AppTypography.sm),
               ),
               style: TextButton.styleFrom(
                 foregroundColor: AppColors.settingsAccent,
@@ -1770,7 +1770,7 @@ class SettingsSheetState extends State<SettingsSheet> {
           child: Text(
             'Export & Video',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: AppTypography.sm,
               fontWeight: FontWeight.w600,
               color: AppColors.settingsTextSecondary,
             ),
@@ -2101,8 +2101,8 @@ class SettingsSheetState extends State<SettingsSheet> {
             enabled: enabled,
             maxLength: maxLength,
             style: TextStyle(
-              fontFamily: 'monospace',
-              fontSize: 14,
+              fontFamily: 'JetBrainsMono',
+              fontSize: AppTypography.md,
               color: enabled
                   ? AppColors.settingsTextPrimary
                   : AppColors.settingsTextSecondary,
@@ -2118,19 +2118,21 @@ class SettingsSheetState extends State<SettingsSheet> {
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(
-                  color: hasError ? Colors.red : AppColors.settingsDivider,
+                  color:
+                      hasError ? AppColors.danger : AppColors.settingsDivider,
                 ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(
-                  color: hasError ? Colors.red : AppColors.settingsDivider,
+                  color:
+                      hasError ? AppColors.danger : AppColors.settingsDivider,
                 ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(
-                  color: hasError ? Colors.red : AppColors.settingsAccent,
+                  color: hasError ? AppColors.danger : AppColors.settingsAccent,
                   width: 1.5,
                 ),
               ),
@@ -2138,7 +2140,7 @@ class SettingsSheetState extends State<SettingsSheet> {
               hintText: 'e.g. MMM d, yyyy',
               hintStyle: TextStyle(
                 color: AppColors.settingsTextSecondary.withValues(alpha: 0.5),
-                fontFamily: 'monospace',
+                fontFamily: 'JetBrainsMono',
               ),
             ),
             onChanged: onChanged,
@@ -2153,7 +2155,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                 child: Text(
                   hasError ? '' : 'Preview: $preview',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: AppTypography.sm,
                     color: AppColors.settingsTextSecondary,
                   ),
                 ),
@@ -2162,7 +2164,7 @@ class SettingsSheetState extends State<SettingsSheet> {
               Text(
                 '${controller.text.length}/$maxLength',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: AppTypography.xs,
                   color: AppColors.settingsTextSecondary.withValues(alpha: 0.6),
                 ),
               ),
@@ -2175,8 +2177,8 @@ class SettingsSheetState extends State<SettingsSheet> {
               child: Text(
                 error,
                 style: const TextStyle(
-                  fontSize: 12,
-                  color: Colors.red,
+                  fontSize: AppTypography.sm,
+                  color: AppColors.danger,
                 ),
               ),
             ),
@@ -2229,7 +2231,7 @@ class SettingsSheetState extends State<SettingsSheet> {
     return Center(
       child: Text(
         'Error loading settings',
-        style: TextStyle(color: Colors.red.shade300),
+        style: TextStyle(color: AppColors.danger),
       ),
     );
   }
@@ -2498,13 +2500,13 @@ class SettingsSheetState extends State<SettingsSheet> {
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       style: const TextStyle(
                         color: AppColors.settingsTextPrimary,
-                        fontSize: 16,
+                        fontSize: AppTypography.lg,
                       ),
                       decoration: InputDecoration(
                         hintText: '1920',
                         hintStyle: const TextStyle(
                           color: AppColors.settingsTextTertiary,
-                          fontSize: 16,
+                          fontSize: AppTypography.lg,
                         ),
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 12,
@@ -2536,7 +2538,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                       'width',
                       style: TextStyle(
                         color: AppColors.settingsTextTertiary,
-                        fontSize: 11,
+                        fontSize: AppTypography.xs,
                       ),
                     ),
                   ],
@@ -2551,7 +2553,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                     '×',
                     style: TextStyle(
                       color: AppColors.settingsTextSecondary,
-                      fontSize: 20,
+                      fontSize: AppTypography.xxl,
                     ),
                   ),
                 ),
@@ -2567,13 +2569,13 @@ class SettingsSheetState extends State<SettingsSheet> {
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       style: const TextStyle(
                         color: AppColors.settingsTextPrimary,
-                        fontSize: 16,
+                        fontSize: AppTypography.lg,
                       ),
                       decoration: InputDecoration(
                         hintText: '1080',
                         hintStyle: const TextStyle(
                           color: AppColors.settingsTextTertiary,
-                          fontSize: 16,
+                          fontSize: AppTypography.lg,
                         ),
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 12,
@@ -2605,7 +2607,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                       'height',
                       style: TextStyle(
                         color: AppColors.settingsTextTertiary,
-                        fontSize: 11,
+                        fontSize: AppTypography.xs,
                       ),
                     ),
                   ],
@@ -2625,7 +2627,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                     ? AppColors.settingsAccent
                     : AppColors.settingsCardBorder,
                 foregroundColor: _customResolutionModified
-                    ? Colors.white
+                    ? AppColors.textPrimary
                     : AppColors.settingsTextTertiary,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 disabledBackgroundColor: AppColors.settingsCardBorder,
@@ -2649,7 +2651,8 @@ class SettingsSheetState extends State<SettingsSheet> {
               padding: const EdgeInsets.only(top: 8),
               child: Text(
                 _customResolutionError!,
-                style: const TextStyle(color: Colors.red, fontSize: 12),
+                style: const TextStyle(
+                    color: AppColors.danger, fontSize: AppTypography.sm),
               ),
             ),
         ],
@@ -2840,7 +2843,7 @@ class SettingsSheetState extends State<SettingsSheet> {
             'Configure',
             style: TextStyle(
               color: AppColors.settingsAccent,
-              fontSize: 14,
+              fontSize: AppTypography.md,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -2876,7 +2879,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                     width: 12,
                     height: 12,
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.3),
+                      color: AppColors.textPrimary.withValues(alpha: 0.3),
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -2935,7 +2938,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                 'Background Colour',
                 style: TextStyle(
                   color: AppColors.settingsTextPrimary,
-                  fontSize: 18,
+                  fontSize: AppTypography.xl,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -2980,12 +2983,12 @@ class SettingsSheetState extends State<SettingsSheet> {
                   color: AppColors.settingsAccent,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Text(
+                child: Text(
                   'Select',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     fontWeight: FontWeight.w600,
-                    fontSize: 14,
+                    fontSize: AppTypography.md,
                   ),
                 ),
               ),
@@ -3249,7 +3252,7 @@ class ImagePickerWidgetState extends State<ImagePickerWidget> {
               Text(
                 watermarkExists ? 'Change' : 'Select',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: AppTypography.md,
                   color: widget.disabled
                       ? AppColors.settingsTextTertiary
                       : AppColors.settingsTextPrimary,

@@ -797,15 +797,16 @@ class _CameraViewState extends State<CameraView>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.videocam_off,
                       size: 64,
-                      color: Colors.white54,
+                      color: AppColors.textPrimary.withValues(alpha: 0.54),
                     ),
                     const SizedBox(height: 16),
                     Text(
                       _linuxCameraError!,
-                      style: const TextStyle(color: Colors.white70),
+                      style: TextStyle(
+                          color: AppColors.textPrimary.withValues(alpha: 0.7)),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 24),
@@ -1024,7 +1025,7 @@ class _CameraViewState extends State<CameraView>
         Icon(
           isMirrored ? Icons.flip : Icons.flip_outlined,
           size: 24,
-          color: Colors.white,
+          color: AppColors.textPrimary,
         ),
       );
 
@@ -1051,7 +1052,7 @@ class _CameraViewState extends State<CameraView>
   Widget _timerButton() => Container(
         padding: const EdgeInsets.all(0),
         decoration: BoxDecoration(
-          color: Colors.black54,
+          color: AppColors.overlay.withValues(alpha: 0.54),
           borderRadius: BorderRadius.circular(10),
         ),
         child: RotatingIconButton(
@@ -1063,7 +1064,7 @@ class _CameraViewState extends State<CameraView>
               Icon(
                 _timerDuration == 0 ? Icons.timer_off_outlined : Icons.timer,
                 size: 24,
-                color: Colors.white,
+                color: AppColors.textPrimary,
               ),
               if (_timerDuration > 0)
                 Positioned(
@@ -1075,14 +1076,14 @@ class _CameraViewState extends State<CameraView>
                       vertical: 1,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.lightBlue,
+                      color: AppColors.accentLight,
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
                       '$_timerDuration',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 9,
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: AppTypography.xs,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -1103,7 +1104,7 @@ class _CameraViewState extends State<CameraView>
               Container(
                 padding: const EdgeInsets.all(0),
                 decoration: BoxDecoration(
-                  color: Colors.black54,
+                  color: AppColors.overlay.withValues(alpha: 0.54),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: RotatingIconButton(
@@ -1112,7 +1113,7 @@ class _CameraViewState extends State<CameraView>
                   child: Icon(
                     flashEnabled ? Icons.flash_auto : Icons.flash_off,
                     size: 24,
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                   ),
                 ),
               ),
@@ -1121,7 +1122,7 @@ class _CameraViewState extends State<CameraView>
             Container(
               padding: const EdgeInsets.all(0),
               decoration: BoxDecoration(
-                color: Colors.black54,
+                color: AppColors.overlay.withValues(alpha: 0.54),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: RotatingIconButton(
@@ -1149,7 +1150,7 @@ class _CameraViewState extends State<CameraView>
                   Container(
                     padding: const EdgeInsets.all(0),
                     decoration: BoxDecoration(
-                      color: Colors.black54,
+                      color: AppColors.overlay.withValues(alpha: 0.54),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: RotatingIconButton(
@@ -1159,7 +1160,7 @@ class _CameraViewState extends State<CameraView>
                         Platform.isIOS
                             ? Icons.flip_camera_ios_outlined
                             : Icons.flip_camera_android_outlined,
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         size: 27,
                       ),
                     ),
@@ -1201,7 +1202,7 @@ class _CameraViewState extends State<CameraView>
     }
 
     return Scaffold(
-      appBar: AppBar(toolbarHeight: 0, backgroundColor: Colors.black),
+      appBar: AppBar(toolbarHeight: 0, backgroundColor: AppColors.overlay),
       body: CaptureFlashOverlay(
         key: _flashKey,
         child: body,
@@ -1227,7 +1228,7 @@ class _CameraViewState extends State<CameraView>
         topRight: Radius.circular(16),
       ),
       child: ColoredBox(
-        color: Colors.black,
+        color: AppColors.overlay,
         child: Stack(
           fit: StackFit.expand,
           alignment: Alignment.bottomCenter,
@@ -1280,7 +1281,7 @@ class _CameraViewState extends State<CameraView>
                   padding: const EdgeInsets.all(12),
                   margin: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withAlpha(
+                    color: AppColors.info.withAlpha(
                       179,
                     ), // Equivalent to opacity 0.7
                     borderRadius: BorderRadius.circular(
@@ -1290,20 +1291,22 @@ class _CameraViewState extends State<CameraView>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
+                      Text(
                         "Drag guide lines to optimal position. Tap\n"
                         "checkmark to save changes. Note: Camera guide\n"
                         "lines don't affect output guide lines.",
-                        style: TextStyle(color: Colors.white, fontSize: 12),
+                        style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: AppTypography.sm),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(width: 8),
                       GestureDetector(
                         onTap: () =>
                             setState(() => _isInfoWidgetVisible = false),
-                        child: const Icon(
+                        child: Icon(
                           Icons.close,
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                           size: 24,
                         ),
                       ),
@@ -1333,7 +1336,7 @@ class _CameraViewState extends State<CameraView>
           Icon(
             flashEnabled ? Icons.flash_auto : Icons.flash_off,
             size: 24,
-            color: Colors.white,
+            color: AppColors.textPrimary,
           ),
         ),
       );
@@ -1360,7 +1363,7 @@ class _CameraViewState extends State<CameraView>
                 painter: CountdownProgressPainter(
                   progress: 1.0 - (_countdownValue / _timerDuration),
                   strokeWidth: 4,
-                  color: Colors.white,
+                  color: AppColors.textPrimary,
                 ),
               ),
             // Shutter button
@@ -1369,7 +1372,7 @@ class _CameraViewState extends State<CameraView>
               onPressed: _onShutterPressed,
               child: Icon(
                 _isCountingDown ? Icons.close : Icons.circle,
-                color: Colors.white,
+                color: AppColors.textPrimary,
                 size: 70,
               ),
             ),
@@ -1381,21 +1384,21 @@ class _CameraViewState extends State<CameraView>
 
   Widget _buildIcon() {
     if (_gridMode == GridMode.none) {
-      return const Icon(Icons.grid_off, size: 24, color: Colors.white);
+      return Icon(Icons.grid_off, size: 24, color: AppColors.textPrimary);
     } else if (_gridMode == GridMode.gridOnly) {
-      return const Icon(Icons.grid_3x3, size: 24, color: Colors.white);
+      return Icon(Icons.grid_3x3, size: 24, color: AppColors.textPrimary);
     } else if (_gridMode == GridMode.ghostOnly) {
-      return const FaIcon(
+      return FaIcon(
         FontAwesomeIcons.ghost,
         size: 24,
-        color: Colors.white,
+        color: AppColors.textPrimary,
       );
     } else {
       return SvgPicture.asset(
         'assets/ghost-custom.svg',
         width: 24,
         height: 24,
-        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+        colorFilter: ColorFilter.mode(AppColors.textPrimary, BlendMode.srcIn),
       );
     }
   }
@@ -1409,13 +1412,13 @@ class _CameraViewState extends State<CameraView>
           child: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: const Color(0x3F84C4FF),
+              color: AppColors.accentLight.withValues(alpha: 0.25),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Text(
+            child: Text(
               "Move\nGuides",
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12),
+              style: TextStyle(fontSize: AppTypography.sm),
             ),
           ),
         ),
@@ -1426,7 +1429,7 @@ class _CameraViewState extends State<CameraView>
         right: 32,
         child: _buildButton(
           () => _saveGridOffsets(),
-          const Icon(Icons.check, size: 24, color: Colors.white),
+          Icon(Icons.check, size: 24, color: AppColors.textPrimary),
         ),
       );
 
@@ -1564,8 +1567,9 @@ class _CameraViewState extends State<CameraView>
   Widget _buildButton(
     VoidCallback onTap,
     Widget child, {
-    Color color = Colors.black54,
+    Color? color,
   }) {
+    color ??= AppColors.overlay.withValues(alpha: 0.54);
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -1688,7 +1692,7 @@ class _GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.lightBlueAccent
+      ..color = AppColors.accentLight
       ..strokeWidth = 2;
 
     final bool isLandscape =
@@ -1930,7 +1934,7 @@ class _CameraGridPainter extends CustomPainter {
 
     if (gridMode == GridMode.gridOnly || gridMode == GridMode.doubleGhostGrid) {
       final paint = Paint()
-        ..color = Colors.white.withAlpha(153)
+        ..color = AppColors.textPrimary.withAlpha(153)
         ..strokeWidth = 1;
 
       if (!isLandscape) {
@@ -1976,7 +1980,7 @@ class _CameraGridPainter extends CustomPainter {
     if (guideImage != null &&
         ghostImageOffsetX != null &&
         ghostImageOffsetY != null) {
-      final imagePaint = Paint()..color = Colors.white.withAlpha(77);
+      final imagePaint = Paint()..color = AppColors.textPrimary.withAlpha(77);
       final imageWidth = guideImage!.width.toDouble();
       final imageHeight = guideImage!.height.toDouble();
 

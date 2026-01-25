@@ -159,12 +159,12 @@ class GalleryExportHandler {
               : AppColors.settingsAccent.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: const Center(
+        child: Center(
           child: Text(
             'Export to ZIP',
             style: TextStyle(
-              color: Colors.white,
-              fontSize: 15,
+              color: AppColors.textPrimary,
+              fontSize: AppTypography.lg,
               fontWeight: FontWeight.w600,
             ),
           ),

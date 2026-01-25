@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../../styles/styles.dart';
 
 /// Overlay widget that displays a countdown number during camera timer countdown
 class CountdownOverlay extends StatelessWidget {
@@ -39,14 +40,14 @@ class CountdownOverlay extends StatelessWidget {
                 height: circleSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.black.withValues(alpha: 0.7),
+                  color: AppColors.overlay.withValues(alpha: 0.7),
                   border: Border.all(
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     width: borderWidth,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.4),
+                      color: AppColors.overlay.withValues(alpha: 0.4),
                       blurRadius: 12,
                       spreadRadius: 2,
                     ),
@@ -56,13 +57,13 @@ class CountdownOverlay extends StatelessWidget {
                   child: Text(
                     '$countdownValue',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       fontSize: fontSize,
                       fontWeight: FontWeight.bold,
                       shadows: const [
                         Shadow(
                           blurRadius: 8,
-                          color: Colors.black,
+                          color: AppColors.overlay,
                           offset: Offset(1, 1),
                         ),
                       ],
@@ -88,8 +89,8 @@ class CountdownProgressPainter extends CustomPainter {
   CountdownProgressPainter({
     required this.progress,
     this.strokeWidth = 4,
-    this.color = Colors.white,
-    this.backgroundColor = Colors.white30,
+    this.color = AppColors.textPrimary,
+    this.backgroundColor = const Color(0x4DFFFFFF),
   });
 
   @override

@@ -38,7 +38,7 @@ class YellowTipBar extends StatelessWidget {
               message,
               style: const TextStyle(
                 color: AppColors.settingsTextPrimary,
-                fontSize: 14,
+                fontSize: AppTypography.md,
                 height: 1.4,
               ),
             ),

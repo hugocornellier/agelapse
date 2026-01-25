@@ -821,7 +821,7 @@ class GalleryPageState extends State<GalleryPage>
     return GalleryDateStampProvider(
       config: dateStampConfig,
       child: Scaffold(
-        backgroundColor: AppColors.darkGrey,
+        backgroundColor: AppColors.background,
         extendBodyBehindAppBar: true,
         body: Column(
           children: [
@@ -859,7 +859,7 @@ class GalleryPageState extends State<GalleryPage>
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.3),
+                                color: AppColors.overlay.withValues(alpha: 0.3),
                                 blurRadius: 4,
                                 offset: const Offset(0, 2),
                               ),
@@ -868,7 +868,7 @@ class GalleryPageState extends State<GalleryPage>
                           child: PopupMenuButton<String>(
                             icon: const Icon(Icons.more_vert, size: 20.0),
                             padding: EdgeInsets.zero,
-                            color: const Color(0xff1a1a1a),
+                            color: AppColors.surface,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
                             ),
@@ -937,9 +937,9 @@ class GalleryPageState extends State<GalleryPage>
           Tab(text: 'Raw'),
         ],
         indicatorSize: TabBarIndicatorSize.label,
-        indicatorColor: AppColors.lightBlue,
-        labelColor: AppColors.lightBlue,
-        unselectedLabelColor: Colors.grey,
+        indicatorColor: AppColors.accentLight,
+        labelColor: AppColors.accentLight,
+        unselectedLabelColor: AppColors.textSecondary,
       ),
     );
   }
@@ -1033,7 +1033,7 @@ class GalleryPageState extends State<GalleryPage>
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.08),
+              color: AppColors.textPrimary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(12),
             ),
             child: SizedBox(
@@ -1051,8 +1051,8 @@ class GalleryPageState extends State<GalleryPage>
           Text(
             preparingImport ? 'Preparing import...' : 'Importing...',
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.9),
-              fontSize: 16,
+              color: AppColors.textPrimary.withValues(alpha: 0.9),
+              fontSize: AppTypography.lg,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -1062,8 +1062,8 @@ class GalleryPageState extends State<GalleryPage>
                 ? 'Scanning folders'
                 : '${widget.progressPercent.toStringAsFixed(1)}%',
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.5),
-              fontSize: 14,
+              color: AppColors.textPrimary.withValues(alpha: 0.5),
+              fontSize: AppTypography.md,
             ),
           ),
         ],
@@ -1246,7 +1246,7 @@ class GalleryPageState extends State<GalleryPage>
       'Imported: $imported\nSkipped (already imported): $skipped',
       title: 'Import Complete',
       icon: Icons.check_circle_outline_rounded,
-      iconColor: Colors.green,
+      iconColor: AppColors.success,
       primaryActionLabel: 'View Stabilized',
       onPrimaryAction: () => _tabController.animateTo(0),
     );
@@ -1294,17 +1294,17 @@ class GalleryPageState extends State<GalleryPage>
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.08),
+              color: AppColors.textPrimary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: Colors.white, size: 18),
+            child: Icon(icon, color: AppColors.textPrimary, size: 18),
           ),
           const SizedBox(width: 12),
           Text(
             label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: AppTypography.md,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -1546,13 +1546,13 @@ class GalleryPageState extends State<GalleryPage>
         padding: const EdgeInsets.symmetric(vertical: 28.0, horizontal: 16.0),
         decoration: BoxDecoration(
           color: isDraggingOver
-              ? Colors.blue.withValues(alpha: 0.15)
-              : Colors.white.withValues(alpha: 0.03),
+              ? AppColors.info.withValues(alpha: 0.15)
+              : AppColors.textPrimary.withValues(alpha: 0.03),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isDraggingOver
-                ? Colors.blue.withValues(alpha: 0.5)
-                : Colors.white.withValues(alpha: 0.12),
+                ? AppColors.info.withValues(alpha: 0.5)
+                : AppColors.textPrimary.withValues(alpha: 0.12),
             width: isDraggingOver ? 2.0 : 1.5,
             strokeAlign: BorderSide.strokeAlignInside,
           ),
@@ -1561,20 +1561,21 @@ class GalleryPageState extends State<GalleryPage>
             ? Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const SizedBox(
+                  SizedBox(
                     width: 26,
                     height: 26,
                     child: CircularProgressIndicator(
                       strokeWidth: 2.5,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white70),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                          AppColors.textPrimary.withValues(alpha: 0.7)),
                     ),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     'Preparing import...',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7),
-                      fontSize: 14,
+                      color: AppColors.textPrimary.withValues(alpha: 0.7),
+                      fontSize: AppTypography.md,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -1582,8 +1583,8 @@ class GalleryPageState extends State<GalleryPage>
                   Text(
                     '$dropReceivedCount items',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.4),
-                      fontSize: 12,
+                      color: AppColors.textPrimary.withValues(alpha: 0.4),
+                      fontSize: AppTypography.sm,
                     ),
                   ),
                 ],
@@ -1595,21 +1596,21 @@ class GalleryPageState extends State<GalleryPage>
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.blue.withValues(alpha: 0.2),
+                          color: AppColors.info.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(
                           Icons.file_download_outlined,
                           size: 26,
-                          color: Colors.blue.withValues(alpha: 0.9),
+                          color: AppColors.info.withValues(alpha: 0.9),
                         ),
                       ),
                       const SizedBox(height: 12),
                       Text(
                         'Release to import',
                         style: TextStyle(
-                          color: Colors.blue.withValues(alpha: 0.9),
-                          fontSize: 14,
+                          color: AppColors.info.withValues(alpha: 0.9),
+                          fontSize: AppTypography.md,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -1617,8 +1618,8 @@ class GalleryPageState extends State<GalleryPage>
                       Text(
                         'drop files to begin',
                         style: TextStyle(
-                          color: Colors.blue.withValues(alpha: 0.6),
-                          fontSize: 12,
+                          color: AppColors.info.withValues(alpha: 0.6),
+                          fontSize: AppTypography.sm,
                         ),
                       ),
                     ],
@@ -1629,21 +1630,21 @@ class GalleryPageState extends State<GalleryPage>
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.06),
+                          color: AppColors.textPrimary.withValues(alpha: 0.06),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(
                           Icons.upload_file_outlined,
                           size: 26,
-                          color: Colors.white.withValues(alpha: 0.7),
+                          color: AppColors.textPrimary.withValues(alpha: 0.7),
                         ),
                       ),
                       const SizedBox(height: 12),
                       Text(
                         'Drop files or folders here',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.7),
-                          fontSize: 14,
+                          color: AppColors.textPrimary.withValues(alpha: 0.7),
+                          fontSize: AppTypography.md,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -1651,8 +1652,8 @@ class GalleryPageState extends State<GalleryPage>
                       Text(
                         'images and folders supported',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.4),
-                          fontSize: 12,
+                          color: AppColors.textPrimary.withValues(alpha: 0.4),
+                          fontSize: AppTypography.sm,
                         ),
                       ),
                     ],
@@ -1717,15 +1718,16 @@ class GalleryPageState extends State<GalleryPage>
       final proceed = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          backgroundColor: const Color(0xff1a1a1a),
-          title: const Text(
+          backgroundColor: AppColors.surface,
+          title: Text(
             'Large Import',
-            style: TextStyle(color: Colors.white),
+            style: TextStyle(color: AppColors.textPrimary),
           ),
           content: Text(
             'Found ${filePaths.length} images. This may take a while.\n\n'
             'Continue with import?',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
+            style:
+                TextStyle(color: AppColors.textPrimary.withValues(alpha: 0.8)),
           ),
           actions: [
             TextButton(
@@ -1824,7 +1826,7 @@ class GalleryPageState extends State<GalleryPage>
           Positioned.fill(child: AbsorbPointer(child: tile)),
           if (isSelected)
             Positioned.fill(
-              child: Container(color: Colors.blue.withValues(alpha: 0.3)),
+              child: Container(color: AppColors.info.withValues(alpha: 0.3)),
             ),
           Positioned(
             top: 4,
@@ -1832,12 +1834,14 @@ class GalleryPageState extends State<GalleryPage>
             child: Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isSelected ? Colors.blue : Colors.black54,
+                color: isSelected
+                    ? AppColors.info
+                    : AppColors.overlay.withValues(alpha: 0.54),
               ),
               padding: const EdgeInsets.all(2),
               child: Icon(
                 isSelected ? Icons.check : Icons.circle_outlined,
-                color: Colors.white,
+                color: AppColors.textPrimary,
                 size: 18,
               ),
             ),
@@ -1875,7 +1879,7 @@ class GalleryPageState extends State<GalleryPage>
         currentFiles.isNotEmpty;
 
     return Container(
-      color: const Color(0xff1e1e1e),
+      color: AppColors.surface,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: SafeArea(
         top: false,
@@ -1889,26 +1893,30 @@ class GalleryPageState extends State<GalleryPage>
             const Spacer(),
             Text(
               '${_selectedPhotos.length} selected',
-              style: const TextStyle(color: Colors.white70, fontSize: 14),
+              style: TextStyle(
+                  color: AppColors.textPrimary.withValues(alpha: 0.7),
+                  fontSize: AppTypography.md),
             ),
             const Spacer(),
             IconButton(
               icon: Icon(
                 allSelected ? Icons.deselect : Icons.select_all,
-                color: Colors.white,
+                color: AppColors.textPrimary,
               ),
               tooltip: allSelected ? 'Deselect All' : 'Select All',
               onPressed: _selectAllPhotos,
             ),
             IconButton(
-              icon: const Icon(Icons.download, color: Colors.white),
+              icon: Icon(Icons.download, color: AppColors.textPrimary),
               tooltip: 'Export Selected',
               onPressed: _selectedPhotos.isEmpty ? null : _exportSelectedPhotos,
             ),
             IconButton(
               icon: Icon(
                 Icons.delete,
-                color: _selectedPhotos.isEmpty ? Colors.grey : Colors.red,
+                color: _selectedPhotos.isEmpty
+                    ? AppColors.textSecondary
+                    : AppColors.danger,
               ),
               tooltip: 'Delete Selected',
               onPressed: _selectedPhotos.isEmpty ? null : _deleteSelectedPhotos,
@@ -2054,10 +2062,10 @@ class GalleryPageState extends State<GalleryPage>
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.05),
+                    color: AppColors.textPrimary.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.08),
+                      color: AppColors.textPrimary.withValues(alpha: 0.08),
                     ),
                   ),
                   child: Row(
@@ -2083,9 +2091,9 @@ class GalleryPageState extends State<GalleryPage>
                           children: [
                             Text(
                               '$totalCount photo${totalCount == 1 ? '' : 's'} selected',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 15,
+                              style: TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: AppTypography.lg,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -2096,8 +2104,9 @@ class GalleryPageState extends State<GalleryPage>
                                 if (stabCount > 0) '$stabCount stabilized',
                               ].join(' • '),
                               style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.5),
-                                fontSize: 13,
+                                color: AppColors.textPrimary
+                                    .withValues(alpha: 0.5),
+                                fontSize: AppTypography.sm,
                               ),
                             ),
                           ],
@@ -2246,12 +2255,12 @@ class GalleryPageState extends State<GalleryPage>
                       color: AppColors.settingsAccent,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Center(
+                    child: Center(
                       child: Text(
                         'Export to ZIP',
                         style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
+                          color: AppColors.textPrimary,
+                          fontSize: AppTypography.lg,
                           fontWeight: FontWeight.w600,
                         ),
                       ),

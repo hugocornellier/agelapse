@@ -18,7 +18,7 @@ class CreateFirstVideoPage extends StatefulWidget {
 }
 
 class CreateFirstVideoPageState extends State<CreateFirstVideoPage> {
-  final Color appBarColor = const Color(0xff151517);
+  final Color appBarColor = AppColors.background;
 
   @override
   Widget build(BuildContext context) {
@@ -55,7 +55,8 @@ class CreateFirstVideoPageState extends State<CreateFirstVideoPage> {
           const SizedBox(height: 96),
           const Text(
             "Your First Video",
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            style: TextStyle(
+                fontSize: AppTypography.xxxl, fontWeight: FontWeight.bold),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 32),
@@ -63,7 +64,7 @@ class CreateFirstVideoPageState extends State<CreateFirstVideoPage> {
             padding: EdgeInsets.symmetric(horizontal: 16.0),
             child: Text(
               "Once your second photo is taken, AgeLapse will automatically compile a stabilized video.",
-              style: TextStyle(fontSize: 14),
+              style: TextStyle(fontSize: AppTypography.md),
               textAlign: TextAlign.center,
             ),
           ),
@@ -85,7 +86,7 @@ class CreateFirstVideoPageState extends State<CreateFirstVideoPage> {
       child: ElevatedButton(
         onPressed: () => navigateToCameraPage(),
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.darkerLightBlue,
+          backgroundColor: AppColors.accentDark,
           minimumSize: const Size(double.infinity, 50),
           padding: const EdgeInsets.symmetric(vertical: 18.0),
           shape: RoundedRectangleBorder(
@@ -95,8 +96,8 @@ class CreateFirstVideoPageState extends State<CreateFirstVideoPage> {
         child: Text(
           text.toUpperCase(),
           style: const TextStyle(
-            fontSize: 15,
-            color: Colors.white,
+            fontSize: AppTypography.lg,
+            color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),

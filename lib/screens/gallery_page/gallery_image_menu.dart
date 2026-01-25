@@ -35,7 +35,7 @@ class GalleryImageMenu {
         return AlertDialog(
           backgroundColor: useAppColors
               ? AppColors.settingsCardBackground
-              : const Color(0xff121212),
+              : AppColors.background,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(useAppColors ? 12 : 8.0),
           ),
@@ -46,7 +46,7 @@ class GalleryImageMenu {
               _buildMenuItem(
                 icon: Icons.calendar_today,
                 title: 'Change Date',
-                iconColor: Colors.white,
+                iconColor: AppColors.textPrimary,
                 onTap: () {
                   Navigator.of(dialogContext).pop();
                   onChangeDate();
@@ -97,7 +97,7 @@ class GalleryImageMenu {
               _buildMenuItem(
                 icon: Icons.delete,
                 title: 'Delete Image',
-                iconColor: Colors.red,
+                iconColor: AppColors.danger,
                 onTap: () {
                   Navigator.of(dialogContext).pop();
                   onDelete();
@@ -127,7 +127,8 @@ class GalleryImageMenu {
         ),
         title: Text(
           title,
-          style: TextStyle(fontSize: 14, color: AppColors.settingsTextPrimary),
+          style: TextStyle(
+              fontSize: AppTypography.md, color: AppColors.settingsTextPrimary),
         ),
         onTap: onTap,
       );
@@ -136,12 +137,14 @@ class GalleryImageMenu {
     return ListTile(
       leading: Icon(
         icon,
-        color: iconColor?.withAlpha(204) ?? Colors.white.withAlpha(150),
+        color:
+            iconColor?.withAlpha(204) ?? AppColors.textPrimary.withAlpha(150),
         size: 18.0,
       ),
       title: Text(
         title,
-        style: const TextStyle(fontSize: 12, color: Colors.white),
+        style:
+            TextStyle(fontSize: AppTypography.sm, color: AppColors.textPrimary),
       ),
       onTap: onTap,
     );

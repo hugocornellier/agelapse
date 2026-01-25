@@ -252,7 +252,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                   const Text(
                     'POSITION CONTROLS',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: AppTypography.sm,
                       fontWeight: FontWeight.w600,
                       color: AppColors.settingsTextSecondary,
                       letterSpacing: 1.2,
@@ -346,7 +346,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
             Text(
               label,
               style: const TextStyle(
-                fontSize: 12,
+                fontSize: AppTypography.sm,
                 color: AppColors.settingsTextTertiary,
                 fontWeight: FontWeight.w500,
               ),
@@ -387,7 +387,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                         ],
                         textAlign: TextAlign.right,
                         style: const TextStyle(
-                          fontSize: 16,
+                          fontSize: AppTypography.lg,
                           color: AppColors.settingsTextPrimary,
                           fontWeight: FontWeight.w500,
                         ),
@@ -410,7 +410,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                       child: Text(
                         '%',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: AppTypography.lg,
                           color: AppColors.settingsTextSecondary,
                           fontWeight: FontWeight.w500,
                         ),
@@ -611,7 +611,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                 'Unsaved Changes',
                 style: TextStyle(
                   color: AppColors.settingsTextPrimary,
-                  fontSize: 18,
+                  fontSize: AppTypography.xl,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -625,7 +625,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                 'You have unsaved changes. Do you want to save them before leaving?',
                 style: TextStyle(
                   color: AppColors.settingsTextSecondary,
-                  fontSize: 14,
+                  fontSize: AppTypography.md,
                   height: 1.5,
                 ),
               ),
@@ -633,10 +633,10 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.orange.withValues(alpha: 0.15),
+                  color: AppColors.warningMuted.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: AppColors.orange.withValues(alpha: 0.3),
+                    color: AppColors.warningMuted.withValues(alpha: 0.3),
                     width: 1,
                   ),
                 ),
@@ -644,7 +644,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                   children: [
                     Icon(
                       Icons.warning_amber_rounded,
-                      color: AppColors.orange,
+                      color: AppColors.warningMuted,
                       size: 20,
                     ),
                     SizedBox(width: 10),
@@ -652,8 +652,8 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                       child: Text(
                         'All photos will need to be re-stabilized.',
                         style: TextStyle(
-                          color: AppColors.orange,
-                          fontSize: 13,
+                          color: AppColors.warningMuted,
+                          fontSize: AppTypography.sm,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -708,7 +708,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
               'Quick Guide',
               style: TextStyle(
                 color: AppColors.settingsTextPrimary,
-                fontSize: 18,
+                fontSize: AppTypography.xl,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -722,7 +722,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
             'Your photos are transformed so that detected eyes align to these positions.',
             style: TextStyle(
               color: AppColors.settingsTextSecondary,
-              fontSize: 14,
+              fontSize: AppTypography.md,
               height: 1.6,
             ),
           ),
@@ -754,7 +754,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
       title: const Text(
         'Output Position',
         style: TextStyle(
-          fontSize: 20,
+          fontSize: AppTypography.xxl,
           fontWeight: FontWeight.w600,
           color: AppColors.settingsTextPrimary,
         ),
@@ -825,12 +825,12 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
               margin: const EdgeInsets.only(right: 8),
               decoration: BoxDecoration(
                 color: _showCheckmark
-                    ? Colors.green.withValues(alpha: 0.15)
+                    ? AppColors.success.withValues(alpha: 0.15)
                     : AppColors.settingsAccent.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: _showCheckmark
-                      ? Colors.green.withValues(alpha: 0.3)
+                      ? AppColors.success.withValues(alpha: 0.3)
                       : AppColors.settingsAccent.withValues(alpha: 0.3),
                   width: 1,
                 ),
@@ -848,7 +848,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                           ? Icons.check_circle_rounded
                           : Icons.save_rounded,
                       color: _showCheckmark
-                          ? Colors.green
+                          ? AppColors.success
                           : AppColors.settingsAccent,
                       size: 22,
                     ),
@@ -896,7 +896,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                 "Note: Output guide lines are separate from your camera guide lines.",
                 style: TextStyle(
                   color: AppColors.settingsTextSecondary,
-                  fontSize: 13,
+                  fontSize: AppTypography.sm,
                   height: 1.4,
                 ),
               ),
@@ -1076,7 +1076,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                       'Loading preview...',
                       style: TextStyle(
                         color: AppColors.settingsTextSecondary,
-                        fontSize: 14,
+                        fontSize: AppTypography.md,
                       ),
                     ),
                   ],

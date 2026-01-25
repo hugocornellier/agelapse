@@ -18,7 +18,7 @@ class ImportPage extends StatefulWidget {
 }
 
 class ImportPageState extends State<ImportPage> {
-  final Color backgroundColor = const Color(0xff151517);
+  final Color backgroundColor = AppColors.background;
 
   @override
   Widget build(BuildContext context) {
@@ -75,9 +75,9 @@ class ImportPageState extends State<ImportPage> {
     return Text(
       text,
       style: const TextStyle(
-        fontSize: 24,
+        fontSize: AppTypography.xxxl,
         fontWeight: FontWeight.bold,
-        color: Colors.white,
+        color: AppColors.textPrimary,
       ),
     );
   }
@@ -100,7 +100,8 @@ class ImportPageState extends State<ImportPage> {
   Widget _buildText(String text) {
     return Text(
       text,
-      style: const TextStyle(fontSize: 16, color: Colors.white),
+      style: const TextStyle(
+          fontSize: AppTypography.lg, color: AppColors.textPrimary),
     );
   }
 
@@ -121,15 +122,15 @@ class ImportPageState extends State<ImportPage> {
       child: ElevatedButton(
         onPressed: () => navigateToIndex(index),
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.darkerLightBlue,
+          backgroundColor: AppColors.accentDark,
           minimumSize: const Size(double.infinity, 50),
           padding: const EdgeInsets.symmetric(vertical: 16.0),
         ),
         child: Text(
           text.toUpperCase(),
           style: const TextStyle(
-            fontSize: 16,
-            color: Colors.white,
+            fontSize: AppTypography.lg,
+            color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),

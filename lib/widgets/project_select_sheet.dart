@@ -188,7 +188,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
     final isDesktop = screenWidth > 600;
 
     return Container(
-      color: const Color(0xff0A0A0A),
+      color: AppColors.backgroundDark,
       child: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -246,9 +246,9 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
         Text(
           'Projects',
           style: TextStyle(
-            fontSize: isDesktop ? 32 : 24,
+            fontSize: isDesktop ? AppTypography.display : AppTypography.xxxl,
             fontWeight: FontWeight.w700,
-            color: Colors.white,
+            color: AppColors.textPrimary,
             letterSpacing: -0.5,
           ),
         ),
@@ -266,14 +266,15 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.add, size: isDesktop ? 20 : 16, color: Colors.white),
+                Icon(Icons.add,
+                    size: isDesktop ? 20 : 16, color: AppColors.textPrimary),
                 const SizedBox(width: 6),
                 Text(
                   'New Project',
                   style: TextStyle(
-                    fontSize: isDesktop ? 15 : 13,
+                    fontSize: isDesktop ? AppTypography.lg : AppTypography.sm,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                   ),
                 ),
               ],
@@ -328,10 +329,10 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                 cursor: SystemMouseCursors.click,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: const Color(0xff1A1A1A),
+                    color: AppColors.surface,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.08),
+                      color: AppColors.textPrimary.withValues(alpha: 0.08),
                     ),
                   ),
                   clipBehavior: Clip.antiAlias,
@@ -342,7 +343,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                       Expanded(
                         flex: 3,
                         child: Container(
-                          color: Colors.white.withValues(alpha: 0.05),
+                          color: AppColors.textPrimary.withValues(alpha: 0.05),
                           child: hasImage
                               ? Image.file(
                                   File(snapshot.data!),
@@ -364,10 +365,10 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                             children: [
                               Text(
                                 project['name'],
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.w600,
-                                  fontSize: 16,
-                                  color: Colors.white,
+                                  fontSize: AppTypography.lg,
+                                  color: AppColors.textPrimary,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -379,8 +380,8 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                                     height: 8,
                                     decoration: BoxDecoration(
                                       color: takenToday
-                                          ? const Color(0xff4CD964)
-                                          : const Color(0xffFF9500),
+                                          ? AppColors.success
+                                          : AppColors.warning,
                                       shape: BoxShape.circle,
                                     ),
                                   ),
@@ -391,8 +392,8 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                                           ? 'Photo taken today'
                                           : 'Photo not taken',
                                       style: TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.white.withValues(
+                                        fontSize: AppTypography.sm,
+                                        color: AppColors.textPrimary.withValues(
                                           alpha: 0.5,
                                         ),
                                       ),
@@ -422,7 +423,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
       child: Icon(
         Icons.person_outline,
         size: 48,
-        color: Colors.white.withValues(alpha: 0.2),
+        color: AppColors.textPrimary.withValues(alpha: 0.2),
       ),
     );
   }
@@ -435,7 +436,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
         maxHeight: MediaQuery.of(context).size.height * 0.85,
       ),
       decoration: const BoxDecoration(
-        color: Color(0xff1a1a1a),
+        color: AppColors.surface,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(20.0),
           topRight: Radius.circular(20.0),
@@ -451,7 +452,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
               width: 36,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.white24,
+                color: AppColors.textPrimary.withValues(alpha: 0.24),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -463,12 +464,12 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
             children: [
               Row(
                 children: [
-                  const Text(
+                  Text(
                     'Projects',
                     style: TextStyle(
-                      fontSize: 20,
+                      fontSize: AppTypography.xxl,
                       fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       letterSpacing: -0.3,
                     ),
                   ),
@@ -484,17 +485,18 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                         color: AppColors.settingsAccent,
                         borderRadius: BorderRadius.circular(8.0),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.add, size: 16, color: Colors.white),
+                          Icon(Icons.add,
+                              size: 16, color: AppColors.textPrimary),
                           SizedBox(width: 4),
                           Text(
                             'New',
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: AppTypography.sm,
                               fontWeight: FontWeight.w500,
-                              color: Colors.white,
+                              color: AppColors.textPrimary,
                             ),
                           ),
                         ],
@@ -509,12 +511,12 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                   child: Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.08),
+                      color: AppColors.textPrimary.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.close,
-                      color: Colors.white70,
+                      color: AppColors.textPrimary.withValues(alpha: 0.7),
                       size: 18,
                     ),
                   ),
@@ -550,23 +552,23 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
             Icon(
               Icons.folder_outlined,
               size: 48,
-              color: Colors.white.withValues(alpha: 0.3),
+              color: AppColors.textPrimary.withValues(alpha: 0.3),
             ),
             const SizedBox(height: 12),
             Text(
               'No projects yet',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: AppTypography.lg,
                 fontWeight: FontWeight.w500,
-                color: Colors.white.withValues(alpha: 0.5),
+                color: AppColors.textPrimary.withValues(alpha: 0.5),
               ),
             ),
             const SizedBox(height: 4),
             Text(
               'Tap "+ New" to create your first project',
               style: TextStyle(
-                fontSize: 13,
-                color: Colors.white.withValues(alpha: 0.3),
+                fontSize: AppTypography.sm,
+                color: AppColors.textPrimary.withValues(alpha: 0.3),
               ),
             ),
           ],
@@ -603,7 +605,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
         return Container(
           padding: const EdgeInsets.fromLTRB(20.0, 12.0, 20.0, 20.0),
           decoration: const BoxDecoration(
-            color: Color(0xff1a1a1a),
+            color: AppColors.surface,
             borderRadius: BorderRadius.only(
               topLeft: Radius.circular(20.0),
               topRight: Radius.circular(20.0),
@@ -619,7 +621,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                   width: 36,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.white24,
+                    color: AppColors.textPrimary.withValues(alpha: 0.24),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -631,10 +633,10 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                 children: [
                   Text(
                     project['name'],
-                    style: const TextStyle(
-                      fontSize: 18,
+                    style: TextStyle(
+                      fontSize: AppTypography.xl,
                       fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       letterSpacing: -0.3,
                     ),
                   ),
@@ -643,12 +645,12 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                     child: Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.08),
+                        color: AppColors.textPrimary.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.close,
-                        color: Colors.white70,
+                        color: AppColors.textPrimary.withValues(alpha: 0.7),
                         size: 18,
                       ),
                     ),
@@ -692,18 +694,18 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
     required VoidCallback onTap,
     bool isDestructive = false,
   }) {
-    final color = isDestructive ? const Color(0xffFF453A) : Colors.white;
+    final color = isDestructive ? AppColors.danger : AppColors.textPrimary;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
+          color: AppColors.textPrimary.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isDestructive
-                ? const Color(0xffFF453A).withValues(alpha: 0.2)
-                : Colors.white.withValues(alpha: 0.08),
+                ? AppColors.danger.withValues(alpha: 0.2)
+                : AppColors.textPrimary.withValues(alpha: 0.08),
           ),
         ),
         child: Row(
@@ -712,8 +714,8 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: isDestructive
-                    ? const Color(0xffFF453A).withValues(alpha: 0.15)
-                    : Colors.white.withValues(alpha: 0.08),
+                    ? AppColors.danger.withValues(alpha: 0.15)
+                    : AppColors.textPrimary.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, color: color, size: 20),
@@ -727,7 +729,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                     title,
                     style: TextStyle(
                       color: color,
-                      fontSize: 15,
+                      fontSize: AppTypography.lg,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -736,9 +738,9 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                     subtitle,
                     style: TextStyle(
                       color: isDestructive
-                          ? const Color(0xffFF453A).withValues(alpha: 0.6)
-                          : Colors.white.withValues(alpha: 0.5),
-                      fontSize: 13,
+                          ? AppColors.danger.withValues(alpha: 0.6)
+                          : AppColors.textPrimary.withValues(alpha: 0.5),
+                      fontSize: AppTypography.sm,
                     ),
                   ),
                 ],
@@ -772,7 +774,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
           child: Container(
             padding: const EdgeInsets.fromLTRB(20.0, 12.0, 20.0, 20.0),
             decoration: const BoxDecoration(
-              color: Color(0xff1a1a1a),
+              color: AppColors.surface,
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(20.0),
                 topRight: Radius.circular(20.0),
@@ -788,7 +790,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                     width: 36,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.white24,
+                      color: AppColors.textPrimary.withValues(alpha: 0.24),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -798,12 +800,12 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       'Rename Project',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: AppTypography.xl,
                         fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         letterSpacing: -0.3,
                       ),
                     ),
@@ -812,12 +814,12 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                       child: Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.08),
+                          color: AppColors.textPrimary.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.close,
-                          color: Colors.white70,
+                          color: AppColors.textPrimary.withValues(alpha: 0.7),
                           size: 18,
                         ),
                       ),
@@ -828,20 +830,22 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                 // Input field
                 Container(
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.05),
+                    color: AppColors.textPrimary.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.1),
+                      color: AppColors.textPrimary.withValues(alpha: 0.1),
                     ),
                   ),
                   child: TextField(
                     controller: _editProjectNameController,
-                    style: const TextStyle(color: Colors.white, fontSize: 15),
+                    style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: AppTypography.lg),
                     decoration: InputDecoration(
                       hintText: 'Enter project name',
                       hintStyle: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.3),
-                        fontSize: 15,
+                        color: AppColors.textPrimary.withValues(alpha: 0.3),
+                        fontSize: AppTypography.lg,
                       ),
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -862,15 +866,17 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.08),
+                            color:
+                                AppColors.textPrimary.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Center(
+                          child: Center(
                             child: Text(
                               'Cancel',
                               style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 15,
+                                color: AppColors.textPrimary
+                                    .withValues(alpha: 0.7),
+                                fontSize: AppTypography.lg,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -898,12 +904,12 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                             color: AppColors.settingsAccent,
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Center(
+                          child: Center(
                             child: Text(
                               'Save',
                               style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 15,
+                                color: AppColors.textPrimary,
+                                fontSize: AppTypography.lg,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -982,10 +988,10 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                 margin: const EdgeInsets.only(bottom: 8),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
+                  color: AppColors.textPrimary.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.08),
+                    color: AppColors.textPrimary.withValues(alpha: 0.08),
                   ),
                 ),
                 child: Row(
@@ -994,7 +1000,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.1),
+                        color: AppColors.textPrimary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       clipBehavior: Clip.antiAlias,
@@ -1016,10 +1022,10 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                         children: [
                           Text(
                             project['name'],
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.w500,
-                              fontSize: 15,
-                              color: Colors.white,
+                              fontSize: AppTypography.lg,
+                              color: AppColors.textPrimary,
                             ),
                           ),
                           const SizedBox(height: 3),
@@ -1030,8 +1036,8 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                                 height: 6,
                                 decoration: BoxDecoration(
                                   color: takenToday
-                                      ? const Color(0xff4CD964)
-                                      : const Color(0xffFF9500),
+                                      ? AppColors.success
+                                      : AppColors.warning,
                                   shape: BoxShape.circle,
                                 ),
                               ),
@@ -1041,8 +1047,9 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                                     ? 'Photo taken today'
                                     : 'Photo not taken',
                                 style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.white.withValues(alpha: 0.5),
+                                  fontSize: AppTypography.sm,
+                                  color: AppColors.textPrimary
+                                      .withValues(alpha: 0.5),
                                 ),
                               ),
                             ],
@@ -1052,7 +1059,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                     ),
                     Icon(
                       Icons.chevron_right,
-                      color: Colors.white.withValues(alpha: 0.3),
+                      color: AppColors.textPrimary.withValues(alpha: 0.3),
                       size: 20,
                     ),
                   ],
@@ -1067,11 +1074,11 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
 
   Widget _buildPlaceholderAvatar() {
     return Container(
-      color: Colors.white.withValues(alpha: 0.1),
+      color: AppColors.textPrimary.withValues(alpha: 0.1),
       child: Icon(
         Icons.person,
         size: 24,
-        color: Colors.white.withValues(alpha: 0.3),
+        color: AppColors.textPrimary.withValues(alpha: 0.3),
       ),
     );
   }
@@ -1081,9 +1088,10 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppColors.textPrimary.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border:
+            Border.all(color: AppColors.textPrimary.withValues(alpha: 0.08)),
       ),
       child: Row(
         children: [
@@ -1091,7 +1099,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
+              color: AppColors.textPrimary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
           ),
@@ -1104,7 +1112,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                   width: 100,
                   height: 14,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.1),
+                    color: AppColors.textPrimary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
@@ -1113,7 +1121,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                   width: 80,
                   height: 12,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.08),
+                    color: AppColors.textPrimary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
