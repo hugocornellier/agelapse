@@ -19,6 +19,7 @@ import '../services/image_processor.dart';
 import '../services/thumbnail_service.dart';
 import 'camera_utils.dart';
 import 'dir_utils.dart';
+import 'export_naming_utils.dart';
 import 'image_utils.dart';
 import 'settings_utils.dart';
 import 'utils.dart';
@@ -1119,7 +1120,7 @@ class GalleryUtils {
       } else {
         final tmpDir = await DirUtils.getTemporaryDirPath();
         final tmpName =
-            '${projectName.isEmpty ? "Export" : projectName}-AgeLapse-Export-${DateTime.now().millisecondsSinceEpoch}.zip';
+            ExportNamingUtils.generateZipFilename(projectName: projectName);
         zipWorkPath = path.join(tmpDir, tmpName);
         final workDir = File(zipWorkPath).parent;
         if (!await workDir.exists()) {
@@ -1235,7 +1236,7 @@ class GalleryUtils {
 
       if (!(Platform.isAndroid || Platform.isIOS) && result == 'success') {
         final suggested =
-            '${projectName.isEmpty ? "Export" : projectName}-AgeLapse-Export.zip';
+            ExportNamingUtils.generateZipFilename(projectName: projectName);
         final location = await getSaveLocation(
           suggestedName: suggested,
           acceptedTypeGroups: const [

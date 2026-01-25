@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 
 import '../services/database_helper.dart';
 import '../services/log_service.dart';
+import '../utils/capture_timezone.dart';
+import '../utils/date_stamp_utils.dart';
 import '../utils/dir_utils.dart';
 import '../utils/project_utils.dart';
 import '../utils/settings_utils.dart';
@@ -21,6 +23,22 @@ class OutputImageLoader {
   double? ghostImageOffsetY;
   ui.Image? guideImage;
   Color backgroundColor = Colors.black;
+
+  // Date stamp preview settings
+  bool dateStampEnabled = false;
+  String dateStampPosition = 'lower right';
+  String dateStampFormat = 'MMM dd, yyyy';
+  int dateStampSizePercent = 3;
+  double dateStampOpacity = 1.0;
+  String dateStampFontFamily = 'Inter';
+
+  // Watermark settings (for collision detection)
+  bool watermarkEnabled = false;
+  String? watermarkPosition;
+
+  // Timestamp for preview (from guide photo)
+  int? previewTimestampMs;
+  int? captureOffsetMinutes;
 
   /// Track if we have loaded a real stabilized guide image (vs placeholder)
   bool hasRealGuideImage = false;
@@ -57,6 +75,8 @@ class OutputImageLoader {
     ghostImageOffsetY = 0.292;
     hasRealGuideImage = false;
     _guideImagePath = null;
+    previewTimestampMs = null;
+    captureOffsetMinutes = null;
 
     // Reload settings to get new orientation-specific offsets
     await _loadSettings();
@@ -74,6 +94,8 @@ class OutputImageLoader {
       // File was deleted, need to reload
       hasRealGuideImage = false;
       _guideImagePath = null;
+      previewTimestampMs = null;
+      captureOffsetMinutes = null;
     }
 
     try {
@@ -124,6 +146,23 @@ class OutputImageLoader {
       hasRealGuideImage = true;
       _guideImagePath = guideImagePath;
 
+      // Extract timestamp from guide photo for date preview
+      final photoTimestamp = guidePhoto['timestamp'];
+      if (photoTimestamp != null) {
+        previewTimestampMs = photoTimestamp is int
+            ? photoTimestamp
+            : int.tryParse(photoTimestamp.toString());
+
+        // Load timezone offset for this photo
+        if (previewTimestampMs != null) {
+          final offsets = await CaptureTimezone.loadOffsetsForFiles(
+            [previewTimestampMs.toString()],
+            projectId,
+          );
+          captureOffsetMinutes = offsets[previewTimestampMs.toString()];
+        }
+      }
+
       return true;
     } catch (e) {
       debugPrint('Failed to load real guide image: $e');
@@ -150,6 +189,63 @@ class OutputImageLoader {
 
     offsetX = double.parse(offsetXSettingVal);
     offsetY = double.parse(offsetYSettingVal);
+
+    // Load date stamp settings
+    await loadDateStampSettings();
+  }
+
+  /// Load date stamp settings for preview.
+  Future<void> loadDateStampSettings() async {
+    final projectIdStr = projectId.toString();
+
+    final results = await Future.wait([
+      SettingsUtil.loadExportDateStampEnabled(projectIdStr),
+      SettingsUtil.loadExportDateStampPosition(projectIdStr),
+      SettingsUtil.loadExportDateStampFormat(projectIdStr),
+      SettingsUtil.loadExportDateStampSize(projectIdStr),
+      SettingsUtil.loadExportDateStampOpacity(projectIdStr),
+      SettingsUtil.loadExportDateStampFont(projectIdStr),
+      SettingsUtil.loadGalleryDateStampFont(projectIdStr),
+      SettingsUtil.loadWatermarkSetting(projectIdStr),
+      SettingsUtil.loadWatermarkPosition(),
+    ]);
+
+    dateStampEnabled = results[0] as bool;
+    dateStampPosition = results[1] as String;
+    dateStampFormat = results[2] as String;
+    dateStampSizePercent = results[3] as int;
+    dateStampOpacity = results[4] as double;
+
+    final exportFont = results[5] as String;
+    final galleryFont = results[6] as String;
+
+    // Handle "Same as thumbnail" option
+    final resolvedFont =
+        DateStampUtils.resolveExportFont(exportFont, galleryFont);
+
+    // Resolve custom font if needed
+    dateStampFontFamily = await DateStampUtils.resolveFontFamily(resolvedFont);
+
+    watermarkEnabled = results[7] as bool;
+    watermarkPosition = results[8] as String?;
+  }
+
+  /// Get formatted date stamp text for preview.
+  /// Returns null if date stamp is disabled or no guide photo timestamp.
+  String? getDateStampPreviewText() {
+    if (!dateStampEnabled) return null;
+
+    final timestamp = previewTimestampMs;
+    if (timestamp == null) {
+      // No guide photo loaded - don't show date stamp on placeholder
+      return null;
+    }
+
+    return DateStampUtils.formatTimestamp(
+      timestamp,
+      dateStampFormat,
+      captureOffsetMinutes: captureOffsetMinutes,
+    );
   }
 
   /// Converts a hex string like '#FF0000' to a Flutter Color.
@@ -236,8 +332,27 @@ class OutputImageLoader {
         ghostImageOffsetX = offsetXData;
         ghostImageOffsetY = offsetYData;
 
+        // Extract timestamp from guide photo for date preview
+        final photoTimestamp = guidePhoto['timestamp'];
+        if (photoTimestamp != null) {
+          previewTimestampMs = photoTimestamp is int
+              ? photoTimestamp
+              : int.tryParse(photoTimestamp.toString());
+
+          // Load timezone offset for this photo
+          if (previewTimestampMs != null) {
+            final offsets = await CaptureTimezone.loadOffsetsForFiles(
+              [previewTimestampMs.toString()],
+              projectId,
+            );
+            captureOffsetMinutes = offsets[previewTimestampMs.toString()];
+          }
+        }
+
         try {
           guideImage = await StabUtils.loadImageFromFile(File(guideImagePath));
+          hasRealGuideImage = true;
+          _guideImagePath = guideImagePath;
         } catch (e) {
           LogService.instance.log(
             "Error caught $e, setting ghostImage to SVG placeholder",

@@ -9,6 +9,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:wechat_assets_picker/wechat_assets_picker.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import '../../services/database_helper.dart';
+import '../../services/global_drop_service.dart';
 import '../../services/log_service.dart';
 import '../../services/face_stabilizer.dart';
 import '../../services/settings_cache.dart';
@@ -79,6 +80,12 @@ class GalleryPage extends StatefulWidget {
   final String minutesRemaining;
   final bool userRanOutOfSpace;
   final Stream<StabUpdateEvent>? stabUpdateStream;
+
+  // Global drop support
+  final void Function(bool isOpen) setImportSheetOpen;
+  final List<String>? pendingDropFiles;
+  final VoidCallback? clearPendingDropFiles;
+
   const GalleryPage({
     super.key,
     required this.projectId,
@@ -108,6 +115,9 @@ class GalleryPage extends StatefulWidget {
     required this.recompileVideoCallback,
     required this.minutesRemaining,
     this.stabUpdateStream,
+    required this.setImportSheetOpen,
+    this.pendingDropFiles,
+    this.clearPendingDropFiles,
   });
   @override
   GalleryPageState createState() => GalleryPageState();
@@ -157,6 +167,9 @@ class GalleryPageState extends State<GalleryPage>
   bool _isAutoScrolling = false;
   bool _isSelectionMode = false;
   Set<String> _selectedPhotos = {};
+
+  // Global drop support - idempotent processing flag
+  bool _pendingFilesProcessed = false;
 
   // Date stamp settings for gallery labels
   bool _galleryDateLabelsEnabled = false;
@@ -273,6 +286,11 @@ class GalleryPageState extends State<GalleryPage>
     _loadCaptureOffsets();
     _stabilizedScrollController.addListener(_onStabilizedScroll);
     _tabController.addListener(_onTabChanged);
+
+    // Check for pending files from global drop
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkPendingDropFiles();
+    });
   }
 
   @override
@@ -289,6 +307,12 @@ class GalleryPageState extends State<GalleryPage>
     if (widget.imageFilesStr != oldWidget.imageFilesStr ||
         widget.stabilizedImageFilesStr != oldWidget.stabilizedImageFilesStr) {
       _loadCaptureOffsets();
+    }
+
+    // Check for new pending files from global drop
+    if (widget.pendingDropFiles != oldWidget.pendingDropFiles) {
+      _pendingFilesProcessed = false; // Reset flag for new files
+      _checkPendingDropFiles();
     }
   }
 
@@ -1111,6 +1135,108 @@ class GalleryPageState extends State<GalleryPage>
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Global Drop Support
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /// Check for pending files from global drag-and-drop.
+  /// Called from initState and didUpdateWidget.
+  void _checkPendingDropFiles() {
+    // IDEMPOTENT: Only process once per set of files
+    if (_pendingFilesProcessed) return;
+    if (widget.pendingDropFiles == null || widget.pendingDropFiles!.isEmpty) {
+      return;
+    }
+
+    _pendingFilesProcessed = true; // Mark as processed BEFORE async work
+
+    // Clear immediately to prevent re-processing on rebuild
+    final filesToProcess = List<String>.from(widget.pendingDropFiles!);
+    widget.clearPendingDropFiles?.call();
+
+    _processGlobalDropFiles(filesToProcess);
+  }
+
+  /// Process files from global drag-and-drop.
+  /// Uses the same logic as the import sheet's drop zone.
+  Future<void> _processGlobalDropFiles(List<String> filePaths) async {
+    // If already importing, queue the files
+    if (isImporting) {
+      GlobalDropService.instance.queueFiles(filePaths, widget.projectId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${filePaths.length} files queued for import'),
+          ),
+        );
+      }
+      return;
+    }
+
+    setState(() {
+      photosImported = 0;
+      successfullyImported = 0;
+      _tabController.index = 1; // Switch to Raw tab
+      isImporting = true;
+    });
+
+    widget.setImportingInMain(true);
+
+    if (widget.stabilizingRunningInMain) {
+      await widget.cancelStabCallback();
+    }
+
+    setState(() => preparingImport = true);
+    await Future.delayed(Duration.zero); // Yield to UI
+
+    final bool hasDirectories = await compute(_checkForDirectories, filePaths);
+
+    if (hasDirectories) {
+      await _handleDropWithDirectories(filePaths);
+    } else {
+      setState(() => preparingImport = false);
+      GalleryUtils.startImportBatch(filePaths.length);
+      for (final filePath in filePaths) {
+        await processPickedFile(File(filePath));
+      }
+    }
+
+    widget.setImportingInMain(false);
+
+    // Check queue for more files (for THIS project only)
+    await _processQueuedFiles();
+
+    if (!mounted) return;
+
+    final String projectOrientationRaw =
+        await SettingsUtil.loadProjectOrientation(projectIdStr);
+    setState(() {
+      projectOrientation = projectOrientationRaw;
+      isImporting = false;
+    });
+
+    widget.refreshSettings();
+    widget.stabCallback();
+    _loadImages();
+    _showImportCompleteDialog(
+      successfullyImported,
+      photosImported - successfullyImported,
+    );
+  }
+
+  /// Process any queued files from GlobalDropService.
+  Future<void> _processQueuedFiles() async {
+    // Only consume files for THIS project (prevents cross-project imports)
+    final queuedFiles =
+        GlobalDropService.instance.consumeQueuedFiles(widget.projectId);
+    if (queuedFiles.isNotEmpty) {
+      // Recursively process queued files
+      await _processGlobalDropFiles(queuedFiles);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+
   void _showImportCompleteDialog(int imported, int skipped) {
     if (importingDialogActive) {
       closeImportingDialog!();
@@ -1230,9 +1356,15 @@ class GalleryPageState extends State<GalleryPage>
     isDraggingOver = false;
     dropReceivedCount = null;
 
+    // Notify that import sheet is opening (disables global drop overlay)
+    widget.setImportSheetOpen(true);
+
+    bool isDateInfoExpanded = false;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       isDismissible:
           dropReceivedCount == null, // Can't dismiss while processing
       enableDrag: dropReceivedCount == null,
@@ -1257,13 +1389,29 @@ class GalleryPageState extends State<GalleryPage>
                   },
                 ),
               ],
+              const SizedBox(height: 16),
+              GalleryBottomSheets.buildPhotoDateInfoBanner(
+                isExpanded: isDateInfoExpanded,
+                onToggle: () {
+                  isDateInfoExpanded = !isDateInfoExpanded;
+                  setModalState(() {});
+                },
+              ),
             ];
-            return GalleryBottomSheets.buildOptionsSheet(
-                context, 'Import Photos', modalContent);
+            return ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.85,
+              ),
+              child: GalleryBottomSheets.buildOptionsSheet(
+                  context, 'Import Photos', modalContent),
+            );
           },
         );
       },
-    );
+    ).whenComplete(() {
+      // Always reset when sheet closes (success, error, ESC, back, etc.)
+      widget.setImportSheetOpen(false);
+    });
   }
 
   Widget _buildDesktopDropZoneWithState({
@@ -2281,6 +2429,7 @@ class GalleryPageState extends State<GalleryPage>
     }
 
     return GestureDetector(
+      key: ValueKey('${isStabilized ? 'stab' : 'raw'}_$timestamp'),
       onTap: () =>
           _showImagePreviewDialog(File(filepath), isStabilized: isStabilized),
       onLongPress: () => _showImageOptionsMenu(File(filepath)),

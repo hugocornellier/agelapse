@@ -15,6 +15,7 @@ import '../utils/image_utils.dart';
 import '../utils/settings_utils.dart';
 import '../utils/stabilizer_utils/stabilizer_utils.dart';
 import '../widgets/grid_painter_se.dart';
+import '../widgets/info_tooltip_icon.dart';
 import '../widgets/transform_tool/transform_tool_exports.dart';
 
 class ManualStabilizationPage extends StatefulWidget {
@@ -653,6 +654,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                               controller: _inputController1,
                               label: 'Horiz. Offset',
                               icon: Icons.swap_horiz_rounded,
+                              tooltip:
+                                  'Shifts image left/right. Positive values move the face right.',
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -661,6 +664,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                               controller: _inputController2,
                               label: 'Vert. Offset',
                               icon: Icons.swap_vert_rounded,
+                              tooltip:
+                                  'Shifts image up/down. Positive values move the face down.',
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -669,6 +674,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                               controller: _inputController3,
                               label: 'Scale Factor',
                               icon: Icons.zoom_in_rounded,
+                              tooltip:
+                                  'Zoom level. Values greater than 1 enlarge, less than 1 shrink.',
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -677,6 +684,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                               controller: _inputController4,
                               label: 'Rotation',
                               icon: Icons.rotate_right_rounded,
+                              tooltip:
+                                  'Tilt in degrees. Positive values rotate clockwise.',
                             ),
                           ),
                         ],
@@ -690,6 +699,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                                   controller: _inputController1,
                                   label: 'Horiz. Offset',
                                   icon: Icons.swap_horiz_rounded,
+                                  tooltip:
+                                      'Shifts image left/right. Positive values move the face right.',
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -698,6 +709,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                                   controller: _inputController2,
                                   label: 'Vert. Offset',
                                   icon: Icons.swap_vert_rounded,
+                                  tooltip:
+                                      'Shifts image up/down. Positive values move the face down.',
                                 ),
                               ),
                             ],
@@ -710,6 +723,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                                   controller: _inputController3,
                                   label: 'Scale Factor',
                                   icon: Icons.zoom_in_rounded,
+                                  tooltip:
+                                      'Zoom level. Values greater than 1 enlarge, less than 1 shrink.',
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -718,6 +733,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                                   controller: _inputController4,
                                   label: 'Rotation',
                                   icon: Icons.rotate_right_rounded,
+                                  tooltip:
+                                      'Tilt in degrees. Positive values rotate clockwise.',
                                 ),
                               ),
                             ],
@@ -741,6 +758,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
     required TextEditingController controller,
     required String label,
     required IconData icon,
+    String? tooltip,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -749,14 +767,17 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
           children: [
             Icon(icon, size: 14, color: AppColors.settingsTextTertiary),
             const SizedBox(width: 6),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppColors.settingsTextTertiary,
-                fontWeight: FontWeight.w500,
+            Flexible(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.settingsTextTertiary,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
+            if (tooltip != null) InfoTooltipIcon(content: tooltip),
           ],
         ),
         const SizedBox(height: 8),
@@ -1767,57 +1788,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              // Scale controls
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.settingsCardBorder.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Row(
-                  children: [
-                    buildToolbarButton(
-                      key: 'scaleMinus',
-                      icon: Icons.remove_rounded,
-                      onTap: () => _adjustScale(-0.01),
-                      onHold: () => _adjustScale(-0.01),
-                    ),
-                    const SizedBox(width: 4),
-                    buildToolbarButton(
-                      key: 'scalePlus',
-                      icon: Icons.add_rounded,
-                      onTap: () => _adjustScale(0.01),
-                      onHold: () => _adjustScale(0.01),
-                    ),
-                  ],
-                ),
-              ),
-              // Rotation controls
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.settingsCardBorder.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Row(
-                  children: [
-                    buildToolbarButton(
-                      key: 'rotateCCW',
-                      icon: Icons.rotate_left_rounded,
-                      onTap: () => _adjustRotation(-0.1),
-                      onHold: () => _adjustRotation(-0.1),
-                    ),
-                    const SizedBox(width: 4),
-                    buildToolbarButton(
-                      key: 'rotateCW',
-                      icon: Icons.rotate_right_rounded,
-                      onTap: () => _adjustRotation(0.1),
-                      onHold: () => _adjustRotation(0.1),
-                    ),
-                  ],
-                ),
-              ),
-              // Direction controls
+              // Direction controls (matches Horiz. + Vert. Offset)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                 decoration: BoxDecoration(
@@ -1852,6 +1823,56 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                       icon: Icons.arrow_downward_rounded,
                       onTap: () => _adjustOffsets(dy: 1),
                       onHold: () => _adjustOffsets(dy: 1),
+                    ),
+                  ],
+                ),
+              ),
+              // Scale controls (matches Scale Factor)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.settingsCardBorder.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  children: [
+                    buildToolbarButton(
+                      key: 'scaleMinus',
+                      icon: Icons.remove_rounded,
+                      onTap: () => _adjustScale(-0.01),
+                      onHold: () => _adjustScale(-0.01),
+                    ),
+                    const SizedBox(width: 4),
+                    buildToolbarButton(
+                      key: 'scalePlus',
+                      icon: Icons.add_rounded,
+                      onTap: () => _adjustScale(0.01),
+                      onHold: () => _adjustScale(0.01),
+                    ),
+                  ],
+                ),
+              ),
+              // Rotation controls (matches Rotation)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.settingsCardBorder.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  children: [
+                    buildToolbarButton(
+                      key: 'rotateCCW',
+                      icon: Icons.rotate_left_rounded,
+                      onTap: () => _adjustRotation(-0.1),
+                      onHold: () => _adjustRotation(-0.1),
+                    ),
+                    const SizedBox(width: 4),
+                    buildToolbarButton(
+                      key: 'rotateCW',
+                      icon: Icons.rotate_right_rounded,
+                      onTap: () => _adjustRotation(0.1),
+                      onHold: () => _adjustRotation(0.1),
                     ),
                   ],
                 ),

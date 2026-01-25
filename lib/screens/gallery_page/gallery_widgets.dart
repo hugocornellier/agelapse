@@ -5,25 +5,39 @@ import 'package:path/path.dart' as path;
 import '../../services/database_helper.dart';
 import '../../services/thumbnail_service.dart';
 
+/// Result from checking thumbnail status, includes both status and thumbnail existence.
+class ThumbnailCheckResult {
+  final ThumbnailStatus status;
+  final bool thumbnailExists;
+
+  const ThumbnailCheckResult({
+    required this.status,
+    required this.thumbnailExists,
+  });
+}
+
 /// Helper class for common thumbnail status checking logic.
 /// Eliminates duplicate code across StabilizedThumbnail, StabilizedImagePreview, and RawThumbnail.
 class ThumbnailStatusHelper {
   /// Checks the initial status of a thumbnail by:
   /// 1. Checking the ThumbnailService cache
-  /// 2. Checking if the file exists on disk
-  /// 3. Optionally checking DB for failure flags (noFacesFound, stabFailed)
+  /// 2. Checking if the thumbnail file exists on disk
+  /// 3. Checking if the full stabilized image exists (fallback)
+  /// 4. Optionally checking DB for failure flags (noFacesFound, stabFailed)
   ///
   /// Returns:
-  /// - [ThumbnailStatus] if a definitive status is found
+  /// - [ThumbnailCheckResult] with status and thumbnailExists flag if found
   /// - null if no status found (still loading)
   ///
   /// [thumbnailPath] - Path to the thumbnail file
   /// [projectId] - Project ID for DB lookups
+  /// [stabilizedImagePath] - Optional path to full image for fallback check
   /// [verifyFileSize] - If true, verifies file has content for success status
   /// [checkDbFlags] - If true, checks DB for noFacesFound/stabFailed flags
-  static Future<ThumbnailStatus?> checkInitialStatus({
+  static Future<ThumbnailCheckResult?> checkInitialStatus({
     required String thumbnailPath,
     required int projectId,
+    String? stabilizedImagePath,
     bool verifyFileSize = false,
     bool checkDbFlags = true,
   }) async {
@@ -34,35 +48,66 @@ class ThumbnailStatusHelper {
         // Verify file actually exists before trusting cache
         final file = File(thumbnailPath);
         if (await file.exists() && await file.length() > 0) {
-          return cachedStatus;
+          return ThumbnailCheckResult(
+            status: cachedStatus,
+            thumbnailExists: true,
+          );
         }
-        // File doesn't exist yet, fall through to other checks
+        // Thumbnail doesn't exist, fall through to check full image
       } else {
         // Non-success status or no verification needed - trust the cache
-        return cachedStatus;
+        return ThumbnailCheckResult(
+          status: cachedStatus,
+          thumbnailExists: false,
+        );
       }
     }
 
-    // 2. Check if file already exists on disk
+    // 2. Check if thumbnail file already exists on disk
     final file = File(thumbnailPath);
     if (await file.exists()) {
       final length = await file.length();
       if (length > 0) {
-        return ThumbnailStatus.success;
+        return ThumbnailCheckResult(
+          status: ThumbnailStatus.success,
+          thumbnailExists: true,
+        );
       }
     }
 
-    // 3. Check DB for failure flags (optional)
+    // 3. Check if full stabilized image exists as fallback
+    if (stabilizedImagePath != null) {
+      final stabFile = File(stabilizedImagePath);
+      if (await stabFile.exists() && await stabFile.length() > 0) {
+        // Thumbnail missing but full image exists - treat as success
+        return ThumbnailCheckResult(
+          status: ThumbnailStatus.success,
+          thumbnailExists: false,
+        );
+      }
+    }
+
+    // 4. Check DB for failure flags (optional)
     if (checkDbFlags) {
       final String timestamp = path.basenameWithoutExtension(thumbnailPath);
       final photo = await DB.instance.getPhotoByTimestamp(timestamp, projectId);
       if (photo != null) {
-        if (photo['noFacesFound'] == 1) return ThumbnailStatus.noFacesFound;
-        if (photo['stabFailed'] == 1) return ThumbnailStatus.stabFailed;
+        if (photo['noFacesFound'] == 1) {
+          return ThumbnailCheckResult(
+            status: ThumbnailStatus.noFacesFound,
+            thumbnailExists: false,
+          );
+        }
+        if (photo['stabFailed'] == 1) {
+          return ThumbnailCheckResult(
+            status: ThumbnailStatus.stabFailed,
+            thumbnailExists: false,
+          );
+        }
       }
     }
 
-    // 4. No status found - caller should stay in loading state
+    // 5. No status found - caller should stay in loading state
     return null;
   }
 
@@ -164,9 +209,18 @@ class StabilizedThumbnailState extends State<StabilizedThumbnail> {
   void didUpdateWidget(covariant StabilizedThumbnail oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.thumbnailPath != widget.thumbnailPath) {
+      // 1. Cancel old subscription FIRST
+      _subscription?.cancel();
+
+      // 2. Create new subscription for new path
+      _subscribeToStream();
+
+      // 3. Reset state
       _status = null;
       _fileExists = false;
       _checkedInitial = false;
+
+      // 4. Check initial status for new path
       _checkInitialStatus();
     }
   }
@@ -190,19 +244,24 @@ class StabilizedThumbnailState extends State<StabilizedThumbnail> {
     if (_checkedInitial) return;
     _checkedInitial = true;
 
-    final status = await ThumbnailStatusHelper.checkInitialStatus(
+    // Capture path at start to detect stale results
+    final pathAtStart = widget.thumbnailPath;
+
+    final result = await ThumbnailStatusHelper.checkInitialStatus(
       thumbnailPath: widget.thumbnailPath,
       projectId: widget.projectId,
+      stabilizedImagePath: widget.stabilizedImagePath,
       verifyFileSize: true,
       checkDbFlags: true,
     );
 
-    if (status != null && mounted) {
+    // Guard: ignore result if path changed during async operation
+    if (!mounted || widget.thumbnailPath != pathAtStart) return;
+
+    if (result != null) {
       setState(() {
-        _status = status;
-        if (status == ThumbnailStatus.success) {
-          _fileExists = true;
-        }
+        _status = result.status;
+        _fileExists = result.thumbnailExists;
       });
     }
   }
@@ -316,15 +375,22 @@ class StabilizedImagePreviewState extends State<StabilizedImagePreview> {
     if (_checkedInitial) return;
     _checkedInitial = true;
 
-    final status = await ThumbnailStatusHelper.checkInitialStatus(
+    // Capture path at start to detect stale results
+    final pathAtStart = widget.thumbnailPath;
+
+    final result = await ThumbnailStatusHelper.checkInitialStatus(
       thumbnailPath: widget.thumbnailPath,
       projectId: widget.projectId,
+      stabilizedImagePath: widget.imagePath,
       verifyFileSize: false,
       checkDbFlags: true,
     );
 
-    if (status != null && mounted) {
-      setState(() => _status = status);
+    // Guard: ignore result if path changed during async operation
+    if (!mounted || widget.thumbnailPath != pathAtStart) return;
+
+    if (result != null) {
+      setState(() => _status = result.status);
     }
   }
 
@@ -440,8 +506,17 @@ class RawThumbnailState extends State<RawThumbnail> {
   void didUpdateWidget(covariant RawThumbnail oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.thumbnailPath != widget.thumbnailPath) {
+      // 1. Cancel old subscription FIRST
+      _subscription?.cancel();
+
+      // 2. Create new subscription for new path
+      _subscribeToStream();
+
+      // 3. Reset state
       _ready = false;
       _checkedInitial = false;
+
+      // 4. Check initial status for new path
       _checkInitialStatus();
     }
   }
@@ -462,15 +537,21 @@ class RawThumbnailState extends State<RawThumbnail> {
     if (_checkedInitial) return;
     _checkedInitial = true;
 
+    // Capture path at start to detect stale results
+    final pathAtStart = widget.thumbnailPath;
+
     // Raw thumbnails don't check DB flags - only cache and file existence
-    final status = await ThumbnailStatusHelper.checkInitialStatus(
+    final result = await ThumbnailStatusHelper.checkInitialStatus(
       thumbnailPath: widget.thumbnailPath,
       projectId: widget.projectId,
       verifyFileSize: true,
       checkDbFlags: false,
     );
 
-    if (status == ThumbnailStatus.success && mounted) {
+    // Guard: ignore result if path changed during async operation
+    if (!mounted || widget.thumbnailPath != pathAtStart) return;
+
+    if (result?.status == ThumbnailStatus.success) {
       setState(() => _ready = true);
     }
   }

@@ -40,7 +40,8 @@ The face detection model used by AgeLapse is platform-dependent. On Mobile, Goog
 ### v2.4.0
 
 #### New Features
-- Customizable font for date stamps. 
+- Customizable font for date stamps.
+- Customizable background colour for stabilized output.
 - Camera timer. Thanks to all users who requested this.
   - Optional 3s or 10s countdown before taking photos
   - Visual overlay with feedback
@@ -52,7 +53,7 @@ The face detection model used by AgeLapse is platform-dependent. On Mobile, Goog
 - Added ETA to video compilation step
 
 #### Bug Fixes
-- Fixed camera mirroring on macOS
+- Fixed camera mirroring on macOS 
 - Fixed Linux camera initialization with proper libmpv bundling
 
 ### v2.3.0

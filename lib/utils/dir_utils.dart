@@ -8,6 +8,7 @@ import '../utils/utils.dart';
 
 import '../services/database_helper.dart';
 import '../services/log_service.dart';
+import 'export_naming_utils.dart';
 
 class DirUtils {
   static const String photosRawDirname = 'photos_raw';
@@ -82,7 +83,7 @@ class DirUtils {
   ) async =>
       path.join(
         await getExportsDirPath(projectId),
-        "$projectName-AgeLapse-Export.zip",
+        ExportNamingUtils.generateZipFilename(projectName: projectName),
       );
 
   static Future<String> getRawPhotoPathFromTimestampAndProjectId(

@@ -9,6 +9,8 @@ class DropdownWithCustomTextField extends StatefulWidget {
   final int initialValue;
   final ValueChanged<int> onChanged;
   final bool? showDivider;
+  final bool? showInfo;
+  final String? infoContent;
 
   const DropdownWithCustomTextField({
     super.key,
@@ -17,6 +19,8 @@ class DropdownWithCustomTextField extends StatefulWidget {
     required this.initialValue,
     required this.onChanged,
     this.showDivider,
+    this.showInfo,
+    this.infoContent,
   });
 
   @override
@@ -132,9 +136,9 @@ class DropdownWithCustomTextFieldState
   Widget build(BuildContext context) {
     return SettingListTile(
       title: widget.title,
-      infoContent: "",
+      infoContent: widget.infoContent,
       contentWidget: isCustom ? _buildCustomTextField() : _buildDropdown(),
-      showInfo: false,
+      showInfo: widget.showInfo,
       showDivider: widget.showDivider,
     );
   }

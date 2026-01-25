@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:animated_bottom_navigation_bar/animated_bottom_navigation_bar.dart';
 import 'package:flutter/services.dart';
 import '../screens/create_page.dart';
 import '../services/log_service.dart';
+import '../services/global_drop_service.dart';
 import '../screens/gallery_page/gallery_page.dart';
 import '../screens/project_page.dart';
 import '../screens/info_page.dart';
@@ -20,7 +22,9 @@ import '../services/stab_update_event.dart';
 import '../utils/gallery_utils.dart';
 import 'package:path/path.dart' as path;
 import '../styles/styles.dart';
+import '../utils/utils.dart';
 import '../widgets/custom_app_bar.dart';
+import '../widgets/global_drop_overlay.dart';
 
 class MainNavigation extends StatefulWidget {
   final int projectId;
@@ -46,7 +50,8 @@ class MainNavigation extends StatefulWidget {
   MainNavigationState createState() => MainNavigationState();
 }
 
-class MainNavigationState extends State<MainNavigation> {
+class MainNavigationState extends State<MainNavigation>
+    with WidgetsBindingObserver {
   late int _selectedIndex;
   int _prevIndex = 0;
   bool _isImporting = false;
@@ -61,6 +66,10 @@ class MainNavigationState extends State<MainNavigation> {
   SettingsCache? _settingsCache;
   bool _photoTakenToday = false;
   bool _userRanOutOfSpace = false;
+
+  // Global drag-and-drop state (UI only - GlobalDropService is source of truth)
+  bool _globalDragActive = false;
+  List<String>? _pendingDropFiles;
 
   /// Current stabilization progress from the service stream.
   StabilizationProgress _stabProgress = StabilizationProgress.idle();
@@ -95,6 +104,7 @@ class MainNavigationState extends State<MainNavigation> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     projectIdStr = widget.projectId.toString();
     _selectedIndex = widget.index ?? 0;
     _showFlashingCircle = widget.showFlashingCircle;
@@ -163,10 +173,25 @@ class MainNavigationState extends State<MainNavigation> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _stabSubscription?.cancel();
     _stabUpdateController.close();
     _settingsCache?.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Clear overlay if app loses focus
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
+      _clearDragState();
+    }
+  }
+
+  void _clearDragState() {
+    GlobalDropService.instance.onDragExit();
+    if (mounted) setState(() => _globalDragActive = false);
   }
 
   Future<void> _initPhotosThenStabilize() async {
@@ -489,6 +514,11 @@ class MainNavigationState extends State<MainNavigation> {
           recompileVideoCallback: _recompileVideo,
           userRanOutOfSpace: _userRanOutOfSpace,
           stabUpdateStream: _stabUpdateController.stream,
+          // Global drop support
+          setImportSheetOpen: (isOpen) =>
+              GlobalDropService.instance.setImportSheetOpen(isOpen),
+          pendingDropFiles: _pendingDropFiles,
+          clearPendingDropFiles: () => setState(() => _pendingDropFiles = null),
         ),
         CameraPage(
           projectId: widget.projectId,
@@ -550,6 +580,78 @@ class MainNavigationState extends State<MainNavigation> {
   }
 
   void openGallery() => _onItemTapped(3);
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Global Drag-and-Drop Handling
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  Future<void> _handleGlobalDrop(DropDoneDetails details) async {
+    _clearDragState();
+
+    final paths = details.files.map((f) => f.path).toList();
+
+    // EARLY VALIDATION: Check for empty drops
+    if (paths.isEmpty) {
+      _showErrorSnackbar('No files to import');
+      return;
+    }
+
+    // Filter to valid image extensions (or directories to scan)
+    final validPaths = paths.where((p) {
+      // Directories are OK (will be scanned)
+      if (Directory(p).existsSync()) return true;
+      // Use Utils.isImage for consistent validation with rest of app
+      return Utils.isImage(p);
+    }).toList();
+
+    if (validPaths.isEmpty) {
+      _showErrorSnackbar('No supported image files found');
+      return;
+    }
+
+    // QUEUE if importing OR import sheet open
+    if (_isImporting || GlobalDropService.instance.importSheetOpen) {
+      final queued =
+          GlobalDropService.instance.queueFiles(validPaths, widget.projectId);
+      if (queued) {
+        _showQueuedFilesSnackbar(validPaths.length);
+      } else {
+        _showErrorSnackbar('Import queue is full');
+      }
+      return;
+    }
+
+    // Store files and navigate to gallery (only if not already there)
+    _pendingDropFiles = validPaths;
+    if (_selectedIndex != 1) {
+      _onItemTapped(1);
+    } else {
+      // Already on gallery - trigger rebuild so GalleryPage detects pending files
+      setState(() {});
+    }
+    // GalleryPage will detect pendingDropFiles via didUpdateWidget
+  }
+
+  void _showQueuedFilesSnackbar(int count) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$count files queued - will import after current batch'),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _showErrorSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red.shade700,
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+
   // Show header on CreatePage when: navbar not hidden OR actively stabilizing/compiling
   // This ensures header shows during loading even after a settings-triggered reset
   bool onCreatePageDuringLoading() =>
@@ -599,7 +701,7 @@ class MainNavigationState extends State<MainNavigation> {
           photoCount > 1;
     }
 
-    return Scaffold(
+    final scaffold = Scaffold(
       body: Column(
         children: [
           if (appBar != null) appBar,
@@ -633,6 +735,32 @@ class MainNavigationState extends State<MainNavigation> {
                 backgroundColor: const Color(0xff0F0F0F),
               ),
             ),
+    );
+
+    // Only wrap with DropTarget on desktop platforms
+    final bool isDesktop =
+        Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+
+    if (!isDesktop) return scaffold;
+
+    // Desktop: wrap with global drop target and overlay
+    return Stack(
+      children: [
+        DropTarget(
+          onDragEntered: (_) {
+            GlobalDropService.instance.onDragEnter();
+            setState(() => _globalDragActive = true);
+          },
+          onDragExited: (_) {
+            _clearDragState();
+          },
+          onDragDone: (details) => _handleGlobalDrop(details),
+          child: scaffold,
+        ),
+        // Overlay: only show if dragging AND import sheet is not open
+        if (_globalDragActive && !GlobalDropService.instance.importSheetOpen)
+          GlobalDropOverlay(isDragging: _globalDragActive),
+      ],
     );
   }
 }

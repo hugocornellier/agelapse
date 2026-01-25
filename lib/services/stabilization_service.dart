@@ -116,7 +116,26 @@ class StabilizationService {
       LogService.instance.log(
         'StabilizationService: No photos to stabilize, checking video',
       );
+
+      // Check auto-compile setting BEFORE emitting any progress UI
+      final autoCompileEnabled = await SettingsUtil.loadAutoCompileVideo(
+        projectId.toString(),
+      );
+
       final needsVideo = await _checkIfVideoNeeded(projectId);
+
+      // If video needed but auto-compile disabled, set flag and exit cleanly
+      if (needsVideo && !autoCompileEnabled) {
+        LogService.instance.log(
+          'StabilizationService: Video needed but auto-compile disabled, setting flag only',
+        );
+        await DB.instance.setNewVideoNeeded(projectId);
+        _emitProgress(StabilizationProgress.completed(projectId: projectId));
+        _state = StabilizationState.completed;
+        await _cleanup();
+        return true;
+      }
+
       if (needsVideo) {
         // Get frame count for progress indicator
         final orientation =

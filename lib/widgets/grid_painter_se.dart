@@ -13,6 +13,16 @@ class GridPainterSE extends CustomPainter {
   final bool hideCorners;
   final Color? backgroundColor;
 
+  // Date stamp preview parameters
+  final bool dateStampEnabled;
+  final String? dateStampText;
+  final String dateStampPosition;
+  final int dateStampSizePercent;
+  final double dateStampOpacity;
+  final String dateStampFontFamily;
+  final bool watermarkEnabled;
+  final String? watermarkPosition;
+
   GridPainterSE(
     this.offsetX,
     this.offsetY,
@@ -24,6 +34,14 @@ class GridPainterSE extends CustomPainter {
     this.hideToolTip = false,
     this.hideCorners = false,
     this.backgroundColor,
+    this.dateStampEnabled = false,
+    this.dateStampText,
+    this.dateStampPosition = 'lower right',
+    this.dateStampSizePercent = 3,
+    this.dateStampOpacity = 1.0,
+    this.dateStampFontFamily = 'Inter',
+    this.watermarkEnabled = false,
+    this.watermarkPosition,
   });
 
   @override
@@ -134,6 +152,13 @@ class GridPainterSE extends CustomPainter {
       );
     }
 
+    // Draw date stamp preview (if enabled and has text)
+    if (dateStampEnabled &&
+        dateStampText != null &&
+        dateStampText!.isNotEmpty) {
+      _paintDateStamp(canvas, size);
+    }
+
     if (!hideToolTip) {
       // Draw text background rectangle
       final textBackgroundPaint = Paint()
@@ -174,6 +199,99 @@ class GridPainterSE extends CustomPainter {
     }
   }
 
+  void _paintDateStamp(Canvas canvas, Size size) {
+    // Calculate font size (percentage of canvas height, matching export formula)
+    final fontSize =
+        (size.height * dateStampSizePercent / 100).clamp(8.0, 48.0);
+
+    // Create text painter matching DateStampUtils.getExportTextStyle
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: dateStampText,
+        style: TextStyle(
+          fontFamily: dateStampFontFamily,
+          fontSize: fontSize,
+          fontWeight: FontWeight.w600,
+          color: Colors.white.withValues(alpha: dateStampOpacity),
+          shadows: [
+            Shadow(
+              offset: const Offset(1, 1),
+              blurRadius: 2,
+              color: Colors.black.withValues(alpha: dateStampOpacity * 0.8),
+            ),
+            Shadow(
+              offset: const Offset(-1, -1),
+              blurRadius: 2,
+              color: Colors.black.withValues(alpha: dateStampOpacity * 0.5),
+            ),
+          ],
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout(maxWidth: size.width * 0.8);
+
+    // Calculate position with 2% margin
+    final marginX = size.width * 0.02;
+    final marginY = size.height * 0.02;
+
+    double x, y;
+    switch (dateStampPosition.toLowerCase()) {
+      case 'lower right':
+        x = size.width - textPainter.width - marginX;
+        y = size.height - textPainter.height - marginY;
+      case 'lower left':
+        x = marginX;
+        y = size.height - textPainter.height - marginY;
+      case 'upper right':
+        x = size.width - textPainter.width - marginX;
+        y = marginY;
+      case 'upper left':
+        x = marginX;
+        y = marginY;
+        // Offset below tooltip if tooltip is visible
+        if (!hideToolTip) {
+          y += size.height * 0.08;
+        }
+      default:
+        x = size.width - textPainter.width - marginX;
+        y = size.height - textPainter.height - marginY;
+    }
+
+    // Apply watermark collision offset if both in same position
+    if (watermarkEnabled &&
+        watermarkPosition != null &&
+        dateStampPosition.toLowerCase() == watermarkPosition!.toLowerCase()) {
+      final isLower = dateStampPosition.toLowerCase().contains('lower');
+      final offset = size.height * 0.06;
+      y += isLower ? -offset : offset;
+    }
+
+    // Background padding (matching image_preview_navigator style)
+    const paddingH = 8.0;
+    const paddingV = 4.0;
+
+    // Draw semi-transparent background pill
+    final backgroundPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.5 * dateStampOpacity)
+      ..style = PaintingStyle.fill;
+
+    final bgRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(
+        x - paddingH,
+        y - paddingV,
+        textPainter.width + paddingH * 2,
+        textPainter.height + paddingV * 2,
+      ),
+      const Radius.circular(4),
+    );
+    canvas.drawRRect(bgRect, backgroundPaint);
+
+    // Draw text
+    textPainter.paint(canvas, Offset(x, y));
+    textPainter.dispose();
+  }
+
   double _calculateImageScale(
     double canvasWidth,
     double imageWidth,
@@ -193,6 +311,14 @@ class GridPainterSE extends CustomPainter {
         projectOrientation != oldDelegate.projectOrientation ||
         hideToolTip != oldDelegate.hideToolTip ||
         hideCorners != oldDelegate.hideCorners ||
-        backgroundColor != oldDelegate.backgroundColor;
+        backgroundColor != oldDelegate.backgroundColor ||
+        dateStampEnabled != oldDelegate.dateStampEnabled ||
+        dateStampText != oldDelegate.dateStampText ||
+        dateStampPosition != oldDelegate.dateStampPosition ||
+        dateStampSizePercent != oldDelegate.dateStampSizePercent ||
+        dateStampOpacity != oldDelegate.dateStampOpacity ||
+        dateStampFontFamily != oldDelegate.dateStampFontFamily ||
+        watermarkEnabled != oldDelegate.watermarkEnabled ||
+        watermarkPosition != oldDelegate.watermarkPosition;
   }
 }

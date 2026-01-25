@@ -1546,8 +1546,9 @@ class SettingsSheetState extends State<SettingsSheet> {
           fontSize: 14,
         ),
       ),
-      infoContent: '',
-      showInfo: false,
+      infoContent:
+          'Final video dimensions. Derived from your resolution, orientation, and aspect ratio.',
+      showInfo: true,
     );
   }
 
@@ -2261,6 +2262,9 @@ class SettingsSheetState extends State<SettingsSheet> {
         BoolSettingSwitch(
           title: 'Mirror front camera',
           initialValue: cameraMirror,
+          showInfo: true,
+          infoContent:
+              'Flips the camera preview and captured photos horizontally.',
           onChanged: (bool value) async {
             setState(() {
               cameraMirror = value;
@@ -2315,8 +2319,9 @@ class SettingsSheetState extends State<SettingsSheet> {
           }
         },
       ),
-      infoContent: '',
-      showInfo: false,
+      infoContent:
+          'Alignment overlay for camera preview only. Ghost = guide photo, Grid = guide lines.',
+      showInfo: true,
     );
   }
 
@@ -2367,8 +2372,8 @@ class SettingsSheetState extends State<SettingsSheet> {
           }
         },
       ),
-      infoContent: '',
-      showInfo: false,
+      infoContent: 'Portrait = vertical video. Landscape = horizontal video.',
+      showInfo: true,
     );
   }
 
@@ -2378,6 +2383,9 @@ class SettingsSheetState extends State<SettingsSheet> {
       title: 'Framerate (FPS)',
       initialValue: framerate,
       showDivider: true,
+      showInfo: true,
+      infoContent:
+          'Frames per second in output video. Higher = smoother playback, larger file size.',
       onChanged: (newValue) async {
         await DB.instance.setSettingByTitle(
           'framerate',
@@ -2462,8 +2470,9 @@ class SettingsSheetState extends State<SettingsSheet> {
               }
             },
           ),
-          infoContent: '',
-          showInfo: false,
+          infoContent:
+              'Output resolution. Higher values increase quality and file size.',
+          showInfo: true,
         ),
         if (_isCustomResolution) _buildCustomResolutionInput(),
       ],
@@ -2796,8 +2805,9 @@ class SettingsSheetState extends State<SettingsSheet> {
           }
         },
       ),
-      infoContent: '',
-      showInfo: false,
+      infoContent:
+          'Output aspect ratio. 16:9 is widescreen, 4:3 is standard format.',
+      showInfo: true,
     );
   }
 

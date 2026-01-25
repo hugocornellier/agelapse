@@ -128,7 +128,24 @@ class ProjectPageState extends State<ProjectPage> {
           outputImageLoader.offsetY = newCache.eyeOffsetY;
           setState(() {});
         }
+
+        // Check for date stamp or watermark setting changes
+        final dateStampChanged = oldCache.exportDateStampEnabled !=
+                newCache.exportDateStampEnabled ||
+            oldCache.watermarkEnabled != newCache.watermarkEnabled;
+
+        if (dateStampChanged) {
+          _reloadDateStampSettings();
+        }
       }
+    }
+  }
+
+  /// Reload date stamp settings and trigger repaint.
+  Future<void> _reloadDateStampSettings() async {
+    await outputImageLoader.loadDateStampSettings();
+    if (mounted) {
+      setState(() {});
     }
   }
 
@@ -487,8 +504,25 @@ class ProjectPageState extends State<ProjectPage> {
                                 outputImageLoader.aspectRatio!,
                                 outputImageLoader.projectOrientation!,
                                 hideToolTip: true,
+                                hideCorners: true,
                                 backgroundColor:
                                     outputImageLoader.backgroundColor,
+                                dateStampEnabled:
+                                    outputImageLoader.dateStampEnabled,
+                                dateStampText:
+                                    outputImageLoader.getDateStampPreviewText(),
+                                dateStampPosition:
+                                    outputImageLoader.dateStampPosition,
+                                dateStampSizePercent:
+                                    outputImageLoader.dateStampSizePercent,
+                                dateStampOpacity:
+                                    outputImageLoader.dateStampOpacity,
+                                dateStampFontFamily:
+                                    outputImageLoader.dateStampFontFamily,
+                                watermarkEnabled:
+                                    outputImageLoader.watermarkEnabled,
+                                watermarkPosition:
+                                    outputImageLoader.watermarkPosition,
                               ),
                       ),
                     ),

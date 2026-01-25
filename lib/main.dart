@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'dart:io' show Platform;
@@ -185,7 +186,10 @@ class AgeLapse extends StatelessWidget {
 
   Widget _buildApp(BuildContext context, Widget homePage, String theme) {
     MaterialTheme materialTheme = const MaterialTheme(TextTheme());
-    return ChangeNotifierProvider(
+    final bool isDesktop =
+        Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+
+    final materialApp = ChangeNotifierProvider(
       create: (_) => ThemeProvider(theme, materialTheme),
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) => MaterialApp(
@@ -195,6 +199,88 @@ class AgeLapse extends StatelessWidget {
           debugShowCheckedModeBanner: false,
         ),
       ),
+    );
+
+    if (!isDesktop) return materialApp;
+
+    return PlatformMenuBar(
+      menus: [
+        PlatformMenu(
+          label: 'AgeLapse',
+          menus: [
+            PlatformMenuItemGroup(
+              members: [
+                PlatformMenuItem(
+                  label: 'About AgeLapse',
+                  onSelected: null,
+                ),
+              ],
+            ),
+            PlatformMenuItemGroup(
+              members: [
+                PlatformMenuItem(
+                  label: 'Hide AgeLapse',
+                  shortcut: const SingleActivator(LogicalKeyboardKey.keyH,
+                      meta: true),
+                  onSelected: () => SystemNavigator.pop(),
+                ),
+                PlatformMenuItem(
+                  label: 'Quit AgeLapse',
+                  shortcut: const SingleActivator(LogicalKeyboardKey.keyQ,
+                      meta: true),
+                  onSelected: () => SystemNavigator.pop(),
+                ),
+              ],
+            ),
+          ],
+        ),
+        PlatformMenu(
+          label: 'Edit',
+          menus: [
+            PlatformMenuItemGroup(
+              members: [
+                PlatformMenuItem(
+                  label: 'Cut',
+                  shortcut: const SingleActivator(LogicalKeyboardKey.keyX,
+                      meta: true),
+                  onSelected: () {},
+                ),
+                PlatformMenuItem(
+                  label: 'Copy',
+                  shortcut: const SingleActivator(LogicalKeyboardKey.keyC,
+                      meta: true),
+                  onSelected: () {},
+                ),
+                PlatformMenuItem(
+                  label: 'Paste',
+                  shortcut: const SingleActivator(LogicalKeyboardKey.keyV,
+                      meta: true),
+                  onSelected: () {},
+                ),
+                PlatformMenuItem(
+                  label: 'Select All',
+                  shortcut: const SingleActivator(LogicalKeyboardKey.keyA,
+                      meta: true),
+                  onSelected: () {},
+                ),
+              ],
+            ),
+          ],
+        ),
+        PlatformMenu(
+          label: 'Help',
+          menus: [
+            PlatformMenuItem(
+              label: 'Documentation',
+              onSelected: () async {
+                final uri = Uri.parse('https://agelapse.com/docs');
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              },
+            ),
+          ],
+        ),
+      ],
+      child: materialApp,
     );
   }
 }

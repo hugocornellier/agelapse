@@ -14,6 +14,7 @@ import '../services/database_helper.dart';
 import '../services/settings_cache.dart';
 import '../styles/styles.dart';
 import '../utils/dir_utils.dart';
+import '../utils/export_naming_utils.dart';
 import '../utils/settings_utils.dart';
 import '../utils/video_utils.dart';
 import '../widgets/settings_sheet.dart';
@@ -1005,10 +1006,9 @@ class CreatePageState extends State<CreatePage>
         return;
       }
 
-      final String suggestedBase =
-          (widget.projectName.isEmpty ? 'AgeLapse' : widget.projectName)
-              .replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
-      final String suggestedName = '$suggestedBase.mp4';
+      final String suggestedName = ExportNamingUtils.generateVideoFilename(
+        projectName: widget.projectName,
+      );
 
       final FileSaveLocation? location = await getSaveLocation(
         suggestedName: suggestedName,
