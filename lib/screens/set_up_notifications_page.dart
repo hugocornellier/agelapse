@@ -32,10 +32,9 @@ class SetUpNotificationsPage extends StatefulWidget {
 }
 
 class SetUpNotificationsPageState extends State<SetUpNotificationsPage> {
-  final Color appBarColor = AppColors.background;
-
   @override
   Widget build(BuildContext context) {
+    final appBarColor = AppColors.background;
     return Scaffold(
       appBar: AppBar(
         title: const Text(""),
@@ -44,12 +43,9 @@ class SetUpNotificationsPageState extends State<SetUpNotificationsPage> {
           IconButton(icon: const Icon(Icons.close), onPressed: () => close()),
         ],
       ),
-      body: _buildBody(),
+      body:
+          Container(color: appBarColor, child: _buildSetUpNotificationsPage()),
     );
-  }
-
-  Container _buildBody() {
-    return Container(color: appBarColor, child: _buildSetUpNotificationsPage());
   }
 
   Widget _buildSetUpNotificationsPage() {
@@ -62,15 +58,17 @@ class SetUpNotificationsPageState extends State<SetUpNotificationsPage> {
             const SizedBox(height: 128),
             _buildNotificationImage(),
             const SizedBox(height: 64),
-            const Text(
+            Text(
               "Notifications",
-              style: TextStyle(fontSize: AppTypography.xxxl),
+              style: TextStyle(
+                  fontSize: AppTypography.xxxl, color: AppColors.textPrimary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 40),
-            const Text(
+            Text(
               "We will remind you at 5:00PM daily to take a photo. Configure this in Settings.",
-              style: TextStyle(fontSize: AppTypography.lg),
+              style: TextStyle(
+                  fontSize: AppTypography.lg, color: AppColors.textPrimary),
               textAlign: TextAlign.center,
             ),
             Expanded(child: Container()),
@@ -115,7 +113,7 @@ class SetUpNotificationsPageState extends State<SetUpNotificationsPage> {
         ),
         child: Text(
           text.toUpperCase(),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: AppTypography.lg,
             color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,

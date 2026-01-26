@@ -154,11 +154,11 @@ class DropdownWithCustomTextFieldState
       child: TextField(
         focusNode: _focusNode,
         controller: _controller,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: AppTypography.md,
           color: AppColors.settingsTextPrimary,
         ),
-        decoration: const InputDecoration(
+        decoration: InputDecoration(
           hintText: '1-120',
           hintStyle: TextStyle(
             color: AppColors.settingsTextTertiary,
@@ -188,14 +188,14 @@ class DropdownWithCustomTextFieldState
           value: isCustom ? -1 : currentValue,
           onChanged: _handleDropdownChanged,
           isDense: true,
-          icon: const Icon(
+          icon: Icon(
             Icons.keyboard_arrow_down_rounded,
             color: AppColors.settingsTextSecondary,
             size: 20,
           ),
           dropdownColor: AppColors.settingsCardBackground,
           borderRadius: BorderRadius.circular(12),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: AppTypography.md,
             color: AppColors.settingsTextPrimary,
           ),

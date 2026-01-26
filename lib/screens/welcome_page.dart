@@ -10,18 +10,13 @@ class WelcomePagePartTwo extends StatefulWidget {
 }
 
 class WelcomePagePartTwoState extends State<WelcomePagePartTwo> {
-  final Color backgroundColor = AppColors.background;
-
   @override
   Widget build(BuildContext context) {
+    final backgroundColor = AppColors.background;
     return Scaffold(
       appBar: AppBar(title: const Text(""), backgroundColor: backgroundColor),
-      body: _buildBody(),
+      body: ColoredBox(color: backgroundColor, child: _buildFirstPhotoPage()),
     );
-  }
-
-  Widget _buildBody() {
-    return ColoredBox(color: backgroundColor, child: _buildFirstPhotoPage());
   }
 
   Widget _buildFirstPhotoPage() {
@@ -56,7 +51,7 @@ class WelcomePagePartTwoState extends State<WelcomePagePartTwo> {
                           textAlign: TextAlign.center,
                           text: TextSpan(
                             text: 'Advanced\n',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: AppTypography.display,
                               color: AppColors.textPrimary,
                               fontWeight: FontWeight.bold,
@@ -113,7 +108,7 @@ class WelcomePagePartTwoState extends State<WelcomePagePartTwo> {
         ),
         child: Text(
           text.toUpperCase(),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: AppTypography.lg,
             color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,

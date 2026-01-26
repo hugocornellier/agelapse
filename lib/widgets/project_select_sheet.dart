@@ -435,9 +435,9 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.85,
       ),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.only(
+        borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(20.0),
           topRight: Radius.circular(20.0),
         ),
@@ -604,9 +604,9 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
       builder: (context) {
         return Container(
           padding: const EdgeInsets.fromLTRB(20.0, 12.0, 20.0, 20.0),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: AppColors.surface,
-            borderRadius: BorderRadius.only(
+            borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(20.0),
               topRight: Radius.circular(20.0),
             ),
@@ -773,9 +773,9 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
           ),
           child: Container(
             padding: const EdgeInsets.fromLTRB(20.0, 12.0, 20.0, 20.0),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.surface,
-              borderRadius: BorderRadius.only(
+              borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(20.0),
                 topRight: Radius.circular(20.0),
               ),

@@ -25,7 +25,7 @@ class CustomDropdownButton<T> extends StatelessWidget {
         child: DropdownButton<T>(
           value: value,
           isDense: true,
-          icon: const Icon(
+          icon: Icon(
             Icons.keyboard_arrow_down_rounded,
             color: AppColors.settingsTextSecondary,
             size: 20,
@@ -37,7 +37,7 @@ class CustomDropdownButton<T> extends StatelessWidget {
               value: item.value,
               child: Text(
                 item.child is Text ? (item.child as Text).data ?? '' : '',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: AppTypography.md,
                   color: AppColors.settingsTextPrimary,
                 ),
@@ -45,7 +45,7 @@ class CustomDropdownButton<T> extends StatelessWidget {
             );
           }).toList(),
           onChanged: onChanged,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: AppTypography.md,
             color: AppColors.settingsTextPrimary,
           ),

@@ -22,6 +22,7 @@ import '../services/database_import_ffi.dart';
 import '../utils/dir_utils.dart';
 import '../utils/test_mode.dart' as test_config;
 import 'constants/window_constants.dart';
+import 'styles/styles.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -84,11 +85,7 @@ Future<void> _main() async {
 
     debugPaintSizeEnabled = false;
 
-    SystemUiOverlayStyle style = const SystemUiOverlayStyle(
-      systemNavigationBarColor: Colors.black,
-      systemNavigationBarIconBrightness: Brightness.light,
-    );
-    SystemChrome.setSystemUIOverlayStyle(style);
+    // Note: SystemUiOverlayStyle is now set dynamically in MaterialApp.builder
   }
 
   runApp(AgeLapse(homePage: await _getHomePage()));
@@ -157,6 +154,34 @@ Future<Widget> _getHomePage() async {
   return const ProjectsPage();
 }
 
+/// Loads theme mode from database with safe fallback
+Future<String> _loadThemeMode() async {
+  try {
+    final value = await DB.instance.getSettingValueByTitle('theme', 'global');
+    // Guard against invalid values
+    if (value == 'light' || value == 'dark' || value == 'system') {
+      return value;
+    }
+    return 'system'; // Default for new installs
+  } catch (e) {
+    return 'system';
+  }
+}
+
+/// Updates system UI overlay style based on current theme
+void _updateSystemUiOverlay(bool isLight) {
+  if (Platform.isAndroid || Platform.isIOS) {
+    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+      systemNavigationBarColor:
+          isLight ? const Color(0xFFFFFFFF) : const Color(0xFF000000),
+      systemNavigationBarIconBrightness:
+          isLight ? Brightness.dark : Brightness.light,
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: isLight ? Brightness.dark : Brightness.light,
+    ));
+  }
+}
+
 class AgeLapse extends StatelessWidget {
   final Widget homePage;
 
@@ -165,7 +190,7 @@ class AgeLapse extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<String>(
-      future: _fetchTheme(),
+      future: _loadThemeMode(),
       builder: (context, themeSnapshot) {
         if (themeSnapshot.connectionState == ConnectionState.done) {
           return _buildApp(context, homePage, themeSnapshot.data!);
@@ -179,11 +204,6 @@ class AgeLapse extends StatelessWidget {
     );
   }
 
-  Future<String> _fetchTheme() async {
-    var data = await DB.instance.getSettingByTitle('theme');
-    return data?['value'] ?? 'system';
-  }
-
   Widget _buildApp(BuildContext context, Widget homePage, String theme) {
     MaterialTheme materialTheme = const MaterialTheme(TextTheme());
     final bool isDesktop =
@@ -194,7 +214,18 @@ class AgeLapse extends StatelessWidget {
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) => MaterialApp(
           title: 'AgeLapse',
-          theme: themeProvider.themeData,
+          theme: themeProvider.lightTheme,
+          darkTheme: themeProvider.darkTheme,
+          themeMode: themeProvider.flutterThemeMode,
+          builder: (context, child) {
+            // Sync static AppColors shim with current theme
+            AppColors.syncFromContext(context);
+
+            // Update system UI overlay based on current theme
+            _updateSystemUiOverlay(themeProvider.isLightMode);
+
+            return child!;
+          },
           home: homePage,
           debugShowCheckedModeBanner: false,
         ),

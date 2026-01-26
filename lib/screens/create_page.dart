@@ -659,7 +659,7 @@ class CreatePageState extends State<CreatePage>
                       children: [
                         Text(
                           '${percent.toStringAsFixed(1)}%',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: AppTypography.display,
                             fontWeight: FontWeight.bold,
                             color: AppColors.settingsTextPrimary,
@@ -674,7 +674,7 @@ class CreatePageState extends State<CreatePage>
               // Status text
               Text(
                 isStabilizing ? 'Stabilizing' : 'Compiling Video',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: AppTypography.xxl,
                   fontWeight: FontWeight.w600,
                   color: AppColors.settingsTextPrimary,
@@ -686,7 +686,7 @@ class CreatePageState extends State<CreatePage>
                 isStabilizing
                     ? 'Aligning photos for smooth playback'
                     : 'Your video will be available here when complete',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: AppTypography.md,
                   color: AppColors.settingsTextSecondary,
                 ),
@@ -736,7 +736,7 @@ class CreatePageState extends State<CreatePage>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.videocam_outlined,
                 size: 64,
                 color: AppColors.settingsTextSecondary,
@@ -744,7 +744,7 @@ class CreatePageState extends State<CreatePage>
               const SizedBox(height: 16),
               Text(
                 _videoExists ? 'Video Available' : 'No Video Yet',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: AppTypography.xxl,
                   fontWeight: FontWeight.w600,
                   color: AppColors.settingsTextPrimary,
@@ -755,7 +755,7 @@ class CreatePageState extends State<CreatePage>
               if (_videoExists) ...[
                 Text(
                   'Last compiled: $dateStr',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: AppTypography.md,
                     color: AppColors.settingsTextSecondary,
                   ),
@@ -764,7 +764,7 @@ class CreatePageState extends State<CreatePage>
                   const SizedBox(height: 4),
                   Text(
                     '$_newPhotosSinceLastVideo new photo${_newPhotosSinceLastVideo == 1 ? '' : 's'} since then',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: AppTypography.md,
                       color: AppColors.settingsAccent,
                     ),
@@ -773,7 +773,7 @@ class CreatePageState extends State<CreatePage>
               ] else ...[
                 Text(
                   'You have ${photoCount ?? 0} stabilized photos',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: AppTypography.md,
                     color: AppColors.settingsTextSecondary,
                   ),

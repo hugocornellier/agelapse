@@ -35,7 +35,7 @@ class StabDiffFacePage extends StatefulWidget {
 
 class StabDiffFacePageState extends State<StabDiffFacePage> {
   late String rawImagePath;
-  late FaceStabilizer faceStabilizer;
+  FaceStabilizer? faceStabilizer;
   late Size originalImageSize;
   List<dynamic> faces = [];
   List<MapEntry<dynamic, Rect>> faceContours = [];
@@ -49,6 +49,12 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
     _init();
   }
 
+  @override
+  void dispose() {
+    faceStabilizer?.dispose();
+    super.dispose();
+  }
+
   Future<void> _init() async {
     if (!mounted) return;
     setState(() {
@@ -59,11 +65,14 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
     });
 
     rawImagePath = await _getRawPhotoPath();
+    if (!mounted) return;
+
     faceStabilizer = FaceStabilizer(
       widget.projectId,
       widget.userRanOutOfSpaceCallback,
     );
-    await faceStabilizer.init();
+    await faceStabilizer!.init();
+    if (!mounted) return;
 
     final bytes = await CameraUtils.readBytesInIsolate(rawImagePath);
     if (!mounted) return;
@@ -89,7 +98,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
       loadingStatus = "Detecting faces...";
     });
 
-    List<dynamic>? facesRaw = await faceStabilizer.getFacesFromRawPhotoPath(
+    List<dynamic>? facesRaw = await faceStabilizer!.getFacesFromRawPhotoPath(
       rawImagePath,
       imageWidth,
       filterByFaceSize: false,
@@ -101,7 +110,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
     if (facesRaw == null || facesRaw.isEmpty) {
       await Future.delayed(const Duration(milliseconds: 150));
       if (!mounted) return;
-      facesRaw = await faceStabilizer.getFacesFromRawPhotoPath(
+      facesRaw = await faceStabilizer!.getFacesFromRawPhotoPath(
         rawImagePath,
         imageWidth,
         filterByFaceSize: false,
@@ -145,7 +154,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
 
       final Rect targetBox = (tappedFace as dynamic).boundingBox as Rect;
 
-      final result = await faceStabilizer.stabilize(
+      final result = await faceStabilizer!.stabilize(
         rawImagePath,
         null, // No cancellation token for one-off operations
         userRanOutOfSpaceCallback,
@@ -159,7 +168,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
       if (successful) {
         // 1. Wait for thumbnail to be created before updating UI
         final thumbnailPath =
-            await faceStabilizer.createStabThumbnailFromRawPath(rawImagePath);
+            await faceStabilizer!.createStabThumbnailFromRawPath(rawImagePath);
 
         // 2. Clear caches BEFORE reloading gallery
         PaintingBinding.instance.imageCache.clear();
@@ -191,14 +200,14 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Row(
+          title: Row(
             children: [
               Icon(
                 Icons.face_rounded,
                 color: AppColors.settingsAccent,
                 size: 24,
               ),
-              SizedBox(width: 12),
+              const SizedBox(width: 12),
               Text(
                 'Confirm Stabilization',
                 style: TextStyle(
@@ -209,7 +218,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
               ),
             ],
           ),
-          content: const Text(
+          content: Text(
             'Do you want to stabilize on this face?',
             style: TextStyle(
               color: AppColors.settingsTextSecondary,
@@ -234,7 +243,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
               onPressed: () {
                 Navigator.of(context).pop(true);
               },
-              child: const Text(
+              child: Text(
                 'Confirm',
                 style: TextStyle(
                   color: AppColors.settingsAccent,
@@ -256,7 +265,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
       shadowColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       backgroundColor: AppColors.settingsBackground,
-      title: const Text(
+      title: Text(
         'Stabilize on Other Face',
         style: TextStyle(
           fontSize: AppTypography.xxl,
@@ -273,7 +282,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppColors.settingsCardBorder, width: 1),
           ),
-          child: const Icon(
+          child: Icon(
             Icons.arrow_back,
             color: AppColors.settingsTextPrimary,
             size: 20,
@@ -292,7 +301,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.settingsCardBorder, width: 1),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.help_outline_rounded,
               color: AppColors.settingsTextSecondary,
               size: 20,
@@ -302,7 +311,10 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
       ],
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(1),
-        child: Container(height: 1, color: AppColors.settingsDivider),
+        child: Container(
+          height: 1,
+          color: AppColors.settingsDivider,
+        ),
       ),
     );
   }
@@ -313,14 +325,14 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.settingsCardBackground,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
+        title: Row(
           children: [
             Icon(
               Icons.lightbulb_outline_rounded,
               color: AppColors.settingsAccent,
               size: 24,
             ),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Text(
               'Quick Guide',
               style: TextStyle(
@@ -331,7 +343,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
             ),
           ],
         ),
-        content: const SingleChildScrollView(
+        content: SingleChildScrollView(
           child: Text(
             'This screen lets you choose which face to stabilize on when multiple faces are detected in a photo.\n\n'
             'Detected faces are highlighted with blue outlines. Tap on a face to select it as the stabilization target.\n\n'
@@ -346,7 +358,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text(
+            child: Text(
               'Got it',
               style: TextStyle(
                 color: AppColors.settingsAccent,
@@ -378,7 +390,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
                 : Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const SizedBox(
+                      SizedBox(
                         width: 24,
                         height: 24,
                         child: CircularProgressIndicator(
@@ -389,7 +401,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
                       const SizedBox(height: 16),
                       Text(
                         loadingStatus,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.settingsTextSecondary,
                           fontSize: AppTypography.md,
                         ),
@@ -408,7 +420,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
                       const SizedBox(height: 16),
                       Text(
                         loadingStatus,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.settingsTextPrimary,
                           fontSize: AppTypography.lg,
                           fontWeight: FontWeight.w500,
@@ -419,7 +431,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
                 : Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.error_outline_rounded,
                         color: AppColors.warningMuted,
                         size: 48,
@@ -427,7 +439,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
                       const SizedBox(height: 16),
                       Text(
                         loadingStatus,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.settingsTextPrimary,
                           fontSize: AppTypography.lg,
                           fontWeight: FontWeight.w500,

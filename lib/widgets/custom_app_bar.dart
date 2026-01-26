@@ -324,7 +324,7 @@ class CustomAppBarState extends State<CustomAppBar> {
                   color: AppColors.surfaceElevated.withValues(alpha: 0.49),
                   width: 0.7),
             ),
-            color: AppColors.background,
+            color: AppColors.backgroundDark,
           ),
           child: Column(
             children: [

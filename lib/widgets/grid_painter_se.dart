@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../styles/styles.dart';
+import '../styles/app_colors_data.dart';
 
 class GridPainterSE extends CustomPainter {
   final double offsetX;
@@ -61,9 +62,7 @@ class GridPainterSE extends CustomPainter {
     if (guideImage != null &&
         ghostImageOffsetX != null &&
         ghostImageOffsetY != null) {
-      final imagePaint = Paint()
-        ..color =
-            AppColors.textPrimary.withAlpha(242); // Equivalent to opacity 0.95
+      final imagePaint = Paint()..color = PhotoOverlayColors.ghostImage;
       final imageWidth = guideImage!.width.toDouble();
       final imageHeight = guideImage!.height.toDouble();
       final scale = _calculateImageScale(size.width, imageWidth, imageHeight);
@@ -208,6 +207,7 @@ class GridPainterSE extends CustomPainter {
         (size.height * dateStampSizePercent / 100).clamp(8.0, 48.0);
 
     // Create text painter matching DateStampUtils.getExportTextStyle
+    // Uses PhotoOverlayColors for theme-independent visibility on photos
     final textPainter = TextPainter(
       text: TextSpan(
         text: dateStampText,
@@ -215,19 +215,19 @@ class GridPainterSE extends CustomPainter {
           fontFamily: dateStampFontFamily,
           fontSize: fontSize,
           fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary.withValues(alpha: dateStampOpacity),
+          color: PhotoOverlayColors.text.withValues(alpha: dateStampOpacity),
           shadows: [
             Shadow(
               offset: const Offset(1, 1),
               blurRadius: 2,
-              color:
-                  AppColors.overlay.withValues(alpha: dateStampOpacity * 0.8),
+              color: PhotoOverlayColors.textShadow
+                  .withValues(alpha: dateStampOpacity * 0.8),
             ),
             Shadow(
               offset: const Offset(-1, -1),
               blurRadius: 2,
-              color:
-                  AppColors.overlay.withValues(alpha: dateStampOpacity * 0.5),
+              color: PhotoOverlayColors.textShadow
+                  .withValues(alpha: dateStampOpacity * 0.5),
             ),
           ],
         ),
@@ -278,7 +278,8 @@ class GridPainterSE extends CustomPainter {
 
     // Draw semi-transparent background pill
     final backgroundPaint = Paint()
-      ..color = AppColors.overlay.withValues(alpha: 0.5 * dateStampOpacity)
+      ..color =
+          PhotoOverlayColors.textBackground.withValues(alpha: dateStampOpacity)
       ..style = PaintingStyle.fill;
 
     final bgRect = RRect.fromRectAndRadius(

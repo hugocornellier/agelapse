@@ -47,14 +47,14 @@ void main() {
         expect(notificationCount, 1);
       });
 
-      test('notifies listeners even when setting same value', () {
+      test('does not notify listeners when setting same value', () {
         var notificationCount = 0;
         provider.addListener(() => notificationCount++);
 
         provider.themeMode = 'light'; // Same as initial
 
-        // Current implementation notifies even for same value
-        expect(notificationCount, 1);
+        // Implementation skips notification when value doesn't change
+        expect(notificationCount, 0);
       });
 
       test('notifies multiple listeners', () {

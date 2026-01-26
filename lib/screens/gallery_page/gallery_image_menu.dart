@@ -152,7 +152,7 @@ class GalleryImageMenu {
 
   static Widget _buildDivider(bool useAppColors) {
     if (useAppColors) {
-      return const Divider(height: 1, color: AppColors.settingsDivider);
+      return Divider(height: 1, color: AppColors.settingsDivider);
     }
     return const Divider();
   }

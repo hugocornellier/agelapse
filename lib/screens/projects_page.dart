@@ -93,8 +93,8 @@ class ProjectsPageState extends State<ProjectsPage> {
           fit: BoxFit.cover,
         ),
         const SizedBox(height: 64),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.0),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: Text(
             'The most powerful tool for creating aging timelapses.'
             '\n\n'
@@ -130,7 +130,7 @@ class ProjectsPageState extends State<ProjectsPage> {
         ),
         child: Text(
           text.toUpperCase(),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: AppTypography.lg,
             color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
@@ -191,8 +191,8 @@ class ProjectsPageState extends State<ProjectsPage> {
           fit: BoxFit.cover,
         ),
         const SizedBox(height: 96),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.0),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: Text(
             'The most powerful tool for creating aging timelapses.'
             '\n\n'

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/custom_font_manager.dart';
 import '../services/log_service.dart';
-import '../styles/styles.dart';
+import '../styles/app_colors_data.dart';
 import 'capture_timezone.dart';
 
 /// Utility class for date stamp formatting, positioning, and styling.
@@ -264,23 +264,25 @@ class DateStampUtils {
 
   /// Get text style for gallery thumbnail date labels.
   /// Uses a semi-transparent background pill for readability.
+  /// Uses theme-independent PhotoOverlayColors for visibility on photos.
   static TextStyle getGalleryLabelStyle(double fontSize, {String? fontFamily}) {
     return TextStyle(
       fontFamily: fontFamily ?? defaultFont,
       fontSize: fontSize,
       fontWeight: FontWeight.w500,
-      color: AppColors.textPrimary,
+      color: PhotoOverlayColors.text,
       shadows: [
         Shadow(
             offset: const Offset(0, 1),
             blurRadius: 2,
-            color: AppColors.overlay.withValues(alpha: 0.54)),
+            color: PhotoOverlayColors.textShadow),
       ],
     );
   }
 
   /// Get text style for export date stamp.
   /// Includes text shadow for readability on any background.
+  /// Uses theme-independent PhotoOverlayColors for visibility on photos.
   static TextStyle getExportTextStyle(
     double fontSize,
     double opacity, {
@@ -290,17 +292,17 @@ class DateStampUtils {
       fontFamily: fontFamily ?? defaultFont,
       fontSize: fontSize,
       fontWeight: FontWeight.w600,
-      color: AppColors.textPrimary.withValues(alpha: opacity),
+      color: PhotoOverlayColors.text.withValues(alpha: opacity),
       shadows: [
         Shadow(
           offset: const Offset(1, 1),
           blurRadius: 2,
-          color: AppColors.overlay.withValues(alpha: opacity * 0.8),
+          color: PhotoOverlayColors.textShadow.withValues(alpha: opacity * 0.8),
         ),
         Shadow(
           offset: const Offset(-1, -1),
           blurRadius: 2,
-          color: AppColors.overlay.withValues(alpha: opacity * 0.5),
+          color: PhotoOverlayColors.textShadow.withValues(alpha: opacity * 0.5),
         ),
       ],
     );
@@ -321,7 +323,7 @@ class DateStampUtils {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: AppColors.overlay.withValues(alpha: 0.5),
+        color: PhotoOverlayColors.textBackground,
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
@@ -330,7 +332,7 @@ class DateStampUtils {
           fontFamily: fontFamily ?? defaultFont,
           fontSize: fontSize,
           fontWeight: FontWeight.w500,
-          color: AppColors.textPrimary,
+          color: PhotoOverlayColors.text,
           height: 1.0,
         ),
       ),
@@ -636,17 +638,19 @@ Examples
             fontFamily: fontFamily ?? defaultFont,
             fontSize: fontSize,
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary.withValues(alpha: opacity),
+            color: PhotoOverlayColors.text.withValues(alpha: opacity),
             shadows: [
               Shadow(
                 offset: const Offset(2, 2),
                 blurRadius: 3,
-                color: AppColors.overlay.withValues(alpha: opacity * 0.8),
+                color: PhotoOverlayColors.textShadow
+                    .withValues(alpha: opacity * 0.8),
               ),
               Shadow(
                 offset: const Offset(-1, -1),
                 blurRadius: 2,
-                color: AppColors.overlay.withValues(alpha: opacity * 0.5),
+                color: PhotoOverlayColors.textShadow
+                    .withValues(alpha: opacity * 0.5),
               ),
             ],
           ),
@@ -824,13 +828,13 @@ Examples
             fontFamily: fontFamily ?? defaultFont,
             fontSize: fontSize,
             fontWeight: FontWeight.w500,
-            color: AppColors.textPrimary,
+            color: PhotoOverlayColors.text,
             height: 1.0,
             shadows: [
               Shadow(
                 offset: const Offset(1, 1),
                 blurRadius: 2,
-                color: AppColors.overlay.withValues(alpha: 0.54),
+                color: PhotoOverlayColors.textShadow.withValues(alpha: 0.54),
               ),
             ],
           ),
@@ -849,7 +853,7 @@ Examples
 
       // Draw rounded rectangle background (50% opacity black, matching preview)
       final backgroundPaint = Paint()
-        ..color = AppColors.overlay.withValues(alpha: 0.5)
+        ..color = PhotoOverlayColors.textBackground.withValues(alpha: 0.5)
         ..style = PaintingStyle.fill;
 
       final rrect = RRect.fromRectAndRadius(

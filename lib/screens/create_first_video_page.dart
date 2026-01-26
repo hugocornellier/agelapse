@@ -18,10 +18,9 @@ class CreateFirstVideoPage extends StatefulWidget {
 }
 
 class CreateFirstVideoPageState extends State<CreateFirstVideoPage> {
-  final Color appBarColor = AppColors.background;
-
   @override
   Widget build(BuildContext context) {
+    final appBarColor = AppColors.background;
     return Scaffold(
       appBar: AppBar(
         title: const Text(""),
@@ -31,12 +30,8 @@ class CreateFirstVideoPageState extends State<CreateFirstVideoPage> {
           IconButton(icon: const Icon(Icons.close), onPressed: () => close()),
         ],
       ),
-      body: _buildBody(),
+      body: Container(color: appBarColor, child: _buildCreateFirstVideoPage()),
     );
-  }
-
-  Container _buildBody() {
-    return Container(color: appBarColor, child: _buildCreateFirstVideoPage());
   }
 
   Widget _buildWaveImage() {
@@ -53,10 +48,12 @@ class CreateFirstVideoPageState extends State<CreateFirstVideoPage> {
           const SizedBox(height: 32),
           _buildWaveImage(),
           const SizedBox(height: 96),
-          const Text(
+          Text(
             "Your First Video",
             style: TextStyle(
-                fontSize: AppTypography.xxxl, fontWeight: FontWeight.bold),
+                fontSize: AppTypography.xxxl,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 32),
@@ -95,7 +92,7 @@ class CreateFirstVideoPageState extends State<CreateFirstVideoPage> {
         ),
         child: Text(
           text.toUpperCase(),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: AppTypography.lg,
             color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,

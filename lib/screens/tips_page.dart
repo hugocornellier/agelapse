@@ -19,10 +19,9 @@ class TipsPage extends StatefulWidget {
 }
 
 class TipsPageState extends State<TipsPage> {
-  final Color appBarColor = AppColors.background;
-
   @override
   Widget build(BuildContext context) {
+    final appBarColor = AppColors.background;
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -30,7 +29,7 @@ class TipsPageState extends State<TipsPage> {
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               "Tips",
               style: TextStyle(
                 fontSize: AppTypography.xxxl,
@@ -45,12 +44,8 @@ class TipsPageState extends State<TipsPage> {
           ],
         ),
       ),
-      body: _buildBody(),
+      body: Container(color: appBarColor, child: _buildTipsPage()),
     );
-  }
-
-  Container _buildBody() {
-    return Container(color: appBarColor, child: _buildTipsPage());
   }
 
   Widget _buildTipsPage() {
@@ -61,8 +56,7 @@ class TipsPageState extends State<TipsPage> {
           mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Divider(
-                color: AppColors.textSecondary, thickness: 1, height: 16),
+            Divider(color: AppColors.textSecondary, thickness: 1, height: 16),
             Expanded(child: Container()),
             const CustomWidget(
               title: "Look At Camera Lens",
@@ -86,7 +80,7 @@ class TipsPageState extends State<TipsPage> {
                 'assets/relax.svg',
                 width: 24,
                 height: 24,
-                colorFilter: const ColorFilter.mode(
+                colorFilter: ColorFilter.mode(
                   AppColors.textPrimary,
                   BlendMode.srcIn,
                 ),
@@ -116,7 +110,7 @@ class TipsPageState extends State<TipsPage> {
         ),
         child: Text(
           text.toUpperCase(),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: AppTypography.lg,
             color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
@@ -175,7 +169,7 @@ class CustomWidget extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: AppTypography.xl,
                     fontWeight: FontWeight.bold,
                     height: 1.0,
@@ -190,7 +184,7 @@ class CustomWidget extends StatelessWidget {
           const SizedBox(height: 14.0),
           Text(
             description,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: AppTypography.md,
               height: 1.6,
               color: AppColors.textPrimary,

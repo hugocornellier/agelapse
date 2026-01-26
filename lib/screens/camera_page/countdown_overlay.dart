@@ -60,11 +60,11 @@ class CountdownOverlay extends StatelessWidget {
                       color: AppColors.textPrimary,
                       fontSize: fontSize,
                       fontWeight: FontWeight.bold,
-                      shadows: const [
+                      shadows: [
                         Shadow(
                           blurRadius: 8,
                           color: AppColors.overlay,
-                          offset: Offset(1, 1),
+                          offset: const Offset(1, 1),
                         ),
                       ],
                     ),
@@ -89,9 +89,10 @@ class CountdownProgressPainter extends CustomPainter {
   CountdownProgressPainter({
     required this.progress,
     this.strokeWidth = 4,
-    this.color = AppColors.textPrimary,
-    this.backgroundColor = const Color(0x4DFFFFFF),
-  });
+    Color? color,
+    Color? backgroundColor,
+  })  : color = color ?? AppColors.textPrimary,
+        backgroundColor = backgroundColor ?? const Color(0x4DFFFFFF);
 
   @override
   void paint(Canvas canvas, Size size) {

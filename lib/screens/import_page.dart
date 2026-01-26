@@ -18,10 +18,9 @@ class ImportPage extends StatefulWidget {
 }
 
 class ImportPageState extends State<ImportPage> {
-  final Color backgroundColor = AppColors.background;
-
   @override
   Widget build(BuildContext context) {
+    final backgroundColor = AppColors.background;
     return Scaffold(
       appBar: AppBar(
         title: const Text(""),
@@ -74,7 +73,7 @@ class ImportPageState extends State<ImportPage> {
   Widget _buildHeadline(String text) {
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: AppTypography.xxxl,
         fontWeight: FontWeight.bold,
         color: AppColors.textPrimary,
@@ -100,8 +99,8 @@ class ImportPageState extends State<ImportPage> {
   Widget _buildText(String text) {
     return Text(
       text,
-      style: const TextStyle(
-          fontSize: AppTypography.lg, color: AppColors.textPrimary),
+      style:
+          TextStyle(fontSize: AppTypography.lg, color: AppColors.textPrimary),
     );
   }
 
@@ -128,7 +127,7 @@ class ImportPageState extends State<ImportPage> {
         ),
         child: Text(
           text.toUpperCase(),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: AppTypography.lg,
             color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,

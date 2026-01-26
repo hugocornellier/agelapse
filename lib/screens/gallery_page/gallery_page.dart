@@ -855,18 +855,27 @@ class GalleryPageState extends State<GalleryPage>
                           width: 44,
                           height: 44,
                           decoration: BoxDecoration(
-                            color: Theme.of(context).primaryColor,
+                            color: AppColors.surface,
                             shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppColors.surfaceElevated,
+                              width: 1,
+                            ),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.overlay.withValues(alpha: 0.3),
-                                blurRadius: 4,
+                                color:
+                                    AppColors.overlay.withValues(alpha: 0.15),
+                                blurRadius: 8,
                                 offset: const Offset(0, 2),
                               ),
                             ],
                           ),
                           child: PopupMenuButton<String>(
-                            icon: const Icon(Icons.more_vert, size: 20.0),
+                            icon: Icon(
+                              Icons.more_vert,
+                              size: 20.0,
+                              color: AppColors.textPrimary,
+                            ),
                             padding: EdgeInsets.zero,
                             color: AppColors.surface,
                             shape: RoundedRectangleBorder(
@@ -928,8 +937,8 @@ class GalleryPageState extends State<GalleryPage>
   }
 
   Widget _buildTabBarContainer() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 0.0),
+    return Container(
+      color: AppColors.background,
       child: TabBar(
         controller: _tabController,
         tabs: const [
@@ -959,10 +968,28 @@ class GalleryPageState extends State<GalleryPage>
               Positioned(
                 bottom: 16,
                 right: 16,
-                child: FloatingActionButton.small(
-                  onPressed: _scrollToBottomAndReenableSticky,
-                  backgroundColor: Theme.of(context).primaryColor,
-                  child: const Icon(Icons.arrow_downward, size: 20),
+                child: Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppColors.surfaceElevated,
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.overlay.withValues(alpha: 0.15),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: FloatingActionButton.small(
+                    onPressed: _scrollToBottomAndReenableSticky,
+                    backgroundColor: AppColors.surface,
+                    foregroundColor: AppColors.textPrimary,
+                    elevation: 0,
+                    child: const Icon(Icons.arrow_downward, size: 20),
+                  ),
                 ),
               ),
           ],
@@ -1003,25 +1030,29 @@ class GalleryPageState extends State<GalleryPage>
 
     final int itemCount =
         showStabProgressIndicator ? files.length + 1 : files.length;
-    return GridView.builder(
-      padding: EdgeInsets.zero,
-      controller: scrollController,
-      gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: _tileExtentForGridCount(context),
-        crossAxisSpacing: 2.0,
-        mainAxisSpacing: 2.0,
+    // Wrap grid in dark container so spacing between photos is dark, not white
+    return Container(
+      color: AppColors.galleryBackground,
+      child: GridView.builder(
+        padding: EdgeInsets.zero,
+        controller: scrollController,
+        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: _tileExtentForGridCount(context),
+          crossAxisSpacing: 2.0,
+          mainAxisSpacing: 2.0,
+        ),
+        itemCount: itemCount,
+        itemBuilder: (context, index) {
+          if (showStabProgressIndicator && index == files.length) {
+            return const FlashingBox();
+          } else if (index < files.length) {
+            return _buildImageTile(files[index]);
+          } else {
+            // Defensive fallback - should never reach here after fix
+            return const SizedBox.shrink();
+          }
+        },
       ),
-      itemCount: itemCount,
-      itemBuilder: (context, index) {
-        if (showStabProgressIndicator && index == files.length) {
-          return const FlashingBox();
-        } else if (index < files.length) {
-          return _buildImageTile(files[index]);
-        } else {
-          // Defensive fallback - should never reach here after fix
-          return const SizedBox.shrink();
-        }
-      },
     );
   }
 

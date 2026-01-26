@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
-import '../styles/styles.dart';
+import '../styles/app_colors_data.dart';
 
 class GridPainter extends CustomPainter {
+  final Color color;
+
+  GridPainter({Color? color}) : color = color ?? PhotoOverlayColors.cameraGuide;
+
   @override
   void paint(Canvas canvas, Size size) {
     final double cellWidth = size.width / 3;
     final double cellHeight = size.height / 3;
 
     final paint = Paint()
-      ..color =
-          AppColors.textPrimary.withAlpha(128) // Equivalent to opacity 0.5
+      ..color = color
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
 
@@ -34,7 +37,7 @@ class GridPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return false;
+  bool shouldRepaint(covariant GridPainter oldDelegate) {
+    return color != oldDelegate.color;
   }
 }

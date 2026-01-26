@@ -285,7 +285,7 @@ class StabilizedThumbnailState extends State<StabilizedThumbnail> {
         _status == ThumbnailStatus.stabFailed) {
       return Container(
         color: Colors.transparent,
-        child: const Stack(
+        child: Stack(
           children: [
             Positioned(
               top: 8.0,
@@ -406,8 +406,8 @@ class StabilizedImagePreviewState extends State<StabilizedImagePreview> {
   Widget build(BuildContext context) {
     // Loading state
     if (_status == null) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 32.0, horizontal: 20.0),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 32.0, horizontal: 20.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -415,8 +415,8 @@ class StabilizedImagePreviewState extends State<StabilizedImagePreview> {
               "Image being stabilized. Please wait...",
               style: TextStyle(color: AppColors.textPrimary),
             ),
-            SizedBox(height: 10),
-            Text('View raw photo by tapping "RAW"'),
+            const SizedBox(height: 10),
+            const Text('View raw photo by tapping "RAW"'),
           ],
         ),
       );
@@ -424,13 +424,13 @@ class StabilizedImagePreviewState extends State<StabilizedImagePreview> {
 
     // Failure states
     if (_status == ThumbnailStatus.noFacesFound) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 32.0, horizontal: 20.0),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 32.0, horizontal: 20.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.error, color: AppColors.danger, size: 50.0),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             Text(
               "Stabilization failed. No faces found. Try the 'manual stabilization' option.",
               style: TextStyle(color: AppColors.textPrimary),
@@ -441,13 +441,13 @@ class StabilizedImagePreviewState extends State<StabilizedImagePreview> {
     }
 
     if (_status == ThumbnailStatus.stabFailed) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 32.0, horizontal: 20.0),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 32.0, horizontal: 20.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.error, color: AppColors.danger, size: 50.0),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             Text(
               "Stabilization failed. We were unable to stabilize facial landmarks. Try the 'manual stabilization' option.",
               style: TextStyle(color: AppColors.textPrimary),
@@ -463,8 +463,8 @@ class StabilizedImagePreviewState extends State<StabilizedImagePreview> {
     }
 
     // Unknown state
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 32.0, horizontal: 20.0),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 32.0, horizontal: 20.0),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

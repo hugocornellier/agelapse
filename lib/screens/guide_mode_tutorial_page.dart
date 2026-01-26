@@ -25,7 +25,6 @@ class GuideModeTutorialPage extends StatefulWidget {
 }
 
 class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
-  final Color appBarColor = AppColors.background;
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
@@ -57,6 +56,7 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
 
   @override
   Widget build(BuildContext context) {
+    final appBarColor = AppColors.background;
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -69,12 +69,8 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
           ),
         ],
       ),
-      body: _buildBody(),
+      body: Container(color: appBarColor, child: _buildGuideModeTutorialPage()),
     );
-  }
-
-  Container _buildBody() {
-    return Container(color: appBarColor, child: _buildGuideModeTutorialPage());
   }
 
   Widget _buildGuideModeTutorialPage() {
@@ -83,16 +79,19 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
       case 0:
         tipText = RichText(
           textAlign: TextAlign.center,
-          text: const TextSpan(
-            style: TextStyle(fontSize: AppTypography.md),
+          text: TextSpan(
+            style: TextStyle(
+                fontSize: AppTypography.md, color: AppColors.textPrimary),
             children: [
               TextSpan(
                 text: 'Ghost Mode: ',
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    fontWeight: FontWeight.bold, color: AppColors.textPrimary),
               ),
               TextSpan(
                 text:
                     'Overlay a faint, stabilized photo. Align your face with the ghost image.',
+                style: TextStyle(color: AppColors.textPrimary),
               ),
             ],
           ),
@@ -101,16 +100,19 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
       case 1:
         tipText = RichText(
           textAlign: TextAlign.center,
-          text: const TextSpan(
-            style: TextStyle(fontSize: AppTypography.md),
+          text: TextSpan(
+            style: TextStyle(
+                fontSize: AppTypography.md, color: AppColors.textPrimary),
             children: [
               TextSpan(
                 text: 'Grid Mode: ',
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    fontWeight: FontWeight.bold, color: AppColors.textPrimary),
               ),
               TextSpan(
                 text:
                     'Align eyes on intersecting points. Tap "Modify Grid" to customize.',
+                style: TextStyle(color: AppColors.textPrimary),
               ),
             ],
           ),
@@ -119,16 +121,19 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
       case 2:
         tipText = RichText(
           textAlign: TextAlign.center,
-          text: const TextSpan(
-            style: TextStyle(fontSize: AppTypography.md),
+          text: TextSpan(
+            style: TextStyle(
+                fontSize: AppTypography.md, color: AppColors.textPrimary),
             children: [
               TextSpan(
                 text: 'Grid Mode (Ghost): ',
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    fontWeight: FontWeight.bold, color: AppColors.textPrimary),
               ),
               TextSpan(
                 text:
                     'combines grid lines with a ghost image for precise alignment.',
+                style: TextStyle(color: AppColors.textPrimary),
               ),
             ],
           ),
@@ -137,8 +142,10 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
       default:
         tipText = RichText(
           textAlign: TextAlign.center,
-          text: const TextSpan(
-              style: TextStyle(fontSize: AppTypography.md), text: ''),
+          text: TextSpan(
+              style: TextStyle(
+                  fontSize: AppTypography.md, color: AppColors.textPrimary),
+              text: ''),
         );
     }
 
@@ -186,7 +193,7 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
                       SmoothPageIndicator(
                         controller: _pageController,
                         count: 3,
-                        effect: const WormEffect(
+                        effect: WormEffect(
                           dotHeight: 6,
                           dotWidth: 6,
                           activeDotColor: AppColors.textPrimary,
@@ -257,7 +264,7 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
         ),
         child: Text(
           text.toUpperCase(),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: AppTypography.lg,
             color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,

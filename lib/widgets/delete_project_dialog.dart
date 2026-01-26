@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../styles/styles.dart';
 
-const Color _dangerRed = AppColors.danger;
+Color get _dangerRed => AppColors.danger;
 
 /// Shows a type-to-confirm delete dialog for a project.
 /// Returns `true` if the user confirmed deletion, `false` otherwise.
@@ -60,7 +60,7 @@ class _DeleteProjectDialogContentState
       ),
       child: Container(
         padding: const EdgeInsets.fromLTRB(20.0, 12.0, 20.0, 20.0),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.only(
             topLeft: Radius.circular(20.0),
@@ -87,7 +87,7 @@ class _DeleteProjectDialogContentState
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Delete Project',
                   style: TextStyle(
                     fontSize: AppTypography.xl,

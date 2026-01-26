@@ -539,25 +539,27 @@ class StabUtils {
         break;
       case 'writePngFromBytes':
         // Write bytes atomically: temp file + rename to prevent partial writes
+        if (bytes == null) {
+          sendPort.send('Bytes are null');
+          break;
+        }
+        // Use unique temp name to prevent collision with concurrent writers
+        final tempPath =
+            '$filePath.${DateTime.now().microsecondsSinceEpoch}.tmp';
+        final tempFile = File(tempPath);
         try {
-          if (bytes != null) {
-            final tempPath = '$filePath.tmp';
-            final tempFile = File(tempPath);
-            await tempFile.writeAsBytes(bytes as Uint8List, flush: true);
-            // Delete target first for Windows compatibility (rename fails if exists)
-            final targetFile = File(filePath!);
-            if (await targetFile.exists()) {
-              await targetFile.delete();
-            }
-            await tempFile.rename(filePath);
-            sendPort.send('File written successfully');
-          } else {
-            sendPort.send('Bytes are null');
+          await tempFile.writeAsBytes(bytes as Uint8List, flush: true);
+          // Delete target first for Windows compatibility (rename fails if exists)
+          final targetFile = File(filePath!);
+          if (await targetFile.exists()) {
+            await targetFile.delete();
           }
+          await tempFile.rename(filePath);
+          sendPort.send('File written successfully');
         } catch (e) {
-          // Clean up temp file on failure
+          // Clean up temp file on any failure
           try {
-            await File('$filePath.tmp').delete();
+            if (await tempFile.exists()) await tempFile.delete();
           } catch (_) {}
           sendPort.send('Error writing PNG: $e');
         }

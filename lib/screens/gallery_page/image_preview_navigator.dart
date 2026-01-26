@@ -898,9 +898,10 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     required IconData icon,
     VoidCallback? onPressed,
     bool active = false,
-    Color activeColor = AppColors.settingsAccent,
+    Color? activeColor,
     double iconSize = 22,
   }) {
+    activeColor ??= AppColors.settingsAccent;
     return Material(
       color: Colors.transparent,
       child: InkWell(

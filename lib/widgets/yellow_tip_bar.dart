@@ -26,7 +26,7 @@ class YellowTipBar extends StatelessWidget {
               color: AppColors.settingsAccent.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.info_outline,
               color: AppColors.settingsAccent,
               size: 20,
@@ -36,7 +36,7 @@ class YellowTipBar extends StatelessWidget {
           Flexible(
             child: Text(
               message,
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.settingsTextPrimary,
                 fontSize: AppTypography.md,
                 height: 1.4,

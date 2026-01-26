@@ -78,7 +78,7 @@ void showStyledInfoDialog(
               const SizedBox(height: 16),
               Text(
                 content,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.settingsTextPrimary,
                   fontSize: AppTypography.md,
                   height: 1.5,

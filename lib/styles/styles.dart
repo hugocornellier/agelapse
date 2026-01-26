@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_colors_data.dart';
 
 ButtonStyle overlayButtonRoundStyle() {
   return ElevatedButton.styleFrom(
@@ -23,7 +24,7 @@ ButtonStyle takePhotoRoundStyle() {
 ///
 /// Usage: `fontSize: AppTypography.md` or `style: AppTypography.bodyMedium`
 class AppTypography {
-  // Font size scale
+  // Font size scale (these remain const)
   static const double xs = 11; // Extra small - captions, badges
   static const double sm = 12; // Small - secondary text, metadata
   static const double md = 14; // Medium - body text (default)
@@ -33,103 +34,114 @@ class AppTypography {
   static const double xxxl = 24; // 3XL - page titles
   static const double display = 28; // Display - hero text, large titles
 
-  // Pre-built text styles
-  static const TextStyle caption = TextStyle(
-    fontSize: xs,
-    color: AppColors.textSecondary,
-  );
+  // Pre-built text styles - GETTERS for dynamic theme colors
+  static TextStyle get caption => TextStyle(
+        fontSize: xs,
+        color: AppColors.textSecondary,
+      );
 
-  static const TextStyle bodySmall = TextStyle(
-    fontSize: sm,
-    color: AppColors.textPrimary,
-  );
+  static TextStyle get bodySmall => TextStyle(
+        fontSize: sm,
+        color: AppColors.textPrimary,
+      );
 
-  static const TextStyle bodyMedium = TextStyle(
-    fontSize: md,
-    color: AppColors.textPrimary,
-  );
+  static TextStyle get bodyMedium => TextStyle(
+        fontSize: md,
+        color: AppColors.textPrimary,
+      );
 
-  static const TextStyle bodyLarge = TextStyle(
-    fontSize: lg,
-    color: AppColors.textPrimary,
-  );
+  static TextStyle get bodyLarge => TextStyle(
+        fontSize: lg,
+        color: AppColors.textPrimary,
+      );
 
-  static const TextStyle headingSmall = TextStyle(
-    fontSize: xl,
-    color: AppColors.textPrimary,
-    fontWeight: FontWeight.w600,
-  );
+  static TextStyle get headingSmall => TextStyle(
+        fontSize: xl,
+        color: AppColors.textPrimary,
+        fontWeight: FontWeight.w600,
+      );
 
-  static const TextStyle headingMedium = TextStyle(
-    fontSize: xxl,
-    color: AppColors.textPrimary,
-    fontWeight: FontWeight.w600,
-  );
+  static TextStyle get headingMedium => TextStyle(
+        fontSize: xxl,
+        color: AppColors.textPrimary,
+        fontWeight: FontWeight.w600,
+      );
 
-  static const TextStyle headingLarge = TextStyle(
-    fontSize: xxxl,
-    color: AppColors.textPrimary,
-    fontWeight: FontWeight.bold,
-  );
+  static TextStyle get headingLarge => TextStyle(
+        fontSize: xxxl,
+        color: AppColors.textPrimary,
+        fontWeight: FontWeight.bold,
+      );
 
-  static const TextStyle displayText = TextStyle(
-    fontSize: display,
-    color: AppColors.textPrimary,
-    fontWeight: FontWeight.bold,
-  );
+  static TextStyle get displayText => TextStyle(
+        fontSize: display,
+        color: AppColors.textPrimary,
+        fontWeight: FontWeight.bold,
+      );
 }
 
+/// Global accessor for current theme colors.
+/// Synced via MaterialApp.builder - always reflects current theme.
+///
+/// IMPORTANT: All fields are GETTERS, not const/static final.
+/// This ensures theme changes are reflected immediately.
+///
+/// Prefer [context.appColors] in widgets for subtree override support.
 class AppColors {
-  // Backgrounds
-  static const Color background = Color(0xFF0F0F0F);
-  static const Color backgroundDark = Color(0xFF0A0A0A);
+  AppColors._();
 
-  // Surfaces
-  static const Color surface = Color(0xFF1A1A1A);
-  static const Color surfaceElevated = Color(0xFF2A2A2A);
+  static AppColorsData _current = AppColorsData.dark();
 
-  // Semantic
-  static const Color danger = Color(0xFFEF4444);
-  static const Color success = Color(0xFF22C55E);
-  static const Color warning = Color(0xFFFF9500);
-  static const Color warningMuted = Color(0xFFC9A179);
-  static const Color info = Color(0xFF2196F3);
+  /// Called by MaterialApp.builder to sync theme colors
+  static void syncFromContext(BuildContext context) {
+    final ext = Theme.of(context).extension<AppColorsData>();
+    if (ext != null) {
+      _current = ext;
+    }
+  }
 
-  // Brand/Accent Ramp
-  static const Color accentLight = Color(0xFF40C4FF);
-  static const Color accent = Color(0xFF4A9ECC);
-  static const Color accentDark = Color(0xFF3285AF);
-  static const Color accentDarker = Color(0xFF206588);
-
-  // Text
-  static const Color textPrimary = Color(0xFFFFFFFF);
-  static const Color textSecondary = Color(0xFF8E8E93);
-  static const Color textTertiary = Color(0xFF636366);
-
-  // Utility
-  static const Color overlay = Color(0xFF000000);
-  static const Color disabled = Color(0xFF5A5A5A);
-  static const Color guideCorner = Color(0xFF924904);
+  // Core color getters - delegate to _current (no caching!)
+  static Color get background => _current.background;
+  static Color get backgroundDark => _current.backgroundDark;
+  static Color get surface => _current.surface;
+  static Color get surfaceElevated => _current.surfaceElevated;
+  static Color get textPrimary => _current.textPrimary;
+  static Color get textSecondary => _current.textSecondary;
+  static Color get textTertiary => _current.textTertiary;
+  static Color get danger => _current.danger;
+  static Color get success => _current.success;
+  static Color get warning => _current.warning;
+  static Color get warningMuted => _current.warningMuted;
+  static Color get info => _current.info;
+  static Color get accentLight => _current.accentLight;
+  static Color get accent => _current.accent;
+  static Color get accentDark => _current.accentDark;
+  static Color get accentDarker => _current.accentDarker;
+  static Color get overlay => _current.overlay;
+  static Color get disabled => _current.disabled;
+  static Color get guideCorner => _current.guideCorner;
+  static Color get galleryBackground => _current.galleryBackground;
 
   // Settings aliases (for backwards compatibility)
-  static const Color settingsBackground = backgroundDark;
-  static const Color settingsCardBackground = surface;
-  static const Color settingsCardBorder = surfaceElevated;
-  static const Color settingsDivider = surfaceElevated;
-  static const Color settingsAccent = accent;
-  static const Color settingsTextPrimary = textPrimary;
-  static const Color settingsTextSecondary = textSecondary;
-  static const Color settingsTextTertiary = textTertiary;
-  static const Color settingsInputBackground = surface;
+  static Color get settingsBackground => backgroundDark;
+  static Color get settingsCardBackground => surface;
+  static Color get settingsCardBorder => surfaceElevated;
+  static Color get settingsDivider => surfaceElevated;
+  static Color get settingsAccent => accent;
+  static Color get settingsTextPrimary => textPrimary;
+  static Color get settingsTextSecondary => textSecondary;
+  static Color get settingsTextTertiary => textTertiary;
+  static Color get settingsInputBackground => surface;
 
-  // DEPRECATED - Keeping for backwards compatibility during migration
-  // These will be removed after full migration
-  static Color darkOverlay = overlay.withValues(alpha: 0.5);
-  static const Color lightGrey = textSecondary;
-  static const Color lightBlue = accentLight;
-  static const Color darkerLightBlue = accentDark;
-  static const Color evenDarkerLightBlue = accentDarker;
-  static const Color orange = warningMuted;
-  static const Color darkGrey = background;
-  static const Color lessDarkGrey = surfaceElevated;
+  // Computed colors
+  static Color get darkOverlay => overlay.withValues(alpha: 0.5);
+
+  // DEPRECATED aliases - remove after full migration
+  static Color get lightGrey => textSecondary;
+  static Color get lightBlue => accentLight;
+  static Color get darkerLightBlue => accentDark;
+  static Color get evenDarkerLightBlue => accentDarker;
+  static Color get orange => warningMuted;
+  static Color get darkGrey => background;
+  static Color get lessDarkGrey => surfaceElevated;
 }

@@ -181,16 +181,26 @@ class IsolatePool {
         // Atomic write: temp file + rename to prevent partial writes
         final filePath = params['filePath'] as String;
         final bytes = params['bytes'] as Uint8List;
-        final tempPath = '$filePath.tmp';
+        // Use unique temp name to prevent collision with concurrent writers
+        final tempPath =
+            '$filePath.${DateTime.now().microsecondsSinceEpoch}.tmp';
         final tempFile = File(tempPath);
-        await tempFile.writeAsBytes(bytes, flush: true);
-        // Delete target first for Windows compatibility
-        final targetFile = File(filePath);
-        if (await targetFile.exists()) {
-          await targetFile.delete();
+        try {
+          await tempFile.writeAsBytes(bytes, flush: true);
+          // Delete target first for Windows compatibility
+          final targetFile = File(filePath);
+          if (await targetFile.exists()) {
+            await targetFile.delete();
+          }
+          await tempFile.rename(filePath);
+          return 'File written successfully';
+        } catch (e) {
+          // Clean up temp file on any failure
+          try {
+            if (await tempFile.exists()) await tempFile.delete();
+          } catch (_) {}
+          rethrow;
         }
-        await tempFile.rename(filePath);
-        return 'File written successfully';
 
       case 'writeJpg':
         final filePath = params['filePath'] as String;

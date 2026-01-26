@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:animated_bottom_navigation_bar/animated_bottom_navigation_bar.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../screens/create_page.dart';
 import '../services/log_service.dart';
 import '../services/global_drop_service.dart';
@@ -19,6 +20,7 @@ import '../services/stabilization_service.dart';
 import '../services/stabilization_progress.dart';
 import '../services/stabilization_state.dart';
 import '../services/stab_update_event.dart';
+import '../services/theme_provider.dart';
 import '../utils/gallery_utils.dart';
 import 'package:path/path.dart' as path;
 import '../styles/styles.dart';
@@ -660,6 +662,11 @@ class MainNavigationState extends State<MainNavigation>
 
   @override
   Widget build(BuildContext context) {
+    // Watch ThemeProvider to rebuild when theme changes.
+    // This ensures all child widgets using static AppColors get updated.
+    context.watch<ThemeProvider>();
+    AppColors.syncFromContext(context);
+
     final List<IconData> iconList = [
       Icons.home,
       Icons.collections,
@@ -702,6 +709,7 @@ class MainNavigationState extends State<MainNavigation>
     }
 
     final scaffold = Scaffold(
+      backgroundColor: AppColors.backgroundDark,
       body: Column(
         children: [
           if (appBar != null) appBar,
@@ -712,6 +720,7 @@ class MainNavigationState extends State<MainNavigation>
           ? null
           : Container(
               decoration: BoxDecoration(
+                color: AppColors.backgroundDark,
                 border: Border(
                   top: BorderSide(color: AppColors.surfaceElevated, width: 0.7),
                 ),
@@ -733,7 +742,7 @@ class MainNavigationState extends State<MainNavigation>
                 splashColor: Colors.transparent,
                 activeIndex: _selectedIndex,
                 onTap: _onItemTapped,
-                backgroundColor: AppColors.background,
+                backgroundColor: AppColors.backgroundDark,
               ),
             ),
     );

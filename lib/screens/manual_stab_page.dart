@@ -327,7 +327,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(
+          SizedBox(
             width: 28,
             height: 28,
             child: CircularProgressIndicator(
@@ -336,7 +336,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'Saving...',
             style: TextStyle(
               color: AppColors.settingsTextPrimary,
@@ -375,7 +375,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
             ),
           ],
         ),
-        child: const Icon(
+        child: Icon(
           Icons.check_rounded,
           color: AppColors.textPrimary,
           size: 44,
@@ -392,7 +392,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       shadowColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       backgroundColor: AppColors.settingsBackground,
-      title: const Text(
+      title: Text(
         'Manual Stabilization',
         style: TextStyle(
           fontSize: AppTypography.xxl,
@@ -425,7 +425,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppColors.settingsCardBorder, width: 1),
           ),
-          child: const Icon(
+          child: Icon(
             Icons.arrow_back,
             color: AppColors.settingsTextPrimary,
             size: 20,
@@ -445,7 +445,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.settingsCardBorder, width: 1),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.help_outline_rounded,
               color: AppColors.settingsTextSecondary,
               size: 20,
@@ -473,7 +473,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                   width: 1,
                 ),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.restore_rounded,
                 color: AppColors.settingsTextSecondary,
                 size: 22,
@@ -502,14 +502,14 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.save_rounded,
                         color: AppColors.settingsAccent,
                         size: 22,
                       ),
                       if (isWide) ...[
                         const SizedBox(width: 8),
-                        const Text(
+                        Text(
                           'Save Changes',
                           style: TextStyle(
                             color: AppColors.settingsAccent,
@@ -538,7 +538,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.settingsCardBackground,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
+        title: Row(
           children: [
             Icon(
               Icons.lightbulb_outline_rounded,
@@ -556,7 +556,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
             ),
           ],
         ),
-        content: const SingleChildScrollView(
+        content: SingleChildScrollView(
           child: Text(
             'Goal: Center each pupil on its vertical line and place both pupils exactly on the horizontal line.\n\n'
             'Horiz. Offset (decimal, +/-)\nShifts the image left/right. Increase to move the face right, decrease to move left.\n\n'
@@ -574,7 +574,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text(
+            child: Text(
               'Got it',
               style: TextStyle(
                 color: AppColors.settingsAccent,
@@ -607,7 +607,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                     color: AppColors.settingsTextSecondary,
                   ),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     'TRANSFORM CONTROLS',
                     style: TextStyle(
                       fontSize: AppTypography.sm,
@@ -770,7 +770,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
             Flexible(
               child: Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: AppTypography.sm,
                   color: AppColors.settingsTextTertiary,
                   fontWeight: FontWeight.w500,
@@ -793,7 +793,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
               signed: true,
             ),
             onEditingComplete: _validateInputs,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: AppTypography.lg,
               color: AppColors.settingsTextPrimary,
               fontWeight: FontWeight.w500,
@@ -839,7 +839,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                   width: 1,
                 ),
               ),
-              child: const Center(
+              child: Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -1146,7 +1146,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Row(
+          title: Row(
             children: [
               Icon(
                 Icons.save_outlined,
@@ -1164,7 +1164,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
               ),
             ],
           ),
-          content: const Text(
+          content: Text(
             'You have unsaved changes. Do you want to save them before leaving?',
             style: TextStyle(
               color: AppColors.settingsTextSecondary,
@@ -1174,7 +1174,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
           ),
           actions: <Widget>[
             TextButton(
-              child: const Text(
+              child: Text(
                 'Discard',
                 style: TextStyle(
                   color: AppColors.settingsTextSecondary,
@@ -1184,7 +1184,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
               onPressed: () => Navigator.of(context).pop(false),
             ),
             TextButton(
-              child: const Text(
+              child: Text(
                 'Save',
                 style: TextStyle(
                   color: AppColors.settingsAccent,
@@ -1208,7 +1208,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Row(
+          title: Row(
             children: [
               Icon(
                 Icons.restore_rounded,
@@ -1226,7 +1226,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
               ),
             ],
           ),
-          content: const Text(
+          content: Text(
             'This will revert all changes to the last saved state.',
             style: TextStyle(
               color: AppColors.settingsTextSecondary,
@@ -1236,7 +1236,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
           ),
           actions: <Widget>[
             TextButton(
-              child: const Text(
+              child: Text(
                 'Cancel',
                 style: TextStyle(
                   color: AppColors.settingsTextSecondary,
@@ -1246,7 +1246,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
               onPressed: () => Navigator.of(context).pop(false),
             ),
             TextButton(
-              child: const Text(
+              child: Text(
                 'Reset',
                 style: TextStyle(
                   color: AppColors.warningMuted,
@@ -1301,7 +1301,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
             color: AppColors.settingsTextSecondary,
           ),
           const SizedBox(width: 8),
-          const Text(
+          Text(
             'PREVIEW',
             style: TextStyle(
               fontSize: AppTypography.sm,
@@ -1312,7 +1312,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
           ),
           const Spacer(),
           if (_isProcessing)
-            const SizedBox(
+            SizedBox(
               width: 14,
               height: 14,
               child: CircularProgressIndicator(
@@ -1338,7 +1338,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Row(
+          title: Row(
             children: [
               Icon(
                 Icons.warning_amber_rounded,
@@ -1361,7 +1361,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
             'Horiz./Vert. Offset: numbers like -10.5 or 25\n'
             'Scale Factor: positive numbers like 1 or 2.5\n'
             'Rotation: any number like -1.5 or 30',
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.settingsTextSecondary,
               fontSize: AppTypography.md,
               height: 1.5,
@@ -1370,7 +1370,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text(
+              child: Text(
                 'OK',
                 style: TextStyle(
                   color: AppColors.settingsAccent,

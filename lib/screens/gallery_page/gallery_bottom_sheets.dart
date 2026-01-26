@@ -15,9 +15,9 @@ class GalleryBottomSheets {
   ) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20.0, 12.0, 20.0, 20.0),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.only(
+        borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(20.0),
           topRight: Radius.circular(20.0),
         ),
@@ -43,7 +43,7 @@ class GalleryBottomSheets {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: AppTypography.xxl,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,

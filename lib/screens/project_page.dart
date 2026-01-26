@@ -304,8 +304,8 @@ class ProjectPageState extends State<ProjectPage> {
               return Row(
                 children: [
                   Expanded(child: importButton),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Text(
                       "OR",
                       style: TextStyle(
@@ -322,7 +322,7 @@ class ProjectPageState extends State<ProjectPage> {
               children: [
                 takePhotoButton,
                 const SizedBox(height: 16),
-                const Row(
+                Row(
                   children: <Widget>[
                     SizedBox(width: 8),
                     Expanded(child: Divider(height: 0.8)),
@@ -414,7 +414,7 @@ class ProjectPageState extends State<ProjectPage> {
               const SizedBox(width: 8),
               Text(
                 title.toUpperCase(),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: AppTypography.sm,
                   fontWeight: FontWeight.w600,
                   color: AppColors.settingsTextSecondary,
@@ -652,7 +652,7 @@ class ProjectPageState extends State<ProjectPage> {
           const SizedBox(width: 6),
           Text(
             chip.value,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textPrimary,
               fontSize: AppTypography.sm,
               fontWeight: FontWeight.w600,
@@ -725,7 +725,7 @@ class ProjectPageState extends State<ProjectPage> {
           const SizedBox(height: 4),
           Text(
             "$roundedOffset%",
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textPrimary,
               fontSize: AppTypography.xl,
               fontWeight: FontWeight.w600,
@@ -867,7 +867,7 @@ class TextRowBuilder extends StatelessWidget {
       children: [
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             color: AppColors.settingsTextSecondary,
             fontSize: AppTypography.md,
             height: 0.97,
@@ -880,7 +880,7 @@ class TextRowBuilder extends StatelessWidget {
             Text(
               value,
               style: valueTextStyle ??
-                  const TextStyle(
+                  TextStyle(
                     color: AppColors.settingsTextPrimary,
                     fontSize: AppTypography.xxxl,
                     fontWeight: FontWeight.bold,
@@ -965,7 +965,7 @@ class SpecialCard extends StatelessWidget {
               Flexible(
                 child: Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.settingsTextPrimary,
                     fontSize: AppTypography.sm,
                     fontWeight: FontWeight.w400,
@@ -977,7 +977,7 @@ class SpecialCard extends StatelessWidget {
               Flexible(
                 child: Text(
                   value,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.settingsTextSecondary,
                     fontSize: AppTypography.sm,
                     fontWeight: FontWeight.w400,
@@ -990,7 +990,7 @@ class SpecialCard extends StatelessWidget {
           ),
         ),
         if (showDivider)
-          const Divider(
+          Divider(
             height: 1,
             thickness: 1,
             color: AppColors.settingsCardBorder,

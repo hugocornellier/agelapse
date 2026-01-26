@@ -18,10 +18,9 @@ class TookFirstPhotoPage extends StatefulWidget {
 }
 
 class TookFirstPhotoPageState extends State<TookFirstPhotoPage> {
-  final Color appBarColor = AppColors.background;
-
   @override
   Widget build(BuildContext context) {
+    final appBarColor = AppColors.background;
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -31,12 +30,8 @@ class TookFirstPhotoPageState extends State<TookFirstPhotoPage> {
           IconButton(icon: const Icon(Icons.close), onPressed: () => close()),
         ],
       ),
-      body: _buildBody(),
+      body: Container(color: appBarColor, child: _buildTookFirstPhotoPage()),
     );
-  }
-
-  Container _buildBody() {
-    return Container(color: appBarColor, child: _buildTookFirstPhotoPage());
   }
 
   Widget _buildTookFirstPhotoPage() {
@@ -65,7 +60,7 @@ class TookFirstPhotoPageState extends State<TookFirstPhotoPage> {
             Expanded(child: Container()),
             _buildActionButton("View Gallery"),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               "This is the beginning of something great. We can feel it!",
               style: TextStyle(
                   fontSize: AppTypography.sm, color: AppColors.textSecondary),
@@ -109,7 +104,7 @@ class TookFirstPhotoPageState extends State<TookFirstPhotoPage> {
         ),
         child: Text(
           text.toUpperCase(),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: AppTypography.lg,
             color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,

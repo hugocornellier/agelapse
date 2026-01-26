@@ -6,10 +6,12 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:opencv_dart/opencv_dart.dart' as cv;
+import 'package:provider/provider.dart';
 import '../screens/set_eye_position_page.dart';
 import '../services/custom_font_manager.dart';
 import '../services/database_helper.dart';
 import '../services/log_service.dart';
+import '../services/theme_provider.dart';
 import '../services/thumbnail_service.dart';
 import '../styles/styles.dart';
 import '../utils/dir_utils.dart';
@@ -454,7 +456,7 @@ class SettingsSheetState extends State<SettingsSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Enter a display name for this font:',
                 style: TextStyle(color: AppColors.settingsTextSecondary),
               ),
@@ -468,7 +470,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                   errorText: error,
                   counterText: '',
                   border: const OutlineInputBorder(),
-                  focusedBorder: const OutlineInputBorder(
+                  focusedBorder: OutlineInputBorder(
                     borderSide: BorderSide(color: AppColors.settingsAccent),
                   ),
                 ),
@@ -541,8 +543,8 @@ class SettingsSheetState extends State<SettingsSheet> {
           content: SizedBox(
             width: 300,
             child: _customFonts.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                     child: Text(
                       'No custom fonts installed.\n\nSelect "Custom (TTF/OTF)" from the font dropdown to import a font.',
                       style: TextStyle(color: AppColors.settingsTextSecondary),
@@ -568,8 +570,8 @@ class SettingsSheetState extends State<SettingsSheet> {
                               ),
                             ),
                             if (isInUse)
-                              const Padding(
-                                padding: EdgeInsets.only(left: 4),
+                              Padding(
+                                padding: const EdgeInsets.only(left: 4),
                                 child: Icon(
                                   Icons.check_circle,
                                   size: 14,
@@ -580,7 +582,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                         ),
                         subtitle: Text(
                           '${(font.fileSize / 1024).toStringAsFixed(1)} KB',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: AppTypography.sm,
                             color: AppColors.settingsTextSecondary,
                           ),
@@ -856,10 +858,10 @@ class SettingsSheetState extends State<SettingsSheet> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: AppColors.settingsAccent,
-              surface: AppColors.settingsCardBackground,
-            ),
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+                  primary: AppColors.settingsAccent,
+                  surface: AppColors.settingsCardBackground,
+                ),
           ),
           child: child!,
         );
@@ -905,9 +907,9 @@ class SettingsSheetState extends State<SettingsSheet> {
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.85,
         ),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppColors.settingsBackground,
-          borderRadius: BorderRadius.only(
+          borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(20),
             topRight: Radius.circular(20),
           ),
@@ -922,6 +924,13 @@ class SettingsSheetState extends State<SettingsSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (!widget.onlyShowVideoSettings &&
+                        !widget.onlyShowNotificationSettings)
+                      _buildSettingsSection(
+                        'Appearance',
+                        Icons.palette_outlined,
+                        _buildAppearanceSettings,
+                      ),
                     if (!widget.onlyShowVideoSettings &&
                         !widget.onlyShowNotificationSettings)
                       _buildSettingsSection(
@@ -990,7 +999,7 @@ class SettingsSheetState extends State<SettingsSheet> {
   Widget _buildHeader() {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 12, 16),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(color: AppColors.settingsDivider, width: 1),
         ),
@@ -1010,7 +1019,7 @@ class SettingsSheetState extends State<SettingsSheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Settings',
                 style: TextStyle(
                   fontSize: AppTypography.display,
@@ -1075,7 +1084,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                 const SizedBox(width: 8),
                 Text(
                   title.toUpperCase(),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: AppTypography.sm,
                     fontWeight: FontWeight.w600,
                     color: AppColors.settingsTextSecondary,
@@ -1095,8 +1104,8 @@ class SettingsSheetState extends State<SettingsSheet> {
               future: _getFutureForTitle(title),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Padding(
-                    padding: EdgeInsets.all(24),
+                  return Padding(
+                    padding: const EdgeInsets.all(24),
                     child: Center(
                       child: SizedBox(
                         width: 20,
@@ -1133,7 +1142,7 @@ class SettingsSheetState extends State<SettingsSheet> {
     );
   }
 
-  static const Color _dangerRed = AppColors.danger;
+  static Color get _dangerRed => AppColors.danger;
 
   Widget _buildDangerZoneSection() {
     return Padding(
@@ -1177,7 +1186,7 @@ class SettingsSheetState extends State<SettingsSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Delete this project',
                     style: TextStyle(
                       fontSize: AppTypography.lg,
@@ -1207,7 +1216,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                           color: _dangerRed.withValues(alpha: 0.3),
                         ),
                       ),
-                      child: const Center(
+                      child: Center(
                         child: Text(
                           'Delete this project',
                           style: TextStyle(
@@ -1275,6 +1284,39 @@ class SettingsSheetState extends State<SettingsSheet> {
     }
   }
 
+  Widget _buildAppearanceSettings() {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+
+    return Column(
+      children: [
+        SettingListTile(
+          title: 'Theme',
+          contentWidget: CustomDropdownButton<String>(
+            value: themeProvider.themeMode,
+            items: const [
+              DropdownMenuItem(value: 'system', child: Text('System')),
+              DropdownMenuItem(value: 'light', child: Text('Light')),
+              DropdownMenuItem(value: 'dark', child: Text('Dark')),
+            ],
+            onChanged: (String? newValue) async {
+              if (newValue != null) {
+                themeProvider.themeMode = newValue;
+                await DB.instance.setSettingByTitle(
+                  'theme',
+                  newValue,
+                  'global',
+                );
+              }
+            },
+          ),
+          showDivider: false,
+          showInfo: false,
+          infoContent: '',
+        ),
+      ],
+    );
+  }
+
   Widget _buildProjectSettings() {
     return Column(
       children: [
@@ -1333,13 +1375,13 @@ class SettingsSheetState extends State<SettingsSheet> {
                 children: [
                   Text(
                     _selectedTime.format(context),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: AppTypography.md,
                       color: AppColors.settingsTextPrimary,
                     ),
                   ),
                   const SizedBox(width: 6),
-                  const Icon(
+                  Icon(
                     Icons.access_time,
                     size: 16,
                     color: AppColors.settingsTextSecondary,
@@ -1541,7 +1583,7 @@ class SettingsSheetState extends State<SettingsSheet> {
       showDivider: true,
       contentWidget: Text(
         '${dims.$1} × ${dims.$2}',
-        style: const TextStyle(
+        style: TextStyle(
           color: AppColors.settingsTextPrimary,
           fontSize: AppTypography.md,
         ),
@@ -2176,7 +2218,7 @@ class SettingsSheetState extends State<SettingsSheet> {
               padding: const EdgeInsets.only(top: 4),
               child: Text(
                 error,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: AppTypography.sm,
                   color: AppColors.danger,
                 ),
@@ -2215,7 +2257,7 @@ class SettingsSheetState extends State<SettingsSheet> {
   }
 
   Widget _buildLoading() {
-    return const Center(
+    return Center(
       child: SizedBox(
         width: 20,
         height: 20,
@@ -2498,13 +2540,13 @@ class SettingsSheetState extends State<SettingsSheet> {
                       keyboardType: TextInputType.number,
                       textAlign: TextAlign.center,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.settingsTextPrimary,
                         fontSize: AppTypography.lg,
                       ),
                       decoration: InputDecoration(
                         hintText: '1920',
-                        hintStyle: const TextStyle(
+                        hintStyle: TextStyle(
                           color: AppColors.settingsTextTertiary,
                           fontSize: AppTypography.lg,
                         ),
@@ -2514,19 +2556,19 @@ class SettingsSheetState extends State<SettingsSheet> {
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
+                          borderSide: BorderSide(
                             color: AppColors.settingsTextTertiary,
                           ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
+                          borderSide: BorderSide(
                             color: AppColors.settingsTextTertiary,
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
+                          borderSide: BorderSide(
                             color: AppColors.settingsAccent,
                           ),
                         ),
@@ -2567,13 +2609,13 @@ class SettingsSheetState extends State<SettingsSheet> {
                       keyboardType: TextInputType.number,
                       textAlign: TextAlign.center,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.settingsTextPrimary,
                         fontSize: AppTypography.lg,
                       ),
                       decoration: InputDecoration(
                         hintText: '1080',
-                        hintStyle: const TextStyle(
+                        hintStyle: TextStyle(
                           color: AppColors.settingsTextTertiary,
                           fontSize: AppTypography.lg,
                         ),
@@ -2583,19 +2625,19 @@ class SettingsSheetState extends State<SettingsSheet> {
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
+                          borderSide: BorderSide(
                             color: AppColors.settingsTextTertiary,
                           ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
+                          borderSide: BorderSide(
                             color: AppColors.settingsTextTertiary,
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
+                          borderSide: BorderSide(
                             color: AppColors.settingsAccent,
                           ),
                         ),
@@ -2651,7 +2693,7 @@ class SettingsSheetState extends State<SettingsSheet> {
               padding: const EdgeInsets.only(top: 8),
               child: Text(
                 _customResolutionError!,
-                style: const TextStyle(
+                style: TextStyle(
                     color: AppColors.danger, fontSize: AppTypography.sm),
               ),
             ),
@@ -2839,7 +2881,7 @@ class SettingsSheetState extends State<SettingsSheet> {
               width: 1,
             ),
           ),
-          child: const Text(
+          child: Text(
             'Configure',
             style: TextStyle(
               color: AppColors.settingsAccent,
@@ -2926,14 +2968,14 @@ class SettingsSheetState extends State<SettingsSheet> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Row(
+          title: Row(
             children: [
               Icon(
                 Icons.palette_outlined,
                 color: AppColors.settingsAccent,
                 size: 24,
               ),
-              SizedBox(width: 12),
+              const SizedBox(width: 12),
               Text(
                 'Background Colour',
                 style: TextStyle(
@@ -2961,7 +3003,7 @@ class SettingsSheetState extends State<SettingsSheet> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text(
+              child: Text(
                 'Cancel',
                 style: TextStyle(
                   color: AppColors.settingsTextSecondary,
@@ -3221,7 +3263,7 @@ class ImagePickerWidgetState extends State<ImagePickerWidget> {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (uploading)
-              const SizedBox(
+              SizedBox(
                 width: 16,
                 height: 16,
                 child: CircularProgressIndicator(

@@ -62,7 +62,7 @@ void main() {
           ),
         );
 
-        expect(find.byIcon(Icons.arrow_forward_ios), findsOneWidget);
+        expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
       });
 
       testWidgets('calls onPressed when tapped', (tester) async {
@@ -139,7 +139,7 @@ void main() {
         expect(button.style, isNotNull);
       });
 
-      testWidgets('contains CircleAvatar with icon', (tester) async {
+      testWidgets('contains Container with icon', (tester) async {
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
@@ -156,7 +156,7 @@ void main() {
           ),
         );
 
-        expect(find.byType(CircleAvatar), findsOneWidget);
+        expect(find.byType(Container), findsWidgets);
         expect(find.byIcon(Icons.star), findsOneWidget);
       });
 

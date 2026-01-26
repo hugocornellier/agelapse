@@ -79,15 +79,15 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
                         ),
                       ),
                       const SizedBox(height: 48),
-                      const Padding(
-                        padding: EdgeInsets.only(bottom: 16.0),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16.0),
                         child: Text('Pose',
                             style: TextStyle(color: AppColors.textSecondary)),
                       ),
                       _buildImageSelector(),
                       const SizedBox(height: 32),
-                      const Padding(
-                        padding: EdgeInsets.only(bottom: 0.0),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 0.0),
                         child: Text('Name',
                             style: TextStyle(color: AppColors.textSecondary)),
                       ),
@@ -113,7 +113,7 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.85,
       ),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.background,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(16.0),
@@ -128,15 +128,15 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 16.0),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16.0),
                     child: Text('Pose',
                         style: TextStyle(color: AppColors.textSecondary)),
                   ),
                   _buildImageSelector(),
                   const SizedBox(height: 16),
-                  const Padding(
-                    padding: EdgeInsets.only(top: 16.0, bottom: 0.0),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16.0, bottom: 0.0),
                     child: Text('Name',
                         style: TextStyle(color: AppColors.textSecondary)),
                   ),
@@ -157,7 +157,7 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Row(
+                      Row(
                         children: [
                           Text(
                             'Create New Project',
@@ -258,7 +258,7 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
             filled: true,
             fillColor: AppColors.surfaceElevated,
             hintText: 'Enter project name',
-            hintStyle: const TextStyle(color: AppColors.textSecondary),
+            hintStyle: TextStyle(color: AppColors.textSecondary),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(6.0),
               borderSide: BorderSide.none,

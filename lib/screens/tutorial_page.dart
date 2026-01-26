@@ -11,10 +11,10 @@ class TutorialPage extends StatelessWidget {
       body: Theme(
         data: Theme.of(context).copyWith(
           dividerColor: AppColors.textTertiary,
-          expansionTileTheme: const ExpansionTileThemeData(
+          expansionTileTheme: ExpansionTileThemeData(
             iconColor: AppColors.textSecondary,
             collapsedIconColor: AppColors.textSecondary,
-            childrenPadding: EdgeInsets.fromLTRB(0, 0, 16, 0),
+            childrenPadding: const EdgeInsets.fromLTRB(0, 0, 16, 0),
           ),
         ),
         child: ListView(

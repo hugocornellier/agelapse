@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import '../../services/database_helper.dart';
-import '../../styles/styles.dart';
+import '../../styles/app_colors_data.dart';
 import '../../utils/dir_utils.dart';
 import '../../utils/settings_utils.dart';
 import 'dart:ui' as ui;
@@ -166,8 +166,7 @@ class _GridPainter extends CustomPainter {
     if (gridMode == GridMode.none) return;
 
     final paint = Paint()
-      ..color =
-          AppColors.textPrimary.withAlpha(153) // Equivalent to opacity 0.6
+      ..color = PhotoOverlayColors.cameraGuide
       ..strokeWidth = 1;
 
     if (gridMode == GridMode.gridOnly || gridMode == GridMode.doubleGhostGrid) {
@@ -200,9 +199,7 @@ class _GridPainter extends CustomPainter {
     if (guideImage != null &&
         ghostImageOffsetX != null &&
         ghostImageOffsetY != null) {
-      final imagePaint = Paint()
-        ..color =
-            AppColors.textPrimary.withAlpha(128); // Equivalent to opacity 0.5
+      final imagePaint = Paint()..color = PhotoOverlayColors.ghostImage;
       final imageWidth = guideImage!.width.toDouble();
       final imageHeight = guideImage!.height.toDouble();
       final scale = _calculateImageScale(size.width, imageWidth, imageHeight);

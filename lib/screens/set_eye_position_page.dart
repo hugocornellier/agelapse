@@ -243,13 +243,13 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
               padding: const EdgeInsets.only(left: 4, bottom: 12),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.tune_rounded,
                     size: 18,
                     color: AppColors.settingsTextSecondary,
                   ),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     'POSITION CONTROLS',
                     style: TextStyle(
                       fontSize: AppTypography.sm,
@@ -262,7 +262,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                   AnimatedRotation(
                     turns: _controlsExpanded ? 0.5 : 0,
                     duration: const Duration(milliseconds: 200),
-                    child: const Icon(
+                    child: Icon(
                       Icons.keyboard_arrow_down_rounded,
                       size: 20,
                       color: AppColors.settingsTextSecondary,
@@ -345,7 +345,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
             const SizedBox(width: 6),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: AppTypography.sm,
                 color: AppColors.settingsTextTertiary,
                 fontWeight: FontWeight.w500,
@@ -386,12 +386,12 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                           ),
                         ],
                         textAlign: TextAlign.right,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: AppTypography.lg,
                           color: AppColors.settingsTextPrimary,
                           fontWeight: FontWeight.w500,
                         ),
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           contentPadding: EdgeInsets.symmetric(
                             horizontal: 12,
                             vertical: 12,
@@ -405,8 +405,8 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                         onSubmitted: (_) => focusNode.unfocus(),
                       ),
                     ),
-                    const Padding(
-                      padding: EdgeInsets.only(right: 12),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 12),
                       child: Text(
                         '%',
                         style: TextStyle(
@@ -599,14 +599,14 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Row(
+          title: Row(
             children: [
               Icon(
                 Icons.save_outlined,
                 color: AppColors.settingsAccent,
                 size: 24,
               ),
-              SizedBox(width: 12),
+              const SizedBox(width: 12),
               Text(
                 'Unsaved Changes',
                 style: TextStyle(
@@ -621,7 +621,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              const Text(
+              Text(
                 'You have unsaved changes. Do you want to save them before leaving?',
                 style: TextStyle(
                   color: AppColors.settingsTextSecondary,
@@ -640,7 +640,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                     width: 1,
                   ),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
                     Icon(
                       Icons.warning_amber_rounded,
@@ -665,7 +665,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
           ),
           actions: <Widget>[
             TextButton(
-              child: const Text(
+              child: Text(
                 'Discard',
                 style: TextStyle(
                   color: AppColors.settingsTextSecondary,
@@ -675,7 +675,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
               onPressed: () => Navigator.of(context).pop(false),
             ),
             TextButton(
-              child: const Text(
+              child: Text(
                 'Save',
                 style: TextStyle(
                   color: AppColors.settingsAccent,
@@ -696,7 +696,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.settingsCardBackground,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
+        title: Row(
           children: [
             Icon(
               Icons.lightbulb_outline_rounded,
@@ -714,7 +714,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
             ),
           ],
         ),
-        content: const SingleChildScrollView(
+        content: SingleChildScrollView(
           child: Text(
             'This screen controls where eyes are positioned in the output frame.\n\n'
             'Drag the horizontal guide line up or down to adjust the vertical eye position.\n\n'
@@ -730,7 +730,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text(
+            child: Text(
               'Got it',
               style: TextStyle(
                 color: AppColors.settingsAccent,
@@ -751,7 +751,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
       shadowColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       backgroundColor: AppColors.settingsBackground,
-      title: const Text(
+      title: Text(
         'Output Position',
         style: TextStyle(
           fontSize: AppTypography.xxl,
@@ -781,7 +781,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppColors.settingsCardBorder, width: 1),
           ),
-          child: const Icon(
+          child: Icon(
             Icons.arrow_back,
             color: AppColors.settingsTextPrimary,
             size: 20,
@@ -800,7 +800,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.settingsCardBorder, width: 1),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.help_outline_rounded,
               color: AppColors.settingsTextSecondary,
               size: 20,
@@ -836,7 +836,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                 ),
               ),
               child: _isSaving
-                  ? const Padding(
+                  ? Padding(
                       padding: EdgeInsets.all(12),
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
@@ -883,14 +883,14 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                 color: AppColors.settingsAccent.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.lightbulb_outline_rounded,
                 color: AppColors.settingsAccent,
                 size: 20,
               ),
             ),
             const SizedBox(width: 14),
-            const Expanded(
+            Expanded(
               child: Text(
                 "Drag lines or edit values above. Tap save to apply.\n"
                 "Note: Output guide lines are separate from your camera guide lines.",
@@ -911,7 +911,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                   color: AppColors.settingsCardBorder,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.close,
                   color: AppColors.settingsTextSecondary,
                   size: 16,
@@ -1063,7 +1063,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const SizedBox(
+                    SizedBox(
                       width: 24,
                       height: 24,
                       child: CircularProgressIndicator(
@@ -1072,7 +1072,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    const Text(
+                    Text(
                       'Loading preview...',
                       style: TextStyle(
                         color: AppColors.settingsTextSecondary,

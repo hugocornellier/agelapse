@@ -27,13 +27,15 @@ class ConfirmActionDialog extends StatelessWidget {
     this.confirmText = 'Proceed Anyway',
   });
 
-  // Color constants matching existing design
-  static const _dangerColor = AppColors.danger;
-  static final _dangerColorLight = AppColors.danger.withValues(alpha: 0.15);
-  static final _dangerColorBorder = AppColors.danger.withValues(alpha: 0.3);
-  static const _cardBackground = AppColors.surface;
-  static const _textPrimary = AppColors.textPrimary;
-  static const _textSecondary = AppColors.textSecondary;
+  // Color getters - dynamic for theme support
+  static Color get _dangerColor => AppColors.danger;
+  static Color get _dangerColorLight =>
+      AppColors.danger.withValues(alpha: 0.15);
+  static Color get _dangerColorBorder =>
+      AppColors.danger.withValues(alpha: 0.3);
+  static Color get _cardBackground => AppColors.surface;
+  static Color get _textPrimary => AppColors.textPrimary;
+  static Color get _textSecondary => AppColors.textSecondary;
 
   /// Shows a confirmation dialog for settings that require re-stabilization.
   ///
@@ -200,7 +202,7 @@ class ConfirmActionDialog extends StatelessWidget {
           const SizedBox(width: 12),
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               color: _textPrimary,
               fontSize: AppTypography.xl,
               fontWeight: FontWeight.w600,
@@ -214,7 +216,7 @@ class ConfirmActionDialog extends StatelessWidget {
         children: [
           Text(
             description,
-            style: const TextStyle(
+            style: TextStyle(
               color: _textSecondary,
               fontSize: AppTypography.md,
               height: 1.5,
@@ -240,7 +242,7 @@ class ConfirmActionDialog extends StatelessWidget {
                   Expanded(
                     child: Text(
                       warningText!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: _dangerColor,
                         fontSize: AppTypography.sm,
                         fontWeight: FontWeight.w500,
@@ -259,7 +261,7 @@ class ConfirmActionDialog extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(false),
           child: Text(
             cancelText,
-            style: const TextStyle(
+            style: TextStyle(
               color: _textSecondary,
               fontWeight: FontWeight.w500,
             ),
