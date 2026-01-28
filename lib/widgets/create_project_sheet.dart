@@ -192,66 +192,78 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         Flexible(
-          child: GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedImage = 'assets/images/face.png';
-              });
-            },
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 100, maxHeight: 100),
-              child: AspectRatio(
-                aspectRatio: 1,
-                child: Image.asset(
-                  'assets/images/face.png', // proj type = face
-                  fit: BoxFit.contain,
-                  color: _selectedImage == 'assets/images/face.png'
-                      ? AppColors.info
-                      : null,
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedImage = 'assets/images/face.png';
+                });
+              },
+              child: ConstrainedBox(
+                constraints:
+                    const BoxConstraints(maxWidth: 100, maxHeight: 100),
+                child: AspectRatio(
+                  aspectRatio: 1,
+                  child: Image.asset(
+                    'assets/images/face.png', // proj type = face
+                    fit: BoxFit.contain,
+                    color: _selectedImage == 'assets/images/face.png'
+                        ? AppColors.info
+                        : null,
+                  ),
                 ),
               ),
             ),
           ),
         ),
         Flexible(
-          child: GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedImage = 'assets/images/musc.png';
-              });
-            },
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 100, maxHeight: 100),
-              child: AspectRatio(
-                aspectRatio: 1,
-                child: Image.asset(
-                  'assets/images/musc.png', // proj type = body
-                  fit: BoxFit.contain,
-                  color: _selectedImage == 'assets/images/musc.png'
-                      ? AppColors.info
-                      : null,
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedImage = 'assets/images/musc.png';
+                });
+              },
+              child: ConstrainedBox(
+                constraints:
+                    const BoxConstraints(maxWidth: 100, maxHeight: 100),
+                child: AspectRatio(
+                  aspectRatio: 1,
+                  child: Image.asset(
+                    'assets/images/musc.png', // proj type = body
+                    fit: BoxFit.contain,
+                    color: _selectedImage == 'assets/images/musc.png'
+                        ? AppColors.info
+                        : null,
+                  ),
                 ),
               ),
             ),
           ),
         ),
         Flexible(
-          child: GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedImage = 'assets/images/preg.png';
-              });
-            },
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 100, maxHeight: 100),
-              child: AspectRatio(
-                aspectRatio: 1,
-                child: Image.asset(
-                  'assets/images/preg.png', // proj type = body
-                  fit: BoxFit.contain,
-                  color: _selectedImage == 'assets/images/preg.png'
-                      ? AppColors.info
-                      : null,
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedImage = 'assets/images/preg.png';
+                });
+              },
+              child: ConstrainedBox(
+                constraints:
+                    const BoxConstraints(maxWidth: 100, maxHeight: 100),
+                child: AspectRatio(
+                  aspectRatio: 1,
+                  child: Image.asset(
+                    'assets/images/preg.png', // proj type = body
+                    fit: BoxFit.contain,
+                    color: _selectedImage == 'assets/images/preg.png'
+                        ? AppColors.info
+                        : null,
+                  ),
                 ),
               ),
             ),
