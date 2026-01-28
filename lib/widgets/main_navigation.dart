@@ -8,7 +8,6 @@ import 'package:animated_bottom_navigation_bar/animated_bottom_navigation_bar.da
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../screens/create_page.dart';
-import '../services/log_service.dart';
 import '../services/global_drop_service.dart';
 import '../screens/gallery_page/gallery_page.dart';
 import '../screens/project_page.dart';
@@ -307,7 +306,6 @@ class MainNavigationState extends State<MainNavigation>
   }
 
   Future<void> refreshSettings() async {
-    LogService.instance.log("Settings are being refreshed...");
     await _refreshSettingsCache();
   }
 
@@ -363,25 +361,13 @@ class MainNavigationState extends State<MainNavigation>
     }
 
     if (photoCountBeforeImport == 0) {
-      LogService.instance.log(
-        "[processPickedFiles] photoCountBeforeImport == 0 is true",
-      );
-
       String? importedPhotosOrientation =
           await DB.instance.checkPhotoOrientationThreshold(widget.projectId);
       if (importedPhotosOrientation == 'landscape') {
-        LogService.instance.log(
-          "[processPickedFiles] importedPhotosOrientation == 'landscape' is true",
-        );
-
         DB.instance.setSettingByTitle(
           "project_orientation",
           'landscape',
           projectIdStr,
-        );
-      } else {
-        LogService.instance.log(
-          "[processPickedFiles] importedPhotosOrientation == 'landscape' NOT true. importedPhotosOrientation = $importedPhotosOrientation",
         );
       }
     }
@@ -456,7 +442,6 @@ class MainNavigationState extends State<MainNavigation>
   /// The service kills all active isolates and FFmpeg processes.
   /// UI updates come via the progress stream (shows "Cancelling..." state).
   Future<void> _cancelStabilizationProcess() async {
-    LogService.instance.log("_cancelStabilizationProcess called");
     await StabilizationService.instance.cancel();
     // No waiting needed - state updates come via stream
   }
@@ -467,7 +452,6 @@ class MainNavigationState extends State<MainNavigation>
   /// and immediately triggers the stabilization service which will compile
   /// the video (skipping stabilization if no photos need it).
   Future<void> _recompileVideo() async {
-    LogService.instance.log("[MainNavigation] Triggering video recompilation");
     await DB.instance.setNewVideoNeeded(widget.projectId);
     // Trigger the stabilization service to immediately start video compilation
     // (it will skip stabilization if no photos need it)

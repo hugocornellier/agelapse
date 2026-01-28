@@ -42,22 +42,22 @@ class ProgressWidget extends StatelessWidget {
 
     return Column(
       children: [
-        if (userRanOutOfSpace && selectedIndex != 3) ...[
+        if (userRanOutOfSpace) ...[
           InProgress(
             message: "No storage space on device.",
             goToPage: goToPage,
           ),
-        ] else if (importRunningInMain && selectedIndex != 3) ...[
+        ] else if (importRunningInMain) ...[
           InProgress(
             message: "Importing... $progressPercentAsStr",
             goToPage: goToPage,
           ),
-        ] else if (stabilizingRunningInMain && selectedIndex != 3) ...[
+        ] else if (stabilizingRunningInMain) ...[
           InProgress(
             message: stabilizingMessage,
             goToPage: goToPage,
           ),
-        ] else if (videoCreationActiveInMain && selectedIndex != 3) ...[
+        ] else if (videoCreationActiveInMain) ...[
           InProgress(
             message: compilingMessage,
             goToPage: goToPage,

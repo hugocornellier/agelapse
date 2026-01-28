@@ -257,11 +257,6 @@ class StabilizationService {
 
       stopwatch.stop();
 
-      // Log benchmark summary
-      if (_benchmark.count > 0) {
-        _benchmark.logSummary();
-      }
-
       // Final check for re-stabilization if settings changed
       _currentToken?.throwIfCancelled();
       await _finalCheck(_currentStabilizer!, projectId);

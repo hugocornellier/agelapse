@@ -66,6 +66,7 @@ class SettingsSheetState extends State<SettingsSheet> {
   final _gridCountCompleter = Completer<int>();
   final _projectSettingsCompleter = Completer<void>();
   final _dateStampSettingsCompleter = Completer<void>();
+  final Future<void> _defaultSettingsFuture = Future<void>.value();
 
   Future<Map<String, bool>> get _settingsFuture => _settingsCompleter.future;
   Future<void> get _notificationInitialization => _notificationCompleter.future;
@@ -1280,7 +1281,7 @@ class SettingsSheetState extends State<SettingsSheet> {
       case 'Date Stamp':
         return _dateStampSettingsFuture;
       default:
-        return Future.value();
+        return _defaultSettingsFuture;
     }
   }
 

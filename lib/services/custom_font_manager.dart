@@ -69,8 +69,6 @@ class CustomFontManager {
     if (_initialized) return;
 
     try {
-      LogService.instance.log('[CUSTOM_FONT] Initializing CustomFontManager');
-
       // Ensure the custom fonts directory exists
       await _ensureFontsDirectory();
 
@@ -329,9 +327,6 @@ class CustomFontManager {
       await fontLoader.load();
 
       _loadedFonts.add(font.familyName);
-      LogService.instance.log(
-        '[CUSTOM_FONT] Loaded font into engine: ${font.familyName}',
-      );
       return true;
     } catch (e) {
       LogService.instance.log(
@@ -411,9 +406,6 @@ class CustomFontManager {
 
     // Invalidate cache
     _cachedFonts = null;
-
-    LogService.instance
-        .log('[CUSTOM_FONT] Uninstalled font: ${font.displayName}');
   }
 
   /// Check if a font is available (loaded into the engine).

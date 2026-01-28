@@ -650,7 +650,6 @@ class _CameraViewState extends State<CameraView>
             await nativePlayer.setProperty(
                 'demuxer-lavf-o', 'fflags=+nobuffer+flush_packets');
             await nativePlayer.setProperty('demuxer-readahead-secs', '0');
-            LogService.instance.log('Linux: configured low-latency settings');
           }
         } catch (e) {
           LogService.instance.log('Linux: could not set mpv properties: $e');
@@ -664,26 +663,13 @@ class _CameraViewState extends State<CameraView>
         StreamSubscription? errorSub;
 
         widthSub = _linuxPlayer!.stream.width.listen((width) {
-          LogService.instance.log('Linux: width stream: $width');
           if (width != null && width > 1 && !completer.isCompleted) {
-            LogService.instance
-                .log('Linux: got valid width $width from $devicePath');
             completer.complete(true);
           }
         });
 
         errorSub = _linuxPlayer!.stream.error.listen((error) {
           LogService.instance.log('Linux: error stream: $error');
-        });
-
-        // Also log track info
-        _linuxPlayer!.stream.track.listen((track) {
-          LogService.instance.log('Linux: track info: $track');
-        });
-
-        _linuxPlayer!.stream.tracks.listen((tracks) {
-          LogService.instance.log(
-              'Linux: tracks: video=${tracks.video.length}, audio=${tracks.audio.length}');
         });
 
         // Try the av:// URL format - this is the standard for V4L2 in mpv/ffmpeg
@@ -754,16 +740,11 @@ class _CameraViewState extends State<CameraView>
     if (_linuxPlayer == null) return null;
 
     try {
-      LogService.instance
-          .log('Linux: capturing frame via media_kit screenshot...');
-
       // Use media_kit's built-in screenshot functionality
       final nativePlayer = _linuxPlayer!.platform;
       if (nativePlayer is NativePlayer) {
         final bytes = await nativePlayer.screenshot(format: 'image/jpeg');
         if (bytes != null && bytes.isNotEmpty) {
-          LogService.instance
-              .log('Linux: captured frame, ${bytes.length} bytes');
           return bytes;
         } else {
           LogService.instance.log('Linux: screenshot returned null or empty');
@@ -1780,8 +1761,6 @@ class CameraGridOverlayState extends State<CameraGridOverlay> {
         widget.projectId.toString(),
       );
       if (selectedGuidePhoto == "not set") {
-        LogService.instance.log("not set");
-
         guidePhoto = stabPhotos.first;
         timestamp = guidePhoto['timestamp'].toString();
       } else {
@@ -1789,9 +1768,6 @@ class CameraGridOverlayState extends State<CameraGridOverlay> {
           selectedGuidePhoto,
           widget.projectId,
         );
-
-        LogService.instance.log("guidePhotoRecord");
-        LogService.instance.log(guidePhotoRecord.toString());
 
         if (guidePhotoRecord != null) {
           guidePhoto = guidePhotoRecord;

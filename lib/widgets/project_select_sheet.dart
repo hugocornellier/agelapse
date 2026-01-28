@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
 import '../screens/create_project_page.dart';
 import '../services/database_helper.dart';
-import '../services/log_service.dart';
 import '../styles/styles.dart';
 import '../utils/dir_utils.dart';
 import '../utils/project_utils.dart';
@@ -64,18 +63,11 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
   }
 
   static Future<String> getProjectImage(int projectId) async {
-    LogService.instance.log(
-      '[getProjectImage] Called for projectId=$projectId',
-    );
-
     final String stabilizedDirPath = await DirUtils.getStabilizedDirPath(
       projectId,
     );
     final String activeProjectOrientation =
         await SettingsUtil.loadProjectOrientation(projectId.toString());
-    LogService.instance.log(
-      '[getProjectImage] activeProjectOrientation=$activeProjectOrientation',
-    );
 
     final String videoOutputPath = await DirUtils.getVideoOutputPath(
       projectId,
@@ -86,7 +78,6 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
       ".gif",
     );
     if (await File(gifPath).exists()) {
-      LogService.instance.log('[getProjectImage] Found GIF: $gifPath');
       return gifPath;
     }
 
@@ -94,14 +85,8 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
       stabilizedDirPath,
       activeProjectOrientation,
     );
-    LogService.instance.log(
-      '[getProjectImage] Checking active stabilized dir: $stabilizedDirActivePath',
-    );
     String? pngPath = await checkForStabilizedImage(stabilizedDirActivePath);
     if (pngPath != null) {
-      LogService.instance.log(
-        '[getProjectImage] Found stabilized image in active dir: $pngPath',
-      );
       return pngPath;
     }
 
@@ -109,14 +94,8 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
       stabilizedDirPath,
       activeProjectOrientation == "portrait" ? "landscape" : "portrait",
     );
-    LogService.instance.log(
-      '[getProjectImage] Checking inactive stabilized dir: $stabilizedDirInactivePath',
-    );
     pngPath = await checkForStabilizedImage(stabilizedDirInactivePath);
     if (pngPath != null) {
-      LogService.instance.log(
-        '[getProjectImage] Found stabilized image in inactive dir: $pngPath',
-      );
       return pngPath;
     }
 
@@ -124,9 +103,6 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
     final Directory rawPhotoDir = Directory(rawPhotoDirPath);
     final bool dirExists = await rawPhotoDir.exists();
     if (!dirExists) {
-      LogService.instance.log(
-        '[getProjectImage] Raw photo dir does not exist, returning empty',
-      );
       return "";
     }
 
@@ -135,18 +111,12 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
         .where((file) => file is File && Utils.isImage(file.path))
         .toList();
     if (imageFiles.isEmpty) {
-      LogService.instance.log(
-        '[getProjectImage] No raw images found, returning empty',
-      );
       return "";
     }
 
     final minFile = imageFiles.reduce(
       (a, b) =>
           path.basename(a.path).compareTo(path.basename(b.path)) <= 0 ? a : b,
-    );
-    LogService.instance.log(
-      '[getProjectImage] Returning first raw image: ${minFile.path}',
     );
     return minFile.path;
   }
