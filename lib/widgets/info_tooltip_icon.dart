@@ -21,16 +21,19 @@ class InfoTooltipIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => showStyledInfoDialog(context, content),
-      child: Padding(
-        padding: const EdgeInsets.only(left: 6),
-        child: Icon(
-          Icons.info_outline_rounded,
-          size: 18,
-          color: disabled
-              ? AppColors.settingsTextTertiary
-              : AppColors.settingsTextSecondary,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => showStyledInfoDialog(context, content),
+        child: Padding(
+          padding: const EdgeInsets.only(left: 6),
+          child: Icon(
+            Icons.info_outline_rounded,
+            size: 18,
+            color: disabled
+                ? AppColors.settingsTextTertiary
+                : AppColors.settingsTextSecondary,
+          ),
         ),
       ),
     );

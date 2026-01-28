@@ -13,7 +13,7 @@ class NotificationUtil {
       _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
   static Future<void> cancelNotification(int projectId) async {
-    await _flutterLocalNotificationsPlugin.cancel(projectId);
+    await _flutterLocalNotificationsPlugin.cancel(id: projectId);
   }
 
   static Future<void> initializeNotifications() async {
@@ -61,7 +61,7 @@ class NotificationUtil {
     );
 
     await _flutterLocalNotificationsPlugin.initialize(
-      initializationSettings,
+      settings: initializationSettings,
       onDidReceiveNotificationResponse: (notificationResponse) async {
         // maybe do something here in the future?
       },
@@ -86,10 +86,10 @@ class NotificationUtil {
     );
 
     await _flutterLocalNotificationsPlugin.show(
-      9999,
-      'Test Notification',
-      'This is an immediate test notification',
-      platformDetails,
+      id: 9999,
+      title: 'Test Notification',
+      body: 'This is an immediate test notification',
+      notificationDetails: platformDetails,
     );
   }
 
@@ -124,11 +124,11 @@ class NotificationUtil {
     );
 
     await _flutterLocalNotificationsPlugin.zonedSchedule(
-      projectId,
-      'AgeLapse - $projectName',
-      '$projectName: Don\'t forget to take your photo!',
-      scheduledDate,
-      platformDetails,
+      id: projectId,
+      title: 'AgeLapse - $projectName',
+      body: '$projectName: Don\'t forget to take your photo!',
+      scheduledDate: scheduledDate,
+      notificationDetails: platformDetails,
       payload: 'date: ${scheduledDate.toString()}',
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,

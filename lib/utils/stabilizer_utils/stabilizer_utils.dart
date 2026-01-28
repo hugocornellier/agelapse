@@ -1160,7 +1160,7 @@ class StabUtils {
 
     while (!(await file.exists())) {
       if (sw.elapsed.inSeconds >= maxWaitSec) {
-        debugPrint(
+        LogService.instance.log(
           "Error loading image: file not found within $maxWaitSec seconds",
         );
         return null;
@@ -1175,7 +1175,7 @@ class StabUtils {
         return img;
       } catch (_) {
         if (sw.elapsed.inSeconds >= maxWaitSec) {
-          debugPrint(
+          LogService.instance.log(
             "Error loading image: not decodable within $maxWaitSec seconds",
           );
           return null;

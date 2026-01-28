@@ -1,6 +1,6 @@
 import 'dart:io';
-import 'package:flutter/material.dart';
 import '../services/custom_font_manager.dart';
+import '../services/log_service.dart';
 import '../utils/utils.dart';
 import '../utils/date_stamp_utils.dart';
 
@@ -33,7 +33,7 @@ class SettingsUtil {
       );
       return bool.tryParse(settingValueStr) ?? true;
     } catch (e) {
-      debugPrint('Failed to load watermark setting: $e');
+      LogService.instance.log('Failed to load watermark setting: $e');
       return true;
     }
   }
@@ -89,7 +89,7 @@ class SettingsUtil {
       );
       return bool.tryParse(saveToCameraRollStr) ?? false;
     } catch (e) {
-      debugPrint('Failed to load watermark setting: $e');
+      LogService.instance.log('Failed to load save to camera roll setting: $e');
       return false;
     }
   }
@@ -634,7 +634,8 @@ class SettingsUtil {
           return font;
         }
         // Custom font no longer exists, reset to default
-        debugPrint('Custom font $font no longer available, using default');
+        LogService.instance
+            .log('Custom font $font no longer available, using default');
         await DB.instance.setSettingByTitle(
           'gallery_date_stamp_font',
           DateStampUtils.defaultFont,
@@ -681,7 +682,7 @@ class SettingsUtil {
           return font;
         }
         // Custom font no longer exists, reset to "same as gallery"
-        debugPrint(
+        LogService.instance.log(
             'Custom font $font no longer available, using same as gallery');
         await DB.instance.setSettingByTitle(
           'export_date_stamp_font',

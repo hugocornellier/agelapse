@@ -1124,7 +1124,7 @@ class GalleryPageState extends State<GalleryPage>
       });
       FilePickerResult? pickedFiles;
       try {
-        pickedFiles = await FilePicker.platform.pickFiles(allowMultiple: true);
+        pickedFiles = await FilePicker.pickFiles(allowMultiple: true);
       } catch (e) {
         LogService.instance.log(e.toString());
         return;
@@ -1454,32 +1454,21 @@ class GalleryPageState extends State<GalleryPage>
   }) {
     return DropTarget(
       onDragEntered: (details) {
-        debugPrint('[Drop] onDragEntered at ${DateTime.now()}');
         onDraggingChanged(true);
       },
       onDragExited: (details) {
-        debugPrint('[Drop] onDragExited at ${DateTime.now()}');
         onDraggingChanged(false);
       },
       onDragDone: (details) async {
         // Reset dragging state immediately when drop occurs
         onDraggingChanged(false);
-        debugPrint('[Drop] ========== DROP EVENT RECEIVED ==========');
-        debugPrint('[Drop] REAL TIME at start: ${DateTime.now()}');
-        debugPrint(
-            '[Drop] T+0ms: onDragDone fired, files count: ${details.files.length}');
-        final stopwatch = Stopwatch()..start();
 
         // Reset drop received state (modal will close anyway)
         onDropReceivedCountChanged(null);
 
         if (isImporting) return;
-        debugPrint(
-            '[Drop] T+${stopwatch.elapsedMilliseconds}ms: Popping navigator');
         Navigator.of(context).pop();
 
-        debugPrint(
-            '[Drop] T+${stopwatch.elapsedMilliseconds}ms: Calling setState for isImporting');
         setState(() {
           photosImported = 0;
           successfullyImported = 0;
@@ -1487,69 +1476,33 @@ class GalleryPageState extends State<GalleryPage>
           isImporting = true;
         });
 
-        debugPrint(
-            '[Drop] T+${stopwatch.elapsedMilliseconds}ms: Calling setImportingInMain(true)');
         widget.setImportingInMain(true);
 
         if (widget.stabilizingRunningInMain) {
-          debugPrint(
-              '[Drop] T+${stopwatch.elapsedMilliseconds}ms: Cancelling stabilization');
           await widget.cancelStabCallback();
         }
 
-        debugPrint(
-            '[Drop] T+${stopwatch.elapsedMilliseconds}ms: Setting preparingImport = true');
         setState(() => preparingImport = true);
 
-        debugPrint(
-            '[Drop] T+${stopwatch.elapsedMilliseconds}ms: Yielding to UI (Future.delayed)');
         await Future.delayed(Duration.zero);
-        debugPrint(
-            '[Drop] T+${stopwatch.elapsedMilliseconds}ms: UI yield complete');
 
-        debugPrint(
-            '[Drop] T+${stopwatch.elapsedMilliseconds}ms: Getting file paths from details.files...');
         final List<String> itemPaths =
             details.files.map((f) => f.path).toList();
-        debugPrint(
-            '[Drop] T+${stopwatch.elapsedMilliseconds}ms: Got ${itemPaths.length} paths');
 
-        debugPrint(
-            '[Drop] T+${stopwatch.elapsedMilliseconds}ms: Starting compute() for directory check');
         final bool hasDirectories =
             await compute(_checkForDirectories, itemPaths);
-        debugPrint(
-            '[Drop] T+${stopwatch.elapsedMilliseconds}ms: compute() returned, hasDirectories: $hasDirectories');
-        debugPrint('[Drop] REAL TIME: ${DateTime.now()}');
 
         if (hasDirectories) {
           await _handleDropWithDirectories(itemPaths);
         } else {
           // Files-only path - done preparing, start import
-          debugPrint(
-              '[Drop] T+${stopwatch.elapsedMilliseconds}ms: Setting preparingImport = false');
           setState(() => preparingImport = false);
 
-          debugPrint(
-              '[Drop] T+${stopwatch.elapsedMilliseconds}ms: Calling startImportBatch(${details.files.length})');
           GalleryUtils.startImportBatch(details.files.length);
 
-          debugPrint(
-              '[Drop] T+${stopwatch.elapsedMilliseconds}ms: Starting import loop');
-          debugPrint('[Drop] REAL TIME before loop: ${DateTime.now()}');
-
-          int count = 0;
           for (final f in details.files) {
-            if (count == 0) {
-              debugPrint(
-                  '[Drop] T+${stopwatch.elapsedMilliseconds}ms: Processing FIRST file');
-              debugPrint('[Drop] REAL TIME first file: ${DateTime.now()}');
-            }
             await processPickedFile(File(f.path));
-            count++;
           }
-          debugPrint(
-              '[Drop] T+${stopwatch.elapsedMilliseconds}ms: Import loop complete');
         }
 
         // Always reset parent state even if widget is disposed

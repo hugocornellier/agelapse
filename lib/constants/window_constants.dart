@@ -7,7 +7,7 @@ import 'dart:ui' show Size;
 /// - Default state: Normal app usage after at least one project exists
 
 /// Standard window size for normal app usage (has projects)
-const Size kWindowSizeDefault = Size(1440, 900);
+const Size kWindowSizeDefault = Size(1440, 910);
 
 /// Window size for welcome/onboarding flow (no projects)
 const Size kWindowSizeWelcome = Size(840, 820);

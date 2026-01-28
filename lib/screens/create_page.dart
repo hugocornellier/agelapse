@@ -17,8 +17,6 @@ import '../utils/dir_utils.dart';
 import '../utils/export_naming_utils.dart';
 import '../utils/settings_utils.dart';
 import '../utils/video_utils.dart';
-import '../widgets/settings_sheet.dart';
-import '../widgets/yellow_tip_bar.dart';
 
 class CreatePage extends StatefulWidget {
   final int projectId;
@@ -84,8 +82,6 @@ class CreatePageState extends State<CreatePage>
   String resolution = "";
   String aspectRatio = "";
   double playbackSpeed = 1.0;
-  double dragStartY = 0.0;
-  double dragCurrentY = 0.0;
   bool showOverlayIcon = false;
   IconData overlayIcon = Icons.play_arrow;
   bool _isWaiting = false;
@@ -98,6 +94,10 @@ class CreatePageState extends State<CreatePage>
   bool _videoExists = false;
   DateTime? _lastVideoDate;
   int _newPhotosSinceLastVideo = 0;
+
+  // Video metadata for info display
+  String _projectOrientation = 'portrait';
+  String _stabilizationMode = 'face';
 
   @override
   void initState() {
@@ -339,8 +339,6 @@ class CreatePageState extends State<CreatePage>
     final File outFile = File(videoPath);
 
     final exists = await outFile.exists() && await outFile.length() > 0;
-    debugPrint(
-        '[CreatePage] _checkVideoFileExists: path=$videoPath, exists=$exists');
     return exists;
   }
 
@@ -348,8 +346,6 @@ class CreatePageState extends State<CreatePage>
     // Check if video file exists - don't create directly, let stabilization service handle it
     final videoExists = await _checkVideoFileExists();
     if (!videoExists) {
-      debugPrint(
-          '[CreatePage] setupVideoPlayer: Video file does not exist, returning');
       setState(() {
         loadingText = "Video is being compiled...";
       });
@@ -378,7 +374,11 @@ class CreatePageState extends State<CreatePage>
     );
     videoFps = await SettingsUtil.loadFramerate(widget.projectId.toString());
 
-    await widget.hideNavBar();
+    // Load additional metadata for the info section
+    _projectOrientation = projectOrientation;
+    _stabilizationMode = await SettingsUtil.loadStabilizationMode();
+
+    // Don't hide nav bar - keep the standard page layout
     playVideo();
 
     final bool hasViewedFirstVideo = await SettingsUtil.hasSeenFirstVideo(
@@ -426,11 +426,15 @@ class CreatePageState extends State<CreatePage>
       autoPlay: true,
       looping: true,
       allowFullScreen: true,
-      showControlsOnInitialize: false,
-      hideControlsTimer: const Duration(seconds: 1),
+      showControlsOnInitialize: true,
+      showControls: true,
+      allowPlaybackSpeedChanging: true,
+      playbackSpeeds: const [0.5, 1.0, 1.5, 2.0],
+      hideControlsTimer: const Duration(seconds: 3),
       deviceOrientationsOnEnterFullScreen: [
         DeviceOrientation.landscapeRight,
         DeviceOrientation.landscapeLeft,
+        DeviceOrientation.portraitUp,
       ],
       deviceOrientationsAfterFullScreen: [DeviceOrientation.portraitUp],
     );
@@ -491,33 +495,6 @@ class CreatePageState extends State<CreatePage>
         widget.projectId,
       );
 
-  void togglePlaybackSpeed() {
-    setState(() {
-      if (playbackSpeed == 1.0) {
-        playbackSpeed = 2.0;
-      } else if (playbackSpeed == 2.0) {
-        playbackSpeed = 0.5;
-      } else {
-        playbackSpeed = 1.0;
-      }
-      if (Platform.isLinux) {
-        _mediaKitPlayer?.setRate(playbackSpeed);
-      } else {
-        _videoPlayerController?.setPlaybackSpeed(playbackSpeed);
-      }
-    });
-  }
-
-  IconData _getPlaybackSpeedIcon() {
-    if (playbackSpeed == 2.0) {
-      return Icons.double_arrow;
-    } else if (playbackSpeed == 0.5) {
-      return Icons.slow_motion_video;
-    } else {
-      return Icons.one_x_mobiledata_outlined;
-    }
-  }
-
   void togglePlayback() {
     setState(() {
       if (Platform.isLinux) {
@@ -550,38 +527,10 @@ class CreatePageState extends State<CreatePage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          GestureDetector(
-            onVerticalDragStart: (details) {
-              dragStartY = details.localPosition.dy;
-            },
-            onVerticalDragUpdate: (details) {
-              dragCurrentY = details.localPosition.dy;
-              setState(() {});
-            },
-            onVerticalDragEnd: (details) {
-              if ((dragCurrentY - dragStartY) > 100) {
-                goBackToPreviousPage();
-              } else {
-                setState(() {
-                  dragStartY = 0;
-                  dragCurrentY = 0;
-                });
-              }
-            },
-            child: Transform.translate(
-              offset: Offset(
-                0,
-                (dragCurrentY - dragStartY) > 0 ? dragCurrentY - dragStartY : 0,
-              ),
-              child: _readyToShowVideoPlayer()
-                  ? _buildVideoPlayerSection()
-                  : buildLoadingView(),
-            ),
-          ),
-        ],
-      ),
+      backgroundColor: AppColors.background,
+      body: _readyToShowVideoPlayer()
+          ? _buildVideoPlayerSection()
+          : buildLoadingView(),
     );
   }
 
@@ -838,88 +787,439 @@ class CreatePageState extends State<CreatePage>
   }
 
   Widget _buildVideoPlayerSection() {
-    setState(() {
-      videoPlayerBuilt = true;
-    });
+    if (!videoPlayerBuilt) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => videoPlayerBuilt = true);
+      });
+    }
 
     if (lessThan2Photos) {
       return _buildNoPhotosMessage();
     }
 
-    return Column(
-      children: [
-        Container(
-          color: AppColors.overlay,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              SizedBox(height: MediaQuery.of(context).padding.top),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  InkWell(
-                    onTap: () => goBackToPreviousPage(),
-                    child: const Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      size: 35,
-                    ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final aspectRatio = _getVideoAspectRatio();
+
+        // Fixed heights for top and bottom sections
+        const topRowHeight = 50.0;
+        const normalBottomRowHeight = 140.0;
+        const compactBottomRowHeight = 56.0;
+
+        // First pass: estimate if we'll need compact mode
+        final maxWidth = constraints.maxWidth - 32;
+        final estimatedVideoHeight =
+            constraints.maxHeight - topRowHeight - normalBottomRowHeight - 16;
+        final estimatedWidth = estimatedVideoHeight * aspectRatio;
+        final useCompactInfo = estimatedWidth.clamp(200.0, maxWidth) < 680;
+
+        // Use actual bottom row height based on compact mode
+        final bottomRowHeight =
+            useCompactInfo ? compactBottomRowHeight : normalBottomRowHeight;
+        final verticalPadding = useCompactInfo ? 8.0 : 24.0;
+
+        // Calculate video dimensions based on available space
+        final availableVideoHeight = constraints.maxHeight -
+            topRowHeight -
+            bottomRowHeight -
+            verticalPadding;
+        final videoWidthFromHeight = availableVideoHeight * aspectRatio;
+
+        // Content width matches video width, clamped to screen bounds
+        final contentWidth = videoWidthFromHeight.clamp(200.0, maxWidth);
+
+        return Center(
+          child: SizedBox(
+            width: contentWidth,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Top row (fixed): Title
+                SizedBox(
+                  height: topRowHeight,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                widget.projectName,
+                                style: TextStyle(
+                                  fontSize: AppTypography.xl,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Text(
+                              ' · ${photoCount ?? 0} photos',
+                              style: TextStyle(
+                                fontSize: AppTypography.md,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: _enterFullscreen,
+                        icon: Icon(
+                          Icons.fullscreen,
+                          color: AppColors.textSecondary,
+                          size: 28,
+                        ),
+                        tooltip: 'Fullscreen',
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 20),
-                ],
+                ),
+
+                // Middle row: Video player sized by aspect ratio
+                AspectRatio(
+                  aspectRatio: aspectRatio,
+                  child: _buildVideoContainer(),
+                ),
+
+                // Bottom row (fixed): Info + Export
+                SizedBox(
+                  height: bottomRowHeight,
+                  child: useCompactInfo
+                      ? Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Row(
+                            children: [
+                              _buildCompactInfoButton(),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                  child: _buildExportButton(compact: true)),
+                            ],
+                          ),
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 20),
+                            _buildVideoInfoSection(compact: false),
+                            const SizedBox(height: 16),
+                            _buildExportButton(compact: false),
+                          ],
+                        ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildVideoContainer() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.overlay,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.surfaceElevated,
+          width: 1,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Platform.isLinux
+          ? _buildMediaKitVideoPlayer()
+          : _buildChewieVideoPlayer(),
+    );
+  }
+
+  Widget _buildVideoInfoSection({bool compact = false}) {
+    final infoChips = [
+      _VideoInfoChip(label: 'Resolution', value: resolution),
+      _VideoInfoChip(label: 'Framerate', value: '${videoFps ?? 30} FPS'),
+      _VideoInfoChip(label: 'Aspect', value: aspectRatio),
+      _VideoInfoChip(
+        label: 'Orientation',
+        value: _capitalizeFirstLetter(_projectOrientation),
+      ),
+      _VideoInfoChip(
+        label: 'Stabilization',
+        value: _capitalizeFirstLetter(_stabilizationMode),
+      ),
+    ];
+
+    // Compact mode: show button that opens popup
+    if (compact) {
+      return InkWell(
+        onTap: () => _showVideoInfoPopup(infoChips),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.surfaceElevated, width: 1),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.movie_outlined,
+                size: 16,
+                color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Video Info',
+                style: TextStyle(
+                  fontSize: AppTypography.sm,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.chevron_right,
+                size: 16,
+                color: AppColors.textSecondary,
               ),
             ],
           ),
         ),
-        Expanded(
-          child: Container(
-            color: AppColors.overlay,
-            child: Center(
-              child: GestureDetector(
-                onTap: togglePlayback,
-                child: Platform.isLinux
-                    ? _buildMediaKitVideoPlayer()
-                    : _buildChewieVideoPlayer(),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Section Header
+        Row(
+          children: [
+            Icon(
+              Icons.movie_outlined,
+              size: 16,
+              color: AppColors.textSecondary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'VIDEO INFO',
+              style: TextStyle(
+                fontSize: AppTypography.xs,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+                letterSpacing: 1.2,
               ),
             ),
-          ),
+          ],
         ),
-        _buildActionBar(),
+        const SizedBox(height: 8),
+
+        // Info Chips
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children:
+              infoChips.map((chip) => _buildInfoChipWidget(chip)).toList(),
+        ),
       ],
     );
+  }
+
+  void _showVideoInfoPopup(List<_VideoInfoChip> chips) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Icon(
+              Icons.movie_outlined,
+              size: 20,
+              color: AppColors.textSecondary,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Video Info',
+              style: TextStyle(
+                fontSize: AppTypography.lg,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: chips
+              .map((chip) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          chip.label,
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: AppTypography.md,
+                          ),
+                        ),
+                        Text(
+                          chip.value,
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: AppTypography.md,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ))
+              .toList(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              'Close',
+              style: TextStyle(color: AppColors.accent),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoChipWidget(_VideoInfoChip chip) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.surfaceElevated, width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            chip.label,
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: AppTypography.xs,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            chip.value,
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: AppTypography.xs,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactInfoButton() {
+    final infoChips = [
+      _VideoInfoChip(label: 'Resolution', value: resolution),
+      _VideoInfoChip(label: 'Framerate', value: '${videoFps ?? 30} FPS'),
+      _VideoInfoChip(label: 'Aspect', value: aspectRatio),
+      _VideoInfoChip(
+        label: 'Orientation',
+        value: _capitalizeFirstLetter(_projectOrientation),
+      ),
+      _VideoInfoChip(
+        label: 'Stabilization',
+        value: _capitalizeFirstLetter(_stabilizationMode),
+      ),
+    ];
+
+    return Expanded(
+      child: OutlinedButton.icon(
+        onPressed: () => _showVideoInfoPopup(infoChips),
+        icon: Icon(
+          Icons.info_outline,
+          size: 16,
+          color: AppColors.textPrimary,
+        ),
+        label: Text(
+          'Info',
+          style: TextStyle(
+            fontSize: AppTypography.sm,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          side: BorderSide(color: AppColors.surfaceElevated, width: 1),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExportButton({bool compact = false}) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: _shareVideo,
+        icon: Icon(
+          Platform.isAndroid || Platform.isIOS ? Icons.share : Icons.download,
+          size: compact ? 16 : 18,
+        ),
+        label: Text(
+          compact
+              ? (Platform.isAndroid || Platform.isIOS ? 'Share' : 'Export')
+              : (Platform.isAndroid || Platform.isIOS
+                  ? 'Share Video'
+                  : 'Export Video'),
+          style: TextStyle(
+            fontSize: AppTypography.sm,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.accentDark,
+          foregroundColor: AppColors.textPrimary,
+          padding:
+              EdgeInsets.symmetric(vertical: 12, horizontal: compact ? 12 : 20),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          elevation: 0,
+        ),
+      ),
+    );
+  }
+
+  String _capitalizeFirstLetter(String input) {
+    if (input.isEmpty) return input;
+    return input[0].toUpperCase() + input.substring(1).toLowerCase();
   }
 
   Widget _buildMediaKitVideoPlayer() {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Video(controller: _mediaKitController!, controls: NoVideoControls),
-        if (showOverlayIcon)
-          FadeTransition(
-            opacity: _opacityAnimation,
-            child: Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: AppColors.overlay.withAlpha(128),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(overlayIcon, color: AppColors.textPrimary, size: 50),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildChewieVideoPlayer() {
     return AspectRatio(
-      aspectRatio: _chewieController!.aspectRatio!,
-      child: Stack(
-        alignment: Alignment.bottomCenter,
-        children: [
-          Chewie(controller: _chewieController!),
-          if (showOverlayIcon)
-            Center(
-              child: FadeTransition(
+      aspectRatio: _getVideoAspectRatio(),
+      child: GestureDetector(
+        onTap: togglePlayback,
+        onDoubleTap: _enterFullscreen,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Video(
+              controller: _mediaKitController!,
+              controls: (state) => _buildMediaKitControls(state),
+            ),
+            if (showOverlayIcon)
+              FadeTransition(
                 opacity: _opacityAnimation,
                 child: Container(
                   width: 80,
@@ -932,66 +1232,163 @@ class CreatePageState extends State<CreatePage>
                       Icon(overlayIcon, color: AppColors.textPrimary, size: 50),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildActionBar() {
-    return Container(
-      color: AppColors.overlay,
-      height: 100,
-      child: Column(
-        children: [
-          const Divider(),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildIconButton(_getPlaybackSpeedIcon(), togglePlaybackSpeed),
-              _buildIconButton(Icons.settings, () => _openSettings(context)),
-              _buildIconButton(Icons.ios_share, _shareVideo),
-            ],
+  Widget _buildMediaKitControls(VideoState state) {
+    // Simple controls for media_kit on Linux
+    return Stack(
+      children: [
+        // Fullscreen button in top-right
+        Positioned(
+          top: 8,
+          right: 8,
+          child: IconButton(
+            icon: Icon(
+              Icons.fullscreen,
+              color: AppColors.textPrimary,
+              size: 28,
+            ),
+            onPressed: _enterFullscreen,
           ),
-          const Spacer(flex: 2),
-        ],
-      ),
+        ),
+        // Playback speed in bottom-left
+        Positioned(
+          bottom: 8,
+          left: 8,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.overlay.withAlpha(180),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: PopupMenuButton<double>(
+              initialValue: playbackSpeed,
+              onSelected: (speed) {
+                setState(() {
+                  playbackSpeed = speed;
+                  _mediaKitPlayer?.setRate(speed);
+                });
+              },
+              itemBuilder: (context) => [
+                for (final speed in [0.5, 1.0, 1.5, 2.0])
+                  PopupMenuItem(
+                    value: speed,
+                    child: Text('${speed}x'),
+                  ),
+              ],
+              child: Text(
+                '${playbackSpeed}x',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: AppTypography.sm,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  double _getVideoAspectRatio() {
+    if (Platform.isLinux) {
+      // Parse aspect ratio string like "16:9" or "4:3"
+      final parts = aspectRatio.split(':');
+      if (parts.length == 2) {
+        final w = double.tryParse(parts[0]) ?? 16;
+        final h = double.tryParse(parts[1]) ?? 9;
+        return w / h;
+      }
+      return 16 / 9;
+    }
+    return _videoPlayerController?.value.aspectRatio ?? 16 / 9;
+  }
+
+  void _enterFullscreen() {
+    if (Platform.isLinux) {
+      // For media_kit, we'd need to implement native fullscreen
+      // For now, just maximize the video area
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Double-tap or use F11 for fullscreen'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } else {
+      _chewieController?.enterFullScreen();
+    }
+  }
+
+  /// Called from MainNavigation when user taps play icon while already on CreatePage.
+  /// Enters fullscreen mode if video is ready.
+  void enterFullscreenFromNavBar() {
+    if (_readyToShowVideoPlayer() && !lessThan2Photos) {
+      _enterFullscreen();
+    }
+  }
+
+  Widget _buildChewieVideoPlayer() {
+    return AspectRatio(
+      aspectRatio: _chewieController!.aspectRatio!,
+      child: Chewie(controller: _chewieController!),
     );
   }
 
   Widget _buildNoPhotosMessage() {
-    return const Center(
-      child: YellowTipBar(
-        message:
-            "You need at least 2 photos in your gallery to create a video.",
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.videocam_off_outlined,
+              size: 64,
+              color: AppColors.textSecondary,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Not Enough Photos',
+              style: TextStyle(
+                fontSize: AppTypography.xl,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'You need at least 2 photos in your gallery to create a video.',
+              style: TextStyle(
+                fontSize: AppTypography.md,
+                color: AppColors.textSecondary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => widget.goToPage(1),
+              icon: const Icon(Icons.photo_library),
+              label: const Text('Open Gallery'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accentDark,
+                foregroundColor: AppColors.textPrimary,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-    );
-  }
-
-  void goBackToPreviousPage() => widget.goToPage(widget.prevIndex);
-
-  Widget _buildIconButton(IconData icon, [VoidCallback? onTap]) {
-    return IconButton(
-      icon: Icon(icon, color: AppColors.textPrimary),
-      onPressed: onTap,
-    );
-  }
-
-  void _openSettings(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) {
-        return SettingsSheet(
-          projectId: widget.projectId,
-          onlyShowVideoSettings: true,
-          cancelStabCallback: widget.cancelStabCallback,
-          stabCallback: widget.stabCallback,
-          refreshSettings: widget.refreshSettings,
-          clearRawAndStabPhotos: widget.clearRawAndStabPhotos,
-          recompileVideoCallback: widget.recompileVideoCallback,
-        );
-      },
     );
   }
 
@@ -1083,6 +1480,13 @@ class CreatePageState extends State<CreatePage>
       projectOrientation,
     );
   }
+}
+
+class _VideoInfoChip {
+  final String label;
+  final String value;
+
+  const _VideoInfoChip({required this.label, required this.value});
 }
 
 class FadeInOutIcon extends StatefulWidget {

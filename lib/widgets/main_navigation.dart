@@ -57,6 +57,10 @@ class MainNavigationState extends State<MainNavigation>
   late int _selectedIndex;
   int _prevIndex = 0;
   bool _isImporting = false;
+
+  // Key to access CreatePage state for fullscreen trigger
+  final GlobalKey<CreatePageState> _createPageKey =
+      GlobalKey<CreatePageState>();
   int photoCount = 0;
   late bool _showFlashingCircle;
   late String projectIdStr;
@@ -117,8 +121,6 @@ class MainNavigationState extends State<MainNavigation>
     ) {
       if (mounted) {
         final prevState = _stabProgress.state;
-        debugPrint(
-            '[MainNavigation] Received progress: ${progress.state.name}, prevState: ${prevState.name}');
         setState(() => _stabProgress = progress);
 
         // Emit typed events for UI components (gallery, app bar, project page)
@@ -531,6 +533,7 @@ class MainNavigationState extends State<MainNavigation>
           goToPage: _onItemTapped,
         ),
         CreatePage(
+          key: _createPageKey,
           projectId: widget.projectId,
           projectName: widget.projectName,
           stabilizingRunningInMain: _stabilizingActive,
@@ -561,6 +564,14 @@ class MainNavigationState extends State<MainNavigation>
 
   void _onItemTapped(int index) {
     int selectedIndex = _selectedIndex;
+
+    // If already on CreatePage and tapping play icon again, trigger fullscreen
+    if (selectedIndex == 3 &&
+        index == 3 &&
+        _createPageKey.currentState != null) {
+      _createPageKey.currentState!.enterFullscreenFromNavBar();
+      return;
+    }
 
     setState(() {
       _prevIndex = selectedIndex;

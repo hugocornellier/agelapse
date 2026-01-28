@@ -23,7 +23,7 @@ class CameraUtils {
       );
       return bool.tryParse(saveToCameraRollStr) ?? false;
     } catch (e) {
-      debugPrint('Failed to load watermark setting: $e');
+      LogService.instance.log('Failed to load save to camera roll setting: $e');
       return false;
     }
   }

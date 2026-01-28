@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import '../../services/database_helper.dart';
+import '../../services/log_service.dart';
 import '../../styles/app_colors_data.dart';
 import '../../utils/dir_utils.dart';
 import '../../utils/settings_utils.dart';
@@ -107,7 +108,7 @@ class CameraGridOverlayState extends State<CameraGridOverlay> {
         frameInfo.image.dispose();
       }
     } catch (e) {
-      debugPrint('Error loading guide image: $e');
+      LogService.instance.log('Error loading guide image: $e');
     }
   }
 

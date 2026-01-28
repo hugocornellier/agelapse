@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:opencv_dart/opencv_dart.dart' as cv;
 
+import '../services/log_service.dart';
+
 /// Input parameters for isolated image processing.
 /// All fields must be transferable across isolate boundaries.
 class ImageProcessingInput {
@@ -65,8 +67,6 @@ ImageProcessingOutput processImageIsolateEntry(ImageProcessingInput input) {
 
   try {
     // 1. Decode image bytes
-    debugPrint(
-        '[ImageProc] Decoding ${input.bytes.length} bytes in isolate...');
     rawImage = cv.imdecode(input.bytes, cv.IMREAD_COLOR);
     if (rawImage.isEmpty) {
       rawImage.dispose();
@@ -153,9 +153,6 @@ ImageProcessingOutput processImageIsolateEntry(ImageProcessingInput input) {
       );
     }
 
-    debugPrint(
-        '[ImageProc] Done: ${width}x$height, thumb=${thumbBytes.length} bytes');
-
     return ImageProcessingOutput(
       success: true,
       processedBytes: processedBytes,
@@ -194,18 +191,16 @@ Future<ImageProcessingOutput> processImageSafely(
     ImageProcessingInput input) async {
   if (!supportsIsolateProcessing) {
     // Process on main thread for unsupported platforms
-    debugPrint(
-        '[ImageProc] Using MAIN THREAD (platform not supported for isolate)');
     return processImageIsolateEntry(input);
   }
 
   try {
     // Process in isolate
-    debugPrint('[ImageProc] Using ISOLATE for ${input.bytes.length} bytes');
     return await compute(processImageIsolateEntry, input);
   } catch (e) {
     // Isolate failed - fall back to main thread processing
-    debugPrint('[ImageProc] Isolate FAILED, falling back to main thread: $e');
+    LogService.instance
+        .log('[ImageProc] Isolate FAILED, falling back to main thread: $e');
     return processImageIsolateEntry(input);
   }
 }

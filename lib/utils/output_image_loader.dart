@@ -166,7 +166,7 @@ class OutputImageLoader {
 
       return true;
     } catch (e) {
-      debugPrint('Failed to load real guide image: $e');
+      LogService.instance.log('Failed to load real guide image: $e');
       return false;
     }
   }
@@ -376,7 +376,7 @@ class OutputImageLoader {
         ghostImageOffsetY = 0.292;
       }
     } catch (e) {
-      debugPrint('Failed to initialize image directory: $e');
+      LogService.instance.log('Failed to initialize image directory: $e');
     }
   }
 }

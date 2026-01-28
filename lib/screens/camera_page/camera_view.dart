@@ -458,7 +458,7 @@ class _CameraViewState extends State<CameraView>
         });
       }
     } catch (e) {
-      debugPrint('macOS camera enumeration failed: $e');
+      LogService.instance.log('macOS camera enumeration failed: $e');
       if (mounted) {
         setState(() => _macOSCameras = []);
       }
@@ -471,7 +471,7 @@ class _CameraViewState extends State<CameraView>
       try {
         _macController!.destroy();
       } catch (e) {
-        debugPrint('Error disposing macOS camera: $e');
+        LogService.instance.log('Error disposing macOS camera: $e');
       }
       _macController = null;
     }
@@ -592,7 +592,7 @@ class _CameraViewState extends State<CameraView>
         }
       } catch (e) {
         // Vibration not available, continue silently
-        debugPrint('Vibration error: $e');
+        LogService.instance.log('Vibration error: $e');
       }
     }
   }
@@ -600,8 +600,6 @@ class _CameraViewState extends State<CameraView>
   /// Initialize Linux camera using media_kit with V4L2
   Future<void> _initLinuxCamera() async {
     try {
-      LogService.instance.log('Linux: initializing camera with media_kit...');
-
       // Ensure MediaKit is initialized (required for Player)
       MediaKit.ensureInitialized();
 
@@ -896,7 +894,7 @@ class _CameraViewState extends State<CameraView>
             refreshSettings: widget.refreshSettings,
           );
         } catch (e) {
-          debugPrint('macOS photo save failed: $e');
+          LogService.instance.log('macOS photo save failed: $e');
         }
       } else if (Platform.isLinux) {
         try {
@@ -909,10 +907,6 @@ class _CameraViewState extends State<CameraView>
           debugPath =
               '${Directory.systemTemp.path}/camera_debug_${DateTime.now().millisecondsSinceEpoch}.jpg';
           await File(debugPath).writeAsBytes(bytes, flush: true);
-          final bool exists = await File(debugPath).exists();
-          LogService.instance.log(
-            'Linux: wrote image to $debugPath, exists=$exists, length=${bytes.length}',
-          );
 
           final XFile xImage = XFile(debugPath);
           captureSuccess = await CameraUtils.savePhoto(
@@ -1850,7 +1844,7 @@ class CameraGridOverlayState extends State<CameraGridOverlay> {
     try {
       final file = File(path);
       if (!await file.exists()) {
-        debugPrint('Guide image file does not exist: $path');
+        LogService.instance.log('Guide image file does not exist: $path');
         return;
       }
       final bytes = await file.readAsBytes();
@@ -1867,7 +1861,7 @@ class CameraGridOverlayState extends State<CameraGridOverlay> {
         frameInfo.image.dispose();
       }
     } catch (e) {
-      debugPrint('Error loading guide image: $e');
+      LogService.instance.log('Error loading guide image: $e');
     }
   }
 

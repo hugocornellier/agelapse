@@ -5,6 +5,108 @@ import 'package:agelapse/utils/gallery_utils.dart';
 /// Unit tests for GalleryUtils.
 /// Tests pure functions and helper methods.
 void main() {
+  group('DirectoryScanResult', () {
+    test('creates instance with all properties', () {
+      const result = DirectoryScanResult(
+        validImagePaths: ['/path/1.jpg', '/path/2.jpg'],
+        totalFilesScanned: 100,
+        directoriesScanned: 5,
+        errors: ['error 1'],
+        wasCancelled: false,
+      );
+
+      expect(result.validImagePaths.length, 2);
+      expect(result.totalFilesScanned, 100);
+      expect(result.directoriesScanned, 5);
+      expect(result.errors.length, 1);
+      expect(result.wasCancelled, isFalse);
+    });
+
+    test('can be created with empty lists', () {
+      const result = DirectoryScanResult(
+        validImagePaths: [],
+        totalFilesScanned: 0,
+        directoriesScanned: 0,
+        errors: [],
+        wasCancelled: false,
+      );
+
+      expect(result.validImagePaths, isEmpty);
+      expect(result.errors, isEmpty);
+    });
+
+    test('wasCancelled can be true', () {
+      const result = DirectoryScanResult(
+        validImagePaths: [],
+        totalFilesScanned: 50,
+        directoriesScanned: 3,
+        errors: [],
+        wasCancelled: true,
+      );
+
+      expect(result.wasCancelled, isTrue);
+    });
+  });
+
+  group('DirectoryScanInput', () {
+    test('creates instance with all properties', () {
+      const input = DirectoryScanInput(
+        directoryPath: '/test/path',
+        maxRecursionDepth: 10,
+        minImageSizeBytes: 1024,
+        allowedExtensions: {'.jpg', '.png'},
+      );
+
+      expect(input.directoryPath, '/test/path');
+      expect(input.maxRecursionDepth, 10);
+      expect(input.minImageSizeBytes, 1024);
+      expect(input.allowedExtensions, contains('.jpg'));
+      expect(input.allowedExtensions, contains('.png'));
+    });
+
+    test('allowed extensions can be empty', () {
+      const input = DirectoryScanInput(
+        directoryPath: '/path',
+        maxRecursionDepth: 5,
+        minImageSizeBytes: 0,
+        allowedExtensions: {},
+      );
+
+      expect(input.allowedExtensions, isEmpty);
+    });
+
+    test('supports common image extensions', () {
+      const input = DirectoryScanInput(
+        directoryPath: '/path',
+        maxRecursionDepth: 50,
+        minImageSizeBytes: 1000,
+        allowedExtensions: {'.jpg', '.jpeg', '.png', '.heic', '.heif', '.avif'},
+      );
+
+      expect(input.allowedExtensions.length, 6);
+    });
+  });
+
+  group('scanDirectoryIsolateEntry', () {
+    test('returns error for non-existent directory', () {
+      const input = DirectoryScanInput(
+        directoryPath: '/definitely/does/not/exist/12345',
+        maxRecursionDepth: 10,
+        minImageSizeBytes: 1024,
+        allowedExtensions: {'.jpg'},
+      );
+
+      final result = scanDirectoryIsolateEntry(input);
+
+      expect(result.validImagePaths, isEmpty);
+      expect(result.totalFilesScanned, 0);
+      expect(result.directoriesScanned, 0);
+      expect(result.errors.length, 1);
+      expect(result.errors.first, contains('does not exist'));
+      expect(result.wasCancelled, isFalse);
+    });
+  });
+
   group('GalleryUtils parseOffset', () {
     test('parses positive offset with colon', () {
       final offset = GalleryUtils.parseOffset('+05:30');

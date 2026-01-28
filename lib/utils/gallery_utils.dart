@@ -16,6 +16,7 @@ import 'package:file_selector/file_selector.dart';
 import '../services/database_helper.dart';
 import '../services/face_stabilizer.dart';
 import '../services/image_processor.dart';
+import '../services/log_service.dart';
 import '../services/thumbnail_service.dart';
 import 'camera_utils.dart';
 import 'dir_utils.dart';
@@ -59,7 +60,6 @@ class DirectoryScanInput {
 /// Top-level function for compute() - scans directory in isolate.
 /// This moves the blocking stat() syscalls off the main thread.
 DirectoryScanResult scanDirectoryIsolateEntry(DirectoryScanInput input) {
-  debugPrint('[DirScan] Starting scan in isolate: ${input.directoryPath}');
   final dir = Directory(input.directoryPath);
   if (!dir.existsSync()) {
     return DirectoryScanResult(
@@ -131,9 +131,6 @@ DirectoryScanResult scanDirectoryIsolateEntry(DirectoryScanInput input) {
   validPaths.sort((a, b) => path.basename(a).toLowerCase().compareTo(
         path.basename(b).toLowerCase(),
       ));
-
-  debugPrint(
-      '[DirScan] Scan complete: ${validPaths.length} files found, $dirsScanned dirs scanned');
 
   return DirectoryScanResult(
     validImagePaths: validPaths,
@@ -767,7 +764,6 @@ class GalleryUtils {
   static Future<DirectoryScanResult> collectFilesFromDirectory(
     String directoryPath,
   ) async {
-    debugPrint('[DirScan] Dispatching scan to isolate...');
     final input = DirectoryScanInput(
       directoryPath: directoryPath,
       maxRecursionDepth: maxRecursionDepth,
@@ -777,8 +773,6 @@ class GalleryUtils {
 
     // Run directory scanning in isolate to avoid UI blocking
     final result = await compute(scanDirectoryIsolateEntry, input);
-    debugPrint(
-        '[DirScan] Isolate returned: ${result.validImagePaths.length} files');
     return result;
   }
 
@@ -1150,9 +1144,6 @@ class GalleryUtils {
         inactivityTimer?.cancel();
         inactivityTimer = Timer(inactivityLimit, () {
           if (!completer.isCompleted) {
-            debugPrint(
-              '[zip] Isolate inactive for ${inactivityLimit.inMinutes} minutes, killing',
-            );
             isolate?.kill(priority: Isolate.immediate);
             completer.complete('error');
             cleanup();
@@ -1162,7 +1153,7 @@ class GalleryUtils {
 
       // Handle isolate errors (uncaught exceptions)
       errorPort.listen((error) {
-        debugPrint('[zip] Isolate error: $error');
+        LogService.instance.log('[zip] Isolate error: $error');
         if (!completer.isCompleted) {
           completer.complete('error');
           cleanup();
@@ -1172,7 +1163,8 @@ class GalleryUtils {
       // Handle isolate exit (crash, OOM, or normal termination without result)
       exitPort.listen((_) {
         if (!completer.isCompleted) {
-          debugPrint('[zip] Isolate exited without sending result');
+          LogService.instance
+              .log('[zip] Isolate exited without sending result');
           completer.complete('error');
           cleanup();
         }
@@ -1190,15 +1182,11 @@ class GalleryUtils {
           return;
         }
         if (message is Map && message['type'] == 'log') {
-          debugPrint('[zip] ${message['msg']}');
           return;
         }
         if (message is Map && message['type'] == 'summary') {
-          debugPrint(
-            '[zip] summary added=${message['added']} missing=${message['missing']} badname=${message['badname']}',
-          );
           if ((message['added'] ?? 0) == 0) {
-            debugPrint('[zip] WARNING: 0 files added');
+            LogService.instance.log('[zip] WARNING: 0 files added');
           }
           return;
         }
@@ -1213,7 +1201,6 @@ class GalleryUtils {
             return;
           }
         }
-        debugPrint('[zip] Unrecognized message: $message');
       });
 
       isolate = await Isolate.spawn(

@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:flutter/cupertino.dart';
 import 'package:path/path.dart' show join;
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
@@ -227,7 +226,7 @@ class DirUtils {
       final bool fileExists = await file.exists();
       return fileExists ? file : null;
     } catch (e) {
-      debugPrint("Failed to load image: $e");
+      LogService.instance.log("Failed to load image: $e");
     }
     return null;
   }

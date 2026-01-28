@@ -37,24 +37,16 @@ The face detection model used by AgeLapse is platform-dependent. On Mobile, Goog
 
 ## What's New / Changelog
 
-### v2.4.0 (Jan 2026)
+### v2.5.0 (Feb 2026)
 
 #### New Features
-- Customizable font for date stamps.
-- Customizable background colour for stabilized output.
-- Camera timer. Thanks to all users who requested this.
-  - Optional 3s or 10s countdown before taking photos
-  - Visual overlay with feedback
-- Toggle for automatic video compilation. Thanks to the user who suggested this. 
-  - Disable auto re-compilation after taking photos 
-  - Manually compile from the Create tab when ready
+- Light theme (auto-reads system settings OR toggle in Settings -> Appearance)
 
 #### Improvements
-- Added ETA to video compilation step
+- Consolidate app colours and theme
 
 #### Bug Fixes
-- Fixed camera mirroring on macOS 
-- Fixed Linux camera initialization with proper libmpv bundling
+- 
 
 For previous releases, see the [full changelog](https://agelapse.com/docs/changelog/).
 

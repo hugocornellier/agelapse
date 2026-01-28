@@ -43,8 +43,6 @@ class LogService {
 
     _sink = _logFile!.openWrite(mode: FileMode.append);
     _initialized = true;
-
-    log('--- Log session started ---');
   }
 
   Future<void> _rotateIfNeeded() async {
@@ -119,7 +117,7 @@ class LogService {
       if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
         // Desktop: Native save dialog
         final dateStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
-        final result = await FilePicker.platform.saveFile(
+        final result = await FilePicker.saveFile(
           dialogTitle: 'Save AgeLapse Logs',
           fileName: 'agelapse_logs_$dateStr.log',
           type: FileType.custom,
@@ -207,7 +205,6 @@ class LogService {
     }
 
     _sink = _logFile!.openWrite(mode: FileMode.append);
-    log('--- Logs cleared ---');
   }
 
   /// Creates a Zone that captures print statements

@@ -119,7 +119,7 @@ Future<void> initializeNotifications() async {
   );
 
   await flutterLocalNotificationsPlugin.initialize(
-    initializationSettings,
+    settings: initializationSettings,
     onDidReceiveNotificationResponse:
         (NotificationResponse notificationResponse) async {
       if (notificationResponse.payload != null) {
@@ -140,11 +140,13 @@ Future<Widget> _getHomePage() async {
 
   if (defaultProject != "none") {
     final int projectId = int.parse(defaultProject);
+    final String projectName =
+        await DB.instance.getProjectNameById(projectId) ?? 'Project';
     SettingsCache settingsCache = await SettingsCache.initialize(projectId);
     return MainNavigation(
       projectId: projectId,
       showFlashingCircle: false,
-      projectName: 'Default Project',
+      projectName: projectName,
       initialSettingsCache: settingsCache,
     );
   }

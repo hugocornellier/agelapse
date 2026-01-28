@@ -157,17 +157,16 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          Text(
-                            'Create New Project',
-                            style: TextStyle(
-                              fontSize: AppTypography.xxxl,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textPrimary,
-                            ),
+                      Expanded(
+                        child: Text(
+                          'Create New Project',
+                          style: TextStyle(
+                            fontSize: AppTypography.xxxl,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
                           ),
-                        ],
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       if (widget.showCloseButton)
                         IconButton(
@@ -190,51 +189,72 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
 
   Widget _buildImageSelector() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        GestureDetector(
-          onTap: () {
-            setState(() {
-              _selectedImage = 'assets/images/face.png';
-            });
-          },
-          child: Image.asset(
-            'assets/images/face.png', // proj type = face
-            width: 100,
-            height: 100,
-            color: _selectedImage == 'assets/images/face.png'
-                ? AppColors.info
-                : null,
+        Flexible(
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedImage = 'assets/images/face.png';
+              });
+            },
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 100, maxHeight: 100),
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: Image.asset(
+                  'assets/images/face.png', // proj type = face
+                  fit: BoxFit.contain,
+                  color: _selectedImage == 'assets/images/face.png'
+                      ? AppColors.info
+                      : null,
+                ),
+              ),
+            ),
           ),
         ),
-        GestureDetector(
-          onTap: () {
-            setState(() {
-              _selectedImage = 'assets/images/musc.png';
-            });
-          },
-          child: Image.asset(
-            'assets/images/musc.png', // proj type = body
-            width: 100,
-            height: 100,
-            color: _selectedImage == 'assets/images/musc.png'
-                ? AppColors.info
-                : null,
+        Flexible(
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedImage = 'assets/images/musc.png';
+              });
+            },
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 100, maxHeight: 100),
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: Image.asset(
+                  'assets/images/musc.png', // proj type = body
+                  fit: BoxFit.contain,
+                  color: _selectedImage == 'assets/images/musc.png'
+                      ? AppColors.info
+                      : null,
+                ),
+              ),
+            ),
           ),
         ),
-        GestureDetector(
-          onTap: () {
-            setState(() {
-              _selectedImage = 'assets/images/preg.png';
-            });
-          },
-          child: Image.asset(
-            'assets/images/preg.png', // proj type = body
-            width: 100,
-            height: 100,
-            color: _selectedImage == 'assets/images/preg.png'
-                ? AppColors.info
-                : null,
+        Flexible(
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedImage = 'assets/images/preg.png';
+              });
+            },
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 100, maxHeight: 100),
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: Image.asset(
+                  'assets/images/preg.png', // proj type = body
+                  fit: BoxFit.contain,
+                  color: _selectedImage == 'assets/images/preg.png'
+                      ? AppColors.info
+                      : null,
+                ),
+              ),
+            ),
           ),
         ),
       ],

@@ -53,6 +53,7 @@ class ProjectPage extends StatefulWidget {
 class ProjectPageState extends State<ProjectPage> {
   bool _loading = true;
   late int framerate;
+  late String resolution;
   late OutputImageLoader outputImageLoader;
 
   StreamSubscription<StabUpdateEvent>? _stabUpdateSubscription;
@@ -162,6 +163,7 @@ class ProjectPageState extends State<ProjectPage> {
 
   Future<void> _initializePage() async {
     await loadFramerate();
+    await loadResolution();
     if (!mounted) return;
 
     final cacheReady = await _waitForCache();
@@ -177,6 +179,11 @@ class ProjectPageState extends State<ProjectPage> {
 
   Future<void> loadFramerate() async {
     framerate = await SettingsUtil.loadFramerate(widget.projectId.toString());
+  }
+
+  Future<void> loadResolution() async {
+    resolution =
+        await SettingsUtil.loadVideoResolution(widget.projectId.toString());
   }
 
   Future<bool> _waitForCache({
@@ -454,7 +461,7 @@ class ProjectPageState extends State<ProjectPage> {
         _buildSectionTitle('Output', ''),
         const SizedBox(height: 16),
         _buildModernOutputContent(),
-        const SizedBox(height: 64),
+        const SizedBox(height: 32),
       ],
     );
   }
@@ -571,12 +578,13 @@ class ProjectPageState extends State<ProjectPage> {
     final cache = widget.settingsCache!;
 
     final chips = [
+      _OutputChip(label: "Resolution", value: resolution),
       _OutputChip(label: "Framerate", value: "$framerate FPS"),
+      _OutputChip(label: "Aspect", value: cache.aspectRatio),
       _OutputChip(
         label: "Orientation",
         value: _capitalizeFirstLetter(cache.projectOrientation),
       ),
-      _OutputChip(label: "Aspect", value: cache.aspectRatio),
       _OutputChip(
         label: "Stabilization",
         value: _capitalizeFirstLetter(cache.stabilizationMode),
@@ -601,30 +609,24 @@ class ProjectPageState extends State<ProjectPage> {
       );
     }
 
-    // Narrow layout: split into two rows of 3 chips each
-    final firstRow = chips.sublist(0, 3);
-    final secondRow = chips.sublist(3, 6);
+    // Narrow layout: split into two rows
+    final firstRow = chips.sublist(0, 4);
+    final secondRow = chips.sublist(4);
 
     return Column(
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: firstRow
-              .map((chip) => Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: _buildChipWidget(chip),
-                  ))
-              .toList(),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          alignment: WrapAlignment.center,
+          children: firstRow.map((chip) => _buildChipWidget(chip)).toList(),
         ),
         const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: secondRow
-              .map((chip) => Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: _buildChipWidget(chip),
-                  ))
-              .toList(),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          alignment: WrapAlignment.center,
+          children: secondRow.map((chip) => _buildChipWidget(chip)).toList(),
         ),
       ],
     );

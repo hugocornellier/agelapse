@@ -387,7 +387,7 @@ class SettingsSheetState extends State<SettingsSheet> {
 
     try {
       // Open file picker for TTF/OTF files
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['ttf', 'otf'],
         dialogTitle: 'Select a font file (TTF or OTF)',
@@ -3202,7 +3202,7 @@ class ImagePickerWidgetState extends State<ImagePickerWidget> {
   }
 
   Future<void> _pickImage() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
+    FilePickerResult? result = await FilePicker.pickFiles(
       type: FileType.image,
       allowMultiple: false,
     );

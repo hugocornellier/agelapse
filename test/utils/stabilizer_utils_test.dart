@@ -40,6 +40,99 @@ void main() {
       expect(faceWithLeftOnly.leftEye, isNotNull);
       expect(faceWithLeftOnly.rightEye, isNull);
     });
+
+    group('serialization', () {
+      test('toMap() serializes all properties', () {
+        final face = FaceLike(
+          boundingBox: const Rect.fromLTRB(10, 20, 110, 170),
+          leftEye: const Point(50.0, 60.0),
+          rightEye: const Point(80.0, 60.0),
+        );
+
+        final map = face.toMap();
+
+        expect(map['bbox'], equals([10.0, 20.0, 110.0, 170.0]));
+        expect(map['leftEye'], equals([50.0, 60.0]));
+        expect(map['rightEye'], equals([80.0, 60.0]));
+      });
+
+      test('toMap() handles null eyes', () {
+        final face = FaceLike(
+          boundingBox: const Rect.fromLTRB(0, 0, 50, 50),
+          leftEye: null,
+          rightEye: null,
+        );
+
+        final map = face.toMap();
+
+        expect(map['leftEye'], isNull);
+        expect(map['rightEye'], isNull);
+      });
+
+      test('fromMap() deserializes all properties', () {
+        final map = {
+          'bbox': [10.0, 20.0, 110.0, 170.0],
+          'leftEye': [50.0, 60.0],
+          'rightEye': [80.0, 60.0],
+        };
+
+        final face = FaceLike.fromMap(map);
+
+        expect(face.boundingBox, const Rect.fromLTRB(10, 20, 110, 170));
+        expect(face.leftEye, const Point(50.0, 60.0));
+        expect(face.rightEye, const Point(80.0, 60.0));
+      });
+
+      test('fromMap() handles null eyes', () {
+        final map = {
+          'bbox': [0.0, 0.0, 50.0, 50.0],
+          'leftEye': null,
+          'rightEye': null,
+        };
+
+        final face = FaceLike.fromMap(map);
+
+        expect(face.leftEye, isNull);
+        expect(face.rightEye, isNull);
+      });
+
+      test('fromMap() handles integer values', () {
+        final map = {
+          'bbox': [10, 20, 110, 170],
+          'leftEye': [50, 60],
+          'rightEye': [80, 60],
+        };
+
+        final face = FaceLike.fromMap(map);
+
+        expect(face.boundingBox, const Rect.fromLTRB(10, 20, 110, 170));
+        expect(face.leftEye, const Point(50.0, 60.0));
+        expect(face.rightEye, const Point(80.0, 60.0));
+      });
+
+      test('roundtrip toMap/fromMap preserves data', () {
+        final original = FaceLike(
+          boundingBox: const Rect.fromLTRB(15.5, 25.5, 115.5, 175.5),
+          leftEye: const Point(55.5, 65.5),
+          rightEye: const Point(85.5, 65.5),
+        );
+
+        final restored = FaceLike.fromMap(original.toMap());
+
+        expect(restored.boundingBox.left,
+            closeTo(original.boundingBox.left, 0.001));
+        expect(
+            restored.boundingBox.top, closeTo(original.boundingBox.top, 0.001));
+        expect(restored.boundingBox.right,
+            closeTo(original.boundingBox.right, 0.001));
+        expect(restored.boundingBox.bottom,
+            closeTo(original.boundingBox.bottom, 0.001));
+        expect(restored.leftEye!.x, closeTo(original.leftEye!.x, 0.001));
+        expect(restored.leftEye!.y, closeTo(original.leftEye!.y, 0.001));
+        expect(restored.rightEye!.x, closeTo(original.rightEye!.x, 0.001));
+        expect(restored.rightEye!.y, closeTo(original.rightEye!.y, 0.001));
+      });
+    });
   });
 
   group('StabUtils', () {
