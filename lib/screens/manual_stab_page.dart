@@ -400,83 +400,93 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
           color: AppColors.settingsTextPrimary,
         ),
       ),
-      leading: GestureDetector(
-        onTap: () {
-          // Block back during save
-          if (_savePhase != _SavePhase.idle) return;
+      leading: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: () {
+            // Block back during save
+            if (_savePhase != _SavePhase.idle) return;
 
-          if (_hasUnsavedChanges) {
-            _showUnsavedChangesDialog().then((saveChanges) async {
-              if (saveChanges == true) {
-                await _saveChanges();
-                // _saveChanges handles navigation
-              } else if (saveChanges == false) {
-                if (mounted) Navigator.of(context).pop();
-              }
-            });
-          } else {
-            Navigator.pop(context);
-          }
-        },
-        child: Container(
-          margin: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: AppColors.settingsCardBackground,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.settingsCardBorder, width: 1),
-          ),
-          child: Icon(
-            Icons.arrow_back,
-            color: AppColors.settingsTextPrimary,
-            size: 20,
-          ),
-        ),
-      ),
-      actions: [
-        // Help button
-        GestureDetector(
-          onTap: _showHelpDialog,
+            if (_hasUnsavedChanges) {
+              _showUnsavedChangesDialog().then((saveChanges) async {
+                if (saveChanges == true) {
+                  await _saveChanges();
+                  // _saveChanges handles navigation
+                } else if (saveChanges == false) {
+                  if (mounted) Navigator.of(context).pop();
+                }
+              });
+            } else {
+              Navigator.pop(context);
+            }
+          },
           child: Container(
-            width: 40,
-            height: 40,
-            margin: const EdgeInsets.only(right: 8),
+            margin: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: AppColors.settingsCardBackground,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.settingsCardBorder, width: 1),
             ),
             child: Icon(
-              Icons.help_outline_rounded,
-              color: AppColors.settingsTextSecondary,
+              Icons.arrow_back,
+              color: AppColors.settingsTextPrimary,
               size: 20,
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        // Help button
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: _showHelpDialog,
+            child: Container(
+              width: 40,
+              height: 40,
+              margin: const EdgeInsets.only(right: 8),
+              decoration: BoxDecoration(
+                color: AppColors.settingsCardBackground,
+                borderRadius: BorderRadius.circular(12),
+                border:
+                    Border.all(color: AppColors.settingsCardBorder, width: 1),
+              ),
+              child: Icon(
+                Icons.help_outline_rounded,
+                color: AppColors.settingsTextSecondary,
+                size: 20,
+              ),
             ),
           ),
         ),
         // Reset button (only when unsaved changes exist and not saving)
         if (_hasUnsavedChanges && _savePhase == _SavePhase.idle)
-          GestureDetector(
-            onTap: () async {
-              final bool? shouldReset = await _showResetConfirmDialog();
-              if (shouldReset == true) {
-                await _resetChanges();
-              }
-            },
-            child: Container(
-              width: 44,
-              height: 44,
-              margin: const EdgeInsets.only(right: 8),
-              decoration: BoxDecoration(
-                color: AppColors.settingsCardBorder.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppColors.settingsCardBorder,
-                  width: 1,
+          MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: () async {
+                final bool? shouldReset = await _showResetConfirmDialog();
+                if (shouldReset == true) {
+                  await _resetChanges();
+                }
+              },
+              child: Container(
+                width: 44,
+                height: 44,
+                margin: const EdgeInsets.only(right: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.settingsCardBorder.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppColors.settingsCardBorder,
+                    width: 1,
+                  ),
                 ),
-              ),
-              child: Icon(
-                Icons.restore_rounded,
-                color: AppColors.settingsTextSecondary,
-                size: 22,
+                child: Icon(
+                  Icons.restore_rounded,
+                  color: AppColors.settingsTextSecondary,
+                  size: 22,
+                ),
               ),
             ),
           ),
@@ -485,40 +495,43 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
           Builder(
             builder: (context) {
               final isWide = MediaQuery.of(context).size.width > 600;
-              return GestureDetector(
-                onTap: _saveChanges,
-                child: Container(
-                  height: 44,
-                  padding: EdgeInsets.symmetric(horizontal: isWide ? 16 : 11),
-                  margin: const EdgeInsets.only(right: 8),
-                  decoration: BoxDecoration(
-                    color: AppColors.settingsAccent.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppColors.settingsAccent.withValues(alpha: 0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.save_rounded,
-                        color: AppColors.settingsAccent,
-                        size: 22,
+              return MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: _saveChanges,
+                  child: Container(
+                    height: 44,
+                    padding: EdgeInsets.symmetric(horizontal: isWide ? 16 : 11),
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.settingsAccent.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.settingsAccent.withValues(alpha: 0.3),
+                        width: 1,
                       ),
-                      if (isWide) ...[
-                        const SizedBox(width: 8),
-                        Text(
-                          'Save Changes',
-                          style: TextStyle(
-                            color: AppColors.settingsAccent,
-                            fontSize: AppTypography.md,
-                            fontWeight: FontWeight.w600,
-                          ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.save_rounded,
+                          color: AppColors.settingsAccent,
+                          size: 22,
                         ),
+                        if (isWide) ...[
+                          const SizedBox(width: 8),
+                          Text(
+                            'Save Changes',
+                            style: TextStyle(
+                              color: AppColors.settingsAccent,
+                              fontSize: AppTypography.md,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               );
@@ -1741,32 +1754,35 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       required VoidCallback onHold,
       String? label,
     }) {
-      return GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTapDown: (_) => startHold(key, onHold),
-        onTapUp: (_) => stopHold(key),
-        onTapCancel: () => stopHold(key),
-        onPanEnd: (_) => stopHold(key),
-        onPanCancel: () => stopHold(key),
-        child: Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: AppColors.settingsCardBackground,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.settingsCardBorder, width: 1),
-          ),
-          child: IconButton(
-            icon: Icon(icon, size: 22),
-            color: AppColors.settingsTextPrimary,
-            onPressed: () {
-              if (_recentlyHeld[key] == true) {
-                _recentlyHeld[key] = false;
-                return;
-              }
-              onTap();
-              forceApplyNow();
-            },
+      return MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (_) => startHold(key, onHold),
+          onTapUp: (_) => stopHold(key),
+          onTapCancel: () => stopHold(key),
+          onPanEnd: (_) => stopHold(key),
+          onPanCancel: () => stopHold(key),
+          child: Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: AppColors.settingsCardBackground,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.settingsCardBorder, width: 1),
+            ),
+            child: IconButton(
+              icon: Icon(icon, size: 22),
+              color: AppColors.settingsTextPrimary,
+              onPressed: () {
+                if (_recentlyHeld[key] == true) {
+                  _recentlyHeld[key] = false;
+                  return;
+                }
+                onTap();
+                forceApplyNow();
+              },
+            ),
           ),
         ),
       );

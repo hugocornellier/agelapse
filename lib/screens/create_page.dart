@@ -632,29 +632,12 @@ class CreatePageState extends State<CreatePage>
               ),
               const SizedBox(height: 8),
               Text(
-                isStabilizing
-                    ? 'Aligning photos for smooth playback'
-                    : 'Your video will be available here when complete',
+                'Your video will be available here when complete',
                 style: TextStyle(
                   fontSize: AppTypography.md,
                   color: AppColors.settingsTextSecondary,
                 ),
                 textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-              // Linear progress bar
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: progressValue,
-                  minHeight: 6,
-                  backgroundColor: AppColors.settingsCardBorder,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    isStabilizing
-                        ? AppColors.accentLight
-                        : AppColors.settingsAccent,
-                  ),
-                ),
               ),
             ],
           ),
@@ -1487,56 +1470,4 @@ class _VideoInfoChip {
   final String value;
 
   const _VideoInfoChip({required this.label, required this.value});
-}
-
-class FadeInOutIcon extends StatefulWidget {
-  const FadeInOutIcon({super.key});
-
-  @override
-  FadeInOutIconState createState() => FadeInOutIconState();
-}
-
-class FadeInOutIconState extends State<FadeInOutIcon>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    );
-
-    _animation = Tween<double>(begin: 0.0, end: 1.0).animate(_controller)
-      ..addStatusListener((status) {
-        if (status == AnimationStatus.completed) {
-          _controller.reverse();
-        } else if (status == AnimationStatus.dismissed) {
-          _controller.forward();
-        }
-      });
-
-    _controller.forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Opacity(
-          opacity: _animation.value,
-          child: const Icon(Icons.video_stable, size: 100.0),
-        );
-      },
-    );
-  }
 }

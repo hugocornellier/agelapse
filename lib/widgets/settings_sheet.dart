@@ -66,6 +66,7 @@ class SettingsSheetState extends State<SettingsSheet> {
   final _gridCountCompleter = Completer<int>();
   final _projectSettingsCompleter = Completer<void>();
   final _dateStampSettingsCompleter = Completer<void>();
+  final Future<void> _defaultSettingsFuture = Future<void>.value();
 
   Future<Map<String, bool>> get _settingsFuture => _settingsCompleter.future;
   Future<void> get _notificationInitialization => _notificationCompleter.future;
@@ -387,7 +388,7 @@ class SettingsSheetState extends State<SettingsSheet> {
 
     try {
       // Open file picker for TTF/OTF files
-      final result = await FilePicker.pickFiles(
+      final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['ttf', 'otf'],
         dialogTitle: 'Select a font file (TTF or OTF)',
@@ -1280,7 +1281,7 @@ class SettingsSheetState extends State<SettingsSheet> {
       case 'Date Stamp':
         return _dateStampSettingsFuture;
       default:
-        return Future.value();
+        return _defaultSettingsFuture;
     }
   }
 
@@ -3202,7 +3203,7 @@ class ImagePickerWidgetState extends State<ImagePickerWidget> {
   }
 
   Future<void> _pickImage() async {
-    FilePickerResult? result = await FilePicker.pickFiles(
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.image,
       allowMultiple: false,
     );

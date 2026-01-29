@@ -117,12 +117,6 @@ class FFmpegProcessManager {
       _activeSession = null;
     }
 
-    if (!killed) {
-      LogService.instance.log(
-        'FFmpegProcessManager: No active process to kill',
-      );
-    }
-
     return killed;
   }
 
@@ -137,9 +131,6 @@ class FFmpegProcessManager {
   /// Unregister the desktop process (after it completes normally).
   void unregisterProcess() {
     _activeProcess = null;
-    LogService.instance.log(
-      'FFmpegProcessManager: Desktop process unregistered',
-    );
   }
 
   /// Unregister the mobile session (after it completes normally).

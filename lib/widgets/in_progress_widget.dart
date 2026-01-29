@@ -26,7 +26,7 @@ class InProgress extends StatelessWidget {
           message,
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: AppColors.textPrimary,
+            color: Colors.white,
             fontSize: AppTypography.sm,
             fontWeight: FontWeight.w500,
           ),

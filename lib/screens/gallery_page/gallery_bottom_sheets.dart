@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -278,7 +280,18 @@ class GalleryBottomSheets {
   }
 
   /// Builds export success state with checkmark and message.
-  static Widget buildExportSuccessState() {
+  /// Shows platform-specific save location information.
+  static Widget buildExportSuccessState({VoidCallback? onShare}) {
+    // Determine platform-specific message
+    final String subtitle;
+    if (Platform.isAndroid) {
+      subtitle = 'Saved to Downloads/AgeLapse Exports';
+    } else if (Platform.isIOS) {
+      subtitle = 'Your photos have been exported to a ZIP file';
+    } else {
+      subtitle = 'Your photos have been exported to a ZIP file';
+    }
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 32),
@@ -307,15 +320,85 @@ class GalleryBottomSheets {
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            'Your photos have been exported to a ZIP file',
-            style: TextStyle(
-              color: AppColors.textPrimary.withValues(alpha: 0.5),
-              fontSize: AppTypography.sm,
+          const SizedBox(height: 12),
+          // Android: Show save location prominently with folder icon
+          if (Platform.isAndroid) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.textPrimary.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: AppColors.textPrimary.withValues(alpha: 0.1),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.folder_outlined,
+                    color: AppColors.textPrimary.withValues(alpha: 0.7),
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: AppColors.textPrimary.withValues(alpha: 0.8),
+                      fontSize: AppTypography.md,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            textAlign: TextAlign.center,
-          ),
+          ] else ...[
+            Text(
+              subtitle,
+              style: TextStyle(
+                color: AppColors.textPrimary.withValues(alpha: 0.5),
+                fontSize: AppTypography.sm,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+          // Show share button on Android (optional action after save)
+          if (Platform.isAndroid && onShare != null) ...[
+            const SizedBox(height: 20),
+            GestureDetector(
+              onTap: onShare,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.textPrimary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: AppColors.textPrimary.withValues(alpha: 0.15),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.share_outlined,
+                      color: AppColors.textPrimary.withValues(alpha: 0.8),
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Share',
+                      style: TextStyle(
+                        color: AppColors.textPrimary.withValues(alpha: 0.8),
+                        fontSize: AppTypography.md,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
 import '../screens/create_project_page.dart';
 import '../services/database_helper.dart';
-import '../services/log_service.dart';
 import '../styles/styles.dart';
 import '../utils/dir_utils.dart';
 import '../utils/project_utils.dart';
@@ -64,18 +63,11 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
   }
 
   static Future<String> getProjectImage(int projectId) async {
-    LogService.instance.log(
-      '[getProjectImage] Called for projectId=$projectId',
-    );
-
     final String stabilizedDirPath = await DirUtils.getStabilizedDirPath(
       projectId,
     );
     final String activeProjectOrientation =
         await SettingsUtil.loadProjectOrientation(projectId.toString());
-    LogService.instance.log(
-      '[getProjectImage] activeProjectOrientation=$activeProjectOrientation',
-    );
 
     final String videoOutputPath = await DirUtils.getVideoOutputPath(
       projectId,
@@ -86,7 +78,6 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
       ".gif",
     );
     if (await File(gifPath).exists()) {
-      LogService.instance.log('[getProjectImage] Found GIF: $gifPath');
       return gifPath;
     }
 
@@ -94,14 +85,8 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
       stabilizedDirPath,
       activeProjectOrientation,
     );
-    LogService.instance.log(
-      '[getProjectImage] Checking active stabilized dir: $stabilizedDirActivePath',
-    );
     String? pngPath = await checkForStabilizedImage(stabilizedDirActivePath);
     if (pngPath != null) {
-      LogService.instance.log(
-        '[getProjectImage] Found stabilized image in active dir: $pngPath',
-      );
       return pngPath;
     }
 
@@ -109,14 +94,8 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
       stabilizedDirPath,
       activeProjectOrientation == "portrait" ? "landscape" : "portrait",
     );
-    LogService.instance.log(
-      '[getProjectImage] Checking inactive stabilized dir: $stabilizedDirInactivePath',
-    );
     pngPath = await checkForStabilizedImage(stabilizedDirInactivePath);
     if (pngPath != null) {
-      LogService.instance.log(
-        '[getProjectImage] Found stabilized image in inactive dir: $pngPath',
-      );
       return pngPath;
     }
 
@@ -124,9 +103,6 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
     final Directory rawPhotoDir = Directory(rawPhotoDirPath);
     final bool dirExists = await rawPhotoDir.exists();
     if (!dirExists) {
-      LogService.instance.log(
-        '[getProjectImage] Raw photo dir does not exist, returning empty',
-      );
       return "";
     }
 
@@ -135,18 +111,12 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
         .where((file) => file is File && Utils.isImage(file.path))
         .toList();
     if (imageFiles.isEmpty) {
-      LogService.instance.log(
-        '[getProjectImage] No raw images found, returning empty',
-      );
       return "";
     }
 
     final minFile = imageFiles.reduce(
       (a, b) =>
           path.basename(a.path).compareTo(path.basename(b.path)) <= 0 ? a : b,
-    );
-    LogService.instance.log(
-      '[getProjectImage] Returning first raw image: ${minFile.path}',
     );
     return minFile.path;
   }
@@ -252,32 +222,35 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
             letterSpacing: -0.5,
           ),
         ),
-        GestureDetector(
-          onTap: _onNewButtonTapped,
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: isDesktop ? 16 : 12,
-              vertical: isDesktop ? 10 : 8,
-            ),
-            decoration: BoxDecoration(
-              color: AppColors.settingsAccent,
-              borderRadius: BorderRadius.circular(10.0),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.add,
-                    size: isDesktop ? 20 : 16, color: AppColors.textPrimary),
-                const SizedBox(width: 6),
-                Text(
-                  'New Project',
-                  style: TextStyle(
-                    fontSize: isDesktop ? AppTypography.lg : AppTypography.sm,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: _onNewButtonTapped,
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: isDesktop ? 16 : 12,
+                vertical: isDesktop ? 10 : 8,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.settingsAccent,
+                borderRadius: BorderRadius.circular(10.0),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.add,
+                      size: isDesktop ? 20 : 16, color: AppColors.textPrimary),
+                  const SizedBox(width: 6),
+                  Text(
+                    'New Project',
+                    style: TextStyle(
+                      fontSize: isDesktop ? AppTypography.lg : AppTypography.sm,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -474,50 +447,56 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                     ),
                   ),
                   const SizedBox(width: 12.0),
-                  GestureDetector(
-                    onTap: _onNewButtonTapped,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.settingsAccent,
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.add,
-                              size: 16, color: AppColors.textPrimary),
-                          SizedBox(width: 4),
-                          Text(
-                            'New',
-                            style: TextStyle(
-                              fontSize: AppTypography.sm,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.textPrimary,
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: GestureDetector(
+                      onTap: _onNewButtonTapped,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.settingsAccent,
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.add,
+                                size: 16, color: AppColors.textPrimary),
+                            SizedBox(width: 4),
+                            Text(
+                              'New',
+                              style: TextStyle(
+                                fontSize: AppTypography.sm,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textPrimary,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ],
               ),
               if (widget.showCloseButton)
-                GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: AppColors.textPrimary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.close,
-                      color: AppColors.textPrimary.withValues(alpha: 0.7),
-                      size: 18,
+                MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppColors.textPrimary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.close,
+                        color: AppColors.textPrimary.withValues(alpha: 0.7),
+                        size: 18,
+                      ),
                     ),
                   ),
                 ),
@@ -640,18 +619,21 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                       letterSpacing: -0.3,
                     ),
                   ),
-                  GestureDetector(
-                    onTap: () => Navigator.of(context).pop(),
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: AppColors.textPrimary.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        Icons.close,
-                        color: AppColors.textPrimary.withValues(alpha: 0.7),
-                        size: 18,
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(context).pop(),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppColors.textPrimary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.close,
+                          color: AppColors.textPrimary.withValues(alpha: 0.7),
+                          size: 18,
+                        ),
                       ),
                     ),
                   ),
@@ -695,63 +677,66 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
     bool isDestructive = false,
   }) {
     final color = isDestructive ? AppColors.danger : AppColors.textPrimary;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.textPrimary.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isDestructive
-                ? AppColors.danger.withValues(alpha: 0.2)
-                : AppColors.textPrimary.withValues(alpha: 0.08),
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.textPrimary.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isDestructive
+                  ? AppColors.danger.withValues(alpha: 0.2)
+                  : AppColors.textPrimary.withValues(alpha: 0.08),
+            ),
           ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: isDestructive
-                    ? AppColors.danger.withValues(alpha: 0.15)
-                    : AppColors.textPrimary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isDestructive
+                      ? AppColors.danger.withValues(alpha: 0.15)
+                      : AppColors.textPrimary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: color, size: 20),
               ),
-              child: Icon(icon, color: color, size: 20),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      color: color,
-                      fontSize: AppTypography.lg,
-                      fontWeight: FontWeight.w500,
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: color,
+                        fontSize: AppTypography.lg,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: isDestructive
-                          ? AppColors.danger.withValues(alpha: 0.6)
-                          : AppColors.textPrimary.withValues(alpha: 0.5),
-                      fontSize: AppTypography.sm,
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: isDestructive
+                            ? AppColors.danger.withValues(alpha: 0.6)
+                            : AppColors.textPrimary.withValues(alpha: 0.5),
+                        fontSize: AppTypography.sm,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            Icon(
-              Icons.chevron_right,
-              color: color.withValues(alpha: 0.3),
-              size: 20,
-            ),
-          ],
+              Icon(
+                Icons.chevron_right,
+                color: color.withValues(alpha: 0.3),
+                size: 20,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -809,18 +794,22 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                         letterSpacing: -0.3,
                       ),
                     ),
-                    GestureDetector(
-                      onTap: () => Navigator.of(context).pop(),
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: AppColors.textPrimary.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          Icons.close,
-                          color: AppColors.textPrimary.withValues(alpha: 0.7),
-                          size: 18,
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: () => Navigator.of(context).pop(),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color:
+                                AppColors.textPrimary.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.close,
+                            color: AppColors.textPrimary.withValues(alpha: 0.7),
+                            size: 18,
+                          ),
                         ),
                       ),
                     ),
@@ -861,23 +850,26 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                 Row(
                   children: [
                     Expanded(
-                      child: GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          decoration: BoxDecoration(
-                            color:
-                                AppColors.textPrimary.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Center(
-                            child: Text(
-                              'Cancel',
-                              style: TextStyle(
-                                color: AppColors.textPrimary
-                                    .withValues(alpha: 0.7),
-                                fontSize: AppTypography.lg,
-                                fontWeight: FontWeight.w500,
+                      child: MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            decoration: BoxDecoration(
+                              color:
+                                  AppColors.textPrimary.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Center(
+                              child: Text(
+                                'Cancel',
+                                style: TextStyle(
+                                  color: AppColors.textPrimary
+                                      .withValues(alpha: 0.7),
+                                  fontSize: AppTypography.lg,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ),
                           ),
@@ -886,31 +878,34 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: GestureDetector(
-                        onTap: () async {
-                          final newName = _editProjectNameController.text;
-                          if (newName.trim().isEmpty) return;
-                          await DB.instance.updateProjectName(
-                            project['id'],
-                            newName,
-                          );
-                          _getProjects();
-                          if (!context.mounted) return;
-                          Navigator.pop(context);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          decoration: BoxDecoration(
-                            color: AppColors.settingsAccent,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Center(
-                            child: Text(
-                              'Save',
-                              style: TextStyle(
-                                color: AppColors.textPrimary,
-                                fontSize: AppTypography.lg,
-                                fontWeight: FontWeight.w600,
+                      child: MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: GestureDetector(
+                          onTap: () async {
+                            final newName = _editProjectNameController.text;
+                            if (newName.trim().isEmpty) return;
+                            await DB.instance.updateProjectName(
+                              project['id'],
+                              newName,
+                            );
+                            _getProjects();
+                            if (!context.mounted) return;
+                            Navigator.pop(context);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            decoration: BoxDecoration(
+                              color: AppColors.settingsAccent,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Center(
+                              child: Text(
+                                'Save',
+                                style: TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: AppTypography.lg,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                           ),
@@ -980,89 +975,93 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
               return _buildProjectItemSkeleton();
             }
             final bool takenToday = photoSnapshot.data ?? false;
-            return GestureDetector(
-              onTap: () => navigateToProject(context, project),
-              onLongPress: () => _showProjectOptionsPopup(context, project),
-              onSecondaryTap: () => _showProjectOptionsPopup(context, project),
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.textPrimary.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: AppColors.textPrimary.withValues(alpha: 0.08),
+            return MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: () => navigateToProject(context, project),
+                onLongPress: () => _showProjectOptionsPopup(context, project),
+                onSecondaryTap: () =>
+                    _showProjectOptionsPopup(context, project),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.textPrimary.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.textPrimary.withValues(alpha: 0.08),
+                    ),
                   ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: AppColors.textPrimary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: AppColors.textPrimary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: snapshot.hasData &&
+                                snapshot.data!.isNotEmpty &&
+                                File(snapshot.data!).existsSync()
+                            ? Image.file(
+                                File(snapshot.data!),
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    _buildPlaceholderAvatar(),
+                              )
+                            : _buildPlaceholderAvatar(),
                       ),
-                      clipBehavior: Clip.antiAlias,
-                      child: snapshot.hasData &&
-                              snapshot.data!.isNotEmpty &&
-                              File(snapshot.data!).existsSync()
-                          ? Image.file(
-                              File(snapshot.data!),
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  _buildPlaceholderAvatar(),
-                            )
-                          : _buildPlaceholderAvatar(),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            project['name'],
-                            style: TextStyle(
-                              fontWeight: FontWeight.w500,
-                              fontSize: AppTypography.lg,
-                              color: AppColors.textPrimary,
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              project['name'],
+                              style: TextStyle(
+                                fontWeight: FontWeight.w500,
+                                fontSize: AppTypography.lg,
+                                color: AppColors.textPrimary,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 3),
-                          Row(
-                            children: [
-                              Container(
-                                width: 6,
-                                height: 6,
-                                decoration: BoxDecoration(
-                                  color: takenToday
-                                      ? AppColors.success
-                                      : AppColors.warning,
-                                  shape: BoxShape.circle,
+                            const SizedBox(height: 3),
+                            Row(
+                              children: [
+                                Container(
+                                  width: 6,
+                                  height: 6,
+                                  decoration: BoxDecoration(
+                                    color: takenToday
+                                        ? AppColors.success
+                                        : AppColors.warning,
+                                    shape: BoxShape.circle,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                takenToday
-                                    ? 'Photo taken today'
-                                    : 'Photo not taken',
-                                style: TextStyle(
-                                  fontSize: AppTypography.sm,
-                                  color: AppColors.textPrimary
-                                      .withValues(alpha: 0.5),
+                                const SizedBox(width: 6),
+                                Text(
+                                  takenToday
+                                      ? 'Photo taken today'
+                                      : 'Photo not taken',
+                                  style: TextStyle(
+                                    fontSize: AppTypography.sm,
+                                    color: AppColors.textPrimary
+                                        .withValues(alpha: 0.5),
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ],
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    Icon(
-                      Icons.chevron_right,
-                      color: AppColors.textPrimary.withValues(alpha: 0.3),
-                      size: 20,
-                    ),
-                  ],
+                      Icon(
+                        Icons.chevron_right,
+                        color: AppColors.textPrimary.withValues(alpha: 0.3),
+                        size: 20,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );

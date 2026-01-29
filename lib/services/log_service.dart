@@ -117,7 +117,7 @@ class LogService {
       if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
         // Desktop: Native save dialog
         final dateStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
-        final result = await FilePicker.saveFile(
+        final result = await FilePicker.platform.saveFile(
           dialogTitle: 'Save AgeLapse Logs',
           fileName: 'agelapse_logs_$dateStr.log',
           type: FileType.custom,

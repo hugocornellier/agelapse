@@ -46,7 +46,7 @@ The face detection model used by AgeLapse is platform-dependent. On Mobile, Goog
 - Consolidate app colours and theme
 
 #### Bug Fixes
-- 
+- Fixes #25: bug causing .zip exports to fail on certain devices 
 
 For previous releases, see the [full changelog](https://agelapse.com/docs/changelog/).
 

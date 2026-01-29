@@ -211,15 +211,4 @@ void main() {
       expect(hideCalled, isTrue);
     });
   });
-
-  group('FadeInOutIcon Widget', () {
-    test('FadeInOutIcon can be instantiated', () {
-      expect(const FadeInOutIcon(), isA<FadeInOutIcon>());
-    });
-
-    test('FadeInOutIcon creates state', () {
-      const widget = FadeInOutIcon();
-      expect(widget.createState(), isA<FadeInOutIconState>());
-    });
-  });
 }

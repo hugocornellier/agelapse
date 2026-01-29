@@ -5,6 +5,7 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   camera_windows
   desktop_drop
+  downloadsfolder
   face_detection_tflite
   file_selector_windows
   flutter_avif_windows

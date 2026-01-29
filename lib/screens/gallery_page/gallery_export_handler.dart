@@ -1,6 +1,8 @@
 import 'dart:io';
 
+import 'package:downloadsfolder/downloadsfolder.dart';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as path;
 import 'package:share_plus/share_plus.dart';
 
 import '../../services/database_helper.dart';
@@ -76,13 +78,56 @@ class GalleryExportHandler {
                   setExportProgress: setExportProgress,
                   onExportStarted: () =>
                       setState(() => localExportingToZip = true),
-                  onExportComplete: (success) {
-                    setState(() {
-                      localExportingToZip = false;
-                      exportSuccessful = success;
-                    });
-                    if (success && (Platform.isAndroid || Platform.isIOS)) {
-                      shareZipFile(projectId, projectName);
+                  onExportComplete: (success) async {
+                    if (success && Platform.isAndroid) {
+                      // Android: Save directly to Downloads via MediaStore
+                      final (saved, error) = await saveZipToDownloads(
+                        projectId,
+                        projectName,
+                      );
+                      setState(() {
+                        localExportingToZip = false;
+                        exportSuccessful = saved;
+                      });
+                      if (saved) {
+                        LogService.instance.log('[EXPORT] Saved to Downloads');
+                      } else if (error == 'save_failed') {
+                        // Downloads save failed, fall back to share sheet
+                        LogService.instance.log(
+                          '[EXPORT] Downloads save failed, using share sheet',
+                        );
+                        await shareZipFile(projectId, projectName);
+                        setState(() => exportSuccessful = true);
+                      } else {
+                        LogService.instance.log('[EXPORT] Save failed: $error');
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Export failed: $error')),
+                          );
+                        }
+                      }
+                    } else if (success && Platform.isIOS) {
+                      // iOS: Share sheet is the expected UX
+                      setState(() {
+                        localExportingToZip = false;
+                        exportSuccessful = true;
+                      });
+                      await shareZipFile(projectId, projectName);
+                    } else {
+                      // Desktop or failure
+                      setState(() {
+                        localExportingToZip = false;
+                        exportSuccessful = success;
+                      });
+                      if (!success && context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Export failed. Please try again or check app logs.',
+                            ),
+                          ),
+                        );
+                      }
                     }
                   },
                 ),
@@ -92,7 +137,11 @@ class GalleryExportHandler {
                     exportProgressPercent),
               ],
               if (!localExportingToZip && exportSuccessful) ...[
-                GalleryBottomSheets.buildExportSuccessState(),
+                GalleryBottomSheets.buildExportSuccessState(
+                  onShare: Platform.isAndroid
+                      ? () => shareZipFile(projectId, projectName)
+                      : null,
+                ),
               ],
             ];
 
@@ -292,9 +341,16 @@ class GalleryExportHandler {
         adjustedProgress,
       );
 
+      if (res != 'success') {
+        LogService.instance.log(
+          '[EXPORT] Failed: raw=${filesToExport['Raw']?.length ?? 0}, '
+          'stabilized=${filesToExport['Stabilized']?.length ?? 0}',
+        );
+      }
+
       return res == 'success';
-    } catch (e) {
-      LogService.instance.log(e.toString());
+    } catch (e, st) {
+      LogService.instance.log('[EXPORT] _performExport crashed: $e\n$st');
       return false;
     } finally {
       // Clean up temp directory
@@ -309,14 +365,148 @@ class GalleryExportHandler {
     }
   }
 
+  /// Cleans up old exports from private storage to prevent bloat.
+  /// Keeps only the most recent export for the Share button.
+  static Future<void> _cleanupOldPrivateExports(int projectId) async {
+    try {
+      final exportsDir = Directory(await DirUtils.getExportsDirPath(projectId));
+      if (!await exportsDir.exists()) return;
+
+      final files = await exportsDir
+          .list()
+          .where((e) => e is File && e.path.endsWith('.zip'))
+          .cast<File>()
+          .toList();
+
+      // Sort by modification time, newest first
+      files.sort((a, b) {
+        try {
+          return b.lastModifiedSync().compareTo(a.lastModifiedSync());
+        } catch (_) {
+          return 0;
+        }
+      });
+
+      // Delete all but the newest (which will be replaced by current export)
+      for (int i = 1; i < files.length; i++) {
+        try {
+          await files[i].delete();
+          LogService.instance.log(
+            '[EXPORT] Cleaned up old export: ${files[i].path}',
+          );
+        } catch (_) {}
+      }
+    } catch (e) {
+      LogService.instance.log('[EXPORT] Cleanup error (non-fatal): $e');
+    }
+  }
+
+  /// Saves ZIP to public Downloads folder using downloadsfolder package.
+  /// Uses MediaStore on Android API 29+ for scoped storage compliance.
+  /// Returns (success, errorMessage).
+  static Future<(bool, String?)> saveZipToDownloads(
+    int projectId,
+    String projectName,
+  ) async {
+    if (!Platform.isAndroid) {
+      return (false, 'not_android');
+    }
+
+    try {
+      // Find the most recent ZIP in exports directory
+      final zipFile = await _findMostRecentZip(projectId);
+      if (zipFile == null || !await zipFile.exists()) {
+        LogService.instance.log('[EXPORT] No ZIP file found to save');
+        return (false, 'zip_not_found');
+      }
+
+      final zipPath = zipFile.path;
+      final fileName = path.basename(zipPath);
+      LogService.instance.log('[EXPORT] Saving to Downloads: $fileName');
+
+      // Use downloadsfolder package - uses MediaStore on API 29+
+      final success = await copyFileIntoDownloadFolder(zipPath, fileName);
+
+      if (success == true) {
+        LogService.instance.log('[EXPORT] Saved to Downloads/$fileName');
+        // Clean up old private exports
+        await _cleanupOldPrivateExports(projectId);
+        return (true, null);
+      } else {
+        LogService.instance.log('[EXPORT] copyFileIntoDownloadFolder failed');
+        return (false, 'save_failed');
+      }
+    } catch (e, st) {
+      LogService.instance.log('[EXPORT] saveZipToDownloads error: $e\n$st');
+      return (false, e.toString());
+    }
+  }
+
+  /// Finds the most recent ZIP file in the project's exports directory.
+  /// Returns null if no ZIP files exist.
+  static Future<File?> _findMostRecentZip(int projectId) async {
+    try {
+      final exportsDir = Directory(await DirUtils.getExportsDirPath(projectId));
+      if (!await exportsDir.exists()) return null;
+
+      final zipFiles = await exportsDir
+          .list()
+          .where((e) => e is File && e.path.endsWith('.zip'))
+          .cast<File>()
+          .toList();
+
+      if (zipFiles.isEmpty) return null;
+
+      // Sort by modification time, newest first
+      zipFiles.sort((a, b) {
+        try {
+          return b.lastModifiedSync().compareTo(a.lastModifiedSync());
+        } catch (_) {
+          return 0;
+        }
+      });
+
+      return zipFiles.first;
+    } catch (e) {
+      LogService.instance.log('[EXPORT] _findMostRecentZip error: $e');
+      return null;
+    }
+  }
+
   /// Shares the exported ZIP file using the system share dialog.
-  static Future<void> shareZipFile(int projectId, String projectName) async {
-    String zipFileExportPath = await DirUtils.getZipFileExportPath(
-      projectId,
-      projectName,
-    );
-    final params = ShareParams(files: [XFile(zipFileExportPath)]);
-    await SharePlus.instance.share(params);
+  /// Returns true if share was successful, false if dismissed or failed.
+  static Future<bool> shareZipFile(int projectId, String projectName) async {
+    try {
+      // Find the most recent ZIP (don't regenerate path with new timestamp)
+      final zipFile = await _findMostRecentZip(projectId);
+      if (zipFile == null || !await zipFile.exists()) {
+        LogService.instance.log('[EXPORT] No ZIP file found to share');
+        return false;
+      }
+
+      final zipPath = zipFile.path;
+      LogService.instance.log('[EXPORT] Sharing ZIP: $zipPath');
+
+      final params = ShareParams(
+        files: [XFile(zipPath, mimeType: 'application/zip')],
+      );
+
+      final result = await SharePlus.instance.share(params);
+
+      if (result.status == ShareResultStatus.success) {
+        LogService.instance.log('[EXPORT] Share completed successfully');
+        return true;
+      } else if (result.status == ShareResultStatus.dismissed) {
+        LogService.instance.log('[EXPORT] Share dismissed by user');
+        return false;
+      } else {
+        LogService.instance.log('[EXPORT] Share failed: ${result.status}');
+        return false;
+      }
+    } catch (e, st) {
+      LogService.instance.log('[EXPORT] shareZipFile error: $e\n$st');
+      return false;
+    }
   }
 
   /// Exports selected photos to a ZIP file.
@@ -428,13 +618,47 @@ class GalleryExportHandler {
         adjustedProgress,
       );
 
-      if (res == 'success' && (Platform.isAndroid || Platform.isIOS)) {
-        await shareZipFile(projectId, projectName);
+      if (res != 'success') {
+        LogService.instance.log(
+          '[EXPORT] Selected export failed: '
+          'raw=${filesToExport['Raw']?.length ?? 0}, '
+          'stabilized=${filesToExport['Stabilized']?.length ?? 0}',
+        );
+        return false;
       }
 
-      return res == 'success';
-    } catch (e) {
-      LogService.instance.log(e.toString());
+      // Handle platform-specific export finalization
+      if (Platform.isAndroid) {
+        // Android: Save directly to Downloads via MediaStore
+        final (saved, error) = await saveZipToDownloads(
+          projectId,
+          projectName,
+        );
+        if (saved) {
+          LogService.instance
+              .log('[EXPORT] Selected photos saved to Downloads');
+          return true;
+        } else if (error == 'save_failed') {
+          // Downloads save failed, fall back to share sheet
+          LogService.instance.log(
+            '[EXPORT] Downloads save failed, using share sheet',
+          );
+          await shareZipFile(projectId, projectName);
+          return true;
+        } else {
+          LogService.instance.log('[EXPORT] Save failed: $error');
+          return false;
+        }
+      } else if (Platform.isIOS) {
+        // iOS: Share sheet is the expected UX
+        await shareZipFile(projectId, projectName);
+        return true;
+      }
+
+      // Desktop: Already handled by file_selector in exportZipFile()
+      return true;
+    } catch (e, st) {
+      LogService.instance.log('[EXPORT] exportSelectedPhotos crashed: $e\n$st');
       return false;
     } finally {
       if (dateStampTempDir != null) {

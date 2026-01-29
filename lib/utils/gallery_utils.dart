@@ -949,13 +949,23 @@ class GalleryUtils {
 
   /// Streams files directly to ZIP on disk using ZipFileEncoder.
   /// Memory usage: ~1x largest single file.
+  ///
+  /// Resilient: skips corrupt/unreadable files and continues.
+  /// Only fails if the encoder itself can't be created or finalized.
   static void zipFiles(ZipIsolateParams params) async {
     final send = params.sendPort;
     void log(String m) => send.send({'type': 'log', 'msg': m});
 
     final zipPath = params.zipFilePath;
     final zipFile = File(zipPath);
-    zipFile.parent.createSync(recursive: true);
+
+    try {
+      zipFile.parent.createSync(recursive: true);
+    } catch (e) {
+      log('Cannot create export directory: ${zipFile.parent.path}: $e');
+      send.send('error');
+      return;
+    }
 
     for (final e in params.filesToExport.entries) {
       e.value.removeWhere((p) => path.equals(p, zipPath));
@@ -971,8 +981,7 @@ class GalleryUtils {
       }
     }
 
-    bool ok = true;
-    int added = 0, missing = 0, badname = 0;
+    int added = 0, skipped = 0, missing = 0, badname = 0;
 
     int safeNumCompare(String a, String b) {
       final aBase = path.basenameWithoutExtension(a);
@@ -1000,15 +1009,32 @@ class GalleryUtils {
           final f = File(p);
           if (!f.existsSync()) {
             missing++;
+            log('File missing, skipping: $p');
             continue;
           }
 
           final base = path.basenameWithoutExtension(p);
           final ext = path.extension(p);
-          final ts = int.tryParse(base);
-          final dt = ts != null
-              ? DateTime.fromMillisecondsSinceEpoch(ts, isUtc: true).toLocal()
-              : f.lastModifiedSync();
+          int len;
+          DateTime dt;
+
+          try {
+            len = f.lengthSync();
+            if (len <= 0) {
+              skipped++;
+              log('File empty (len=$len), skipping: $p');
+              continue;
+            }
+            final ts = int.tryParse(base);
+            dt = ts != null
+                ? DateTime.fromMillisecondsSinceEpoch(ts, isUtc: true).toLocal()
+                : f.lastModifiedSync();
+          } catch (e) {
+            skipped++;
+            log('Cannot stat file, skipping: $p ($e)');
+            continue;
+          }
+
           final stamp = DateFormat('yyyy-MM-dd_HH-mm-ss').format(dt);
 
           var newName = '$stamp$ext';
@@ -1021,17 +1047,21 @@ class GalleryUtils {
             counts[newName] = 1;
           }
 
-          final len = f.lengthSync();
-          if (len <= 0) continue;
           items.add((file: f, arcPath: '$folder/$newName', len: len));
         }
       }
 
+      final totalInput = items.length + missing + skipped;
+      log('Export prepared: ${items.length} files to add, '
+          '$missing missing, $skipped skipped, $badname bad-name '
+          '(total input: $totalInput)');
+
       if (items.isEmpty) {
-        log('No files to add (missing=$missing, badname=$badname)');
+        log('No exportable files found');
         send.send({
           'type': 'summary',
           'added': added,
+          'skipped': skipped,
           'missing': missing,
           'badname': badname,
         });
@@ -1041,15 +1071,31 @@ class GalleryUtils {
 
       final totalBytes = items.fold<int>(0, (s, it) => s + it.len);
       var stagedBytes = 0;
+      log('Total bytes to archive: $totalBytes '
+          '(${(totalBytes / 1024 / 1024).toStringAsFixed(1)} MB)');
 
       // Use ZipFileEncoder for streaming - writes directly to disk
       // level: 0 (store) = no compression, faster for already-compressed media
       encoder = ZipFileEncoder();
-      encoder.create(zipPath, level: ZipFileEncoder.store);
+      try {
+        encoder.create(zipPath, level: ZipFileEncoder.store);
+      } catch (e, st) {
+        log('Cannot create ZIP encoder at $zipPath: $e\n$st');
+        send.send({
+          'type': 'summary',
+          'added': 0,
+          'skipped': skipped,
+          'missing': missing,
+          'badname': badname,
+        });
+        send.send('error');
+        return;
+      }
+      log('ZIP encoder created at: $zipPath');
 
-      for (final it in items) {
+      for (int i = 0; i < items.length; i++) {
+        final it = items[i];
         try {
-          // addFile streams file content directly to the ZIP on disk
           await encoder.addFile(it.file, it.arcPath, ZipFileEncoder.store);
           added++;
 
@@ -1057,37 +1103,119 @@ class GalleryUtils {
           final pct = totalBytes == 0 ? 0.0 : (stagedBytes / totalBytes) * 98.0;
           send.send(pct);
         } catch (e, st) {
-          ok = false;
-          log('add failed for ${it.file.path}: $e');
+          skipped++;
+          log('addFile failed [${i + 1}/${items.length}] '
+              '${it.file.path} (${it.len} bytes): $e');
           log('stack: $st');
-          break;
+          // Continue to next file instead of aborting
+          continue;
         }
       }
 
-      await encoder.close();
-      encoder = null;
-    } catch (e, st) {
-      ok = false;
-      log('zipFiles crashed: $e\n$st');
-      try {
-        await encoder?.close();
-      } catch (_) {}
-    } finally {
-      send.send({
-        'type': 'summary',
-        'added': added,
-        'missing': missing,
-        'badname': badname,
-      });
-      if (ok) {
-        send.send(100.0);
-        send.send('success');
-      } else {
+      log('All files processed: added=$added, skipped=$skipped');
+
+      if (added == 0) {
+        log('No files were successfully added to the ZIP');
+        try {
+          encoder.close();
+        } catch (_) {}
+        encoder = null;
+        send.send({
+          'type': 'summary',
+          'added': 0,
+          'skipped': skipped,
+          'missing': missing,
+          'badname': badname,
+        });
         try {
           if (zipFile.existsSync()) zipFile.deleteSync();
         } catch (_) {}
         send.send('error');
+        return;
       }
+
+      // Finalize ZIP — this writes the central directory and closes the file
+      log('Closing ZIP encoder (added=$added files)...');
+      try {
+        await encoder.close();
+      } catch (e, st) {
+        log('encoder.close() failed: $e\n$st');
+        encoder = null;
+        send.send({
+          'type': 'summary',
+          'added': added,
+          'skipped': skipped,
+          'missing': missing,
+          'badname': badname,
+        });
+        try {
+          if (zipFile.existsSync()) zipFile.deleteSync();
+        } catch (_) {}
+        send.send('error');
+        return;
+      }
+      encoder = null;
+
+      // Verify the ZIP file was written successfully
+      if (!zipFile.existsSync()) {
+        log('ZIP file missing after close: $zipPath');
+        send.send({
+          'type': 'summary',
+          'added': added,
+          'skipped': skipped,
+          'missing': missing,
+          'badname': badname,
+        });
+        send.send('error');
+        return;
+      }
+
+      final zipLen = zipFile.lengthSync();
+      if (zipLen <= 0) {
+        log('ZIP file is empty after close: $zipPath (length=$zipLen)');
+        try {
+          zipFile.deleteSync();
+        } catch (_) {}
+        send.send({
+          'type': 'summary',
+          'added': added,
+          'skipped': skipped,
+          'missing': missing,
+          'badname': badname,
+        });
+        send.send('error');
+        return;
+      }
+
+      log('ZIP created: $zipLen bytes '
+          '(${(zipLen / 1024 / 1024).toStringAsFixed(1)} MB), '
+          '$added files');
+
+      send.send({
+        'type': 'summary',
+        'added': added,
+        'skipped': skipped,
+        'missing': missing,
+        'badname': badname,
+      });
+      send.send(100.0);
+      send.send('success');
+    } catch (e, st) {
+      log('zipFiles crashed: $e\n$st');
+      try {
+        await encoder?.close();
+      } catch (_) {}
+      send.send({
+        'type': 'summary',
+        'added': added,
+        'skipped': skipped,
+        'missing': missing,
+        'badname': badname,
+      });
+      try {
+        if (zipFile.existsSync()) zipFile.deleteSync();
+      } catch (_) {}
+      send.send('error');
     }
   }
 
@@ -1098,6 +1226,13 @@ class GalleryUtils {
     void Function(double exportProgressIn) setExportProgress,
   ) async {
     try {
+      final rawCount = filesToExport['Raw']?.length ?? 0;
+      final stabCount = filesToExport['Stabilized']?.length ?? 0;
+      LogService.instance.log(
+        '[zip] Starting export: project=$projectId "$projectName", '
+        'raw=$rawCount, stabilized=$stabCount',
+      );
+
       String zipTargetPath;
       String zipWorkPath;
 
@@ -1144,6 +1279,9 @@ class GalleryUtils {
         inactivityTimer?.cancel();
         inactivityTimer = Timer(inactivityLimit, () {
           if (!completer.isCompleted) {
+            LogService.instance.log(
+              '[zip] Isolate killed: no progress for $inactivityLimit',
+            );
             isolate?.kill(priority: Isolate.immediate);
             completer.complete('error');
             cleanup();
@@ -1182,11 +1320,20 @@ class GalleryUtils {
           return;
         }
         if (message is Map && message['type'] == 'log') {
+          LogService.instance.log('[zip] ${message['msg']}');
           return;
         }
         if (message is Map && message['type'] == 'summary') {
-          if ((message['added'] ?? 0) == 0) {
-            LogService.instance.log('[zip] WARNING: 0 files added');
+          final added = message['added'] ?? 0;
+          final skipped = message['skipped'] ?? 0;
+          final missing = message['missing'] ?? 0;
+          final badname = message['badname'] ?? 0;
+          LogService.instance.log(
+            '[zip] Summary: added=$added, skipped=$skipped, '
+            'missing=$missing, badname=$badname',
+          );
+          if (added == 0) {
+            LogService.instance.log('[zip] WARNING: 0 files added to ZIP');
           }
           return;
         }
@@ -1249,8 +1396,10 @@ class GalleryUtils {
         } catch (_) {}
       }
 
+      LogService.instance.log('[zip] Export result: $result');
       return result;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.instance.log('[zip] exportZipFile crashed: $e\n$st');
       return 'error';
     }
   }

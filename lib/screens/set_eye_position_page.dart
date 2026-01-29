@@ -463,19 +463,22 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
     required IconData icon,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: AppColors.settingsCardBorder,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(
-          icon,
-          size: 18,
-          color: AppColors.settingsTextSecondary,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: AppColors.settingsCardBorder,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            size: 18,
+            color: AppColors.settingsTextSecondary,
+          ),
         ),
       ),
     );
@@ -759,99 +762,109 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
           color: AppColors.settingsTextPrimary,
         ),
       ),
-      leading: GestureDetector(
-        onTap: () {
-          if (_hasUnsavedChanges) {
-            _showUnsavedChangesDialog().then((saveChanges) async {
-              if (saveChanges == true) {
-                await _saveChanges();
-                if (mounted) Navigator.of(context).pop();
-              } else if (saveChanges == false) {
-                if (mounted) Navigator.of(context).pop();
-              }
-            });
-          } else {
-            Navigator.pop(context);
-          }
-        },
-        child: Container(
-          margin: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: AppColors.settingsCardBackground,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.settingsCardBorder, width: 1),
-          ),
-          child: Icon(
-            Icons.arrow_back,
-            color: AppColors.settingsTextPrimary,
-            size: 20,
-          ),
-        ),
-      ),
-      actions: [
-        GestureDetector(
-          onTap: _showHelpDialog,
+      leading: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: () {
+            if (_hasUnsavedChanges) {
+              _showUnsavedChangesDialog().then((saveChanges) async {
+                if (saveChanges == true) {
+                  await _saveChanges();
+                  if (mounted) Navigator.of(context).pop();
+                } else if (saveChanges == false) {
+                  if (mounted) Navigator.of(context).pop();
+                }
+              });
+            } else {
+              Navigator.pop(context);
+            }
+          },
           child: Container(
-            width: 40,
-            height: 40,
-            margin: const EdgeInsets.only(right: 8),
+            margin: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: AppColors.settingsCardBackground,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.settingsCardBorder, width: 1),
             ),
             child: Icon(
-              Icons.help_outline_rounded,
-              color: AppColors.settingsTextSecondary,
+              Icons.arrow_back,
+              color: AppColors.settingsTextPrimary,
               size: 20,
             ),
           ),
         ),
-        if (_hasUnsavedChanges)
-          GestureDetector(
-            onTap: _isSaving
-                ? null
-                : () async {
-                    final bool shouldProceed =
-                        await Utils.showConfirmChangeDialog(
-                      context,
-                      "eye position",
-                    );
-                    if (shouldProceed) await _saveChanges();
-                  },
+      ),
+      actions: [
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: _showHelpDialog,
             child: Container(
-              width: 44,
-              height: 44,
+              width: 40,
+              height: 40,
               margin: const EdgeInsets.only(right: 8),
               decoration: BoxDecoration(
-                color: _showCheckmark
-                    ? AppColors.success.withValues(alpha: 0.15)
-                    : AppColors.settingsAccent.withValues(alpha: 0.15),
+                color: AppColors.settingsCardBackground,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: _showCheckmark
-                      ? AppColors.success.withValues(alpha: 0.3)
-                      : AppColors.settingsAccent.withValues(alpha: 0.3),
-                  width: 1,
-                ),
+                border:
+                    Border.all(color: AppColors.settingsCardBorder, width: 1),
               ),
-              child: _isSaving
-                  ? Padding(
-                      padding: EdgeInsets.all(12),
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.settingsAccent,
+              child: Icon(
+                Icons.help_outline_rounded,
+                color: AppColors.settingsTextSecondary,
+                size: 20,
+              ),
+            ),
+          ),
+        ),
+        if (_hasUnsavedChanges)
+          MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: _isSaving
+                  ? null
+                  : () async {
+                      final bool shouldProceed =
+                          await Utils.showConfirmChangeDialog(
+                        context,
+                        "eye position",
+                      );
+                      if (shouldProceed) await _saveChanges();
+                    },
+              child: Container(
+                width: 44,
+                height: 44,
+                margin: const EdgeInsets.only(right: 8),
+                decoration: BoxDecoration(
+                  color: _showCheckmark
+                      ? AppColors.success.withValues(alpha: 0.15)
+                      : AppColors.settingsAccent.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _showCheckmark
+                        ? AppColors.success.withValues(alpha: 0.3)
+                        : AppColors.settingsAccent.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                child: _isSaving
+                    ? Padding(
+                        padding: EdgeInsets.all(12),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.settingsAccent,
+                        ),
+                      )
+                    : Icon(
+                        _showCheckmark
+                            ? Icons.check_circle_rounded
+                            : Icons.save_rounded,
+                        color: _showCheckmark
+                            ? AppColors.success
+                            : AppColors.settingsAccent,
+                        size: 22,
                       ),
-                    )
-                  : Icon(
-                      _showCheckmark
-                          ? Icons.check_circle_rounded
-                          : Icons.save_rounded,
-                      color: _showCheckmark
-                          ? AppColors.success
-                          : AppColors.settingsAccent,
-                      size: 22,
-                    ),
+              ),
             ),
           ),
       ],
@@ -902,19 +915,22 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
               ),
             ),
             const SizedBox(width: 8),
-            GestureDetector(
-              onTap: () => setState(() => _isInfoWidgetVisible = false),
-              child: Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: AppColors.settingsCardBorder,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(
-                  Icons.close,
-                  color: AppColors.settingsTextSecondary,
-                  size: 16,
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: () => setState(() => _isInfoWidgetVisible = false),
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: AppColors.settingsCardBorder,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    Icons.close,
+                    color: AppColors.settingsTextSecondary,
+                    size: 16,
+                  ),
                 ),
               ),
             ),

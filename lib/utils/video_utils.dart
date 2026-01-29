@@ -126,9 +126,6 @@ class VideoUtils {
     );
     if (!dateStampEnabled) return null;
 
-    LogService.instance
-        .log("[VIDEO] Date stamp enabled, generating PNG overlay filter");
-
     // Load date stamp settings
     final dateFormat = await SettingsUtil.loadExportDateStampFormat(
       projectIdStr,
@@ -175,9 +172,6 @@ class VideoUtils {
 
     if (files.isEmpty) return null;
 
-    LogService.instance
-        .log("[VIDEO] DateStamp overlay: Processing ${files.length} files");
-
     // Load timezone offsets for accurate date stamps
     final captureOffsetMap = await CaptureTimezone.loadOffsetsForFiles(
       files,
@@ -203,10 +197,6 @@ class VideoUtils {
         captureOffsetMinutes: offsetMinutes,
       );
       frameDates.add(dateText);
-
-      if (i < 5 || i >= files.length - 3) {
-        LogService.instance.log("[VIDEO] Frame $i: $dateText");
-      }
     }
 
     // Group consecutive frames with the same date to minimize filter complexity
@@ -228,9 +218,6 @@ class VideoUtils {
       dateRanges
           .add(_DateRange(currentDate, rangeStart, frameDates.length - 1));
     }
-
-    LogService.instance
-        .log("[VIDEO] Date ranges: ${dateRanges.length} unique dates");
 
     // Get unique dates for PNG generation
     final uniqueDates = dateRanges.map((r) => r.date).toSet().toList();
@@ -321,14 +308,9 @@ class VideoUtils {
       currentLabel = nextLabel;
     }
 
-    if (filterParts.isEmpty) {
-      LogService.instance.log("[VIDEO] No overlay filters generated");
-      return null;
-    }
+    if (filterParts.isEmpty) return null;
 
     final filterComplex = filterParts.join(';');
-    LogService.instance.log(
-        "[VIDEO] Overlay filter_complex: ${filterComplex.length} chars, ${pngPaths.length} PNGs");
 
     return DateStampOverlayInfo(
       filterComplex: filterComplex,
@@ -592,8 +574,6 @@ class VideoUtils {
               final tempDir = Directory(dateStampOverlay.tempDir);
               if (await tempDir.exists()) {
                 await tempDir.delete(recursive: true);
-                LogService.instance
-                    .log("[VIDEO] Cleaned up date stamp temp PNGs");
               }
             } catch (e) {
               LogService.instance
@@ -911,7 +891,6 @@ class VideoUtils {
           final tempDir = Directory(dateStampOverlay.tempDir);
           if (await tempDir.exists()) {
             await tempDir.delete(recursive: true);
-            LogService.instance.log("[VIDEO] Cleaned up date stamp temp PNGs");
           }
         } catch (e) {
           LogService.instance

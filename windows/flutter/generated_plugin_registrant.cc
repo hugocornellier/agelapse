@@ -8,6 +8,7 @@
 
 #include <camera_windows/camera_windows.h>
 #include <desktop_drop/desktop_drop_plugin.h>
+#include <downloadsfolder/downloadsfolder_plugin_c_api.h>
 #include <face_detection_tflite/face_detection_tflite_plugin.h>
 #include <file_selector_windows/file_selector_windows.h>
 #include <flutter_avif_windows/flutter_avif_windows_plugin.h>
@@ -28,6 +29,8 @@ void RegisterPlugins(flutter::PluginRegistry* registry) {
       registry->GetRegistrarForPlugin("CameraWindows"));
   DesktopDropPluginRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("DesktopDropPlugin"));
+  DownloadsfolderPluginCApiRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("DownloadsfolderPluginCApi"));
   FaceDetectionTflitePluginRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("FaceDetectionTflitePlugin"));
   FileSelectorWindowsRegisterWithRegistrar(
