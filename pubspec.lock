@@ -350,10 +350,10 @@ packages:
     dependency: "direct main"
     description:
       name: face_detection_tflite
-      sha256: eec9c1ad7b22ff0b69ff52ab41a24dc5c2e41af9324ec7806b4e24f89d1c9255
+      sha256: ca9c48e17fdcbc70cc71f35676134981c8dc9e6a5c9b4c68e3b41ac39b3f65fb
       url: "https://pub.dev"
     source: hosted
-    version: "4.4.1"
+    version: "4.5.0"
   fake_async:
     dependency: "direct dev"
     description:
@@ -1455,10 +1455,10 @@ packages:
     dependency: transitive
     description:
       name: tflite_flutter_custom
-      sha256: "9723824fa47b75aee483ea1c4025a25befcc0a04c4fc503f3ba0005f2b9ab9d0"
+      sha256: eb0f72cbaadfcc15282867e81c6112f24e958bfce66b8422c8557ef48bcb8f2c
       url: "https://pub.dev"
     source: hosted
-    version: "1.2.0"
+    version: "1.2.3"
   time:
     dependency: transitive
     description:

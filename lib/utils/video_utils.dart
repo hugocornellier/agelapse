@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart' as kit;
 import 'package:flutter/foundation.dart' show visibleForTesting;
+import '../models/video_background.dart';
+import '../models/video_codec.dart';
 import '../services/ffmpeg_process_manager.dart';
 import '../services/log_service.dart';
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit_config.dart' as kitcfg;
@@ -117,6 +119,8 @@ class VideoUtils {
     required String orientation,
     required int videoWidth,
     required int videoHeight,
+    String videoInputLabel = '0',
+    int inputIndexOffset = 0,
   }) async {
     final projectIdStr = projectId.toString();
 
@@ -253,20 +257,22 @@ class VideoUtils {
     final List<String> pngPaths = [];
     final Map<String, int> dateToInputIndex = {};
 
-    // Assign input indices to each unique date PNG
+    // Assign input indices to each unique date PNG.
+    // With inputIndexOffset=0: video is input 0, PNGs start at 1.
+    // With inputIndexOffset=1 (color overlay): video is input 1, PNGs start at 2.
     for (int i = 0; i < uniqueDates.length; i++) {
       final date = uniqueDates[i];
       final pngPath = assets.dateToPath[date];
       if (pngPath != null) {
         pngPaths.add(pngPath);
-        dateToInputIndex[date] = pngPaths.length; // 1-indexed (0 is video)
+        dateToInputIndex[date] = pngPaths.length + inputIndexOffset;
       }
     }
 
     // Build filter_complex string
     // Each overlay: [prev][inputN]overlay=x:y:enable='between(n,start,end)'[outN]
     final filterParts = <String>[];
-    String currentLabel = '0'; // Start with input 0 (video)
+    String currentLabel = videoInputLabel;
 
     for (int i = 0; i < dateRanges.length; i++) {
       final range = dateRanges[i];
@@ -451,9 +457,43 @@ class VideoUtils {
       final String stabilizedDirPath = await DirUtils.getStabilizedDirPath(
         projectId,
       );
+
+      // Check if transparent background is enabled
+      final String bgColor = await SettingsUtil.loadBackgroundColor(
+        projectId.toString(),
+      );
+      final bool isTransparent = SettingsUtil.isTransparent(bgColor);
+      if (isTransparent) {
+        LogService.instance.log("[VIDEO] Transparent background enabled");
+      }
+
+      // Load codec and video background settings
+      final VideoCodec userCodec = await SettingsUtil.loadVideoCodec(
+        projectId.toString(),
+      );
+      final VideoBackground videoBg = isTransparent
+          ? await SettingsUtil.loadVideoBackground(projectId.toString())
+          : VideoBackground.solidColor(bgColor);
+
+      // Determine if the OUTPUT video itself has alpha
+      final bool videoHasAlpha = isTransparent && videoBg.keepTransparent;
+
+      // Resolve effective codec: if transparent video, lock to platform codec
+      final VideoCodec effectiveCodec = videoHasAlpha
+          ? VideoCodec.defaultCodec(isTransparentVideo: true)
+          : userCodec;
+
+      // Whether transparent PNGs need compositing onto a solid color
+      final bool needsColorOverlay = isTransparent && !videoHasAlpha;
+
+      LogService.instance.log(
+        "[VIDEO] Codec: ${effectiveCodec.name}, videoHasAlpha: $videoHasAlpha, needsColorOverlay: $needsColorOverlay",
+      );
+
       final String videoOutputPath = await DirUtils.getVideoOutputPath(
         projectId,
         projectOrientation,
+        codec: effectiveCodec,
       );
       LogService.instance.log("[VIDEO] orientation: $projectOrientation");
       LogService.instance.log("[VIDEO] stabilizedDirPath: $stabilizedDirPath");
@@ -505,6 +545,22 @@ class VideoUtils {
 
       await DirUtils.createDirectoryIfNotExists(videoOutputPath);
 
+      // Clean up old video files with different extensions (e.g. .mp4 when switching to .mov)
+      // This prevents stale files from being found by other code paths.
+      final videoDir = path.dirname(videoOutputPath);
+      final currentExt = path.extension(videoOutputPath);
+      for (final ext in ['.mp4', '.mov', '.webm']) {
+        if (ext != currentExt) {
+          final oldPath = path.join(videoDir, 'agelapse$ext');
+          final oldFile = File(oldPath);
+          if (await oldFile.exists()) {
+            LogService.instance
+                .log("[VIDEO] Removing old video file: $oldPath");
+            await oldFile.delete();
+          }
+        }
+      }
+
       final Directory dir = Directory(
         path.join(stabilizedDirPath, projectOrientation),
       );
@@ -549,12 +605,16 @@ class VideoUtils {
           final (videoWidth, videoHeight) = dimensions;
 
           // Generate date stamp overlay with PNG assets (if enabled)
+          // When color overlay is present, video input shifts to index 1
+          // and date stamp PNGs shift by +1.
           final dateStampOverlay = await _generateDateStampOverlay(
             projectId: projectId,
             framesDir: framesDir,
             orientation: projectOrientation,
             videoWidth: videoWidth,
             videoHeight: videoHeight,
+            videoInputLabel: needsColorOverlay ? 'base' : '0',
+            inputIndexOffset: needsColorOverlay ? 1 : 0,
           );
 
           final bool ok = await _encodeWindows(
@@ -566,6 +626,12 @@ class VideoUtils {
             onLog: (line) => LogService.instance.log("[FFMPEG] $line"),
             onProgress: setCurrentFrame,
             dateStampOverlay: dateStampOverlay,
+            effectiveCodec: effectiveCodec,
+            videoHasAlpha: videoHasAlpha,
+            needsColorOverlay: needsColorOverlay,
+            videoBg: videoBg,
+            videoWidth: videoWidth,
+            videoHeight: videoHeight,
           );
 
           // Clean up date stamp temp PNGs
@@ -638,13 +704,19 @@ class VideoUtils {
       final (videoWidth, videoHeight) = dimensions;
 
       // Generate date stamp overlay with PNG assets (if enabled)
+      // When color overlay is present, video input shifts and indices offset by 1.
       final dateStampOverlay = await _generateDateStampOverlay(
         projectId: projectId,
         framesDir: framesDir,
         orientation: projectOrientation,
         videoWidth: videoWidth,
         videoHeight: videoHeight,
+        videoInputLabel: needsColorOverlay ? 'base' : '0',
+        inputIndexOffset: needsColorOverlay ? 1 : 0,
       );
+
+      // Input index offset: 0 normally, 1 when color overlay is present
+      final int idxOffset = needsColorOverlay ? 1 : 0;
 
       // Build input arguments (video frames + date stamp PNGs + watermark)
       String dateStampInputs = "";
@@ -657,7 +729,7 @@ class VideoUtils {
       // Build watermark input
       String watermarkInput = "";
       int watermarkInputIndex =
-          1 + (dateStampOverlay?.pngInputPaths.length ?? 0);
+          1 + idxOffset + (dateStampOverlay?.pngInputPaths.length ?? 0);
       String? watermarkFilterPart;
       if (watermarkEnabled &&
           Utils.isImage(watermarkFilePath) &&
@@ -674,18 +746,54 @@ class VideoUtils {
         );
       }
 
+      // Build color overlay filter prefix (transparent PNGs on solid video bg)
+      // format= converts rgba overlay output to the codec's pixel format so
+      // hardware encoders (e.g. h264_videotoolbox) don't receive unsupported frames.
+      String colorOverlayFilter = "";
+      if (needsColorOverlay && videoBg.solidColorHex != null) {
+        // [0:v] = color source, [1:v] = concat frames → overlay → [base]
+        colorOverlayFilter =
+            "[0:v][1:v]overlay=shortest=1,format=${effectiveCodec.pixelFormat}[base]";
+      }
+
       // Build combined filter string
       String filterArgs = "";
       String mapArg = "";
-      if (dateStampOverlay != null && watermarkFilterPart != null) {
-        // Both date stamp overlay and watermark
-        // Chain: video -> date stamp overlays -> watermark overlay
+      if (colorOverlayFilter.isNotEmpty &&
+          dateStampOverlay != null &&
+          watermarkFilterPart != null) {
+        // Color overlay + date stamps + watermark
+        final wmFilter = watermarkFilterPart
+            .replaceFirst('[0:v]', '[${dateStampOverlay.outputMapLabel}]')
+            .replaceFirst('[1:v]', '[$watermarkInputIndex:v]');
+        filterArgs =
+            "-filter_complex \"$colorOverlayFilter;${dateStampOverlay.filterComplex};$wmFilter\"";
+        final wmOutMatch = RegExp(r'\[(\w+)\]$').firstMatch(wmFilter);
+        mapArg = wmOutMatch != null ? "-map \"[${wmOutMatch.group(1)}]\"" : "";
+      } else if (colorOverlayFilter.isNotEmpty && dateStampOverlay != null) {
+        // Color overlay + date stamps (no watermark)
+        filterArgs =
+            "-filter_complex \"$colorOverlayFilter;${dateStampOverlay.filterComplex}\"";
+        mapArg = "-map \"[${dateStampOverlay.outputMapLabel}]\"";
+      } else if (colorOverlayFilter.isNotEmpty && watermarkFilterPart != null) {
+        // Color overlay + watermark (no date stamps)
+        final wmFilter = watermarkFilterPart
+            .replaceFirst('[0:v]', '[base]')
+            .replaceFirst('[1:v]', '[$watermarkInputIndex:v]');
+        filterArgs = "-filter_complex \"$colorOverlayFilter;$wmFilter\"";
+        final wmOutMatch = RegExp(r'\[(\w+)\]$').firstMatch(wmFilter);
+        mapArg = wmOutMatch != null ? "-map \"[${wmOutMatch.group(1)}]\"" : "";
+      } else if (colorOverlayFilter.isNotEmpty) {
+        // Color overlay only (no date stamps, no watermark)
+        filterArgs = "-filter_complex \"$colorOverlayFilter\"";
+        mapArg = "-map \"[base]\"";
+      } else if (dateStampOverlay != null && watermarkFilterPart != null) {
+        // Date stamps + watermark (no color overlay)
         final wmFilter = watermarkFilterPart
             .replaceFirst('[0:v]', '[${dateStampOverlay.outputMapLabel}]')
             .replaceFirst('[1:v]', '[$watermarkInputIndex:v]');
         filterArgs =
             "-filter_complex \"${dateStampOverlay.filterComplex};$wmFilter\"";
-        // Extract output label from watermark filter (usually ends with [out] or similar)
         final wmOutMatch = RegExp(r'\[(\w+)\]$').firstMatch(wmFilter);
         mapArg = wmOutMatch != null ? "-map \"[${wmOutMatch.group(1)}]\"" : "";
       } else if (dateStampOverlay != null) {
@@ -695,6 +803,24 @@ class VideoUtils {
       } else if (watermarkFilterPart != null) {
         // Only watermark
         filterArgs = "-filter_complex \"$watermarkFilterPart\"";
+      }
+
+      // When compositing transparent PNGs onto solid background, ensure the final
+      // output is in the correct pixel format. Each date stamp/watermark overlay
+      // with rgba PNGs produces rgba output, so we must convert at the very end.
+      if (needsColorOverlay && filterArgs.isNotEmpty && mapArg.isNotEmpty) {
+        final outputMatch = RegExp(r'-map "\[(\w+)\]"').firstMatch(mapArg);
+        if (outputMatch != null) {
+          final currentLabel = outputMatch.group(1)!;
+          final pixFmt = effectiveCodec.pixelFormat;
+          // Append format conversion before the closing quote of filter_complex
+          filterArgs = filterArgs.replaceFirst(
+            '"',
+            ';[$currentLabel]format=$pixFmt[vout]"',
+            filterArgs.lastIndexOf('"'),
+          );
+          mapArg = '-map "[vout]"';
+        }
       }
 
       final String listPath = await _buildConcatListFromDir(
@@ -708,38 +834,77 @@ class VideoUtils {
         projectId.toString(),
       );
       final kbps = pickBitrateKbps(resolution);
-      final vtRate =
-          "-b:v ${kbps}k -maxrate ${(kbps * 1.5).round()}k -bufsize ${(kbps * 3).round()}k";
-      // Use HEVC hardware encoder for high resolutions on macOS/iOS (h264_videotoolbox doesn't support 8K)
-      // Use libx264 on Android (FFmpegKit has it)
-      final bool needsHevc = _resolutionNeedsHevc(resolution,
-          actualWidth: videoWidth, actualHeight: videoHeight);
-      final String vCodec;
-      final String codecTag;
-      if (Platform.isAndroid) {
-        vCodec = 'libx264';
-        codecTag = '-tag:v avc1';
-      } else if (needsHevc) {
-        // Use HEVC (H.265) for high resolutions on macOS/iOS
-        // -allow_sw 1 enables software fallback when hardware encoder doesn't support resolution (e.g. 8K)
-        vCodec = 'hevc_videotoolbox -allow_sw 1';
-        codecTag = '-tag:v hvc1';
-      } else {
-        vCodec = 'h264_videotoolbox';
-        codecTag = '-tag:v avc1';
+
+      // Check if resolution exceeds H.264 VideoToolbox limits (4096px on any dimension)
+      // In that case, upgrade h264 -> hevc automatically
+      VideoCodec finalCodec = effectiveCodec;
+      if ((Platform.isMacOS || Platform.isIOS) &&
+          effectiveCodec == VideoCodec.h264 &&
+          _resolutionNeedsHevc(resolution,
+              actualWidth: videoWidth, actualHeight: videoHeight)) {
+        LogService.instance.log(
+          "[VIDEO] 8K resolution detected, upgrading H.264 to HEVC (h264_videotoolbox doesn't support 8K)",
+        );
+        finalCodec = VideoCodec.hevc;
       }
 
+      // Use codec model for all encoding parameters
+      final String vCodec = finalCodec.encoder;
+      final String codecTag = finalCodec.codecTag;
+      final String pixFmt = finalCodec.pixelFormat;
+      final String rateControl;
+
+      if (finalCodec == VideoCodec.vp9) {
+        rateControl = "-b:v ${kbps}k -crf 30 -row-mt 1 -auto-alt-ref 0";
+      } else if (finalCodec.usesBitrateControl) {
+        rateControl =
+            "-b:v ${kbps}k -maxrate ${(kbps * 1.5).round()}k -bufsize ${(kbps * 3).round()}k";
+      } else {
+        rateControl = ''; // ProRes doesn't use bitrate control
+      }
+
+      LogService.instance.log(
+        "[VIDEO] Using ${finalCodec.displayName} encoder: $vCodec",
+      );
+
+      // Build movflags
+      final String movFlags =
+          finalCodec.usesMovFlags ? '-movflags +faststart' : '';
+
+      // For transparent videos with alpha output, ensure alpha channel is
+      // preserved through the filter pipeline.
+      if (videoHasAlpha) {
+        if (filterArgs.isEmpty) {
+          filterArgs = '-vf "format=$pixFmt"';
+        }
+      }
+
+      // Build the color source input (before concat) when needed
+      final String colorSourceInput = needsColorOverlay &&
+              videoBg.solidColorHex != null
+          ? '-f lavfi -i "color=c=${videoBg.solidColorHex!.replaceFirst('#', '0x')}:s=${videoWidth}x$videoHeight:r=30" '
+          : '';
+
       String ffmpegCommand = "-y "
+          "$colorSourceInput"
           "-f concat -safe 0 "
           "-i \"$listPath\" "
           "$dateStampInputs"
           "$watermarkInput "
           "-vsync cfr -r 30 "
           "$filterArgs $mapArg "
-          "-c:v $vCodec $vtRate "
-          "-g 240 -movflags +faststart $codecTag "
-          "-pix_fmt yuv420p "
+          "-c:v $vCodec $rateControl "
+          "${videoHasAlpha ? '' : '-g 240 '}$movFlags $codecTag "
+          "-pix_fmt $pixFmt "
           "\"$videoOutputPath\"";
+
+      LogService.instance.log(
+          '[VIDEO] DEBUG needsColorOverlay=$needsColorOverlay videoHasAlpha=$videoHasAlpha');
+      LogService.instance.log('[VIDEO] DEBUG filterArgs=$filterArgs');
+      LogService.instance.log('[VIDEO] DEBUG mapArg=$mapArg');
+      LogService.instance
+          .log('[VIDEO] DEBUG colorSourceInput=$colorSourceInput');
+      LogService.instance.log('[VIDEO] DEBUG full command=$ffmpegCommand');
 
       bool success = false;
       try {
@@ -1384,6 +1549,12 @@ class VideoUtils {
     void Function(String line)? onLog,
     void Function(int frameIndex)? onProgress,
     DateStampOverlayInfo? dateStampOverlay,
+    required VideoCodec effectiveCodec,
+    required bool videoHasAlpha,
+    bool needsColorOverlay = false,
+    VideoBackground? videoBg,
+    int? videoWidth,
+    int? videoHeight,
   }) async {
     LogService.instance.log("[VIDEO] _encodeWindows started");
     LogService.instance.log("[VIDEO] framesDir: $framesDir");
@@ -1413,59 +1584,120 @@ class VideoUtils {
       orientation: orientation,
     );
 
-    // Get resolution setting to determine H.264 profile/level
+    // Get resolution setting
     final resolution = await SettingsUtil.loadVideoResolution(
       projectId.toString(),
     );
-    final (profile, level) = _getH264ProfileAndLevel(resolution);
     final kbps = pickBitrateKbps(resolution);
     LogService.instance.log(
-      "[VIDEO] Resolution: $resolution, Profile: $profile, Level: $level, Bitrate: ${kbps}k",
+      "[VIDEO] Resolution: $resolution, Codec: ${effectiveCodec.name}, Bitrate: ${kbps}k",
     );
 
-    // Build FFmpeg arguments with overlay inputs if date stamp is enabled
+    // Build FFmpeg arguments
     final args = <String>['-y'];
 
-    // Add video frames input (input 0)
+    // Add color source input (input 0) when compositing transparent PNGs onto solid bg
+    if (needsColorOverlay &&
+        videoBg != null &&
+        videoBg.solidColorHex != null &&
+        videoWidth != null &&
+        videoHeight != null) {
+      final String hex = videoBg.solidColorHex!.replaceFirst('#', '0x');
+      args.addAll([
+        '-f',
+        'lavfi',
+        '-i',
+        'color=c=$hex:s=${videoWidth}x$videoHeight:r=$fps',
+      ]);
+    }
+
+    // Add video frames input (input 0 normally, input 1 with color overlay)
     args.addAll(['-f', 'concat', '-safe', '0', '-i', listPath]);
 
-    // Add date stamp PNG inputs (inputs 1, 2, 3, ...)
+    // Add date stamp PNG inputs
     if (dateStampOverlay != null) {
       for (final pngPath in dateStampOverlay.pngInputPaths) {
         args.addAll(['-i', pngPath]);
       }
     }
 
-    // Add filter (either filter_complex for overlay or nothing)
-    if (dateStampOverlay != null) {
+    // Build filter_complex
+    if (needsColorOverlay && dateStampOverlay != null) {
+      // Color overlay + date stamps
+      final colorFilter =
+          '[0:v][1:v]overlay=shortest=1,format=${effectiveCodec.pixelFormat}[base]';
+      args.addAll([
+        '-filter_complex',
+        '$colorFilter;${dateStampOverlay.filterComplex}',
+      ]);
+      args.addAll(['-map', '[${dateStampOverlay.outputMapLabel}]']);
+    } else if (needsColorOverlay) {
+      // Color overlay only
+      args.addAll([
+        '-filter_complex',
+        '[0:v][1:v]overlay=shortest=1,format=${effectiveCodec.pixelFormat}[base]',
+      ]);
+      args.addAll(['-map', '[base]']);
+    } else if (dateStampOverlay != null) {
+      // Date stamps only
       args.addAll(['-filter_complex', dateStampOverlay.filterComplex]);
       args.addAll(['-map', '[${dateStampOverlay.outputMapLabel}]']);
     }
 
-    // Video settings
-    args.addAll([
-      '-vsync',
-      'cfr',
-      '-r',
-      '$fps',
-      '-pix_fmt',
-      'yuv420p',
-      '-c:v',
-      'libx264',
-      '-profile:v',
-      profile,
-      '-level',
-      level,
-      '-b:v',
-      '${kbps}k',
-      '-maxrate',
-      '${(kbps * 1.5).round()}k',
-      '-bufsize',
-      '${(kbps * 3).round()}k',
-      '-movflags',
-      '+faststart',
-      outputPath,
-    ]);
+    // For alpha output without filter_complex, add format filter
+    if (videoHasAlpha && dateStampOverlay == null && !needsColorOverlay) {
+      args.addAll(['-vf', 'format=${effectiveCodec.pixelFormat}']);
+    }
+
+    LogService.instance.log(
+      "[VIDEO] Using ${effectiveCodec.displayName} encoder: ${effectiveCodec.encoderDesktop}",
+    );
+
+    // Video encoding settings based on codec model
+    final pixFmt = effectiveCodec.pixelFormat;
+    args.addAll(['-vsync', 'cfr', '-r', '$fps', '-pix_fmt', pixFmt]);
+
+    // Split encoder string into individual args (e.g., "prores_ks -profile:v standard")
+    final encoderParts = effectiveCodec.encoderDesktop.split(' ');
+    args.addAll(['-c:v', ...encoderParts]);
+
+    // Add codec-specific settings
+    if (effectiveCodec == VideoCodec.h264) {
+      final (profile, level) = _getH264ProfileAndLevel(resolution);
+      args.addAll(['-profile:v', profile, '-level', level]);
+    }
+
+    if (effectiveCodec == VideoCodec.vp9) {
+      args.addAll([
+        '-b:v',
+        '${kbps}k',
+        '-crf',
+        '30',
+        '-row-mt',
+        '1',
+        '-auto-alt-ref',
+        '0',
+      ]);
+    } else if (effectiveCodec.usesBitrateControl) {
+      args.addAll([
+        '-b:v',
+        '${kbps}k',
+        '-maxrate',
+        '${(kbps * 1.5).round()}k',
+        '-bufsize',
+        '${(kbps * 3).round()}k',
+      ]);
+    }
+
+    if (effectiveCodec.usesMovFlags) {
+      args.addAll(['-movflags', '+faststart']);
+    }
+
+    if (!videoHasAlpha) {
+      args.addAll(['-g', '240']);
+    }
+
+    args.add(outputPath);
 
     LogService.instance.log("[VIDEO] ffmpeg arguments: ${args.join(' ')}");
     LogService.instance.log("[VIDEO] Starting ffmpeg process...");

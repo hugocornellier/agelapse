@@ -14,6 +14,8 @@ import '../services/log_service.dart';
 import '../services/theme_provider.dart';
 import '../services/thumbnail_service.dart';
 import '../styles/styles.dart';
+import '../models/video_background.dart';
+import '../models/video_codec.dart';
 import '../utils/dir_utils.dart';
 import '../utils/notification_util.dart';
 import '../utils/settings_utils.dart';
@@ -102,6 +104,10 @@ class SettingsSheetState extends State<SettingsSheet> {
   String _stabilizationMode = 'slow';
   String _galleryGridMode = 'auto';
   String _backgroundColor = '#000000';
+
+  // Video codec settings
+  VideoCodec _videoCodec = VideoCodec.h264;
+  VideoBackground _videoBackground = const VideoBackground.transparent();
 
   // Date stamp settings
   bool _galleryDateLabelsEnabled = false;
@@ -271,6 +277,8 @@ class SettingsSheetState extends State<SettingsSheet> {
       SettingsUtil.loadProjectOrientation(projectIdStr),
       SettingsUtil.loadAutoCompileVideo(projectIdStr),
       SettingsUtil.loadBackgroundColor(projectIdStr),
+      SettingsUtil.loadVideoCodec(projectIdStr),
+      SettingsUtil.loadVideoBackground(projectIdStr),
     ]);
 
     resolution = results[0] as String;
@@ -281,6 +289,8 @@ class SettingsSheetState extends State<SettingsSheet> {
         poSetting[0].toUpperCase() + poSetting.substring(1).toLowerCase();
     _autoCompileVideo = results[4] as bool;
     _backgroundColor = results[5] as String;
+    _videoCodec = results[6] as VideoCodec;
+    _videoBackground = results[7] as VideoBackground;
 
     // Detect if resolution is custom (not a preset)
     _isCustomResolution = !_presetResolutions.contains(resolution);
@@ -947,6 +957,12 @@ class SettingsSheetState extends State<SettingsSheet> {
                       ),
                     if (!widget.onlyShowNotificationSettings)
                       _buildSettingsSection(
+                        'Background Colour',
+                        Icons.format_color_fill_outlined,
+                        _buildBackgroundColourSettings,
+                      ),
+                    if (!widget.onlyShowNotificationSettings)
+                      _buildSettingsSection(
                         'Video',
                         Icons.movie_outlined,
                         _buildVideoSettings,
@@ -1268,6 +1284,8 @@ class SettingsSheetState extends State<SettingsSheet> {
         return _projectSettingsFuture;
       case 'Stabilization':
         return _settingsFuture;
+      case 'Background Colour':
+        return _videoSettingsFuture;
       case 'Camera':
         return _settingsFuture;
       case 'Notifications':
@@ -1524,7 +1542,6 @@ class SettingsSheetState extends State<SettingsSheet> {
       children: [
         _buildStabilizationModeDropdown(),
         _buildEyeScaleButton(),
-        _buildBackgroundColorPicker(),
       ],
     );
   }
@@ -1538,10 +1555,236 @@ class SettingsSheetState extends State<SettingsSheet> {
           _buildAspectRatioDropdown(),
           _buildOutputResolutionDisplay(),
         ],
+        _buildCodecDropdown(),
         _buildFramerateDropdown(framerate ?? 30),
         _buildAutoCompileVideoSwitch(),
       ],
     );
+  }
+
+  /// Whether the video output is transparent (determines codec options).
+  bool get _videoKeepsTransparency =>
+      _isTransparentBackground && _videoBackground.keepTransparent;
+
+  /// Whether the current resolution exceeds H.264 VideoToolbox limits on macOS/iOS.
+  /// h264_videotoolbox cannot encode beyond ~4096px on any dimension.
+  bool get _resolutionExceedsH264Limit {
+    if (!Platform.isMacOS && !Platform.isIOS) return false;
+    if (resolution == '8K') return true;
+    // Check custom resolutions (e.g., "7680x4320")
+    final match = RegExp(r'^(\d+)x(\d+)$').firstMatch(resolution);
+    if (match != null) {
+      final w = int.parse(match.group(1)!);
+      final h = int.parse(match.group(2)!);
+      return w > 4096 || h > 4096;
+    }
+    return false;
+  }
+
+  Widget _buildCodecDropdown() {
+    final bool isLockedTransparent = _videoKeepsTransparency;
+    final bool isLockedResolution =
+        !isLockedTransparent && _resolutionExceedsH264Limit;
+
+    VideoCodec effectiveCodec;
+    List<VideoCodec> availableCodecs;
+    Set<VideoCodec>? disabledCodecs;
+
+    if (isLockedTransparent) {
+      effectiveCodec = VideoCodec.defaultCodec(isTransparentVideo: true);
+      availableCodecs = VideoCodec.availableCodecs(isTransparentVideo: true);
+    } else if (isLockedResolution) {
+      // 8K on macOS/iOS: H.264 disabled, default to HEVC if H.264 was selected
+      availableCodecs = VideoCodec.availableCodecs(isTransparentVideo: false);
+      disabledCodecs = {VideoCodec.h264};
+      effectiveCodec =
+          _videoCodec == VideoCodec.h264 ? VideoCodec.hevc : _videoCodec;
+    } else {
+      effectiveCodec = _videoCodec;
+      availableCodecs = VideoCodec.availableCodecs(isTransparentVideo: false);
+    }
+
+    String infoText;
+    if (isLockedTransparent) {
+      infoText =
+          'Codec is locked to ${effectiveCodec.displayName} because transparent video output requires an alpha-capable codec.\n\n'
+          'To unlock all codecs, set "Video background" to a solid colour below.';
+    } else if (isLockedResolution) {
+      infoText =
+          'H.264 is unavailable at 8K resolution on macOS (hardware encoder limit).\n\n'
+          '${VideoCodec.hevc.displayName}: ${VideoCodec.hevc.description}\n\n'
+          '${VideoCodec.prores422.displayName}: ${VideoCodec.prores422.description}\n\n'
+          '${VideoCodec.prores422hq.displayName}: ${VideoCodec.prores422hq.description}';
+    } else {
+      infoText = 'Choose the video encoding format.\n\n'
+          '${VideoCodec.h264.displayName}: ${VideoCodec.h264.description}\n\n'
+          '${VideoCodec.hevc.displayName}: ${VideoCodec.hevc.description}\n\n'
+          '${VideoCodec.prores422.displayName}: ${VideoCodec.prores422.description}\n\n'
+          '${VideoCodec.prores422hq.displayName}: ${VideoCodec.prores422hq.description}';
+    }
+
+    return SettingListTile(
+      title: 'Codec',
+      showDivider: true,
+      contentWidget: isLockedTransparent
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.lock_outline,
+                  size: 16,
+                  color: AppColors.settingsTextTertiary,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  effectiveCodec.displayName,
+                  style: TextStyle(
+                    color: AppColors.settingsTextTertiary,
+                    fontSize: AppTypography.md,
+                  ),
+                ),
+              ],
+            )
+          : CustomDropdownButton<VideoCodec>(
+              value: effectiveCodec,
+              disabledValues: disabledCodecs,
+              items: availableCodecs
+                  .map((codec) => DropdownMenuItem<VideoCodec>(
+                        value: codec,
+                        child: Text(codec.displayName),
+                      ))
+                  .toList(),
+              onChanged: (VideoCodec? newCodec) async {
+                if (newCodec == null || newCodec == _videoCodec) return;
+
+                final shouldProceed =
+                    await ConfirmActionDialog.showRecompileVideoSetting(
+                  context,
+                  'video codec',
+                );
+
+                if (shouldProceed && mounted) {
+                  setState(() => _videoCodec = newCodec);
+                  await SettingsUtil.saveVideoCodec(
+                    widget.projectId.toString(),
+                    newCodec,
+                  );
+                  await widget.recompileVideoCallback();
+                }
+              },
+            ),
+      infoContent: infoText,
+      showInfo: true,
+    );
+  }
+
+  Future<void> _showVideoBackgroundColorPicker() async {
+    Color pickerColor = _hexToColor(
+      _videoBackground.solidColorHex ?? '#000000',
+    );
+    Color? selectedColor;
+
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppColors.settingsCardBackground,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Icon(
+                Icons.palette_outlined,
+                color: AppColors.settingsAccent,
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Video Background',
+                style: TextStyle(
+                  color: AppColors.settingsTextPrimary,
+                  fontSize: AppTypography.xl,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: ColorPicker(
+              pickerColor: pickerColor,
+              onColorChanged: (Color color) {
+                pickerColor = color;
+              },
+              enableAlpha: false,
+              hexInputBar: true,
+              labelTypes: const [],
+              pickerAreaHeightPercent: 0.7,
+              displayThumbColor: true,
+              portraitOnly: true,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: AppColors.settingsTextSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            GestureDetector(
+              onTap: () {
+                selectedColor = pickerColor;
+                Navigator.of(context).pop();
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.settingsAccent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Select',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: AppTypography.md,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (selectedColor != null && mounted) {
+      final newHex = _colorToHex(selectedColor!);
+      final currentHex = _videoBackground.solidColorHex ?? '#000000';
+      if (newHex != currentHex) {
+        final shouldProceed =
+            await ConfirmActionDialog.showRecompileVideoSetting(
+          context,
+          'video background colour',
+        );
+
+        if (shouldProceed && mounted) {
+          final newBg = VideoBackground.solidColor(newHex);
+          setState(() => _videoBackground = newBg);
+          await SettingsUtil.saveVideoBackground(
+            widget.projectId.toString(),
+            newBg,
+          );
+          await widget.recompileVideoCallback();
+        }
+      }
+    }
   }
 
   Widget _buildAutoCompileVideoSwitch() {
@@ -1832,7 +2075,10 @@ class SettingsSheetState extends State<SettingsSheet> {
                   ? 'settings (enabling date stamps)'
                   : 'settings (disabling date stamps)',
             );
-            if (!shouldProceed) return;
+            if (!shouldProceed) {
+              if (mounted) setState(() {}); // Revert switch visual state
+              return;
+            }
 
             setState(() => _exportDateStampEnabled = value);
             await DB.instance.setSettingByTitle(
@@ -2898,47 +3144,175 @@ class SettingsSheetState extends State<SettingsSheet> {
     );
   }
 
-  Widget _buildBackgroundColorPicker() {
-    return SettingListTile(
-      title: 'Background colour',
-      showDivider: false,
-      contentWidget: GestureDetector(
-        onTap: _showColorPickerDialog,
-        child: Container(
-          width: 44,
-          height: 32,
-          decoration: BoxDecoration(
-            color: _hexToColor(_backgroundColor),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: AppColors.settingsCardBorder,
-              width: 1,
+  bool get _isTransparentBackground =>
+      SettingsUtil.isTransparent(_backgroundColor);
+
+  Widget _buildBackgroundColourSettings() {
+    return Column(
+      children: [
+        // Background colour picker (only shown when not transparent)
+        if (!_isTransparentBackground)
+          SettingListTile(
+            title: 'Background colour',
+            showDivider: true,
+            contentWidget: GestureDetector(
+              onTap: _showColorPickerDialog,
+              child: Container(
+                width: 44,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: _hexToColor(_backgroundColor),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: AppColors.settingsCardBorder,
+                    width: 1,
+                  ),
+                ),
+                child: _backgroundColor.toUpperCase() == '#000000'
+                    ? null
+                    : Center(
+                        child: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: AppColors.textPrimary.withValues(alpha: 0.3),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+              ),
             ),
+            infoContent:
+                'The fill colour for areas not covered by the transformed image. '
+                'This appears as the border colour when photos are rotated or scaled '
+                'during stabilization.',
+            showInfo: true,
           ),
-          child: _backgroundColor.toUpperCase() == '#000000'
-              ? null
-              : Center(
-                  child: Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: AppColors.textPrimary.withValues(alpha: 0.3),
-                      shape: BoxShape.circle,
+        // Transparent toggle
+        BoolSettingSwitch(
+          title: 'Transparent background',
+          initialValue: _isTransparentBackground,
+          showDivider: _isTransparentBackground,
+          showInfo: true,
+          infoContent:
+              'Enable to export photos with a transparent background (alpha channel).\n\n'
+              'By default, videos will also be transparent, using ProRes 4444 (.mov) on Apple or VP9 (.webm) on other platforms.\n\n'
+              'You can set a separate solid colour for the video background in Video settings, which unlocks all codecs.\n\n'
+              'Note: Transparent video files are significantly larger than standard videos.',
+          onChanged: (bool value) async {
+            final newValue = value
+                ? SettingsUtil.transparentBackgroundValue
+                : SettingsUtil.fallbackBackgroundColor;
+
+            final bool shouldProceed = await Utils.showConfirmChangeDialog(
+              context,
+              "transparent background",
+            );
+
+            if (shouldProceed && mounted) {
+              setState(() => _backgroundColor = newValue);
+
+              await widget.cancelStabCallback();
+              await SettingsUtil.saveBackgroundColor(
+                widget.projectId.toString(),
+                newValue,
+              );
+              await widget.refreshSettings();
+
+              await resetStabStatusAndRestartStabilization();
+            } else if (mounted) {
+              setState(() {}); // Revert switch visual state
+            }
+          },
+        ),
+        // Video background settings (only shown when transparent background is enabled)
+        if (_isTransparentBackground) ...[
+          BoolSettingSwitch(
+            title: 'Keep video transparent',
+            initialValue: _videoBackground.keepTransparent,
+            showDivider: !_videoBackground.keepTransparent,
+            showInfo: true,
+            infoContent:
+                'When enabled, video output keeps the transparent background from your stabilized images. '
+                'This locks the codec to an alpha-capable format.\n\n'
+                'When disabled, transparent images are composited onto a solid colour at export time, '
+                'allowing you to choose any codec.',
+            onChanged: (bool value) async {
+              final newBg = value
+                  ? const VideoBackground.transparent()
+                  : VideoBackground.solidColor('#000000');
+
+              final shouldProceed =
+                  await ConfirmActionDialog.showRecompileVideoSetting(
+                context,
+                'video background',
+              );
+
+              if (shouldProceed && mounted) {
+                setState(() {
+                  _videoBackground = newBg;
+                  // Reset codec to default for the new transparency state
+                  if (value) {
+                    _videoCodec =
+                        VideoCodec.defaultCodec(isTransparentVideo: true);
+                  } else if (!VideoCodec.availableCodecs(
+                          isTransparentVideo: false)
+                      .contains(_videoCodec)) {
+                    _videoCodec =
+                        VideoCodec.defaultCodec(isTransparentVideo: false);
+                  }
+                });
+
+                await SettingsUtil.saveVideoBackground(
+                  widget.projectId.toString(),
+                  newBg,
+                );
+                await SettingsUtil.saveVideoCodec(
+                  widget.projectId.toString(),
+                  _videoCodec,
+                );
+                await widget.recompileVideoCallback();
+              } else if (mounted) {
+                setState(() {}); // Revert switch visual state
+              }
+            },
+          ),
+          if (!_videoBackground.keepTransparent)
+            SettingListTile(
+              title: 'Video background colour',
+              showDivider: false,
+              contentWidget: GestureDetector(
+                onTap: _showVideoBackgroundColorPicker,
+                child: Container(
+                  width: 44,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: _hexToColor(
+                      _videoBackground.solidColorHex ?? '#000000',
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: AppColors.settingsCardBorder,
+                      width: 1,
                     ),
                   ),
                 ),
-        ),
-      ),
-      infoContent:
-          'The fill colour for areas not covered by the transformed image. '
-          'This appears as the border colour when photos are rotated or scaled '
-          'during stabilization.',
-      showInfo: true,
+              ),
+              infoContent:
+                  'The solid colour composited behind your transparent images when exporting video.',
+              showInfo: true,
+            ),
+        ],
+      ],
     );
   }
 
   /// Converts a hex string like '#FF0000' to a Flutter Color.
+  /// Returns black for transparent values (used as fallback).
   Color _hexToColor(String hex) {
+    if (SettingsUtil.isTransparent(hex)) {
+      return Colors.black;
+    }
     hex = hex.replaceFirst('#', '');
     if (hex.length == 6) {
       hex = 'FF$hex'; // Add full opacity

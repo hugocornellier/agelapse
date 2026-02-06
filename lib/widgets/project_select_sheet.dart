@@ -68,10 +68,15 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
     );
     final String activeProjectOrientation =
         await SettingsUtil.loadProjectOrientation(projectId.toString());
+    final String bgColor = await SettingsUtil.loadBackgroundColor(
+      projectId.toString(),
+    );
+    final bool isTransparent = SettingsUtil.isTransparent(bgColor);
 
     final String videoOutputPath = await DirUtils.getVideoOutputPath(
       projectId,
       activeProjectOrientation,
+      isTransparent: isTransparent,
     );
     final String gifPath = videoOutputPath.replaceAll(
       path.extension(videoOutputPath),

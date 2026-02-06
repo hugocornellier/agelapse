@@ -1,5 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:agelapse/models/video_background.dart';
+import 'package:agelapse/models/video_codec.dart';
 import 'package:agelapse/utils/settings_utils.dart';
 import 'package:agelapse/utils/date_stamp_utils.dart';
 
@@ -182,6 +184,51 @@ void main() {
           equals(DateStampUtils.defaultFont),
         );
       });
+    });
+  });
+
+  group('SettingsUtil Video Codec/Background Fallbacks', () {
+    test('fallbackVideoCodec is h264', () {
+      expect(SettingsUtil.fallbackVideoCodec, equals('h264'));
+    });
+
+    test('fallbackVideoBackground is TRANSPARENT', () {
+      expect(SettingsUtil.fallbackVideoBackground, equals('TRANSPARENT'));
+    });
+
+    test('fallbackVideoCodec parses to VideoCodec.h264', () {
+      expect(
+        VideoCodec.fromString(SettingsUtil.fallbackVideoCodec),
+        equals(VideoCodec.h264),
+      );
+    });
+
+    test('fallbackVideoBackground parses to transparent VideoBackground', () {
+      final bg = VideoBackground.fromString(
+        SettingsUtil.fallbackVideoBackground,
+      );
+      expect(bg.keepTransparent, isTrue);
+      expect(bg.requiresAlphaCodec, isTrue);
+    });
+
+    test('loadVideoCodec returns Future<VideoCodec>', () async {
+      final result = SettingsUtil.loadVideoCodec('1');
+      expect(result, isA<Future<VideoCodec>>());
+      try {
+        await result;
+      } on MissingPluginException {
+        // Expected in test environment without path_provider
+      }
+    });
+
+    test('loadVideoBackground returns Future<VideoBackground>', () async {
+      final result = SettingsUtil.loadVideoBackground('1');
+      expect(result, isA<Future<VideoBackground>>());
+      try {
+        await result;
+      } on MissingPluginException {
+        // Expected in test environment without path_provider
+      }
     });
   });
 

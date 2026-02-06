@@ -22,7 +22,7 @@ dependencies:
       url: https://github.com/hugocornellier/desktop_drop_custom.git
   device_info_plus: ^12.3.0
   exif_reader: ^4.1.0
-  face_detection_tflite: ^4.4.1
+  face_detection_tflite: ^4.5.0
   ffmpeg_kit_flutter_new:
     git:
       url: https://github.com/hugocornellier/ffmpeg_kit_flutter.git

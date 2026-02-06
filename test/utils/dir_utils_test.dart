@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:agelapse/models/video_codec.dart';
 import 'package:agelapse/utils/dir_utils.dart';
 
 /// Unit tests for DirUtils.
@@ -76,6 +77,57 @@ void main() {
       );
       expect(DirUtils.failureDirname, DirUtils.failureDirname.toLowerCase());
       expect(DirUtils.testDirname, DirUtils.testDirname.toLowerCase());
+    });
+  });
+
+  group('getVideoExtension', () {
+    test('returns .mp4 for non-transparent without codec', () {
+      expect(
+        DirUtils.getVideoExtension(isTransparent: false),
+        '.mp4',
+      );
+    });
+
+    test('returns codec container extension when codec is provided', () {
+      expect(
+        DirUtils.getVideoExtension(codec: VideoCodec.h264),
+        '.mp4',
+      );
+      expect(
+        DirUtils.getVideoExtension(codec: VideoCodec.hevc),
+        '.mp4',
+      );
+      expect(
+        DirUtils.getVideoExtension(codec: VideoCodec.prores422),
+        '.mov',
+      );
+      expect(
+        DirUtils.getVideoExtension(codec: VideoCodec.prores422hq),
+        '.mov',
+      );
+      expect(
+        DirUtils.getVideoExtension(codec: VideoCodec.prores4444),
+        '.mov',
+      );
+      expect(
+        DirUtils.getVideoExtension(codec: VideoCodec.vp9),
+        '.webm',
+      );
+    });
+
+    test('codec parameter overrides isTransparent flag', () {
+      // Even though isTransparent is true, codec takes precedence
+      expect(
+        DirUtils.getVideoExtension(isTransparent: true, codec: VideoCodec.h264),
+        '.mp4',
+      );
+    });
+
+    test('all extensions start with a dot', () {
+      for (final codec in VideoCodec.values) {
+        final ext = DirUtils.getVideoExtension(codec: codec);
+        expect(ext, startsWith('.'));
+      }
     });
   });
 

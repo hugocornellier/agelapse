@@ -15,6 +15,8 @@ import 'stabilization_benchmark.dart';
 import 'stabilization_progress.dart';
 import 'stabilization_settings.dart';
 import 'stabilization_state.dart';
+import '../models/video_background.dart';
+import '../models/video_codec.dart';
 import '../utils/dir_utils.dart';
 import '../utils/settings_utils.dart';
 import '../utils/stabilizer_utils/stabilizer_utils.dart';
@@ -461,8 +463,24 @@ class StabilizationService {
           .getStabilizedPhotoCountByProjectID(projectId, orientation);
 
       // Check if video FILE actually exists on disk (not just DB record)
-      final videoPath =
-          await DirUtils.getVideoOutputPath(projectId, orientation);
+      // Load settings fresh from DB to get correct file extension
+      final projectIdStr = projectId.toString();
+      final bgColor = await SettingsUtil.loadBackgroundColor(projectIdStr);
+      final isTransparent = SettingsUtil.isTransparent(bgColor);
+      final videoBg = isTransparent
+          ? await SettingsUtil.loadVideoBackground(projectIdStr)
+          : VideoBackground.solidColor(bgColor);
+      final videoHasAlpha = isTransparent && videoBg.keepTransparent;
+      final userCodec = await SettingsUtil.loadVideoCodec(projectIdStr);
+      final effectiveCodec = videoHasAlpha
+          ? VideoCodec.defaultCodec(isTransparentVideo: true)
+          : userCodec;
+
+      final videoPath = await DirUtils.getVideoOutputPath(
+        projectId,
+        orientation,
+        codec: effectiveCodec,
+      );
       final videoFileExists = await File(videoPath).exists();
 
       final videoIsNull = newestVideo == null || !videoFileExists;
@@ -481,7 +499,7 @@ class StabilizationService {
         'newestVideo=${newestVideo != null}, videoFileExists=$videoFileExists, '
         'videoIsNull=$videoIsNull, settingsChanged=$settingsHaveChanged, '
         'newVideoNeeded=$newVideoNeeded, stabPhotoCount=$stabPhotoCount, '
-        'result=$result',
+        'isTransparent=$isTransparent, codec=${effectiveCodec.name}, result=$result',
       );
 
       return result;
@@ -512,8 +530,24 @@ class StabilizationService {
           .getStabilizedPhotoCountByProjectID(projectId, orientation);
 
       // Check if video FILE actually exists on disk (not just DB record)
-      final videoPath =
-          await DirUtils.getVideoOutputPath(projectId, orientation);
+      // Load settings fresh from DB to get correct file extension
+      final projectIdStr = projectId.toString();
+      final bgColor = await SettingsUtil.loadBackgroundColor(projectIdStr);
+      final isTransparent = SettingsUtil.isTransparent(bgColor);
+      final videoBg = isTransparent
+          ? await SettingsUtil.loadVideoBackground(projectIdStr)
+          : VideoBackground.solidColor(bgColor);
+      final videoHasAlpha = isTransparent && videoBg.keepTransparent;
+      final userCodec = await SettingsUtil.loadVideoCodec(projectIdStr);
+      final effectiveCodec = videoHasAlpha
+          ? VideoCodec.defaultCodec(isTransparentVideo: true)
+          : userCodec;
+
+      final videoPath = await DirUtils.getVideoOutputPath(
+        projectId,
+        orientation,
+        codec: effectiveCodec,
+      );
       final videoFileExists = await File(videoPath).exists();
 
       final videoIsNull = newestVideo == null || !videoFileExists;

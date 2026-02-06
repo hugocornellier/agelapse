@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:path/path.dart' show join;
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
+import '../models/video_codec.dart';
 import '../utils/settings_utils.dart';
 import '../utils/utils.dart';
 
@@ -62,16 +63,40 @@ class DirUtils {
         '${path.basenameWithoutExtension(rawPhotoPath)}.jpg',
       );
 
+  /// Returns the video output extension based on codec or transparency+platform.
+  ///
+  /// When [codec] is provided, uses the codec's container extension.
+  /// Otherwise falls back to legacy behavior based on transparency and platform:
+  /// - Transparent on Apple: .mov (ProRes 4444)
+  /// - Transparent on other platforms: .webm (VP9)
+  /// - Non-transparent: .mp4 (H.264/H.265)
+  static String getVideoExtension({
+    bool isTransparent = false,
+    VideoCodec? codec,
+  }) {
+    if (codec != null) return codec.containerExtension;
+    if (!isTransparent) return '.mp4';
+    if (Platform.isMacOS || Platform.isIOS) return '.mov';
+    return '.webm';
+  }
+
   static Future<String> getVideoOutputPath(
     int projectId,
-    String projectOrientation,
-  ) async =>
-      join(
-        await getProjectDirPath(projectId),
-        'videos',
-        projectOrientation,
-        'agelapse.mp4',
-      );
+    String projectOrientation, {
+    bool isTransparent = false,
+    VideoCodec? codec,
+  }) async {
+    final extension = getVideoExtension(
+      isTransparent: isTransparent,
+      codec: codec,
+    );
+    return join(
+      await getProjectDirPath(projectId),
+      'videos',
+      projectOrientation,
+      'agelapse$extension',
+    );
+  }
 
   static Future<String> getWatermarkFilePath(int projectId) async =>
       join(await getWatermarkDirPath(projectId), 'watermark.png');

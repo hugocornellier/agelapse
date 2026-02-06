@@ -13,7 +13,9 @@ class StabilizationSettings {
   final double eyeOffsetX;
   final double eyeOffsetY;
   final String projectType;
-  final List<int> backgroundColorBGR; // [B, G, R] for OpenCV Scalar
+
+  /// [B, G, R] for OpenCV Scalar, or null for transparent background
+  final List<int>? backgroundColorBGR;
 
   const StabilizationSettings({
     required this.projectOrientation,
@@ -26,6 +28,9 @@ class StabilizationSettings {
     required this.projectType,
     required this.backgroundColorBGR,
   });
+
+  /// Returns true if background should be transparent (alpha channel)
+  bool get isTransparentBackground => backgroundColorBGR == null;
 
   /// Load all settings in parallel (single DB round-trip batch)
   static Future<StabilizationSettings> load(int projectId) async {
@@ -58,8 +63,13 @@ class StabilizationSettings {
     );
   }
 
-  /// Converts a hex string like '#FF0000' (red) to BGR list [0, 0, 255]
-  static List<int> _hexToBGR(String hex) {
+  /// Converts a hex string like '#FF0000' (red) to BGR list [0, 0, 255].
+  /// Returns null for transparent background.
+  static List<int>? _hexToBGR(String hex) {
+    // Handle transparent background
+    if (SettingsUtil.isTransparent(hex)) {
+      return null;
+    }
     hex = hex.replaceFirst('#', '');
     if (hex.length == 6) {
       final r = int.parse(hex.substring(0, 2), radix: 16);

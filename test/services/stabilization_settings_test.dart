@@ -60,9 +60,9 @@ void main() {
           backgroundColorBGR: [0, 0, 255],
         );
 
-        expect(settings.backgroundColorBGR[0], equals(0)); // B
-        expect(settings.backgroundColorBGR[1], equals(0)); // G
-        expect(settings.backgroundColorBGR[2], equals(255)); // R
+        expect(settings.backgroundColorBGR![0], equals(0)); // B
+        expect(settings.backgroundColorBGR![1], equals(0)); // G
+        expect(settings.backgroundColorBGR![2], equals(255)); // R
       });
 
       test('stores negative eye offsets', () {
@@ -237,7 +237,7 @@ void main() {
           projectType: 'face',
           backgroundColorBGR: [0, 0, 255], // BGR: B=0, G=0, R=255
         );
-        expect(settings.backgroundColorBGR[2], equals(255)); // R channel
+        expect(settings.backgroundColorBGR![2], equals(255)); // R channel
       });
 
       test('pure blue in BGR is [255, 0, 0]', () {
@@ -252,7 +252,7 @@ void main() {
           projectType: 'face',
           backgroundColorBGR: [255, 0, 0], // BGR: B=255, G=0, R=0
         );
-        expect(settings.backgroundColorBGR[0], equals(255)); // B channel
+        expect(settings.backgroundColorBGR![0], equals(255)); // B channel
       });
     });
   });

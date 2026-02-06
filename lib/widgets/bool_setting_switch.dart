@@ -33,6 +33,12 @@ class BoolSettingSwitchState extends State<BoolSettingSwitch> {
     currentValue = widget.initialValue;
   }
 
+  @override
+  void didUpdateWidget(BoolSettingSwitch oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    currentValue = widget.initialValue;
+  }
+
   void _handleChanged(bool newValue) {
     setState(() {
       currentValue = newValue;

@@ -250,7 +250,11 @@ class OutputImageLoader {
   }
 
   /// Converts a hex string like '#FF0000' to a Flutter Color.
+  /// Returns transparent for the special '#TRANSPARENT' value.
   Color _hexToColor(String hex) {
+    if (SettingsUtil.isTransparent(hex)) {
+      return const Color(0x00000000); // Fully transparent
+    }
     hex = hex.replaceFirst('#', '');
     if (hex.length == 6) {
       hex = 'FF$hex'; // Add full opacity

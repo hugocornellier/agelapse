@@ -36,13 +36,15 @@ class ExportNamingUtils {
   }
 
   /// Generates export filename for video files.
+  /// [videoExtension] overrides the default 'mp4' extension (e.g., 'mov', 'webm').
   static String generateVideoFilename({
     required String projectName,
+    String videoExtension = 'mp4',
     DateTime? timestamp,
   }) {
     return generateExportFilename(
       projectName: projectName,
-      extension: 'mp4',
+      extension: videoExtension,
       timestamp: timestamp,
     );
   }

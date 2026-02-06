@@ -10,6 +10,7 @@ import 'package:video_player/video_player.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:path/path.dart' as path;
 
+import '../models/video_codec.dart';
 import '../services/database_helper.dart';
 import '../services/settings_cache.dart';
 import '../styles/styles.dart';
@@ -98,6 +99,7 @@ class CreatePageState extends State<CreatePage>
   // Video metadata for info display
   String _projectOrientation = 'portrait';
   String _stabilizationMode = 'face';
+  VideoCodec _effectiveCodec = VideoCodec.h264;
 
   @override
   void initState() {
@@ -243,9 +245,11 @@ class CreatePageState extends State<CreatePage>
     final String projectOrientation = await SettingsUtil.loadProjectOrientation(
       widget.projectId.toString(),
     );
+    final VideoCodec codec = await _loadEffectiveCodec();
     final String videoPath = await DirUtils.getVideoOutputPath(
       widget.projectId,
       projectOrientation,
+      codec: codec,
     );
     final File videoFile = File(videoPath);
 
@@ -324,6 +328,23 @@ class CreatePageState extends State<CreatePage>
     setupVideoPlayer();
   }
 
+  /// Resolves the effective video codec for the current project settings.
+  Future<VideoCodec> _loadEffectiveCodec() async {
+    final projectIdStr = widget.projectId.toString();
+    final bgColor = await SettingsUtil.loadBackgroundColor(projectIdStr);
+    final isTransparent = SettingsUtil.isTransparent(bgColor);
+
+    if (!isTransparent) {
+      return SettingsUtil.loadVideoCodec(projectIdStr);
+    }
+
+    final videoBg = await SettingsUtil.loadVideoBackground(projectIdStr);
+    if (videoBg.keepTransparent) {
+      return VideoCodec.defaultCodec(isTransparentVideo: true);
+    }
+    return SettingsUtil.loadVideoCodec(projectIdStr);
+  }
+
   /// Checks if a video file exists and is valid.
   /// Previously this would create videos directly, but that bypassed progress
   /// tracking. Now video creation is handled exclusively by the stabilization
@@ -332,9 +353,11 @@ class CreatePageState extends State<CreatePage>
     final String projectOrientation = await SettingsUtil.loadProjectOrientation(
       widget.projectId.toString(),
     );
+    final VideoCodec codec = await _loadEffectiveCodec();
     final String videoPath = await DirUtils.getVideoOutputPath(
       widget.projectId,
       projectOrientation,
+      codec: codec,
     );
     final File outFile = File(videoPath);
 
@@ -355,9 +378,11 @@ class CreatePageState extends State<CreatePage>
     String projectOrientation = await SettingsUtil.loadProjectOrientation(
       widget.projectId.toString(),
     );
+    final VideoCodec codec = await _loadEffectiveCodec();
     final String videoPath = await DirUtils.getVideoOutputPath(
       widget.projectId,
       projectOrientation,
+      codec: codec,
     );
     final File videoFile = File(videoPath);
 
@@ -377,6 +402,7 @@ class CreatePageState extends State<CreatePage>
     // Load additional metadata for the info section
     _projectOrientation = projectOrientation;
     _stabilizationMode = await SettingsUtil.loadStabilizationMode();
+    _effectiveCodec = codec;
 
     // Don't hide nav bar - keep the standard page layout
     playVideo();
@@ -918,6 +944,7 @@ class CreatePageState extends State<CreatePage>
   Widget _buildVideoInfoSection({bool compact = false}) {
     final infoChips = [
       _VideoInfoChip(label: 'Resolution', value: resolution),
+      _VideoInfoChip(label: 'Codec', value: _effectiveCodec.displayName),
       _VideoInfoChip(label: 'Framerate', value: '${videoFps ?? 30} FPS'),
       _VideoInfoChip(label: 'Aspect', value: aspectRatio),
       _VideoInfoChip(
@@ -1110,6 +1137,7 @@ class CreatePageState extends State<CreatePage>
   Widget _buildCompactInfoButton() {
     final infoChips = [
       _VideoInfoChip(label: 'Resolution', value: resolution),
+      _VideoInfoChip(label: 'Codec', value: _effectiveCodec.displayName),
       _VideoInfoChip(label: 'Framerate', value: '${videoFps ?? 30} FPS'),
       _VideoInfoChip(label: 'Aspect', value: aspectRatio),
       _VideoInfoChip(
@@ -1387,21 +1415,26 @@ class CreatePageState extends State<CreatePage>
         return;
       }
 
+      final VideoCodec codec = await _loadEffectiveCodec();
+      final String videoExt = codec.containerExtension.replaceFirst('.', '');
       final String suggestedName = ExportNamingUtils.generateVideoFilename(
         projectName: widget.projectName,
+        videoExtension: videoExt,
       );
+
+      final String typeLabel = '${codec.displayName} video';
 
       final FileSaveLocation? location = await getSaveLocation(
         suggestedName: suggestedName,
-        acceptedTypeGroups: const [
-          XTypeGroup(label: 'MP4 video', extensions: ['mp4']),
+        acceptedTypeGroups: [
+          XTypeGroup(label: typeLabel, extensions: [videoExt]),
         ],
       );
       if (location == null) return;
 
       String targetPath = location.path;
-      if (path.extension(targetPath).toLowerCase() != '.mp4') {
-        targetPath = '$targetPath.mp4';
+      if (path.extension(targetPath).toLowerCase() != '.$videoExt') {
+        targetPath = '$targetPath.$videoExt';
       }
 
       final File dest = File(targetPath);
@@ -1430,9 +1463,11 @@ class CreatePageState extends State<CreatePage>
     final String projectOrientation = await SettingsUtil.loadProjectOrientation(
       widget.projectId.toString(),
     );
+    final VideoCodec codec = await _loadEffectiveCodec();
     final String videoOutputPath = await DirUtils.getVideoOutputPath(
       widget.projectId,
       projectOrientation,
+      codec: codec,
     );
 
     if (Platform.isAndroid || Platform.isIOS) {

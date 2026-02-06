@@ -297,6 +297,27 @@ class IsolatePool {
         thumb.dispose();
         return success ? jpgBytes : null;
 
+      case 'thumbnailFromPngKeepAlpha':
+        final inputAlpha = params['bytes'] as Uint8List;
+        final matAlpha = cv.imdecode(inputAlpha, cv.IMREAD_UNCHANGED);
+        if (matAlpha.isEmpty) {
+          matAlpha.dispose();
+          return null;
+        }
+
+        final aspectRatioAlpha = matAlpha.rows / matAlpha.cols;
+        final heightAlpha = (800 * aspectRatioAlpha).round();
+        final thumbAlpha = cv.resize(
+          matAlpha,
+          (800, heightAlpha),
+          interpolation: cv.INTER_CUBIC,
+        );
+        matAlpha.dispose();
+
+        final (successAlpha, pngBytesAlpha) = cv.imencode('.png', thumbAlpha);
+        thumbAlpha.dispose();
+        return successAlpha ? pngBytesAlpha : null;
+
       case 'getImageDimensions':
         final bytes = params['bytes'] as Uint8List;
         final mat = cv.imdecode(bytes, cv.IMREAD_COLOR);
@@ -318,6 +339,8 @@ class IsolatePool {
         final canvasHeight = params['canvasHeight'] as int;
         final srcId = params['srcId'] as String?;
         final backgroundColorBGR = params['backgroundColorBGR'] as List<int>?;
+        // null backgroundColorBGR means transparent background
+        final isTransparent = backgroundColorBGR == null;
 
         // Use cached source Mat if available and matching, otherwise decode
         cv.Mat srcMat;
@@ -344,8 +367,18 @@ class IsolatePool {
           }
         }
 
-        final iw = srcMat.cols;
-        final ih = srcMat.rows;
+        // For transparent backgrounds, convert to BGRA (4 channels)
+        cv.Mat srcMatForWarp;
+        bool needsDisposeSrcForWarp = false;
+        if (isTransparent) {
+          srcMatForWarp = cv.cvtColor(srcMat, cv.COLOR_BGR2BGRA);
+          needsDisposeSrcForWarp = true;
+        } else {
+          srcMatForWarp = srcMat;
+        }
+
+        final iw = srcMatForWarp.cols;
+        final ih = srcMatForWarp.rows;
 
         final rotMat = cv.getRotationMatrix2D(
           cv.Point2f(iw / 2.0, ih / 2.0),
@@ -358,18 +391,24 @@ class IsolatePool {
         rotMat.set<double>(0, 2, rotMat.at<double>(0, 2) + offsetX);
         rotMat.set<double>(1, 2, rotMat.at<double>(1, 2) + offsetY);
 
-        // Create border color scalar (default to black)
-        final borderValue = backgroundColorBGR != null
-            ? cv.Scalar(
-                backgroundColorBGR[0].toDouble(),
-                backgroundColorBGR[1].toDouble(),
-                backgroundColorBGR[2].toDouble(),
-                255.0,
-              )
-            : cv.Scalar.black;
+        // Create border color scalar
+        // For transparent: BGRA with alpha=0
+        // For solid color: BGR with alpha=255
+        final cv.Scalar borderValue;
+        if (isTransparent) {
+          borderValue = cv.Scalar(0.0, 0.0, 0.0, 0.0); // Fully transparent
+        } else {
+          // backgroundColorBGR is non-null when not transparent (promoted by isTransparent check)
+          borderValue = cv.Scalar(
+            backgroundColorBGR[0].toDouble(),
+            backgroundColorBGR[1].toDouble(),
+            backgroundColorBGR[2].toDouble(),
+            255.0,
+          );
+        }
 
         final dst = cv.warpAffine(
-          srcMat,
+          srcMatForWarp,
           rotMat,
           (canvasWidth, canvasHeight),
           flags: cv.INTER_CUBIC,
@@ -381,6 +420,9 @@ class IsolatePool {
 
         rotMat.dispose();
         dst.dispose();
+        if (needsDisposeSrcForWarp) {
+          srcMatForWarp.dispose();
+        }
         // Only dispose srcMat if we didn't cache it and didn't use cache
         if (!shouldCache && !usedCache) {
           srcMat.dispose();

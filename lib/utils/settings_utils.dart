@@ -1,4 +1,6 @@
 import 'dart:io';
+import '../models/video_background.dart';
+import '../models/video_codec.dart';
 import '../services/custom_font_manager.dart';
 import '../services/log_service.dart';
 import '../utils/utils.dart';
@@ -456,14 +458,25 @@ class SettingsUtil {
   /// Default background color for stabilization (black)
   static const String fallbackBackgroundColor = '#000000';
 
+  /// Special value indicating transparent background
+  static const String transparentBackgroundValue = '#TRANSPARENT';
+
+  /// Check if the given color value represents a transparent background
+  static bool isTransparent(String hexColor) =>
+      hexColor.toUpperCase() == transparentBackgroundValue;
+
   /// Load background color setting (per-project).
-  /// Returns hex string like '#FF0000' for red.
+  /// Returns hex string like '#FF0000' for red, or '#TRANSPARENT' for transparent.
   static Future<String> loadBackgroundColor(String projectId) async {
     try {
       final value = await DB.instance.getSettingValueByTitle(
         'background_color',
         projectId,
       );
+      // Check for transparent value
+      if (isTransparent(value)) {
+        return transparentBackgroundValue;
+      }
       // Validate hex format
       if (value.startsWith('#') && (value.length == 7 || value.length == 9)) {
         return value.toUpperCase();
@@ -483,6 +496,67 @@ class SettingsUtil {
     await DB.instance.setSettingByTitle(
       'background_color',
       hexColor.toUpperCase(),
+      projectId,
+    );
+  }
+
+  // ==================== Video Codec ====================
+
+  /// Default codec setting value.
+  static const String fallbackVideoCodec = 'h264';
+
+  /// Load video codec setting (per-project).
+  static Future<VideoCodec> loadVideoCodec(String projectId) async {
+    try {
+      final value = await DB.instance.getSettingValueByTitle(
+        'video_codec',
+        projectId,
+      );
+      return VideoCodec.fromString(value);
+    } catch (e) {
+      return VideoCodec.h264;
+    }
+  }
+
+  /// Save video codec setting (per-project).
+  static Future<void> saveVideoCodec(
+    String projectId,
+    VideoCodec codec,
+  ) async {
+    await DB.instance.setSettingByTitle(
+      'video_codec',
+      codec.name,
+      projectId,
+    );
+  }
+
+  // ==================== Video Background ====================
+
+  /// Default video background setting value.
+  static const String fallbackVideoBackground = 'TRANSPARENT';
+
+  /// Load video background setting (per-project).
+  /// Only relevant when stabilized PNGs have alpha channel.
+  static Future<VideoBackground> loadVideoBackground(String projectId) async {
+    try {
+      final value = await DB.instance.getSettingValueByTitle(
+        'video_background',
+        projectId,
+      );
+      return VideoBackground.fromString(value);
+    } catch (e) {
+      return const VideoBackground.transparent();
+    }
+  }
+
+  /// Save video background setting (per-project).
+  static Future<void> saveVideoBackground(
+    String projectId,
+    VideoBackground videoBg,
+  ) async {
+    await DB.instance.setSettingByTitle(
+      'video_background',
+      videoBg.toDbValue(),
       projectId,
     );
   }

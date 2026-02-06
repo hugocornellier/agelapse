@@ -346,6 +346,9 @@ class DB {
     'export_date_stamp_opacity': '1.0',
     'gallery_date_stamp_font': 'Inter',
     'export_date_stamp_font': '_same_as_gallery',
+    // Video codec and background
+    'video_codec': 'h264',
+    'video_background': 'TRANSPARENT',
     // Camera timer
     'camera_timer_duration': '0',
   };

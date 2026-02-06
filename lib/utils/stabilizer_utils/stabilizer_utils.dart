@@ -691,6 +691,38 @@ class StabUtils {
           sendPort.send('Error thumbnailFromPng: $e');
         }
         break;
+      case 'thumbnailFromPngKeepAlpha':
+        // Create thumbnail from PNG, preserving alpha channel
+        try {
+          final input = bytes as Uint8List;
+          final mat = cv.imdecode(input, cv.IMREAD_UNCHANGED);
+          if (mat.isEmpty) {
+            mat.dispose();
+            sendPort.send('Error thumbnailFromPngKeepAlpha: empty mat');
+            return;
+          }
+
+          // Resize to 800px width with high-quality interpolation
+          final aspectRatio = mat.rows / mat.cols;
+          final height = (800 * aspectRatio).round();
+          final thumb = cv.resize(
+            mat,
+            (800, height),
+            interpolation: cv.INTER_CUBIC,
+          );
+          mat.dispose();
+
+          final (success, pngBytes) = cv.imencode('.png', thumb);
+          thumb.dispose();
+          sendPort.send(
+            success
+                ? pngBytes
+                : 'Error thumbnailFromPngKeepAlpha: encode failed',
+          );
+        } catch (e) {
+          sendPort.send('Error thumbnailFromPngKeepAlpha: $e');
+        }
+        break;
     }
   }
 
@@ -835,6 +867,46 @@ class StabUtils {
       'sendPort': receivePort.sendPort,
       'bytes': pngBytes,
       'operation': 'thumbnailFromPng',
+    };
+
+    final isolate = await Isolate.spawn(
+      performFileOperationInBackground,
+      params,
+    );
+    IsolateManager.instance.register(isolate);
+
+    try {
+      final result = await receivePort.first as Uint8List;
+      return result;
+    } finally {
+      receivePort.close();
+      IsolateManager.instance.unregister(isolate);
+      isolate.kill(priority: Isolate.immediate);
+    }
+  }
+
+  /// Create thumbnail PNG from PNG bytes, preserving alpha channel.
+  /// Uses persistent isolate pool to avoid spawn/kill overhead.
+  static Future<Uint8List> thumbnailPngFromPngBytes(
+    Uint8List pngBytes, {
+    CancellationToken? token,
+  }) async {
+    token?.throwIfCancelled();
+
+    if (IsolatePool.instance.isInitialized) {
+      final result = await IsolatePool.instance.execute<Uint8List>(
+        'thumbnailFromPngKeepAlpha',
+        {'bytes': pngBytes},
+      );
+      return result ?? pngBytes; // Fallback to original if thumbnail fails
+    }
+
+    // Fallback to individual isolate if pool not initialized
+    ReceivePort receivePort = ReceivePort();
+    var params = {
+      'sendPort': receivePort.sendPort,
+      'bytes': pngBytes,
+      'operation': 'thumbnailFromPngKeepAlpha',
     };
 
     final isolate = await Isolate.spawn(
@@ -1247,7 +1319,8 @@ class StabUtils {
   /// Generate stabilized image bytes using OpenCV warpAffine (desktop only)
   ///
   /// [backgroundColorBGR] is an optional list of [B, G, R] values for the
-  /// background fill color. Defaults to black if not provided.
+  /// background fill color. Null means transparent background (BGRA output).
+  /// Defaults to black if not provided and not transparent.
   static Uint8List? generateStabilizedImageBytesCV(
     cv.Mat srcMat,
     double rotationDegrees,
@@ -1257,9 +1330,20 @@ class StabUtils {
     int canvasWidth,
     int canvasHeight, {
     List<int>? backgroundColorBGR,
+    bool isTransparent = false,
   }) {
-    final int iw = srcMat.cols;
-    final int ih = srcMat.rows;
+    // For transparent backgrounds, convert to BGRA (4 channels)
+    cv.Mat srcMatForWarp;
+    bool needsDispose = false;
+    if (isTransparent) {
+      srcMatForWarp = cv.cvtColor(srcMat, cv.COLOR_BGR2BGRA);
+      needsDispose = true;
+    } else {
+      srcMatForWarp = srcMat;
+    }
+
+    final int iw = srcMatForWarp.cols;
+    final int ih = srcMatForWarp.rows;
 
     // Create rotation matrix centered at image center
     // Negate angle to match Flutter Canvas rotation convention
@@ -1275,19 +1359,26 @@ class StabUtils {
     rotMat.set<double>(0, 2, rotMat.at<double>(0, 2) + offsetX);
     rotMat.set<double>(1, 2, rotMat.at<double>(1, 2) + offsetY);
 
-    // Create border color scalar (default to black)
-    final borderValue = backgroundColorBGR != null
-        ? cv.Scalar(
-            backgroundColorBGR[0].toDouble(), // B
-            backgroundColorBGR[1].toDouble(), // G
-            backgroundColorBGR[2].toDouble(), // R
-            255.0, // A
-          )
-        : cv.Scalar.black;
+    // Create border color scalar
+    // For transparent: BGRA with alpha=0
+    // For solid color: BGR with alpha=255
+    final cv.Scalar borderValue;
+    if (isTransparent) {
+      borderValue = cv.Scalar(0.0, 0.0, 0.0, 0.0); // Fully transparent
+    } else if (backgroundColorBGR != null) {
+      borderValue = cv.Scalar(
+        backgroundColorBGR[0].toDouble(), // B
+        backgroundColorBGR[1].toDouble(), // G
+        backgroundColorBGR[2].toDouble(), // R
+        255.0, // A
+      );
+    } else {
+      borderValue = cv.Scalar.black;
+    }
 
     // Apply affine transformation with cubic interpolation for smooth edges
     final cv.Mat dst = cv.warpAffine(
-      srcMat,
+      srcMatForWarp,
       rotMat,
       (canvasWidth, canvasHeight),
       flags: cv.INTER_CUBIC,
@@ -1295,12 +1386,15 @@ class StabUtils {
       borderValue: borderValue,
     );
 
-    // Encode to PNG
+    // Encode to PNG (preserves alpha channel if present)
     final (bool success, Uint8List bytes) = cv.imencode('.png', dst);
 
     // Cleanup
     rotMat.dispose();
     dst.dispose();
+    if (needsDispose) {
+      srcMatForWarp.dispose();
+    }
 
     return success ? bytes : null;
   }
@@ -1317,6 +1411,8 @@ class StabUtils {
     final int canvasHeight = params['canvasHeight'];
     final List<int>? backgroundColorBGR =
         params['backgroundColorBGR'] as List<int>?;
+    // null backgroundColorBGR means transparent background
+    final bool isTransparent = backgroundColorBGR == null;
 
     try {
       final cv.Mat srcMat = cv.imdecode(srcBytes, cv.IMREAD_COLOR);
@@ -1326,8 +1422,18 @@ class StabUtils {
         return;
       }
 
-      final int iw = srcMat.cols;
-      final int ih = srcMat.rows;
+      // For transparent backgrounds, convert to BGRA (4 channels)
+      cv.Mat srcMatForWarp;
+      bool needsDisposeSrcForWarp = false;
+      if (isTransparent) {
+        srcMatForWarp = cv.cvtColor(srcMat, cv.COLOR_BGR2BGRA);
+        needsDisposeSrcForWarp = true;
+      } else {
+        srcMatForWarp = srcMat;
+      }
+
+      final int iw = srcMatForWarp.cols;
+      final int ih = srcMatForWarp.rows;
 
       final cv.Mat rotMat = cv.getRotationMatrix2D(
         cv.Point2f(iw / 2.0, ih / 2.0),
@@ -1340,18 +1446,22 @@ class StabUtils {
       rotMat.set<double>(0, 2, rotMat.at<double>(0, 2) + offsetX);
       rotMat.set<double>(1, 2, rotMat.at<double>(1, 2) + offsetY);
 
-      // Create border color scalar (default to black)
-      final borderValue = backgroundColorBGR != null
-          ? cv.Scalar(
-              backgroundColorBGR[0].toDouble(),
-              backgroundColorBGR[1].toDouble(),
-              backgroundColorBGR[2].toDouble(),
-              255.0,
-            )
-          : cv.Scalar.black;
+      // Create border color scalar
+      final cv.Scalar borderValue;
+      if (isTransparent) {
+        borderValue = cv.Scalar(0.0, 0.0, 0.0, 0.0); // Fully transparent
+      } else {
+        // backgroundColorBGR is non-null when not transparent (promoted by isTransparent check)
+        borderValue = cv.Scalar(
+          backgroundColorBGR[0].toDouble(),
+          backgroundColorBGR[1].toDouble(),
+          backgroundColorBGR[2].toDouble(),
+          255.0,
+        );
+      }
 
       final cv.Mat dst = cv.warpAffine(
-        srcMat,
+        srcMatForWarp,
         rotMat,
         (canvasWidth, canvasHeight),
         flags: cv.INTER_CUBIC,
@@ -1363,6 +1473,9 @@ class StabUtils {
 
       rotMat.dispose();
       dst.dispose();
+      if (needsDisposeSrcForWarp) {
+        srcMatForWarp.dispose();
+      }
       srcMat.dispose();
 
       sendPort.send(success ? bytes : null);

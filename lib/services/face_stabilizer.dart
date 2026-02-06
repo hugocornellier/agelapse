@@ -18,6 +18,7 @@ import 'package:path/path.dart' as path;
 import '../utils/camera_utils.dart';
 import '../utils/dir_utils.dart';
 import '../utils/heic_utils.dart';
+import '../utils/settings_utils.dart';
 import '../utils/stabilizer_utils/stabilizer_utils.dart';
 import '../utils/video_utils.dart';
 import 'database_helper.dart';
@@ -84,7 +85,7 @@ class FaceStabilizer {
   late double eyeOffsetX;
   late double eyeOffsetY;
   late StabilizationMode stabilizationMode;
-  late List<int> backgroundColorBGR;
+  late List<int>? backgroundColorBGR;
 
   // Face embedding tracking for identity-based face matching
   int? _currentFaceCount;
@@ -1675,11 +1676,15 @@ class FaceStabilizer {
     double? rotationDegrees,
     double? scaleFactor,
   }) async {
-    final Uint8List blackBackgroundBytes =
-        await StabUtils.compositeBlackPngBytes(imageBytes);
+    // For transparent backgrounds, preserve the alpha channel directly.
+    // For opaque backgrounds, composite onto black background.
+    final bool isTransparent = backgroundColorBGR == null;
+    final Uint8List pngBytes = isTransparent
+        ? imageBytes
+        : await StabUtils.compositeBlackPngBytes(imageBytes);
 
     final String result = await saveBytesToPngFileInIsolate(
-      blackBackgroundBytes,
+      pngBytes,
       stabilizedPhotoPath.replaceAll('.jpg', '.png'),
     );
 
@@ -1835,7 +1840,15 @@ class FaceStabilizer {
   }
 
   Future<void> createStabThumbnail(String stabilizedPhotoPath) async {
-    final String stabThumbnailPath = getStabThumbnailPath(stabilizedPhotoPath);
+    // Check if transparent background is enabled
+    final bgColor =
+        await SettingsUtil.loadBackgroundColor(projectId.toString());
+    final isTransparent = SettingsUtil.isTransparent(bgColor);
+
+    final String stabThumbnailPath = getStabThumbnailPath(
+      stabilizedPhotoPath,
+      preserveAlpha: isTransparent,
+    );
     final String timestamp = path.basenameWithoutExtension(stabilizedPhotoPath);
     try {
       await DirUtils.createDirectoryIfNotExists(stabThumbnailPath);
@@ -1855,7 +1868,9 @@ class FaceStabilizer {
         );
         return;
       }
-      final thumbnailBytes = await StabUtils.thumbnailJpgFromPngBytes(bytes);
+      final thumbnailBytes = isTransparent
+          ? await StabUtils.thumbnailPngFromPngBytes(bytes)
+          : await StabUtils.thumbnailJpgFromPngBytes(bytes);
       await File(stabThumbnailPath).writeAsBytes(thumbnailBytes);
 
       ThumbnailService.instance.emit(
@@ -2350,16 +2365,31 @@ class FaceStabilizer {
     await stabilize(newPath, token, userRanOutOfSpaceCallback);
   }
 
-  static String getStabThumbnailPath(String stabilizedPhotoPath) {
+  /// Returns the thumbnail path for a stabilized photo.
+  /// When [preserveAlpha] is null (default), checks if a .png thumbnail exists
+  /// first, then falls back to .jpg. When explicitly set, uses that format.
+  static String getStabThumbnailPath(
+    String stabilizedPhotoPath, {
+    bool? preserveAlpha,
+  }) {
     final String dirname = path.dirname(stabilizedPhotoPath);
     final String basenameWithoutExt = path.basenameWithoutExtension(
       stabilizedPhotoPath,
     );
-    return path.join(
-      dirname,
-      DirUtils.thumbnailDirname,
-      "$basenameWithoutExt.jpg",
-    );
+    final thumbDir = path.join(dirname, DirUtils.thumbnailDirname);
+
+    // If explicitly specified, use that format
+    if (preserveAlpha != null) {
+      final ext = preserveAlpha ? '.png' : '.jpg';
+      return path.join(thumbDir, "$basenameWithoutExt$ext");
+    }
+
+    // Auto-detect: prefer .png if it exists, otherwise .jpg
+    final pngPath = path.join(thumbDir, "$basenameWithoutExt.png");
+    if (File(pngPath).existsSync()) {
+      return pngPath;
+    }
+    return path.join(thumbDir, "$basenameWithoutExt.jpg");
   }
 
   (double?, double?) _calculateTranslateData(

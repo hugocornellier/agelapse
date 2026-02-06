@@ -71,6 +71,23 @@ class ConfirmActionDialog extends StatelessWidget {
     );
   }
 
+  /// Shows a confirmation dialog for video settings changes (codec, video background).
+  ///
+  /// Used when changing: video codec, video background mode/color.
+  static Future<bool> showRecompileVideoSetting(
+    BuildContext context,
+    String settingName,
+  ) async {
+    return await _show(
+      context,
+      title: 'Are you sure?',
+      description: 'You are about to change the $settingName.',
+      warningIcon: Icons.movie_outlined,
+      warningText:
+          'This will recompile your video with the new settings.\nYour photos will not be affected.',
+    );
+  }
+
   /// Shows a confirmation dialog for date changes that affect the video.
   ///
   /// [orderChanged] - true if the photo sequence will change
