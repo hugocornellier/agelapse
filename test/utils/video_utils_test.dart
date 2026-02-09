@@ -237,9 +237,8 @@ void main() {
           15,
           (frame) => capturedFrame = frame,
         );
-        // frame=100, fps output is 30, source framerate is 15
-        // currFrame = 100 ~/ (30 / 15) = 100 ~/ 2 = 50
-        expect(capturedFrame, 50);
+        // outputFps(15) = 15, currFrame = (100 * 15) ~/ 15 = 100
+        expect(capturedFrame, 100);
       });
 
       test('handles frame with no spaces', () {
@@ -249,8 +248,8 @@ void main() {
           10,
           (frame) => capturedFrame = frame,
         );
-        // currFrame = 50 ~/ (30 / 10) = 50 ~/ 3 = 16
-        expect(capturedFrame, 16);
+        // outputFps(10) = 10, currFrame = (50 * 10) ~/ 10 = 50
+        expect(capturedFrame, 50);
       });
 
       test('does nothing when callback is null', () {
@@ -275,32 +274,33 @@ void main() {
           30,
           (frame) => capturedFrame = frame,
         );
-        // currFrame = 30 ~/ (30 / 30) = 30 ~/ 1 = 30
+        // currFrame = (30 * 30) ~/ max(30,10) = 900 ~/ 30 = 30
         expect(capturedFrame, 30);
       });
 
       test('handles different framerate ratios', () {
         int? capturedFrame;
 
-        // Test with framerate 30 (same as output)
+        // Test with framerate 30 (outputFps=30, 1:1 ratio)
         VideoUtils.parseFFmpegOutput(
           'frame=  60 fps=30',
           30,
           (frame) => capturedFrame = frame,
         );
+        // currFrame = (60 * 30) ~/ max(30,10) = 1800 ~/ 30 = 60
         expect(capturedFrame, 60);
 
         // Reset throttle for second call
         VideoUtils.resetProgressThrottle();
 
-        // Test with framerate 6 (5x slower)
+        // Test with framerate 6 (outputFps=10, 10/6 ratio)
         VideoUtils.parseFFmpegOutput(
           'frame=  60 fps=30',
           6,
           (frame) => capturedFrame = frame,
         );
-        // currFrame = 60 ~/ (30 / 6) = 60 ~/ 5 = 12
-        expect(capturedFrame, 12);
+        // currFrame = (60 * 6) ~/ max(6,10) = 360 ~/ 10 = 36
+        expect(capturedFrame, 36);
       });
     });
   });

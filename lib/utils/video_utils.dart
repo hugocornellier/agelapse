@@ -50,6 +50,17 @@ class DateStampOverlayInfo {
 class VideoUtils {
   static int currentFrame = 1;
 
+  // Minimum output fps to ensure broad player/browser compatibility.
+  // Videos below ~10fps can cause jittery playback in VLC, seeking issues
+  // in QuickTime, and hardware decoder quirks in some browsers.
+  static const int _minOutputFps = 10;
+
+  /// Calculates the output fps for video encoding.
+  /// Returns max(inputFps, _minOutputFps) to avoid player compatibility issues
+  /// while not duplicating frames unnecessarily.
+  static int outputFps(int inputFps) =>
+      inputFps > _minOutputFps ? inputFps : _minOutputFps;
+
   // Throttling for progress updates (max 10 updates/sec = 100ms interval)
   static DateTime _lastProgressUpdate = DateTime.fromMillisecondsSinceEpoch(0);
   static const Duration _progressThrottleInterval = Duration(milliseconds: 100);
@@ -119,9 +130,14 @@ class VideoUtils {
     required String orientation,
     required int videoWidth,
     required int videoHeight,
+    required int fps,
     String videoInputLabel = '0',
     int inputIndexOffset = 0,
   }) async {
+    if (fps <= 0) {
+      LogService.instance.log("[VIDEO] ERROR: fps must be > 0, got $fps");
+      return null;
+    }
     final projectIdStr = projectId.toString();
 
     // Check if date stamp is enabled
@@ -270,7 +286,7 @@ class VideoUtils {
     }
 
     // Build filter_complex string
-    // Each overlay: [prev][inputN]overlay=x:y:enable='between(n,start,end)'[outN]
+    // Each overlay: [prev][inputN]overlay=x:y:enable='gte(t,start)*lt(t,end)'[outN]
     final filterParts = <String>[];
     String currentLabel = videoInputLabel;
 
@@ -279,9 +295,12 @@ class VideoUtils {
       final inputIndex = dateToInputIndex[range.date];
       if (inputIndex == null) continue;
 
-      final enableExpr = range.startFrame == range.endFrame
-          ? "eq(n\\,${range.startFrame})"
-          : "between(n\\,${range.startFrame}\\,${range.endFrame})";
+      // Use time-based enable expressions so overlays align correctly
+      // regardless of output fps (which may differ from input fps).
+      final double startTime = range.startFrame / fps;
+      final double endTime = (range.endFrame + 1) / fps;
+      final enableExpr =
+          "gte(t\\,${startTime.toStringAsFixed(6)})*lt(t\\,${endTime.toStringAsFixed(6)})";
 
       // Calculate x,y position based on corner setting
       // For overlay, we position relative to video dimensions
@@ -613,6 +632,7 @@ class VideoUtils {
             orientation: projectOrientation,
             videoWidth: videoWidth,
             videoHeight: videoHeight,
+            fps: framerate,
             videoInputLabel: needsColorOverlay ? 'base' : '0',
             inputIndexOffset: needsColorOverlay ? 1 : 0,
           );
@@ -711,6 +731,7 @@ class VideoUtils {
         orientation: projectOrientation,
         videoWidth: videoWidth,
         videoHeight: videoHeight,
+        fps: framerate,
         videoInputLabel: needsColorOverlay ? 'base' : '0',
         inputIndexOffset: needsColorOverlay ? 1 : 0,
       );
@@ -880,9 +901,10 @@ class VideoUtils {
       }
 
       // Build the color source input (before concat) when needed
+      final int outFps = outputFps(framerate);
       final String colorSourceInput = needsColorOverlay &&
               videoBg.solidColorHex != null
-          ? '-f lavfi -i "color=c=${videoBg.solidColorHex!.replaceFirst('#', '0x')}:s=${videoWidth}x$videoHeight:r=30" '
+          ? '-f lavfi -i "color=c=${videoBg.solidColorHex!.replaceFirst('#', '0x')}:s=${videoWidth}x$videoHeight:r=$outFps" '
           : '';
 
       String ffmpegCommand = "-y "
@@ -891,7 +913,7 @@ class VideoUtils {
           "-i \"$listPath\" "
           "$dateStampInputs"
           "$watermarkInput "
-          "-vsync cfr -r 30 "
+          "-vsync cfr -r $outFps "
           "$filterArgs $mapArg "
           "-c:v $vCodec $rateControl "
           "${videoHasAlpha ? '' : '-g 240 '}$movFlags $codecTag "
@@ -1142,7 +1164,8 @@ class VideoUtils {
     if (match == null) return;
 
     final int videoFrame = int.parse(match.group(1)!);
-    final int currFrame = videoFrame ~/ (30 / framerate);
+    final int outFps = outputFps(framerate);
+    final int currFrame = (videoFrame * framerate) ~/ outFps;
     currentFrame = currFrame;
 
     // Throttle callback to prevent UI lag (max 10 updates/sec)
@@ -1506,7 +1529,10 @@ class VideoUtils {
       'ffconcat_${DateTime.now().millisecondsSinceEpoch}.txt',
     );
     final f = File(tmpPath);
-    final perFrame = 1.0 / fps;
+    // Use 6 decimal places (microsecond precision) to match FFmpeg's internal
+    // timebase and avoid floating-point drift that can cause -vsync cfr to
+    // drop or duplicate frames at high fps.
+    final String perFrame = (1.0 / fps).toStringAsFixed(6);
     LogService.instance.log("[VIDEO] Frame duration: ${perFrame}s (fps: $fps)");
 
     final sb = StringBuffer();
@@ -1603,11 +1629,12 @@ class VideoUtils {
         videoWidth != null &&
         videoHeight != null) {
       final String hex = videoBg.solidColorHex!.replaceFirst('#', '0x');
+      final int outFps = outputFps(fps);
       args.addAll([
         '-f',
         'lavfi',
         '-i',
-        'color=c=$hex:s=${videoWidth}x$videoHeight:r=$fps',
+        'color=c=$hex:s=${videoWidth}x$videoHeight:r=$outFps',
       ]);
     }
 
@@ -1655,7 +1682,8 @@ class VideoUtils {
 
     // Video encoding settings based on codec model
     final pixFmt = effectiveCodec.pixelFormat;
-    args.addAll(['-vsync', 'cfr', '-r', '$fps', '-pix_fmt', pixFmt]);
+    final int outFps = outputFps(fps);
+    args.addAll(['-vsync', 'cfr', '-r', '$outFps', '-pix_fmt', pixFmt]);
 
     // Split encoder string into individual args (e.g., "prores_ks -profile:v standard")
     final encoderParts = effectiveCodec.encoderDesktop.split(' ');
