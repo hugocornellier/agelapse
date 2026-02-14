@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 
+import '../../services/log_service.dart';
 import '../../styles/styles.dart';
 import 'transform_controller.dart';
 import 'transform_handle.dart';
@@ -161,16 +162,21 @@ class TransformToolState extends State<TransformTool> {
 
       // Check if this decode is still relevant (not superseded by newer request)
       if (!mounted || generation != _decodeGeneration) {
+        LogService.instance.log(
+            '[TransformTool] Decode discarded: stale generation ($generation vs $_decodeGeneration) or unmounted');
         frame.image.dispose();
         return;
       }
 
+      LogService.instance.log(
+          '[TransformTool] Image decoded successfully: ${frame.image.width}x${frame.image.height}');
       setState(() {
         _decodedImage?.dispose();
         _decodedImage = frame.image;
         _imageLoading = false;
       });
-    } catch (e) {
+    } catch (e, st) {
+      LogService.instance.log('[TransformTool] Image decode FAILED: $e\n$st');
       if (mounted && generation == _decodeGeneration) {
         setState(() {
           _imageLoading = false;
@@ -276,7 +282,13 @@ class TransformToolState extends State<TransformTool> {
             // Request focus on any tap/click to enable keyboard shortcuts
             // This fires before pan detection, ensuring focus is grabbed
             // even if the user just clicks without dragging
-            onTapDown: widget.enabled ? (_) => _focusNode.requestFocus() : null,
+            onTapDown: widget.enabled
+                ? (_) {
+                    LogService.instance
+                        .log('[TransformTool] onTapDown: requesting focus');
+                    _focusNode.requestFocus();
+                  }
+                : null,
             onPanStart: widget.enabled ? _onPanStart : null,
             onPanUpdate: widget.enabled ? _onPanUpdate : null,
             onPanEnd: widget.enabled ? _onPanEnd : null,
@@ -340,6 +352,7 @@ class TransformToolState extends State<TransformTool> {
   }
 
   void _onPanStart(DragStartDetails details) {
+    LogService.instance.log('[TransformTool] onPanStart: requesting focus');
     _focusNode.requestFocus();
     final handle = _controller.hitTest(details.localPosition);
     _controller.beginGesture(handle, details.localPosition);
@@ -542,6 +555,7 @@ class _TransformedImagePainter extends CustomPainter {
         // Draw loading indicator
         _drawLoadingIndicator(canvas, size);
       }
+      // If not loading and image is null, the canvas will be black/empty
       return;
     }
 

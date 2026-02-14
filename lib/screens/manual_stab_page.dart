@@ -94,6 +94,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
   // Controls section collapsed state
   bool _controlsExpanded = true;
 
+  void _log(String msg) => LogService.instance.log('[ManualStab] $msg');
+
   @override
   void initState() {
     super.initState();
@@ -146,6 +148,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
   }
 
   Future<void> init() async {
+    _log('init() started, imagePath=${widget.imagePath}');
     projectOrientation = await SettingsUtil.loadProjectOrientation(
       widget.projectId.toString(),
     );
@@ -181,6 +184,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
     final File rawFile = File(localRawPath);
     if (await rawFile.exists()) {
       _rawImageBytes = await rawFile.readAsBytes();
+      _log('Raw image loaded: ${_rawImageBytes!.length} bytes');
       final dims = await ImageUtils.getImageDimensionsInIsolate(
         _rawImageBytes!,
       );
@@ -189,8 +193,14 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
         _rawImageHeight = dims.$2;
         final double defaultScale = canvasWidth / _rawImageWidth!.toDouble();
         _baseScale = defaultScale;
+        _log(
+            'Image dims: ${_rawImageWidth}x$_rawImageHeight, baseScale=$_baseScale, canvas: ${canvasWidth}x$canvasHeight');
         _inputController3.text = '1';
+      } else {
+        _log('ERROR: Failed to decode image dimensions');
       }
+    } else {
+      _log('ERROR: Raw file does not exist: $localRawPath');
     }
 
     _faceStabilizer = FaceStabilizer(
@@ -198,6 +208,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       () => LogService.instance.log("Test"),
     );
     await _faceStabilizer!.init();
+    _log('FaceStabilizer initialized');
 
     await _loadSavedTransformAndBootPreview();
   }
@@ -238,7 +249,10 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
               backgroundColor: AppColors.settingsBackground,
               appBar: _buildAppBar(),
               body: GestureDetector(
-                onTap: () => FocusScope.of(context).unfocus(),
+                onTap: () {
+                  _log('Page body tapped (unfocusing all fields)');
+                  FocusScope.of(context).unfocus();
+                },
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     const double minPreviewHeight = 300;
@@ -247,6 +261,9 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                     final double availableForPreview = constraints.maxHeight -
                         32 -
                         controlsEstimatedHeight; // 32 for padding
+
+                    _log(
+                        'Layout: maxHeight=${constraints.maxHeight}, availableForPreview=$availableForPreview, mode=${availableForPreview >= minPreviewHeight ? "expanded" : "scrollable"}');
 
                     if (availableForPreview >= minPreviewHeight) {
                       // Enough space - use Expanded layout
@@ -799,27 +816,32 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
             color: AppColors.settingsCardBorder,
             borderRadius: BorderRadius.circular(10),
           ),
-          child: TextField(
-            controller: controller,
-            keyboardType: const TextInputType.numberWithOptions(
-              decimal: true,
-              signed: true,
-            ),
-            onEditingComplete: _validateInputs,
-            style: TextStyle(
-              fontSize: AppTypography.lg,
-              color: AppColors.settingsTextPrimary,
-              fontWeight: FontWeight.w500,
-            ),
-            decoration: InputDecoration(
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 14,
+          child: Focus(
+            onFocusChange: (hasFocus) {
+              _log('TextField "$label" focus=${hasFocus ? "gained" : "lost"}');
+            },
+            child: TextField(
+              controller: controller,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+                signed: true,
               ),
-              border: InputBorder.none,
-              hintText: '0',
-              hintStyle: TextStyle(
-                color: AppColors.settingsTextTertiary.withValues(alpha: 0.5),
+              onEditingComplete: _validateInputs,
+              style: TextStyle(
+                fontSize: AppTypography.lg,
+                color: AppColors.settingsTextPrimary,
+                fontWeight: FontWeight.w500,
+              ),
+              decoration: InputDecoration(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 14,
+                ),
+                border: InputBorder.none,
+                hintText: '0',
+                hintStyle: TextStyle(
+                  color: AppColors.settingsTextTertiary.withValues(alpha: 0.5),
+                ),
               ),
             ),
           ),
@@ -838,6 +860,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
         _leftEyeXGoal == null ||
         _rightEyeXGoal == null ||
         _bothEyesYGoal == null) {
+      _log(
+          'Preview waiting: rawBytes=${_rawImageBytes != null}, dims=${_rawImageWidth}x$_rawImageHeight, canvas=${_canvasWidth}x$_canvasHeight, eyes=$_leftEyeXGoal/$_rightEyeXGoal/$_bothEyesYGoal');
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -899,6 +923,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
               );
 
               if (availableWidth == 0 || availableHeight == 0) {
+                _log(
+                    'Preview HIDDEN: zero available size (${availableWidth}x$availableHeight)');
                 return const SizedBox.shrink();
               }
 
@@ -1032,6 +1058,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
     if (_updatingFromTextField) return;
 
     final state = _transformController!.state;
+    _log(
+        '_onTransformControllerChanged: tx=${state.translateX}, ty=${state.translateY}, sc=${state.scale}, rot=${state.rotation}');
 
     // Update text fields (suppress listener to prevent loop)
     _suppressListener = true;
@@ -1140,7 +1168,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
 
       // Phase 3: Pop back to gallery
       Navigator.of(context).pop();
-    } catch (e) {
+    } catch (e, st) {
+      _log('_saveChanges ERROR: $e\n$st');
       setState(() => _savePhase = _SavePhase.idle);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1423,6 +1452,9 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
 
     final double mult = sc / _baseScale;
 
+    _log(
+        'Loaded saved transform: tx=$tx, ty=$ty, rot=$rot, sc=$sc, mult=$mult');
+
     _suppressListener = true;
     _inputController1.text = tx.toStringAsFixed(1);
     _inputController2.text = ty.toStringAsFixed(1);
@@ -1448,6 +1480,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
   }
 
   void _validateInputs() {
+    _log('_validateInputs called (will unfocus)');
     FocusScope.of(context).unfocus();
     final List<String> invalid = [];
     if (!_isSignedDecimal(_inputController1.text)) invalid.add('Horiz. Offset');
@@ -1469,6 +1502,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
     bool save = false,
   }) async {
     final int requestId = ++_currentRequestId;
+    _log(
+        'processRequest(tx=$translateX, ty=$translateY, sc=$scaleFactor, rot=$rotationDegrees, save=$save, reqId=$requestId)');
     if (mounted) {
       setState(() {
         _isProcessing = true;
@@ -1476,6 +1511,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
     }
     try {
       if (_rawImageBytes == null) {
+        _log('processRequest ABORTED: _rawImageBytes is null');
         return;
       }
 
@@ -1490,10 +1526,14 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
         this.canvasHeight,
       );
       if (imageBytesStabilized == null) {
+        _log(
+            'processRequest ABORTED: generateStabilizedImageBytesCVAsync returned null');
         return;
       }
 
       if (requestId != _currentRequestId || !mounted) {
+        _log(
+            'processRequest ABORTED: stale request ($requestId vs $_currentRequestId) or not mounted');
         return;
       }
 
@@ -1540,6 +1580,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       if (requestId != _currentRequestId ||
           !mounted ||
           _faceStabilizer == null) {
+        _log(
+            'processRequest ABORTED post-save: stale/unmounted/null stabilizer');
         return;
       }
 
@@ -1560,7 +1602,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
         _lastMult = scaleFactor == null ? null : scaleFactor / _baseScale;
         _lastRot = rotationDegrees;
       });
-    } catch (_) {
+    } catch (e, st) {
+      _log('processRequest ERROR: $e\n$st');
     } finally {
       if (mounted && requestId == _currentRequestId) {
         setState(() {
@@ -1594,6 +1637,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
   }
 
   void _adjustRotation(double delta) {
+    _log('_adjustRotation(delta=$delta)');
     // Commit to history before making changes (for undo support)
     _transformController?.commitToHistory();
 
@@ -1629,6 +1673,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
 
   void _onParamChanged() {
     if (_suppressListener) return;
+    _log('_onParamChanged fired (debounce starting)');
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 800), () {
       double? tx = double.tryParse(_inputController1.text);
@@ -1645,6 +1690,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
               (_lastRot == null || (_lastRot! - (rot ?? 0)).abs() > tolerance);
 
       if (changed) {
+        _log('Debounce applied: tx=$tx, ty=$ty, mult=$mult, rot=$rot');
         // Commit to history before making changes (for undo support)
         _transformController?.commitToHistory();
 
@@ -1777,8 +1823,10 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
               onPressed: () {
                 if (_recentlyHeld[key] == true) {
                   _recentlyHeld[key] = false;
+                  _log('Toolbar button "$key" tap suppressed (was held)');
                   return;
                 }
+                _log('Toolbar button "$key" tapped');
                 onTap();
                 forceApplyNow();
               },
@@ -1801,99 +1849,107 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
         right: false,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              // Direction controls (matches Horiz. + Vert. Offset)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.settingsCardBorder.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(14),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // Direction controls (matches Horiz. + Vert. Offset)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.settingsCardBorder.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      buildToolbarButton(
+                        key: 'left',
+                        icon: Icons.arrow_back_rounded,
+                        onTap: () => _adjustOffsets(dx: -1),
+                        onHold: () => _adjustOffsets(dx: -1),
+                      ),
+                      const SizedBox(width: 4),
+                      buildToolbarButton(
+                        key: 'right',
+                        icon: Icons.arrow_forward_rounded,
+                        onTap: () => _adjustOffsets(dx: 1),
+                        onHold: () => _adjustOffsets(dx: 1),
+                      ),
+                      const SizedBox(width: 4),
+                      buildToolbarButton(
+                        key: 'up',
+                        icon: Icons.arrow_upward_rounded,
+                        onTap: () => _adjustOffsets(dy: -1),
+                        onHold: () => _adjustOffsets(dy: -1),
+                      ),
+                      const SizedBox(width: 4),
+                      buildToolbarButton(
+                        key: 'down',
+                        icon: Icons.arrow_downward_rounded,
+                        onTap: () => _adjustOffsets(dy: 1),
+                        onHold: () => _adjustOffsets(dy: 1),
+                      ),
+                    ],
+                  ),
                 ),
-                child: Row(
-                  children: [
-                    buildToolbarButton(
-                      key: 'left',
-                      icon: Icons.arrow_back_rounded,
-                      onTap: () => _adjustOffsets(dx: -1),
-                      onHold: () => _adjustOffsets(dx: -1),
-                    ),
-                    const SizedBox(width: 4),
-                    buildToolbarButton(
-                      key: 'right',
-                      icon: Icons.arrow_forward_rounded,
-                      onTap: () => _adjustOffsets(dx: 1),
-                      onHold: () => _adjustOffsets(dx: 1),
-                    ),
-                    const SizedBox(width: 4),
-                    buildToolbarButton(
-                      key: 'up',
-                      icon: Icons.arrow_upward_rounded,
-                      onTap: () => _adjustOffsets(dy: -1),
-                      onHold: () => _adjustOffsets(dy: -1),
-                    ),
-                    const SizedBox(width: 4),
-                    buildToolbarButton(
-                      key: 'down',
-                      icon: Icons.arrow_downward_rounded,
-                      onTap: () => _adjustOffsets(dy: 1),
-                      onHold: () => _adjustOffsets(dy: 1),
-                    ),
-                  ],
+                const SizedBox(width: 8),
+                // Scale controls (matches Scale Factor)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.settingsCardBorder.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      buildToolbarButton(
+                        key: 'scaleMinus',
+                        icon: Icons.remove_rounded,
+                        onTap: () => _adjustScale(-0.01),
+                        onHold: () => _adjustScale(-0.01),
+                      ),
+                      const SizedBox(width: 4),
+                      buildToolbarButton(
+                        key: 'scalePlus',
+                        icon: Icons.add_rounded,
+                        onTap: () => _adjustScale(0.01),
+                        onHold: () => _adjustScale(0.01),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              // Scale controls (matches Scale Factor)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.settingsCardBorder.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(14),
+                const SizedBox(width: 8),
+                // Rotation controls (matches Rotation)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.settingsCardBorder.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      buildToolbarButton(
+                        key: 'rotateCCW',
+                        icon: Icons.rotate_left_rounded,
+                        onTap: () => _adjustRotation(-0.1),
+                        onHold: () => _adjustRotation(-0.1),
+                      ),
+                      const SizedBox(width: 4),
+                      buildToolbarButton(
+                        key: 'rotateCW',
+                        icon: Icons.rotate_right_rounded,
+                        onTap: () => _adjustRotation(0.1),
+                        onHold: () => _adjustRotation(0.1),
+                      ),
+                    ],
+                  ),
                 ),
-                child: Row(
-                  children: [
-                    buildToolbarButton(
-                      key: 'scaleMinus',
-                      icon: Icons.remove_rounded,
-                      onTap: () => _adjustScale(-0.01),
-                      onHold: () => _adjustScale(-0.01),
-                    ),
-                    const SizedBox(width: 4),
-                    buildToolbarButton(
-                      key: 'scalePlus',
-                      icon: Icons.add_rounded,
-                      onTap: () => _adjustScale(0.01),
-                      onHold: () => _adjustScale(0.01),
-                    ),
-                  ],
-                ),
-              ),
-              // Rotation controls (matches Rotation)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.settingsCardBorder.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Row(
-                  children: [
-                    buildToolbarButton(
-                      key: 'rotateCCW',
-                      icon: Icons.rotate_left_rounded,
-                      onTap: () => _adjustRotation(-0.1),
-                      onHold: () => _adjustRotation(-0.1),
-                    ),
-                    const SizedBox(width: 4),
-                    buildToolbarButton(
-                      key: 'rotateCW',
-                      icon: Icons.rotate_right_rounded,
-                      onTap: () => _adjustRotation(0.1),
-                      onHold: () => _adjustRotation(0.1),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

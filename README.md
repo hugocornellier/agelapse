@@ -52,13 +52,13 @@ For previous releases, see the [full changelog](https://agelapse.com/docs/change
 
 ## Platform Support
 
-| Platforms | Status     |
-|-----------|------------|
-| Windows   | Available  |
-| MacOS     | Available  |
-| Linux     | Available  |
-| iOS       | Available  |
-| Android   | Available  |
+| Platform | x86_64 | arm64 | Package              |
+|----------|--------|-------|----------------------|
+| Windows  | ✅     |       | `.exe`               |
+| macOS    | ✅     | ✅    | `.app`               |
+| Linux    | ✅     |       | `.deb` or `.flatpak` |
+| iOS      |        | ✅    | App Store            |
+| Android  |        | ✅    | `.apk`               |
 
 ## Development Setup
 
