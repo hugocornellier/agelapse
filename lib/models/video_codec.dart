@@ -190,7 +190,7 @@ enum VideoCodec {
       if (Platform.isMacOS || Platform.isIOS) return [prores4444];
       return [vp9];
     }
-    return [h264, hevc, prores422, prores422hq];
+    return [h264, hevc, prores422, prores422hq, prores4444];
   }
 
   /// Returns the default codec for the current state.

@@ -89,6 +89,9 @@ class CreatePageState extends State<CreatePage>
   late AnimationController _animationController;
   late Animation<double> _opacityAnimation;
 
+  // Playback unsupported (codec not decodable on this platform)
+  bool _playbackUnsupported = false;
+
   // Manual compile state (when auto-compile is disabled)
   bool _autoCompileEnabled = true;
   bool _manualCompileInProgress = false;
@@ -163,6 +166,7 @@ class CreatePageState extends State<CreatePage>
       loadingComplete = false;
       videoPlayerBuilt = false;
       loadingText = "";
+      _playbackUnsupported = false;
     });
 
     // Re-enter waiting loop
@@ -442,7 +446,19 @@ class CreatePageState extends State<CreatePage>
   Future<void> _setupStandardVideoPlayer(File videoFile) async {
     _videoPlayerController = VideoPlayerController.file(videoFile);
 
-    await _videoPlayerController!.initialize();
+    try {
+      await _videoPlayerController!.initialize();
+    } catch (e) {
+      _videoPlayerController?.dispose();
+      _videoPlayerController = null;
+      if (!mounted) return;
+      setState(() {
+        loadingComplete = true;
+        _playbackUnsupported = true;
+      });
+      return;
+    }
+
     _videoPlayerController!.setLooping(true);
     _videoPlayerController!.setPlaybackSpeed(playbackSpeed);
 
@@ -561,6 +577,7 @@ class CreatePageState extends State<CreatePage>
   }
 
   bool _readyToShowVideoPlayer() {
+    if (_playbackUnsupported) return true;
     if (Platform.isLinux) {
       return loadingComplete &&
           (lessThan2Photos || _mediaKitController != null);
@@ -582,6 +599,14 @@ class CreatePageState extends State<CreatePage>
         !widget.stabilizingRunningInMain &&
         !widget.videoCreationActiveInMain) {
       return _buildManualCompileOptions();
+    }
+
+    // If nothing is actively compiling, we're just loading the player —
+    // show a plain spinner instead of the "Compiling Video 0%" card.
+    if (!widget.stabilizingRunningInMain &&
+        !widget.videoCreationActiveInMain &&
+        !_manualCompileInProgress) {
+      return const Center(child: CircularProgressIndicator());
     }
 
     final bool isStabilizing = widget.stabilizingRunningInMain;
@@ -796,6 +821,10 @@ class CreatePageState extends State<CreatePage>
   }
 
   Widget _buildVideoPlayerSection() {
+    if (_playbackUnsupported) {
+      return _buildPlaybackUnsupportedMessage();
+    }
+
     if (!videoPlayerBuilt) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) setState(() => videoPlayerBuilt = true);
@@ -1347,6 +1376,57 @@ class CreatePageState extends State<CreatePage>
     return AspectRatio(
       aspectRatio: _chewieController!.aspectRatio!,
       child: Chewie(controller: _chewieController!),
+    );
+  }
+
+  Widget _buildPlaybackUnsupportedMessage() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Container(
+          padding: const EdgeInsets.all(32),
+          decoration: BoxDecoration(
+            color: AppColors.settingsCardBackground,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: AppColors.settingsCardBorder,
+              width: 1,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.videocam_outlined,
+                size: 64,
+                color: AppColors.settingsTextSecondary,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Preview Unavailable',
+                style: TextStyle(
+                  fontSize: AppTypography.xxl,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.settingsTextPrimary,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '${_effectiveCodec.displayName} videos cannot be previewed on this device. '
+                'Your video was compiled successfully — use Export to save it.',
+                style: TextStyle(
+                  fontSize: AppTypography.md,
+                  color: AppColors.settingsTextSecondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              _buildExportButton(compact: false),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

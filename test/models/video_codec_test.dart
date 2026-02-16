@@ -266,13 +266,14 @@ void main() {
     });
 
     group('availableCodecs', () {
-      test('opaque returns h264, hevc, prores422, prores422hq', () {
+      test('opaque returns h264, hevc, prores422, prores422hq, prores4444', () {
         final codecs = VideoCodec.availableCodecs(isTransparentVideo: false);
         expect(codecs, [
           VideoCodec.h264,
           VideoCodec.hevc,
           VideoCodec.prores422,
           VideoCodec.prores422hq,
+          VideoCodec.prores4444,
         ]);
       });
 

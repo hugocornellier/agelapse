@@ -261,40 +261,35 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                     final double availableForPreview = constraints.maxHeight -
                         32 -
                         controlsEstimatedHeight; // 32 for padding
+                    final double previewHeight =
+                        availableForPreview >= minPreviewHeight
+                            ? availableForPreview
+                            : minPreviewHeight;
+                    final bool shouldEnableScroll =
+                        availableForPreview < minPreviewHeight;
 
                     _log(
-                        'Layout: maxHeight=${constraints.maxHeight}, availableForPreview=$availableForPreview, mode=${availableForPreview >= minPreviewHeight ? "expanded" : "scrollable"}');
+                        'Layout: maxHeight=${constraints.maxHeight}, availableForPreview=$availableForPreview, previewHeight=$previewHeight, mode=stable-scrollable, scrollEnabled=$shouldEnableScroll');
 
-                    if (availableForPreview >= minPreviewHeight) {
-                      // Enough space - use Expanded layout
-                      return Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildControlsSection(),
-                            const SizedBox(height: 20),
-                            Expanded(child: _buildPreviewSection()),
-                          ],
-                        ),
-                      );
-                    } else {
-                      // Not enough space - use scrollable layout with min height
-                      return SingleChildScrollView(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildControlsSection(),
-                            const SizedBox(height: 20),
-                            SizedBox(
-                              height: minPreviewHeight,
-                              child: _buildPreviewSection(),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
+                    // Keep one stable widget tree to avoid TextField destruction
+                    // when keyboard insets change parent constraints.
+                    return SingleChildScrollView(
+                      physics: shouldEnableScroll
+                          ? const ClampingScrollPhysics()
+                          : const NeverScrollableScrollPhysics(),
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildControlsSection(),
+                          const SizedBox(height: 20),
+                          SizedBox(
+                            height: previewHeight,
+                            child: _buildPreviewSection(),
+                          ),
+                        ],
+                      ),
+                    );
                   },
                 ),
               ),

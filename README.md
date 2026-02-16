@@ -58,7 +58,7 @@ For previous releases, see the [full changelog](https://agelapse.com/docs/change
 | macOS    | ✅     | ✅    | `.app`               |
 | Linux    | ✅     |       | `.deb` or `.flatpak` |
 | iOS      |        | ✅    | App Store            |
-| Android  |        | ✅    | `.apk`               |
+| Android  | ✅     | ✅    | `.apk`               |
 
 ## Development Setup
 

@@ -1614,13 +1614,15 @@ class SettingsSheetState extends State<SettingsSheet> {
           'H.264 is unavailable at 8K resolution on macOS (hardware encoder limit).\n\n'
           '${VideoCodec.hevc.displayName}: ${VideoCodec.hevc.description}\n\n'
           '${VideoCodec.prores422.displayName}: ${VideoCodec.prores422.description}\n\n'
-          '${VideoCodec.prores422hq.displayName}: ${VideoCodec.prores422hq.description}';
+          '${VideoCodec.prores422hq.displayName}: ${VideoCodec.prores422hq.description}\n\n'
+          '${VideoCodec.prores4444.displayName}: ${VideoCodec.prores4444.description}';
     } else {
       infoText = 'Choose the video encoding format.\n\n'
           '${VideoCodec.h264.displayName}: ${VideoCodec.h264.description}\n\n'
           '${VideoCodec.hevc.displayName}: ${VideoCodec.hevc.description}\n\n'
           '${VideoCodec.prores422.displayName}: ${VideoCodec.prores422.description}\n\n'
-          '${VideoCodec.prores422hq.displayName}: ${VideoCodec.prores422hq.description}';
+          '${VideoCodec.prores422hq.displayName}: ${VideoCodec.prores422hq.description}\n\n'
+          '${VideoCodec.prores4444.displayName}: ${VideoCodec.prores4444.description}';
     }
 
     return SettingListTile(
