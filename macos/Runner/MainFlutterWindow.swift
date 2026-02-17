@@ -12,6 +12,10 @@ class MainFlutterWindow: NSWindow {
 
     RegisterGeneratedPlugins(registry: flutterViewController)
 
+    // Register custom MethodChannel plugins
+    let registrar = flutterViewController.registrar(forPlugin: "RawDecoderPlugin")
+    RawDecoderPlugin.register(with: registrar)
+
     super.awakeFromNib()
   }
 }

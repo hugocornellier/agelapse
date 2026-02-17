@@ -86,6 +86,7 @@ class FaceStabilizer {
   late double eyeOffsetY;
   late StabilizationMode stabilizationMode;
   late List<int>? backgroundColorBGR;
+  late bool lossless;
 
   // Face embedding tracking for identity-based face matching
   int? _currentFaceCount;
@@ -154,6 +155,7 @@ class FaceStabilizer {
     eyeOffsetX = settings.eyeOffsetX;
     eyeOffsetY = settings.eyeOffsetY;
     backgroundColorBGR = settings.backgroundColorBGR;
+    lossless = settings.lossless;
 
     if (projectType != "face") {
       final PoseDetector poseDetector = PoseDetector(
@@ -215,7 +217,8 @@ class FaceStabilizer {
       double? rotationDegrees, scaleFactor, translateX, translateY;
 
       token?.throwIfCancelled();
-      final Uint8List? srcBytes = await StabUtils.preparePNG(rawPhotoPath);
+      final Uint8List? srcBytes =
+          await StabUtils.preparePNG(rawPhotoPath, lossless: lossless);
       if (srcBytes == null) return StabilizationResult(success: false);
 
       token?.throwIfCancelled();
@@ -264,6 +267,7 @@ class FaceStabilizer {
         token: token,
         srcId: srcId,
         backgroundColorBGR: backgroundColorBGR,
+        preserveBitDepth: lossless,
       );
       if (imageBytesStabilized == null) {
         return StabilizationResult(success: false);
@@ -754,6 +758,7 @@ class FaceStabilizer {
       token: token,
       srcId: srcId,
       backgroundColorBGR: backgroundColorBGR,
+      preserveBitDepth: lossless,
     );
     if (twoPassBytes == null) {
       return (
@@ -853,6 +858,7 @@ class FaceStabilizer {
           token: token,
           srcId: srcId,
           backgroundColorBGR: backgroundColorBGR,
+          preserveBitDepth: lossless,
         );
 
         if (threePassBytes != null) {
@@ -943,6 +949,7 @@ class FaceStabilizer {
           token: token,
           srcId: srcId,
           backgroundColorBGR: backgroundColorBGR,
+          preserveBitDepth: lossless,
         );
 
         if (fourPassBytes != null) {
@@ -1169,6 +1176,7 @@ class FaceStabilizer {
         token: token,
         srcId: srcId,
         backgroundColorBGR: backgroundColorBGR,
+        preserveBitDepth: lossless,
       );
 
       if (rotPassBytes == null) break;
@@ -1282,6 +1290,7 @@ class FaceStabilizer {
         token: token,
         srcId: srcId,
         backgroundColorBGR: backgroundColorBGR,
+        preserveBitDepth: lossless,
       );
 
       if (scalePassBytes == null) break;
@@ -1416,6 +1425,7 @@ class FaceStabilizer {
         token: token,
         srcId: srcId,
         backgroundColorBGR: backgroundColorBGR,
+        preserveBitDepth: lossless,
       );
 
       if (transPassBytes == null) break;
@@ -1558,6 +1568,7 @@ class FaceStabilizer {
           token: token,
           srcId: srcId,
           backgroundColorBGR: backgroundColorBGR,
+          preserveBitDepth: lossless,
         );
 
         if (cleanupBytes != null) {
@@ -2262,7 +2273,7 @@ class FaceStabilizer {
   Future<(double?, double?)> _calculateRotationAngleAndScalePregnancy(
     String rawPhotoPath,
   ) async {
-    await StabUtils.preparePNG(rawPhotoPath);
+    await StabUtils.preparePNG(rawPhotoPath, lossless: lossless);
     final String pngPath = await DirUtils.getPngPathFromRawPhotoPath(
       rawPhotoPath,
     );
@@ -2305,7 +2316,7 @@ class FaceStabilizer {
   Future<(double?, double?)> _calculateRotationAngleAndScaleMusc(
     String rawPhotoPath,
   ) async {
-    await StabUtils.preparePNG(rawPhotoPath);
+    await StabUtils.preparePNG(rawPhotoPath, lossless: lossless);
     final String pngPath = await DirUtils.getPngPathFromRawPhotoPath(
       rawPhotoPath,
     );
@@ -2573,7 +2584,7 @@ class FaceStabilizer {
     Uint8List? pngBytes,
   }) async {
     await _ensureReady();
-    pngBytes ??= await StabUtils.preparePNG(rawPhotoPath);
+    pngBytes ??= await StabUtils.preparePNG(rawPhotoPath, lossless: lossless);
     if (pngBytes == null) return null;
     _lastPngBytes = pngBytes;
 

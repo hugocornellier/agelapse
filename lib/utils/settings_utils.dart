@@ -500,6 +500,38 @@ class SettingsUtil {
     );
   }
 
+  // ==================== Lossless Storage ====================
+
+  /// Load lossless storage setting (per-project).
+  /// When enabled, stabilized frames preserve source bit depth (up to 16-bit).
+  /// 'auto' resolves to true on desktop, false on mobile.
+  static Future<bool> loadLosslessStorage(String projectId) async {
+    try {
+      final value = await DB.instance.getSettingValueByTitle(
+        'lossless_storage',
+        projectId,
+      );
+      if (value == 'auto') {
+        return Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+      }
+      return value.toLowerCase() == 'true';
+    } catch (e) {
+      return Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+    }
+  }
+
+  /// Save lossless storage setting (per-project).
+  static Future<void> setLosslessStorage(
+    String projectId,
+    bool enabled,
+  ) async {
+    await DB.instance.setSettingByTitle(
+      'lossless_storage',
+      enabled.toString(),
+      projectId,
+    );
+  }
+
   // ==================== Video Codec ====================
 
   /// Default codec setting value.

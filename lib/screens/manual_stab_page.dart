@@ -93,6 +93,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
 
   // Controls section collapsed state
   bool _controlsExpanded = true;
+  bool _lossless = false;
 
   void _log(String msg) => LogService.instance.log('[ManualStab] $msg');
 
@@ -156,6 +157,9 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       widget.projectId.toString(),
     );
     aspectRatio = await SettingsUtil.loadAspectRatio(
+      widget.projectId.toString(),
+    );
+    _lossless = await SettingsUtil.loadLosslessStorage(
       widget.projectId.toString(),
     );
 
@@ -1519,6 +1523,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
         translateY ?? 0,
         this.canvasWidth,
         this.canvasHeight,
+        preserveBitDepth: _lossless,
       );
       if (imageBytesStabilized == null) {
         _log(

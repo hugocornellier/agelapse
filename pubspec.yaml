@@ -44,7 +44,6 @@ dependencies:
   google_mlkit_pose_detection: ^0.14.1
   heif_converter: ^1.0.1
   intl: ^0.20.2
-  material_symbols_icons: ^4.2906.0
   media_kit: ^1.2.6
   media_kit_libs_linux: ^1.2.1
   media_kit_libs_windows_video: ^1.0.11

@@ -109,6 +109,9 @@ class SettingsSheetState extends State<SettingsSheet> {
   VideoCodec _videoCodec = VideoCodec.h264;
   VideoBackground _videoBackground = const VideoBackground.transparent();
 
+  // Lossless storage
+  bool _losslessStorage = false;
+
   // Date stamp settings
   bool _galleryDateLabelsEnabled = false;
   bool _galleryRawDateLabelsEnabled = false;
@@ -279,6 +282,7 @@ class SettingsSheetState extends State<SettingsSheet> {
       SettingsUtil.loadBackgroundColor(projectIdStr),
       SettingsUtil.loadVideoCodec(projectIdStr),
       SettingsUtil.loadVideoBackground(projectIdStr),
+      SettingsUtil.loadLosslessStorage(projectIdStr),
     ]);
 
     resolution = results[0] as String;
@@ -291,6 +295,7 @@ class SettingsSheetState extends State<SettingsSheet> {
     _backgroundColor = results[5] as String;
     _videoCodec = results[6] as VideoCodec;
     _videoBackground = results[7] as VideoBackground;
+    _losslessStorage = results[8] as bool;
 
     // Detect if resolution is custom (not a preset)
     _isCustomResolution = !_presetResolutions.contains(resolution);
@@ -1542,6 +1547,37 @@ class SettingsSheetState extends State<SettingsSheet> {
       children: [
         _buildStabilizationModeDropdown(),
         _buildEyeScaleButton(),
+        BoolSettingSwitch(
+          title: 'Lossless storage',
+          initialValue: _losslessStorage,
+          showDivider: false,
+          showInfo: true,
+          infoContent:
+              'When enabled, stabilized frames preserve source bit depth (up to 16-bit). '
+              'This only benefits RAW/DNG imports — standard JPEG/HEIC photos are always 8-bit regardless.\n\n'
+              'Lossless 16-bit frames are roughly double the file size of 8-bit frames.',
+          onChanged: (bool value) async {
+            final bool shouldProceed = await Utils.showConfirmChangeDialog(
+              context,
+              "lossless storage",
+            );
+
+            if (shouldProceed && mounted) {
+              setState(() => _losslessStorage = value);
+
+              await widget.cancelStabCallback();
+              await SettingsUtil.setLosslessStorage(
+                widget.projectId.toString(),
+                value,
+              );
+              await widget.refreshSettings();
+
+              await resetStabStatusAndRestartStabilization();
+            } else if (mounted) {
+              setState(() {}); // Revert switch visual state
+            }
+          },
+        ),
       ],
     );
   }

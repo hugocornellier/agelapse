@@ -167,8 +167,12 @@ class IsolatePool {
     switch (operation) {
       case 'readToPng':
         final filePath = params['filePath'] as String;
+        final preserveBitDepth = params['preserveBitDepth'] as bool? ?? false;
         final fileBytes = await File(filePath).readAsBytes();
-        final mat = cv.imdecode(fileBytes, cv.IMREAD_COLOR);
+        final decodeFlag = preserveBitDepth
+            ? (cv.IMREAD_ANYDEPTH | cv.IMREAD_COLOR)
+            : cv.IMREAD_COLOR;
+        final mat = cv.imdecode(fileBytes, decodeFlag);
         if (mat.isEmpty) {
           mat.dispose();
           return null;
@@ -232,7 +236,10 @@ class IsolatePool {
 
         cv.Mat result;
         if (mat.channels == 4) {
-          final bg = cv.Mat.zeros(mat.rows, mat.cols, cv.MatType.CV_8UC3);
+          final bgType = mat.type.depth == 2 // CV_16U
+              ? cv.MatType.CV_16UC3
+              : cv.MatType.CV_8UC3;
+          final bg = cv.Mat.zeros(mat.rows, mat.cols, bgType);
           final channels = cv.split(mat);
           final bgr = cv.merge(
             cv.VecMat.fromList([channels[0], channels[1], channels[2]]),
@@ -255,10 +262,19 @@ class IsolatePool {
 
       case 'thumbnailFromPng':
         final input = params['bytes'] as Uint8List;
-        final mat = cv.imdecode(input, cv.IMREAD_UNCHANGED);
+        var mat = cv.imdecode(input, cv.IMREAD_UNCHANGED);
         if (mat.isEmpty) {
           mat.dispose();
           return null;
+        }
+
+        // Thumbnails are always 8-bit JPEG — downcast 16-bit sources
+        if (mat.type.depth != 0) {
+          // depth 0 = CV_8U
+          final mat8 = mat.convertTo(cv.MatType.CV_8UC(mat.channels),
+              alpha: 1.0 / 256.0);
+          mat.dispose();
+          mat = mat8;
         }
 
         cv.Mat composited;
@@ -339,6 +355,7 @@ class IsolatePool {
         final canvasHeight = params['canvasHeight'] as int;
         final srcId = params['srcId'] as String?;
         final backgroundColorBGR = params['backgroundColorBGR'] as List<int>?;
+        final preserveBitDepth = params['preserveBitDepth'] as bool? ?? false;
         // null backgroundColorBGR means transparent background
         final isTransparent = backgroundColorBGR == null;
 
@@ -356,7 +373,10 @@ class IsolatePool {
           usedCache = true;
         } else {
           // Cache miss - decode and optionally cache
-          srcMat = cv.imdecode(srcBytes, cv.IMREAD_COLOR);
+          final decodeFlag = preserveBitDepth
+              ? (cv.IMREAD_ANYDEPTH | cv.IMREAD_COLOR)
+              : cv.IMREAD_COLOR;
+          srcMat = cv.imdecode(srcBytes, decodeFlag);
           if (srcMat.isEmpty) {
             srcMat.dispose();
             return null;

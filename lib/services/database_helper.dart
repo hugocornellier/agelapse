@@ -351,6 +351,8 @@ class DB {
     'video_background': 'TRANSPARENT',
     // Camera timer
     'camera_timer_duration': '0',
+    // Lossless storage (preserves source bit depth for RAW/DNG imports)
+    'lossless_storage': 'auto',
   };
 
   Future<Map<String, dynamic>?> getSettingByTitle(

@@ -7,6 +7,7 @@ import 'package:path/path.dart' as path;
 
 import '../utils/gallery_utils.dart';
 import '../utils/camera_utils.dart';
+import 'raw_decoder.dart';
 
 class ImageProcessor {
   String? imagePath;
@@ -76,6 +77,50 @@ class ImageProcessor {
         if (await tempFile.exists()) {
           await tempFile.delete();
         }
+
+        return result;
+      }
+
+      // RAW/DNG: decode to PNG, then import
+      if (RawDecoder.isRawExtension(extension)) {
+        final Uint8List? rawBytes = await CameraUtils.readBytesInIsolate(
+          imagePath!,
+        );
+
+        int? overrideTs;
+        if (rawBytes != null) {
+          final Map<String, dynamic> exif =
+              await GalleryUtils.tryReadExifFromBytes(rawBytes);
+          if (exif.isNotEmpty) {
+            final res = await GalleryUtils.parseExifDate(exif);
+            overrideTs = res.$2;
+          }
+        }
+
+        final tempDir = path.dirname(imagePath!);
+        final String? decodedPath = await RawDecoder.decodeToFile(
+          imagePath!,
+          tempDir,
+        );
+
+        if (decodedPath == null || !await File(decodedPath).exists()) {
+          return false;
+        }
+
+        xFile = XFile(decodedPath);
+
+        final bool result = await GalleryUtils.importXFile(
+          xFile,
+          projectId!,
+          activeProcessingDateNotifier!,
+          timestamp: overrideTs ?? timestamp,
+          increaseSuccessfulImportCount: increaseSuccessfulImportCount,
+        );
+
+        // Clean up decoded temp file
+        try {
+          await File(decodedPath).delete();
+        } catch (_) {}
 
         return result;
       }

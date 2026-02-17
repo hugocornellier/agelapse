@@ -135,6 +135,15 @@ class Utils {
       ".bmp",
       ".webp",
       ".avif",
+      // RAW formats
+      ".dng",
+      ".cr2",
+      ".cr3",
+      ".nef",
+      ".arw",
+      ".raf",
+      ".orf",
+      ".rw2",
     };
     if (validExtensions.contains(extension)) return true;
 

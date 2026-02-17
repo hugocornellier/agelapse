@@ -15,6 +15,7 @@ void main() {
           eyeOffsetY: 0.35,
           projectType: 'face',
           backgroundColorBGR: [0, 0, 0],
+          lossless: false,
         );
 
         expect(settings.projectOrientation, equals('portrait'));
@@ -39,6 +40,7 @@ void main() {
           eyeOffsetY: 0.0,
           projectType: 'object',
           backgroundColorBGR: [255, 255, 255],
+          lossless: false,
         );
 
         expect(settings.projectOrientation, equals('landscape'));
@@ -58,6 +60,7 @@ void main() {
           eyeOffsetY: 0.35,
           projectType: 'face',
           backgroundColorBGR: [0, 0, 255],
+          lossless: false,
         );
 
         expect(settings.backgroundColorBGR![0], equals(0)); // B
@@ -76,6 +79,7 @@ void main() {
           eyeOffsetY: -0.05,
           projectType: 'face',
           backgroundColorBGR: [0, 0, 0],
+          lossless: false,
         );
 
         expect(settings.eyeOffsetX, equals(-0.1));
@@ -95,6 +99,7 @@ void main() {
           eyeOffsetY: 0.35,
           projectType: 'face',
           backgroundColorBGR: [0, 0, 0],
+          lossless: false,
         );
 
         const settings2 = StabilizationSettings(
@@ -107,6 +112,7 @@ void main() {
           eyeOffsetY: 0.35,
           projectType: 'face',
           backgroundColorBGR: [0, 0, 0],
+          lossless: false,
         );
 
         // Both should be valid const instances
@@ -129,6 +135,7 @@ void main() {
             eyeOffsetY: 0.35,
             projectType: 'face',
             backgroundColorBGR: [0, 0, 0],
+            lossless: false,
           );
           expect(settings.resolution, equals(res));
         }
@@ -155,6 +162,7 @@ void main() {
             eyeOffsetY: 0.35,
             projectType: 'face',
             backgroundColorBGR: [0, 0, 0],
+            lossless: false,
           );
           expect(settings.aspectRatio, equals(entry.key));
           expect(settings.aspectRatioDecimal, closeTo(entry.value, 0.001));
@@ -174,6 +182,7 @@ void main() {
           eyeOffsetY: 0.35,
           projectType: 'face',
           backgroundColorBGR: [0, 0, 0],
+          lossless: false,
         );
         expect(settings.stabilizationMode, equals('face'));
       });
@@ -189,6 +198,7 @@ void main() {
           eyeOffsetY: 0.5,
           projectType: 'object',
           backgroundColorBGR: [0, 0, 0],
+          lossless: false,
         );
         expect(settings.stabilizationMode, equals('object'));
       });
@@ -206,6 +216,7 @@ void main() {
           eyeOffsetY: 0.35,
           projectType: 'face',
           backgroundColorBGR: [0, 0, 0],
+          lossless: false,
         );
         expect(settings.backgroundColorBGR, equals([0, 0, 0]));
       });
@@ -221,6 +232,7 @@ void main() {
           eyeOffsetY: 0.35,
           projectType: 'face',
           backgroundColorBGR: [255, 255, 255],
+          lossless: false,
         );
         expect(settings.backgroundColorBGR, equals([255, 255, 255]));
       });
@@ -236,6 +248,7 @@ void main() {
           eyeOffsetY: 0.35,
           projectType: 'face',
           backgroundColorBGR: [0, 0, 255], // BGR: B=0, G=0, R=255
+          lossless: false,
         );
         expect(settings.backgroundColorBGR![2], equals(255)); // R channel
       });
@@ -251,6 +264,7 @@ void main() {
           eyeOffsetY: 0.35,
           projectType: 'face',
           backgroundColorBGR: [255, 0, 0], // BGR: B=255, G=0, R=0
+          lossless: false,
         );
         expect(settings.backgroundColorBGR![0], equals(255)); // B channel
       });

@@ -17,6 +17,9 @@ class StabilizationSettings {
   /// [B, G, R] for OpenCV Scalar, or null for transparent background
   final List<int>? backgroundColorBGR;
 
+  /// Whether to preserve source bit depth (16-bit) through stabilization.
+  final bool lossless;
+
   const StabilizationSettings({
     required this.projectOrientation,
     required this.resolution,
@@ -27,6 +30,7 @@ class StabilizationSettings {
     required this.eyeOffsetY,
     required this.projectType,
     required this.backgroundColorBGR,
+    required this.lossless,
   });
 
   /// Returns true if background should be transparent (alpha channel)
@@ -43,10 +47,11 @@ class StabilizationSettings {
       SettingsUtil.loadOffsetYCurrentOrientation(projectId.toString()),
       DB.instance.getProjectTypeByProjectId(projectId),
       SettingsUtil.loadBackgroundColor(projectId.toString()),
+      SettingsUtil.loadLosslessStorage(projectId.toString()),
     ]);
 
     final aspectRatio = results[2] as String;
-    final projectType = results[6];
+    final projectType = results[6] as String?;
     final bgColorHex = results[7] as String;
 
     return StabilizationSettings(
@@ -60,6 +65,7 @@ class StabilizationSettings {
       eyeOffsetY: double.parse(results[5] as String),
       projectType: projectType?.toLowerCase() ?? 'face',
       backgroundColorBGR: _hexToBGR(bgColorHex),
+      lossless: results[8] as bool,
     );
   }
 

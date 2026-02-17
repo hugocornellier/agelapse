@@ -87,6 +87,27 @@ enum VideoCodec {
     }
   }
 
+  /// Pixel format for high-bit-depth sources.
+  /// Returns 10-bit format when [highBitDepth] is true and the codec supports it.
+  String pixelFormatForSource({bool highBitDepth = false}) {
+    if (!highBitDepth) return pixelFormat;
+    switch (this) {
+      case VideoCodec.hevc:
+        return 'yuv420p10le';
+      case VideoCodec.vp9:
+        // Non-alpha VP9 can do 10-bit; alpha stays 8-bit
+        return supportsAlpha ? 'yuva420p' : 'yuv420p10le';
+      case VideoCodec.h264:
+        // 10-bit H.264 has terrible compatibility, stay 8-bit
+        return 'yuv420p';
+      case VideoCodec.prores422:
+      case VideoCodec.prores422hq:
+      case VideoCodec.prores4444:
+        // ProRes is already 10-bit
+        return pixelFormat;
+    }
+  }
+
   /// Whether this codec supports alpha channel.
   bool get supportsAlpha => this == prores4444 || this == vp9;
 

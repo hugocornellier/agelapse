@@ -5,8 +5,12 @@ import 'package:opencv_dart/opencv_dart.dart' as cv;
 /// Image processing utilities using opencv_dart for fast native operations.
 class ImageUtils {
   /// Decode image bytes to cv.Mat
-  static cv.Mat decode(Uint8List bytes) {
-    return cv.imdecode(bytes, cv.IMREAD_COLOR);
+  /// When [preserveBitDepth] is true, uses IMREAD_ANYDEPTH to keep 16-bit data.
+  static cv.Mat decode(Uint8List bytes, {bool preserveBitDepth = false}) {
+    final flag = preserveBitDepth
+        ? (cv.IMREAD_ANYDEPTH | cv.IMREAD_COLOR)
+        : cv.IMREAD_COLOR;
+    return cv.imdecode(bytes, flag);
   }
 
   /// Decode image bytes to cv.Mat with alpha channel (for PNG with transparency)
@@ -68,8 +72,10 @@ class ImageUtils {
 
   /// Create a black background image of the same size and composite the source on top
   static cv.Mat compositeOnBlackBackground(cv.Mat src) {
-    // Create black background with same dimensions
-    final bg = cv.Mat.zeros(src.rows, src.cols, cv.MatType.CV_8UC3);
+    // Create black background with same dimensions (depth-aware)
+    final bgType =
+        src.type.depth == 2 ? cv.MatType.CV_16UC3 : cv.MatType.CV_8UC3;
+    final bg = cv.Mat.zeros(src.rows, src.cols, bgType);
 
     // If source has alpha channel, we need to handle transparency
     if (src.channels == 4) {

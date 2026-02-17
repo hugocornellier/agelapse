@@ -391,6 +391,44 @@ class VideoUtils {
     }
   }
 
+  /// Check if any frames in [framesDir] have bit depth > 8.
+  /// Reads the PNG IHDR chunk (byte offset 24) of the first frame.
+  static Future<bool> _hasHighBitDepthFrames(String framesDir) async {
+    try {
+      final dir = Directory(framesDir);
+      if (!await dir.exists()) return false;
+
+      final files = await dir
+          .list()
+          .where((e) => e is File && e.path.toLowerCase().endsWith('.png'))
+          .map((e) => e.path)
+          .toList();
+
+      if (files.isEmpty) return false;
+      files.sort((a, b) => path.basename(a).compareTo(path.basename(b)));
+
+      final firstFrame = File(files.first);
+      final bytes = await firstFrame.readAsBytes();
+
+      // PNG IHDR: bit depth is at byte offset 24
+      if (bytes.length < 25) return false;
+      // Verify PNG signature
+      if (bytes[0] != 0x89 ||
+          bytes[1] != 0x50 ||
+          bytes[2] != 0x4E ||
+          bytes[3] != 0x47) {
+        return false;
+      }
+
+      final bitDepth = bytes[24];
+      LogService.instance.log("[VIDEO] Frame bit depth: $bitDepth");
+      return bitDepth > 8;
+    } catch (e) {
+      LogService.instance.log("[VIDEO] Failed to read frame bit depth: $e");
+      return false;
+    }
+  }
+
   static int pickBitrateKbps(String resolution) {
     // Handle resolution setting strings (e.g., "8K", "4K", "1080p")
     if (resolution == "8K") return 100000; // 8K: 100 Mbps
@@ -869,10 +907,15 @@ class VideoUtils {
         finalCodec = VideoCodec.hevc;
       }
 
+      // Detect high-bit-depth source frames for 10-bit output
+      final bool highBitDepth = await _hasHighBitDepthFrames(framesDir);
+
       // Use codec model for all encoding parameters
       final String vCodec = finalCodec.encoder;
       final String codecTag = finalCodec.codecTag;
-      final String pixFmt = finalCodec.pixelFormat;
+      final String pixFmt = finalCodec.pixelFormatForSource(
+        highBitDepth: highBitDepth,
+      );
       final String rateControl;
 
       if (finalCodec == VideoCodec.vp9) {
@@ -917,6 +960,7 @@ class VideoUtils {
           "$filterArgs $mapArg "
           "-c:v $vCodec $rateControl "
           "${videoHasAlpha ? '' : '-g 240 '}$movFlags $codecTag "
+          "-color_primaries bt709 -color_trc bt709 -colorspace bt709 "
           "-pix_fmt $pixFmt "
           "\"$videoOutputPath\"";
 
@@ -1680,10 +1724,25 @@ class VideoUtils {
       "[VIDEO] Using ${effectiveCodec.displayName} encoder: ${effectiveCodec.encoderDesktop}",
     );
 
+    // Detect high-bit-depth source frames for 10-bit output
+    final bool highBitDepth = await _hasHighBitDepthFrames(framesDir);
+
     // Video encoding settings based on codec model
-    final pixFmt = effectiveCodec.pixelFormat;
+    final pixFmt = effectiveCodec.pixelFormatForSource(
+      highBitDepth: highBitDepth,
+    );
     final int outFps = outputFps(fps);
     args.addAll(['-vsync', 'cfr', '-r', '$outFps', '-pix_fmt', pixFmt]);
+
+    // Color space metadata for correct rendering in all players
+    args.addAll([
+      '-color_primaries',
+      'bt709',
+      '-color_trc',
+      'bt709',
+      '-colorspace',
+      'bt709',
+    ]);
 
     // Split encoder string into individual args (e.g., "prores_ks -profile:v standard")
     final encoderParts = effectiveCodec.encoderDesktop.split(' ');

@@ -164,6 +164,15 @@ class GalleryUtils {
     '.heif',
     '.avif',
     '.gif',
+    // RAW formats
+    '.dng',
+    '.cr2',
+    '.cr3',
+    '.nef',
+    '.arw',
+    '.raf',
+    '.orf',
+    '.rw2',
   };
 
   static var fileList = [];

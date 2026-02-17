@@ -19,6 +19,7 @@ import '../../services/database_helper.dart';
 import '../../services/isolate_manager.dart';
 import '../../services/isolate_pool.dart';
 import '../../services/log_service.dart';
+import '../../services/raw_decoder.dart';
 import '../camera_utils.dart';
 import '../dir_utils.dart';
 import '../heic_utils.dart';
@@ -524,7 +525,11 @@ class StabUtils {
         // Read any image format and return PNG bytes
         try {
           final fileBytes = await File(filePath!).readAsBytes();
-          final mat = cv.imdecode(fileBytes, cv.IMREAD_COLOR);
+          final preserveBitDepth = params['preserveBitDepth'] as bool? ?? false;
+          final decodeFlag = preserveBitDepth
+              ? (cv.IMREAD_ANYDEPTH | cv.IMREAD_COLOR)
+              : cv.IMREAD_COLOR;
+          final mat = cv.imdecode(fileBytes, decodeFlag);
           if (mat.isEmpty) {
             mat.dispose();
             sendPort.send(null);
@@ -611,7 +616,9 @@ class StabUtils {
           cv.Mat result;
           if (mat.channels == 4) {
             // Has alpha channel - composite on black
-            final bg = cv.Mat.zeros(mat.rows, mat.cols, cv.MatType.CV_8UC3);
+            final bgType =
+                mat.type.depth == 2 ? cv.MatType.CV_16UC3 : cv.MatType.CV_8UC3;
+            final bg = cv.Mat.zeros(mat.rows, mat.cols, bgType);
             final channels = cv.split(mat);
             final bgr = cv.merge(
               cv.VecMat.fromList([channels[0], channels[1], channels[2]]),
@@ -667,6 +674,16 @@ class StabUtils {
             composited = mat.clone();
           }
           mat.dispose();
+
+          // Ensure 8-bit for JPEG thumbnail output
+          if (composited.type.depth != 0) {
+            final composited8 = composited.convertTo(
+              cv.MatType.CV_8UC(composited.channels),
+              alpha: 1.0 / 256.0,
+            );
+            composited.dispose();
+            composited = composited8;
+          }
 
           // Resize to 800px width with high-quality interpolation
           final aspectRatio = composited.rows / composited.cols;
@@ -731,12 +748,14 @@ class StabUtils {
   static Future<Uint8List?> readImageAsPngBytesInIsolate(
     String filePath, {
     CancellationToken? token,
+    bool preserveBitDepth = false,
   }) async {
     token?.throwIfCancelled();
 
     if (IsolatePool.instance.isInitialized) {
       return await IsolatePool.instance.execute<Uint8List>('readToPng', {
         'filePath': filePath,
+        'preserveBitDepth': preserveBitDepth,
       });
     }
 
@@ -746,6 +765,7 @@ class StabUtils {
       'sendPort': receivePort.sendPort,
       'filePath': filePath,
       'operation': 'readToPng',
+      'preserveBitDepth': preserveBitDepth,
     };
 
     final isolate = await Isolate.spawn(
@@ -980,7 +1000,8 @@ class StabUtils {
 
   /// Prepares a PNG version of the image and returns the PNG bytes.
   /// Also writes to disk for caching. If PNG already exists, reads and returns it.
-  static Future<Uint8List?> preparePNG(String imgPath) async {
+  static Future<Uint8List?> preparePNG(String imgPath,
+      {bool lossless = false}) async {
     final String pngPath = await DirUtils.getPngPathFromRawPhotoPath(imgPath);
     await DirUtils.createDirectoryIfNotExists(pngPath);
     final File pngFile = File(pngPath);
@@ -1073,7 +1094,24 @@ class StabUtils {
       imgPath = jpgImgPath;
     }
 
-    final Uint8List? pngBytes = await readImageAsPngBytesInIsolate(imgPath);
+    // RAW/DNG: decode via RawDecoder first, then encode to PNG
+    bool conversionFromRawNeeded = false;
+    String rawDecodedPath = "";
+    if (RawDecoder.isRawExtension(lowerExt)) {
+      conversionFromRawNeeded = true;
+      final tempDir = path.dirname(imgPath);
+      final decoded = await RawDecoder.decodeToFile(imgPath, tempDir);
+      if (decoded == null) {
+        return null;
+      }
+      rawDecodedPath = decoded;
+      imgPath = decoded;
+    }
+
+    final Uint8List? pngBytes = await readImageAsPngBytesInIsolate(
+      imgPath,
+      preserveBitDepth: lossless,
+    );
     if (pngBytes != null) {
       // Write to disk for caching (fire-and-forget for future runs)
       await writePngBytesToFileInIsolate(pngPath, pngBytes);
@@ -1081,6 +1119,10 @@ class StabUtils {
 
     if (conversionToJpgNeeded) {
       await ProjectUtils.deleteFile(File(jpgImgPath));
+    }
+
+    if (conversionFromRawNeeded && rawDecodedPath.isNotEmpty) {
+      await ProjectUtils.deleteFile(File(rawDecodedPath));
     }
 
     // Return bytes directly - caller doesn't need to read from disk
@@ -1411,11 +1453,15 @@ class StabUtils {
     final int canvasHeight = params['canvasHeight'];
     final List<int>? backgroundColorBGR =
         params['backgroundColorBGR'] as List<int>?;
+    final bool preserveBitDepth = params['preserveBitDepth'] as bool? ?? false;
     // null backgroundColorBGR means transparent background
     final bool isTransparent = backgroundColorBGR == null;
 
     try {
-      final cv.Mat srcMat = cv.imdecode(srcBytes, cv.IMREAD_COLOR);
+      final decodeFlag = preserveBitDepth
+          ? (cv.IMREAD_ANYDEPTH | cv.IMREAD_COLOR)
+          : cv.IMREAD_COLOR;
+      final cv.Mat srcMat = cv.imdecode(srcBytes, decodeFlag);
       if (srcMat.isEmpty) {
         srcMat.dispose();
         sendPort.send(null);
@@ -1503,6 +1549,7 @@ class StabUtils {
     CancellationToken? token,
     String? srcId,
     List<int>? backgroundColorBGR,
+    bool preserveBitDepth = false,
   }) async {
     token?.throwIfCancelled();
 
@@ -1517,6 +1564,7 @@ class StabUtils {
         'canvasHeight': canvasHeight,
         'srcId': srcId,
         'backgroundColorBGR': backgroundColorBGR,
+        'preserveBitDepth': preserveBitDepth,
       });
     }
 
@@ -1532,6 +1580,7 @@ class StabUtils {
       'canvasWidth': canvasWidth,
       'canvasHeight': canvasHeight,
       'backgroundColorBGR': backgroundColorBGR,
+      'preserveBitDepth': preserveBitDepth,
     };
 
     final isolate = await Isolate.spawn(_stabilizeCVIsolate, params);
