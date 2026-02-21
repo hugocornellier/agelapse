@@ -170,7 +170,7 @@ enum VideoCodec {
       case VideoCodec.h264:
         return 'libx264';
       case VideoCodec.hevc:
-        return 'libx265';
+        return 'libx265 -profile:v main';
       case VideoCodec.prores422:
         return 'prores_ks -profile:v standard';
       case VideoCodec.prores422hq:

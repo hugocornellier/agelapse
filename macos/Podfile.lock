@@ -158,7 +158,7 @@ SPEC CHECKSUMS:
   desktop_drop: 10a3e6a7fa9dbe350541f2574092fecfa345a07b
   device_info_plus: 4fb280989f669696856f8b129e4a5e3cd6c48f76
   downloadsfolder: 9a9a5fb6eee0abe38756e788bb248d1c21490a6e
-  face_detection_tflite: 4f21ea032f913f04d70ca5dfc36d1771fdab0907
+  face_detection_tflite: 995c69e9ce0cd89788737548ec13bdd89a7929b7
   file_picker: 7584aae6fa07a041af2b36a2655122d42f578c1a
   file_selector_macos: 9e9e068e90ebee155097d00e89ae91edb2374db7
   flutter_avif_macos: 9ed61d67adfbd6964eccb59971020fb55c31fc11
@@ -169,7 +169,7 @@ SPEC CHECKSUMS:
   media_kit_video: 28d7d27611c7769a2464eb7621c37386a61dcc9a
   package_info_plus: f0052d280d17aa382b932f399edf32507174e870
   photo_manager: fe4cbb0808b96f8be4af7ce6ae18dcd9c9b983c6
-  pose_detection_tflite: eb1c40d326aa9bedde9ba6a2e0861c314d546e02
+  pose_detection_tflite: 8b51219de9a1fb269763b50b3f0495c93906a3f7
   screen_retriever_macos: 452e51764a9e1cdb74b3c541238795849f21557f
   share_plus: 510bf0af1a42cd602274b4629920c9649c52f4cc
   sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0

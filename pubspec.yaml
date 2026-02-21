@@ -23,7 +23,7 @@ dependencies:
   device_info_plus: ^12.3.0
   downloadsfolder: ^1.2.0
   exif_reader: ^4.1.0
-  face_detection_tflite: ^4.6.2
+  face_detection_tflite: ^4.6.4
   ffmpeg_kit_flutter_new:
     git:
       url: https://github.com/hugocornellier/ffmpeg_kit_flutter.git
@@ -54,7 +54,7 @@ dependencies:
   path: ^1.9.1
   path_provider: ^2.1.5
   permission_handler: ^12.0.1
-  pose_detection_tflite: ^1.3.0
+  pose_detection_tflite: ^1.3.3
   provider: ^6.1.5
   saver_gallery: ^4.1.0
   sensors_plus: ^7.0.0

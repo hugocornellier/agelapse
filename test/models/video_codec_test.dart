@@ -240,10 +240,15 @@ void main() {
         expect(VideoCodec.prores4444.encoderDesktop, 'libvpx-vp9');
       });
 
-      test('encoderAndroid matches encoderDesktop', () {
+      test('encoderAndroid matches encoderDesktop except hevc', () {
         for (final codec in VideoCodec.values) {
+          if (codec == VideoCodec.hevc) continue;
           expect(codec.encoderAndroid, codec.encoderDesktop);
         }
+      });
+
+      test('encoderAndroid for hevc includes profile flag', () {
+        expect(VideoCodec.hevc.encoderAndroid, 'libx265 -profile:v main');
       });
 
       test('all encoders are non-empty', () {
