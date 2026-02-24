@@ -25,12 +25,16 @@ class GalleryDateStampConfig {
   /// Font family for date labels (e.g., 'Inter', 'Roboto').
   final String fontFamily;
 
+  /// Font size level (1-6) for date labels.
+  final int sizeLevel;
+
   const GalleryDateStampConfig({
     required this.stabilizedLabelsEnabled,
     required this.rawLabelsEnabled,
     required this.dateFormat,
     required this.captureOffsetMap,
     required this.fontFamily,
+    required this.sizeLevel,
   });
 
   /// Disabled/default configuration used during initialization.
@@ -40,6 +44,7 @@ class GalleryDateStampConfig {
     dateFormat: 'MM/yy',
     captureOffsetMap: {},
     fontFamily: DateStampUtils.defaultFont,
+    sizeLevel: DateStampUtils.defaultGallerySizeLevel,
   );
 
   /// Efficient equality check.
@@ -52,6 +57,7 @@ class GalleryDateStampConfig {
           rawLabelsEnabled == other.rawLabelsEnabled &&
           dateFormat == other.dateFormat &&
           fontFamily == other.fontFamily &&
+          sizeLevel == other.sizeLevel &&
           identical(captureOffsetMap, other.captureOffsetMap);
 
   @override
@@ -60,6 +66,7 @@ class GalleryDateStampConfig {
         rawLabelsEnabled,
         dateFormat,
         fontFamily,
+        sizeLevel,
         identityHashCode(captureOffsetMap),
       );
 
@@ -70,6 +77,7 @@ class GalleryDateStampConfig {
     String? dateFormat,
     Map<String, int?>? captureOffsetMap,
     String? fontFamily,
+    int? sizeLevel,
   }) {
     return GalleryDateStampConfig(
       stabilizedLabelsEnabled:
@@ -78,6 +86,7 @@ class GalleryDateStampConfig {
       dateFormat: dateFormat ?? this.dateFormat,
       captureOffsetMap: captureOffsetMap ?? this.captureOffsetMap,
       fontFamily: fontFamily ?? this.fontFamily,
+      sizeLevel: sizeLevel ?? this.sizeLevel,
     );
   }
 }

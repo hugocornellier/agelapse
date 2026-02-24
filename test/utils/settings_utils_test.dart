@@ -48,6 +48,13 @@ void main() {
       expect(SettingsUtil.fallbackDateStampSizePercent, equals(3));
     });
 
+    test('fallbackGallerySizeLevel matches DateStampUtils', () {
+      expect(
+        SettingsUtil.fallbackGallerySizeLevel,
+        equals(DateStampUtils.defaultGallerySizeLevel),
+      );
+    });
+
     test('fallbackDateStampOpacity is 1.0', () {
       expect(SettingsUtil.fallbackDateStampOpacity, equals('1.0'));
     });
@@ -71,6 +78,7 @@ void main() {
           exportOpacity: 0.8,
           galleryFont: 'Roboto Mono',
           exportFont: 'Custom Font',
+          gallerySizeLevel: 4,
         );
 
         expect(settings.galleryLabelsEnabled, isTrue);
@@ -83,6 +91,7 @@ void main() {
         expect(settings.exportOpacity, equals(0.8));
         expect(settings.galleryFont, equals('Roboto Mono'));
         expect(settings.exportFont, equals('Custom Font'));
+        expect(settings.gallerySizeLevel, equals(4));
       });
     });
 
@@ -99,6 +108,7 @@ void main() {
           exportOpacity: 1.0,
           galleryFont: 'Roboto Mono',
           exportFont: 'Custom Export Font',
+          gallerySizeLevel: 4,
         );
 
         expect(settings.resolvedExportFont, equals('Custom Export Font'));
@@ -116,9 +126,48 @@ void main() {
           exportOpacity: 1.0,
           galleryFont: 'Roboto Mono',
           exportFont: DateStampUtils.fontSameAsGallery,
+          gallerySizeLevel: 4,
         );
 
         expect(settings.resolvedExportFont, equals('Roboto Mono'));
+      });
+    });
+
+    group('resolvedExportSize', () {
+      test('returns export size when not same as gallery', () {
+        const settings = DateStampSettings(
+          galleryLabelsEnabled: false,
+          galleryRawLabelsEnabled: false,
+          galleryFormat: 'MM/YY',
+          exportEnabled: false,
+          exportPosition: 'Lower right',
+          exportFormat: 'MMMM d, yyyy',
+          exportSizePercent: 5,
+          exportOpacity: 1.0,
+          galleryFont: 'Inter',
+          exportFont: 'Inter',
+          gallerySizeLevel: 3,
+        );
+
+        expect(settings.resolvedExportSize, equals(5));
+      });
+
+      test('returns gallery size when export size is same as gallery', () {
+        const settings = DateStampSettings(
+          galleryLabelsEnabled: false,
+          galleryRawLabelsEnabled: false,
+          galleryFormat: 'MM/YY',
+          exportEnabled: false,
+          exportPosition: 'Lower right',
+          exportFormat: 'MMMM d, yyyy',
+          exportSizePercent: DateStampUtils.sizeSameAsGallery,
+          exportOpacity: 1.0,
+          galleryFont: 'Inter',
+          exportFont: 'Inter',
+          gallerySizeLevel: 5,
+        );
+
+        expect(settings.resolvedExportSize, equals(5));
       });
     });
 
@@ -176,6 +225,17 @@ void main() {
           DateStampSettings.defaults.exportFont,
           equals(DateStampUtils.fontSameAsGallery),
         );
+      });
+
+      test('defaults has correct gallerySizeLevel', () {
+        expect(
+          DateStampSettings.defaults.gallerySizeLevel,
+          equals(DateStampUtils.defaultGallerySizeLevel),
+        );
+      });
+
+      test('defaults resolvedExportSize returns export size', () {
+        expect(DateStampSettings.defaults.resolvedExportSize, equals(3));
       });
 
       test('defaults resolvedExportFont returns gallery font', () {

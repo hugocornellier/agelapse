@@ -147,18 +147,11 @@ class CameraUtils {
     }
   }
 
-  /// @deprecated Use [triggerCaptureHaptic] instead.
-  /// Kept for backwards compatibility.
-  static Future<void> flashAndVibrate() async {
-    await triggerCaptureHaptic();
-  }
-
   static Future<bool> savePhoto(
     XFile? image,
     int projectId,
     bool import,
-    int? imageTimestampFromExif,
-    bool failedToParseDateMetadata, {
+    int? imageTimestampFromExif, {
     Uint8List? bytes,
     VoidCallback? increaseSuccessfulImportCount,
     VoidCallback? refreshSettings,

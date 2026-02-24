@@ -251,6 +251,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
   double _exportDateStampOpacity = DateStampUtils.defaultOpacity;
   String _exportDateStampFont = DateStampUtils.fontSameAsGallery;
   String _galleryDateStampFont = DateStampUtils.defaultFont;
+  int _galleryDateStampSize = DateStampUtils.defaultGallerySizeLevel;
 
   // Cache for capture timezone offsets (timestamp -> offset minutes)
   Map<String, int?> _captureOffsetMap = {};
@@ -280,6 +281,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
         _exportDateStampOpacity = settings.exportOpacity;
         _exportDateStampFont = settings.exportFont;
         _galleryDateStampFont = settings.galleryFont;
+        _galleryDateStampSize = settings.gallerySizeLevel;
       });
     }
   }
@@ -698,8 +700,10 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
               // Font size: same formula as video output
               // Video uses: (videoHeight * sizePercent / 100).clamp(12.0, 200.0)
               // For preview, we use displayed height with same percentage
-              previewFontSize = (displayedHeight * _exportDateStampSize / 100)
-                  .clamp(10.0, 48.0);
+              final resolvedSize = DateStampUtils.resolveExportSize(
+                  _exportDateStampSize, _galleryDateStampSize);
+              previewFontSize =
+                  (displayedHeight * resolvedSize / 100).clamp(10.0, 48.0);
             }
 
             return Stack(
@@ -984,7 +988,8 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
             outputPath: tempFile,
             dateText: formattedDate,
             position: _exportDateStampPosition,
-            sizePercent: _exportDateStampSize,
+            sizePercent: DateStampUtils.resolveExportSize(
+                _exportDateStampSize, _galleryDateStampSize),
             opacity: _exportDateStampOpacity,
             watermarkVerticalOffset: watermarkOffset,
             fontFamily: DateStampUtils.resolveExportFont(

@@ -21,6 +21,8 @@ class SettingsUtil {
   static const String fallbackExportDateFormat =
       DateStampUtils.exportFormatLong;
   static const int fallbackDateStampSizePercent = 3;
+  static const int fallbackGallerySizeLevel =
+      DateStampUtils.defaultGallerySizeLevel;
   static const String fallbackDateStampOpacity = '1.0';
 
   static Future<String> loadTheme() async {
@@ -818,6 +820,19 @@ class SettingsUtil {
         .setSettingByTitle('export_date_stamp_font', font, projectId);
   }
 
+  /// Load gallery date stamp size level (per-project)
+  static Future<int> loadGalleryDateStampSize(String projectId) async {
+    try {
+      String sizeStr = await DB.instance.getSettingValueByTitle(
+        'gallery_date_stamp_size',
+        projectId,
+      );
+      return (int.tryParse(sizeStr) ?? fallbackGallerySizeLevel).clamp(1, 6);
+    } catch (e) {
+      return fallbackGallerySizeLevel;
+    }
+  }
+
   /// Load all date stamp settings at once for efficiency
   static Future<DateStampSettings> loadAllDateStampSettings(
     String projectId,
@@ -833,6 +848,7 @@ class SettingsUtil {
       loadExportDateStampOpacity(projectId),
       loadGalleryDateStampFont(projectId),
       loadExportDateStampFont(projectId),
+      loadGalleryDateStampSize(projectId),
     ]);
 
     return DateStampSettings(
@@ -846,6 +862,7 @@ class SettingsUtil {
       exportOpacity: results[7] as double,
       galleryFont: results[8] as String,
       exportFont: results[9] as String,
+      gallerySizeLevel: results[10] as int,
     );
   }
 }
@@ -862,6 +879,7 @@ class DateStampSettings {
   final double exportOpacity;
   final String galleryFont;
   final String exportFont;
+  final int gallerySizeLevel;
 
   const DateStampSettings({
     required this.galleryLabelsEnabled,
@@ -874,11 +892,16 @@ class DateStampSettings {
     required this.exportOpacity,
     required this.galleryFont,
     required this.exportFont,
+    required this.gallerySizeLevel,
   });
 
   /// Get resolved export font (handles "same as gallery" logic)
   String get resolvedExportFont =>
       DateStampUtils.resolveExportFont(exportFont, galleryFont);
+
+  /// Get resolved export size (handles "same as gallery" logic)
+  int get resolvedExportSize =>
+      DateStampUtils.resolveExportSize(exportSizePercent, gallerySizeLevel);
 
   /// Default settings
   static const DateStampSettings defaults = DateStampSettings(
@@ -892,5 +915,6 @@ class DateStampSettings {
     exportOpacity: 1.0,
     galleryFont: DateStampUtils.defaultFont,
     exportFont: DateStampUtils.fontSameAsGallery,
+    gallerySizeLevel: DateStampUtils.defaultGallerySizeLevel,
   );
 }

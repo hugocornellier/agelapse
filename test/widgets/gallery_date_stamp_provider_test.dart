@@ -11,6 +11,7 @@ void main() {
         dateFormat: 'MM/yy',
         captureOffsetMap: const {},
         fontFamily: 'Inter',
+        sizeLevel: 4,
       );
       expect(config, isNotNull);
       expect(config, isA<GalleryDateStampConfig>());
@@ -23,6 +24,7 @@ void main() {
         dateFormat: 'MM/yy',
         captureOffsetMap: const {},
         fontFamily: 'Inter',
+        sizeLevel: 4,
       );
       expect(config.stabilizedLabelsEnabled, isTrue);
     });
@@ -34,6 +36,7 @@ void main() {
         dateFormat: 'MM/yy',
         captureOffsetMap: const {},
         fontFamily: 'Inter',
+        sizeLevel: 4,
       );
       expect(config.rawLabelsEnabled, isTrue);
     });
@@ -45,6 +48,7 @@ void main() {
         dateFormat: 'MMM dd',
         captureOffsetMap: const {},
         fontFamily: 'Inter',
+        sizeLevel: 4,
       );
       expect(config.dateFormat, 'MMM dd');
     });
@@ -56,8 +60,21 @@ void main() {
         dateFormat: 'MM/yy',
         captureOffsetMap: const {},
         fontFamily: 'Roboto',
+        sizeLevel: 4,
       );
       expect(config.fontFamily, 'Roboto');
+    });
+
+    test('stores sizeLevel correctly', () {
+      final config = GalleryDateStampConfig(
+        stabilizedLabelsEnabled: false,
+        rawLabelsEnabled: false,
+        dateFormat: 'MM/yy',
+        captureOffsetMap: const {},
+        fontFamily: 'Inter',
+        sizeLevel: 2,
+      );
+      expect(config.sizeLevel, 2);
     });
 
     test('stores captureOffsetMap correctly', () {
@@ -68,6 +85,7 @@ void main() {
         dateFormat: 'MM/yy',
         captureOffsetMap: map,
         fontFamily: 'Inter',
+        sizeLevel: 4,
       );
       expect(config.captureOffsetMap, same(map));
     });
@@ -92,6 +110,10 @@ void main() {
     test('has empty captureOffsetMap', () {
       expect(GalleryDateStampConfig.disabled.captureOffsetMap, isEmpty);
     });
+
+    test('has default sizeLevel', () {
+      expect(GalleryDateStampConfig.disabled.sizeLevel, 4);
+    });
   });
 
   group('GalleryDateStampConfig equality', () {
@@ -103,6 +125,7 @@ void main() {
         dateFormat: 'MM/yy',
         captureOffsetMap: map,
         fontFamily: 'Inter',
+        sizeLevel: 4,
       );
       final config2 = GalleryDateStampConfig(
         stabilizedLabelsEnabled: true,
@@ -110,6 +133,7 @@ void main() {
         dateFormat: 'MM/yy',
         captureOffsetMap: map, // Same reference
         fontFamily: 'Inter',
+        sizeLevel: 4,
       );
       expect(config1, equals(config2));
     });
@@ -122,6 +146,7 @@ void main() {
         dateFormat: 'MM/yy',
         captureOffsetMap: map,
         fontFamily: 'Inter',
+        sizeLevel: 4,
       );
       final config2 = GalleryDateStampConfig(
         stabilizedLabelsEnabled: false,
@@ -129,6 +154,28 @@ void main() {
         dateFormat: 'MM/yy',
         captureOffsetMap: map,
         fontFamily: 'Inter',
+        sizeLevel: 4,
+      );
+      expect(config1, isNot(equals(config2)));
+    });
+
+    test('different sizeLevel is not equal', () {
+      final map = <String, int?>{};
+      final config1 = GalleryDateStampConfig(
+        stabilizedLabelsEnabled: true,
+        rawLabelsEnabled: false,
+        dateFormat: 'MM/yy',
+        captureOffsetMap: map,
+        fontFamily: 'Inter',
+        sizeLevel: 4,
+      );
+      final config2 = GalleryDateStampConfig(
+        stabilizedLabelsEnabled: true,
+        rawLabelsEnabled: false,
+        dateFormat: 'MM/yy',
+        captureOffsetMap: map,
+        fontFamily: 'Inter',
+        sizeLevel: 2,
       );
       expect(config1, isNot(equals(config2)));
     });
@@ -140,6 +187,7 @@ void main() {
         dateFormat: 'MM/yy',
         captureOffsetMap: <String, int?>{},
         fontFamily: 'Inter',
+        sizeLevel: 4,
       );
       final config2 = GalleryDateStampConfig(
         stabilizedLabelsEnabled: true,
@@ -147,6 +195,7 @@ void main() {
         dateFormat: 'MM/yy',
         captureOffsetMap: <String, int?>{}, // Different reference
         fontFamily: 'Inter',
+        sizeLevel: 4,
       );
       expect(config1, isNot(equals(config2)));
     });
@@ -160,6 +209,7 @@ void main() {
         dateFormat: 'MM/yy',
         captureOffsetMap: const {},
         fontFamily: 'Inter',
+        sizeLevel: 4,
       );
       final copy = original.copyWith(stabilizedLabelsEnabled: true);
       expect(copy.stabilizedLabelsEnabled, isTrue);
@@ -174,12 +224,27 @@ void main() {
         dateFormat: 'MMM dd',
         captureOffsetMap: const {},
         fontFamily: 'Roboto',
+        sizeLevel: 4,
       );
       final copy = original.copyWith(dateFormat: 'yyyy');
       expect(copy.stabilizedLabelsEnabled, isTrue);
       expect(copy.rawLabelsEnabled, isTrue);
       expect(copy.dateFormat, 'yyyy');
       expect(copy.fontFamily, 'Roboto');
+    });
+
+    test('copyWith updates sizeLevel', () {
+      final original = GalleryDateStampConfig(
+        stabilizedLabelsEnabled: false,
+        rawLabelsEnabled: false,
+        dateFormat: 'MM/yy',
+        captureOffsetMap: const {},
+        fontFamily: 'Inter',
+        sizeLevel: 4,
+      );
+      final copy = original.copyWith(sizeLevel: 6);
+      expect(copy.sizeLevel, 6);
+      expect(copy.fontFamily, 'Inter');
     });
   });
 
@@ -192,6 +257,7 @@ void main() {
         dateFormat: 'MM/yy',
         captureOffsetMap: map,
         fontFamily: 'Inter',
+        sizeLevel: 4,
       );
       final config2 = GalleryDateStampConfig(
         stabilizedLabelsEnabled: true,
@@ -199,6 +265,7 @@ void main() {
         dateFormat: 'MM/yy',
         captureOffsetMap: map,
         fontFamily: 'Inter',
+        sizeLevel: 4,
       );
       expect(config1.hashCode, equals(config2.hashCode));
     });

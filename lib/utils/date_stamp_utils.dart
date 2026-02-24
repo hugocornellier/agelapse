@@ -60,6 +60,17 @@ class DateStampUtils {
   static const String defaultPosition = positionLowerRight;
   static const double defaultOpacity = 1.0;
   static const int defaultSizePercent = 3;
+  static const int defaultGallerySizeLevel = 4;
+
+  /// Fixed pixel sizes for each gallery size level (1-6).
+  static const List<double> gallerySizePx = [8.0, 10.0, 12.0, 14.0, 16.0, 18.0];
+
+  /// Approximate pixel sizes for each export level (1-6) at 1080p reference.
+  /// Actual rendering uses percentage-based scaling.
+  static const List<int> exportSizeApproxPx = [10, 20, 30, 40, 55, 65];
+
+  /// Sentinel value for export size "Same as thumbnail" option.
+  static const int sizeSameAsGallery = 0;
 
   // Font options (bundled, copyright-free fonts)
   static const String fontInter = 'Inter';
@@ -262,6 +273,19 @@ class DateStampUtils {
     return imageHeight * (clampedPercent / 100);
   }
 
+  /// Get the fixed pixel size for a gallery size level (1-6).
+  /// Each level maps to a standard font size: 8, 10, 12, 14, 16, 18.
+  static double calculateGalleryFontSize(
+      double thumbnailHeight, int sizeLevel) {
+    final index = sizeLevel.clamp(1, 6) - 1;
+    return gallerySizePx[index];
+  }
+
+  /// Resolve export size - handles "same as gallery" logic.
+  static int resolveExportSize(int exportSize, int gallerySize) {
+    return exportSize == sizeSameAsGallery ? gallerySize : exportSize;
+  }
+
   /// Get text style for gallery thumbnail date labels.
   /// Uses a semi-transparent background pill for readability.
   /// Uses theme-independent PhotoOverlayColors for visibility on photos.
@@ -312,13 +336,16 @@ class DateStampUtils {
   /// [date] - Formatted date string
   /// [thumbnailHeight] - Height of the thumbnail for scaling
   /// [fontFamily] - Optional font family (defaults to Inter)
+  /// [sizeLevel] - Optional size level (1-6); when null, uses legacy formula
   static Widget buildGalleryDateLabel(
     String date,
     double thumbnailHeight, {
     String? fontFamily,
+    int? sizeLevel,
   }) {
-    // Scale font size based on thumbnail height, minimum 8px
-    final fontSize = (thumbnailHeight * 0.12).clamp(8.0, 14.0);
+    final fontSize = sizeLevel != null
+        ? calculateGalleryFontSize(thumbnailHeight, sizeLevel)
+        : (thumbnailHeight * 0.12).clamp(8.0, 14.0);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),

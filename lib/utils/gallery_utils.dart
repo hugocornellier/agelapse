@@ -811,18 +811,14 @@ class GalleryUtils {
     Uint8List? bytes;
     try {
       int? imageTimestampFromExif;
-      bool failedToParseDateMetadata = false;
       int? captureOffsetMinutes;
 
       if (timestamp == null) {
-        failedToParseDateMetadata = true;
-
         bytes = await CameraUtils.readBytesInIsolate(file.path);
         final Map<String, dynamic> data = await tryReadExifFromBytes(bytes!);
 
         if (data.isNotEmpty) {
-          (failedToParseDateMetadata, imageTimestampFromExif) =
-              await GalleryUtils.parseExifDate(data);
+          (_, imageTimestampFromExif) = await GalleryUtils.parseExifDate(data);
 
           final String? gpsDateStr = data['GPS GPSDateStamp']?.toString();
           final String? gpsTimeStr = data['GPS GPSTimeStamp']?.toString();
@@ -862,7 +858,6 @@ class GalleryUtils {
                 localMidnight.toUtc().millisecondsSinceEpoch;
             imageTimestampFromExif = utcMidnightMs;
             captureOffsetMinutes = localMidnight.timeZoneOffset.inMinutes;
-            failedToParseDateMetadata = false;
           }
         }
 
@@ -873,7 +868,6 @@ class GalleryUtils {
               localMidnight.toUtc().millisecondsSinceEpoch;
           imageTimestampFromExif = utcMidnightMs;
           captureOffsetMinutes = localMidnight.timeZoneOffset.inMinutes;
-          failedToParseDateMetadata = false;
         }
 
         captureOffsetMinutes ??= DateTime.fromMillisecondsSinceEpoch(
@@ -894,7 +888,6 @@ class GalleryUtils {
         projectId,
         true,
         imageTimestampFromExif,
-        failedToParseDateMetadata,
         bytes: bytes,
         increaseSuccessfulImportCount: increaseSuccessfulImportCount,
       );

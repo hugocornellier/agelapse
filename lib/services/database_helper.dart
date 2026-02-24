@@ -345,6 +345,7 @@ class DB {
     'export_date_stamp_size': '3',
     'export_date_stamp_opacity': '1.0',
     'gallery_date_stamp_font': 'Inter',
+    'gallery_date_stamp_size': '4',
     'export_date_stamp_font': '_same_as_gallery',
     // Video codec and background
     'video_codec': 'h264',

@@ -117,6 +117,7 @@ class SettingsSheetState extends State<SettingsSheet> {
   bool _galleryRawDateLabelsEnabled = false;
   String _galleryDateFormat = DateStampUtils.galleryFormatMMYY;
   String _galleryDateStampFont = DateStampUtils.defaultFont;
+  int _galleryDateStampSize = DateStampUtils.defaultGallerySizeLevel;
   bool _exportDateStampEnabled = false;
   String _exportDateStampPosition = DateStampUtils.positionLowerRight;
   String _exportDateStampFormat = DateStampUtils.exportFormatLong;
@@ -364,6 +365,7 @@ class SettingsSheetState extends State<SettingsSheet> {
     _galleryRawDateLabelsEnabled = settings.galleryRawLabelsEnabled;
     _galleryDateFormat = settings.galleryFormat;
     _galleryDateStampFont = settings.galleryFont;
+    _galleryDateStampSize = settings.gallerySizeLevel;
     _exportDateStampEnabled = settings.exportEnabled;
     _exportDateStampPosition = settings.exportPosition;
     _exportDateStampFormat = settings.exportFormat;
@@ -943,13 +945,6 @@ class SettingsSheetState extends State<SettingsSheet> {
                     if (!widget.onlyShowVideoSettings &&
                         !widget.onlyShowNotificationSettings)
                       _buildSettingsSection(
-                        'Appearance',
-                        Icons.palette_outlined,
-                        _buildAppearanceSettings,
-                      ),
-                    if (!widget.onlyShowVideoSettings &&
-                        !widget.onlyShowNotificationSettings)
-                      _buildSettingsSection(
                         'Projects',
                         Icons.folder_outlined,
                         _buildProjectSettings,
@@ -962,15 +957,15 @@ class SettingsSheetState extends State<SettingsSheet> {
                       ),
                     if (!widget.onlyShowNotificationSettings)
                       _buildSettingsSection(
-                        'Background Colour',
-                        Icons.format_color_fill_outlined,
-                        _buildBackgroundColourSettings,
-                      ),
-                    if (!widget.onlyShowNotificationSettings)
-                      _buildSettingsSection(
                         'Video',
                         Icons.movie_outlined,
                         _buildVideoSettings,
+                      ),
+                    if (!widget.onlyShowNotificationSettings)
+                      _buildSettingsSection(
+                        'Background Colour',
+                        Icons.format_color_fill_outlined,
+                        _buildBackgroundColourSettings,
                       ),
                     if (!widget.onlyShowVideoSettings &&
                         !widget.onlyShowNotificationSettings)
@@ -1004,6 +999,20 @@ class SettingsSheetState extends State<SettingsSheet> {
                         'Watermark',
                         Icons.branding_watermark_outlined,
                         _buildWatermarkSettings,
+                      ),
+                    if (!widget.onlyShowVideoSettings &&
+                        !widget.onlyShowNotificationSettings)
+                      _buildSettingsSection(
+                        'Appearance',
+                        Icons.palette_outlined,
+                        _buildAppearanceSettings,
+                      ),
+                    if (!widget.onlyShowVideoSettings &&
+                        !widget.onlyShowNotificationSettings)
+                      _buildSettingsSection(
+                        'Advanced',
+                        Icons.tune_outlined,
+                        _buildAdvancedSettings,
                       ),
                     if (!widget.onlyShowVideoSettings &&
                         !widget.onlyShowNotificationSettings)
@@ -1303,6 +1312,8 @@ class SettingsSheetState extends State<SettingsSheet> {
         return _watermarkSettingsFuture;
       case 'Date Stamp':
         return _dateStampSettingsFuture;
+      case 'Advanced':
+        return _settingsFuture;
       default:
         return _defaultSettingsFuture;
     }
@@ -1547,8 +1558,15 @@ class SettingsSheetState extends State<SettingsSheet> {
       children: [
         _buildStabilizationModeDropdown(),
         _buildEyeScaleButton(),
+      ],
+    );
+  }
+
+  Widget _buildAdvancedSettings() {
+    return Column(
+      children: [
         BoolSettingSwitch(
-          title: 'Lossless storage',
+          title: 'RAW photo support',
           initialValue: _losslessStorage,
           showDivider: false,
           showInfo: true,
@@ -1559,7 +1577,7 @@ class SettingsSheetState extends State<SettingsSheet> {
           onChanged: (bool value) async {
             final bool shouldProceed = await Utils.showConfirmChangeDialog(
               context,
-              "lossless storage",
+              "RAW photo support",
             );
 
             if (shouldProceed && mounted) {
@@ -1871,7 +1889,8 @@ class SettingsSheetState extends State<SettingsSheet> {
         ),
       ),
       infoContent:
-          'Final video dimensions. Derived from your resolution, orientation, and aspect ratio.',
+          'Final video dimensions. Derived from your resolution, orientation, and aspect ratio.\n\n'
+          'To specify exact dimensions manually, choose "Custom" under the Resolution setting.',
       showInfo: true,
     );
   }
@@ -2051,7 +2070,7 @@ class SettingsSheetState extends State<SettingsSheet> {
         // Gallery font dropdown (includes custom fonts and import option)
         SettingListTile(
           title: 'Font',
-          showDivider: _customFonts.isEmpty,
+          showDivider: true,
           contentWidget: _isLoadingCustomFonts
               ? const SizedBox(
                   width: 20,
@@ -2067,6 +2086,51 @@ class SettingsSheetState extends State<SettingsSheet> {
           infoContent:
               'Select "Custom (TTF/OTF)" to import your own font file.',
           showInfo: true,
+          disabled: !galleryEnabled,
+        ),
+        // Gallery font size dropdown
+        SettingListTile(
+          title: 'Font size',
+          showDivider: _customFonts.isEmpty,
+          contentWidget: CustomDropdownButton<int>(
+            value: _galleryDateStampSize,
+            items: List.generate(6, (index) {
+              final size = index + 1;
+              final px = DateStampUtils.gallerySizePx[index].round();
+              return DropdownMenuItem<int>(value: size, child: Text('${px}px'));
+            }),
+            onChanged: galleryEnabled
+                ? (int? value) async {
+                    if (value == null) return;
+                    // Check cascade BEFORE persisting
+                    final affectsExport = _exportDateStampEnabled &&
+                        _exportDateStampSize ==
+                            DateStampUtils.sizeSameAsGallery;
+                    if (affectsExport) {
+                      final shouldProceed =
+                          await ConfirmActionDialog.showRecompileVideo(
+                        context,
+                        'font size',
+                      );
+                      if (!shouldProceed) return;
+                    }
+
+                    setState(() => _galleryDateStampSize = value);
+                    await DB.instance.setSettingByTitle(
+                      'gallery_date_stamp_size',
+                      value.toString(),
+                      widget.projectId.toString(),
+                    );
+                    await widget.refreshSettings();
+
+                    if (affectsExport) {
+                      await widget.recompileVideoCallback();
+                    }
+                  }
+                : null,
+          ),
+          infoContent: '',
+          showInfo: false,
           disabled: !galleryEnabled,
         ),
         // Manage custom fonts button (shown when custom fonts exist)
@@ -2333,10 +2397,18 @@ class SettingsSheetState extends State<SettingsSheet> {
           showDivider: true,
           contentWidget: CustomDropdownButton<int>(
             value: _exportDateStampSize,
-            items: List.generate(6, (index) {
-              final size = index + 1;
-              return DropdownMenuItem<int>(value: size, child: Text('$size%'));
-            }),
+            items: [
+              const DropdownMenuItem<int>(
+                value: DateStampUtils.sizeSameAsGallery,
+                child: Text('Same as thumbnail'),
+              ),
+              ...List.generate(6, (index) {
+                final size = index + 1;
+                final px = DateStampUtils.exportSizeApproxPx[index];
+                return DropdownMenuItem<int>(
+                    value: size, child: Text('${px}px'));
+              }),
+            ],
             onChanged: _exportDateStampEnabled
                 ? (int? value) async {
                     if (value != null) {

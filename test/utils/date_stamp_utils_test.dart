@@ -45,6 +45,15 @@ void main() {
       expect(DateStampUtils.defaultSizePercent, equals(3));
     });
 
+    test('gallery size constants are correct', () {
+      expect(DateStampUtils.defaultGallerySizeLevel, equals(4));
+      expect(DateStampUtils.sizeSameAsGallery, equals(0));
+      expect(DateStampUtils.gallerySizePx,
+          equals([8.0, 10.0, 12.0, 14.0, 16.0, 18.0]));
+      expect(
+          DateStampUtils.exportSizeApproxPx, equals([10, 20, 30, 40, 55, 65]));
+    });
+
     test('font constants are correct', () {
       expect(DateStampUtils.fontInter, equals('Inter'));
       expect(DateStampUtils.fontRoboto, equals('Roboto'));
@@ -613,6 +622,50 @@ void main() {
     });
   });
 
+  group('calculateGalleryFontSize', () {
+    test('each level maps to correct fixed pixel size', () {
+      // Levels 1-6 map to: 8, 10, 12, 14, 16, 18
+      expect(DateStampUtils.calculateGalleryFontSize(100.0, 1), equals(8.0));
+      expect(DateStampUtils.calculateGalleryFontSize(100.0, 2), equals(10.0));
+      expect(DateStampUtils.calculateGalleryFontSize(100.0, 3), equals(12.0));
+      expect(DateStampUtils.calculateGalleryFontSize(100.0, 4), equals(14.0));
+      expect(DateStampUtils.calculateGalleryFontSize(100.0, 5), equals(16.0));
+      expect(DateStampUtils.calculateGalleryFontSize(100.0, 6), equals(18.0));
+    });
+
+    test('size is independent of thumbnail height', () {
+      expect(DateStampUtils.calculateGalleryFontSize(50.0, 4), equals(14.0));
+      expect(DateStampUtils.calculateGalleryFontSize(200.0, 4), equals(14.0));
+      expect(DateStampUtils.calculateGalleryFontSize(500.0, 4), equals(14.0));
+    });
+
+    test('clamps invalid sizeLevel below range', () {
+      // sizeLevel 0 clamped to 1 → 8px
+      expect(DateStampUtils.calculateGalleryFontSize(100.0, 0), equals(8.0));
+    });
+
+    test('clamps invalid sizeLevel above range', () {
+      // sizeLevel 10 clamped to 6 → 18px
+      expect(DateStampUtils.calculateGalleryFontSize(100.0, 10),
+          equals(DateStampUtils.calculateGalleryFontSize(100.0, 6)));
+    });
+  });
+
+  group('resolveExportSize', () {
+    test('returns export size when not sentinel', () {
+      expect(DateStampUtils.resolveExportSize(3, 4), equals(3));
+      expect(DateStampUtils.resolveExportSize(5, 2), equals(5));
+    });
+
+    test('returns gallery size when export is sentinel', () {
+      expect(DateStampUtils.resolveExportSize(0, 4), equals(4));
+      expect(DateStampUtils.resolveExportSize(0, 2), equals(2));
+      expect(
+          DateStampUtils.resolveExportSize(DateStampUtils.sizeSameAsGallery, 6),
+          equals(6));
+    });
+  });
+
   group('buildGalleryDateLabel', () {
     testWidgets('creates widget with correct structure', (tester) async {
       await tester.pumpWidget(
@@ -653,6 +706,36 @@ void main() {
       final textWidget = tester.widget<Text>(find.text('Jan 24'));
       // fontSize = (200 * 0.12).clamp(8.0, 14.0) = 14.0
       expect(textWidget.style?.fontSize, equals(14.0));
+    });
+
+    testWidgets('uses sizeLevel when provided', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: DateStampUtils.buildGalleryDateLabel('Jan 24', 100.0,
+                sizeLevel: 4),
+          ),
+        ),
+      );
+
+      final textWidget = tester.widget<Text>(find.text('Jan 24'));
+      // fontSize = calculateGalleryFontSize(100.0, 4) = gallerySizePx[3] = 14.0
+      expect(textWidget.style?.fontSize, equals(14.0));
+    });
+
+    testWidgets('sizeLevel 6 produces larger font', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: DateStampUtils.buildGalleryDateLabel('Jan 24', 100.0,
+                sizeLevel: 6),
+          ),
+        ),
+      );
+
+      final textWidget = tester.widget<Text>(find.text('Jan 24'));
+      // fontSize = calculateGalleryFontSize(100.0, 6) = (100 * 0.12 * 1.5).clamp(8.0, 18.0) = 18.0
+      expect(textWidget.style?.fontSize, equals(18.0));
     });
   });
 }

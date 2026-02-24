@@ -154,6 +154,10 @@ class VideoUtils {
       projectIdStr,
     );
     final dateSize = await SettingsUtil.loadExportDateStampSize(projectIdStr);
+    final gallerySize =
+        await SettingsUtil.loadGalleryDateStampSize(projectIdStr);
+    final resolvedSize =
+        DateStampUtils.resolveExportSize(dateSize, gallerySize);
     final exportFont = await SettingsUtil.loadExportDateStampFont(projectIdStr);
     final galleryFont =
         await SettingsUtil.loadGalleryDateStampFont(projectIdStr);
@@ -247,7 +251,7 @@ class VideoUtils {
     final assets = await DateStampUtils.generateDateStampAssets(
       uniqueDates: uniqueDates,
       videoHeight: videoHeight,
-      sizePercent: dateSize,
+      sizePercent: resolvedSize,
       baseTempDir: tempBaseDir,
       fontFamily: resolvedFont,
     );

@@ -232,12 +232,6 @@ class DirUtils {
     }
   }
 
-  static Future<List<File>> getAllJpgFilesInRawPhotoDir(int projectId) async =>
-      await getAllFilesInRawPhotoDirByExtension(projectId, '.jpg');
-
-  static Future<List<File>> getAllPngFilesInRawPhotoDir(int projectId) async =>
-      await getAllFilesInRawPhotoDirByExtension(projectId, '.png');
-
   static Future<void> createDirectoryIfNotExists(String imagePath) async {
     final directory = Directory(path.dirname(imagePath));
     if (!await directory.exists()) {
@@ -269,7 +263,7 @@ class DirUtils {
         await file.delete();
       }
     } catch (e) {
-      // LogService.instance.log('An error occurred while deleting the file: $e');
+      // Ignore deletion errors for cleanup operations
     }
   }
 

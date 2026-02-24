@@ -268,6 +268,10 @@ class GalleryExportHandler {
               await SettingsUtil.loadExportDateStampPosition(projectIdStr);
           final dateSize =
               await SettingsUtil.loadExportDateStampSize(projectIdStr);
+          final gallerySize =
+              await SettingsUtil.loadGalleryDateStampSize(projectIdStr);
+          final resolvedSize =
+              DateStampUtils.resolveExportSize(dateSize, gallerySize);
           final dateOpacity =
               await SettingsUtil.loadExportDateStampOpacity(projectIdStr);
           final exportFont =
@@ -302,7 +306,7 @@ class GalleryExportHandler {
             tempDir: dateStampTempDir,
             format: dateFormat,
             position: datePosition,
-            sizePercent: dateSize,
+            sizePercent: resolvedSize,
             opacity: dateOpacity,
             captureOffsetMap: captureOffsetMap,
             watermarkPosition: watermarkPos,
@@ -552,6 +556,10 @@ class GalleryExportHandler {
               await SettingsUtil.loadExportDateStampPosition(projectIdStr);
           final dateSize =
               await SettingsUtil.loadExportDateStampSize(projectIdStr);
+          final gallerySize =
+              await SettingsUtil.loadGalleryDateStampSize(projectIdStr);
+          final resolvedSize =
+              DateStampUtils.resolveExportSize(dateSize, gallerySize);
           final dateOpacity =
               await SettingsUtil.loadExportDateStampOpacity(projectIdStr);
           final exportFont =
@@ -586,7 +594,7 @@ class GalleryExportHandler {
             tempDir: dateStampTempDir,
             format: dateFormat,
             position: datePosition,
-            sizePercent: dateSize,
+            sizePercent: resolvedSize,
             opacity: dateOpacity,
             captureOffsetMap: captureOffsetMap,
             watermarkPosition: watermarkPos,

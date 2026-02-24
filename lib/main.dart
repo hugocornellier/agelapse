@@ -130,10 +130,6 @@ Future<void> initializeNotifications() async {
 }
 
 Future<Widget> _getHomePage() async {
-  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-    //return DesktopHomePage();
-  }
-
   final String defaultProject = await DB.instance.getSettingValueByTitle(
     'default_project',
   );

@@ -209,12 +209,16 @@ class OutputImageLoader {
       SettingsUtil.loadGalleryDateStampFont(projectIdStr),
       SettingsUtil.loadWatermarkSetting(projectIdStr),
       SettingsUtil.loadWatermarkPosition(),
+      SettingsUtil.loadGalleryDateStampSize(projectIdStr),
     ]);
 
     dateStampEnabled = results[0] as bool;
     dateStampPosition = results[1] as String;
     dateStampFormat = results[2] as String;
-    dateStampSizePercent = results[3] as int;
+    final rawExportSize = results[3] as int;
+    final gallerySize = results[9] as int;
+    dateStampSizePercent =
+        DateStampUtils.resolveExportSize(rawExportSize, gallerySize);
     dateStampOpacity = results[4] as double;
 
     final exportFont = results[5] as String;

@@ -176,6 +176,7 @@ class GalleryPageState extends State<GalleryPage>
   bool _galleryRawDateLabelsEnabled = false;
   String _galleryDateFormat = DateStampUtils.galleryFormatMMYY;
   String _galleryDateFont = DateStampUtils.defaultFont;
+  int _galleryDateSizeLevel = DateStampUtils.defaultGallerySizeLevel;
 
   // Cache for capture timezone offsets (timestamp -> offset minutes)
   Map<String, int?> _captureOffsetMap = {};
@@ -190,6 +191,7 @@ class GalleryPageState extends State<GalleryPage>
       SettingsUtil.loadGalleryRawDateLabelsEnabled(projectIdStr),
       SettingsUtil.loadGalleryDateFormat(projectIdStr),
       SettingsUtil.loadGalleryDateStampFont(projectIdStr),
+      SettingsUtil.loadGalleryDateStampSize(projectIdStr),
     ]);
     if (mounted) {
       setState(() {
@@ -200,6 +202,7 @@ class GalleryPageState extends State<GalleryPage>
         _galleryRawDateLabelsEnabled = results[4] as bool;
         _galleryDateFormat = results[5] as String;
         _galleryDateFont = results[6] as String;
+        _galleryDateSizeLevel = results[7] as int;
       });
     }
   }
@@ -816,6 +819,7 @@ class GalleryPageState extends State<GalleryPage>
       dateFormat: _galleryDateFormat,
       captureOffsetMap: _captureOffsetMap,
       fontFamily: _galleryDateFont,
+      sizeLevel: _galleryDateSizeLevel,
     );
 
     return GalleryDateStampProvider(
@@ -2134,6 +2138,14 @@ class GalleryPageState extends State<GalleryPage>
                               await SettingsUtil.loadExportDateStampSize(
                             projectIdStr,
                           );
+                          final gallerySize =
+                              await SettingsUtil.loadGalleryDateStampSize(
+                            projectIdStr,
+                          );
+                          final resolvedSize = DateStampUtils.resolveExportSize(
+                            dateSize,
+                            gallerySize,
+                          );
                           final dateOpacity =
                               await SettingsUtil.loadExportDateStampOpacity(
                             projectIdStr,
@@ -2170,7 +2182,7 @@ class GalleryPageState extends State<GalleryPage>
                             tempDir: dateStampTempDir,
                             format: dateFormat,
                             position: datePosition,
-                            sizePercent: dateSize,
+                            sizePercent: resolvedSize,
                             opacity: dateOpacity,
                             captureOffsetMap: captureOffsetMap,
                             watermarkPosition: watermarkPos,
@@ -2465,6 +2477,7 @@ class GalleryPageState extends State<GalleryPage>
                   formattedDate,
                   constraints.maxHeight,
                   fontFamily: config.fontFamily,
+                  sizeLevel: config.sizeLevel,
                 ),
               ),
             ],

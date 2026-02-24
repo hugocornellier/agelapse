@@ -36,10 +36,6 @@ void main() {
       expect(CameraUtils.saveImageToGallery, isA<Function>());
     });
 
-    test('flashAndVibrate method exists', () {
-      expect(CameraUtils.flashAndVibrate, isA<Function>());
-    });
-
     test('savePhoto method exists', () {
       expect(CameraUtils.savePhoto, isA<Function>());
     });
@@ -60,8 +56,6 @@ void main() {
       expect(CameraUtils.saveToGallery is Function, isTrue);
       // ignore: unnecessary_type_check
       expect(CameraUtils.saveImageToGallery is Function, isTrue);
-      // ignore: unnecessary_type_check
-      expect(CameraUtils.flashAndVibrate is Function, isTrue);
       // ignore: unnecessary_type_check
       expect(CameraUtils.savePhoto is Function, isTrue);
     });
