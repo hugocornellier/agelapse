@@ -13,11 +13,11 @@
 #include <file_selector_windows/file_selector_windows.h>
 #include <flutter_avif_windows/flutter_avif_windows_plugin.h>
 #include <flutter_timezone/flutter_timezone_plugin_c_api.h>
-#include <hand_detection_tflite/hand_detection_tflite_plugin.h>
+#include <hand_detection/hand_detection_plugin.h>
 #include <media_kit_libs_windows_video/media_kit_libs_windows_video_plugin_c_api.h>
 #include <media_kit_video/media_kit_video_plugin_c_api.h>
 #include <permission_handler_windows/permission_handler_windows_plugin.h>
-#include <pose_detection_tflite/pose_detection_tflite_plugin.h>
+#include <pose_detection/pose_detection_plugin.h>
 #include <screen_retriever_windows/screen_retriever_windows_plugin_c_api.h>
 #include <share_plus/share_plus_windows_plugin_c_api.h>
 #include <sqlite3_flutter_libs/sqlite3_flutter_libs_plugin.h>
@@ -40,16 +40,16 @@ void RegisterPlugins(flutter::PluginRegistry* registry) {
       registry->GetRegistrarForPlugin("FlutterAvifWindowsPlugin"));
   FlutterTimezonePluginCApiRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("FlutterTimezonePluginCApi"));
-  HandDetectionTflitePluginRegisterWithRegistrar(
-      registry->GetRegistrarForPlugin("HandDetectionTflitePlugin"));
+  HandDetectionPluginRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("HandDetectionPlugin"));
   MediaKitLibsWindowsVideoPluginCApiRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("MediaKitLibsWindowsVideoPluginCApi"));
   MediaKitVideoPluginCApiRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("MediaKitVideoPluginCApi"));
   PermissionHandlerWindowsPluginRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("PermissionHandlerWindowsPlugin"));
-  PoseDetectionTflitePluginRegisterWithRegistrar(
-      registry->GetRegistrarForPlugin("PoseDetectionTflitePlugin"));
+  PoseDetectionPluginRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("PoseDetectionPlugin"));
   ScreenRetrieverWindowsPluginCApiRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("ScreenRetrieverWindowsPluginCApi"));
   SharePlusWindowsPluginCApiRegisterWithRegistrar(

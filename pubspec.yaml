@@ -12,8 +12,8 @@ dependencies:
   animated_bottom_navigation_bar: ^1.4.0
   archive: ^4.0.7
   async_zip: ^0.1.0
-  camera: ^0.11.3
-  camera_android_camerax: ^0.6.30
+  camera: ^0.12.0
+  camera_android_camerax: ^0.7.0+1
   camera_macos: ^0.0.9
   camera_windows: ^0.2.6
   chewie: ^1.13.0
@@ -23,7 +23,7 @@ dependencies:
   device_info_plus: ^12.3.0
   downloadsfolder: ^1.2.0
   exif_reader: ^4.1.0
-  face_detection_tflite: ^5.0.1
+  face_detection_tflite: ^5.0.3
   ffmpeg_kit_flutter_new:
     git:
       url: https://github.com/hugocornellier/ffmpeg_kit_flutter.git
@@ -42,7 +42,7 @@ dependencies:
   flutter_timezone: ^5.0.1
   font_awesome_flutter: ^10.12.0
   google_mlkit_pose_detection: ^0.14.1
-  hand_detection_tflite: ^0.0.2
+  hand_detection: ^0.0.4
   heif_converter: ^1.0.1
   intl: ^0.20.2
   media_kit: ^1.2.6
@@ -55,7 +55,7 @@ dependencies:
   path: ^1.9.1
   path_provider: ^2.1.5
   permission_handler: ^12.0.1
-  pose_detection_tflite: ^2.0.1
+  pose_detection: ^1.0.3
   provider: ^6.1.5
   saver_gallery: ^4.1.0
   sensors_plus: ^7.0.0
@@ -67,7 +67,7 @@ dependencies:
   timezone: ^0.10.1
   url_launcher: ^6.3.2
   vibration: ^3.1.5
-  video_player: ^2.10.1
+  video_player: ^2.11.0
   video_player_media_kit: ^2.0.0
   video_player_win: ^3.2.2
   wakelock_plus: ^1.4.0

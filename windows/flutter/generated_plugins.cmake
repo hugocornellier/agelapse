@@ -10,11 +10,11 @@ list(APPEND FLUTTER_PLUGIN_LIST
   file_selector_windows
   flutter_avif_windows
   flutter_timezone
-  hand_detection_tflite
+  hand_detection
   media_kit_libs_windows_video
   media_kit_video
   permission_handler_windows
-  pose_detection_tflite
+  pose_detection
   screen_retriever_windows
   share_plus
   sqlite3_flutter_libs
