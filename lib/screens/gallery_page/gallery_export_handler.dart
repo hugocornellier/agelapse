@@ -134,7 +134,8 @@ class GalleryExportHandler {
               ],
               if (localExportingToZip) ...[
                 GalleryBottomSheets.buildExportProgressIndicator(
-                    exportProgressPercent),
+                  exportProgressPercent,
+                ),
               ],
               if (!localExportingToZip && exportSuccessful) ...[
                 GalleryBottomSheets.buildExportSuccessState(
@@ -235,10 +236,7 @@ class GalleryExportHandler {
   }) async {
     String? dateStampTempDir;
     try {
-      Map<String, List<String>> filesToExport = {
-        'Raw': [],
-        'Stabilized': [],
-      };
+      Map<String, List<String>> filesToExport = {'Raw': [], 'Stabilized': []};
 
       if (exportRawFiles) {
         filesToExport['Raw']!.addAll(rawImageFiles);
@@ -250,42 +248,58 @@ class GalleryExportHandler {
           projectId,
           projectOrientation!,
         );
-        List<String> stabilizedFiles =
-            await listFilesInDirectory(stabilizedDir);
+        List<String> stabilizedFiles = await listFilesInDirectory(
+          stabilizedDir,
+        );
 
         // Check if date stamp export is enabled
-        final dateStampEnabled =
-            await SettingsUtil.loadExportDateStampEnabled(projectIdStr);
+        final dateStampEnabled = await SettingsUtil.loadExportDateStampEnabled(
+          projectIdStr,
+        );
         LogService.instance.log(
           "[EXPORT] Date stamp enabled: $dateStampEnabled, stabilized files: ${stabilizedFiles.length}",
         );
 
         if (dateStampEnabled && stabilizedFiles.isNotEmpty) {
           // Load date stamp settings
-          final dateFormat =
-              await SettingsUtil.loadExportDateStampFormat(projectIdStr);
-          final datePosition =
-              await SettingsUtil.loadExportDateStampPosition(projectIdStr);
-          final dateSize =
-              await SettingsUtil.loadExportDateStampSize(projectIdStr);
-          final gallerySize =
-              await SettingsUtil.loadGalleryDateStampSize(projectIdStr);
-          final resolvedSize =
-              DateStampUtils.resolveExportSize(dateSize, gallerySize);
-          final dateOpacity =
-              await SettingsUtil.loadExportDateStampOpacity(projectIdStr);
-          final exportFont =
-              await SettingsUtil.loadExportDateStampFont(projectIdStr);
-          final galleryFont =
-              await SettingsUtil.loadGalleryDateStampFont(projectIdStr);
-          final resolvedFont =
-              DateStampUtils.resolveExportFont(exportFont, galleryFont);
+          final dateFormat = await SettingsUtil.loadExportDateStampFormat(
+            projectIdStr,
+          );
+          final datePosition = await SettingsUtil.loadExportDateStampPosition(
+            projectIdStr,
+          );
+          final dateSize = await SettingsUtil.loadExportDateStampSize(
+            projectIdStr,
+          );
+          final gallerySize = await SettingsUtil.loadGalleryDateStampSize(
+            projectIdStr,
+          );
+          final resolvedSize = DateStampUtils.resolveExportSize(
+            dateSize,
+            gallerySize,
+          );
+          final dateOpacity = await SettingsUtil.loadExportDateStampOpacity(
+            projectIdStr,
+          );
+          final exportFont = await SettingsUtil.loadExportDateStampFont(
+            projectIdStr,
+          );
+          final galleryFont = await SettingsUtil.loadGalleryDateStampFont(
+            projectIdStr,
+          );
+          final resolvedFont = DateStampUtils.resolveExportFont(
+            exportFont,
+            galleryFont,
+          );
 
           // Load watermark settings for overlap prevention
-          final watermarkEnabled =
-              await SettingsUtil.loadWatermarkSetting(projectIdStr);
+          final watermarkEnabled = await SettingsUtil.loadWatermarkSetting(
+            projectIdStr,
+          );
           final String? watermarkPos = watermarkEnabled
-              ? (await DB.instance.getSettingValueByTitle('watermark_position'))
+              ? (await DB.instance.getSettingValueByTitle(
+                  'watermark_position',
+                ))
                   .toLowerCase()
               : null;
 
@@ -527,10 +541,7 @@ class GalleryExportHandler {
   }) async {
     String? dateStampTempDir;
     try {
-      Map<String, List<String>> filesToExport = {
-        'Raw': [],
-        'Stabilized': [],
-      };
+      Map<String, List<String>> filesToExport = {'Raw': [], 'Stabilized': []};
 
       for (final photoPath in selectedPhotos) {
         final bool isRaw = photoPath.contains(DirUtils.photosRawDirname);
@@ -543,37 +554,52 @@ class GalleryExportHandler {
 
       // Check if date stamp export is enabled for stabilized files
       if (filesToExport['Stabilized']!.isNotEmpty) {
-        final dateStampEnabled =
-            await SettingsUtil.loadExportDateStampEnabled(projectIdStr);
+        final dateStampEnabled = await SettingsUtil.loadExportDateStampEnabled(
+          projectIdStr,
+        );
 
         if (dateStampEnabled) {
           final stabilizedFiles = filesToExport['Stabilized']!;
 
           // Load date stamp settings
-          final dateFormat =
-              await SettingsUtil.loadExportDateStampFormat(projectIdStr);
-          final datePosition =
-              await SettingsUtil.loadExportDateStampPosition(projectIdStr);
-          final dateSize =
-              await SettingsUtil.loadExportDateStampSize(projectIdStr);
-          final gallerySize =
-              await SettingsUtil.loadGalleryDateStampSize(projectIdStr);
-          final resolvedSize =
-              DateStampUtils.resolveExportSize(dateSize, gallerySize);
-          final dateOpacity =
-              await SettingsUtil.loadExportDateStampOpacity(projectIdStr);
-          final exportFont =
-              await SettingsUtil.loadExportDateStampFont(projectIdStr);
-          final galleryFont =
-              await SettingsUtil.loadGalleryDateStampFont(projectIdStr);
-          final resolvedFont =
-              DateStampUtils.resolveExportFont(exportFont, galleryFont);
+          final dateFormat = await SettingsUtil.loadExportDateStampFormat(
+            projectIdStr,
+          );
+          final datePosition = await SettingsUtil.loadExportDateStampPosition(
+            projectIdStr,
+          );
+          final dateSize = await SettingsUtil.loadExportDateStampSize(
+            projectIdStr,
+          );
+          final gallerySize = await SettingsUtil.loadGalleryDateStampSize(
+            projectIdStr,
+          );
+          final resolvedSize = DateStampUtils.resolveExportSize(
+            dateSize,
+            gallerySize,
+          );
+          final dateOpacity = await SettingsUtil.loadExportDateStampOpacity(
+            projectIdStr,
+          );
+          final exportFont = await SettingsUtil.loadExportDateStampFont(
+            projectIdStr,
+          );
+          final galleryFont = await SettingsUtil.loadGalleryDateStampFont(
+            projectIdStr,
+          );
+          final resolvedFont = DateStampUtils.resolveExportFont(
+            exportFont,
+            galleryFont,
+          );
 
           // Load watermark settings
-          final watermarkEnabled =
-              await SettingsUtil.loadWatermarkSetting(projectIdStr);
+          final watermarkEnabled = await SettingsUtil.loadWatermarkSetting(
+            projectIdStr,
+          );
           final String? watermarkPos = watermarkEnabled
-              ? (await DB.instance.getSettingValueByTitle('watermark_position'))
+              ? (await DB.instance.getSettingValueByTitle(
+                  'watermark_position',
+                ))
                   .toLowerCase()
               : null;
 
@@ -638,13 +664,11 @@ class GalleryExportHandler {
       // Handle platform-specific export finalization
       if (Platform.isAndroid) {
         // Android: Save directly to Downloads via MediaStore
-        final (saved, error) = await saveZipToDownloads(
-          projectId,
-          projectName,
-        );
+        final (saved, error) = await saveZipToDownloads(projectId, projectName);
         if (saved) {
-          LogService.instance
-              .log('[EXPORT] Selected photos saved to Downloads');
+          LogService.instance.log(
+            '[EXPORT] Selected photos saved to Downloads',
+          );
           return true;
         } else if (error == 'save_failed') {
           // Downloads save failed, fall back to share sheet

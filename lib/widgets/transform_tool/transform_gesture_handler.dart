@@ -115,10 +115,14 @@ class TransformGestureHandler {
     // Calculate signed distance along the edge normal
     final edgeDirection = _getEdgeDirection(handle, startState);
 
-    final startProjected =
-        _projectOntoDirection(startPosition - anchor, edgeDirection);
-    final currentProjected =
-        _projectOntoDirection(currentPosition - anchor, edgeDirection);
+    final startProjected = _projectOntoDirection(
+      startPosition - anchor,
+      edgeDirection,
+    );
+    final currentProjected = _projectOntoDirection(
+      currentPosition - anchor,
+      edgeDirection,
+    );
 
     if (startProjected.abs() < 0.001) return startState;
 
@@ -130,7 +134,9 @@ class TransformGestureHandler {
 
   /// Get the direction vector for an edge handle (perpendicular to the edge)
   static Offset _getEdgeDirection(
-      TransformHandle handle, TransformState state) {
+    TransformHandle handle,
+    TransformState state,
+  ) {
     final rotRad = state.rotationRadians;
     final cosR = cos(rotRad);
     final sinR = sin(rotRad);
@@ -242,11 +248,7 @@ class TransformGestureHandler {
   }
 
   /// Nudge translation by a fixed amount in screen space.
-  static TransformState nudge(
-    TransformState state,
-    double dx,
-    double dy,
-  ) {
+  static TransformState nudge(TransformState state, double dx, double dy) {
     return state.copyWith(
       translateX: state.translateX + dx,
       translateY: state.translateY + dy,

@@ -10,9 +10,7 @@ void main() {
     });
 
     test('creates state of correct type', () {
-      const widget = CaptureFlashOverlay(
-        child: SizedBox(),
-      );
+      const widget = CaptureFlashOverlay(child: SizedBox());
       expect(widget.createState(), isA<CaptureFlashOverlayState>());
     });
 

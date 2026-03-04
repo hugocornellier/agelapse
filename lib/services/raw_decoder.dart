@@ -64,17 +64,20 @@ class RawDecoder {
       if (result != null && await File(result).exists()) {
         return result;
       }
-      LogService.instance
-          .log('[RAW] Apple decode returned null or missing file');
+      LogService.instance.log(
+        '[RAW] Apple decode returned null or missing file',
+      );
       // Fall back to FFmpeg if native decode fails
       return _decodeFfmpeg(rawPath, outputDir, baseName, sixteenBit);
     } on MissingPluginException {
-      LogService.instance
-          .log('[RAW] MethodChannel not available, using FFmpeg');
+      LogService.instance.log(
+        '[RAW] MethodChannel not available, using FFmpeg',
+      );
       return _decodeFfmpeg(rawPath, outputDir, baseName, sixteenBit);
     } catch (e) {
-      LogService.instance
-          .log('[RAW] Apple decode error: $e, falling back to FFmpeg');
+      LogService.instance.log(
+        '[RAW] Apple decode error: $e, falling back to FFmpeg',
+      );
       return _decodeFfmpeg(rawPath, outputDir, baseName, sixteenBit);
     }
   }
@@ -122,7 +125,7 @@ class RawDecoder {
       for (final p in [
         '/usr/local/bin/ffmpeg',
         '/opt/homebrew/bin/ffmpeg',
-        '/usr/bin/ffmpeg'
+        '/usr/bin/ffmpeg',
       ]) {
         if (await File(p).exists()) return p;
       }

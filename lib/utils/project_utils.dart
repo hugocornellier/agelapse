@@ -148,10 +148,14 @@ class ProjectUtils {
     try {
       final String stabDirPath = await DirUtils.getStabilizedDirPath(projectId);
       for (final orientation in ['portrait', 'landscape']) {
-        final String stabPath =
-            path.join(stabDirPath, orientation, '$timestamp.png');
-        final String stabThumbPath =
-            FaceStabilizer.getStabThumbnailPath(stabPath);
+        final String stabPath = path.join(
+          stabDirPath,
+          orientation,
+          '$timestamp.png',
+        );
+        final String stabThumbPath = FaceStabilizer.getStabThumbnailPath(
+          stabPath,
+        );
         final File stabThumb = File(stabThumbPath);
         if (await stabThumb.exists()) {
           await stabThumb.delete();
@@ -261,13 +265,17 @@ class ProjectUtils {
   }
 
   static Future<void> deletePhotoFromDatabase(
-      String filePath, int projectId) async {
+    String filePath,
+    int projectId,
+  ) async {
     final timestamp = parseTimestampFromFilename(filePath);
     await DB.instance.deletePhoto(timestamp, projectId);
   }
 
   static Future<int> deletePhotoFromDatabaseAndReturnCount(
-      String filePath, int projectId) async {
+    String filePath,
+    int projectId,
+  ) async {
     final timestamp = parseTimestampFromFilename(filePath);
     return await DB.instance.deletePhoto(timestamp, projectId);
   }

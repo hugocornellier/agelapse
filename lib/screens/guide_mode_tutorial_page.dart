@@ -81,12 +81,16 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
           textAlign: TextAlign.center,
           text: TextSpan(
             style: TextStyle(
-                fontSize: AppTypography.md, color: AppColors.textPrimary),
+              fontSize: AppTypography.md,
+              color: AppColors.textPrimary,
+            ),
             children: [
               TextSpan(
                 text: 'Ghost Mode: ',
                 style: TextStyle(
-                    fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
               ),
               TextSpan(
                 text:
@@ -102,12 +106,16 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
           textAlign: TextAlign.center,
           text: TextSpan(
             style: TextStyle(
-                fontSize: AppTypography.md, color: AppColors.textPrimary),
+              fontSize: AppTypography.md,
+              color: AppColors.textPrimary,
+            ),
             children: [
               TextSpan(
                 text: 'Grid Mode: ',
                 style: TextStyle(
-                    fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
               ),
               TextSpan(
                 text:
@@ -123,12 +131,16 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
           textAlign: TextAlign.center,
           text: TextSpan(
             style: TextStyle(
-                fontSize: AppTypography.md, color: AppColors.textPrimary),
+              fontSize: AppTypography.md,
+              color: AppColors.textPrimary,
+            ),
             children: [
               TextSpan(
                 text: 'Grid Mode (Ghost): ',
                 style: TextStyle(
-                    fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
               ),
               TextSpan(
                 text:
@@ -143,9 +155,12 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
         tipText = RichText(
           textAlign: TextAlign.center,
           text: TextSpan(
-              style: TextStyle(
-                  fontSize: AppTypography.md, color: AppColors.textPrimary),
-              text: ''),
+            style: TextStyle(
+              fontSize: AppTypography.md,
+              color: AppColors.textPrimary,
+            ),
+            text: '',
+          ),
         );
     }
 
@@ -159,7 +174,9 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
             const Text(
               "Introducing Guides",
               style: TextStyle(
-                  fontSize: AppTypography.display, fontWeight: FontWeight.bold),
+                fontSize: AppTypography.display,
+                fontWeight: FontWeight.bold,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),

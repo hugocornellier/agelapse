@@ -22,10 +22,7 @@ void main() {
       imageSize: const Size(800, 600),
       canvasSize: const Size(800, 600),
     );
-    return TransformController(
-      initialState: state,
-      baseScale: 1.0,
-    );
+    return TransformController(initialState: state, baseScale: 1.0);
   }
 
   group('TransformController Construction', () {

@@ -160,7 +160,9 @@ void main() {
 
     test('non-body returns same as cursor', () {
       expect(
-          TransformHandle.topLeft.activeCursor, TransformHandle.topLeft.cursor);
+        TransformHandle.topLeft.activeCursor,
+        TransformHandle.topLeft.cursor,
+      );
     });
   });
 

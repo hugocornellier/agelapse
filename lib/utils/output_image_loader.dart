@@ -156,10 +156,9 @@ class OutputImageLoader {
 
         // Load timezone offset for this photo
         if (previewTimestampMs != null) {
-          final offsets = await CaptureTimezone.loadOffsetsForFiles(
-            [previewTimestampMs.toString()],
-            projectId,
-          );
+          final offsets = await CaptureTimezone.loadOffsetsForFiles([
+            previewTimestampMs.toString(),
+          ], projectId);
           captureOffsetMinutes = offsets[previewTimestampMs.toString()];
         }
       }
@@ -184,8 +183,9 @@ class OutputImageLoader {
     resolution = await SettingsUtil.loadVideoResolution(projectId.toString());
 
     // Load background color
-    final bgColorHex =
-        await SettingsUtil.loadBackgroundColor(projectId.toString());
+    final bgColorHex = await SettingsUtil.loadBackgroundColor(
+      projectId.toString(),
+    );
     backgroundColor = _hexToColor(bgColorHex);
 
     offsetX = double.parse(offsetXSettingVal);
@@ -217,16 +217,20 @@ class OutputImageLoader {
     dateStampFormat = results[2] as String;
     final rawExportSize = results[3] as int;
     final gallerySize = results[9] as int;
-    dateStampSizePercent =
-        DateStampUtils.resolveExportSize(rawExportSize, gallerySize);
+    dateStampSizePercent = DateStampUtils.resolveExportSize(
+      rawExportSize,
+      gallerySize,
+    );
     dateStampOpacity = results[4] as double;
 
     final exportFont = results[5] as String;
     final galleryFont = results[6] as String;
 
     // Handle "Same as thumbnail" option
-    final resolvedFont =
-        DateStampUtils.resolveExportFont(exportFont, galleryFont);
+    final resolvedFont = DateStampUtils.resolveExportFont(
+      exportFont,
+      galleryFont,
+    );
 
     // Resolve custom font if needed
     dateStampFontFamily = await DateStampUtils.resolveFontFamily(resolvedFont);
@@ -350,10 +354,9 @@ class OutputImageLoader {
 
           // Load timezone offset for this photo
           if (previewTimestampMs != null) {
-            final offsets = await CaptureTimezone.loadOffsetsForFiles(
-              [previewTimestampMs.toString()],
-              projectId,
-            );
+            final offsets = await CaptureTimezone.loadOffsetsForFiles([
+              previewTimestampMs.toString(),
+            ], projectId);
             captureOffsetMinutes = offsets[previewTimestampMs.toString()];
           }
         }

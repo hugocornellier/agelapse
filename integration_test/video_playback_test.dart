@@ -7,6 +7,7 @@ import 'package:agelapse/main.dart' as app;
 import 'package:agelapse/models/video_codec.dart';
 import 'package:agelapse/models/video_background.dart';
 import 'package:agelapse/services/database_helper.dart';
+import 'package:agelapse/services/database_import_ffi.dart';
 import 'package:agelapse/utils/video_utils.dart';
 import 'package:agelapse/utils/dir_utils.dart';
 import 'package:agelapse/utils/test_mode.dart' as test_config;
@@ -29,6 +30,7 @@ void main() {
     int? testProjectId;
 
     setUpAll(() async {
+      initDatabase();
       await DB.instance.createTablesIfNotExist();
     });
 
@@ -179,17 +181,26 @@ void main() {
       final pid = projectId.toString();
 
       await DB.instance.setSettingByTitle('video_resolution', '1080p', pid);
-      await DB.instance
-          .setSettingByTitle('project_orientation', 'landscape', pid);
+      await DB.instance.setSettingByTitle(
+        'project_orientation',
+        'landscape',
+        pid,
+      );
       await DB.instance.setSettingByTitle('video_codec', codec.name, pid);
 
       if (transparent) {
-        await DB.instance
-            .setSettingByTitle('background_color', '#TRANSPARENT', pid);
+        await DB.instance.setSettingByTitle(
+          'background_color',
+          '#TRANSPARENT',
+          pid,
+        );
       }
       if (videoBackground != null) {
         await DB.instance.setSettingByTitle(
-            'video_background', videoBackground.toDbValue(), pid);
+          'video_background',
+          videoBackground.toDbValue(),
+          pid,
+        );
       }
 
       // Create frames
@@ -290,8 +301,9 @@ void main() {
 
     // ===== ProRes 4444 transparent: Apple only =====
 
-    testWidgets('ProRes 4444 transparent video compiles and plays back',
-        (tester) async {
+    testWidgets('ProRes 4444 transparent video compiles and plays back', (
+      tester,
+    ) async {
       if (!Platform.isMacOS && !Platform.isIOS) {
         markTestSkipped('ProRes 4444 test only runs on Apple platforms');
         return;
@@ -309,11 +321,13 @@ void main() {
 
     // ===== VP9: non-Apple only =====
 
-    testWidgets('VP9 transparent video compiles and plays back',
-        (tester) async {
+    testWidgets('VP9 transparent video compiles and plays back', (
+      tester,
+    ) async {
       if (Platform.isMacOS || Platform.isIOS) {
         markTestSkipped(
-            'VP9 transparent test skipped on Apple (use ProRes 4444)');
+          'VP9 transparent test skipped on Apple (use ProRes 4444)',
+        );
         return;
       }
 

@@ -177,8 +177,9 @@ class DateStampUtils {
 
     // Check if custom font is available
     if (isCustomFont(fontFamily)) {
-      final resolved =
-          await CustomFontManager.instance.resolveFontFamily(fontFamily);
+      final resolved = await CustomFontManager.instance.resolveFontFamily(
+        fontFamily,
+      );
       return resolved;
     }
 
@@ -207,13 +208,17 @@ class DateStampUtils {
 
     try {
       // Use cached formatter to avoid allocation during builds
-      final formatter =
-          _formatCache.putIfAbsent(format, () => DateFormat(format));
+      final formatter = _formatCache.putIfAbsent(
+        format,
+        () => DateFormat(format),
+      );
       return formatter.format(dateTime);
     } catch (e) {
       // Fallback to ISO format if pattern is invalid
       final fallback = _formatCache.putIfAbsent(
-          exportFormatISO, () => DateFormat(exportFormatISO));
+        exportFormatISO,
+        () => DateFormat(exportFormatISO),
+      );
       return fallback.format(dateTime);
     }
   }
@@ -276,7 +281,9 @@ class DateStampUtils {
   /// Get the fixed pixel size for a gallery size level (1-6).
   /// Each level maps to a standard font size: 8, 10, 12, 14, 16, 18.
   static double calculateGalleryFontSize(
-      double thumbnailHeight, int sizeLevel) {
+    double thumbnailHeight,
+    int sizeLevel,
+  ) {
     final index = sizeLevel.clamp(1, 6) - 1;
     return gallerySizePx[index];
   }
@@ -297,9 +304,10 @@ class DateStampUtils {
       color: PhotoOverlayColors.text,
       shadows: [
         Shadow(
-            offset: const Offset(0, 1),
-            blurRadius: 2,
-            color: PhotoOverlayColors.textShadow),
+          offset: const Offset(0, 1),
+          blurRadius: 2,
+          color: PhotoOverlayColors.textShadow,
+        ),
       ],
     );
   }
@@ -670,14 +678,16 @@ Examples
               Shadow(
                 offset: const Offset(2, 2),
                 blurRadius: 3,
-                color: PhotoOverlayColors.textShadow
-                    .withValues(alpha: opacity * 0.8),
+                color: PhotoOverlayColors.textShadow.withValues(
+                  alpha: opacity * 0.8,
+                ),
               ),
               Shadow(
                 offset: const Offset(-1, -1),
                 blurRadius: 2,
-                color: PhotoOverlayColors.textShadow
-                    .withValues(alpha: opacity * 0.5),
+                color: PhotoOverlayColors.textShadow.withValues(
+                  alpha: opacity * 0.5,
+                ),
               ),
             ],
           ),
@@ -952,7 +962,8 @@ Examples
     try {
       // Create temp directory for date stamp PNGs
       final tempDir = Directory(
-          '$baseTempDir/date_stamps_${DateTime.now().millisecondsSinceEpoch}');
+        '$baseTempDir/date_stamps_${DateTime.now().millisecondsSinceEpoch}',
+      );
       await tempDir.create(recursive: true);
 
       final Map<String, String> dateToPath = {};
@@ -988,8 +999,9 @@ Examples
 
       return (dateToPath: dateToPath, tempDir: tempDir.path);
     } catch (e) {
-      LogService.instance
-          .log("[DATE_STAMP] generateDateStampAssets failed: $e");
+      LogService.instance.log(
+        "[DATE_STAMP] generateDateStampAssets failed: $e",
+      );
       return null;
     }
   }

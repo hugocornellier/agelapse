@@ -311,10 +311,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
       ],
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(1),
-        child: Container(
-          height: 1,
-          color: AppColors.settingsDivider,
-        ),
+        child: Container(height: 1, color: AppColors.settingsDivider),
       ),
     );
   }

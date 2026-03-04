@@ -6,7 +6,7 @@
 
 #include "generated_plugin_registrant.h"
 
-#include <camera_windows/camera_windows.h>
+#include <camera_desktop/camera_desktop_plugin.h>
 #include <desktop_drop/desktop_drop_plugin.h>
 #include <downloadsfolder/downloadsfolder_plugin_c_api.h>
 #include <face_detection_tflite/face_detection_tflite_plugin.h>
@@ -26,8 +26,8 @@
 #include <window_manager/window_manager_plugin.h>
 
 void RegisterPlugins(flutter::PluginRegistry* registry) {
-  CameraWindowsRegisterWithRegistrar(
-      registry->GetRegistrarForPlugin("CameraWindows"));
+  CameraDesktopPluginRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("CameraDesktopPlugin"));
   DesktopDropPluginRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("DesktopDropPlugin"));
   DownloadsfolderPluginCApiRegisterWithRegistrar(

@@ -83,8 +83,9 @@ void main() {
     test('handles various file extensions', () async {
       final extensions = ['.jpg', '.png', '.heic', '.txt', '.zip'];
       for (int i = 0; i < extensions.length; i++) {
-        await File('${tempDir.path}/file$i${extensions[i]}')
-            .writeAsString('content');
+        await File(
+          '${tempDir.path}/file$i${extensions[i]}',
+        ).writeAsString('content');
       }
 
       final result = await GalleryExportHandler.listFilesInDirectory(

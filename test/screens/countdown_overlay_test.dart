@@ -28,10 +28,7 @@ void main() {
     });
 
     test('accepts custom strokeWidth', () {
-      final painter = CountdownProgressPainter(
-        progress: 0.5,
-        strokeWidth: 8,
-      );
+      final painter = CountdownProgressPainter(progress: 0.5, strokeWidth: 8);
       expect(painter.strokeWidth, 8);
     });
 
@@ -76,14 +73,8 @@ void main() {
     });
 
     test('shouldRepaint returns true when strokeWidth changes', () {
-      final painter1 = CountdownProgressPainter(
-        progress: 0.5,
-        strokeWidth: 4,
-      );
-      final painter2 = CountdownProgressPainter(
-        progress: 0.5,
-        strokeWidth: 8,
-      );
+      final painter1 = CountdownProgressPainter(progress: 0.5, strokeWidth: 4);
+      final painter2 = CountdownProgressPainter(progress: 0.5, strokeWidth: 8);
       expect(painter1.shouldRepaint(painter2), isTrue);
     });
 

@@ -390,8 +390,9 @@ class GalleryPageState extends State<GalleryPage>
 
     // Check if the formatted date stamp text would change
     bool dateStampTextChanged = false;
-    final exportStampsEnabled =
-        await SettingsUtil.loadExportDateStampEnabled(projectIdStr);
+    final exportStampsEnabled = await SettingsUtil.loadExportDateStampEnabled(
+      projectIdStr,
+    );
 
     if (exportStampsEnabled && !orderChanged) {
       // Only check text if stamps are enabled and order didn't change
@@ -867,8 +868,9 @@ class GalleryPageState extends State<GalleryPage>
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color:
-                                    AppColors.overlay.withValues(alpha: 0.15),
+                                color: AppColors.overlay.withValues(
+                                  alpha: 0.15,
+                                ),
                                 blurRadius: 8,
                                 offset: const Offset(0, 2),
                               ),
@@ -1262,8 +1264,9 @@ class GalleryPageState extends State<GalleryPage>
   /// Process any queued files from GlobalDropService.
   Future<void> _processQueuedFiles() async {
     // Only consume files for THIS project (prevents cross-project imports)
-    final queuedFiles =
-        GlobalDropService.instance.consumeQueuedFiles(widget.projectId);
+    final queuedFiles = GlobalDropService.instance.consumeQueuedFiles(
+      widget.projectId,
+    );
     if (queuedFiles.isNotEmpty) {
       // Recursively process queued files
       await _processGlobalDropFiles(queuedFiles);
@@ -1438,7 +1441,10 @@ class GalleryPageState extends State<GalleryPage>
                 maxHeight: MediaQuery.of(context).size.height * 0.85,
               ),
               child: GalleryBottomSheets.buildOptionsSheet(
-                  context, 'Import Photos', modalContent),
+                context,
+                'Import Photos',
+                modalContent,
+              ),
             );
           },
         );
@@ -1493,8 +1499,10 @@ class GalleryPageState extends State<GalleryPage>
         final List<String> itemPaths =
             details.files.map((f) => f.path).toList();
 
-        final bool hasDirectories =
-            await compute(_checkForDirectories, itemPaths);
+        final bool hasDirectories = await compute(
+          _checkForDirectories,
+          itemPaths,
+        );
 
         if (hasDirectories) {
           await _handleDropWithDirectories(itemPaths);
@@ -1555,7 +1563,8 @@ class GalleryPageState extends State<GalleryPage>
                     child: CircularProgressIndicator(
                       strokeWidth: 2.5,
                       valueColor: AlwaysStoppedAnimation<Color>(
-                          AppColors.textPrimary.withValues(alpha: 0.7)),
+                        AppColors.textPrimary.withValues(alpha: 0.7),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -1676,8 +1685,9 @@ class GalleryPageState extends State<GalleryPage>
       for (final dirPath in directoryPaths) {
         if (!mounted) return;
 
-        final scanResult =
-            await GalleryUtils.collectFilesFromDirectory(dirPath);
+        final scanResult = await GalleryUtils.collectFilesFromDirectory(
+          dirPath,
+        );
 
         if (scanResult.wasCancelled) {
           if (mounted) {
@@ -1714,8 +1724,9 @@ class GalleryPageState extends State<GalleryPage>
           content: Text(
             'Found ${filePaths.length} images. This may take a while.\n\n'
             'Continue with import?',
-            style:
-                TextStyle(color: AppColors.textPrimary.withValues(alpha: 0.8)),
+            style: TextStyle(
+              color: AppColors.textPrimary.withValues(alpha: 0.8),
+            ),
           ),
           actions: [
             TextButton(
@@ -1751,16 +1762,20 @@ class GalleryPageState extends State<GalleryPage>
         widget.setImportingInMain(false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('No valid images found in dropped items')),
+            content: Text('No valid images found in dropped items'),
+          ),
         );
       }
       return;
     }
 
     // Sort alphabetically for consistent ordering (matches ZIP behavior)
-    filePaths.sort((a, b) => path.basename(a).toLowerCase().compareTo(
-          path.basename(b).toLowerCase(),
-        ));
+    filePaths.sort(
+      (a, b) => path
+          .basename(a)
+          .toLowerCase()
+          .compareTo(path.basename(b).toLowerCase()),
+    );
 
     // Process all files
     GalleryUtils.startImportBatch(filePaths.length);
@@ -1882,8 +1897,9 @@ class GalleryPageState extends State<GalleryPage>
             Text(
               '${_selectedPhotos.length} selected',
               style: TextStyle(
-                  color: AppColors.textPrimary.withValues(alpha: 0.7),
-                  fontSize: AppTypography.md),
+                color: AppColors.textPrimary.withValues(alpha: 0.7),
+                fontSize: AppTypography.md,
+              ),
             ),
             const Spacer(),
             IconButton(
@@ -2092,8 +2108,9 @@ class GalleryPageState extends State<GalleryPage>
                                 if (stabCount > 0) '$stabCount stabilized',
                               ].join(' • '),
                               style: TextStyle(
-                                color: AppColors.textPrimary
-                                    .withValues(alpha: 0.5),
+                                color: AppColors.textPrimary.withValues(
+                                  alpha: 0.5,
+                                ),
                                 fontSize: AppTypography.sm,
                               ),
                             ),
@@ -2266,7 +2283,8 @@ class GalleryPageState extends State<GalleryPage>
               ],
               if (localExportingToZip) ...[
                 GalleryBottomSheets.buildExportProgressIndicator(
-                    exportProgressPercent),
+                  exportProgressPercent,
+                ),
               ],
               if (!localExportingToZip && exportSuccessful) ...[
                 GalleryBottomSheets.buildExportSuccessState(),
@@ -2383,9 +2401,9 @@ class GalleryPageState extends State<GalleryPage>
             projectId.toString(),
           );
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Guide photo updated')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Guide photo updated')));
         }
       },
       onManualStab: () {
@@ -2412,8 +2430,10 @@ class GalleryPageState extends State<GalleryPage>
   Widget _buildStabilizedThumbnail(String filepath) =>
       _buildThumbnailInternal(filepath, isStabilized: true);
 
-  Widget _buildThumbnailInternal(String filepath,
-      {required bool isStabilized}) {
+  Widget _buildThumbnailInternal(
+    String filepath, {
+    required bool isStabilized,
+  }) {
     final String timestamp = path.basenameWithoutExtension(filepath);
 
     // Show loading indicator for retrying stabilized photos
@@ -2443,9 +2463,13 @@ class GalleryPageState extends State<GalleryPage>
         builder: (context, constraints) {
           final Widget thumbnail = isStabilized
               ? StabilizedThumbnail(
-                  thumbnailPath: thumbnailPath, projectId: widget.projectId)
+                  thumbnailPath: thumbnailPath,
+                  projectId: widget.projectId,
+                )
               : RawThumbnail(
-                  thumbnailPath: thumbnailPath, projectId: widget.projectId);
+                  thumbnailPath: thumbnailPath,
+                  projectId: widget.projectId,
+                );
 
           final config = GalleryDateStampProvider.of(context);
           final bool labelsEnabled = isStabilized
@@ -2596,9 +2620,7 @@ class GalleryPageState extends State<GalleryPage>
           "stabilized",
         );
     if (isStabilizedImage) {
-      final String timestamp = path.basenameWithoutExtension(
-        image.path,
-      );
+      final String timestamp = path.basenameWithoutExtension(image.path);
       final String rawPhotoPath =
           await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
         timestamp,
@@ -2609,8 +2631,10 @@ class GalleryPageState extends State<GalleryPage>
     await _deleteImage(toDelete, triggerRecompile: shouldRecompile);
   }
 
-  Future<void> _deleteImage(File image,
-      {required bool triggerRecompile}) async {
+  Future<void> _deleteImage(
+    File image, {
+    required bool triggerRecompile,
+  }) async {
     final bool success = await ProjectUtils.deleteImage(image, projectId);
     if (success) {
       final String switched = image.path.replaceAll(

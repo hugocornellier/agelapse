@@ -163,13 +163,15 @@ class TransformToolState extends State<TransformTool> {
       // Check if this decode is still relevant (not superseded by newer request)
       if (!mounted || generation != _decodeGeneration) {
         LogService.instance.log(
-            '[TransformTool] Decode discarded: stale generation ($generation vs $_decodeGeneration) or unmounted');
+          '[TransformTool] Decode discarded: stale generation ($generation vs $_decodeGeneration) or unmounted',
+        );
         frame.image.dispose();
         return;
       }
 
       LogService.instance.log(
-          '[TransformTool] Image decoded successfully: ${frame.image.width}x${frame.image.height}');
+        '[TransformTool] Image decoded successfully: ${frame.image.width}x${frame.image.height}',
+      );
       setState(() {
         _decodedImage?.dispose();
         _decodedImage = frame.image;
@@ -284,8 +286,9 @@ class TransformToolState extends State<TransformTool> {
             // even if the user just clicks without dragging
             onTapDown: widget.enabled
                 ? (_) {
-                    LogService.instance
-                        .log('[TransformTool] onTapDown: requesting focus');
+                    LogService.instance.log(
+                      '[TransformTool] onTapDown: requesting focus',
+                    );
                     _focusNode.requestFocus();
                   }
                 : null,
@@ -419,7 +422,8 @@ class TransformToolState extends State<TransformTool> {
         _controller.commitToHistory();
         _controller.adjustRotation(-rotateAmount);
         _announceChange(
-            'Rotated ${rotateAmount.round()} degrees counter-clockwise');
+          'Rotated ${rotateAmount.round()} degrees counter-clockwise',
+        );
         break;
       case LogicalKeyboardKey.bracketRight:
         _controller.commitToHistory();

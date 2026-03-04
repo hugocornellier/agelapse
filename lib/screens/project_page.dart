@@ -182,8 +182,9 @@ class ProjectPageState extends State<ProjectPage> {
   }
 
   Future<void> loadResolution() async {
-    resolution =
-        await SettingsUtil.loadVideoResolution(widget.projectId.toString());
+    resolution = await SettingsUtil.loadVideoResolution(
+      widget.projectId.toString(),
+    );
   }
 
   Future<bool> _waitForCache({
@@ -316,8 +317,9 @@ class ProjectPageState extends State<ProjectPage> {
                     child: Text(
                       "OR",
                       style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: AppTypography.xs),
+                        color: AppColors.textSecondary,
+                        fontSize: AppTypography.xs,
+                      ),
                     ),
                   ),
                   Expanded(child: takePhotoButton),
@@ -334,10 +336,13 @@ class ProjectPageState extends State<ProjectPage> {
                     SizedBox(width: 8),
                     Expanded(child: Divider(height: 0.8)),
                     SizedBox(width: 8),
-                    Text("OR",
-                        style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: AppTypography.xs)),
+                    Text(
+                      "OR",
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: AppTypography.xs,
+                      ),
+                    ),
                     SizedBox(width: 8),
                     Expanded(child: Divider(height: 0.8)),
                     SizedBox(width: 8),
@@ -593,10 +598,7 @@ class ProjectPageState extends State<ProjectPage> {
         label: "Watermark",
         value: cache.watermarkEnabled ? "On" : "Off",
       ),
-      _OutputChip(
-        label: "Date Stamp",
-        value: _getDateStampValue(),
-      ),
+      _OutputChip(label: "Date Stamp", value: _getDateStampValue()),
     ];
 
     // Wide layout: all chips in a single row
@@ -685,11 +687,7 @@ class ProjectPageState extends State<ProjectPage> {
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        offsetCards[0],
-        const SizedBox(width: 12),
-        offsetCards[1],
-      ],
+      children: [offsetCards[0], const SizedBox(width: 12), offsetCards[1]],
     );
   }
 
@@ -776,10 +774,7 @@ class ProjectPageState extends State<ProjectPage> {
             value: widget.photoTakenToday ? "Yes" : "No",
           ),
           StatsCard(title: "Photos", value: cache.photoCount.toString()),
-          StatsCard(
-            title: "Timespan",
-            value: "${cache.lengthInDays} days",
-          ),
+          StatsCard(title: "Timespan", value: "${cache.lengthInDays} days"),
         ];
 
         if (useWideLayout) {
@@ -992,11 +987,7 @@ class SpecialCard extends StatelessWidget {
           ),
         ),
         if (showDivider)
-          Divider(
-            height: 1,
-            thickness: 1,
-            color: AppColors.settingsCardBorder,
-          ),
+          Divider(height: 1, thickness: 1, color: AppColors.settingsCardBorder),
       ],
     );
   }

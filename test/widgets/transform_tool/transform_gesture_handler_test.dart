@@ -47,10 +47,7 @@ void main() {
 
     test('applies zero delta', () {
       final state = createState(translateX: 10, translateY: 20);
-      final result = TransformGestureHandler.applyDrag(
-        state,
-        Offset.zero,
-      );
+      final result = TransformGestureHandler.applyDrag(state, Offset.zero);
       expect(result.translateX, 10);
       expect(result.translateY, 20);
     });

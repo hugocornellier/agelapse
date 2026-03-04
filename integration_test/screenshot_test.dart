@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:agelapse/main.dart' as app;
 import 'package:agelapse/services/database_helper.dart';
+import 'package:agelapse/services/database_import_ffi.dart';
 import 'package:agelapse/utils/test_mode.dart' as test_config;
 import 'package:path/path.dart' as path;
 
@@ -24,6 +25,8 @@ void main() {
 
   group('Documentation Screenshots', () {
     setUpAll(() async {
+      initDatabase();
+
       // Create screenshot directory if it doesn't exist
       final dir = Directory(screenshotDir);
       if (!await dir.exists()) {
@@ -81,7 +84,10 @@ void main() {
       // Take screenshot
       print('Taking screenshot...');
       final success = await _takeScreenshotFromWidget(
-          tester, screenshotDir, 'project_page');
+        tester,
+        screenshotDir,
+        'project_page',
+      );
 
       if (success) {
         print('SUCCESS: Screenshot saved to $screenshotDir/project_page.png');
@@ -91,8 +97,11 @@ void main() {
 
       // Verify screenshot file exists
       final screenshotFile = File(path.join(screenshotDir, 'project_page.png'));
-      expect(await screenshotFile.exists(), isTrue,
-          reason: 'Screenshot file should exist');
+      expect(
+        await screenshotFile.exists(),
+        isTrue,
+        reason: 'Screenshot file should exist',
+      );
     });
   });
 }

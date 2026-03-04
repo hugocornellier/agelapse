@@ -196,33 +196,39 @@ void main() {
         expect(VideoUtils.calculateVideoEta(50), isNull);
       });
 
-      test('calculateVideoEta returns null when frames processed is negative',
-          () {
-        VideoUtils.resetVideoStopwatch(100);
-        expect(VideoUtils.calculateVideoEta(-1), isNull);
-      });
+      test(
+        'calculateVideoEta returns null when frames processed is negative',
+        () {
+          VideoUtils.resetVideoStopwatch(100);
+          expect(VideoUtils.calculateVideoEta(-1), isNull);
+        },
+      );
 
-      test('calculateVideoEta returns formatted string when conditions met',
-          () async {
-        VideoUtils.resetVideoStopwatch(100);
-        // Wait a bit for stopwatch to accumulate time
-        await Future.delayed(const Duration(milliseconds: 600));
-        final result = VideoUtils.calculateVideoEta(50);
-        // Should return a string like "0m Xs" or be null if not enough time elapsed
-        if (result != null) {
-          expect(result, matches(RegExp(r'\d+[hms]')));
-        }
-      });
+      test(
+        'calculateVideoEta returns formatted string when conditions met',
+        () async {
+          VideoUtils.resetVideoStopwatch(100);
+          // Wait a bit for stopwatch to accumulate time
+          await Future.delayed(const Duration(milliseconds: 600));
+          final result = VideoUtils.calculateVideoEta(50);
+          // Should return a string like "0m Xs" or be null if not enough time elapsed
+          if (result != null) {
+            expect(result, matches(RegExp(r'\d+[hms]')));
+          }
+        },
+      );
 
-      test('calculateVideoEta returns "0m 0s" when all frames processed',
-          () async {
-        VideoUtils.resetVideoStopwatch(100);
-        await Future.delayed(const Duration(milliseconds: 600));
-        final result = VideoUtils.calculateVideoEta(100);
-        if (result != null) {
-          expect(result, equals('0m 0s'));
-        }
-      });
+      test(
+        'calculateVideoEta returns "0m 0s" when all frames processed',
+        () async {
+          VideoUtils.resetVideoStopwatch(100);
+          await Future.delayed(const Duration(milliseconds: 600));
+          final result = VideoUtils.calculateVideoEta(100);
+          if (result != null) {
+            expect(result, equals('0m 0s'));
+          }
+        },
+      );
     });
 
     group('parseFFmpegOutput', () {

@@ -53,7 +53,8 @@ void main() {
 
       test('creates invalid result with detailed error', () {
         final result = FontValidationResult.invalid(
-            'File too large (15 MB). Maximum is 10 MB.');
+          'File too large (15 MB). Maximum is 10 MB.',
+        );
 
         expect(result.isValid, isFalse);
         expect(result.errorMessage, contains('15 MB'));

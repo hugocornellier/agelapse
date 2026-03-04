@@ -20,11 +20,7 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
-            body: Stack(
-              children: [
-                GlobalDropOverlay(isDragging: false),
-              ],
-            ),
+            body: Stack(children: [GlobalDropOverlay(isDragging: false)]),
           ),
         ),
       );
@@ -39,11 +35,7 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
-            body: Stack(
-              children: [
-                GlobalDropOverlay(isDragging: true),
-              ],
-            ),
+            body: Stack(children: [GlobalDropOverlay(isDragging: true)]),
           ),
         ),
       );
@@ -59,11 +51,7 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
-            body: Stack(
-              children: [
-                GlobalDropOverlay(isDragging: true),
-              ],
-            ),
+            body: Stack(children: [GlobalDropOverlay(isDragging: true)]),
           ),
         ),
       );
@@ -75,11 +63,7 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
-            body: Stack(
-              children: [
-                GlobalDropOverlay(isDragging: true),
-              ],
-            ),
+            body: Stack(children: [GlobalDropOverlay(isDragging: true)]),
           ),
         ),
       );

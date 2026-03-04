@@ -140,8 +140,9 @@ class StabilizationService {
 
       if (needsVideo) {
         // Get frame count for progress indicator
-        final orientation =
-            await SettingsUtil.loadProjectOrientation(projectId.toString());
+        final orientation = await SettingsUtil.loadProjectOrientation(
+          projectId.toString(),
+        );
         final stabPhotoCount = await DB.instance
             .getStabilizedPhotoCountByProjectID(projectId, orientation);
 

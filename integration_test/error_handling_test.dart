@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:agelapse/main.dart' as app;
 import 'package:agelapse/services/database_helper.dart';
+import 'package:agelapse/services/database_import_ffi.dart';
 import 'package:agelapse/services/cancellation_token.dart';
 import 'package:agelapse/utils/test_mode.dart' as test_config;
 
@@ -16,6 +17,7 @@ void main() {
 
   group('Error Handling Integration Tests', () {
     setUpAll(() async {
+      initDatabase();
       await DB.instance.createTablesIfNotExist();
     });
 

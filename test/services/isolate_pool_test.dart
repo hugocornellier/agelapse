@@ -6,11 +6,7 @@ void main() {
   group('IsolateTask', () {
     test('creates instance with all required properties', () {
       final completer = Completer<dynamic>();
-      final task = IsolateTask(
-        'testOperation',
-        {'key': 'value'},
-        completer,
-      );
+      final task = IsolateTask('testOperation', {'key': 'value'}, completer);
 
       expect(task.operation, equals('testOperation'));
       expect(task.params['key'], equals('value'));
@@ -54,10 +50,7 @@ void main() {
 
       task.completer.completeError(Exception('test error'));
 
-      await expectLater(
-        completer.future,
-        throwsA(isA<Exception>()),
-      );
+      await expectLater(completer.future, throwsA(isA<Exception>()));
     });
 
     test('handles empty params map', () {

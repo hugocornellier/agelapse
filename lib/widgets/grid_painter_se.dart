@@ -53,10 +53,7 @@ class GridPainterSE extends CustomPainter {
 
     // Paint background color first (for areas not covered by the image)
     if (backgroundColor != null) {
-      canvas.drawRect(
-        Offset.zero & size,
-        Paint()..color = backgroundColor!,
-      );
+      canvas.drawRect(Offset.zero & size, Paint()..color = backgroundColor!);
     }
 
     if (guideImage != null &&
@@ -175,7 +172,9 @@ class GridPainterSE extends CustomPainter {
         text: TextSpan(
           text: text,
           style: TextStyle(
-              color: AppColors.textPrimary, fontSize: AppTypography.md),
+            color: AppColors.textPrimary,
+            fontSize: AppTypography.md,
+          ),
         ),
         textDirection: TextDirection.ltr,
       );
@@ -203,8 +202,10 @@ class GridPainterSE extends CustomPainter {
 
   void _paintDateStamp(Canvas canvas, Size size) {
     // Calculate font size (percentage of canvas height, matching export formula)
-    final fontSize =
-        (size.height * dateStampSizePercent / 100).clamp(8.0, 48.0);
+    final fontSize = (size.height * dateStampSizePercent / 100).clamp(
+      8.0,
+      48.0,
+    );
 
     // Create text painter matching DateStampUtils.getExportTextStyle
     // Uses PhotoOverlayColors for theme-independent visibility on photos
@@ -220,14 +221,16 @@ class GridPainterSE extends CustomPainter {
             Shadow(
               offset: const Offset(1, 1),
               blurRadius: 2,
-              color: PhotoOverlayColors.textShadow
-                  .withValues(alpha: dateStampOpacity * 0.8),
+              color: PhotoOverlayColors.textShadow.withValues(
+                alpha: dateStampOpacity * 0.8,
+              ),
             ),
             Shadow(
               offset: const Offset(-1, -1),
               blurRadius: 2,
-              color: PhotoOverlayColors.textShadow
-                  .withValues(alpha: dateStampOpacity * 0.5),
+              color: PhotoOverlayColors.textShadow.withValues(
+                alpha: dateStampOpacity * 0.5,
+              ),
             ),
           ],
         ),
@@ -278,8 +281,9 @@ class GridPainterSE extends CustomPainter {
 
     // Draw semi-transparent background pill
     final backgroundPaint = Paint()
-      ..color =
-          PhotoOverlayColors.textBackground.withValues(alpha: dateStampOpacity)
+      ..color = PhotoOverlayColors.textBackground.withValues(
+        alpha: dateStampOpacity,
+      )
       ..style = PaintingStyle.fill;
 
     final bgRect = RRect.fromRectAndRadius(

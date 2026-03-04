@@ -1,5 +1,5 @@
 PODS:
-  - camera_macos (0.0.1):
+  - camera_desktop (0.1.0):
     - FlutterMacOS
   - desktop_drop (0.0.1):
     - FlutterMacOS
@@ -22,6 +22,8 @@ PODS:
   - flutter_timezone (0.1.0):
     - FlutterMacOS
   - FlutterMacOS (1.0.0)
+  - hand_detection (0.0.1):
+    - FlutterMacOS
   - media_kit_video (0.0.1):
     - FlutterMacOS
   - package_info_plus (0.0.1):
@@ -29,7 +31,7 @@ PODS:
   - photo_manager (3.8.3):
     - Flutter
     - FlutterMacOS
-  - pose_detection_tflite (0.0.1):
+  - pose_detection (0.0.1):
     - FlutterMacOS
   - screen_retriever_macos (0.0.1):
     - FlutterMacOS
@@ -74,7 +76,7 @@ PODS:
     - FlutterMacOS
 
 DEPENDENCIES:
-  - camera_macos (from `Flutter/ephemeral/.symlinks/plugins/camera_macos/macos`)
+  - camera_desktop (from `Flutter/ephemeral/.symlinks/plugins/camera_desktop/macos`)
   - desktop_drop (from `Flutter/ephemeral/.symlinks/plugins/desktop_drop/macos`)
   - device_info_plus (from `Flutter/ephemeral/.symlinks/plugins/device_info_plus/macos`)
   - downloadsfolder (from `Flutter/ephemeral/.symlinks/plugins/downloadsfolder/macos`)
@@ -86,10 +88,11 @@ DEPENDENCIES:
   - flutter_local_notifications (from `Flutter/ephemeral/.symlinks/plugins/flutter_local_notifications/macos`)
   - flutter_timezone (from `Flutter/ephemeral/.symlinks/plugins/flutter_timezone/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
+  - hand_detection (from `Flutter/ephemeral/.symlinks/plugins/hand_detection/macos`)
   - media_kit_video (from `Flutter/ephemeral/.symlinks/plugins/media_kit_video/macos`)
   - package_info_plus (from `Flutter/ephemeral/.symlinks/plugins/package_info_plus/macos`)
   - photo_manager (from `Flutter/ephemeral/.symlinks/plugins/photo_manager/darwin`)
-  - pose_detection_tflite (from `Flutter/ephemeral/.symlinks/plugins/pose_detection_tflite/macos`)
+  - pose_detection (from `Flutter/ephemeral/.symlinks/plugins/pose_detection/macos`)
   - screen_retriever_macos (from `Flutter/ephemeral/.symlinks/plugins/screen_retriever_macos/macos`)
   - share_plus (from `Flutter/ephemeral/.symlinks/plugins/share_plus/macos`)
   - sqflite_darwin (from `Flutter/ephemeral/.symlinks/plugins/sqflite_darwin/darwin`)
@@ -104,8 +107,8 @@ SPEC REPOS:
     - sqlite3
 
 EXTERNAL SOURCES:
-  camera_macos:
-    :path: Flutter/ephemeral/.symlinks/plugins/camera_macos/macos
+  camera_desktop:
+    :path: Flutter/ephemeral/.symlinks/plugins/camera_desktop/macos
   desktop_drop:
     :path: Flutter/ephemeral/.symlinks/plugins/desktop_drop/macos
   device_info_plus:
@@ -128,14 +131,16 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/flutter_timezone/macos
   FlutterMacOS:
     :path: Flutter/ephemeral
+  hand_detection:
+    :path: Flutter/ephemeral/.symlinks/plugins/hand_detection/macos
   media_kit_video:
     :path: Flutter/ephemeral/.symlinks/plugins/media_kit_video/macos
   package_info_plus:
     :path: Flutter/ephemeral/.symlinks/plugins/package_info_plus/macos
   photo_manager:
     :path: Flutter/ephemeral/.symlinks/plugins/photo_manager/darwin
-  pose_detection_tflite:
-    :path: Flutter/ephemeral/.symlinks/plugins/pose_detection_tflite/macos
+  pose_detection:
+    :path: Flutter/ephemeral/.symlinks/plugins/pose_detection/macos
   screen_retriever_macos:
     :path: Flutter/ephemeral/.symlinks/plugins/screen_retriever_macos/macos
   share_plus:
@@ -154,7 +159,7 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/window_manager/macos
 
 SPEC CHECKSUMS:
-  camera_macos: 9fd766915a6c236c8b3fd902f7ccd215636cd07a
+  camera_desktop: 700adae0c4ea11846138b7509099ee93800ee473
   desktop_drop: 10a3e6a7fa9dbe350541f2574092fecfa345a07b
   device_info_plus: 4fb280989f669696856f8b129e4a5e3cd6c48f76
   downloadsfolder: 9a9a5fb6eee0abe38756e788bb248d1c21490a6e
@@ -166,10 +171,11 @@ SPEC CHECKSUMS:
   flutter_local_notifications: 4bf37a31afde695b56091b4ae3e4d9c7a7e6cda0
   flutter_timezone: d272288c69082ad571630e0d17140b3d6b93dc0c
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
+  hand_detection: a4923b36dd6271a92cf6a2dec0e7e7a365c66928
   media_kit_video: 28d7d27611c7769a2464eb7621c37386a61dcc9a
   package_info_plus: f0052d280d17aa382b932f399edf32507174e870
   photo_manager: fe4cbb0808b96f8be4af7ce6ae18dcd9c9b983c6
-  pose_detection_tflite: 8b51219de9a1fb269763b50b3f0495c93906a3f7
+  pose_detection: db93f45a3571558bc921429a28cde41b1d00b306
   screen_retriever_macos: 452e51764a9e1cdb74b3c541238795849f21557f
   share_plus: 510bf0af1a42cd602274b4629920c9649c52f4cc
   sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
@@ -180,6 +186,6 @@ SPEC CHECKSUMS:
   wakelock_plus: 917609be14d812ddd9e9528876538b2263aaa03b
   window_manager: b729e31d38fb04905235df9ea896128991cad99e
 
-PODFILE CHECKSUM: 0af13ea7a15fad8c02a495a737daafd743f372ad
+PODFILE CHECKSUM: 8e390a9d41eed6b011660abca049ba82007b330e
 
 COCOAPODS: 1.16.2

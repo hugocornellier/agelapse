@@ -74,13 +74,13 @@ packages:
     source: hosted
     version: "0.12.0"
   camera_android_camerax:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: camera_android_camerax
-      sha256: "9dfea17fc12766721bf3d98579d6dab76f339522926e8e8ce1988248fd91e0a9"
+      sha256: c0be4298e3888ba6cf5c1fb1ae1203f08dcbb14d4f545ce5262f473cf8c33e28
       url: "https://pub.dev"
     source: hosted
-    version: "0.7.0+1"
+    version: "0.7.1"
   camera_avfoundation:
     dependency: transitive
     description:
@@ -89,14 +89,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.10.0+3"
-  camera_macos:
+  camera_desktop:
     dependency: "direct main"
     description:
-      name: camera_macos
-      sha256: a0e15729caf4e7c2831b9cd964e8c2e2ea985cd816e56316be03355de44aa743
+      name: camera_desktop
+      sha256: "7abe14963eaf96ae0e448de667a132380451b3cc598ee24524725f97e4bdc126"
       url: "https://pub.dev"
     source: hosted
-    version: "0.0.9"
+    version: "1.0.1"
   camera_platform_interface:
     dependency: transitive
     description:
@@ -113,14 +113,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.3.5+3"
-  camera_windows:
-    dependency: "direct main"
-    description:
-      name: camera_windows
-      sha256: "35d85c9eb707f6f43d08b82e9aba7b5f0347428f6334fd5d68ae9bd1bc9262af"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.2.6+4"
   change_case:
     dependency: transitive
     description:
@@ -229,10 +221,10 @@ packages:
     dependency: transitive
     description:
       name: dartcv4
-      sha256: "2481c3a0b542c39c421512499be17314b7fcd6e6da43b2a1dde19a04c4eaa01f"
+      sha256: "5764d13550055da3bb35ca28e6866b837579dfb4b594582b7a7753785ca5dfef"
       url: "https://pub.dev"
     source: hosted
-    version: "2.1.0+1"
+    version: "2.2.1+4"
   dartx:
     dependency: transitive
     description:
@@ -241,14 +233,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.2.0"
-  data_assets:
-    dependency: transitive
-    description:
-      name: data_assets
-      sha256: d8b93648a338f471e576e0ba05f6b5d63a4e0fa447ca839a500267421d9245ba
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.19.6"
   dbus:
     dependency: transitive
     description:
@@ -342,10 +326,10 @@ packages:
     dependency: "direct main"
     description:
       name: face_detection_tflite
-      sha256: e1569c3a9790f1b822be18cced2f7f62cfd8e54315b2ccb45d459cd8e64ee172
+      sha256: "56c7867dfe0b8cd62c9ceea7a38d6d55e88b2b54d43bc09fa5ebf562233c9f6a"
       url: "https://pub.dev"
     source: hosted
-    version: "5.0.3"
+    version: "5.0.5"
   fake_async:
     dependency: "direct dev"
     description:
@@ -585,10 +569,10 @@ packages:
     dependency: transitive
     description:
       name: flutter_litert
-      sha256: "08323bc634e4884fa434f470b31fe122a72040eab9b86176ec136a84e8b8649e"
+      sha256: fccce4de29a6968e0186d8021a64607b55b5674d26788733b921de34e021fbbb
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.1"
+    version: "1.0.3"
   flutter_local_notifications:
     dependency: "direct main"
     description:
@@ -709,10 +693,10 @@ packages:
     dependency: "direct main"
     description:
       name: hand_detection
-      sha256: "30e48ed4c7463fb219fe8aa65983ab6fd7021e5d7fe3196913d3a2539bcd13d6"
+      sha256: "8e06b53bb8ef9b5a522fbfce535133581181a34b0a2401bece6daa26ddcf7740"
       url: "https://pub.dev"
     source: hosted
-    version: "0.0.4"
+    version: "1.0.1"
   heif_converter:
     dependency: "direct main"
     description:
@@ -765,10 +749,10 @@ packages:
     dependency: "direct dev"
     description:
       name: image
-      sha256: "492bd52f6c4fbb6ee41f781ff27765ce5f627910e1e0cbecfa3d9add5562604c"
+      sha256: f9881ff4998044947ec38d098bc7c8316ae1186fa786eddffdb867b9bc94dfce
       url: "https://pub.dev"
     source: hosted
-    version: "4.7.2"
+    version: "4.8.0"
   integration_test:
     dependency: "direct dev"
     description: flutter
@@ -810,10 +794,10 @@ packages:
     dependency: transitive
     description:
       name: json_annotation
-      sha256: "805fa86df56383000f640384b282ce0cb8431f1a7a2396de92fb66186d8c57df"
+      sha256: cb09e7dac6210041fad964ed7fbee004f14258b4eca4040f72d1234062ace4c8
       url: "https://pub.dev"
     source: hosted
-    version: "4.10.0"
+    version: "4.11.0"
   leak_tracker:
     dependency: transitive
     description:
@@ -962,10 +946,10 @@ packages:
     dependency: "direct main"
     description:
       name: opencv_dart
-      sha256: "744899196c6275996c031b96d1ca176f7480c57d373b97dd2cf72b818ea28cda"
+      sha256: b50ea4788e6d61df6369874e0244445d98ef9210dbb90b8d3c1df198b4ee2333
       url: "https://pub.dev"
     source: hosted
-    version: "2.1.0"
+    version: "2.2.1+4"
   package_info_plus:
     dependency: "direct main"
     description:
@@ -1098,10 +1082,10 @@ packages:
     dependency: transitive
     description:
       name: petitparser
-      sha256: "1a97266a94f7350d30ae522c0af07890c70b8e62c71e8e3920d1db4d23c057d1"
+      sha256: "91bd59303e9f769f108f8df05e371341b15d59e995e6806aefab827b58336675"
       url: "https://pub.dev"
     source: hosted
-    version: "7.0.1"
+    version: "7.0.2"
   photo_manager:
     dependency: transitive
     description:
@@ -1138,18 +1122,18 @@ packages:
     dependency: "direct main"
     description:
       name: pose_detection
-      sha256: "80b5752bb1201645be6159f80282cfbefd39cb30a8e4f2e1b1739a7d4d5ec99b"
+      sha256: a701e5a6de35ffa39dbc64e111d600235d6d896ebf2b6bfd60c8eae3e7f3ec04
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.3"
+    version: "1.0.5"
   posix:
     dependency: transitive
     description:
       name: posix
-      sha256: "6323a5b0fa688b6a010df4905a56b00181479e6d10534cecfecede2aa55add61"
+      sha256: "185ef7606574f789b40f289c233efa52e96dead518aed988e040a10737febb07"
       url: "https://pub.dev"
     source: hosted
-    version: "6.0.3"
+    version: "6.5.0"
   process:
     dependency: transitive
     description:
@@ -1375,10 +1359,10 @@ packages:
     dependency: transitive
     description:
       name: sqlite3
-      sha256: c6cfe9b1cc159c9eb8ba174b533a60b5126f9db8c6e34efb127d2bc04bc45034
+      sha256: b7cf6b37667f6a921281797d2499ffc60fb878b161058d422064f0ddc78f6aa6
       url: "https://pub.dev"
     source: hosted
-    version: "3.1.4"
+    version: "3.1.6"
   sqlite3_flutter_libs:
     dependency: "direct main"
     description:
@@ -1519,10 +1503,10 @@ packages:
     dependency: transitive
     description:
       name: url_launcher_ios
-      sha256: cfde38aa257dae62ffe79c87fab20165dfdf6988c1d31b58ebf59b9106062aad
+      sha256: "580fe5dfb51671ae38191d316e027f6b76272b026370708c2d898799750a02b0"
       url: "https://pub.dev"
     source: hosted
-    version: "6.3.6"
+    version: "6.4.1"
   url_launcher_linux:
     dependency: transitive
     description:
@@ -1567,10 +1551,10 @@ packages:
     dependency: transitive
     description:
       name: uuid
-      sha256: a11b666489b1954e01d992f3d601b1804a33937b5a8fe677bd26b8a9f96f96e8
+      sha256: "1fef9e8e11e2991bb773070d4656b7bd5d850967a2456cfc83cf47925ba79489"
       url: "https://pub.dev"
     source: hosted
-    version: "4.5.2"
+    version: "4.5.3"
   vector_graphics:
     dependency: transitive
     description:
@@ -1591,10 +1575,10 @@ packages:
     dependency: transitive
     description:
       name: vector_graphics_compiler
-      sha256: "201e876b5d52753626af64b6359cd13ac6011b80728731428fd34bc840f71c9b"
+      sha256: "5a88dd14c0954a5398af544651c7fb51b457a2a556949bfb25369b210ef73a74"
       url: "https://pub.dev"
     source: hosted
-    version: "1.1.20"
+    version: "1.2.0"
   vector_math:
     dependency: transitive
     description:
@@ -1607,10 +1591,10 @@ packages:
     dependency: "direct main"
     description:
       name: vibration
-      sha256: "7c080254dada753eb298c11c8f7dd56e0e0cae7208088f7af8d91e731fef8ce7"
+      sha256: "9bb06614c69260f8bd11c80fe01ed7988905cf00e3417d656c2647e41f261d87"
       url: "https://pub.dev"
     source: hosted
-    version: "3.1.7"
+    version: "3.1.8"
   vibration_platform_interface:
     dependency: transitive
     description:
@@ -1631,18 +1615,18 @@ packages:
     dependency: transitive
     description:
       name: video_player_android
-      sha256: ee4fd520b0cafa02e4a867a0f882092e727cdaa1a2d24762171e787f8a502b0a
+      sha256: "9862c67c4661c98f30fe707bc1a4f97d6a0faa76784f485d282668e4651a7ac3"
       url: "https://pub.dev"
     source: hosted
-    version: "2.9.1"
+    version: "2.9.4"
   video_player_avfoundation:
     dependency: transitive
     description:
       name: video_player_avfoundation
-      sha256: f46e9e20f1fe429760cf4dc118761336320d1bec0f50d255930c2355f2defb5b
+      sha256: af0e5b8a7a4876fb37e7cc8cb2a011e82bb3ecfa45844ef672e32cb14a1f259e
       url: "https://pub.dev"
     source: hosted
-    version: "2.9.1"
+    version: "2.9.4"
   video_player_media_kit:
     dependency: "direct main"
     description:
@@ -1788,5 +1772,5 @@ packages:
     source: hosted
     version: "3.1.3"
 sdks:
-  dart: ">=3.10.3 <4.0.0"
+  dart: ">=3.11.0 <4.0.0"
   flutter: ">=3.38.4"

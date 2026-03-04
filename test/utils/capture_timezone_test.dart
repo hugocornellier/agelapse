@@ -15,28 +15,42 @@ void main() {
 
       test('returns null when captureOffsetMinutes is not an int', () {
         expect(
-            CaptureTimezone.extractOffset({'captureOffsetMinutes': 'string'}),
-            isNull);
-        expect(CaptureTimezone.extractOffset({'captureOffsetMinutes': 3.14}),
-            isNull);
-        expect(CaptureTimezone.extractOffset({'captureOffsetMinutes': null}),
-            isNull);
+          CaptureTimezone.extractOffset({'captureOffsetMinutes': 'string'}),
+          isNull,
+        );
         expect(
-            CaptureTimezone.extractOffset({
-              'captureOffsetMinutes': [1, 2, 3]
-            }),
-            isNull);
+          CaptureTimezone.extractOffset({'captureOffsetMinutes': 3.14}),
+          isNull,
+        );
+        expect(
+          CaptureTimezone.extractOffset({'captureOffsetMinutes': null}),
+          isNull,
+        );
+        expect(
+          CaptureTimezone.extractOffset({
+            'captureOffsetMinutes': [1, 2, 3],
+          }),
+          isNull,
+        );
       });
 
       test('returns int when captureOffsetMinutes is valid', () {
-        expect(CaptureTimezone.extractOffset({'captureOffsetMinutes': 0}),
-            equals(0));
-        expect(CaptureTimezone.extractOffset({'captureOffsetMinutes': 60}),
-            equals(60));
-        expect(CaptureTimezone.extractOffset({'captureOffsetMinutes': -300}),
-            equals(-300));
-        expect(CaptureTimezone.extractOffset({'captureOffsetMinutes': 330}),
-            equals(330));
+        expect(
+          CaptureTimezone.extractOffset({'captureOffsetMinutes': 0}),
+          equals(0),
+        );
+        expect(
+          CaptureTimezone.extractOffset({'captureOffsetMinutes': 60}),
+          equals(60),
+        );
+        expect(
+          CaptureTimezone.extractOffset({'captureOffsetMinutes': -300}),
+          equals(-300),
+        );
+        expect(
+          CaptureTimezone.extractOffset({'captureOffsetMinutes': 330}),
+          equals(330),
+        );
       });
 
       test('handles map with additional keys', () {
@@ -52,11 +66,19 @@ void main() {
     group('toLocalDateTime', () {
       test('converts UTC timestamp with positive offset', () {
         // Jan 15, 2024 12:00:00 UTC = 1705320000000 ms
-        final timestamp =
-            DateTime.utc(2024, 1, 15, 12, 0, 0).millisecondsSinceEpoch;
+        final timestamp = DateTime.utc(
+          2024,
+          1,
+          15,
+          12,
+          0,
+          0,
+        ).millisecondsSinceEpoch;
         // UTC+5:30 = 330 minutes
-        final result =
-            CaptureTimezone.toLocalDateTime(timestamp, offsetMinutes: 330);
+        final result = CaptureTimezone.toLocalDateTime(
+          timestamp,
+          offsetMinutes: 330,
+        );
 
         // Should be 17:30 in that timezone
         expect(result.hour, equals(17));
@@ -66,11 +88,19 @@ void main() {
 
       test('converts UTC timestamp with negative offset', () {
         // Jan 15, 2024 12:00:00 UTC
-        final timestamp =
-            DateTime.utc(2024, 1, 15, 12, 0, 0).millisecondsSinceEpoch;
+        final timestamp = DateTime.utc(
+          2024,
+          1,
+          15,
+          12,
+          0,
+          0,
+        ).millisecondsSinceEpoch;
         // UTC-5 = -300 minutes
-        final result =
-            CaptureTimezone.toLocalDateTime(timestamp, offsetMinutes: -300);
+        final result = CaptureTimezone.toLocalDateTime(
+          timestamp,
+          offsetMinutes: -300,
+        );
 
         // Should be 07:00 in that timezone
         expect(result.hour, equals(7));
@@ -79,10 +109,18 @@ void main() {
 
       test('converts UTC timestamp with zero offset', () {
         // Jan 15, 2024 12:00:00 UTC
-        final timestamp =
-            DateTime.utc(2024, 1, 15, 12, 0, 0).millisecondsSinceEpoch;
-        final result =
-            CaptureTimezone.toLocalDateTime(timestamp, offsetMinutes: 0);
+        final timestamp = DateTime.utc(
+          2024,
+          1,
+          15,
+          12,
+          0,
+          0,
+        ).millisecondsSinceEpoch;
+        final result = CaptureTimezone.toLocalDateTime(
+          timestamp,
+          offsetMinutes: 0,
+        );
 
         // Should stay at 12:00
         expect(result.hour, equals(12));
@@ -90,25 +128,40 @@ void main() {
       });
 
       test('falls back to device local time when offset is null', () {
-        final timestamp =
-            DateTime.utc(2024, 1, 15, 12, 0, 0).millisecondsSinceEpoch;
+        final timestamp = DateTime.utc(
+          2024,
+          1,
+          15,
+          12,
+          0,
+          0,
+        ).millisecondsSinceEpoch;
         final result = CaptureTimezone.toLocalDateTime(timestamp);
 
         // Result should be local time - verify it matches toLocal() behavior
-        final expected =
-            DateTime.fromMillisecondsSinceEpoch(timestamp, isUtc: true)
-                .toLocal();
+        final expected = DateTime.fromMillisecondsSinceEpoch(
+          timestamp,
+          isUtc: true,
+        ).toLocal();
         expect(result.hour, equals(expected.hour));
         expect(result.minute, equals(expected.minute));
       });
 
       test('handles day rollover with positive offset', () {
         // Jan 15, 2024 22:00:00 UTC
-        final timestamp =
-            DateTime.utc(2024, 1, 15, 22, 0, 0).millisecondsSinceEpoch;
+        final timestamp = DateTime.utc(
+          2024,
+          1,
+          15,
+          22,
+          0,
+          0,
+        ).millisecondsSinceEpoch;
         // UTC+5 = 300 minutes, should roll over to next day
-        final result =
-            CaptureTimezone.toLocalDateTime(timestamp, offsetMinutes: 300);
+        final result = CaptureTimezone.toLocalDateTime(
+          timestamp,
+          offsetMinutes: 300,
+        );
 
         expect(result.day, equals(16));
         expect(result.hour, equals(3));
@@ -116,11 +169,19 @@ void main() {
 
       test('handles day rollover with negative offset', () {
         // Jan 15, 2024 02:00:00 UTC
-        final timestamp =
-            DateTime.utc(2024, 1, 15, 2, 0, 0).millisecondsSinceEpoch;
+        final timestamp = DateTime.utc(
+          2024,
+          1,
+          15,
+          2,
+          0,
+          0,
+        ).millisecondsSinceEpoch;
         // UTC-5 = -300 minutes, should roll back to previous day
-        final result =
-            CaptureTimezone.toLocalDateTime(timestamp, offsetMinutes: -300);
+        final result = CaptureTimezone.toLocalDateTime(
+          timestamp,
+          offsetMinutes: -300,
+        );
 
         expect(result.day, equals(14));
         expect(result.hour, equals(21));
@@ -161,18 +222,26 @@ void main() {
       test('uses fallback DateTime offset when offsetMinutes is null', () {
         // Create a DateTime in a specific timezone to test fallback
         final fallback = DateTime(2024, 1, 15, 12, 0);
-        final result =
-            CaptureTimezone.formatOffsetLabel(null, fallbackDateTime: fallback);
+        final result = CaptureTimezone.formatOffsetLabel(
+          null,
+          fallbackDateTime: fallback,
+        );
 
         // Result should match the timezone offset of the fallback
         final expectedOffset = fallback.timeZoneOffset.inMinutes;
         final expectedSign = expectedOffset >= 0 ? '+' : '−';
-        final expectedHours =
-            (expectedOffset.abs() ~/ 60).toString().padLeft(2, '0');
-        final expectedMinutes =
-            (expectedOffset.abs() % 60).toString().padLeft(2, '0');
+        final expectedHours = (expectedOffset.abs() ~/ 60).toString().padLeft(
+              2,
+              '0',
+            );
+        final expectedMinutes = (expectedOffset.abs() % 60).toString().padLeft(
+              2,
+              '0',
+            );
         expect(
-            result, equals('UTC$expectedSign$expectedHours:$expectedMinutes'));
+          result,
+          equals('UTC$expectedSign$expectedHours:$expectedMinutes'),
+        );
       });
 
       test('uses current device timezone when both params are null', () {
@@ -182,19 +251,27 @@ void main() {
         final now = DateTime.now();
         final expectedOffset = now.timeZoneOffset.inMinutes;
         final expectedSign = expectedOffset >= 0 ? '+' : '−';
-        final expectedHours =
-            (expectedOffset.abs() ~/ 60).toString().padLeft(2, '0');
-        final expectedMinutes =
-            (expectedOffset.abs() % 60).toString().padLeft(2, '0');
+        final expectedHours = (expectedOffset.abs() ~/ 60).toString().padLeft(
+              2,
+              '0',
+            );
+        final expectedMinutes = (expectedOffset.abs() % 60).toString().padLeft(
+              2,
+              '0',
+            );
         expect(
-            result, equals('UTC$expectedSign$expectedHours:$expectedMinutes'));
+          result,
+          equals('UTC$expectedSign$expectedHours:$expectedMinutes'),
+        );
       });
 
       test('prefers offsetMinutes over fallbackDateTime', () {
         final fallback = DateTime(2024, 1, 15, 12, 0);
         // Pass an explicit offset that's different from device timezone
-        final result =
-            CaptureTimezone.formatOffsetLabel(0, fallbackDateTime: fallback);
+        final result = CaptureTimezone.formatOffsetLabel(
+          0,
+          fallbackDateTime: fallback,
+        );
         expect(result, equals('UTC+00:00'));
       });
     });

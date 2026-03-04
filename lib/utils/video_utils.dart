@@ -154,22 +154,30 @@ class VideoUtils {
       projectIdStr,
     );
     final dateSize = await SettingsUtil.loadExportDateStampSize(projectIdStr);
-    final gallerySize =
-        await SettingsUtil.loadGalleryDateStampSize(projectIdStr);
-    final resolvedSize =
-        DateStampUtils.resolveExportSize(dateSize, gallerySize);
+    final gallerySize = await SettingsUtil.loadGalleryDateStampSize(
+      projectIdStr,
+    );
+    final resolvedSize = DateStampUtils.resolveExportSize(
+      dateSize,
+      gallerySize,
+    );
     final exportFont = await SettingsUtil.loadExportDateStampFont(projectIdStr);
-    final galleryFont =
-        await SettingsUtil.loadGalleryDateStampFont(projectIdStr);
-    final resolvedFont =
-        DateStampUtils.resolveExportFont(exportFont, galleryFont);
+    final galleryFont = await SettingsUtil.loadGalleryDateStampFont(
+      projectIdStr,
+    );
+    final resolvedFont = DateStampUtils.resolveExportFont(
+      exportFont,
+      galleryFont,
+    );
 
     // Load watermark settings for collision avoidance
     final watermarkEnabled = await SettingsUtil.loadWatermarkSetting(
       projectIdStr,
     );
     final String? watermarkPos = watermarkEnabled
-        ? (await DB.instance.getSettingValueByTitle('watermark_position'))
+        ? (await DB.instance.getSettingValueByTitle(
+            'watermark_position',
+          ))
             .toLowerCase()
         : null;
 
@@ -184,8 +192,10 @@ class VideoUtils {
         .toList();
 
     // Filter to only include files that exist in the database (same as concat list)
-    final validTimestamps =
-        await _getValidTimestampsFromDB(projectId, orientation);
+    final validTimestamps = await _getValidTimestampsFromDB(
+      projectId,
+      orientation,
+    );
     files = files.where((filePath) {
       final filename = path.basenameWithoutExtension(filePath);
       final timestamp = int.tryParse(filename);
@@ -239,8 +249,9 @@ class VideoUtils {
     }
     // Add the last range
     if (currentDate != null && currentDate.isNotEmpty) {
-      dateRanges
-          .add(_DateRange(currentDate, rangeStart, frameDates.length - 1));
+      dateRanges.add(
+        _DateRange(currentDate, rangeStart, frameDates.length - 1),
+      );
     }
 
     // Get unique dates for PNG generation
@@ -333,7 +344,8 @@ class VideoUtils {
 
       final nextLabel = 't$i';
       filterParts.add(
-          "[$currentLabel][$inputIndex]overlay=x=$xExpr:y=$yExpr:enable='$enableExpr'[$nextLabel]");
+        "[$currentLabel][$inputIndex]overlay=x=$xExpr:y=$yExpr:enable='$enableExpr'[$nextLabel]",
+      );
       currentLabel = nextLabel;
     }
 
@@ -467,8 +479,11 @@ class VideoUtils {
 
   /// Check if resolution requires HEVC encoder (H.264 VideoToolbox doesn't support 8K)
   /// Returns true for 8K preset or custom resolutions with any dimension > 4096
-  static bool _resolutionNeedsHevc(String resolution,
-      {int? actualWidth, int? actualHeight}) {
+  static bool _resolutionNeedsHevc(
+    String resolution, {
+    int? actualWidth,
+    int? actualHeight,
+  }) {
     // Check actual frame dimensions first (most accurate)
     if (actualWidth != null && actualHeight != null) {
       // VideoToolbox H.264 limit is ~4096 on any dimension
@@ -615,8 +630,9 @@ class VideoUtils {
           final oldPath = path.join(videoDir, 'agelapse$ext');
           final oldFile = File(oldPath);
           if (await oldFile.exists()) {
-            LogService.instance
-                .log("[VIDEO] Removing old video file: $oldPath");
+            LogService.instance.log(
+              "[VIDEO] Removing old video file: $oldPath",
+            );
             await oldFile.delete();
           }
         }
@@ -659,8 +675,9 @@ class VideoUtils {
           // Get frame dimensions for date stamp overlay
           final dimensions = await _getFrameDimensions(framesDir);
           if (dimensions == null) {
-            LogService.instance
-                .log("[VIDEO] ERROR: Could not get frame dimensions");
+            LogService.instance.log(
+              "[VIDEO] ERROR: Could not get frame dimensions",
+            );
             return false;
           }
           final (videoWidth, videoHeight) = dimensions;
@@ -704,8 +721,9 @@ class VideoUtils {
                 await tempDir.delete(recursive: true);
               }
             } catch (e) {
-              LogService.instance
-                  .log("[VIDEO] Failed to clean up date stamp PNGs: $e");
+              LogService.instance.log(
+                "[VIDEO] Failed to clean up date stamp PNGs: $e",
+              );
             }
           }
           LogService.instance.log("[VIDEO] _encodeWindows returned: $ok");
@@ -751,16 +769,14 @@ class VideoUtils {
         projectId,
       );
 
-      final String framesDir = path.join(
-        stabilizedDirPath,
-        projectOrientation,
-      );
+      final String framesDir = path.join(stabilizedDirPath, projectOrientation);
 
       // Get frame dimensions for date stamp overlay
       final dimensions = await _getFrameDimensions(framesDir);
       if (dimensions == null) {
-        LogService.instance
-            .log("[VIDEO] ERROR: Could not get frame dimensions");
+        LogService.instance.log(
+          "[VIDEO] ERROR: Could not get frame dimensions",
+        );
         return false;
       }
       final (videoWidth, videoHeight) = dimensions;
@@ -903,8 +919,11 @@ class VideoUtils {
       VideoCodec finalCodec = effectiveCodec;
       if ((Platform.isMacOS || Platform.isIOS) &&
           effectiveCodec == VideoCodec.h264 &&
-          _resolutionNeedsHevc(resolution,
-              actualWidth: videoWidth, actualHeight: videoHeight)) {
+          _resolutionNeedsHevc(
+            resolution,
+            actualWidth: videoWidth,
+            actualHeight: videoHeight,
+          )) {
         LogService.instance.log(
           "[VIDEO] 8K resolution detected, upgrading H.264 to HEVC (h264_videotoolbox doesn't support 8K)",
         );
@@ -969,11 +988,13 @@ class VideoUtils {
           "\"$videoOutputPath\"";
 
       LogService.instance.log(
-          '[VIDEO] DEBUG needsColorOverlay=$needsColorOverlay videoHasAlpha=$videoHasAlpha');
+        '[VIDEO] DEBUG needsColorOverlay=$needsColorOverlay videoHasAlpha=$videoHasAlpha',
+      );
       LogService.instance.log('[VIDEO] DEBUG filterArgs=$filterArgs');
       LogService.instance.log('[VIDEO] DEBUG mapArg=$mapArg');
-      LogService.instance
-          .log('[VIDEO] DEBUG colorSourceInput=$colorSourceInput');
+      LogService.instance.log(
+        '[VIDEO] DEBUG colorSourceInput=$colorSourceInput',
+      );
       LogService.instance.log('[VIDEO] DEBUG full command=$ffmpegCommand');
 
       bool success = false;
@@ -1128,8 +1149,9 @@ class VideoUtils {
             await tempDir.delete(recursive: true);
           }
         } catch (e) {
-          LogService.instance
-              .log("[VIDEO] Failed to clean up date stamp PNGs: $e");
+          LogService.instance.log(
+            "[VIDEO] Failed to clean up date stamp PNGs: $e",
+          );
         }
       }
 
@@ -1636,7 +1658,8 @@ class VideoUtils {
     LogService.instance.log("[VIDEO] fps: $fps");
     if (dateStampOverlay != null) {
       LogService.instance.log(
-          "[VIDEO] Date stamp overlay enabled with ${dateStampOverlay.pngInputPaths.length} PNGs");
+        "[VIDEO] Date stamp overlay enabled with ${dateStampOverlay.pngInputPaths.length} PNGs",
+      );
     }
 
     final exe = await _resolveFfmpegPath();

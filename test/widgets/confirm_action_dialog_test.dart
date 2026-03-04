@@ -30,26 +30,17 @@ void main() {
     });
 
     test('has default cancelText of Cancel', () {
-      const dialog = ConfirmActionDialog(
-        title: 'Title',
-        description: 'Desc',
-      );
+      const dialog = ConfirmActionDialog(title: 'Title', description: 'Desc');
       expect(dialog.cancelText, 'Cancel');
     });
 
     test('has default confirmText of Proceed Anyway', () {
-      const dialog = ConfirmActionDialog(
-        title: 'Title',
-        description: 'Desc',
-      );
+      const dialog = ConfirmActionDialog(title: 'Title', description: 'Desc');
       expect(dialog.confirmText, 'Proceed Anyway');
     });
 
     test('has default titleIcon of warning_amber_rounded', () {
-      const dialog = ConfirmActionDialog(
-        title: 'Title',
-        description: 'Desc',
-      );
+      const dialog = ConfirmActionDialog(title: 'Title', description: 'Desc');
       expect(dialog.titleIcon, Icons.warning_amber_rounded);
     });
 
@@ -72,18 +63,12 @@ void main() {
     });
 
     test('warningIcon defaults to null', () {
-      const dialog = ConfirmActionDialog(
-        title: 'Title',
-        description: 'Desc',
-      );
+      const dialog = ConfirmActionDialog(title: 'Title', description: 'Desc');
       expect(dialog.warningIcon, isNull);
     });
 
     test('warningText defaults to null', () {
-      const dialog = ConfirmActionDialog(
-        title: 'Title',
-        description: 'Desc',
-      );
+      const dialog = ConfirmActionDialog(title: 'Title', description: 'Desc');
       expect(dialog.warningText, isNull);
     });
 

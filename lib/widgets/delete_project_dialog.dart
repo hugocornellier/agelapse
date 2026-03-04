@@ -167,7 +167,9 @@ class _DeleteProjectDialogContentState
               child: TextField(
                 controller: _controller,
                 style: TextStyle(
-                    color: AppColors.textPrimary, fontSize: AppTypography.lg),
+                  color: AppColors.textPrimary,
+                  fontSize: AppTypography.lg,
+                ),
                 decoration: InputDecoration(
                   hintText: 'Project name',
                   hintStyle: TextStyle(

@@ -18,10 +18,7 @@ void main() {
     });
 
     test('hasGalleryPermissions is a static method', () {
-      expect(
-        GalleryPermissionHandler.hasGalleryPermissions,
-        isA<Function>(),
-      );
+      expect(GalleryPermissionHandler.hasGalleryPermissions, isA<Function>());
     });
 
     test('requestGalleryPermissions returns Future<bool>', () {

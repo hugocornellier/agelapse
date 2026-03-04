@@ -27,17 +27,25 @@ void main() {
     });
 
     test('default size is larger than its minimum', () {
-      expect(kWindowSizeDefault.width,
-          greaterThanOrEqualTo(kWindowMinSizeDefault.width));
-      expect(kWindowSizeDefault.height,
-          greaterThanOrEqualTo(kWindowMinSizeDefault.height));
+      expect(
+        kWindowSizeDefault.width,
+        greaterThanOrEqualTo(kWindowMinSizeDefault.width),
+      );
+      expect(
+        kWindowSizeDefault.height,
+        greaterThanOrEqualTo(kWindowMinSizeDefault.height),
+      );
     });
 
     test('welcome size meets its minimum', () {
-      expect(kWindowSizeWelcome.width,
-          greaterThanOrEqualTo(kWindowMinSizeWelcome.width));
-      expect(kWindowSizeWelcome.height,
-          greaterThanOrEqualTo(kWindowMinSizeWelcome.height));
+      expect(
+        kWindowSizeWelcome.width,
+        greaterThanOrEqualTo(kWindowMinSizeWelcome.width),
+      );
+      expect(
+        kWindowSizeWelcome.height,
+        greaterThanOrEqualTo(kWindowMinSizeWelcome.height),
+      );
     });
   });
 }

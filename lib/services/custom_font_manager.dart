@@ -141,7 +141,8 @@ class CustomFontManager {
 
       if (fileSize < 100) {
         return FontValidationResult.invalid(
-            'File appears to be empty or corrupt');
+          'File appears to be empty or corrupt',
+        );
       }
 
       // Try to load the font to validate it's a real font file
@@ -168,7 +169,8 @@ class CustomFontManager {
       // Check for TTF/OTF magic bytes
       if (bytes.length < 4) {
         return FontValidationResult.invalid(
-            'File too small to be a valid font');
+          'File too small to be a valid font',
+        );
       }
 
       // TTF starts with: 00 01 00 00 or 'true' (74 72 75 65)
@@ -223,10 +225,12 @@ class CustomFontManager {
     // Remove common suffixes
     var cleaned = name
         .replaceAll(
-            RegExp(
-                r'[-_]?(Regular|Bold|Italic|Medium|Light|Thin|Black|SemiBold|ExtraBold|ExtraLight)$',
-                caseSensitive: false),
-            '')
+          RegExp(
+            r'[-_]?(Regular|Bold|Italic|Medium|Light|Thin|Black|SemiBold|ExtraBold|ExtraLight)$',
+            caseSensitive: false,
+          ),
+          '',
+        )
         .replaceAll(RegExp(r'[-_]+'), ' ')
         .trim();
 
@@ -247,8 +251,9 @@ class CustomFontManager {
   /// Install a custom font from a file path.
   /// Returns the installed CustomFont or throws an exception.
   Future<CustomFont> installFont(String sourcePath, String displayName) async {
-    LogService.instance
-        .log('[CUSTOM_FONT] Installing font: $displayName from $sourcePath');
+    LogService.instance.log(
+      '[CUSTOM_FONT] Installing font: $displayName from $sourcePath',
+    );
 
     // Validate the font file
     final validation = await validateFontFile(sourcePath);
@@ -385,8 +390,9 @@ class CustomFontManager {
 
   /// Uninstall a custom font.
   Future<void> uninstallFont(CustomFont font) async {
-    LogService.instance
-        .log('[CUSTOM_FONT] Uninstalling font: ${font.displayName}');
+    LogService.instance.log(
+      '[CUSTOM_FONT] Uninstalling font: ${font.displayName}',
+    );
 
     // Delete from database
     await DB.instance.deleteCustomFont(font.id);

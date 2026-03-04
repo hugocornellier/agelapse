@@ -66,10 +66,7 @@ class TransformController extends ChangeNotifier {
       baseScale: baseScale,
     );
 
-    return TransformController(
-      initialState: state,
-      baseScale: baseScale,
-    );
+    return TransformController(initialState: state, baseScale: baseScale);
   }
 
   /// Current transform state
@@ -267,12 +264,14 @@ class TransformController extends ChangeNotifier {
     double? scale,
     double? rotation,
   }) {
-    _updateState(_state.copyWith(
-      translateX: translateX,
-      translateY: translateY,
-      scale: scale?.clamp(0.1, 10.0),
-      rotation: rotation,
-    ));
+    _updateState(
+      _state.copyWith(
+        translateX: translateX,
+        translateY: translateY,
+        scale: scale?.clamp(0.1, 10.0),
+        rotation: rotation,
+      ),
+    );
   }
 
   /// Set transform from database values
@@ -282,12 +281,14 @@ class TransformController extends ChangeNotifier {
     required double scaleFactor,
     required double rotationDegrees,
   }) {
-    _updateState(_state.copyWith(
-      translateX: translateX,
-      translateY: translateY,
-      scale: (scaleFactor / baseScale).clamp(0.1, 10.0),
-      rotation: rotationDegrees,
-    ));
+    _updateState(
+      _state.copyWith(
+        translateX: translateX,
+        translateY: translateY,
+        scale: (scaleFactor / baseScale).clamp(0.1, 10.0),
+        rotation: rotationDegrees,
+      ),
+    );
   }
 
   // ============ Keyboard Shortcuts ============
@@ -299,11 +300,13 @@ class TransformController extends ChangeNotifier {
 
   /// Adjust rotation by degrees
   void adjustRotation(double deltaDegrees) {
-    _updateState(TransformGestureHandler.adjustRotation(
-      _state,
-      deltaDegrees,
-      snapToAngles: snapToAngles,
-    ));
+    _updateState(
+      TransformGestureHandler.adjustRotation(
+        _state,
+        deltaDegrees,
+        snapToAngles: snapToAngles,
+      ),
+    );
   }
 
   /// Adjust scale by percentage
@@ -326,8 +329,9 @@ class TransformController extends ChangeNotifier {
   /// Determine which handle (if any) is at the given position.
   TransformHandle hitTest(Offset position) {
     // 1. Check rotation handle first
-    final rotHandlePos =
-        _state.getRotationHandlePosition(rotationHandleDistance);
+    final rotHandlePos = _state.getRotationHandlePosition(
+      rotationHandleDistance,
+    );
     if ((position - rotHandlePos).distance <= handleHitRadius) {
       return TransformHandle.rotationHandle;
     }
@@ -393,10 +397,12 @@ class TransformController extends ChangeNotifier {
   /// Update canvas size (e.g., on window resize)
   void updateCanvasSize(Size newSize) {
     if (_state.canvasSize != newSize) {
-      _updateState(_state.copyWith(
-        canvasSize: newSize,
-        pivot: Offset(newSize.width / 2, newSize.height / 2),
-      ));
+      _updateState(
+        _state.copyWith(
+          canvasSize: newSize,
+          pivot: Offset(newSize.width / 2, newSize.height / 2),
+        ),
+      );
     }
   }
 

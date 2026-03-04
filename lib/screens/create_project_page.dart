@@ -20,10 +20,7 @@ class CreateProjectPageState extends State<CreateProjectPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        toolbarHeight: 0,
-      ),
+      appBar: AppBar(backgroundColor: AppColors.background, toolbarHeight: 0),
       backgroundColor: AppColors.background,
       body: CreateProjectSheet(
         isDefaultProject: false,

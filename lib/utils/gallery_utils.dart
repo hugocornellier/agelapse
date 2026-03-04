@@ -79,15 +79,18 @@ DirectoryScanResult scanDirectoryIsolateEntry(DirectoryScanInput input) {
   void scanDir(Directory currentDir, int depth) {
     if (depth > input.maxRecursionDepth) {
       errors.add(
-          'Max depth (${input.maxRecursionDepth}) exceeded at: ${currentDir.path}');
+        'Max depth (${input.maxRecursionDepth}) exceeded at: ${currentDir.path}',
+      );
       return;
     }
 
     dirsScanned++;
 
     try {
-      final entities =
-          currentDir.listSync(recursive: false, followLinks: false);
+      final entities = currentDir.listSync(
+        recursive: false,
+        followLinks: false,
+      );
       for (final entity in entities) {
         final basename = path.basename(entity.path);
 
@@ -128,9 +131,12 @@ DirectoryScanResult scanDirectoryIsolateEntry(DirectoryScanInput input) {
   scanDir(dir, 0);
 
   // Sort alphabetically for consistent ordering (matches ZIP behavior)
-  validPaths.sort((a, b) => path.basename(a).toLowerCase().compareTo(
-        path.basename(b).toLowerCase(),
-      ));
+  validPaths.sort(
+    (a, b) => path
+        .basename(a)
+        .toLowerCase()
+        .compareTo(path.basename(b).toLowerCase()),
+  );
 
   return DirectoryScanResult(
     validImagePaths: validPaths,
@@ -1054,9 +1060,11 @@ class GalleryUtils {
       }
 
       final totalInput = items.length + missing + skipped;
-      log('Export prepared: ${items.length} files to add, '
-          '$missing missing, $skipped skipped, $badname bad-name '
-          '(total input: $totalInput)');
+      log(
+        'Export prepared: ${items.length} files to add, '
+        '$missing missing, $skipped skipped, $badname bad-name '
+        '(total input: $totalInput)',
+      );
 
       if (items.isEmpty) {
         log('No exportable files found');
@@ -1073,8 +1081,10 @@ class GalleryUtils {
 
       final totalBytes = items.fold<int>(0, (s, it) => s + it.len);
       var stagedBytes = 0;
-      log('Total bytes to archive: $totalBytes '
-          '(${(totalBytes / 1024 / 1024).toStringAsFixed(1)} MB)');
+      log(
+        'Total bytes to archive: $totalBytes '
+        '(${(totalBytes / 1024 / 1024).toStringAsFixed(1)} MB)',
+      );
 
       // Use ZipFileEncoder for streaming - writes directly to disk
       // level: 0 (store) = no compression, faster for already-compressed media
@@ -1106,8 +1116,10 @@ class GalleryUtils {
           send.send(pct);
         } catch (e, st) {
           skipped++;
-          log('addFile failed [${i + 1}/${items.length}] '
-              '${it.file.path} (${it.len} bytes): $e');
+          log(
+            'addFile failed [${i + 1}/${items.length}] '
+            '${it.file.path} (${it.len} bytes): $e',
+          );
           log('stack: $st');
           // Continue to next file instead of aborting
           continue;
@@ -1189,9 +1201,11 @@ class GalleryUtils {
         return;
       }
 
-      log('ZIP created: $zipLen bytes '
-          '(${(zipLen / 1024 / 1024).toStringAsFixed(1)} MB), '
-          '$added files');
+      log(
+        'ZIP created: $zipLen bytes '
+        '(${(zipLen / 1024 / 1024).toStringAsFixed(1)} MB), '
+        '$added files',
+      );
 
       send.send({
         'type': 'summary',
@@ -1250,8 +1264,9 @@ class GalleryUtils {
         zipTargetPath = zipWorkPath;
       } else {
         final tmpDir = await DirUtils.getTemporaryDirPath();
-        final tmpName =
-            ExportNamingUtils.generateZipFilename(projectName: projectName);
+        final tmpName = ExportNamingUtils.generateZipFilename(
+          projectName: projectName,
+        );
         zipWorkPath = path.join(tmpDir, tmpName);
         final workDir = File(zipWorkPath).parent;
         if (!await workDir.exists()) {
@@ -1303,8 +1318,9 @@ class GalleryUtils {
       // Handle isolate exit (crash, OOM, or normal termination without result)
       exitPort.listen((_) {
         if (!completer.isCompleted) {
-          LogService.instance
-              .log('[zip] Isolate exited without sending result');
+          LogService.instance.log(
+            '[zip] Isolate exited without sending result',
+          );
           completer.complete('error');
           cleanup();
         }
@@ -1371,8 +1387,9 @@ class GalleryUtils {
       final result = await completer.future;
 
       if (!(Platform.isAndroid || Platform.isIOS) && result == 'success') {
-        final suggested =
-            ExportNamingUtils.generateZipFilename(projectName: projectName);
+        final suggested = ExportNamingUtils.generateZipFilename(
+          projectName: projectName,
+        );
         final location = await getSaveLocation(
           suggestedName: suggested,
           acceptedTypeGroups: const [

@@ -374,15 +374,17 @@ class SettingsSheetState extends State<SettingsSheet> {
     _exportDateStampFont = settings.exportFont;
 
     // Check if gallery format is custom (not a preset)
-    _isGalleryCustomFormat =
-        !DateStampUtils.isGalleryPreset(_galleryDateFormat);
+    _isGalleryCustomFormat = !DateStampUtils.isGalleryPreset(
+      _galleryDateFormat,
+    );
     if (_isGalleryCustomFormat) {
       _galleryCustomFormatController.text = _galleryDateFormat;
     }
 
     // Check if export format is custom (not a preset)
-    _isExportCustomFormat =
-        !DateStampUtils.isExportPreset(_exportDateStampFormat);
+    _isExportCustomFormat = !DateStampUtils.isExportPreset(
+      _exportDateStampFormat,
+    );
     if (_isExportCustomFormat) {
       _exportCustomFormatController.text = _exportDateStampFormat;
     }
@@ -423,8 +425,9 @@ class SettingsSheetState extends State<SettingsSheet> {
       }
 
       // Validate the font file
-      final validation =
-          await CustomFontManager.instance.validateFontFile(filePath);
+      final validation = await CustomFontManager.instance.validateFontFile(
+        filePath,
+      );
       if (!validation.isValid) {
         setState(() => _isLoadingCustomFonts = false);
         if (mounted) {
@@ -434,16 +437,19 @@ class SettingsSheetState extends State<SettingsSheet> {
       }
 
       // Show dialog to confirm font name
-      final displayName =
-          await _showFontNameDialog(validation.suggestedName ?? 'Custom Font');
+      final displayName = await _showFontNameDialog(
+        validation.suggestedName ?? 'Custom Font',
+      );
       if (displayName == null) {
         setState(() => _isLoadingCustomFonts = false);
         return null;
       }
 
       // Install the font
-      final font =
-          await CustomFontManager.instance.installFont(filePath, displayName);
+      final font = await CustomFontManager.instance.installFont(
+        filePath,
+        displayName,
+      );
 
       // Refresh custom fonts list
       await _loadCustomFonts();
@@ -517,7 +523,8 @@ class SettingsSheetState extends State<SettingsSheet> {
                     .getCustomFontByDisplayName(name);
                 if (existing != null) {
                   setDialogState(
-                      () => error = 'A font with this name already exists');
+                    () => error = 'A font with this name already exists',
+                  );
                   return;
                 }
                 if (context.mounted) {
@@ -608,8 +615,9 @@ class SettingsSheetState extends State<SettingsSheet> {
                         trailing: IconButton(
                           icon: const Icon(Icons.delete_outline, size: 20),
                           onPressed: () async {
-                            final confirm =
-                                await _showDeleteFontConfirmation(font);
+                            final confirm = await _showDeleteFontConfirmation(
+                              font,
+                            );
                             if (confirm == true) {
                               await _handleFontDeletion(font);
                               setDialogState(() {});
@@ -717,8 +725,9 @@ class SettingsSheetState extends State<SettingsSheet> {
       items.add(
         DropdownMenuItem<String>(
           value: DateStampUtils.fontSameAsGallery,
-          child: Text(DateStampUtils.getFontDisplayName(
-              DateStampUtils.fontSameAsGallery)),
+          child: Text(
+            DateStampUtils.getFontDisplayName(DateStampUtils.fontSameAsGallery),
+          ),
         ),
       );
     }
@@ -1461,14 +1470,8 @@ class SettingsSheetState extends State<SettingsSheet> {
           return CustomDropdownButton<String>(
             value: _galleryGridMode,
             items: const [
-              DropdownMenuItem<String>(
-                value: 'auto',
-                child: Text('Auto'),
-              ),
-              DropdownMenuItem<String>(
-                value: 'manual',
-                child: Text('Manual'),
-              ),
+              DropdownMenuItem<String>(value: 'auto', child: Text('Auto')),
+              DropdownMenuItem<String>(value: 'manual', child: Text('Manual')),
             ],
             onChanged: (String? value) async {
               if (value != null && value != _galleryGridMode) {
@@ -1555,10 +1558,7 @@ class SettingsSheetState extends State<SettingsSheet> {
 
   Widget _buildStabilizationSettings() {
     return Column(
-      children: [
-        _buildStabilizationModeDropdown(),
-        _buildEyeScaleButton(),
-      ],
+      children: [_buildStabilizationModeDropdown(), _buildEyeScaleButton()],
     );
   }
 
@@ -1705,10 +1705,12 @@ class SettingsSheetState extends State<SettingsSheet> {
               value: effectiveCodec,
               disabledValues: disabledCodecs,
               items: availableCodecs
-                  .map((codec) => DropdownMenuItem<VideoCodec>(
-                        value: codec,
-                        child: Text(codec.displayName),
-                      ))
+                  .map(
+                    (codec) => DropdownMenuItem<VideoCodec>(
+                      value: codec,
+                      child: Text(codec.displayName),
+                    ),
+                  )
                   .toList(),
               onChanged: (VideoCodec? newCodec) async {
                 if (newCodec == null || newCodec == _videoCodec) return;
@@ -2146,8 +2148,10 @@ class SettingsSheetState extends State<SettingsSheet> {
               ),
               style: TextButton.styleFrom(
                 foregroundColor: AppColors.settingsAccent,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
               ),
             ),
           ),
@@ -2406,7 +2410,9 @@ class SettingsSheetState extends State<SettingsSheet> {
                 final size = index + 1;
                 final px = DateStampUtils.exportSizeApproxPx[index];
                 return DropdownMenuItem<int>(
-                    value: size, child: Text('${px}px'));
+                  value: size,
+                  child: Text('${px}px'),
+                );
               }),
             ],
             onChanged: _exportDateStampEnabled
@@ -2590,8 +2596,9 @@ class SettingsSheetState extends State<SettingsSheet> {
                   ? () => onSubmit(controller.text)
                   : null,
               style: TextButton.styleFrom(
-                backgroundColor:
-                    AppColors.settingsAccent.withValues(alpha: 0.1),
+                backgroundColor: AppColors.settingsAccent.withValues(
+                  alpha: 0.1,
+                ),
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -3051,7 +3058,9 @@ class SettingsSheetState extends State<SettingsSheet> {
               child: Text(
                 _customResolutionError!,
                 style: TextStyle(
-                    color: AppColors.danger, fontSize: AppTypography.sm),
+                  color: AppColors.danger,
+                  fontSize: AppTypography.sm,
+                ),
               ),
             ),
         ],
@@ -3363,13 +3372,15 @@ class SettingsSheetState extends State<SettingsSheet> {
                   _videoBackground = newBg;
                   // Reset codec to default for the new transparency state
                   if (value) {
-                    _videoCodec =
-                        VideoCodec.defaultCodec(isTransparentVideo: true);
+                    _videoCodec = VideoCodec.defaultCodec(
+                      isTransparentVideo: true,
+                    );
                   } else if (!VideoCodec.availableCodecs(
-                          isTransparentVideo: false)
-                      .contains(_videoCodec)) {
-                    _videoCodec =
-                        VideoCodec.defaultCodec(isTransparentVideo: false);
+                    isTransparentVideo: false,
+                  ).contains(_videoCodec)) {
+                    _videoCodec = VideoCodec.defaultCodec(
+                      isTransparentVideo: false,
+                    );
                   }
                 });
 

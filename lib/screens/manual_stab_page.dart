@@ -119,10 +119,12 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.2), weight: 60),
       TweenSequenceItem(tween: Tween(begin: 1.2, end: 0.9), weight: 20),
       TweenSequenceItem(tween: Tween(begin: 0.9, end: 1.0), weight: 20),
-    ]).animate(CurvedAnimation(
-      parent: _checkmarkAnimController,
-      curve: Curves.easeOut,
-    ));
+    ]).animate(
+      CurvedAnimation(
+        parent: _checkmarkAnimController,
+        curve: Curves.easeOut,
+      ),
+    );
 
     init();
   }
@@ -198,7 +200,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
         final double defaultScale = canvasWidth / _rawImageWidth!.toDouble();
         _baseScale = defaultScale;
         _log(
-            'Image dims: ${_rawImageWidth}x$_rawImageHeight, baseScale=$_baseScale, canvas: ${canvasWidth}x$canvasHeight');
+          'Image dims: ${_rawImageWidth}x$_rawImageHeight, baseScale=$_baseScale, canvas: ${canvasWidth}x$canvasHeight',
+        );
         _inputController3.text = '1';
       } else {
         _log('ERROR: Failed to decode image dimensions');
@@ -273,7 +276,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                         availableForPreview < minPreviewHeight;
 
                     _log(
-                        'Layout: maxHeight=${constraints.maxHeight}, availableForPreview=$availableForPreview, previewHeight=$previewHeight, mode=stable-scrollable, scrollEnabled=$shouldEnableScroll');
+                      'Layout: maxHeight=${constraints.maxHeight}, availableForPreview=$availableForPreview, previewHeight=$previewHeight, mode=stable-scrollable, scrollEnabled=$shouldEnableScroll',
+                    );
 
                     // Keep one stable widget tree to avoid TextField destruction
                     // when keyboard insets change parent constraints.
@@ -372,10 +376,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       key: const ValueKey('success'),
       animation: _checkmarkScaleAnim,
       builder: (context, child) {
-        return Transform.scale(
-          scale: _checkmarkScaleAnim.value,
-          child: child,
-        );
+        return Transform.scale(scale: _checkmarkScaleAnim.value, child: child);
       },
       child: Container(
         width: 80,
@@ -464,8 +465,10 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
               decoration: BoxDecoration(
                 color: AppColors.settingsCardBackground,
                 borderRadius: BorderRadius.circular(12),
-                border:
-                    Border.all(color: AppColors.settingsCardBorder, width: 1),
+                border: Border.all(
+                  color: AppColors.settingsCardBorder,
+                  width: 1,
+                ),
               ),
               child: Icon(
                 Icons.help_outline_rounded,
@@ -671,8 +674,10 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                 decoration: BoxDecoration(
                   color: AppColors.settingsCardBackground,
                   borderRadius: BorderRadius.circular(14),
-                  border:
-                      Border.all(color: AppColors.settingsCardBorder, width: 1),
+                  border: Border.all(
+                    color: AppColors.settingsCardBorder,
+                    width: 1,
+                  ),
                 ),
                 padding: const EdgeInsets.all(16),
                 child: useWideLayout
@@ -860,7 +865,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
         _rightEyeXGoal == null ||
         _bothEyesYGoal == null) {
       _log(
-          'Preview waiting: rawBytes=${_rawImageBytes != null}, dims=${_rawImageWidth}x$_rawImageHeight, canvas=${_canvasWidth}x$_canvasHeight, eyes=$_leftEyeXGoal/$_rightEyeXGoal/$_bothEyesYGoal');
+        'Preview waiting: rawBytes=${_rawImageBytes != null}, dims=${_rawImageWidth}x$_rawImageHeight, canvas=${_canvasWidth}x$_canvasHeight, eyes=$_leftEyeXGoal/$_rightEyeXGoal/$_bothEyesYGoal',
+      );
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -923,7 +929,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
 
               if (availableWidth == 0 || availableHeight == 0) {
                 _log(
-                    'Preview HIDDEN: zero available size (${availableWidth}x$availableHeight)');
+                  'Preview HIDDEN: zero available size (${availableWidth}x$availableHeight)',
+                );
                 return const SizedBox.shrink();
               }
 
@@ -971,10 +978,14 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                               Positioned.fill(
                                 child: TransformTool(
                                   imageBytes: _rawImageBytes!,
-                                  canvasSize: Size(_canvasWidth!.toDouble(),
-                                      _canvasHeight!.toDouble()),
-                                  imageSize: Size(_rawImageWidth!.toDouble(),
-                                      _rawImageHeight!.toDouble()),
+                                  canvasSize: Size(
+                                    _canvasWidth!.toDouble(),
+                                    _canvasHeight!.toDouble(),
+                                  ),
+                                  imageSize: Size(
+                                    _rawImageWidth!.toDouble(),
+                                    _rawImageHeight!.toDouble(),
+                                  ),
                                   baseScale: _baseScale,
                                   controller: _transformController,
                                   onChanged: _onTransformChanged,
@@ -1058,7 +1069,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
 
     final state = _transformController!.state;
     _log(
-        '_onTransformControllerChanged: tx=${state.translateX}, ty=${state.translateY}, sc=${state.scale}, rot=${state.rotation}');
+      '_onTransformControllerChanged: tx=${state.translateX}, ty=${state.translateY}, sc=${state.scale}, rot=${state.rotation}',
+    );
 
     // Update text fields (suppress listener to prevent loop)
     _suppressListener = true;
@@ -1119,8 +1131,9 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
     setState(() => _savePhase = _SavePhase.saving);
 
     // Track minimum display time for "Saving..." (0.5s)
-    final minSavingDisplayFuture =
-        Future.delayed(const Duration(milliseconds: 500));
+    final minSavingDisplayFuture = Future.delayed(
+      const Duration(milliseconds: 500),
+    );
 
     try {
       final tx = double.tryParse(_inputController1.text) ?? 0;
@@ -1149,7 +1162,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       // compile when batch finishes. Otherwise, trigger compilation directly.
       if (!StabilizationService.instance.isActive) {
         unawaited(
-            StabilizationService.instance.startStabilization(widget.projectId));
+          StabilizationService.instance.startStabilization(widget.projectId),
+        );
       }
 
       // Wait for minimum "Saving..." display time
@@ -1171,9 +1185,9 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       _log('_saveChanges ERROR: $e\n$st');
       setState(() => _savePhase = _SavePhase.idle);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to save changes')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Failed to save changes')));
       }
     }
   }
@@ -1452,7 +1466,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
     final double mult = sc / _baseScale;
 
     _log(
-        'Loaded saved transform: tx=$tx, ty=$ty, rot=$rot, sc=$sc, mult=$mult');
+      'Loaded saved transform: tx=$tx, ty=$ty, rot=$rot, sc=$sc, mult=$mult',
+    );
 
     _suppressListener = true;
     _inputController1.text = tx.toStringAsFixed(1);
@@ -1502,7 +1517,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
   }) async {
     final int requestId = ++_currentRequestId;
     _log(
-        'processRequest(tx=$translateX, ty=$translateY, sc=$scaleFactor, rot=$rotationDegrees, save=$save, reqId=$requestId)');
+      'processRequest(tx=$translateX, ty=$translateY, sc=$scaleFactor, rot=$rotationDegrees, save=$save, reqId=$requestId)',
+    );
     if (mounted) {
       setState(() {
         _isProcessing = true;
@@ -1527,13 +1543,15 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       );
       if (imageBytesStabilized == null) {
         _log(
-            'processRequest ABORTED: generateStabilizedImageBytesCVAsync returned null');
+          'processRequest ABORTED: generateStabilizedImageBytesCVAsync returned null',
+        );
         return;
       }
 
       if (requestId != _currentRequestId || !mounted) {
         _log(
-            'processRequest ABORTED: stale request ($requestId vs $_currentRequestId) or not mounted');
+          'processRequest ABORTED: stale request ($requestId vs $_currentRequestId) or not mounted',
+        );
         return;
       }
 
@@ -1581,7 +1599,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
           !mounted ||
           _faceStabilizer == null) {
         _log(
-            'processRequest ABORTED post-save: stale/unmounted/null stabilizer');
+          'processRequest ABORTED post-save: stale/unmounted/null stabilizer',
+        );
         return;
       }
 
@@ -1856,8 +1875,10 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
               children: [
                 // Direction controls (matches Horiz. + Vert. Offset)
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.settingsCardBorder.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(14),
@@ -1897,8 +1918,10 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                 const SizedBox(width: 8),
                 // Scale controls (matches Scale Factor)
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.settingsCardBorder.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(14),
@@ -1924,8 +1947,10 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                 const SizedBox(width: 8),
                 // Rotation controls (matches Rotation)
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.settingsCardBorder.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(14),

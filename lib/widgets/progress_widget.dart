@@ -53,15 +53,9 @@ class ProgressWidget extends StatelessWidget {
             goToPage: goToPage,
           ),
         ] else if (stabilizingRunningInMain) ...[
-          InProgress(
-            message: stabilizingMessage,
-            goToPage: goToPage,
-          ),
+          InProgress(message: stabilizingMessage, goToPage: goToPage),
         ] else if (videoCreationActiveInMain) ...[
-          InProgress(
-            message: compilingMessage,
-            goToPage: goToPage,
-          ),
+          InProgress(message: compilingMessage, goToPage: goToPage),
         ],
       ],
     );

@@ -48,10 +48,14 @@ void main() {
     test('gallery size constants are correct', () {
       expect(DateStampUtils.defaultGallerySizeLevel, equals(4));
       expect(DateStampUtils.sizeSameAsGallery, equals(0));
-      expect(DateStampUtils.gallerySizePx,
-          equals([8.0, 10.0, 12.0, 14.0, 16.0, 18.0]));
       expect(
-          DateStampUtils.exportSizeApproxPx, equals([10, 20, 30, 40, 55, 65]));
+        DateStampUtils.gallerySizePx,
+        equals([8.0, 10.0, 12.0, 14.0, 16.0, 18.0]),
+      );
+      expect(
+        DateStampUtils.exportSizeApproxPx,
+        equals([10, 20, 30, 40, 55, 65]),
+      );
     });
 
     test('font constants are correct', () {
@@ -76,7 +80,9 @@ void main() {
 
     test('availableFonts is alias for bundledFonts', () {
       expect(
-          DateStampUtils.availableFonts, equals(DateStampUtils.bundledFonts));
+        DateStampUtils.availableFonts,
+        equals(DateStampUtils.bundledFonts),
+      );
     });
 
     test('galleryPresets contains all gallery formats', () {
@@ -102,8 +108,10 @@ void main() {
     });
 
     test('returns correct display name for SourceSans3', () {
-      expect(DateStampUtils.getFontDisplayName('SourceSans3'),
-          equals('Source Sans'));
+      expect(
+        DateStampUtils.getFontDisplayName('SourceSans3'),
+        equals('Source Sans'),
+      );
     });
 
     test('returns correct display name for Nunito', () {
@@ -111,25 +119,33 @@ void main() {
     });
 
     test('returns correct display name for JetBrainsMono', () {
-      expect(DateStampUtils.getFontDisplayName('JetBrainsMono'),
-          equals('JetBrains Mono'));
+      expect(
+        DateStampUtils.getFontDisplayName('JetBrainsMono'),
+        equals('JetBrains Mono'),
+      );
     });
 
     test('returns correct display name for fontSameAsGallery', () {
-      expect(DateStampUtils.getFontDisplayName('_same_as_gallery'),
-          equals('Same as thumbnail'));
+      expect(
+        DateStampUtils.getFontDisplayName('_same_as_gallery'),
+        equals('Same as thumbnail'),
+      );
     });
 
     test('returns correct display name for fontCustomMarker', () {
-      expect(DateStampUtils.getFontDisplayName('_custom_font'),
-          equals('Custom (TTF/OTF)'));
+      expect(
+        DateStampUtils.getFontDisplayName('_custom_font'),
+        equals('Custom (TTF/OTF)'),
+      );
     });
 
     test('returns Custom Font for custom font family', () {
       expect(
-          DateStampUtils.getFontDisplayName(
-              '${CustomFontManager.customFontPrefix}test'),
-          equals('Custom Font'));
+        DateStampUtils.getFontDisplayName(
+          '${CustomFontManager.customFontPrefix}test',
+        ),
+        equals('Custom Font'),
+      );
     });
 
     test('returns Inter for unknown font', () {
@@ -140,9 +156,11 @@ void main() {
   group('isCustomFont', () {
     test('returns true for custom font prefix', () {
       expect(
-          DateStampUtils.isCustomFont(
-              '${CustomFontManager.customFontPrefix}MyFont'),
-          isTrue);
+        DateStampUtils.isCustomFont(
+          '${CustomFontManager.customFontPrefix}MyFont',
+        ),
+        isTrue,
+      );
     });
 
     test('returns false for bundled font', () {
@@ -168,25 +186,39 @@ void main() {
 
   group('resolveExportFont', () {
     test('returns gallery font when export font is same as gallery marker', () {
-      expect(DateStampUtils.resolveExportFont('_same_as_gallery', 'Inter'),
-          equals('Inter'));
-      expect(DateStampUtils.resolveExportFont('_same_as_gallery', 'Roboto'),
-          equals('Roboto'));
+      expect(
+        DateStampUtils.resolveExportFont('_same_as_gallery', 'Inter'),
+        equals('Inter'),
+      );
+      expect(
+        DateStampUtils.resolveExportFont('_same_as_gallery', 'Roboto'),
+        equals('Roboto'),
+      );
     });
 
     test('returns export font when not same as gallery marker', () {
-      expect(DateStampUtils.resolveExportFont('Roboto', 'Inter'),
-          equals('Roboto'));
-      expect(DateStampUtils.resolveExportFont('Nunito', 'JetBrainsMono'),
-          equals('Nunito'));
+      expect(
+        DateStampUtils.resolveExportFont('Roboto', 'Inter'),
+        equals('Roboto'),
+      );
+      expect(
+        DateStampUtils.resolveExportFont('Nunito', 'JetBrainsMono'),
+        equals('Nunito'),
+      );
     });
   });
 
   group('formatTimestamp', () {
     test('formats timestamp with ISO format', () {
       // Jan 15, 2024 12:00:00 UTC
-      final timestamp =
-          DateTime.utc(2024, 1, 15, 12, 0, 0).millisecondsSinceEpoch;
+      final timestamp = DateTime.utc(
+        2024,
+        1,
+        15,
+        12,
+        0,
+        0,
+      ).millisecondsSinceEpoch;
       final result = DateStampUtils.formatTimestamp(timestamp, 'yyyy-MM-dd');
       expect(result, contains('2024'));
       expect(result, contains('01'));
@@ -194,18 +226,32 @@ void main() {
     });
 
     test('formats timestamp with US format', () {
-      final timestamp =
-          DateTime.utc(2024, 1, 15, 12, 0, 0).millisecondsSinceEpoch;
+      final timestamp = DateTime.utc(
+        2024,
+        1,
+        15,
+        12,
+        0,
+        0,
+      ).millisecondsSinceEpoch;
       final result = DateStampUtils.formatTimestamp(timestamp, 'MM/dd/yyyy');
       expect(result, equals('01/15/2024'));
     });
 
     test('handles invalid format gracefully', () {
-      final timestamp =
-          DateTime.utc(2024, 1, 15, 12, 0, 0).millisecondsSinceEpoch;
+      final timestamp = DateTime.utc(
+        2024,
+        1,
+        15,
+        12,
+        0,
+        0,
+      ).millisecondsSinceEpoch;
       // Invalid format should fall back to ISO
-      final result =
-          DateStampUtils.formatTimestamp(timestamp, 'INVALID_FORMAT_XXXXX');
+      final result = DateStampUtils.formatTimestamp(
+        timestamp,
+        'INVALID_FORMAT_XXXXX',
+      );
       // Should not throw, may return ISO format or original
       expect(result, isA<String>());
     });
@@ -308,10 +354,14 @@ void main() {
     });
 
     test('clamps percentage to 1-6 range', () {
-      expect(DateStampUtils.calculateFontSize(1000, 0),
-          equals(10)); // clamped to 1%
-      expect(DateStampUtils.calculateFontSize(1000, 10),
-          equals(60)); // clamped to 6%
+      expect(
+        DateStampUtils.calculateFontSize(1000, 0),
+        equals(10),
+      ); // clamped to 1%
+      expect(
+        DateStampUtils.calculateFontSize(1000, 10),
+        equals(60),
+      ); // clamped to 6%
     });
   });
 
@@ -327,8 +377,10 @@ void main() {
     });
 
     test('uses custom font family when provided', () {
-      final style =
-          DateStampUtils.getGalleryLabelStyle(14.0, fontFamily: 'Roboto');
+      final style = DateStampUtils.getGalleryLabelStyle(
+        14.0,
+        fontFamily: 'Roboto',
+      );
       expect(style.fontFamily, equals('Roboto'));
     });
   });
@@ -349,8 +401,11 @@ void main() {
     });
 
     test('uses custom font family when provided', () {
-      final style =
-          DateStampUtils.getExportTextStyle(20.0, 1.0, fontFamily: 'Nunito');
+      final style = DateStampUtils.getExportTextStyle(
+        20.0,
+        1.0,
+        fontFamily: 'Nunito',
+      );
       expect(style.fontFamily, equals('Nunito'));
     });
   });
@@ -358,20 +413,32 @@ void main() {
   group('getGalleryFormatDisplayName', () {
     test('returns correct display names', () {
       expect(
-          DateStampUtils.getGalleryFormatDisplayName('MM/yy'), equals('MM/YY'));
-      expect(DateStampUtils.getGalleryFormatDisplayName('MMM dd'),
-          equals('MMM DD'));
-      expect(DateStampUtils.getGalleryFormatDisplayName("MMM dd ''yy"),
-          equals("MMM DD 'YY"));
-      expect(DateStampUtils.getGalleryFormatDisplayName('dd MMM'),
-          equals('DD MMM'));
-      expect(DateStampUtils.getGalleryFormatDisplayName('MMM yyyy'),
-          equals('MMM YYYY'));
+        DateStampUtils.getGalleryFormatDisplayName('MM/yy'),
+        equals('MM/YY'),
+      );
+      expect(
+        DateStampUtils.getGalleryFormatDisplayName('MMM dd'),
+        equals('MMM DD'),
+      );
+      expect(
+        DateStampUtils.getGalleryFormatDisplayName("MMM dd ''yy"),
+        equals("MMM DD 'YY"),
+      );
+      expect(
+        DateStampUtils.getGalleryFormatDisplayName('dd MMM'),
+        equals('DD MMM'),
+      );
+      expect(
+        DateStampUtils.getGalleryFormatDisplayName('MMM yyyy'),
+        equals('MMM YYYY'),
+      );
     });
 
     test('returns default for unknown format', () {
-      expect(DateStampUtils.getGalleryFormatDisplayName('unknown'),
-          equals('MM/YY'));
+      expect(
+        DateStampUtils.getGalleryFormatDisplayName('unknown'),
+        equals('MM/YY'),
+      );
     });
   });
 
@@ -391,21 +458,33 @@ void main() {
 
   group('getExportFormatDisplayName', () {
     test('returns correct display names', () {
-      expect(DateStampUtils.getExportFormatDisplayName('yyyy-MM-dd'),
-          equals('YYYY-MM-DD'));
-      expect(DateStampUtils.getExportFormatDisplayName('MM/dd/yyyy'),
-          equals('MM/DD/YYYY'));
-      expect(DateStampUtils.getExportFormatDisplayName('dd/MM/yyyy'),
-          equals('DD/MM/YYYY'));
-      expect(DateStampUtils.getExportFormatDisplayName('MMM dd, yyyy'),
-          equals('MMM DD, YYYY'));
-      expect(DateStampUtils.getExportFormatDisplayName('dd MMM yyyy'),
-          equals('DD MMM YYYY'));
+      expect(
+        DateStampUtils.getExportFormatDisplayName('yyyy-MM-dd'),
+        equals('YYYY-MM-DD'),
+      );
+      expect(
+        DateStampUtils.getExportFormatDisplayName('MM/dd/yyyy'),
+        equals('MM/DD/YYYY'),
+      );
+      expect(
+        DateStampUtils.getExportFormatDisplayName('dd/MM/yyyy'),
+        equals('DD/MM/YYYY'),
+      );
+      expect(
+        DateStampUtils.getExportFormatDisplayName('MMM dd, yyyy'),
+        equals('MMM DD, YYYY'),
+      );
+      expect(
+        DateStampUtils.getExportFormatDisplayName('dd MMM yyyy'),
+        equals('DD MMM YYYY'),
+      );
     });
 
     test('returns default for unknown format', () {
-      expect(DateStampUtils.getExportFormatDisplayName('unknown'),
-          equals('MMM DD, YYYY'));
+      expect(
+        DateStampUtils.getExportFormatDisplayName('unknown'),
+        equals('MMM DD, YYYY'),
+      );
     });
   });
 
@@ -426,26 +505,40 @@ void main() {
 
   group('getPositionDisplayName', () {
     test('returns correct display names', () {
-      expect(DateStampUtils.getPositionDisplayName('lower right'),
-          equals('Lower right'));
-      expect(DateStampUtils.getPositionDisplayName('lower left'),
-          equals('Lower left'));
-      expect(DateStampUtils.getPositionDisplayName('upper right'),
-          equals('Upper right'));
-      expect(DateStampUtils.getPositionDisplayName('upper left'),
-          equals('Upper left'));
+      expect(
+        DateStampUtils.getPositionDisplayName('lower right'),
+        equals('Lower right'),
+      );
+      expect(
+        DateStampUtils.getPositionDisplayName('lower left'),
+        equals('Lower left'),
+      );
+      expect(
+        DateStampUtils.getPositionDisplayName('upper right'),
+        equals('Upper right'),
+      );
+      expect(
+        DateStampUtils.getPositionDisplayName('upper left'),
+        equals('Upper left'),
+      );
     });
 
     test('handles case insensitive input', () {
-      expect(DateStampUtils.getPositionDisplayName('LOWER RIGHT'),
-          equals('Lower right'));
-      expect(DateStampUtils.getPositionDisplayName('Upper Left'),
-          equals('Upper left'));
+      expect(
+        DateStampUtils.getPositionDisplayName('LOWER RIGHT'),
+        equals('Lower right'),
+      );
+      expect(
+        DateStampUtils.getPositionDisplayName('Upper Left'),
+        equals('Upper left'),
+      );
     });
 
     test('returns default for unknown position', () {
-      expect(DateStampUtils.getPositionDisplayName('center'),
-          equals('Lower right'));
+      expect(
+        DateStampUtils.getPositionDisplayName('center'),
+        equals('Lower right'),
+      );
     });
   });
 
@@ -457,26 +550,34 @@ void main() {
     });
 
     test('returns error for empty format', () {
-      expect(DateStampUtils.validateGalleryFormat(''),
-          equals('Format cannot be empty'));
+      expect(
+        DateStampUtils.validateGalleryFormat(''),
+        equals('Format cannot be empty'),
+      );
     });
 
     test('returns error for format exceeding max length', () {
       final longFormat = 'M' * 20;
-      expect(DateStampUtils.validateGalleryFormat(longFormat),
-          equals('Maximum 15 characters'));
+      expect(
+        DateStampUtils.validateGalleryFormat(longFormat),
+        equals('Maximum 15 characters'),
+      );
     });
 
     test('returns error for format without date token', () {
-      expect(DateStampUtils.validateGalleryFormat('text'),
-          equals('Must include at least one date token'));
+      expect(
+        DateStampUtils.validateGalleryFormat('text'),
+        equals('Must include at least one date token'),
+      );
     });
 
     test('returns error for format with time tokens', () {
       // HH:mm has no date tokens so it fails that check first
       // Use a format that has both date and time tokens
-      expect(DateStampUtils.validateGalleryFormat('MM/dd HH:mm'),
-          equals('Time tokens not available for thumbnails'));
+      expect(
+        DateStampUtils.validateGalleryFormat('MM/dd HH:mm'),
+        equals('Time tokens not available for thumbnails'),
+      );
     });
   });
 
@@ -487,19 +588,25 @@ void main() {
     });
 
     test('returns error for empty format', () {
-      expect(DateStampUtils.validateExportFormat(''),
-          equals('Format cannot be empty'));
+      expect(
+        DateStampUtils.validateExportFormat(''),
+        equals('Format cannot be empty'),
+      );
     });
 
     test('returns error for format exceeding max length', () {
       final longFormat = 'M' * 50;
-      expect(DateStampUtils.validateExportFormat(longFormat),
-          equals('Maximum 40 characters'));
+      expect(
+        DateStampUtils.validateExportFormat(longFormat),
+        equals('Maximum 40 characters'),
+      );
     });
 
     test('returns error for format without date token', () {
-      expect(DateStampUtils.validateExportFormat('HH:mm:ss'),
-          equals('Must include at least one date token'));
+      expect(
+        DateStampUtils.validateExportFormat('HH:mm:ss'),
+        equals('Must include at least one date token'),
+      );
     });
 
     test('allows time tokens in export format', () {
@@ -593,18 +700,22 @@ void main() {
 
   group('parseTimestampFromFilename', () {
     test('parses valid timestamp from filename', () {
-      expect(DateStampUtils.parseTimestampFromFilename('1705315200000.jpg'),
-          equals(1705315200000));
       expect(
-          DateStampUtils.parseTimestampFromFilename(
-              '/path/to/1705315200000.png'),
-          equals(1705315200000));
+        DateStampUtils.parseTimestampFromFilename('1705315200000.jpg'),
+        equals(1705315200000),
+      );
+      expect(
+        DateStampUtils.parseTimestampFromFilename('/path/to/1705315200000.png'),
+        equals(1705315200000),
+      );
     });
 
     test('returns null for invalid timestamp', () {
       expect(DateStampUtils.parseTimestampFromFilename('invalid.jpg'), isNull);
-      expect(DateStampUtils.parseTimestampFromFilename('not_a_number.png'),
-          isNull);
+      expect(
+        DateStampUtils.parseTimestampFromFilename('not_a_number.png'),
+        isNull,
+      );
     });
   });
 
@@ -617,8 +728,10 @@ void main() {
     test('exportFormatHelpText is not empty', () {
       expect(DateStampUtils.exportFormatHelpText.isNotEmpty, isTrue);
       expect(DateStampUtils.exportFormatHelpText, contains('FORMAT TOKENS'));
-      expect(DateStampUtils.exportFormatHelpText,
-          contains('Time')); // Export includes time section
+      expect(
+        DateStampUtils.exportFormatHelpText,
+        contains('Time'),
+      ); // Export includes time section
     });
   });
 
@@ -646,8 +759,10 @@ void main() {
 
     test('clamps invalid sizeLevel above range', () {
       // sizeLevel 10 clamped to 6 → 18px
-      expect(DateStampUtils.calculateGalleryFontSize(100.0, 10),
-          equals(DateStampUtils.calculateGalleryFontSize(100.0, 6)));
+      expect(
+        DateStampUtils.calculateGalleryFontSize(100.0, 10),
+        equals(DateStampUtils.calculateGalleryFontSize(100.0, 6)),
+      );
     });
   });
 
@@ -661,8 +776,9 @@ void main() {
       expect(DateStampUtils.resolveExportSize(0, 4), equals(4));
       expect(DateStampUtils.resolveExportSize(0, 2), equals(2));
       expect(
-          DateStampUtils.resolveExportSize(DateStampUtils.sizeSameAsGallery, 6),
-          equals(6));
+        DateStampUtils.resolveExportSize(DateStampUtils.sizeSameAsGallery, 6),
+        equals(6),
+      );
     });
   });
 
@@ -684,8 +800,11 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: DateStampUtils.buildGalleryDateLabel('Jan 24', 100.0,
-                fontFamily: 'Roboto'),
+            body: DateStampUtils.buildGalleryDateLabel(
+              'Jan 24',
+              100.0,
+              fontFamily: 'Roboto',
+            ),
           ),
         ),
       );
@@ -712,8 +831,11 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: DateStampUtils.buildGalleryDateLabel('Jan 24', 100.0,
-                sizeLevel: 4),
+            body: DateStampUtils.buildGalleryDateLabel(
+              'Jan 24',
+              100.0,
+              sizeLevel: 4,
+            ),
           ),
         ),
       );
@@ -727,8 +849,11 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: DateStampUtils.buildGalleryDateLabel('Jan 24', 100.0,
-                sizeLevel: 6),
+            body: DateStampUtils.buildGalleryDateLabel(
+              'Jan 24',
+              100.0,
+              sizeLevel: 6,
+            ),
           ),
         ),
       );

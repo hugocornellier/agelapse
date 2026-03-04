@@ -41,10 +41,7 @@ void main() {
       });
 
       test('stores mode on first result', () {
-        benchmark.addResult(
-          finalScore: 0.5,
-          mode: StabilizationMode.fast,
-        );
+        benchmark.addResult(finalScore: 0.5, mode: StabilizationMode.fast);
         final map = benchmark.toMap();
         expect(map['count'], equals(1));
       });
@@ -183,10 +180,7 @@ void main() {
           finalScore: 0.5,
           finalEyeDeltaY: -3.0, // Negative should become positive (abs)
         );
-        benchmark.addResult(
-          finalScore: 0.6,
-          finalEyeDeltaY: 5.0,
-        );
+        benchmark.addResult(finalScore: 0.6, finalEyeDeltaY: 5.0);
 
         final map = benchmark.toMap();
         expect(map['rotation'], isNotNull);
@@ -201,10 +195,7 @@ void main() {
       });
 
       test('takes absolute value of eye delta', () {
-        benchmark.addResult(
-          finalScore: 0.5,
-          finalEyeDeltaY: -10.0,
-        );
+        benchmark.addResult(finalScore: 0.5, finalEyeDeltaY: -10.0);
 
         final map = benchmark.toMap();
         expect(map['rotation']['mean'], equals(10.0));
@@ -237,10 +228,7 @@ void main() {
       });
 
       test('requires both finalEyeDistance and goalEyeDistance', () {
-        benchmark.addResult(
-          finalScore: 0.5,
-          finalEyeDistance: 100.0,
-        );
+        benchmark.addResult(finalScore: 0.5, finalEyeDistance: 100.0);
 
         final map = benchmark.toMap();
         expect(map['scale'], isNull);

@@ -6,6 +6,7 @@ import 'package:agelapse/main.dart' as app;
 import 'package:agelapse/models/video_codec.dart';
 import 'package:agelapse/models/video_background.dart';
 import 'package:agelapse/services/database_helper.dart';
+import 'package:agelapse/services/database_import_ffi.dart';
 import 'package:agelapse/utils/video_utils.dart';
 import 'package:agelapse/utils/dir_utils.dart';
 import 'package:agelapse/utils/test_mode.dart' as test_config;
@@ -28,6 +29,7 @@ void main() {
     int? testProjectId;
 
     setUpAll(() async {
+      initDatabase();
       await DB.instance.createTablesIfNotExist();
     });
 
@@ -183,21 +185,13 @@ void main() {
       final pid = projectId.toString();
 
       // Configure settings
-      await DB.instance.setSettingByTitle(
-        'video_resolution',
-        resolution,
-        pid,
-      );
+      await DB.instance.setSettingByTitle('video_resolution', resolution, pid);
       await DB.instance.setSettingByTitle(
         'project_orientation',
         orientation,
         pid,
       );
-      await DB.instance.setSettingByTitle(
-        'video_codec',
-        codec.name,
-        pid,
-      );
+      await DB.instance.setSettingByTitle('video_codec', codec.name, pid);
 
       if (transparent) {
         await DB.instance.setSettingByTitle(
@@ -217,21 +211,9 @@ void main() {
 
       // Create frames
       if (transparent) {
-        await setupTransparentFrames(
-          projectId,
-          orientation,
-          width,
-          height,
-          3,
-        );
+        await setupTransparentFrames(projectId, orientation, width, height, 3);
       } else {
-        await setupOpaqueFrames(
-          projectId,
-          orientation,
-          width,
-          height,
-          3,
-        );
+        await setupOpaqueFrames(projectId, orientation, width, height, 3);
       }
 
       // Compile video
@@ -409,7 +391,8 @@ void main() {
     testWidgets('VP9 transparent 1080p (non-Apple platforms)', (tester) async {
       if (Platform.isMacOS || Platform.isIOS) {
         markTestSkipped(
-            'VP9 transparent test skipped on Apple (use ProRes 4444)');
+          'VP9 transparent test skipped on Apple (use ProRes 4444)',
+        );
         return;
       }
 
@@ -429,8 +412,9 @@ void main() {
 
     // ===== Transparent PNGs + Solid Video Background Tests =====
 
-    testWidgets('transparent PNGs with solid black video background (H.264)',
-        (tester) async {
+    testWidgets('transparent PNGs with solid black video background (H.264)', (
+      tester,
+    ) async {
       await runCodecTest(
         tester: tester,
         testName: 'Transparent PNGs + solid bg H.264',
@@ -446,26 +430,28 @@ void main() {
     });
 
     testWidgets(
-        'transparent PNGs with solid custom color video background (ProRes 422)',
-        (tester) async {
-      await runCodecTest(
-        tester: tester,
-        testName: 'Transparent PNGs + custom bg ProRes 422',
-        codec: VideoCodec.prores422,
-        resolution: '1080p',
-        orientation: 'landscape',
-        width: 1920,
-        height: 1080,
-        transparent: true,
-        videoBackground: VideoBackground.solidColor('#1A1A2E'),
-        setProjectId: (id) => testProjectId = id,
-      );
-    });
+      'transparent PNGs with solid custom color video background (ProRes 422)',
+      (tester) async {
+        await runCodecTest(
+          tester: tester,
+          testName: 'Transparent PNGs + custom bg ProRes 422',
+          codec: VideoCodec.prores422,
+          resolution: '1080p',
+          orientation: 'landscape',
+          width: 1920,
+          height: 1080,
+          transparent: true,
+          videoBackground: VideoBackground.solidColor('#1A1A2E'),
+          setProjectId: (id) => testProjectId = id,
+        );
+      },
+    );
 
     // ===== Codec Change Cleanup Test =====
 
-    testWidgets('codec change produces correct output extension',
-        (tester) async {
+    testWidgets('codec change produces correct output extension', (
+      tester,
+    ) async {
       app.main();
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
@@ -479,8 +465,11 @@ void main() {
 
       // Set up with H.264
       await DB.instance.setSettingByTitle('video_resolution', '1080p', pid);
-      await DB.instance
-          .setSettingByTitle('project_orientation', 'landscape', pid);
+      await DB.instance.setSettingByTitle(
+        'project_orientation',
+        'landscape',
+        pid,
+      );
       await DB.instance.setSettingByTitle('video_codec', 'h264', pid);
 
       await setupOpaqueFrames(testProjectId!, 'landscape', 1920, 1080, 3);

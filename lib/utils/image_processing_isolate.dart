@@ -129,8 +129,10 @@ ImageProcessingOutput processImageIsolateEntry(ImageProcessingInput input) {
     final (thumbSuccess, thumbBytes) = cv.imencode(
       '.jpg',
       thumbnail,
-      params:
-          cv.VecI32.fromList([cv.IMWRITE_JPEG_QUALITY, input.thumbnailQuality]),
+      params: cv.VecI32.fromList([
+        cv.IMWRITE_JPEG_QUALITY,
+        input.thumbnailQuality,
+      ]),
     );
 
     final width = rawImage.cols;
@@ -188,7 +190,8 @@ bool get supportsIsolateProcessing {
 /// On supported platforms, processes in an isolate to avoid UI blocking.
 /// On unsupported platforms or if isolate fails, falls back to main thread.
 Future<ImageProcessingOutput> processImageSafely(
-    ImageProcessingInput input) async {
+  ImageProcessingInput input,
+) async {
   if (!supportsIsolateProcessing) {
     // Process on main thread for unsupported platforms
     return processImageIsolateEntry(input);
@@ -199,8 +202,9 @@ Future<ImageProcessingOutput> processImageSafely(
     return await compute(processImageIsolateEntry, input);
   } catch (e) {
     // Isolate failed - fall back to main thread processing
-    LogService.instance
-        .log('[ImageProc] Isolate FAILED, falling back to main thread: $e');
+    LogService.instance.log(
+      '[ImageProc] Isolate FAILED, falling back to main thread: $e',
+    );
     return processImageIsolateEntry(input);
   }
 }

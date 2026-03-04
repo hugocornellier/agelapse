@@ -128,7 +128,9 @@ class GalleryImageMenu {
         title: Text(
           title,
           style: TextStyle(
-              fontSize: AppTypography.md, color: AppColors.settingsTextPrimary),
+            fontSize: AppTypography.md,
+            color: AppColors.settingsTextPrimary,
+          ),
         ),
         onTap: onTap,
       );
@@ -143,8 +145,10 @@ class GalleryImageMenu {
       ),
       title: Text(
         title,
-        style:
-            TextStyle(fontSize: AppTypography.sm, color: AppColors.textPrimary),
+        style: TextStyle(
+          fontSize: AppTypography.sm,
+          color: AppColors.textPrimary,
+        ),
       ),
       onTap: onTap,
     );

@@ -43,7 +43,7 @@ class FaceLike {
           boundingBox.left,
           boundingBox.top,
           boundingBox.right,
-          boundingBox.bottom
+          boundingBox.bottom,
         ],
         'leftEye': leftEye != null ? [leftEye!.x, leftEye!.y] : null,
         'rightEye': rightEye != null ? [rightEye!.x, rightEye!.y] : null,
@@ -63,11 +63,15 @@ class FaceLike {
       ),
       leftEye: left != null
           ? Point<double>(
-              (left[0] as num).toDouble(), (left[1] as num).toDouble())
+              (left[0] as num).toDouble(),
+              (left[1] as num).toDouble(),
+            )
           : null,
       rightEye: right != null
           ? Point<double>(
-              (right[0] as num).toDouble(), (right[1] as num).toDouble())
+              (right[0] as num).toDouble(),
+              (right[1] as num).toDouble(),
+            )
           : null,
     );
   }
@@ -689,10 +693,12 @@ class StabUtils {
           final aspectRatio = composited.rows / composited.cols;
           final height = (800 * aspectRatio).round();
           final thumb = cv.resize(
-            composited,
-            (800, height),
-            interpolation: cv.INTER_CUBIC,
-          );
+              composited,
+              (
+                800,
+                height,
+              ),
+              interpolation: cv.INTER_CUBIC);
           composited.dispose();
 
           final (success, jpgBytes) = cv.imencode(
@@ -723,10 +729,12 @@ class StabUtils {
           final aspectRatio = mat.rows / mat.cols;
           final height = (800 * aspectRatio).round();
           final thumb = cv.resize(
-            mat,
-            (800, height),
-            interpolation: cv.INTER_CUBIC,
-          );
+              mat,
+              (
+                800,
+                height,
+              ),
+              interpolation: cv.INTER_CUBIC);
           mat.dispose();
 
           final (success, pngBytes) = cv.imencode('.png', thumb);
@@ -1000,8 +1008,10 @@ class StabUtils {
 
   /// Prepares a PNG version of the image and returns the PNG bytes.
   /// Also writes to disk for caching. If PNG already exists, reads and returns it.
-  static Future<Uint8List?> preparePNG(String imgPath,
-      {bool lossless = false}) async {
+  static Future<Uint8List?> preparePNG(
+    String imgPath, {
+    bool lossless = false,
+  }) async {
     final String pngPath = await DirUtils.getPngPathFromRawPhotoPath(imgPath);
     await DirUtils.createDirectoryIfNotExists(pngPath);
     final File pngFile = File(pngPath);

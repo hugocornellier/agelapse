@@ -77,9 +77,9 @@ class InfoPageState extends State<InfoPage> {
       await LogService.instance.exportLogs();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not export logs')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Could not export logs')));
     }
   }
 
@@ -128,10 +128,8 @@ class InfoPageState extends State<InfoPage> {
                             title: 'F.A.Q.',
                             subtitle: 'Frequently asked questions',
                             icon: Icons.quiz_outlined,
-                            onTap: () => Utils.navigateToScreen(
-                              context,
-                              FAQPage(),
-                            ),
+                            onTap: () =>
+                                Utils.navigateToScreen(context, FAQPage()),
                           ),
                         ],
                       ),
@@ -197,11 +195,7 @@ class InfoPageState extends State<InfoPage> {
           padding: const EdgeInsets.only(left: 4, bottom: 12),
           child: Row(
             children: [
-              Icon(
-                icon,
-                size: 18,
-                color: AppColors.textSecondary,
-              ),
+              Icon(icon, size: 18, color: AppColors.textSecondary),
               const SizedBox(width: 8),
               Text(
                 title.toUpperCase(),
@@ -219,10 +213,7 @@ class InfoPageState extends State<InfoPage> {
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: AppColors.surfaceElevated,
-              width: 1,
-            ),
+            border: Border.all(color: AppColors.surfaceElevated, width: 1),
           ),
           child: Column(
             children: [
@@ -260,11 +251,7 @@ class InfoPageState extends State<InfoPage> {
                   color: AppColors.accent.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(
-                  item.icon,
-                  size: 20,
-                  color: AppColors.accent,
-                ),
+                child: Icon(item.icon, size: 20, color: AppColors.accent),
               ),
               const SizedBox(width: 14),
               Expanded(

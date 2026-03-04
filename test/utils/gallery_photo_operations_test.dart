@@ -176,8 +176,10 @@ void main() {
 
       for (final ts in testTimestamps) {
         final tsInt = int.parse(ts);
-        final dateTime =
-            DateTime.fromMillisecondsSinceEpoch(tsInt, isUtc: true);
+        final dateTime = DateTime.fromMillisecondsSinceEpoch(
+          tsInt,
+          isUtc: true,
+        );
         final offsetMinutes = dateTime.toLocal().timeZoneOffset.inMinutes;
 
         expect(offsetMinutes, isA<int>());
@@ -199,7 +201,7 @@ void main() {
         '.png',
         '.heic',
         '.heif',
-        '.avif'
+        '.avif',
       ];
 
       for (final ext in testExtensions) {

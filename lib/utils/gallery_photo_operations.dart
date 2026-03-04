@@ -237,8 +237,9 @@ class GalleryPhotoOperations {
     );
 
     // Update guide photo reference if needed
-    final String currentGuidePhoto =
-        await SettingsUtil.loadSelectedGuidePhoto(projectId.toString());
+    final String currentGuidePhoto = await SettingsUtil.loadSelectedGuidePhoto(
+      projectId.toString(),
+    );
     if (currentGuidePhoto == oldId.toString() && newId != null) {
       await DB.instance.setSettingByTitle(
         "selected_guide_photo",

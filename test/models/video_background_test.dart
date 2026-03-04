@@ -78,8 +78,9 @@ void main() {
 
       test('round-trips through fromString', () {
         const transparent = VideoBackground.transparent();
-        final roundTripped =
-            VideoBackground.fromString(transparent.toDbValue());
+        final roundTripped = VideoBackground.fromString(
+          transparent.toDbValue(),
+        );
         expect(roundTripped.keepTransparent, true);
 
         final solid = VideoBackground.solidColor('#ABCDEF');

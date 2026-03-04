@@ -21,9 +21,7 @@ import 'countdown_overlay.dart';
 import 'capture_flash_overlay.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:ui' as ui;
-import 'package:camera_macos/camera_macos.dart' as cmacos;
-import 'package:media_kit/media_kit.dart';
-import 'package:media_kit_video/media_kit_video.dart';
+import 'package:camera_desktop/camera_desktop.dart';
 
 class RotatingIconButton extends StatelessWidget {
   final Widget child;
@@ -123,7 +121,6 @@ class _CameraViewState extends State<CameraView>
   bool _isInfoWidgetVisible = true;
   bool isMirrored = false;
   String _orientation = '';
-  cmacos.CameraMacOSController? _macController;
 
   // Timer state
   int _timerDuration = 0; // 0 = off, 3 = 3s, 10 = 10s
@@ -132,16 +129,6 @@ class _CameraViewState extends State<CameraView>
   Timer? _countdownTimer;
   AnimationController? _pulseController;
   Animation<double>? _pulseAnimation;
-
-  // macOS camera state
-  String? _macOSCameraDeviceId;
-  List<cmacos.CameraMacOSDevice> _macOSCameras = [];
-
-  // Linux camera state (using media_kit)
-  Player? _linuxPlayer;
-  VideoController? _linuxVideoController;
-  bool _linuxCameraReady = false;
-  String? _linuxCameraError;
 
   @override
   void initState() {
@@ -188,66 +175,7 @@ class _CameraViewState extends State<CameraView>
     }
   }
 
-  Widget _macOSBody() {
-    // Wait for camera enumeration to complete before showing camera
-    final bool cameraReady =
-        _macOSCameras.isNotEmpty || _macOSCameraDeviceId != null;
-
-    return SafeArea(
-      bottom: true,
-      child: Stack(
-        fit: StackFit.expand,
-        alignment: Alignment.bottomCenter,
-        children: [
-          if (!cameraReady)
-            const Center(child: CircularProgressIndicator())
-          else
-            cmacos.CameraMacOSView(
-              fit: BoxFit.cover,
-              cameraMode: cmacos.CameraMacOSMode.photo,
-              deviceId: _macOSCameraDeviceId,
-              isVideoMirrored: isMirrored,
-              onCameraLoading: (error) {
-                return const Center(child: CircularProgressIndicator());
-              },
-              onCameraInizialized: (cmacos.CameraMacOSController c) {
-                setState(() => _macController = c);
-              },
-            ),
-          if (_gridMode != GridMode.none)
-            CameraGridOverlay(
-              widget.projectId,
-              _gridMode,
-              offsetX,
-              offsetY,
-              orientation: _orientation,
-            ),
-          if (_isCountingDown && _pulseAnimation != null)
-            CountdownOverlay(
-              countdownValue: _countdownValue,
-              pulseAnimation: _pulseAnimation!,
-            ),
-          if (!modifyGridMode && !_isCountingDown) _leftSideControls(),
-          if (!modifyGridMode && !_isCountingDown) _rightSideControls(),
-          if (!modifyGridMode) _cameraControl(),
-          if (modifyGridMode) gridModifierOverlay(),
-          if (modifyGridMode) saveGridButton(),
-          if (!modifyGridMode &&
-              !_isCountingDown &&
-              (_gridMode == GridMode.gridOnly ||
-                  _gridMode == GridMode.doubleGhostGrid ||
-                  _gridMode == GridMode.ghostOnly))
-            modifyGridButton(),
-        ],
-      ),
-    );
-  }
-
   void _initialize() async {
-    if (Platform.isMacOS) {
-      await _enumerateMacOSCameras();
-    }
-
     final bool hasSeenGuideModeTut = await SettingsUtil.hasSeenGuideModeTut(
       widget.projectId.toString(),
     );
@@ -335,153 +263,52 @@ class _CameraViewState extends State<CameraView>
 
     await _loadTimerSetting();
 
-    if (Platform.isLinux) {
-      // Linux uses media_kit for camera capture (no flutter camera plugin available)
-      if (widget.forceGridModeEnum != null) {
-        _gridMode = GridMode.values[widget.forceGridModeEnum!];
-      } else if (!takingGuidePhoto) {
-        final bool enableGridSetting = await SettingsUtil.loadEnableGrid();
-        if (!mounted) return;
-        setState(() => enableGrid = enableGridSetting);
-      }
-      await _initLinuxCamera();
-    } else if (!Platform.isMacOS) {
-      _cameras = await availableCameras();
+    if (widget.forceGridModeEnum != null) {
+      _gridMode = GridMode.values[widget.forceGridModeEnum!];
+    } else if (!takingGuidePhoto) {
+      final bool enableGridSetting = await SettingsUtil.loadEnableGrid();
       if (!mounted) return;
+      setState(() => enableGrid = enableGridSetting);
+    }
 
-      if (widget.forceGridModeEnum != null) {
-        _gridMode = GridMode.values[widget.forceGridModeEnum!];
-      } else if (!takingGuidePhoto) {
-        final bool enableGridSetting = await SettingsUtil.loadEnableGrid();
-        if (!mounted) return;
-        setState(() => enableGrid = enableGridSetting);
+    // Unified camera initialization for ALL platforms
+    _cameras = await availableCameras();
+    if (!mounted) return;
+
+    for (var i = 0; i < _cameras.length; i++) {
+      CameraDescription camera = _cameras[i];
+
+      if (camera.lensDirection == CameraLensDirection.front) {
+        frontFacingLensIndex = i;
       }
 
-      for (var i = 0; i < _cameras.length; i++) {
-        CameraDescription camera = _cameras[i];
-
-        if (camera.lensDirection == CameraLensDirection.front) {
-          frontFacingLensIndex = i;
-        }
-
-        if (camera.lensDirection == CameraLensDirection.back && !backIndexSet) {
-          backFacingLensIndex = i;
-          backIndexSet = true;
-        }
-
-        if (camera.lensDirection == widget.initialCameraLensDirection) {
-          _cameraIndex = i;
-        }
+      if (camera.lensDirection == CameraLensDirection.back && !backIndexSet) {
+        backFacingLensIndex = i;
+        backIndexSet = true;
       }
-      if (_cameraIndex != -1) {
-        _startLiveFeed();
+
+      if (camera.lensDirection == widget.initialCameraLensDirection) {
+        _cameraIndex = i;
       }
-    } else {
-      if (widget.forceGridModeEnum != null) {
-        _gridMode = GridMode.values[widget.forceGridModeEnum!];
-      } else if (!takingGuidePhoto) {
-        final bool enableGridSetting = await SettingsUtil.loadEnableGrid();
-        if (!mounted) return;
-        setState(() => enableGrid = enableGridSetting);
-      }
+    }
+    // Fallback: if no front-facing camera found (common on Linux desktop),
+    // use the first available camera.
+    if (_cameraIndex == -1 && _cameras.isNotEmpty) {
+      _cameraIndex = 0;
+    }
+    if (_cameraIndex != -1) {
+      _startLiveFeed();
     }
   }
 
   @override
   void dispose() {
     _stopLiveFeed();
-    _disposeMacController();
-    _disposeLinuxCamera();
     _timer?.cancel();
     _countdownTimer?.cancel();
     _pulseController?.dispose();
     _accelerometerSubscription?.cancel();
     super.dispose();
-  }
-
-  /// Enumerate macOS cameras and select preferred device
-  /// Prefers built-in camera over Continuity Camera (iPhone) which often causes grey frames
-  Future<void> _enumerateMacOSCameras() async {
-    try {
-      final devices = await cmacos.CameraMacOS.instance.listDevices();
-      if (devices.isEmpty) {
-        if (mounted) {
-          setState(() => _macOSCameras = []);
-        }
-        return;
-      }
-
-      // Select preferred camera: prefer built-in Mac camera over iPhone Continuity Camera
-      cmacos.CameraMacOSDevice? selectedDevice;
-
-      // First, try to find a built-in Mac camera (FaceTime, MacBook Pro Camera, etc.)
-      for (final device in devices) {
-        final name = device.localizedName?.toLowerCase() ?? '';
-        final devId = device.deviceId.toLowerCase();
-
-        if (name.contains('macbook') ||
-            name.contains('facetime') ||
-            name.contains('imac') ||
-            devId.contains('built-in') ||
-            devId.contains('facetime')) {
-          selectedDevice = device;
-          break;
-        }
-      }
-
-      // If no built-in camera found, try to avoid iPhone/Continuity cameras
-      if (selectedDevice == null) {
-        for (final device in devices) {
-          final name = device.localizedName?.toLowerCase() ?? '';
-          final devId = device.deviceId.toLowerCase();
-
-          if (name.contains('iphone') ||
-              name.contains('continuity') ||
-              devId.contains('iphone')) {
-            continue;
-          }
-
-          selectedDevice = device;
-          break;
-        }
-      }
-
-      // Fallback to first device if no preference matched
-      if (selectedDevice == null && devices.isNotEmpty) {
-        selectedDevice = devices.first;
-      }
-
-      if (mounted) {
-        setState(() {
-          _macOSCameras = devices;
-          _macOSCameraDeviceId = selectedDevice?.deviceId;
-        });
-      }
-    } catch (e) {
-      LogService.instance.log('macOS camera enumeration failed: $e');
-      if (mounted) {
-        setState(() => _macOSCameras = []);
-      }
-    }
-  }
-
-  /// Dispose macOS camera controller if active
-  void _disposeMacController() {
-    if (_macController != null) {
-      try {
-        _macController!.destroy();
-      } catch (e) {
-        LogService.instance.log('Error disposing macOS camera: $e');
-      }
-      _macController = null;
-    }
-  }
-
-  /// Dispose Linux camera (media_kit player) if active
-  void _disposeLinuxCamera() {
-    _linuxPlayer?.dispose();
-    _linuxPlayer = null;
-    _linuxVideoController = null;
   }
 
   // ==================== Timer Methods ====================
@@ -597,326 +424,31 @@ class _CameraViewState extends State<CameraView>
     }
   }
 
-  /// Initialize Linux camera using media_kit with V4L2
-  Future<void> _initLinuxCamera() async {
-    try {
-      // Ensure MediaKit is initialized (required for Player)
-      MediaKit.ensureInitialized();
-
-      // Check for video devices
-      final videoDevices = <String>[];
-      for (int i = 0; i < 10; i++) {
-        final devicePath = '/dev/video$i';
-        if (await File(devicePath).exists()) {
-          videoDevices.add(devicePath);
-        }
-      }
-
-      if (videoDevices.isEmpty) {
-        setState(() {
-          _linuxCameraError = 'No camera devices found.\n\n'
-              'If using Flatpak, ensure the app has camera permissions:\n'
-              'flatpak override --user --device=all com.hugocornellier.agelapse';
-        });
-        LogService.instance.log('Linux: no video devices found');
-        return;
-      }
-
-      LogService.instance.log('Linux: found video devices: $videoDevices');
-
-      // Try each video device until one works
-      // V4L2 devices often come in pairs (video + metadata), so we need to find the right one
-      String? workingDevice;
-      for (final devicePath in videoDevices) {
-        LogService.instance.log('Linux: trying device $devicePath...');
-
-        _linuxPlayer?.dispose();
-        _linuxPlayer = Player(
-          configuration: const PlayerConfiguration(
-            bufferSize: 1024 * 1024,
-          ),
-        );
-
-        // Configure mpv for low-latency webcam capture
-        try {
-          final nativePlayer = _linuxPlayer!.platform;
-          if (nativePlayer is NativePlayer) {
-            // Enable loading of av:// URLs (mpv blocks them by default as "unsafe")
-            await nativePlayer.setProperty('load-unsafe-playlists', 'yes');
-            // Low-latency settings to minimize delay
-            await nativePlayer.setProperty('profile', 'low-latency');
-            await nativePlayer.setProperty('untimed', 'yes');
-            await nativePlayer.setProperty('cache', 'no');
-            await nativePlayer.setProperty(
-                'demuxer-lavf-o', 'fflags=+nobuffer+flush_packets');
-            await nativePlayer.setProperty('demuxer-readahead-secs', '0');
-          }
-        } catch (e) {
-          LogService.instance.log('Linux: could not set mpv properties: $e');
-        }
-
-        _linuxVideoController = VideoController(_linuxPlayer!);
-
-        // Listen for video dimensions to know when stream is actually working
-        final completer = Completer<bool>();
-        StreamSubscription? widthSub;
-        StreamSubscription? errorSub;
-
-        widthSub = _linuxPlayer!.stream.width.listen((width) {
-          if (width != null && width > 1 && !completer.isCompleted) {
-            completer.complete(true);
-          }
-        });
-
-        errorSub = _linuxPlayer!.stream.error.listen((error) {
-          LogService.instance.log('Linux: error stream: $error');
-        });
-
-        // Try the av:// URL format - this is the standard for V4L2 in mpv/ffmpeg
-        final url = 'av://v4l2:$devicePath';
-        LogService.instance.log('Linux: opening $url');
-
-        try {
-          await _linuxPlayer!.open(
-            Media(url),
-            play: true,
-          );
-
-          // Wait up to 3 seconds for valid frames
-          final success = await completer.future
-              .timeout(const Duration(seconds: 3), onTimeout: () => false);
-
-          if (success) {
-            workingDevice = devicePath;
-            LogService.instance.log('Linux: device $devicePath is working');
-            widthSub.cancel();
-            errorSub.cancel();
-            break;
-          }
-        } catch (e) {
-          LogService.instance.log('Linux: open failed: $e');
-        }
-
-        widthSub.cancel();
-        errorSub.cancel();
-        LogService.instance
-            .log('Linux: device $devicePath did not produce frames');
-      }
-
-      if (workingDevice == null) {
-        _linuxPlayer?.dispose();
-        _linuxPlayer = null;
-        _linuxVideoController = null;
-        setState(() {
-          _linuxCameraError = 'Could not open any camera device.\n\n'
-              'Found devices: ${videoDevices.join(", ")}\n'
-              'None produced valid video frames.';
-        });
-        return;
-      }
-
-      if (mounted) {
-        setState(() {
-          _linuxCameraReady = true;
-          _linuxCameraError = null;
-        });
-      }
-
-      LogService.instance
-          .log('Linux: camera initialized successfully with $workingDevice');
-    } catch (e, st) {
-      LogService.instance.log('Linux: camera init failed: $e');
-      LogService.instance.log(st.toString());
-      if (mounted) {
-        setState(() {
-          _linuxCameraError = 'Failed to initialize camera: $e';
-        });
-      }
-    }
-  }
-
-  /// Take a screenshot from the Linux camera using media_kit's screenshot API
-  Future<Uint8List?> _captureLinuxFrame() async {
-    if (_linuxPlayer == null) return null;
-
-    try {
-      // Use media_kit's built-in screenshot functionality
-      final nativePlayer = _linuxPlayer!.platform;
-      if (nativePlayer is NativePlayer) {
-        final bytes = await nativePlayer.screenshot(format: 'image/jpeg');
-        if (bytes != null && bytes.isNotEmpty) {
-          return bytes;
-        } else {
-          LogService.instance.log('Linux: screenshot returned null or empty');
-          return null;
-        }
-      } else {
-        LogService.instance
-            .log('Linux: player is not NativePlayer, cannot screenshot');
-        return null;
-      }
-    } catch (e, st) {
-      LogService.instance.log('Linux: frame capture error: $e');
-      LogService.instance.log(st.toString());
-      return null;
-    }
-  }
-
-  Widget _linuxBody() {
-    return SafeArea(
-      bottom: true,
-      child: Stack(
-        fit: StackFit.expand,
-        alignment: Alignment.bottomCenter,
-        children: [
-          if (_linuxCameraError != null)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.videocam_off,
-                      size: 64,
-                      color: AppColors.textPrimary.withValues(alpha: 0.54),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      _linuxCameraError!,
-                      style: TextStyle(
-                          color: AppColors.textPrimary.withValues(alpha: 0.7)),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          _linuxCameraError = null;
-                        });
-                        _initLinuxCamera();
-                      },
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else if (!_linuxCameraReady)
-            const Center(child: CircularProgressIndicator())
-          else if (_linuxVideoController != null)
-            Transform.scale(
-              scaleX: isMirrored ? -1 : 1,
-              child: Video(
-                controller: _linuxVideoController!,
-                fit: BoxFit.cover,
-                controls: NoVideoControls,
-              ),
-            ),
-          if (_gridMode != GridMode.none && _linuxCameraReady)
-            CameraGridOverlay(
-              widget.projectId,
-              _gridMode,
-              offsetX,
-              offsetY,
-              orientation: _orientation,
-            ),
-          if (_isCountingDown && _pulseAnimation != null && _linuxCameraReady)
-            CountdownOverlay(
-              countdownValue: _countdownValue,
-              pulseAnimation: _pulseAnimation!,
-            ),
-          if (!modifyGridMode && !_isCountingDown && _linuxCameraReady)
-            _leftSideControls(),
-          if (!modifyGridMode && !_isCountingDown && _linuxCameraReady)
-            _rightSideControls(),
-          if (!modifyGridMode && _linuxCameraReady) _cameraControl(),
-          if (modifyGridMode) gridModifierOverlay(),
-          if (modifyGridMode) saveGridButton(),
-          if (!modifyGridMode &&
-              !_isCountingDown &&
-              (_gridMode == GridMode.gridOnly ||
-                  _gridMode == GridMode.doubleGhostGrid ||
-                  _gridMode == GridMode.ghostOnly))
-            modifyGridButton(),
-        ],
-      ),
-    );
-  }
-
   Future<void> _takePicture() async {
     _pictureTakingCompleter = Completer<void>();
 
-    String? debugPath; // Track for cleanup on macOS/Linux
     bool captureSuccess = false;
 
     try {
-      if (Platform.isMacOS) {
-        try {
-          final photo = await _macController?.takePicture();
-          final Uint8List? bytes = photo?.bytes;
-          if (bytes == null) return;
+      final XFile image = await _controller!.takePicture();
+      final Uint8List bytes = await image.readAsBytes();
 
-          debugPath =
-              '${Directory.systemTemp.path}/camera_${DateTime.now().millisecondsSinceEpoch}.jpg';
-          await File(debugPath).writeAsBytes(bytes, flush: true);
+      // macOS/Linux: camera_desktop mirrors at the native source — pixels in
+      // the XFile are already mirrored, so no post-processing needed.
+      // Windows/iOS/Android: no source-level mirror — apply in post-processing.
+      final bool needsPostProcessMirror =
+          isMirrored && !Platform.isMacOS && !Platform.isLinux;
 
-          final XFile xImage = XFile(debugPath);
-          // macOS camera captures already-mirrored images when isVideoMirrored is set,
-          // so we don't apply additional mirroring in post-processing
-          captureSuccess = await CameraUtils.savePhoto(
-            xImage,
-            widget.projectId,
-            false,
-            null,
-            applyMirroring: false,
-            deviceOrientation: _orientation,
-            refreshSettings: widget.refreshSettings,
-          );
-        } catch (e) {
-          LogService.instance.log('macOS photo save failed: $e');
-        }
-      } else if (Platform.isLinux) {
-        try {
-          LogService.instance.log('Linux: taking picture...');
-          final Uint8List? bytes = await _captureLinuxFrame();
-          if (bytes == null) {
-            LogService.instance.log('Linux: photo capture failed');
-            return;
-          }
-          debugPath =
-              '${Directory.systemTemp.path}/camera_debug_${DateTime.now().millisecondsSinceEpoch}.jpg';
-          await File(debugPath).writeAsBytes(bytes, flush: true);
-
-          final XFile xImage = XFile(debugPath);
-          captureSuccess = await CameraUtils.savePhoto(
-            xImage,
-            widget.projectId,
-            false,
-            null,
-            applyMirroring: isMirrored,
-            deviceOrientation: _orientation,
-            refreshSettings: widget.refreshSettings,
-          );
-          LogService.instance.log('Linux: CameraUtils.savePhoto completed');
-        } catch (e, st) {
-          LogService.instance.log('Linux: save failed: $e');
-          LogService.instance.log(st.toString());
-        }
-      } else {
-        final XFile image = await _controller!.takePicture();
-        final Uint8List bytes = await image.readAsBytes();
-        captureSuccess = await CameraUtils.savePhoto(
-          image,
-          widget.projectId,
-          false,
-          null,
-          bytes: bytes,
-          applyMirroring: isMirrored,
-          deviceOrientation: _orientation,
-          refreshSettings: widget.refreshSettings,
-        );
-      }
+      captureSuccess = await CameraUtils.savePhoto(
+        image,
+        widget.projectId,
+        false,
+        null,
+        bytes: bytes,
+        applyMirroring: needsPostProcessMirror,
+        deviceOrientation: _orientation,
+        refreshSettings: widget.refreshSettings,
+      );
 
       // Trigger visual and haptic feedback only on successful capture
       if (captureSuccess) {
@@ -944,18 +476,6 @@ class _CameraViewState extends State<CameraView>
     } finally {
       _pictureTakingCompleter?.complete();
       _pictureTakingCompleter = null;
-
-      // Clean up temporary image file (macOS/Linux)
-      if (debugPath != null) {
-        try {
-          final file = File(debugPath);
-          if (await file.exists()) {
-            await file.delete();
-          }
-        } catch (_) {
-          // Best-effort cleanup
-        }
-      }
     }
   }
 
@@ -1013,7 +533,18 @@ class _CameraViewState extends State<CameraView>
       widget.projectId.toString(),
     );
 
-    _restartCameraWithCurrentSettings();
+    // On macOS/Linux, toggle mirror at the native source — no restart needed.
+    if (Platform.isMacOS || Platform.isLinux) {
+      if (_controller != null) {
+        CameraDesktopPlugin().setMirror(_controller!.cameraId, isMirrored);
+      }
+    } else if (Platform.isWindows) {
+      // Windows: mirror is visual-only (Transform.scale in preview).
+      // setState already triggers rebuild with new scaleX. No restart needed.
+    } else {
+      // Mobile: restart to apply mirror.
+      _restartCameraWithCurrentSettings();
+    }
   }
 
   Future<void> _restartCameraWithCurrentSettings() async {
@@ -1043,10 +574,8 @@ class _CameraViewState extends State<CameraView>
                   right: -6,
                   bottom: -4,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 3,
-                      vertical: 1,
-                    ),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
                     decoration: BoxDecoration(
                       color: AppColors.accentLight,
                       borderRadius: BorderRadius.circular(4),
@@ -1164,21 +693,9 @@ class _CameraViewState extends State<CameraView>
 
   @override
   Widget build(BuildContext context) {
-    Widget body;
-    if (Platform.isMacOS) {
-      body = _macOSBody();
-    } else if (Platform.isLinux) {
-      body = _linuxBody();
-    } else {
-      body = _liveFeedBody();
-    }
-
     return Scaffold(
       appBar: AppBar(toolbarHeight: 0, backgroundColor: AppColors.overlay),
-      body: CaptureFlashOverlay(
-        key: _flashKey,
-        child: body,
-      ),
+      body: CaptureFlashOverlay(key: _flashKey, child: _liveFeedBody()),
     );
   }
 
@@ -1209,7 +726,7 @@ class _CameraViewState extends State<CameraView>
               child: _changingCameraLens
                   ? const Center(child: CircularProgressIndicator())
                   : Platform.isWindows
-                      // Windows: use FittedBox.contain - show full frame, letterbox as needed
+                      // Windows: camera_windows doesn't mirror at source, so flip in Dart.
                       ? Transform.scale(
                           scaleX: isMirrored ? 1 : -1,
                           child: AspectRatio(
@@ -1217,17 +734,25 @@ class _CameraViewState extends State<CameraView>
                             child: CameraPreview(_controller!, child: null),
                           ),
                         )
-                      : Transform.scale(
-                          scale: scale,
-                          child: Center(
-                            child: Transform(
-                              alignment: Alignment.center,
-                              transform: Matrix4.identity()
-                                ..setEntry(3, 3, 1.0),
+                      : (Platform.isMacOS || Platform.isLinux)
+                          // macOS/Linux: camera_desktop mirrors at source — no Dart flip needed.
+                          ? AspectRatio(
+                              aspectRatio: camera.aspectRatio,
                               child: CameraPreview(_controller!, child: null),
+                            )
+                          // Mobile: original cover/crop logic
+                          : Transform.scale(
+                              scale: scale,
+                              child: Center(
+                                child: Transform(
+                                  alignment: Alignment.center,
+                                  transform: Matrix4.identity()
+                                    ..setEntry(3, 3, 1.0),
+                                  child:
+                                      CameraPreview(_controller!, child: null),
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
             ),
             if (_gridMode != GridMode.none)
               CameraGridOverlay(
@@ -1268,8 +793,9 @@ class _CameraViewState extends State<CameraView>
                         "checkmark to save changes. Note: Camera guide\n"
                         "lines don't affect output guide lines.",
                         style: TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: AppTypography.sm),
+                          color: AppColors.textPrimary,
+                          fontSize: AppTypography.sm,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(width: 8),
@@ -1536,11 +1062,7 @@ class _CameraViewState extends State<CameraView>
     );
   }
 
-  Widget _buildButton(
-    VoidCallback onTap,
-    Widget child, {
-    Color? color,
-  }) {
+  Widget _buildButton(VoidCallback onTap, Widget child, {Color? color}) {
     color ??= AppColors.overlay.withValues(alpha: 0.54);
     return InkWell(
       onTap: onTap,
@@ -1563,12 +1085,22 @@ class _CameraViewState extends State<CameraView>
       enableAudio: false,
       imageFormatGroup: ImageFormatGroup.jpeg,
     );
-    _controller?.initialize().then((_) {
+    _controller?.initialize().then((_) async {
       if (!mounted) {
         return;
       }
 
       _controller?.lockCaptureOrientation(DeviceOrientation.portraitUp);
+
+      // Apply mirror setting via camera_desktop on macOS/Linux.
+      if (Platform.isMacOS || Platform.isLinux) {
+        try {
+          await CameraDesktopPlugin()
+              .setMirror(_controller!.cameraId, isMirrored);
+        } catch (e) {
+          // Non-fatal — continue with default mirror state.
+        }
+      }
 
       // Windows doesn't support image streaming, so skip it
       if (Platform.isWindows) {

@@ -198,9 +198,7 @@ class ConfirmActionDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: _cardBackground,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Row(
         children: [
           Container(
@@ -210,11 +208,7 @@ class ConfirmActionDialog extends StatelessWidget {
               color: _dangerColorLight,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(
-              titleIcon,
-              color: _dangerColor,
-              size: 22,
-            ),
+            child: Icon(titleIcon, color: _dangerColor, size: 22),
           ),
           const SizedBox(width: 12),
           Text(
@@ -250,11 +244,7 @@ class ConfirmActionDialog extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  Icon(
-                    warningIcon,
-                    color: _dangerColor,
-                    size: 20,
-                  ),
+                  Icon(warningIcon, color: _dangerColor, size: 20),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -287,10 +277,7 @@ class ConfirmActionDialog extends StatelessWidget {
         GestureDetector(
           onTap: () => Navigator.of(context).pop(true),
           child: Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 8,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
               color: _dangerColor,
               borderRadius: BorderRadius.circular(8),

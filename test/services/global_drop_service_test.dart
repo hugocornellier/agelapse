@@ -17,10 +17,14 @@ void main() {
       final item = QueuedDropItem(path: '/test.jpg', projectId: 1);
       final after = DateTime.now();
 
-      expect(item.queuedAt.isAfter(before.subtract(const Duration(seconds: 1))),
-          isTrue);
-      expect(item.queuedAt.isBefore(after.add(const Duration(seconds: 1))),
-          isTrue);
+      expect(
+        item.queuedAt.isAfter(before.subtract(const Duration(seconds: 1))),
+        isTrue,
+      );
+      expect(
+        item.queuedAt.isBefore(after.add(const Duration(seconds: 1))),
+        isTrue,
+      );
     });
   });
 
@@ -122,8 +126,10 @@ void main() {
 
     group('queueFiles', () {
       test('queues files successfully', () {
-        final result =
-            service.queueFiles(['/path/to/file1.jpg', '/path/to/file2.jpg'], 1);
+        final result = service.queueFiles([
+          '/path/to/file1.jpg',
+          '/path/to/file2.jpg',
+        ], 1);
         expect(result, isTrue);
         expect(service.queuedCount, equals(2));
       });

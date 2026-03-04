@@ -133,8 +133,10 @@ extension TransformHandleExtension on TransformHandle {
   }
 
   /// Get the position of this handle in canvas coordinates
-  Offset? getPosition(TransformState state,
-      {double rotationHandleDistance = 30}) {
+  Offset? getPosition(
+    TransformState state, {
+    double rotationHandleDistance = 30,
+  }) {
     switch (this) {
       case TransformHandle.topLeft:
         return state.corners[0];

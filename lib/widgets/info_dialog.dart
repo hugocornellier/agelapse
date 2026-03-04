@@ -54,11 +54,7 @@ void showStyledInfoDialog(
                     color: displayColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(
-                    displayIcon,
-                    color: displayColor,
-                    size: 24,
-                  ),
+                  child: Icon(displayIcon, color: displayColor, size: 24),
                 ),
               ),
               if (title != null) ...[

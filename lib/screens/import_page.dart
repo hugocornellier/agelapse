@@ -99,8 +99,10 @@ class ImportPageState extends State<ImportPage> {
   Widget _buildText(String text) {
     return Text(
       text,
-      style:
-          TextStyle(fontSize: AppTypography.lg, color: AppColors.textPrimary),
+      style: TextStyle(
+        fontSize: AppTypography.lg,
+        color: AppColors.textPrimary,
+      ),
     );
   }
 

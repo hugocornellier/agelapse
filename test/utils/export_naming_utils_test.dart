@@ -14,17 +14,27 @@ void main() {
 
       test('replaces filesystem-unsafe characters', () {
         expect(
-            ExportNamingUtils.sanitizeProjectName('My/Project'), 'My_Project');
+          ExportNamingUtils.sanitizeProjectName('My/Project'),
+          'My_Project',
+        );
         expect(ExportNamingUtils.sanitizeProjectName('Test:Name'), 'Test_Name');
         expect(ExportNamingUtils.sanitizeProjectName('File*Name'), 'File_Name');
         expect(
-            ExportNamingUtils.sanitizeProjectName('Test?Query'), 'Test_Query');
+          ExportNamingUtils.sanitizeProjectName('Test?Query'),
+          'Test_Query',
+        );
         expect(
-            ExportNamingUtils.sanitizeProjectName('Path\\Name'), 'Path_Name');
+          ExportNamingUtils.sanitizeProjectName('Path\\Name'),
+          'Path_Name',
+        );
         expect(
-            ExportNamingUtils.sanitizeProjectName('Quote"Name'), 'Quote_Name');
+          ExportNamingUtils.sanitizeProjectName('Quote"Name'),
+          'Quote_Name',
+        );
         expect(
-            ExportNamingUtils.sanitizeProjectName('Less<More>'), 'Less_More');
+          ExportNamingUtils.sanitizeProjectName('Less<More>'),
+          'Less_More',
+        );
         expect(ExportNamingUtils.sanitizeProjectName('Pipe|Name'), 'Pipe_Name');
       });
 
@@ -34,7 +44,9 @@ void main() {
           'John_s_Birthday',
         );
         expect(
-            ExportNamingUtils.sanitizeProjectName('Test@Email'), 'Test_Email');
+          ExportNamingUtils.sanitizeProjectName('Test@Email'),
+          'Test_Email',
+        );
         expect(ExportNamingUtils.sanitizeProjectName('Hash#Tag'), 'Hash_Tag');
         expect(
           ExportNamingUtils.sanitizeProjectName('Dollar\$Sign'),
@@ -81,8 +93,9 @@ void main() {
 
       test('removes trailing underscore after truncation', () {
         final longNameWithUnderscore = '${'A' * 49}_B';
-        final result =
-            ExportNamingUtils.sanitizeProjectName(longNameWithUnderscore);
+        final result = ExportNamingUtils.sanitizeProjectName(
+          longNameWithUnderscore,
+        );
         expect(result.endsWith('_'), isFalse);
       });
 

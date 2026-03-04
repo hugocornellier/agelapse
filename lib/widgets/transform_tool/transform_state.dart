@@ -100,10 +100,8 @@ class TransformState {
       );
 
   /// The effective size of the image after scaling (for visual rendering)
-  Size get scaledImageSize => Size(
-        imageSize.width * effectiveScale,
-        imageSize.height * effectiveScale,
-      );
+  Size get scaledImageSize =>
+      Size(imageSize.width * effectiveScale, imageSize.height * effectiveScale);
 
   /// Get the four corners of the transformed image in canvas space.
   /// Order: top-left, top-right, bottom-right, bottom-left
@@ -234,7 +232,9 @@ class TransformState {
 
   /// Apply a new rotation value, adjusting translation to keep pivot fixed
   TransformState withRotationAroundPivot(
-      double newRotation, Offset pivotPoint) {
+    double newRotation,
+    Offset pivotPoint,
+  ) {
     final center = imageCenter;
     final oldRotRad = rotationRadians;
     final newRotRad = newRotation * pi / 180;
@@ -278,8 +278,11 @@ class TransformState {
   bool containsPoint(Offset point) {
     // Transform point to local image space (undo rotation around center)
     final center = imageCenter;
-    final localPoint =
-        _rotatePointAroundCenter(point, center, -rotationRadians);
+    final localPoint = _rotatePointAroundCenter(
+      point,
+      center,
+      -rotationRadians,
+    );
 
     // Check if within scaled image bounds centered at imageCenter
     final halfW = scaledImageSize.width / 2;

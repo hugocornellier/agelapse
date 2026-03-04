@@ -22,19 +22,13 @@ void main() {
 
     group('transitionToDefaultWindowState', () {
       test('is a static method that returns Future<void>', () {
-        expect(
-          WindowUtils.transitionToDefaultWindowState,
-          isA<Function>(),
-        );
+        expect(WindowUtils.transitionToDefaultWindowState, isA<Function>());
       });
 
       test('is callable', () {
         // transitionToDefaultWindowState requires WidgetsFlutterBinding,
         // so we only verify the method reference here.
-        expect(
-          WindowUtils.transitionToDefaultWindowState,
-          isA<Function>(),
-        );
+        expect(WindowUtils.transitionToDefaultWindowState, isA<Function>());
       });
     });
   });

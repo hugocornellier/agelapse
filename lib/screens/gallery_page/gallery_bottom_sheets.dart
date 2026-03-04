@@ -93,8 +93,9 @@ class GalleryBottomSheets {
         decoration: BoxDecoration(
           color: AppColors.textPrimary.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(12),
-          border:
-              Border.all(color: AppColors.textPrimary.withValues(alpha: 0.08)),
+          border: Border.all(
+            color: AppColors.textPrimary.withValues(alpha: 0.08),
+          ),
         ),
         child: Row(
           children: [
@@ -368,8 +369,10 @@ class GalleryBottomSheets {
             GestureDetector(
               onTap: onShare,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.textPrimary.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(10),
@@ -419,9 +422,7 @@ class GalleryBottomSheets {
         decoration: BoxDecoration(
           color: AppColors.info.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: AppColors.info.withValues(alpha: 0.25),
-          ),
+          border: Border.all(color: AppColors.info.withValues(alpha: 0.25)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -473,8 +474,10 @@ class GalleryBottomSheets {
                         final uri = Uri.parse(
                           'https://agelapse.com/docs/user-guide/photo-dates',
                         );
-                        await launchUrl(uri,
-                            mode: LaunchMode.externalApplication);
+                        await launchUrl(
+                          uri,
+                          mode: LaunchMode.externalApplication,
+                        );
                       },
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.end,

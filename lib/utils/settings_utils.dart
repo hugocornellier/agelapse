@@ -176,7 +176,9 @@ class SettingsUtil {
 
   /// Save auto-compile video setting (per-project).
   static Future<void> setAutoCompileVideo(
-      String projectId, bool enabled) async {
+    String projectId,
+    bool enabled,
+  ) async {
     await DB.instance.setSettingByTitle(
       'auto_compile_video',
       enabled.toString(),
@@ -523,10 +525,7 @@ class SettingsUtil {
   }
 
   /// Save lossless storage setting (per-project).
-  static Future<void> setLosslessStorage(
-    String projectId,
-    bool enabled,
-  ) async {
+  static Future<void> setLosslessStorage(String projectId, bool enabled) async {
     await DB.instance.setSettingByTitle(
       'lossless_storage',
       enabled.toString(),
@@ -553,15 +552,8 @@ class SettingsUtil {
   }
 
   /// Save video codec setting (per-project).
-  static Future<void> saveVideoCodec(
-    String projectId,
-    VideoCodec codec,
-  ) async {
-    await DB.instance.setSettingByTitle(
-      'video_codec',
-      codec.name,
-      projectId,
-    );
+  static Future<void> saveVideoCodec(String projectId, VideoCodec codec) async {
+    await DB.instance.setSettingByTitle('video_codec', codec.name, projectId);
   }
 
   // ==================== Video Background ====================
@@ -736,14 +728,16 @@ class SettingsUtil {
 
       // Check if it's a custom font that still exists
       if (DateStampUtils.isCustomFont(font)) {
-        final isAvailable =
-            await CustomFontManager.instance.isFontAvailable(font);
+        final isAvailable = await CustomFontManager.instance.isFontAvailable(
+          font,
+        );
         if (isAvailable) {
           return font;
         }
         // Custom font no longer exists, reset to default
-        LogService.instance
-            .log('Custom font $font no longer available, using default');
+        LogService.instance.log(
+          'Custom font $font no longer available, using default',
+        );
         await DB.instance.setSettingByTitle(
           'gallery_date_stamp_font',
           DateStampUtils.defaultFont,
@@ -784,14 +778,16 @@ class SettingsUtil {
 
       // Check if it's a custom font that still exists
       if (DateStampUtils.isCustomFont(font)) {
-        final isAvailable =
-            await CustomFontManager.instance.isFontAvailable(font);
+        final isAvailable = await CustomFontManager.instance.isFontAvailable(
+          font,
+        );
         if (isAvailable) {
           return font;
         }
         // Custom font no longer exists, reset to "same as gallery"
         LogService.instance.log(
-            'Custom font $font no longer available, using same as gallery');
+          'Custom font $font no longer available, using same as gallery',
+        );
         await DB.instance.setSettingByTitle(
           'export_date_stamp_font',
           DateStampUtils.fontSameAsGallery,
@@ -808,16 +804,26 @@ class SettingsUtil {
 
   /// Save gallery date stamp font (per-project)
   static Future<void> setGalleryDateStampFont(
-      String projectId, String font) async {
-    await DB.instance
-        .setSettingByTitle('gallery_date_stamp_font', font, projectId);
+    String projectId,
+    String font,
+  ) async {
+    await DB.instance.setSettingByTitle(
+      'gallery_date_stamp_font',
+      font,
+      projectId,
+    );
   }
 
   /// Save export date stamp font (per-project)
   static Future<void> setExportDateStampFont(
-      String projectId, String font) async {
-    await DB.instance
-        .setSettingByTitle('export_date_stamp_font', font, projectId);
+    String projectId,
+    String font,
+  ) async {
+    await DB.instance.setSettingByTitle(
+      'export_date_stamp_font',
+      font,
+      projectId,
+    );
   }
 
   /// Load gallery date stamp size level (per-project)

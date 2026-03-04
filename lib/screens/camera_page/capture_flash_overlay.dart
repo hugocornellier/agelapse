@@ -21,10 +21,7 @@ import '../../styles/styles.dart';
 class CaptureFlashOverlay extends StatefulWidget {
   final Widget child;
 
-  const CaptureFlashOverlay({
-    super.key,
-    required this.child,
-  });
+  const CaptureFlashOverlay({super.key, required this.child});
 
   @override
   State<CaptureFlashOverlay> createState() => CaptureFlashOverlayState();
@@ -42,21 +39,22 @@ class CaptureFlashOverlayState extends State<CaptureFlashOverlay>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: _flashDuration,
-      vsync: this,
-    );
+    _controller = AnimationController(duration: _flashDuration, vsync: this);
 
     // Custom curve: quick rise to peak, slower fade out
     _opacityAnimation = TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween(begin: 0.0, end: _peakOpacity)
-            .chain(CurveTween(curve: Curves.easeOut)),
+        tween: Tween(
+          begin: 0.0,
+          end: _peakOpacity,
+        ).chain(CurveTween(curve: Curves.easeOut)),
         weight: 33, // First third: fade in
       ),
       TweenSequenceItem(
-        tween: Tween(begin: _peakOpacity, end: 0.0)
-            .chain(CurveTween(curve: Curves.easeIn)),
+        tween: Tween(
+          begin: _peakOpacity,
+          end: 0.0,
+        ).chain(CurveTween(curve: Curves.easeIn)),
         weight: 67, // Last two thirds: fade out
       ),
     ]).animate(_controller);
@@ -94,8 +92,9 @@ class CaptureFlashOverlayState extends State<CaptureFlashOverlay>
                 return const SizedBox.shrink();
               }
               return Container(
-                color: AppColors.textPrimary
-                    .withValues(alpha: _opacityAnimation.value),
+                color: AppColors.textPrimary.withValues(
+                  alpha: _opacityAnimation.value,
+                ),
               );
             },
           ),

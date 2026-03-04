@@ -22,8 +22,10 @@ class TutorialPage extends StatelessWidget {
             TutorialSection(
               title: 'Import photos',
               steps: [
-                Text('1. Open the Gallery.',
-                    style: TextStyle(fontSize: AppTypography.md)),
+                Text(
+                  '1. Open the Gallery.',
+                  style: TextStyle(fontSize: AppTypography.md),
+                ),
                 SizedBox(height: 16),
                 Image.asset('assets/images/open_gallery_tut.png'),
                 SizedBox(height: 16),
@@ -57,8 +59,10 @@ class TutorialPage extends StatelessWidget {
             TutorialSection(
               title: 'Export photos',
               steps: [
-                Text('1. Open the Gallery.',
-                    style: TextStyle(fontSize: AppTypography.md)),
+                Text(
+                  '1. Open the Gallery.',
+                  style: TextStyle(fontSize: AppTypography.md),
+                ),
                 SizedBox(height: 16),
                 Image.asset('assets/images/open_gallery_tut.png'),
                 SizedBox(height: 16),

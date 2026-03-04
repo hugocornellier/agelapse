@@ -608,8 +608,10 @@ class MainNavigationState extends State<MainNavigation>
 
     // QUEUE if importing OR import sheet open
     if (_isImporting || GlobalDropService.instance.importSheetOpen) {
-      final queued =
-          GlobalDropService.instance.queueFiles(validPaths, widget.projectId);
+      final queued = GlobalDropService.instance.queueFiles(
+        validPaths,
+        widget.projectId,
+      );
       if (queued) {
         _showQueuedFilesSnackbar(validPaths.length);
       } else {
@@ -640,10 +642,7 @@ class MainNavigationState extends State<MainNavigation>
 
   void _showErrorSnackbar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.danger,
-      ),
+      SnackBar(content: Text(message), backgroundColor: AppColors.danger),
     );
   }
 

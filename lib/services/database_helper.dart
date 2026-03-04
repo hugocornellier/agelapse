@@ -221,12 +221,21 @@ class DB {
     final db = await database;
     try {
       await db.transaction((txn) async {
-        await txn
-            .delete(photoTable, where: 'projectID = ?', whereArgs: [projectId]);
-        await txn
-            .delete(videoTable, where: 'projectID = ?', whereArgs: [projectId]);
-        await txn.delete(settingTable,
-            where: 'projectID = ?', whereArgs: [projectId.toString()]);
+        await txn.delete(
+          photoTable,
+          where: 'projectID = ?',
+          whereArgs: [projectId],
+        );
+        await txn.delete(
+          videoTable,
+          where: 'projectID = ?',
+          whereArgs: [projectId],
+        );
+        await txn.delete(
+          settingTable,
+          where: 'projectID = ?',
+          whereArgs: [projectId.toString()],
+        );
         await txn.delete(projectTable, where: 'id = ?', whereArgs: [projectId]);
       });
       return true;
@@ -1253,16 +1262,15 @@ class DB {
     final db = await database;
     final installedAt = DateTime.now().millisecondsSinceEpoch;
     return await db.insert(
-      customFontTable,
-      {
-        'displayName': displayName,
-        'familyName': familyName,
-        'filePath': filePath,
-        'fileSize': fileSize,
-        'installedAt': installedAt,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+        customFontTable,
+        {
+          'displayName': displayName,
+          'familyName': familyName,
+          'filePath': filePath,
+          'fileSize': fileSize,
+          'installedAt': installedAt,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   /// Get all custom fonts from the database.
@@ -1317,11 +1325,7 @@ class DB {
   /// Delete a custom font by its ID.
   Future<int> deleteCustomFont(int id) async {
     final db = await database;
-    return await db.delete(
-      customFontTable,
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    return await db.delete(customFontTable, where: 'id = ?', whereArgs: [id]);
   }
 
   /// Update the display name of a custom font.

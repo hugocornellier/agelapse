@@ -638,8 +638,11 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
             _exportDateStampFormat,
             captureOffsetMinutes: _captureOffsetMap[timestamp],
           );
-          imageWidget =
-              _buildImageWithDateOverlay(imageWidget, formattedDate, imagePath);
+          imageWidget = _buildImageWithDateOverlay(
+            imageWidget,
+            formattedDate,
+            imagePath,
+          );
         }
       }
 
@@ -651,7 +654,10 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
   }
 
   Widget _buildImageWithDateOverlay(
-      Widget imageWidget, String dateText, String imagePath) {
+    Widget imageWidget,
+    String dateText,
+    String imagePath,
+  ) {
     // Calculate position based on setting
     Alignment alignment;
     switch (_exportDateStampPosition.toLowerCase()) {
@@ -701,9 +707,13 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
               // Video uses: (videoHeight * sizePercent / 100).clamp(12.0, 200.0)
               // For preview, we use displayed height with same percentage
               final resolvedSize = DateStampUtils.resolveExportSize(
-                  _exportDateStampSize, _galleryDateStampSize);
-              previewFontSize =
-                  (displayedHeight * resolvedSize / 100).clamp(10.0, 48.0);
+                _exportDateStampSize,
+                _galleryDateStampSize,
+              );
+              previewFontSize = (displayedHeight * resolvedSize / 100).clamp(
+                10.0,
+                48.0,
+              );
             }
 
             return Stack(
@@ -737,8 +747,9 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
                               Shadow(
                                 offset: const Offset(1, 1),
                                 blurRadius: 2,
-                                color:
-                                    AppColors.overlay.withValues(alpha: 0.54),
+                                color: AppColors.overlay.withValues(
+                                  alpha: 0.54,
+                                ),
                               ),
                             ],
                           ),
@@ -830,7 +841,9 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
       child: Text(
         '${_currentIndex + 1} of ${_currentList.length}',
         style: TextStyle(
-            color: AppColors.settingsTextSecondary, fontSize: AppTypography.md),
+          color: AppColors.settingsTextSecondary,
+          fontSize: AppTypography.md,
+        ),
       ),
     );
   }
@@ -989,7 +1002,9 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
             dateText: formattedDate,
             position: _exportDateStampPosition,
             sizePercent: DateStampUtils.resolveExportSize(
-                _exportDateStampSize, _galleryDateStampSize),
+              _exportDateStampSize,
+              _galleryDateStampSize,
+            ),
             opacity: _exportDateStampOpacity,
             watermarkVerticalOffset: watermarkOffset,
             fontFamily: DateStampUtils.resolveExportFont(
@@ -1193,8 +1208,9 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     // Check if the formatted date stamp text would change
     bool dateStampTextChanged = false;
     final projectIdStr = widget.projectId.toString();
-    final exportStampsEnabled =
-        await SettingsUtil.loadExportDateStampEnabled(projectIdStr);
+    final exportStampsEnabled = await SettingsUtil.loadExportDateStampEnabled(
+      projectIdStr,
+    );
 
     if (exportStampsEnabled && !orderChanged) {
       // Only check text if stamps are enabled and order didn't change
@@ -1411,9 +1427,9 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
 
     if (!success) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to delete image')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Failed to delete image')));
       }
       return;
     }

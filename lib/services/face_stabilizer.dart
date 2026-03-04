@@ -217,8 +217,10 @@ class FaceStabilizer {
       double? rotationDegrees, scaleFactor, translateX, translateY;
 
       token?.throwIfCancelled();
-      final Uint8List? srcBytes =
-          await StabUtils.preparePNG(rawPhotoPath, lossless: lossless);
+      final Uint8List? srcBytes = await StabUtils.preparePNG(
+        rawPhotoPath,
+        lossless: lossless,
+      );
       if (srcBytes == null) return StabilizationResult(success: false);
 
       token?.throwIfCancelled();
@@ -791,8 +793,9 @@ class FaceStabilizer {
       );
     }
 
-    List<Point<double>?> twoPassEyes =
-        await _filterAndCenterEyesAsync(twoPassFaces);
+    List<Point<double>?> twoPassEyes = await _filterAndCenterEyesAsync(
+      twoPassFaces,
+    );
 
     if (twoPassEyes.length >= 2 &&
         twoPassEyes[0] != null &&
@@ -870,9 +873,7 @@ class FaceStabilizer {
 
           if (threePassFaces != null) {
             List<Point<double>?> threePassEyes =
-                await _filterAndCenterEyesAsync(
-              threePassFaces,
-            );
+                await _filterAndCenterEyesAsync(threePassFaces);
 
             if (threePassEyes.length >= 2 &&
                 threePassEyes[0] != null &&
@@ -1192,8 +1193,9 @@ class FaceStabilizer {
         break;
       }
 
-      List<Point<double>?> rotPassEyes =
-          await _filterAndCenterEyesAsync(rotPassFaces);
+      List<Point<double>?> rotPassEyes = await _filterAndCenterEyesAsync(
+        rotPassFaces,
+      );
 
       if (rotPassEyes.length < 2 ||
           rotPassEyes[0] == null ||
@@ -1306,8 +1308,9 @@ class FaceStabilizer {
         break;
       }
 
-      List<Point<double>?> scalePassEyes =
-          await _filterAndCenterEyesAsync(scalePassFaces);
+      List<Point<double>?> scalePassEyes = await _filterAndCenterEyesAsync(
+        scalePassFaces,
+      );
 
       if (scalePassEyes.length < 2 ||
           scalePassEyes[0] == null ||
@@ -1441,8 +1444,9 @@ class FaceStabilizer {
         break;
       }
 
-      List<Point<double>?> transPassEyes =
-          await _filterAndCenterEyesAsync(transPassFaces);
+      List<Point<double>?> transPassEyes = await _filterAndCenterEyesAsync(
+        transPassFaces,
+      );
 
       if (transPassEyes.length < 2 ||
           transPassEyes[0] == null ||
@@ -1852,8 +1856,9 @@ class FaceStabilizer {
 
   Future<void> createStabThumbnail(String stabilizedPhotoPath) async {
     // Check if transparent background is enabled
-    final bgColor =
-        await SettingsUtil.loadBackgroundColor(projectId.toString());
+    final bgColor = await SettingsUtil.loadBackgroundColor(
+      projectId.toString(),
+    );
     final isTransparent = SettingsUtil.isTransparent(bgColor);
 
     final String stabThumbnailPath = getStabThumbnailPath(
@@ -2042,15 +2047,23 @@ class FaceStabilizer {
         } else {
           // Fallback to centermost if eyes extraction failed for matched face
           eyes = await getCentermostEyesAsync(
-              eyes, facesToUse, imgWidth, imgHeight);
+            eyes,
+            facesToUse,
+            imgWidth,
+            imgHeight,
+          );
         }
       } else {
         // No embedding reference found - fallback to centermost
         LogService.instance.log(
           "No embedding reference found, using centermost face",
         );
-        eyes =
-            await getCentermostEyesAsync(eyes, facesToUse, imgWidth, imgHeight);
+        eyes = await getCentermostEyesAsync(
+          eyes,
+          facesToUse,
+          imgWidth,
+          imgHeight,
+        );
       }
     }
 
@@ -2169,20 +2182,19 @@ class FaceStabilizer {
 
   /// Isolate-backed version of _filterAndCenterEyes.
   Future<List<Point<double>?>> _filterAndCenterEyesAsync(
-      List<dynamic> stabFaces) async {
+    List<dynamic> stabFaces,
+  ) async {
     if (stabFaces.isEmpty) return [];
 
     final facesData = stabFaces.map((f) => (f as FaceLike).toMap()).toList();
 
-    final result = await IsolatePool.instance.execute<List<dynamic>>(
-      'filterAndCenterEyes',
-      {
-        'faces': facesData,
-        'imgWidth': canvasWidth,
-        'imgHeight': canvasHeight,
-        'eyeDistanceGoal': eyeDistanceGoal,
-      },
-    );
+    final result = await IsolatePool.instance
+        .execute<List<dynamic>>('filterAndCenterEyes', {
+      'faces': facesData,
+      'imgWidth': canvasWidth,
+      'imgHeight': canvasHeight,
+      'eyeDistanceGoal': eyeDistanceGoal,
+    });
 
     if (result == null || result.isEmpty) return [];
 
@@ -2190,13 +2202,16 @@ class FaceStabilizer {
       if (e == null) return null;
       final list = e as List;
       return Point<double>(
-          (list[0] as num).toDouble(), (list[1] as num).toDouble());
+        (list[0] as num).toDouble(),
+        (list[1] as num).toDouble(),
+      );
     }).toList();
   }
 
   /// Isolate-backed version of getEyesFromFaces.
   Future<List<Point<double>?>> getEyesFromFacesAsync(
-      List<dynamic> faces) async {
+    List<dynamic> faces,
+  ) async {
     if (faces.isEmpty) return [];
 
     final facesData = faces.map((f) => (f as FaceLike).toMap()).toList();
@@ -2212,7 +2227,9 @@ class FaceStabilizer {
       if (e == null) return null;
       final list = e as List;
       return Point<double>(
-          (list[0] as num).toDouble(), (list[1] as num).toDouble());
+        (list[0] as num).toDouble(),
+        (list[1] as num).toDouble(),
+      );
     }).toList();
   }
 
@@ -2243,13 +2260,17 @@ class FaceStabilizer {
     return result.map((e) {
       final list = e as List;
       return Point<double>(
-          (list[0] as num).toDouble(), (list[1] as num).toDouble());
+        (list[0] as num).toDouble(),
+        (list[1] as num).toDouble(),
+      );
     }).toList();
   }
 
   /// Isolate-backed version of _pickFaceIndexByBox.
   Future<int> _pickFaceIndexByBoxAsync(
-      List<dynamic> faces, Rect targetBox) async {
+    List<dynamic> faces,
+    Rect targetBox,
+  ) async {
     if (faces.isEmpty) return -1;
 
     final facesData = faces.map((f) => (f as FaceLike).toMap()).toList();
@@ -2262,7 +2283,7 @@ class FaceStabilizer {
           targetBox.left,
           targetBox.top,
           targetBox.right,
-          targetBox.bottom
+          targetBox.bottom,
         ],
       },
     );

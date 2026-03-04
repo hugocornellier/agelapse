@@ -51,9 +51,10 @@ class CreateFirstVideoPageState extends State<CreateFirstVideoPage> {
           Text(
             "Your First Video",
             style: TextStyle(
-                fontSize: AppTypography.xxxl,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary),
+              fontSize: AppTypography.xxxl,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 32),

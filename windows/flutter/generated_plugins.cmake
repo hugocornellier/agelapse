@@ -3,7 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
-  camera_windows
+  camera_desktop
   desktop_drop
   downloadsfolder
   face_detection_tflite

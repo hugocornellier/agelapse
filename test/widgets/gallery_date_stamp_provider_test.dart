@@ -93,10 +93,7 @@ void main() {
 
   group('GalleryDateStampConfig.disabled', () {
     test('has stabilizedLabelsEnabled false', () {
-      expect(
-        GalleryDateStampConfig.disabled.stabilizedLabelsEnabled,
-        isFalse,
-      );
+      expect(GalleryDateStampConfig.disabled.stabilizedLabelsEnabled, isFalse);
     });
 
     test('has rawLabelsEnabled false', () {

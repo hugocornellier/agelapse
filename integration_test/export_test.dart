@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:agelapse/main.dart' as app;
 import 'package:agelapse/services/database_helper.dart';
+import 'package:agelapse/services/database_import_ffi.dart';
 import 'package:agelapse/utils/dir_utils.dart';
 import 'package:agelapse/utils/gallery_utils.dart';
 import 'package:agelapse/utils/test_mode.dart' as test_config;
@@ -28,6 +29,7 @@ void main() {
     int? testProjectId;
 
     setUpAll(() async {
+      initDatabase();
       await preloadFixtures();
       await DB.instance.createTablesIfNotExist();
     });
@@ -121,8 +123,11 @@ void main() {
 
       // Verify files exist on disk
       for (final p in rawImagePaths) {
-        expect(await File(p).exists(), isTrue,
-            reason: 'Raw image should exist: $p');
+        expect(
+          await File(p).exists(),
+          isTrue,
+          reason: 'Raw image should exist: $p',
+        );
       }
 
       // 3. Run export
@@ -138,26 +143,38 @@ void main() {
 
       // 4. Verify result
       expect(result, 'success', reason: 'Export should succeed');
-      expect(lastProgress, greaterThanOrEqualTo(98.0),
-          reason: 'Progress should reach at least 98%');
+      expect(
+        lastProgress,
+        greaterThanOrEqualTo(98.0),
+        reason: 'Progress should reach at least 98%',
+      );
 
       // 5. Verify ZIP file exists (check exports dir since actual filename includes timestamp)
       final exportsDir = await DirUtils.getExportsDirPath(testProjectId!);
       final exportsDirEntity = Directory(exportsDir);
-      expect(await exportsDirEntity.exists(), isTrue,
-          reason: 'Exports directory should exist');
+      expect(
+        await exportsDirEntity.exists(),
+        isTrue,
+        reason: 'Exports directory should exist',
+      );
 
       final zipFiles = await exportsDirEntity
           .list()
           .where((e) => e is File && e.path.endsWith('.zip'))
           .toList();
-      expect(zipFiles.isNotEmpty, isTrue,
-          reason: 'At least one ZIP file should exist in exports');
+      expect(
+        zipFiles.isNotEmpty,
+        isTrue,
+        reason: 'At least one ZIP file should exist in exports',
+      );
 
       final zipFile = File(zipFiles.first.path);
       final zipSize = await zipFile.length();
-      expect(zipSize, greaterThan(0),
-          reason: 'ZIP file should not be empty (size=$zipSize)');
+      expect(
+        zipSize,
+        greaterThan(0),
+        reason: 'ZIP file should not be empty (size=$zipSize)',
+      );
     });
 
     testWidgets('export with empty file list returns error', (tester) async {
@@ -180,8 +197,11 @@ void main() {
         (progress) {},
       );
 
-      expect(result, 'error',
-          reason: 'Export with no files should return error');
+      expect(
+        result,
+        'error',
+        reason: 'Export with no files should return error',
+      );
     });
   });
 }

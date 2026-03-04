@@ -175,7 +175,9 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
 
   /// Validates and normalizes X text input on blur (max 100% = 0.5 internal)
   void _commitTextValueX(
-      TextEditingController controller, double currentOffset) {
+    TextEditingController controller,
+    double currentOffset,
+  ) {
     final text = controller.text.trim();
     final parsed = double.tryParse(text);
 
@@ -192,7 +194,9 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
 
   /// Validates and normalizes Y text input on blur
   void _commitTextValueY(
-      TextEditingController controller, double currentOffset) {
+    TextEditingController controller,
+    double currentOffset,
+  ) {
     final text = controller.text.trim();
     final parsed = double.tryParse(text);
 
@@ -422,10 +426,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
             ),
             const SizedBox(width: 8),
             // Increment button
-            _buildIncrementButton(
-              icon: Icons.add_rounded,
-              onTap: onIncrement,
-            ),
+            _buildIncrementButton(icon: Icons.add_rounded, onTap: onIncrement),
           ],
         ),
       ],
@@ -474,11 +475,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
             color: AppColors.settingsCardBorder,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(
-            icon,
-            size: 18,
-            color: AppColors.settingsTextSecondary,
-          ),
+          child: Icon(icon, size: 18, color: AppColors.settingsTextSecondary),
         ),
       ),
     );
@@ -806,8 +803,10 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
               decoration: BoxDecoration(
                 color: AppColors.settingsCardBackground,
                 borderRadius: BorderRadius.circular(12),
-                border:
-                    Border.all(color: AppColors.settingsCardBorder, width: 1),
+                border: Border.all(
+                  color: AppColors.settingsCardBorder,
+                  width: 1,
+                ),
               ),
               child: Icon(
                 Icons.help_outline_rounded,

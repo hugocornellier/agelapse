@@ -28,9 +28,7 @@ void main() {
     testWidgets('renders info icon', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: InfoTooltipIcon(content: 'Test'),
-          ),
+          home: Scaffold(body: InfoTooltipIcon(content: 'Test')),
         ),
       );
 
@@ -40,9 +38,7 @@ void main() {
     testWidgets('wraps in MouseRegion for cursor', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: InfoTooltipIcon(content: 'Test'),
-          ),
+          home: Scaffold(body: InfoTooltipIcon(content: 'Test')),
         ),
       );
 
@@ -52,9 +48,7 @@ void main() {
     testWidgets('wraps in GestureDetector for tap', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: InfoTooltipIcon(content: 'Test'),
-          ),
+          home: Scaffold(body: InfoTooltipIcon(content: 'Test')),
         ),
       );
 

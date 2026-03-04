@@ -162,32 +162,81 @@ void main() {
 
     group('shouldRepaint', () {
       test('returns true when offsetX changes', () {
-        final p1 =
-            GridPainterSE(0.1, 0.3, null, null, null, '9:16', 'portrait');
-        final p2 =
-            GridPainterSE(0.2, 0.3, null, null, null, '9:16', 'portrait');
+        final p1 = GridPainterSE(
+          0.1,
+          0.3,
+          null,
+          null,
+          null,
+          '9:16',
+          'portrait',
+        );
+        final p2 = GridPainterSE(
+          0.2,
+          0.3,
+          null,
+          null,
+          null,
+          '9:16',
+          'portrait',
+        );
         expect(p1.shouldRepaint(p2), isTrue);
       });
 
       test('returns true when offsetY changes', () {
-        final p1 =
-            GridPainterSE(0.1, 0.3, null, null, null, '9:16', 'portrait');
-        final p2 =
-            GridPainterSE(0.1, 0.4, null, null, null, '9:16', 'portrait');
+        final p1 = GridPainterSE(
+          0.1,
+          0.3,
+          null,
+          null,
+          null,
+          '9:16',
+          'portrait',
+        );
+        final p2 = GridPainterSE(
+          0.1,
+          0.4,
+          null,
+          null,
+          null,
+          '9:16',
+          'portrait',
+        );
         expect(p1.shouldRepaint(p2), isTrue);
       });
 
       test('returns false when nothing changes', () {
-        final p1 =
-            GridPainterSE(0.1, 0.3, null, null, null, '9:16', 'portrait');
-        final p2 =
-            GridPainterSE(0.1, 0.3, null, null, null, '9:16', 'portrait');
+        final p1 = GridPainterSE(
+          0.1,
+          0.3,
+          null,
+          null,
+          null,
+          '9:16',
+          'portrait',
+        );
+        final p2 = GridPainterSE(
+          0.1,
+          0.3,
+          null,
+          null,
+          null,
+          '9:16',
+          'portrait',
+        );
         expect(p1.shouldRepaint(p2), isFalse);
       });
 
       test('returns true when dateStampEnabled changes', () {
-        final p1 =
-            GridPainterSE(0.1, 0.3, null, null, null, '9:16', 'portrait');
+        final p1 = GridPainterSE(
+          0.1,
+          0.3,
+          null,
+          null,
+          null,
+          '9:16',
+          'portrait',
+        );
         final p2 = GridPainterSE(
           0.1,
           0.3,

@@ -279,8 +279,9 @@ class CameraUtils {
 
       // Write processed image if rotation/mirroring was applied
       if (processingOutput.processedBytes != null) {
-        await File(imgPath)
-            .writeAsBytes(processingOutput.processedBytes!, flush: true);
+        await File(
+          imgPath,
+        ).writeAsBytes(processingOutput.processedBytes!, flush: true);
       }
 
       int importedImageWidth = processingOutput.width;

@@ -625,10 +625,7 @@ class CreatePageState extends State<CreatePage>
           decoration: BoxDecoration(
             color: AppColors.settingsCardBackground,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: AppColors.settingsCardBorder,
-              width: 1,
-            ),
+            border: Border.all(color: AppColors.settingsCardBorder, width: 1),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -711,10 +708,7 @@ class CreatePageState extends State<CreatePage>
           decoration: BoxDecoration(
             color: AppColors.settingsCardBackground,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: AppColors.settingsCardBorder,
-              width: 1,
-            ),
+            border: Border.all(color: AppColors.settingsCardBorder, width: 1),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -790,7 +784,8 @@ class CreatePageState extends State<CreatePage>
                   onPressed: _triggerManualCompilation,
                   icon: const Icon(Icons.refresh),
                   label: Text(
-                      _videoExists ? 'Compile New Video' : 'Compile Video'),
+                    _videoExists ? 'Compile New Video' : 'Compile Video',
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _videoExists
                         ? AppColors.settingsCardBorder
@@ -931,7 +926,8 @@ class CreatePageState extends State<CreatePage>
                               _buildCompactInfoButton(),
                               const SizedBox(width: 8),
                               Expanded(
-                                  child: _buildExportButton(compact: true)),
+                                child: _buildExportButton(compact: true),
+                              ),
                             ],
                           ),
                         )
@@ -958,10 +954,7 @@ class CreatePageState extends State<CreatePage>
       decoration: BoxDecoration(
         color: AppColors.overlay,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.surfaceElevated,
-          width: 1,
-        ),
+        border: Border.all(color: AppColors.surfaceElevated, width: 1),
       ),
       clipBehavior: Clip.antiAlias,
       child: Platform.isLinux
@@ -1068,9 +1061,7 @@ class CreatePageState extends State<CreatePage>
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
             Icon(
@@ -1092,38 +1083,37 @@ class CreatePageState extends State<CreatePage>
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: chips
-              .map((chip) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          chip.label,
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: AppTypography.md,
-                          ),
+              .map(
+                (chip) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        chip.label,
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: AppTypography.md,
                         ),
-                        Text(
-                          chip.value,
-                          style: TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: AppTypography.md,
-                            fontWeight: FontWeight.w600,
-                          ),
+                      ),
+                      Text(
+                        chip.value,
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: AppTypography.md,
+                          fontWeight: FontWeight.w600,
                         ),
-                      ],
-                    ),
-                  ))
+                      ),
+                    ],
+                  ),
+                ),
+              )
               .toList(),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text(
-              'Close',
-              style: TextStyle(color: AppColors.accent),
-            ),
+            child: Text('Close', style: TextStyle(color: AppColors.accent)),
           ),
         ],
       ),
@@ -1182,11 +1172,7 @@ class CreatePageState extends State<CreatePage>
     return Expanded(
       child: OutlinedButton.icon(
         onPressed: () => _showVideoInfoPopup(infoChips),
-        icon: Icon(
-          Icons.info_outline,
-          size: 16,
-          color: AppColors.textPrimary,
-        ),
+        icon: Icon(Icons.info_outline, size: 16, color: AppColors.textPrimary),
         label: Text(
           'Info',
           style: TextStyle(
@@ -1229,8 +1215,10 @@ class CreatePageState extends State<CreatePage>
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.accentDark,
           foregroundColor: AppColors.textPrimary,
-          padding:
-              EdgeInsets.symmetric(vertical: 12, horizontal: compact ? 12 : 20),
+          padding: EdgeInsets.symmetric(
+            vertical: 12,
+            horizontal: compact ? 12 : 20,
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
@@ -1268,8 +1256,11 @@ class CreatePageState extends State<CreatePage>
                     color: AppColors.overlay.withAlpha(128),
                     shape: BoxShape.circle,
                   ),
-                  child:
-                      Icon(overlayIcon, color: AppColors.textPrimary, size: 50),
+                  child: Icon(
+                    overlayIcon,
+                    color: AppColors.textPrimary,
+                    size: 50,
+                  ),
                 ),
               ),
           ],
@@ -1315,10 +1306,7 @@ class CreatePageState extends State<CreatePage>
               },
               itemBuilder: (context) => [
                 for (final speed in [0.5, 1.0, 1.5, 2.0])
-                  PopupMenuItem(
-                    value: speed,
-                    child: Text('${speed}x'),
-                  ),
+                  PopupMenuItem(value: speed, child: Text('${speed}x')),
               ],
               child: Text(
                 '${playbackSpeed}x',
@@ -1388,10 +1376,7 @@ class CreatePageState extends State<CreatePage>
           decoration: BoxDecoration(
             color: AppColors.settingsCardBackground,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: AppColors.settingsCardBorder,
-              width: 1,
-            ),
+            border: Border.all(color: AppColors.settingsCardBorder, width: 1),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,

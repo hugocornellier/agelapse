@@ -178,10 +178,9 @@ class TransformHandlePainter extends CustomPainter {
     for (int i = 0; i < 4; i++) {
       final angle = rotation + (i * pi / 2) + (pi / 4);
       final dist = halfSize * sqrt(2);
-      corners.add(Offset(
-        center.dx + cos(angle) * dist,
-        center.dy + sin(angle) * dist,
-      ));
+      corners.add(
+        Offset(center.dx + cos(angle) * dist, center.dy + sin(angle) * dist),
+      );
     }
 
     path.moveTo(corners[0].dx, corners[0].dy);
@@ -275,8 +274,9 @@ class TransformHandlePainter extends CustomPainter {
     if (!showRotationHandle) return;
 
     final topMidpoint = state.edgeMidpoints[0];
-    final rotationHandlePos =
-        state.getRotationHandlePosition(_effectiveRotationHandleDistance);
+    final rotationHandlePos = state.getRotationHandlePosition(
+      _effectiveRotationHandleDistance,
+    );
 
     final paint = Paint()
       ..color = const Color(0x99666666) // Subtle gray at 60% opacity
@@ -288,8 +288,9 @@ class TransformHandlePainter extends CustomPainter {
   }
 
   void _drawRotationHandle(Canvas canvas) {
-    final position =
-        state.getRotationHandlePosition(_effectiveRotationHandleDistance);
+    final position = state.getRotationHandlePosition(
+      _effectiveRotationHandleDistance,
+    );
     final isActive = activeHandle == TransformHandle.rotationHandle;
     final isHovered = hoveredHandle == TransformHandle.rotationHandle;
 
@@ -338,7 +339,11 @@ class TransformHandlePainter extends CustomPainter {
   }
 
   void _drawRotationIcon(
-      Canvas canvas, Offset center, double size, Color color) {
+    Canvas canvas,
+    Offset center,
+    double size,
+    Color color,
+  ) {
     final paint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke

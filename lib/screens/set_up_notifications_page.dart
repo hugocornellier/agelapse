@@ -43,8 +43,10 @@ class SetUpNotificationsPageState extends State<SetUpNotificationsPage> {
           IconButton(icon: const Icon(Icons.close), onPressed: () => close()),
         ],
       ),
-      body:
-          Container(color: appBarColor, child: _buildSetUpNotificationsPage()),
+      body: Container(
+        color: appBarColor,
+        child: _buildSetUpNotificationsPage(),
+      ),
     );
   }
 
@@ -61,14 +63,18 @@ class SetUpNotificationsPageState extends State<SetUpNotificationsPage> {
             Text(
               "Notifications",
               style: TextStyle(
-                  fontSize: AppTypography.xxxl, color: AppColors.textPrimary),
+                fontSize: AppTypography.xxxl,
+                color: AppColors.textPrimary,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 40),
             Text(
               "We will remind you at 5:00PM daily to take a photo. Configure this in Settings.",
               style: TextStyle(
-                  fontSize: AppTypography.lg, color: AppColors.textPrimary),
+                fontSize: AppTypography.lg,
+                color: AppColors.textPrimary,
+              ),
               textAlign: TextAlign.center,
             ),
             Expanded(child: Container()),

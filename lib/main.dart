@@ -169,14 +169,16 @@ Future<String> _loadThemeMode() async {
 /// Updates system UI overlay style based on current theme
 void _updateSystemUiOverlay(bool isLight) {
   if (Platform.isAndroid || Platform.isIOS) {
-    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
-      systemNavigationBarColor:
-          isLight ? const Color(0xFFFFFFFF) : const Color(0xFF000000),
-      systemNavigationBarIconBrightness:
-          isLight ? Brightness.dark : Brightness.light,
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: isLight ? Brightness.dark : Brightness.light,
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      SystemUiOverlayStyle(
+        systemNavigationBarColor:
+            isLight ? const Color(0xFFFFFFFF) : const Color(0xFF000000),
+        systemNavigationBarIconBrightness:
+            isLight ? Brightness.dark : Brightness.light,
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: isLight ? Brightness.dark : Brightness.light,
+      ),
+    );
   }
 }
 
@@ -239,24 +241,25 @@ class AgeLapse extends StatelessWidget {
           menus: [
             PlatformMenuItemGroup(
               members: [
-                PlatformMenuItem(
-                  label: 'About AgeLapse',
-                  onSelected: null,
-                ),
+                PlatformMenuItem(label: 'About AgeLapse', onSelected: null),
               ],
             ),
             PlatformMenuItemGroup(
               members: [
                 PlatformMenuItem(
                   label: 'Hide AgeLapse',
-                  shortcut: const SingleActivator(LogicalKeyboardKey.keyH,
-                      meta: true),
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyH,
+                    meta: true,
+                  ),
                   onSelected: () => SystemNavigator.pop(),
                 ),
                 PlatformMenuItem(
                   label: 'Quit AgeLapse',
-                  shortcut: const SingleActivator(LogicalKeyboardKey.keyQ,
-                      meta: true),
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyQ,
+                    meta: true,
+                  ),
                   onSelected: () => SystemNavigator.pop(),
                 ),
               ],
@@ -270,26 +273,34 @@ class AgeLapse extends StatelessWidget {
               members: [
                 PlatformMenuItem(
                   label: 'Cut',
-                  shortcut: const SingleActivator(LogicalKeyboardKey.keyX,
-                      meta: true),
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyX,
+                    meta: true,
+                  ),
                   onSelected: () {},
                 ),
                 PlatformMenuItem(
                   label: 'Copy',
-                  shortcut: const SingleActivator(LogicalKeyboardKey.keyC,
-                      meta: true),
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyC,
+                    meta: true,
+                  ),
                   onSelected: () {},
                 ),
                 PlatformMenuItem(
                   label: 'Paste',
-                  shortcut: const SingleActivator(LogicalKeyboardKey.keyV,
-                      meta: true),
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyV,
+                    meta: true,
+                  ),
                   onSelected: () {},
                 ),
                 PlatformMenuItem(
                   label: 'Select All',
-                  shortcut: const SingleActivator(LogicalKeyboardKey.keyA,
-                      meta: true),
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyA,
+                    meta: true,
+                  ),
                   onSelected: () {},
                 ),
               ],

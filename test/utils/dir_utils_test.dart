@@ -82,37 +82,16 @@ void main() {
 
   group('getVideoExtension', () {
     test('returns .mp4 for non-transparent without codec', () {
-      expect(
-        DirUtils.getVideoExtension(isTransparent: false),
-        '.mp4',
-      );
+      expect(DirUtils.getVideoExtension(isTransparent: false), '.mp4');
     });
 
     test('returns codec container extension when codec is provided', () {
-      expect(
-        DirUtils.getVideoExtension(codec: VideoCodec.h264),
-        '.mp4',
-      );
-      expect(
-        DirUtils.getVideoExtension(codec: VideoCodec.hevc),
-        '.mp4',
-      );
-      expect(
-        DirUtils.getVideoExtension(codec: VideoCodec.prores422),
-        '.mov',
-      );
-      expect(
-        DirUtils.getVideoExtension(codec: VideoCodec.prores422hq),
-        '.mov',
-      );
-      expect(
-        DirUtils.getVideoExtension(codec: VideoCodec.prores4444),
-        '.mov',
-      );
-      expect(
-        DirUtils.getVideoExtension(codec: VideoCodec.vp9),
-        '.webm',
-      );
+      expect(DirUtils.getVideoExtension(codec: VideoCodec.h264), '.mp4');
+      expect(DirUtils.getVideoExtension(codec: VideoCodec.hevc), '.mp4');
+      expect(DirUtils.getVideoExtension(codec: VideoCodec.prores422), '.mov');
+      expect(DirUtils.getVideoExtension(codec: VideoCodec.prores422hq), '.mov');
+      expect(DirUtils.getVideoExtension(codec: VideoCodec.prores4444), '.mov');
+      expect(DirUtils.getVideoExtension(codec: VideoCodec.vp9), '.webm');
     });
 
     test('codec parameter overrides isTransparent flag', () {

@@ -195,8 +195,11 @@ class AppColorsData extends ThemeExtension<AppColorsData> {
       overlay: Color.lerp(overlay, other.overlay, t)!,
       disabled: Color.lerp(disabled, other.disabled, t)!,
       guideCorner: Color.lerp(guideCorner, other.guideCorner, t)!,
-      galleryBackground:
-          Color.lerp(galleryBackground, other.galleryBackground, t)!,
+      galleryBackground: Color.lerp(
+        galleryBackground,
+        other.galleryBackground,
+        t,
+      )!,
     );
   }
 }

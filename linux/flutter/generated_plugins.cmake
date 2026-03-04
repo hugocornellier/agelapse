@@ -3,6 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  camera_desktop
   desktop_drop
   face_detection_tflite
   file_selector_linux

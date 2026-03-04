@@ -81,15 +81,19 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
                       const SizedBox(height: 48),
                       Padding(
                         padding: const EdgeInsets.only(bottom: 16.0),
-                        child: Text('Pose',
-                            style: TextStyle(color: AppColors.textSecondary)),
+                        child: Text(
+                          'Pose',
+                          style: TextStyle(color: AppColors.textSecondary),
+                        ),
                       ),
                       _buildImageSelector(),
                       const SizedBox(height: 32),
                       Padding(
                         padding: const EdgeInsets.only(bottom: 0.0),
-                        child: Text('Name',
-                            style: TextStyle(color: AppColors.textSecondary)),
+                        child: Text(
+                          'Name',
+                          style: TextStyle(color: AppColors.textSecondary),
+                        ),
                       ),
                       _buildTextField(),
                       const Spacer(),
@@ -130,15 +134,19 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16.0),
-                    child: Text('Pose',
-                        style: TextStyle(color: AppColors.textSecondary)),
+                    child: Text(
+                      'Pose',
+                      style: TextStyle(color: AppColors.textSecondary),
+                    ),
                   ),
                   _buildImageSelector(),
                   const SizedBox(height: 16),
                   Padding(
                     padding: const EdgeInsets.only(top: 16.0, bottom: 0.0),
-                    child: Text('Name',
-                        style: TextStyle(color: AppColors.textSecondary)),
+                    child: Text(
+                      'Name',
+                      style: TextStyle(color: AppColors.textSecondary),
+                    ),
                   ),
                   _buildTextField(),
                   _buildActionButton(),
@@ -201,8 +209,10 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
                 });
               },
               child: ConstrainedBox(
-                constraints:
-                    const BoxConstraints(maxWidth: 100, maxHeight: 100),
+                constraints: const BoxConstraints(
+                  maxWidth: 100,
+                  maxHeight: 100,
+                ),
                 child: AspectRatio(
                   aspectRatio: 1,
                   child: Image.asset(
@@ -227,8 +237,10 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
                 });
               },
               child: ConstrainedBox(
-                constraints:
-                    const BoxConstraints(maxWidth: 100, maxHeight: 100),
+                constraints: const BoxConstraints(
+                  maxWidth: 100,
+                  maxHeight: 100,
+                ),
                 child: AspectRatio(
                   aspectRatio: 1,
                   child: Image.asset(
@@ -253,8 +265,10 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
                 });
               },
               child: ConstrainedBox(
-                constraints:
-                    const BoxConstraints(maxWidth: 100, maxHeight: 100),
+                constraints: const BoxConstraints(
+                  maxWidth: 100,
+                  maxHeight: 100,
+                ),
                 child: AspectRatio(
                   aspectRatio: 1,
                   child: Image.asset(

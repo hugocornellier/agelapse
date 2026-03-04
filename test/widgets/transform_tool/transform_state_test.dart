@@ -309,10 +309,7 @@ void main() {
           canvasSize: Size(100, 100),
         );
 
-        final copy = original.copyWith(
-          scale: 2.0,
-          rotation: 45.0,
-        );
+        final copy = original.copyWith(scale: 2.0, rotation: 45.0);
 
         expect(copy.scale, equals(2.0));
         expect(copy.rotation, equals(45.0));
@@ -390,8 +387,10 @@ void main() {
           canvasSize: const Size(100, 100),
         );
 
-        final rotated =
-            state.withRotationAroundPivot(90.0, const Offset(50, 50));
+        final rotated = state.withRotationAroundPivot(
+          90.0,
+          const Offset(50, 50),
+        );
 
         expect(rotated.rotation, equals(90.0));
       });
@@ -403,8 +402,10 @@ void main() {
         );
 
         // Rotate around a corner (100, 100) instead of (0, 0)
-        final rotated =
-            state.withRotationAroundPivot(90.0, const Offset(100, 100));
+        final rotated = state.withRotationAroundPivot(
+          90.0,
+          const Offset(100, 100),
+        );
 
         expect(rotated.rotation, equals(90.0));
         // Translation should be adjusted when rotating around a non-center point

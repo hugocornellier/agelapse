@@ -131,7 +131,9 @@ void main() {
 
     test('settingsInputBackground is correct', () {
       expect(
-          AppColors.settingsInputBackground, equals(const Color(0xff1A1A1A)));
+        AppColors.settingsInputBackground,
+        equals(const Color(0xff1A1A1A)),
+      );
     });
   });
 }

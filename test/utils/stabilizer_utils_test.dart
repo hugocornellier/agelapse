@@ -119,14 +119,22 @@ void main() {
 
         final restored = FaceLike.fromMap(original.toMap());
 
-        expect(restored.boundingBox.left,
-            closeTo(original.boundingBox.left, 0.001));
         expect(
-            restored.boundingBox.top, closeTo(original.boundingBox.top, 0.001));
-        expect(restored.boundingBox.right,
-            closeTo(original.boundingBox.right, 0.001));
-        expect(restored.boundingBox.bottom,
-            closeTo(original.boundingBox.bottom, 0.001));
+          restored.boundingBox.left,
+          closeTo(original.boundingBox.left, 0.001),
+        );
+        expect(
+          restored.boundingBox.top,
+          closeTo(original.boundingBox.top, 0.001),
+        );
+        expect(
+          restored.boundingBox.right,
+          closeTo(original.boundingBox.right, 0.001),
+        );
+        expect(
+          restored.boundingBox.bottom,
+          closeTo(original.boundingBox.bottom, 0.001),
+        );
         expect(restored.leftEye!.x, closeTo(original.leftEye!.x, 0.001));
         expect(restored.leftEye!.y, closeTo(original.leftEye!.y, 0.001));
         expect(restored.rightEye!.x, closeTo(original.rightEye!.x, 0.001));

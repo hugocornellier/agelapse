@@ -47,7 +47,9 @@ class TookFirstPhotoPageState extends State<TookFirstPhotoPage> {
             const Text(
               "Your First Photo",
               style: TextStyle(
-                  fontSize: AppTypography.xxxl, fontWeight: FontWeight.bold),
+                fontSize: AppTypography.xxxl,
+                fontWeight: FontWeight.bold,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
@@ -63,7 +65,9 @@ class TookFirstPhotoPageState extends State<TookFirstPhotoPage> {
             Text(
               "This is the beginning of something great. We can feel it!",
               style: TextStyle(
-                  fontSize: AppTypography.sm, color: AppColors.textSecondary),
+                fontSize: AppTypography.sm,
+                color: AppColors.textSecondary,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 64),

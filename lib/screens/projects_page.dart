@@ -101,7 +101,9 @@ class ProjectsPageState extends State<ProjectsPage> {
             '100% free, forever.',
             textAlign: TextAlign.center,
             style: TextStyle(
-                fontSize: AppTypography.md, color: AppColors.textPrimary),
+              fontSize: AppTypography.md,
+              color: AppColors.textPrimary,
+            ),
           ),
         ),
         const SizedBox(height: 24),
@@ -199,7 +201,9 @@ class ProjectsPageState extends State<ProjectsPage> {
             '100% free, forever.',
             textAlign: TextAlign.center,
             style: TextStyle(
-                fontSize: AppTypography.md, color: AppColors.textPrimary),
+              fontSize: AppTypography.md,
+              color: AppColors.textPrimary,
+            ),
           ),
         ),
         const SizedBox(height: 36),

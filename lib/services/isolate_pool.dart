@@ -271,8 +271,10 @@ class IsolatePool {
         // Thumbnails are always 8-bit JPEG — downcast 16-bit sources
         if (mat.type.depth != 0) {
           // depth 0 = CV_8U
-          final mat8 = mat.convertTo(cv.MatType.CV_8UC(mat.channels),
-              alpha: 1.0 / 256.0);
+          final mat8 = mat.convertTo(
+            cv.MatType.CV_8UC(mat.channels),
+            alpha: 1.0 / 256.0,
+          );
           mat.dispose();
           mat = mat8;
         }
@@ -299,10 +301,12 @@ class IsolatePool {
         final aspectRatio = composited.rows / composited.cols;
         final height = (800 * aspectRatio).round();
         final thumb = cv.resize(
-          composited,
-          (800, height),
-          interpolation: cv.INTER_CUBIC,
-        );
+            composited,
+            (
+              800,
+              height,
+            ),
+            interpolation: cv.INTER_CUBIC);
         composited.dispose();
 
         final (success, jpgBytes) = cv.imencode(
@@ -324,10 +328,12 @@ class IsolatePool {
         final aspectRatioAlpha = matAlpha.rows / matAlpha.cols;
         final heightAlpha = (800 * aspectRatioAlpha).round();
         final thumbAlpha = cv.resize(
-          matAlpha,
-          (800, heightAlpha),
-          interpolation: cv.INTER_CUBIC,
-        );
+            matAlpha,
+            (
+              800,
+              heightAlpha,
+            ),
+            interpolation: cv.INTER_CUBIC);
         matAlpha.dispose();
 
         final (successAlpha, pngBytesAlpha) = cv.imencode('.png', thumbAlpha);
@@ -478,7 +484,8 @@ class IsolatePool {
 
   /// Isolate implementation: Extract eye coordinates from serialized faces.
   static List<List<double>?> _getEyesFromFacesIsolate(
-      Map<String, dynamic> params) {
+    Map<String, dynamic> params,
+  ) {
     final facesData = params['faces'] as List;
     final List<List<double>?> eyes = [];
 
@@ -490,13 +497,13 @@ class IsolatePool {
       List<double>? a = leftEyeData != null
           ? [
               (leftEyeData[0] as num).toDouble(),
-              (leftEyeData[1] as num).toDouble()
+              (leftEyeData[1] as num).toDouble(),
             ]
           : null;
       List<double>? b = rightEyeData != null
           ? [
               (rightEyeData[0] as num).toDouble(),
-              (rightEyeData[1] as num).toDouble()
+              (rightEyeData[1] as num).toDouble(),
             ]
           : null;
 
@@ -530,7 +537,8 @@ class IsolatePool {
 
   /// Isolate implementation: Get centermost eyes from multiple faces.
   static List<List<double>> _getCentermostEyesIsolate(
-      Map<String, dynamic> params) {
+    Map<String, dynamic> params,
+  ) {
     final eyesData = params['eyes'] as List;
     final facesData = params['faces'] as List;
     final imgWidth = params['imgWidth'] as int;
@@ -538,9 +546,11 @@ class IsolatePool {
 
     // Convert serialized data to working format
     final List<List<double>?> eyes = eyesData
-        .map((e) => e != null
-            ? [(e[0] as num).toDouble(), (e[1] as num).toDouble()]
-            : null)
+        .map(
+          (e) => e != null
+              ? [(e[0] as num).toDouble(), (e[1] as num).toDouble()]
+              : null,
+        )
         .toList();
 
     // Filter to faces with detected eyes
@@ -608,7 +618,8 @@ class IsolatePool {
 
   /// Isolate implementation: Filter eyes and get centermost if multiple faces.
   static List<List<double>?> _filterAndCenterEyesIsolate(
-      Map<String, dynamic> params) {
+    Map<String, dynamic> params,
+  ) {
     final facesData = params['faces'] as List;
     final imgWidth = params['imgWidth'] as int;
     final imgHeight = params['imgHeight'] as int;

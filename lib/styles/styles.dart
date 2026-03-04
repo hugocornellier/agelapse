@@ -35,25 +35,17 @@ class AppTypography {
   static const double display = 28; // Display - hero text, large titles
 
   // Pre-built text styles - GETTERS for dynamic theme colors
-  static TextStyle get caption => TextStyle(
-        fontSize: xs,
-        color: AppColors.textSecondary,
-      );
+  static TextStyle get caption =>
+      TextStyle(fontSize: xs, color: AppColors.textSecondary);
 
-  static TextStyle get bodySmall => TextStyle(
-        fontSize: sm,
-        color: AppColors.textPrimary,
-      );
+  static TextStyle get bodySmall =>
+      TextStyle(fontSize: sm, color: AppColors.textPrimary);
 
-  static TextStyle get bodyMedium => TextStyle(
-        fontSize: md,
-        color: AppColors.textPrimary,
-      );
+  static TextStyle get bodyMedium =>
+      TextStyle(fontSize: md, color: AppColors.textPrimary);
 
-  static TextStyle get bodyLarge => TextStyle(
-        fontSize: lg,
-        color: AppColors.textPrimary,
-      );
+  static TextStyle get bodyLarge =>
+      TextStyle(fontSize: lg, color: AppColors.textPrimary);
 
   static TextStyle get headingSmall => TextStyle(
         fontSize: xl,

@@ -243,8 +243,9 @@ class CustomAppBarState extends State<CustomAppBar> {
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
-                  color: AppColors.surfaceElevated.withValues(alpha: 0.49),
-                  width: 0.7),
+                color: AppColors.surfaceElevated.withValues(alpha: 0.49),
+                width: 0.7,
+              ),
             ),
             color: AppColors.backgroundDark,
           ),
@@ -305,8 +306,9 @@ class CustomAppBarState extends State<CustomAppBar> {
                             radius: 13.5,
                             child: Icon(
                               Icons.person,
-                              color:
-                                  AppColors.textPrimary.withValues(alpha: 0.7),
+                              color: AppColors.textPrimary.withValues(
+                                alpha: 0.7,
+                              ),
                               size: 18,
                             ),
                           ),
