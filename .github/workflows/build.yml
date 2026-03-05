@@ -1,14 +1,39 @@
-name: Build
+name: CI
 
 on:
   pull_request:
   push:
 
 concurrency:
-  group: build-${{ github.ref }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  format-and-analyze:
+    name: Format & Analyze (${{ matrix.flutter-channel }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        flutter-channel: [stable, beta]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ matrix.flutter-channel }}
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Analyze
+        run: flutter analyze --fatal-infos .
+
   build-android:
     name: Build Android (${{ matrix.flutter-channel }})
     runs-on: ubuntu-latest

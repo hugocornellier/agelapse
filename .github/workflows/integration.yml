@@ -1,14 +1,46 @@
-name: Integration Tests
+name: Tests
 
 on:
   pull_request:
   push:
 
 concurrency:
-  group: integration-${{ github.ref }}
+  group: tests-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  unit-tests:
+    name: Unit Tests (${{ matrix.flutter-channel }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        flutter-channel: [stable, beta]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ matrix.flutter-channel }}
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run unit tests with coverage
+        run: flutter test --coverage
+
+      - name: Upload coverage to Codecov
+        if: matrix.flutter-channel == 'stable'
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage/lcov.info
+          flags: unit-tests
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
   integration-macos:
     name: Integration macOS (${{ matrix.flutter-channel }})
     runs-on: macos-14
@@ -35,13 +67,16 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Prewarm macOS build
+        run: flutter build macos --debug
+
       # Due to a Flutter macOS test runner bug, tests must be run one file
       # at a time with a process kill between runs. Running them together
       # causes "Failed to foreground app" / "Error waiting for a debug
       # connection" errors.
       - name: Run integration tests (sequential, one file at a time)
         run: |
-          set -e
+          set -eo pipefail
           TEST_FILES=(
             smoke_test.dart
             app_test.dart
@@ -81,7 +116,7 @@ jobs:
   integration-ios:
     name: Integration iOS (${{ matrix.flutter-channel }})
     runs-on: macos-14
-    timeout-minutes: 120
+    timeout-minutes: 240
     strategy:
       fail-fast: false
       matrix:
@@ -104,6 +139,9 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Precache iOS artifacts
+        run: flutter precache --ios
+
       - name: Boot iOS simulator
         run: |
           RUNTIME=$(xcrun simctl list runtimes | grep -oE 'com.apple.CoreSimulator.SimRuntime.iOS-[0-9-]+' | tail -1)
@@ -111,48 +149,28 @@ jobs:
           UDID=$(xcrun simctl create "CI-iPhone" "iPhone 15" "$RUNTIME")
           echo "Created simulator: $UDID"
           xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
           echo "SIMULATOR_UDID=$UDID" >> "$GITHUB_ENV"
 
-      # iOS has the same "Error waiting for a debug connection" bug as
-      # macOS/Windows/Linux when running multiple test files together. Run sequentially.
-      - name: Run integration tests (sequential, one file at a time)
+      # Pre-warm the Xcode build outside of any test timeout window.
+      # On Flutter beta the initial build can take 12-13 minutes, which
+      # exceeds the test framework's default 12-minute loading timeout.
+      # Building here first means the test run starts with a warm cache.
+      - name: Prewarm Xcode build
+        run: flutter build ios --simulator --debug --no-codesign
+
+      - name: Run integration tests
         run: |
-          set -e
-          TEST_FILES=(
-            smoke_test.dart
-            app_test.dart
-            database_test.dart
-            error_handling_test.dart
-            image_format_test.dart
-            stabilization_test.dart
-            video_compilation_test.dart
-            video_codec_test.dart
-            video_playback_test.dart
-            export_test.dart
-            screenshot_test.dart
-            e2e_workflow_test.dart
-          )
-          FAILED=()
-          for f in "${TEST_FILES[@]}"; do
-            echo "========================================="
-            echo "Running: $f"
-            echo "========================================="
-            pkill -9 -f "agelapse" 2>/dev/null || true
-            sleep 2
-            if ! flutter test "integration_test/$f" -d "$SIMULATOR_UDID"; then
-              FAILED+=("$f")
-              echo "::error::FAILED: $f"
-            fi
-          done
-          if [ ${#FAILED[@]} -gt 0 ]; then
-            echo ""
-            echo "========================================="
-            echo "FAILED TESTS:"
-            printf '  - %s\n' "${FAILED[@]}"
-            echo "========================================="
-            exit 1
-          fi
-          echo "All ${#TEST_FILES[@]} test files passed."
+          set -o pipefail
+          mkdir -p test-results
+          flutter test integration_test/ -d "$SIMULATOR_UDID" --reporter expanded 2>&1 | tee test-results/all.log
+
+      - name: Upload test logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs-ios-${{ matrix.flutter-channel }}
+          path: test-results/
 
       - name: Shutdown simulator
         if: always()
@@ -190,6 +208,9 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Prewarm Android build
+        run: flutter build apk --debug
 
       - name: Enable KVM
         run: |
@@ -239,11 +260,14 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Prewarm Linux build
+        run: flutter build linux --debug
+
       # Linux has the same "Error waiting for a debug connection" bug as
       # macOS/Windows when running multiple test files together. Run sequentially.
       - name: Run integration tests (sequential, one file at a time)
         run: |
-          set -e
+          set -eo pipefail
           TEST_FILES=(
             smoke_test.dart
             app_test.dart
@@ -306,12 +330,15 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Prewarm Windows build
+        run: flutter build windows --debug
+
       # Windows has the same "Error waiting for a debug connection" bug as
       # macOS when running multiple test files together. Run sequentially.
       - name: Run integration tests (sequential, one file at a time)
         shell: bash
         run: |
-          set -e
+          set -eo pipefail
           TEST_FILES=(
             smoke_test.dart
             app_test.dart

@@ -5,6 +5,11 @@
 </p>
 
 <p align="center">
+<a href="https://github.com/hugocornellier/agelapse/actions/workflows/build.yml"><img src="https://github.com/hugocornellier/agelapse/actions/workflows/build.yml/badge.svg" alt="CI"></a>
+<a href="https://github.com/hugocornellier/agelapse/actions/workflows/integration.yml"><img src="https://github.com/hugocornellier/agelapse/actions/workflows/integration.yml/badge.svg" alt="Tests"></a>
+</p>
+
+<p align="center">
   <img
     src="https://i.imgur.com/CmsixvW.png"
     alt="Demo animation"
