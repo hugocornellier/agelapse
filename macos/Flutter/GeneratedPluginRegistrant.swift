@@ -6,8 +6,10 @@ import FlutterMacOS
 import Foundation
 
 import camera_desktop
+import cat_detection
 import desktop_drop
 import device_info_plus
+import dog_detection
 import downloadsfolder
 import face_detection_tflite
 import file_picker
@@ -31,8 +33,10 @@ import window_manager
 
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   CameraDesktopPlugin.register(with: registry.registrar(forPlugin: "CameraDesktopPlugin"))
+  CatDetectionPlugin.register(with: registry.registrar(forPlugin: "CatDetectionPlugin"))
   DesktopDropPlugin.register(with: registry.registrar(forPlugin: "DesktopDropPlugin"))
   DeviceInfoPlusMacosPlugin.register(with: registry.registrar(forPlugin: "DeviceInfoPlusMacosPlugin"))
+  DogDetectionPlugin.register(with: registry.registrar(forPlugin: "DogDetectionPlugin"))
   DownloadsfolderPlugin.register(with: registry.registrar(forPlugin: "DownloadsfolderPlugin"))
   FaceDetectionTflitePlugin.register(with: registry.registrar(forPlugin: "FaceDetectionTflitePlugin"))
   FilePickerPlugin.register(with: registry.registrar(forPlugin: "FilePickerPlugin"))

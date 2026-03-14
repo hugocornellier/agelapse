@@ -13,7 +13,7 @@ dependencies:
   archive: ^4.0.7
   async_zip: ^0.1.0
   camera: ^0.12.0
-  camera_desktop: ^1.0.1
+  camera_desktop: ^1.0.4
   chewie: ^1.13.0
   desktop_drop:
     git:
@@ -21,6 +21,8 @@ dependencies:
   device_info_plus: ^12.3.0
   downloadsfolder: ^1.2.0
   exif_reader: ^4.1.0
+  cat_detection: ^0.0.1
+  dog_detection: ^0.0.3
   face_detection_tflite: ^5.0.5
   ffmpeg_kit_flutter_new:
     git:
@@ -40,7 +42,7 @@ dependencies:
   flutter_timezone: ^5.0.1
   font_awesome_flutter: ^10.12.0
   google_mlkit_pose_detection: ^0.14.1
-  hand_detection: ^1.0.1
+  hand_detection: ^2.0.0
   heif_converter: ^1.0.1
   intl: ^0.20.2
   media_kit: ^1.2.6
@@ -53,7 +55,7 @@ dependencies:
   path: ^1.9.1
   path_provider: ^2.1.5
   permission_handler: ^12.0.1
-  pose_detection: ^1.0.5
+  pose_detection: ^2.0.0
   provider: ^6.1.5
   saver_gallery: ^4.1.0
   sensors_plus: ^7.0.0

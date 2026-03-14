@@ -1,9 +1,13 @@
 PODS:
   - camera_desktop (0.1.0):
     - FlutterMacOS
+  - cat_detection (0.0.1):
+    - FlutterMacOS
   - desktop_drop (0.0.1):
     - FlutterMacOS
   - device_info_plus (0.0.1):
+    - FlutterMacOS
+  - dog_detection (0.0.1):
     - FlutterMacOS
   - downloadsfolder (0.0.1):
     - FlutterMacOS
@@ -77,8 +81,10 @@ PODS:
 
 DEPENDENCIES:
   - camera_desktop (from `Flutter/ephemeral/.symlinks/plugins/camera_desktop/macos`)
+  - cat_detection (from `Flutter/ephemeral/.symlinks/plugins/cat_detection/macos`)
   - desktop_drop (from `Flutter/ephemeral/.symlinks/plugins/desktop_drop/macos`)
   - device_info_plus (from `Flutter/ephemeral/.symlinks/plugins/device_info_plus/macos`)
+  - dog_detection (from `Flutter/ephemeral/.symlinks/plugins/dog_detection/macos`)
   - downloadsfolder (from `Flutter/ephemeral/.symlinks/plugins/downloadsfolder/macos`)
   - face_detection_tflite (from `Flutter/ephemeral/.symlinks/plugins/face_detection_tflite/macos`)
   - file_picker (from `Flutter/ephemeral/.symlinks/plugins/file_picker/macos`)
@@ -109,10 +115,14 @@ SPEC REPOS:
 EXTERNAL SOURCES:
   camera_desktop:
     :path: Flutter/ephemeral/.symlinks/plugins/camera_desktop/macos
+  cat_detection:
+    :path: Flutter/ephemeral/.symlinks/plugins/cat_detection/macos
   desktop_drop:
     :path: Flutter/ephemeral/.symlinks/plugins/desktop_drop/macos
   device_info_plus:
     :path: Flutter/ephemeral/.symlinks/plugins/device_info_plus/macos
+  dog_detection:
+    :path: Flutter/ephemeral/.symlinks/plugins/dog_detection/macos
   downloadsfolder:
     :path: Flutter/ephemeral/.symlinks/plugins/downloadsfolder/macos
   face_detection_tflite:
@@ -160,10 +170,12 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   camera_desktop: 8b0acf3142f8bdcfddd923edcb0d9e20f318f385
+  cat_detection: abfe96f1fbf0d67fc2892b71e54dcf20f566628e
   desktop_drop: 10a3e6a7fa9dbe350541f2574092fecfa345a07b
   device_info_plus: 4fb280989f669696856f8b129e4a5e3cd6c48f76
+  dog_detection: 6905b334044cdd997ac58da8e96893326b742520
   downloadsfolder: 9a9a5fb6eee0abe38756e788bb248d1c21490a6e
-  face_detection_tflite: 995c69e9ce0cd89788737548ec13bdd89a7929b7
+  face_detection_tflite: 0f545c69bbd303664ce657a522b62dea11d3ce10
   file_picker: 7584aae6fa07a041af2b36a2655122d42f578c1a
   file_selector_macos: 9e9e068e90ebee155097d00e89ae91edb2374db7
   flutter_avif_macos: 9ed61d67adfbd6964eccb59971020fb55c31fc11

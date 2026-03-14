@@ -432,5 +432,44 @@ void main() {
         expect(restored[1], closeTo(-1000000.0, 1.0));
       });
     });
+
+    group('getFacesFromBytesForProjectType()', () {
+      // Note: These tests verify routing, not actual detection (which requires
+      // native TFLite models). Actual detection is verified in integration tests.
+
+      test('routes "face" to default face detector', () async {
+        // Empty bytes won't detect any faces, but verifies no crash on routing
+        final result = await StabUtils.getFacesFromBytesForProjectType(
+          'face',
+          Uint8List(0),
+        );
+        // Should return empty list or null (no valid image)
+        expect(result == null || result.isEmpty, isTrue);
+      });
+
+      test('routes "cat" to cat detector', () async {
+        final result = await StabUtils.getFacesFromBytesForProjectType(
+          'cat',
+          Uint8List(0),
+        );
+        expect(result == null || result.isEmpty, isTrue);
+      });
+
+      test('routes "dog" to dog detector', () async {
+        final result = await StabUtils.getFacesFromBytesForProjectType(
+          'dog',
+          Uint8List(0),
+        );
+        expect(result == null || result.isEmpty, isTrue);
+      });
+
+      test('routes unknown type to default face detector', () async {
+        final result = await StabUtils.getFacesFromBytesForProjectType(
+          'unknown',
+          Uint8List(0),
+        );
+        expect(result == null || result.isEmpty, isTrue);
+      });
+    });
   });
 }

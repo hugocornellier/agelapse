@@ -195,94 +195,44 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
     );
   }
 
+  Widget _buildProjectTypeButton(String assetPath) {
+    return Flexible(
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: () {
+            setState(() {
+              _selectedImage = assetPath;
+            });
+          },
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: 100,
+              maxHeight: 100,
+            ),
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: Image.asset(
+                assetPath,
+                fit: BoxFit.contain,
+                color: _selectedImage == assetPath ? AppColors.info : null,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildImageSelector() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        Flexible(
-          child: MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedImage = 'assets/images/face.png';
-                });
-              },
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: 100,
-                  maxHeight: 100,
-                ),
-                child: AspectRatio(
-                  aspectRatio: 1,
-                  child: Image.asset(
-                    'assets/images/face.png', // proj type = face
-                    fit: BoxFit.contain,
-                    color: _selectedImage == 'assets/images/face.png'
-                        ? AppColors.info
-                        : null,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        Flexible(
-          child: MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedImage = 'assets/images/musc.png';
-                });
-              },
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: 100,
-                  maxHeight: 100,
-                ),
-                child: AspectRatio(
-                  aspectRatio: 1,
-                  child: Image.asset(
-                    'assets/images/musc.png', // proj type = body
-                    fit: BoxFit.contain,
-                    color: _selectedImage == 'assets/images/musc.png'
-                        ? AppColors.info
-                        : null,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        Flexible(
-          child: MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedImage = 'assets/images/preg.png';
-                });
-              },
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: 100,
-                  maxHeight: 100,
-                ),
-                child: AspectRatio(
-                  aspectRatio: 1,
-                  child: Image.asset(
-                    'assets/images/preg.png', // proj type = body
-                    fit: BoxFit.contain,
-                    color: _selectedImage == 'assets/images/preg.png'
-                        ? AppColors.info
-                        : null,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
+        _buildProjectTypeButton('assets/images/face.png'),
+        _buildProjectTypeButton('assets/images/cat.png'),
+        _buildProjectTypeButton('assets/images/dog.png'),
+        _buildProjectTypeButton('assets/images/musc.png'),
+        _buildProjectTypeButton('assets/images/preg.png'),
       ],
     );
   }
@@ -332,6 +282,12 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
     switch (_selectedImage) {
       case 'assets/images/face.png':
         projectType = 'face';
+        break;
+      case 'assets/images/cat.png':
+        projectType = 'cat';
+        break;
+      case 'assets/images/dog.png':
+        projectType = 'dog';
         break;
       case 'assets/images/musc.png':
         projectType = 'musc';

@@ -4,7 +4,9 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   camera_desktop
+  cat_detection
   desktop_drop
+  dog_detection
   face_detection_tflite
   file_selector_linux
   flutter_avif_linux

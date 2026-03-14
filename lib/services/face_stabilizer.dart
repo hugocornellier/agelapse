@@ -88,6 +88,10 @@ class FaceStabilizer {
   late List<int>? backgroundColorBGR;
   late bool lossless;
 
+  /// Whether this project type uses eye-based stabilization (face, cat, dog).
+  bool get _isEyeBasedProject =>
+      projectType == "face" || projectType == "cat" || projectType == "dog";
+
   // Face embedding tracking for identity-based face matching
   int? _currentFaceCount;
   Float32List? _currentEmbedding;
@@ -157,7 +161,7 @@ class FaceStabilizer {
     backgroundColorBGR = settings.backgroundColorBGR;
     lossless = settings.lossless;
 
-    if (projectType != "face") {
+    if (!_isEyeBasedProject) {
       final PoseDetector poseDetector = PoseDetector(
         options: PoseDetectorOptions(
           mode: PoseDetectionMode.single,
@@ -356,7 +360,7 @@ class FaceStabilizer {
     CancellationToken? token,
     String srcId,
   ) async {
-    if (projectType != "face") {
+    if (!_isEyeBasedProject) {
       await StabUtils.writeImagesBytesToJpgFile(
         imageBytesStabilized,
         stabilizedJpgPhotoPath,
@@ -380,7 +384,7 @@ class FaceStabilizer {
         null,
         null,
         null,
-      ); // No scores for non-face projects
+      ); // No scores for non-eye-based projects
     }
 
     rawPhotoPath = _cleanUpPhotoPath(rawPhotoPath);
@@ -389,7 +393,7 @@ class FaceStabilizer {
     final Point<double> goalRightEye = Point(rightEyeXGoal, bothEyesYGoal);
 
     // Detect faces directly from bytes using face_detection_tflite (works on all platforms)
-    final stabFaces = await StabUtils.getFacesFromBytes(
+    final stabFaces = await _detectFaces(
       imageBytesStabilized,
       filterByFaceSize: false,
       imageWidth: canvasWidth,
@@ -775,7 +779,7 @@ class FaceStabilizer {
       );
     }
 
-    final twoPassFaces = await StabUtils.getFacesFromBytes(
+    final twoPassFaces = await _detectFaces(
       twoPassBytes,
       filterByFaceSize: false,
       imageWidth: canvasWidth,
@@ -865,7 +869,7 @@ class FaceStabilizer {
         );
 
         if (threePassBytes != null) {
-          final threePassFaces = await StabUtils.getFacesFromBytes(
+          final threePassFaces = await _detectFaces(
             threePassBytes,
             filterByFaceSize: false,
             imageWidth: canvasWidth,
@@ -954,7 +958,7 @@ class FaceStabilizer {
         );
 
         if (fourPassBytes != null) {
-          final fourPassFaces = await StabUtils.getFacesFromBytes(
+          final fourPassFaces = await _detectFaces(
             fourPassBytes,
             filterByFaceSize: false,
             imageWidth: canvasWidth,
@@ -1182,7 +1186,7 @@ class FaceStabilizer {
 
       if (rotPassBytes == null) break;
 
-      final rotPassFaces = await StabUtils.getFacesFromBytes(
+      final rotPassFaces = await _detectFaces(
         rotPassBytes,
         filterByFaceSize: false,
         imageWidth: canvasWidth,
@@ -1297,7 +1301,7 @@ class FaceStabilizer {
 
       if (scalePassBytes == null) break;
 
-      final scalePassFaces = await StabUtils.getFacesFromBytes(
+      final scalePassFaces = await _detectFaces(
         scalePassBytes,
         filterByFaceSize: false,
         imageWidth: canvasWidth,
@@ -1433,7 +1437,7 @@ class FaceStabilizer {
 
       if (transPassBytes == null) break;
 
-      final transPassFaces = await StabUtils.getFacesFromBytes(
+      final transPassFaces = await _detectFaces(
         transPassBytes,
         filterByFaceSize: false,
         imageWidth: canvasWidth,
@@ -1576,7 +1580,7 @@ class FaceStabilizer {
         );
 
         if (cleanupBytes != null) {
-          final cleanupFaces = await StabUtils.getFacesFromBytes(
+          final cleanupFaces = await _detectFaces(
             cleanupBytes,
             filterByFaceSize: false,
             imageWidth: canvasWidth,
@@ -1970,6 +1974,15 @@ class FaceStabilizer {
           userRanOutOfSpaceCallback,
           pngBytes: pngBytes,
         );
+      } else if (projectType == "cat" || projectType == "dog") {
+        return await _calculateRotationAngleAndScaleAnimal(
+          rawPhotoPath,
+          imgWidth,
+          imgHeight,
+          targetBoundingBox,
+          userRanOutOfSpaceCallback,
+          pngBytes: pngBytes,
+        );
       } else if (projectType == "pregnancy") {
         return await _calculateRotationAngleAndScalePregnancy(rawPhotoPath);
       } else if (projectType == "musc") {
@@ -1981,6 +1994,69 @@ class FaceStabilizer {
       LogService.instance.log("Error caught: $e");
       return (null, null);
     }
+  }
+
+  /// Cat/dog stabilization: like face but without embedding-based multi-face matching.
+  /// Uses centermost animal selection when multiple are detected.
+  Future<(double?, double?)> _calculateRotationAngleAndScaleAnimal(
+    String rawPhotoPath,
+    int imgWidth,
+    int imgHeight,
+    Rect? targetBoundingBox,
+    userRanOutOfSpaceCallback, {
+    Uint8List? pngBytes,
+  }) async {
+    List<Point<double>?> eyes;
+
+    final bool noFaceSizeFilter = targetBoundingBox != null;
+    final faces = await getFacesFromRawPhotoPath(
+      rawPhotoPath,
+      imgWidth,
+      filterByFaceSize: !noFaceSizeFilter,
+      pngBytes: pngBytes,
+    );
+    if (faces == null || faces.isEmpty) {
+      LogService.instance.log("No $projectType faces found. Attempting to flip...");
+      await flipAndTryAgain(rawPhotoPath, userRanOutOfSpaceCallback);
+      return (null, null);
+    }
+
+    List<dynamic> facesToUse = faces;
+    if (targetBoundingBox != null) {
+      final idx = await _pickFaceIndexByBoxAsync(faces, targetBoundingBox);
+      if (idx != -1) {
+        facesToUse = [faces[idx]];
+      }
+    }
+
+    eyes = await getEyesFromFacesAsync(facesToUse);
+
+    if (facesToUse.length > 1) {
+      // No embedding support for cat/dog — always use centermost
+      LogService.instance.log(
+        "Multiple ${projectType}s detected, using centermost",
+      );
+      eyes = await getCentermostEyesAsync(
+        eyes,
+        facesToUse,
+        imgWidth,
+        imgHeight,
+      );
+    }
+
+    if (eyes.length < 2 || eyes[0] == null || eyes[1] == null) {
+      await DB.instance.setPhotoNoFacesFound(
+        path.basenameWithoutExtension(rawPhotoPath),
+        projectId,
+      );
+      unawaited(
+        _emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.noFacesFound),
+      );
+      return (null, null);
+    }
+
+    originalEyePositions = eyes;
+    return _calculateEyeMetrics(eyes);
   }
 
   Future<(double?, double?)> _calculateRotationAngleAndScaleFace(
@@ -2432,7 +2508,7 @@ class FaceStabilizer {
   ) {
     num goalX;
     num goalY;
-    if (projectType == "face") {
+    if (_isEyeBasedProject) {
       goalX = leftEyeXGoal;
       goalY = bothEyesYGoal;
     } else if (projectType == "pregnancy") {
@@ -2598,6 +2674,21 @@ class FaceStabilizer {
   Uint8List? _lastPngBytes;
   List<dynamic>? _lastRawFaces;
 
+  /// Dispatches face detection to the correct detector based on project type.
+  /// Used by multi-pass refinement to re-detect faces in stabilized images.
+  Future<List<FaceLike>?> _detectFaces(
+    Uint8List bytes, {
+    bool filterByFaceSize = true,
+    int? imageWidth,
+  }) async {
+    return StabUtils.getFacesFromBytesForProjectType(
+      projectType,
+      bytes,
+      filterByFaceSize: filterByFaceSize,
+      imageWidth: imageWidth,
+    );
+  }
+
   Future<List<dynamic>?> getFacesFromRawPhotoPath(
     String rawPhotoPath,
     int width, {
@@ -2608,6 +2699,17 @@ class FaceStabilizer {
     pngBytes ??= await StabUtils.preparePNG(rawPhotoPath, lossless: lossless);
     if (pngBytes == null) return null;
     _lastPngBytes = pngBytes;
+
+    // Cat/dog don't return raw faces (no embedding support)
+    if (projectType == "cat" || projectType == "dog") {
+      final faces = await _detectFaces(
+        pngBytes,
+        filterByFaceSize: filterByFaceSize,
+        imageWidth: width,
+      );
+      _lastRawFaces = null;
+      return faces;
+    }
 
     final result = await StabUtils.getFacesFromBytesWithRaw(
       pngBytes,
@@ -2732,7 +2834,7 @@ class FaceStabilizer {
   ) {
     final double originalPointX;
     final double originalPointY;
-    if (projectType == "face") {
+    if (_isEyeBasedProject) {
       originalPointX = originalEyePositions![0]!.x.toDouble();
       originalPointY = originalEyePositions![0]!.y.toDouble();
     } else if (projectType == "pregnancy") {
