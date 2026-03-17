@@ -2016,7 +2016,8 @@ class FaceStabilizer {
       pngBytes: pngBytes,
     );
     if (faces == null || faces.isEmpty) {
-      LogService.instance.log("No $projectType faces found. Attempting to flip...");
+      LogService.instance
+          .log("No $projectType faces found. Attempting to flip...");
       await flipAndTryAgain(rawPhotoPath, userRanOutOfSpaceCallback);
       return (null, null);
     }

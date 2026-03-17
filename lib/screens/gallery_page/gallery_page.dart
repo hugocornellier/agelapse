@@ -1187,11 +1187,15 @@ class GalleryPageState extends State<GalleryPage>
 
     _pendingFilesProcessed = true; // Mark as processed BEFORE async work
 
-    // Clear immediately to prevent re-processing on rebuild
+    // Capture files before clearing
     final filesToProcess = List<String>.from(widget.pendingDropFiles!);
-    widget.clearPendingDropFiles?.call();
 
-    _processGlobalDropFiles(filesToProcess);
+    // Defer all parent setState calls to after the build phase
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      widget.clearPendingDropFiles?.call();
+      _processGlobalDropFiles(filesToProcess);
+    });
   }
 
   /// Process files from global drag-and-drop.

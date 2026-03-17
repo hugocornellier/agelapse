@@ -13,7 +13,7 @@ dependencies:
   archive: ^4.0.7
   async_zip: ^0.1.0
   camera: ^0.12.0
-  camera_desktop: ^1.0.4
+  camera_desktop: ^1.0.6
   chewie: ^1.13.0
   desktop_drop:
     git:
@@ -22,7 +22,7 @@ dependencies:
   downloadsfolder: ^1.2.0
   exif_reader: ^4.1.0
   cat_detection: ^0.0.1
-  dog_detection: ^0.0.3
+  dog_detection: ^0.0.4
   face_detection_tflite: ^5.0.5
   ffmpeg_kit_flutter_new:
     git:
@@ -38,8 +38,8 @@ dependencies:
   flutter_launcher_icons: ^0.14.4
   flutter_local_notifications: ^20.0.0
   flutter_native_splash: ^2.4.7
-  flutter_svg: ^2.2.3
-  flutter_timezone: ^5.0.1
+  flutter_svg: ^2.2.4
+  flutter_timezone: ^5.0.2
   font_awesome_flutter: ^10.12.0
   google_mlkit_pose_detection: ^0.14.1
   hand_detection: ^2.0.0
@@ -67,11 +67,11 @@ dependencies:
   timezone: ^0.10.1
   url_launcher: ^6.3.2
   vibration: ^3.1.5
-  video_player: ^2.11.0
+  video_player: ^2.11.1
   video_player_media_kit: ^2.0.0
   video_player_win: ^3.2.2
-  wakelock_plus: ^1.4.0
-  wechat_assets_picker: ^10.1.0
+  wakelock_plus: ^1.5.1
+  wechat_assets_picker: ^10.1.1
   window_manager: ^0.5.1
 
 dev_dependencies:
