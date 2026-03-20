@@ -181,6 +181,15 @@ class GalleryUtils {
     '.rw2',
   };
 
+  /// Compares two file paths by their basename as integers (timestamps).
+  /// Falls back to string comparison for non-numeric basenames.
+  static int compareByNumericBasename(String a, String b) {
+    final ai = int.tryParse(path.basenameWithoutExtension(a));
+    final bi = int.tryParse(path.basenameWithoutExtension(b));
+    if (ai != null && bi != null) return ai.compareTo(bi);
+    return path.basename(a).compareTo(path.basename(b));
+  }
+
   static var fileList = [];
   static int _batchTotal = 0;
   static int _batchDone = 0;
@@ -438,12 +447,8 @@ class GalleryUtils {
     }
 
     // Sort oldest first (ascending by filename/timestamp)
-    rawImagePaths.sort(
-      (a, b) => a.split('/').last.compareTo(b.split('/').last),
-    );
-    stabImagePaths.sort(
-      (a, b) => a.split('/').last.compareTo(b.split('/').last),
-    );
+    rawImagePaths.sort(GalleryUtils.compareByNumericBasename);
+    stabImagePaths.sort(GalleryUtils.compareByNumericBasename);
 
     await _prefetchThumbnailStatuses(stabImagePaths, projectId);
 

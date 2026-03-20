@@ -8,7 +8,7 @@ import '../services/database_helper.dart';
 import '../styles/styles.dart';
 import '../widgets/main_navigation.dart';
 import '../widgets/project_select_sheet.dart';
-import 'welcome_page.dart';
+import 'create_project_page.dart';
 
 class ProjectsPage extends StatefulWidget {
   const ProjectsPage({super.key});
@@ -110,7 +110,7 @@ class ProjectsPageState extends State<ProjectsPage> {
         const Spacer(),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32.0),
-          child: _buildActionButton("Get Started"),
+          child: _buildActionButton("Create First Project"),
         ),
         const SizedBox(height: 32),
       ],
@@ -121,7 +121,7 @@ class ProjectsPageState extends State<ProjectsPage> {
     return FractionallySizedBox(
       widthFactor: 1.0,
       child: ElevatedButton(
-        onPressed: () => openWelcomePagePartTwo(),
+        onPressed: () => _openCreateProjectPage(),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.accentDark,
           minimumSize: const Size(double.infinity, 50),
@@ -142,10 +142,13 @@ class ProjectsPageState extends State<ProjectsPage> {
     );
   }
 
-  void openWelcomePagePartTwo() {
+  void _openCreateProjectPage() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const WelcomePagePartTwo()),
+      MaterialPageRoute(
+        builder: (context) =>
+            const CreateProjectPage(showCloseButton: false, isFullPage: true),
+      ),
     );
   }
 
@@ -210,7 +213,7 @@ class ProjectsPageState extends State<ProjectsPage> {
         const Spacer(),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32.0),
-          child: _buildActionButton("Get Started"),
+          child: _buildActionButton("Create Project"),
         ),
         const SizedBox(height: 64),
       ],

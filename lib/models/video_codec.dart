@@ -44,6 +44,9 @@ enum VideoCodec {
       case VideoCodec.h264:
         return 'Maximum compatibility. Plays everywhere.';
       case VideoCodec.hevc:
+        if (Platform.isWindows) {
+          return 'Smaller files, ideal for 4K+. Playback may require HEVC Video Extensions on Windows. Slower to encode.';
+        }
         return 'Smaller files, ideal for 4K+. Requires modern devices (2016+). Slower to encode.';
       case VideoCodec.prores422:
         return 'Professional editing codec. Import into Final Cut Pro, DaVinci Resolve, or Premiere. Large files, .mov container.';
@@ -142,7 +145,7 @@ enum VideoCodec {
       case VideoCodec.prores4444:
         return 'prores_ks -profile:v 4444 -vendor apl0 -alpha_bits 16';
       case VideoCodec.vp9:
-        return 'libvpx-vp9';
+        throw StateError('VP9 is not available on Apple platforms');
     }
   }
 
@@ -154,11 +157,9 @@ enum VideoCodec {
       case VideoCodec.hevc:
         return 'libx265';
       case VideoCodec.prores422:
-        return 'prores_ks -profile:v standard';
       case VideoCodec.prores422hq:
-        return 'prores_ks -profile:v hq';
       case VideoCodec.prores4444:
-        return 'libvpx-vp9';
+        throw StateError('$name is not available on Windows/Linux');
       case VideoCodec.vp9:
         return 'libvpx-vp9';
     }
@@ -170,13 +171,10 @@ enum VideoCodec {
       case VideoCodec.h264:
         return 'libx264';
       case VideoCodec.hevc:
-        return 'libx265 -profile:v main';
       case VideoCodec.prores422:
-        return 'prores_ks -profile:v standard';
       case VideoCodec.prores422hq:
-        return 'prores_ks -profile:v hq';
       case VideoCodec.prores4444:
-        return 'libvpx-vp9';
+        throw StateError('$name is not available on Android');
       case VideoCodec.vp9:
         return 'libvpx-vp9';
     }
@@ -211,7 +209,15 @@ enum VideoCodec {
       if (Platform.isMacOS || Platform.isIOS) return [prores4444];
       return [vp9];
     }
-    return [h264, hevc, prores422, prores422hq, prores4444];
+
+    if (Platform.isMacOS) {
+      return [h264, hevc, prores422, prores422hq];
+    }
+    if (Platform.isAndroid) {
+      return [h264];
+    }
+    // iOS, Windows, Linux: H.264 + HEVC
+    return [h264, hevc];
   }
 
   /// Returns the default codec for the current state.

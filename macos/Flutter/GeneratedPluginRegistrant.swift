@@ -5,6 +5,7 @@
 import FlutterMacOS
 import Foundation
 
+import animal_detection
 import camera_desktop
 import cat_detection
 import desktop_drop
@@ -32,6 +33,7 @@ import wakelock_plus
 import window_manager
 
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
+  AnimalDetectionPlugin.register(with: registry.registrar(forPlugin: "AnimalDetectionPlugin"))
   CameraDesktopPlugin.register(with: registry.registrar(forPlugin: "CameraDesktopPlugin"))
   CatDetectionPlugin.register(with: registry.registrar(forPlugin: "CatDetectionPlugin"))
   DesktopDropPlugin.register(with: registry.registrar(forPlugin: "DesktopDropPlugin"))

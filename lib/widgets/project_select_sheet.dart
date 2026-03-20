@@ -6,6 +6,7 @@ import '../screens/create_project_page.dart';
 import '../services/database_helper.dart';
 import '../styles/styles.dart';
 import '../utils/dir_utils.dart';
+import '../utils/gallery_utils.dart';
 import '../utils/project_utils.dart';
 import '../utils/settings_utils.dart';
 import '../utils/utils.dart';
@@ -121,7 +122,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
 
     final minFile = imageFiles.reduce(
       (a, b) =>
-          path.basename(a.path).compareTo(path.basename(b.path)) <= 0 ? a : b,
+          GalleryUtils.compareByNumericBasename(a.path, b.path) <= 0 ? a : b,
     );
     return minFile.path;
   }
@@ -136,10 +137,9 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
             .toList();
         if (pngFiles.isNotEmpty) {
           final minFile = pngFiles.reduce(
-            (a, b) =>
-                path.basename(a.path).compareTo(path.basename(b.path)) <= 0
-                    ? a
-                    : b,
+            (a, b) => GalleryUtils.compareByNumericBasename(a.path, b.path) <= 0
+                ? a
+                : b,
           );
           return minFile.path;
         }

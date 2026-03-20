@@ -298,6 +298,10 @@ void main() {
     // ===== HEVC Tests =====
 
     testWidgets('HEVC 1080p landscape', (tester) async {
+      if (Platform.isAndroid) {
+        markTestSkipped('HEVC is not available on Android');
+        return;
+      }
       await runCodecTest(
         tester: tester,
         testName: 'HEVC 1080p',
@@ -311,6 +315,10 @@ void main() {
     });
 
     testWidgets('HEVC 4K landscape', (tester) async {
+      if (Platform.isAndroid) {
+        markTestSkipped('HEVC is not available on Android');
+        return;
+      }
       await runCodecTest(
         tester: tester,
         testName: 'HEVC 4K',
@@ -326,6 +334,10 @@ void main() {
     // ===== ProRes 422 Tests =====
 
     testWidgets('ProRes 422 1080p landscape', (tester) async {
+      if (!Platform.isMacOS) {
+        markTestSkipped('ProRes 422 tests only run on macOS');
+        return;
+      }
       await runCodecTest(
         tester: tester,
         testName: 'ProRes 422 1080p',
@@ -339,6 +351,10 @@ void main() {
     });
 
     testWidgets('ProRes 422 portrait', (tester) async {
+      if (!Platform.isMacOS) {
+        markTestSkipped('ProRes 422 tests only run on macOS');
+        return;
+      }
       await runCodecTest(
         tester: tester,
         testName: 'ProRes 422 portrait',
@@ -354,6 +370,10 @@ void main() {
     // ===== ProRes 422 HQ Tests =====
 
     testWidgets('ProRes 422 HQ 1080p landscape', (tester) async {
+      if (!Platform.isMacOS) {
+        markTestSkipped('ProRes 422 tests only run on macOS');
+        return;
+      }
       await runCodecTest(
         tester: tester,
         testName: 'ProRes 422 HQ 1080p',
@@ -432,6 +452,10 @@ void main() {
     testWidgets(
       'transparent PNGs with solid custom color video background (ProRes 422)',
       (tester) async {
+        if (!Platform.isMacOS) {
+          markTestSkipped('ProRes 422 tests only run on macOS');
+          return;
+        }
         await runCodecTest(
           tester: tester,
           testName: 'Transparent PNGs + custom bg ProRes 422',
@@ -452,6 +476,10 @@ void main() {
     testWidgets('codec change produces correct output extension', (
       tester,
     ) async {
+      if (!Platform.isMacOS) {
+        markTestSkipped('Extension change test requires ProRes (macOS only)');
+        return;
+      }
       app.main();
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
@@ -505,6 +533,59 @@ void main() {
       );
       expect(await File(movPath).exists(), isTrue);
       expect(p.extension(movPath), '.mov');
+    });
+
+    testWidgets('codec switch H.264 to HEVC produces valid output', (
+      tester,
+    ) async {
+      if (Platform.isAndroid) {
+        markTestSkipped('HEVC is not available on Android');
+        return;
+      }
+      app.main();
+      await tester.pumpAndSettle(const Duration(seconds: 2));
+
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      testProjectId = await DB.instance.addProject(
+        'Codec Switch Test',
+        'face',
+        timestamp,
+      );
+      final pid = testProjectId.toString();
+
+      await DB.instance.setSettingByTitle('video_resolution', '1080p', pid);
+      await DB.instance.setSettingByTitle(
+        'project_orientation',
+        'landscape',
+        pid,
+      );
+      await DB.instance.setSettingByTitle('video_codec', 'h264', pid);
+
+      await setupOpaqueFrames(testProjectId!, 'landscape', 1920, 1080, 3);
+
+      // Compile as H.264
+      var success = await VideoUtils.createTimelapseFromProjectId(
+        testProjectId!,
+        null,
+      );
+      expect(success, isTrue);
+
+      // Switch to HEVC
+      await DB.instance.setSettingByTitle('video_codec', 'hevc', pid);
+
+      success = await VideoUtils.createTimelapseFromProjectId(
+        testProjectId!,
+        null,
+      );
+      expect(success, isTrue);
+
+      final mp4Path = await DirUtils.getVideoOutputPath(
+        testProjectId!,
+        'landscape',
+        codec: VideoCodec.hevc,
+      );
+      expect(await File(mp4Path).exists(), isTrue);
+      expect(p.extension(mp4Path), '.mp4');
     });
   });
 }

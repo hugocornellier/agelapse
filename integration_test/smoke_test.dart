@@ -15,7 +15,7 @@ import 'package:agelapse/utils/test_mode.dart' as test_config;
 /// 5. All tabs can be navigated
 ///
 /// The fresh install flow is:
-/// ProjectsPage (GET STARTED) -> WelcomePagePartTwo (CREATE PROJECT) -> CreateProjectPage
+/// ProjectsPage (CREATE PROJECT / CREATE FIRST PROJECT) -> CreateProjectPage
 ///
 /// Run with: `flutter test integration_test/smoke_test.dart -d <platform>`
 void main() {
@@ -65,32 +65,27 @@ void main() {
       await tester.pump(const Duration(seconds: 2));
       await tester.pumpAndSettle(const Duration(seconds: 5));
 
-      // Step 1: On fresh install, tap "GET STARTED" if visible
-      final getStartedButton = find.text('GET STARTED');
-      if (getStartedButton.evaluate().isNotEmpty) {
-        await tester.tap(getStartedButton);
+      // Step 1: On fresh install, tap "CREATE PROJECT" or "CREATE FIRST PROJECT"
+      final createProjectButton = find.text('CREATE PROJECT');
+      final createFirstProjectButton = find.text('CREATE FIRST PROJECT');
+      final button = createProjectButton.evaluate().isNotEmpty
+          ? createProjectButton
+          : createFirstProjectButton;
+      if (button.evaluate().isNotEmpty) {
+        await tester.tap(button);
         await tester.pumpAndSettle(const Duration(seconds: 2));
 
-        // Step 2: Now on WelcomePagePartTwo, tap "CREATE PROJECT"
-        final createProjectButton = find.text('CREATE PROJECT');
-        if (createProjectButton.evaluate().isNotEmpty) {
-          await tester.tap(createProjectButton);
-          await tester.pumpAndSettle(const Duration(seconds: 2));
-
-          // Step 3: Now on CreateProjectPage - verify we can see the form
-          // Look for "Create New Project" header text
-          final createNewProjectText = find.text('Create New Project');
-          if (createNewProjectText.evaluate().isNotEmpty) {
-            expect(
-              createNewProjectText,
-              findsOneWidget,
-              reason: 'Should show Create New Project page',
-            );
-          }
-          // If we can't find it, the test still passes since we navigated
+        // Step 2: Now on CreateProjectPage - verify we can see the form
+        final createNewProjectText = find.text('Create New Project');
+        if (createNewProjectText.evaluate().isNotEmpty) {
+          expect(
+            createNewProjectText,
+            findsOneWidget,
+            reason: 'Should show Create New Project page',
+          );
         }
       }
-      // If GET STARTED isn't visible, skip this test gracefully
+      // If button isn't visible, skip this test gracefully
     });
 
     testWidgets('can create a new project through UI', (tester) async {
@@ -101,18 +96,15 @@ void main() {
       await tester.pump(const Duration(seconds: 2));
       await tester.pumpAndSettle(const Duration(seconds: 5));
 
-      // Navigate through the full fresh install flow
-      // Step 1: GET STARTED
-      final getStartedButton = find.text('GET STARTED');
-      if (getStartedButton.evaluate().isNotEmpty) {
-        await tester.tap(getStartedButton);
-        await tester.pumpAndSettle(const Duration(seconds: 2));
-      }
-
-      // Step 2: CREATE PROJECT (on welcome page part 2)
+      // Navigate through the fresh install flow
+      // Step 1: CREATE PROJECT / CREATE FIRST PROJECT
       final createProjectButton = find.text('CREATE PROJECT');
-      if (createProjectButton.evaluate().isNotEmpty) {
-        await tester.tap(createProjectButton);
+      final createFirstProjectButton = find.text('CREATE FIRST PROJECT');
+      final button = createProjectButton.evaluate().isNotEmpty
+          ? createProjectButton
+          : createFirstProjectButton;
+      if (button.evaluate().isNotEmpty) {
+        await tester.tap(button);
         await tester.pumpAndSettle(const Duration(seconds: 2));
       }
 

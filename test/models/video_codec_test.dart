@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:agelapse/models/video_codec.dart';
 
@@ -231,30 +233,48 @@ void main() {
         expect(VideoCodec.hevc.encoderDesktop, 'libx265');
       });
 
-      test('encoderDesktop returns prores_ks for prores 422 variants', () {
-        expect(VideoCodec.prores422.encoderDesktop, contains('prores_ks'));
-        expect(VideoCodec.prores422hq.encoderDesktop, contains('prores_ks'));
+      test('encoderDesktop throws for prores codecs', () {
+        expect(() => VideoCodec.prores422.encoderDesktop, throwsStateError);
+        expect(() => VideoCodec.prores422hq.encoderDesktop, throwsStateError);
+        expect(() => VideoCodec.prores4444.encoderDesktop, throwsStateError);
       });
 
-      test('encoderDesktop falls back to vp9 for prores4444', () {
-        expect(VideoCodec.prores4444.encoderDesktop, 'libvpx-vp9');
+      test('encoderAndroid throws for prores codecs', () {
+        expect(() => VideoCodec.prores422.encoderAndroid, throwsStateError);
+        expect(() => VideoCodec.prores422hq.encoderAndroid, throwsStateError);
+        expect(() => VideoCodec.prores4444.encoderAndroid, throwsStateError);
       });
 
-      test('encoderAndroid matches encoderDesktop except hevc', () {
-        for (final codec in VideoCodec.values) {
-          if (codec == VideoCodec.hevc) continue;
+      test('encoderApple throws for vp9', () {
+        expect(() => VideoCodec.vp9.encoderApple, throwsStateError);
+      });
+
+      test('encoderAndroid matches encoderDesktop for shared codecs', () {
+        for (final codec in [VideoCodec.h264, VideoCodec.vp9]) {
           expect(codec.encoderAndroid, codec.encoderDesktop);
         }
       });
 
-      test('encoderAndroid for hevc includes profile flag', () {
-        expect(VideoCodec.hevc.encoderAndroid, 'libx265 -profile:v main');
+      test('encoderAndroid throws for hevc', () {
+        expect(() => VideoCodec.hevc.encoderAndroid, throwsStateError);
       });
 
-      test('all encoders are non-empty', () {
-        for (final codec in VideoCodec.values) {
+      test('valid encoder combinations are non-empty', () {
+        // Apple encoders (all except VP9)
+        for (final codec
+            in VideoCodec.values.where((c) => c != VideoCodec.vp9)) {
           expect(codec.encoderApple, isNotEmpty);
+        }
+        // Desktop encoders (h264, hevc, vp9 only)
+        for (final codec in [
+          VideoCodec.h264,
+          VideoCodec.hevc,
+          VideoCodec.vp9
+        ]) {
           expect(codec.encoderDesktop, isNotEmpty);
+        }
+        // Android encoders (h264, vp9 only)
+        for (final codec in [VideoCodec.h264, VideoCodec.vp9]) {
           expect(codec.encoderAndroid, isNotEmpty);
         }
       });
@@ -271,15 +291,30 @@ void main() {
     });
 
     group('availableCodecs', () {
-      test('opaque returns h264, hevc, prores422, prores422hq, prores4444', () {
+      test('opaque codecs are platform-appropriate', () {
         final codecs = VideoCodec.availableCodecs(isTransparentVideo: false);
-        expect(codecs, [
-          VideoCodec.h264,
-          VideoCodec.hevc,
-          VideoCodec.prores422,
-          VideoCodec.prores422hq,
-          VideoCodec.prores4444,
-        ]);
+        expect(codecs, contains(VideoCodec.h264));
+
+        if (Platform.isMacOS) {
+          expect(codecs, contains(VideoCodec.hevc));
+          expect(codecs, contains(VideoCodec.prores422));
+          expect(codecs, contains(VideoCodec.prores422hq));
+          expect(codecs.length, 4);
+        } else if (Platform.isAndroid) {
+          expect(codecs, isNot(contains(VideoCodec.hevc)));
+          expect(codecs.length, 1);
+        } else {
+          // iOS, Windows, Linux: H.264 + HEVC
+          expect(codecs, contains(VideoCodec.hevc));
+          expect(codecs, isNot(contains(VideoCodec.prores422)));
+          expect(codecs, isNot(contains(VideoCodec.prores422hq)));
+          expect(codecs.length, 2);
+        }
+
+        // ProRes 4444 never in opaque list (alpha-only codec)
+        expect(codecs, isNot(contains(VideoCodec.prores4444)));
+        // VP9 never in opaque list (alpha-only fallback)
+        expect(codecs, isNot(contains(VideoCodec.vp9)));
       });
 
       test('transparent returns only alpha-capable codecs', () {
@@ -292,9 +327,11 @@ void main() {
 
       test('transparent codecs are platform-specific', () {
         final codecs = VideoCodec.availableCodecs(isTransparentVideo: true);
-        // On macOS test runner, should be [prores4444]
-        // On Linux CI, should be [vp9]
-        expect(codecs.first.supportsAlpha, true);
+        if (Platform.isMacOS || Platform.isIOS) {
+          expect(codecs, [VideoCodec.prores4444]);
+        } else {
+          expect(codecs, [VideoCodec.vp9]);
+        }
       });
     });
 

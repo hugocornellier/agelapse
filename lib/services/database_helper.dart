@@ -59,6 +59,9 @@ class DB {
         .toList();
 
     Map<String, String> tablesToCreate = {
+      // NOTE: 'timestamp' is TEXT but stores milliseconds-since-epoch integers.
+      // TEXT sort is WRONG across the 12→13 digit boundary (pre/post Sept 2001).
+      // Always use CAST(timestamp AS INTEGER) in ORDER BY clauses.
       photoTable: "CREATE TABLE $photoTable("
           "id INTEGER PRIMARY KEY AUTOINCREMENT, "
           "timestamp TEXT NOT NULL, "
@@ -726,7 +729,7 @@ class DB {
       where:
           '$stabilizedColumn = ? AND noFacesFound = ? AND stabFailed = ? AND projectID = ?',
       whereArgs: [0, 0, 0, projectId],
-      orderBy: 'timestamp ASC',
+      orderBy: 'CAST(timestamp AS INTEGER) ASC',
     );
   }
 
@@ -812,7 +815,7 @@ class DB {
       where:
           '$stabilizedColumn = ? AND projectID = ? AND ${stabilizedColumn}OffsetX = ?',
       whereArgs: [1, projectId, offsetX.toString()],
-      orderBy: 'timestamp ASC',
+      orderBy: 'CAST(timestamp AS INTEGER) ASC',
     );
   }
 
@@ -1140,7 +1143,7 @@ class DB {
       photoTable,
       where: 'projectID = ?',
       whereArgs: [projectID],
-      orderBy: 'timestamp DESC',
+      orderBy: 'CAST(timestamp AS INTEGER) DESC',
     );
   }
 
@@ -1181,7 +1184,7 @@ class DB {
     final db = await database;
     final List<Map<String, dynamic>> results = await db.query(
       photoTable,
-      orderBy: 'timestamp ASC',
+      orderBy: 'CAST(timestamp AS INTEGER) ASC',
       where: 'projectID = ?',
       whereArgs: [projectId],
       limit: 1,
@@ -1194,7 +1197,7 @@ class DB {
     final db = await database;
     final List<Map<String, dynamic>> results = await db.query(
       photoTable,
-      orderBy: 'timestamp DESC',
+      orderBy: 'CAST(timestamp AS INTEGER) DESC',
       where: 'projectID = ?',
       whereArgs: [projectId],
       limit: 1,

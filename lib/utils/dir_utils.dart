@@ -225,7 +225,12 @@ class DirUtils {
           .where((entity) => entity is File && Utils.isImage(entity.path))
           .cast<File>()
           .toList();
-      files.sort((a, b) => b.path.compareTo(a.path));
+      files.sort((a, b) {
+        final ai = int.tryParse(path.basenameWithoutExtension(b.path));
+        final bi = int.tryParse(path.basenameWithoutExtension(a.path));
+        if (ai != null && bi != null) return ai.compareTo(bi);
+        return b.path.compareTo(a.path);
+      });
       return files;
     } catch (e) {
       return [];

@@ -23,6 +23,7 @@ import '../utils/capture_timezone.dart';
 
 import '../services/database_helper.dart';
 import 'dir_utils.dart';
+import 'gallery_utils.dart';
 
 /// Helper class for grouping frames with the same date
 class _DateRange {
@@ -202,7 +203,7 @@ class VideoUtils {
       return timestamp != null && validTimestamps.contains(timestamp);
     }).toList();
 
-    files.sort((a, b) => path.basename(a).compareTo(path.basename(b)));
+    files.sort(GalleryUtils.compareByNumericBasename);
 
     if (files.isEmpty) return null;
 
@@ -374,7 +375,7 @@ class VideoUtils {
 
     if (files.isEmpty) return null;
 
-    files.sort((a, b) => path.basename(a).compareTo(path.basename(b)));
+    files.sort(GalleryUtils.compareByNumericBasename);
 
     // Read first frame to get dimensions
     try {
@@ -421,7 +422,7 @@ class VideoUtils {
           .toList();
 
       if (files.isEmpty) return false;
-      files.sort((a, b) => path.basename(a).compareTo(path.basename(b)));
+      files.sort(GalleryUtils.compareByNumericBasename);
 
       final firstFrame = File(files.first);
       final bytes = await firstFrame.readAsBytes();
@@ -1568,7 +1569,7 @@ class VideoUtils {
       );
     }
 
-    files.sort((a, b) => path.basename(a).compareTo(path.basename(b)));
+    files.sort(GalleryUtils.compareByNumericBasename);
     LogService.instance.log(
       "[VIDEO] Found ${files.length} PNG files for concat list",
     );

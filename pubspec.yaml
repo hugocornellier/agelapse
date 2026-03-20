@@ -12,7 +12,7 @@ dependencies:
   animated_bottom_navigation_bar: ^1.4.0
   archive: ^4.0.7
   async_zip: ^0.1.0
-  camera: ^0.12.0
+  camera: ^0.12.0+1
   camera_desktop: ^1.0.6
   chewie: ^1.13.0
   desktop_drop:
@@ -21,9 +21,9 @@ dependencies:
   device_info_plus: ^12.3.0
   downloadsfolder: ^1.2.0
   exif_reader: ^4.1.0
-  cat_detection: ^0.0.1
-  dog_detection: ^0.0.4
-  face_detection_tflite: ^5.0.5
+  cat_detection: ^0.0.4
+  dog_detection: ^0.0.5
+  face_detection_tflite: ^5.0.8
   ffmpeg_kit_flutter_new:
     git:
       url: https://github.com/hugocornellier/ffmpeg_kit_flutter.git
@@ -36,13 +36,12 @@ dependencies:
   flutter_colorpicker: ^1.1.0
   flutter_email_sender: ^8.0.0
   flutter_launcher_icons: ^0.14.4
-  flutter_local_notifications: ^20.0.0
+  flutter_local_notifications: ^21.0.0
   flutter_native_splash: ^2.4.7
   flutter_svg: ^2.2.4
   flutter_timezone: ^5.0.2
-  font_awesome_flutter: ^10.12.0
-  google_mlkit_pose_detection: ^0.14.1
-  hand_detection: ^2.0.0
+  font_awesome_flutter: ^11.0.0
+  hand_detection: ^2.0.1
   heif_converter: ^1.0.1
   intl: ^0.20.2
   media_kit: ^1.2.6
@@ -55,7 +54,7 @@ dependencies:
   path: ^1.9.1
   path_provider: ^2.1.5
   permission_handler: ^12.0.1
-  pose_detection: ^2.0.0
+  pose_detection: ^2.0.1
   provider: ^6.1.5
   saver_gallery: ^4.1.0
   sensors_plus: ^7.0.0
@@ -63,8 +62,8 @@ dependencies:
   smooth_page_indicator: ^2.0.1
   sqflite: ^2.4.2
   sqflite_common_ffi: ^2.4.0
-  sqlite3_flutter_libs: ^0.5.41
-  timezone: ^0.10.1
+  sqlite3_flutter_libs: ^0.5.42
+  timezone: ^0.11.0
   url_launcher: ^6.3.2
   vibration: ^3.1.5
   video_player: ^2.11.1
@@ -83,7 +82,6 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
   mocktail: ^1.0.4
-  fake_async: ^1.3.3
   image: ^4.7.2
 
 flutter:

@@ -61,11 +61,15 @@ jobs:
         uses: actions/cache@v4
         with:
           path: macos/Pods
-          key: pods-macos-${{ hashFiles('macos/Podfile.lock') }}
+          key: pods-macos-${{ hashFiles('macos/Podfile.lock', 'pubspec.lock') }}
           restore-keys: pods-macos-
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Install macOS pods
+        working-directory: macos
+        run: pod install --repo-update
 
       - name: Prewarm macOS build
         run: flutter build macos --debug
@@ -124,6 +128,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Select Xcode 16.2
+        run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+
       - uses: subosito/flutter-action@v2
         with:
           channel: ${{ matrix.flutter-channel }}
@@ -133,11 +140,15 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ios/Pods
-          key: pods-ios-${{ hashFiles('ios/Podfile.lock') }}
+          key: pods-ios-${{ hashFiles('ios/Podfile.lock', 'pubspec.lock') }}
           restore-keys: pods-ios-
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Install iOS pods
+        working-directory: ios
+        run: pod install --repo-update
 
       - name: Precache iOS artifacts
         run: flutter precache --ios

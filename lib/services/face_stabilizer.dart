@@ -12,7 +12,7 @@ import 'log_service.dart';
 import 'stabilization_settings.dart';
 import 'thumbnail_service.dart';
 import '../models/stabilization_mode.dart';
-import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
+import 'package:pose_detection/pose_detection.dart' as pose;
 import 'package:heif_converter/heif_converter.dart';
 import 'package:path/path.dart' as path;
 import '../utils/camera_utils.dart';
@@ -81,7 +81,7 @@ class FaceStabilizer {
   late int pregRightAnkleXGoal;
   late int muscRightHipYGoal;
   late int muscRightHipXGoal;
-  PoseDetector? _poseDetector;
+  pose.PoseDetector? _poseDetector;
   late double eyeOffsetX;
   late double eyeOffsetY;
   late StabilizationMode stabilizationMode;
@@ -114,7 +114,7 @@ class FaceStabilizer {
     if (_disposed) return;
     _disposed = true;
 
-    await _poseDetector?.close();
+    await _poseDetector?.dispose();
     _poseDetector = null;
 
     // Delete temp HEIC-to-JPG conversions created by this instance
@@ -162,12 +162,11 @@ class FaceStabilizer {
     lossless = settings.lossless;
 
     if (!_isEyeBasedProject) {
-      final PoseDetector poseDetector = PoseDetector(
-        options: PoseDetectorOptions(
-          mode: PoseDetectionMode.single,
-          model: PoseDetectionModel.accurate,
-        ),
+      final poseDetector = pose.PoseDetector(
+        mode: pose.PoseMode.boxesAndLandmarks,
+        landmarkModel: pose.PoseLandmarkModel.heavy,
       );
+      await poseDetector.initialize();
       _poseDetector = poseDetector;
     }
 
@@ -2376,23 +2375,23 @@ class FaceStabilizer {
       rawPhotoPath,
     );
 
-    List<Pose>? poses;
+    List<pose.Pose>? poses;
     try {
-      final InputImage inputImage = InputImage.fromFilePath(pngPath);
-      poses = await _poseDetector?.processImage(inputImage);
+      final Uint8List imageBytes = await File(pngPath).readAsBytes();
+      poses = await _poseDetector?.detect(imageBytes);
     } catch (e) {
       LogService.instance.log("Error caught => $e");
     }
     if (poses == null || poses.isEmpty) return (null, null);
 
-    final Pose pose = poses.first;
+    final pose.Pose p = poses.first;
     final Point rightAnklePos = Point(
-      pose.landmarks[PoseLandmarkType.rightAnkle]!.x,
-      pose.landmarks[PoseLandmarkType.rightAnkle]!.y,
+      p.getLandmark(pose.PoseLandmarkType.rightAnkle)!.x,
+      p.getLandmark(pose.PoseLandmarkType.rightAnkle)!.y,
     );
     final Point nosePos = Point(
-      pose.landmarks[PoseLandmarkType.nose]!.x,
-      pose.landmarks[PoseLandmarkType.nose]!.y,
+      p.getLandmark(pose.PoseLandmarkType.nose)!.x,
+      p.getLandmark(pose.PoseLandmarkType.nose)!.y,
     );
 
     originalRightAnkleX = rightAnklePos.x.toDouble();
@@ -2419,23 +2418,23 @@ class FaceStabilizer {
       rawPhotoPath,
     );
 
-    List<Pose>? poses;
+    List<pose.Pose>? poses;
     try {
-      final InputImage inputImage = InputImage.fromFilePath(pngPath);
-      poses = await _poseDetector?.processImage(inputImage);
+      final Uint8List imageBytes = await File(pngPath).readAsBytes();
+      poses = await _poseDetector?.detect(imageBytes);
     } catch (e) {
       LogService.instance.log("Error caught => $e");
     }
     if (poses == null || poses.isEmpty) return (null, null);
 
-    final Pose pose = poses.first;
+    final pose.Pose p = poses.first;
     final Point leftHipPos = Point(
-      pose.landmarks[PoseLandmarkType.leftHip]!.x,
-      pose.landmarks[PoseLandmarkType.leftHip]!.y,
+      p.getLandmark(pose.PoseLandmarkType.leftHip)!.x,
+      p.getLandmark(pose.PoseLandmarkType.leftHip)!.y,
     );
     final Point rightHipPos = Point(
-      pose.landmarks[PoseLandmarkType.rightHip]!.x,
-      pose.landmarks[PoseLandmarkType.rightHip]!.y,
+      p.getLandmark(pose.PoseLandmarkType.rightHip)!.x,
+      p.getLandmark(pose.PoseLandmarkType.rightHip)!.y,
     );
 
     originalRightHipX = rightHipPos.x.toDouble();

@@ -1664,19 +1664,18 @@ class SettingsSheetState extends State<SettingsSheet> {
           'Codec is locked to ${effectiveCodec.displayName} because transparent video output requires an alpha-capable codec.\n\n'
           'To unlock all codecs, set "Video background" to a solid colour below.';
     } else if (isLockedResolution) {
+      final codecDescriptions = availableCodecs
+          .where((c) => c != VideoCodec.h264)
+          .map((c) => '${c.displayName}: ${c.description}')
+          .join('\n\n');
       infoText =
           'H.264 is unavailable at 8K resolution on macOS (hardware encoder limit).\n\n'
-          '${VideoCodec.hevc.displayName}: ${VideoCodec.hevc.description}\n\n'
-          '${VideoCodec.prores422.displayName}: ${VideoCodec.prores422.description}\n\n'
-          '${VideoCodec.prores422hq.displayName}: ${VideoCodec.prores422hq.description}\n\n'
-          '${VideoCodec.prores4444.displayName}: ${VideoCodec.prores4444.description}';
+          '$codecDescriptions';
     } else {
-      infoText = 'Choose the video encoding format.\n\n'
-          '${VideoCodec.h264.displayName}: ${VideoCodec.h264.description}\n\n'
-          '${VideoCodec.hevc.displayName}: ${VideoCodec.hevc.description}\n\n'
-          '${VideoCodec.prores422.displayName}: ${VideoCodec.prores422.description}\n\n'
-          '${VideoCodec.prores422hq.displayName}: ${VideoCodec.prores422hq.description}\n\n'
-          '${VideoCodec.prores4444.displayName}: ${VideoCodec.prores4444.description}';
+      final codecDescriptions = availableCodecs
+          .map((c) => '${c.displayName}: ${c.description}')
+          .join('\n\n');
+      infoText = 'Choose the video encoding format.\n\n$codecDescriptions';
     }
 
     return SettingListTile(

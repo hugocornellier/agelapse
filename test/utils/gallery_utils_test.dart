@@ -421,4 +421,140 @@ void main() {
       expect(regex.hasMatch('-08'), isTrue);
     });
   });
+
+  group('GalleryUtils compareByNumericBasename', () {
+    // Timestamps crossing the 12→13 digit boundary (Sept 9, 2001).
+    // Pre-2001: 12 digits (e.g. 999999999999 = ~Sep 8, 2001)
+    // Post-2001: 13 digits (e.g. 1000000000000 = ~Sep 9, 2001)
+    // Lexicographic sort gets this WRONG: '1' < '9', so 13-digit sorts before 12-digit.
+    // Numeric sort gets it RIGHT.
+
+    test('sorts 13-digit timestamp after 12-digit timestamp', () {
+      const pre2001 = '/photos/999999999999.jpg'; // 12 digits — earlier
+      const post2001 = '/photos/1000000000000.jpg'; // 13 digits — later
+      expect(
+          GalleryUtils.compareByNumericBasename(pre2001, post2001), isNegative);
+      expect(
+          GalleryUtils.compareByNumericBasename(post2001, pre2001), isPositive);
+    });
+
+    test('sorts list correctly across 12/13 digit boundary', () {
+      final paths = [
+        '/photos/1002455847000.jpg', // Oct 2001 (13 digits — later)
+        '/photos/922954251000.jpg', // Apr 1999 (12 digits — earlier)
+        '/photos/999999999999.jpg', // Sep 2001 (12 digits — middle)
+      ];
+      paths.sort(GalleryUtils.compareByNumericBasename);
+      expect(paths[0], contains('922954251000'));
+      expect(paths[1], contains('999999999999'));
+      expect(paths[2], contains('1002455847000'));
+    });
+
+    test('returns zero for identical basenames', () {
+      const a = '/dir/a/1000000000000.jpg';
+      const b = '/dir/b/1000000000000.jpg';
+      expect(GalleryUtils.compareByNumericBasename(a, b), 0);
+    });
+
+    test('sorts two 13-digit timestamps correctly', () {
+      const earlier = '/photos/1000000000000.jpg';
+      const later = '/photos/1700000000000.jpg';
+      expect(GalleryUtils.compareByNumericBasename(earlier, later), isNegative);
+      expect(GalleryUtils.compareByNumericBasename(later, earlier), isPositive);
+    });
+
+    test('sorts two 12-digit timestamps correctly', () {
+      const earlier = '/photos/900000000000.jpg';
+      const later = '/photos/999999999999.jpg';
+      expect(GalleryUtils.compareByNumericBasename(earlier, later), isNegative);
+    });
+
+    test('falls back to string comparison for non-numeric basenames', () {
+      const a = '/photos/apple.jpg';
+      const b = '/photos/banana.jpg';
+      expect(GalleryUtils.compareByNumericBasename(a, b), isNegative);
+      expect(GalleryUtils.compareByNumericBasename(b, a), isPositive);
+    });
+
+    test('numeric basename sorts before non-numeric basename (fallback)', () {
+      const numeric = '/photos/1000000000000.jpg';
+      const nonNumeric = '/photos/IMG_001.jpg';
+      // Falls back to string compare of full basename
+      final result = GalleryUtils.compareByNumericBasename(numeric, nonNumeric);
+      expect(result, isNot(0)); // they differ, result is defined
+    });
+  });
+
+  group('Numeric timestamp sort (_wouldChangeOrder logic)', () {
+    // _wouldChangeOrder is private, but its core logic is: sort all timestamps
+    // numerically and check if the new timestamp lands at a different index.
+    // We test the sort step directly.
+
+    int numericCompare(String a, String b) {
+      final ai = int.tryParse(a);
+      final bi = int.tryParse(b);
+      if (ai != null && bi != null) return ai.compareTo(bi);
+      return a.compareTo(b);
+    }
+
+    test('pre-2001 photo sorts before post-2001 photo', () {
+      // Apr 1999 timestamp vs Oct 2001 timestamp
+      const pre2001 = '922954251000';
+      const post2001 = '1002455847000';
+      expect(numericCompare(pre2001, post2001), isNegative);
+    });
+
+    test('inserting pre-2001 timestamp detects correct order change', () {
+      // Simulate a list with one post-2001 photo, inserting a pre-2001 photo.
+      // The pre-2001 photo should sort to index 0, not index 1.
+      final timestamps = ['1002455847000']; // Oct 2001
+      final newTimestamp = '922954251000'; // Apr 1999 — should go before
+
+      timestamps.add(newTimestamp);
+      timestamps.sort(numericCompare);
+
+      expect(timestamps[0], '922954251000');
+      expect(timestamps[1], '1002455847000');
+    });
+
+    test('list of mixed pre/post-2001 timestamps sorts chronologically', () {
+      final timestamps = [
+        '1002455847000', // Oct 7, 2001
+        '922954251000', // Apr 2, 1999
+        '999999999999', // ~Sep 8, 2001
+        '946684800000', // Jan 1, 2000
+      ];
+      timestamps.sort(numericCompare);
+
+      expect(timestamps[0], '922954251000'); // Apr 1999
+      expect(timestamps[1], '946684800000'); // Jan 2000
+      expect(timestamps[2], '999999999999'); // Sep 2001
+      expect(timestamps[3], '1002455847000'); // Oct 2001
+    });
+
+    test('string sort produces WRONG order across 12/13 digit boundary', () {
+      // This documents the bug: lexicographic sort puts 13-digit timestamps
+      // before 12-digit ones because '1' < '9'.
+      final timestamps = [
+        '1002455847000', // Oct 2001 (13 digits)
+        '922954251000', // Apr 1999 (12 digits)
+      ];
+      timestamps.sort(); // lexicographic — WRONG
+
+      // String sort incorrectly places Oct 2001 before Apr 1999
+      expect(timestamps[0], '1002455847000'); // WRONG: later date sorts first
+      expect(timestamps[1], '922954251000');
+    });
+
+    test('int sort produces CORRECT order across 12/13 digit boundary', () {
+      final timestamps = [
+        '1002455847000', // Oct 2001 (13 digits)
+        '922954251000', // Apr 1999 (12 digits)
+      ];
+      timestamps.sort(numericCompare); // numeric — CORRECT
+
+      expect(timestamps[0], '922954251000'); // Apr 1999 sorts first (correct)
+      expect(timestamps[1], '1002455847000');
+    });
+  });
 }

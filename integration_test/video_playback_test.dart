@@ -269,6 +269,10 @@ void main() {
     // ===== HEVC: fails on Windows without HEVC Video Extensions =====
 
     testWidgets('HEVC video compiles and plays back', (tester) async {
+      if (Platform.isAndroid) {
+        markTestSkipped('HEVC is not available on Android');
+        return;
+      }
       await compileAndPlay(
         tester: tester,
         testName: 'HEVC playback',
@@ -280,6 +284,10 @@ void main() {
     // ===== ProRes 422: fails on Windows (no MF decoder) =====
 
     testWidgets('ProRes 422 video compiles and plays back', (tester) async {
+      if (!Platform.isMacOS) {
+        markTestSkipped('ProRes 422 playback test only runs on macOS');
+        return;
+      }
       await compileAndPlay(
         tester: tester,
         testName: 'ProRes 422 playback',
@@ -291,6 +299,10 @@ void main() {
     // ===== ProRes 422 HQ: fails on Windows =====
 
     testWidgets('ProRes 422 HQ video compiles and plays back', (tester) async {
+      if (!Platform.isMacOS) {
+        markTestSkipped('ProRes 422 HQ playback test only runs on macOS');
+        return;
+      }
       await compileAndPlay(
         tester: tester,
         testName: 'ProRes 422 HQ playback',

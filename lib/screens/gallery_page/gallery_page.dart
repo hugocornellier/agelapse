@@ -438,7 +438,12 @@ class GalleryPageState extends State<GalleryPage>
 
     // Add the new timestamp and sort to find new position
     timestamps.add(newTimestamp);
-    timestamps.sort();
+    timestamps.sort((a, b) {
+      final ai = int.tryParse(a);
+      final bi = int.tryParse(b);
+      if (ai != null && bi != null) return ai.compareTo(bi);
+      return a.compareTo(b);
+    });
     final newIndex = timestamps.indexOf(newTimestamp);
 
     return oldIndex != newIndex;

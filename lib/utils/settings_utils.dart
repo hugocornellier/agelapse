@@ -539,13 +539,20 @@ class SettingsUtil {
   static const String fallbackVideoCodec = 'h264';
 
   /// Load video codec setting (per-project).
+  /// If the stored codec is not available on this platform, returns h264
+  /// without overwriting the DB (preserves the setting for other platforms).
   static Future<VideoCodec> loadVideoCodec(String projectId) async {
     try {
       final value = await DB.instance.getSettingValueByTitle(
         'video_codec',
         projectId,
       );
-      return VideoCodec.fromString(value);
+      final codec = VideoCodec.fromString(value);
+      if (!VideoCodec.availableCodecs(isTransparentVideo: false)
+          .contains(codec)) {
+        return VideoCodec.h264;
+      }
+      return codec;
     } catch (e) {
       return VideoCodec.h264;
     }
