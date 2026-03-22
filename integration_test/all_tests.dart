@@ -6,6 +6,8 @@ import 'database_test.dart' as database_tests;
 import 'error_handling_test.dart' as error_handling_tests;
 import 'export_test.dart' as export_tests;
 import 'image_format_test.dart' as image_format_tests;
+import 'cat_stabilization_test.dart' as cat_stabilization_tests;
+import 'dog_stabilization_test.dart' as dog_stabilization_tests;
 import 'stabilization_test.dart' as stabilization_tests;
 import 'smoke_test.dart' as smoke_tests;
 import 'video_codec_test.dart' as video_codec_tests;
@@ -35,6 +37,12 @@ void main() {
 
   // Stabilization algorithm tests
   stabilization_tests.main();
+
+  // Cat detection & stabilization tests
+  cat_stabilization_tests.main();
+
+  // Dog detection & stabilization tests
+  dog_stabilization_tests.main();
 
   // Video compilation tests
   video_compilation_tests.main();

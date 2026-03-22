@@ -3,6 +3,230 @@ import 'package:agelapse/utils/video_utils.dart';
 
 void main() {
   group('VideoUtils', () {
+    group('buildFilterChain', () {
+      // Reusable test fixtures
+      const testPixelFormat = 'yuv420p';
+      const testColorOverlay =
+          '[0:v][1:v]overlay=shortest=1,format=yuv420p[base]';
+      final testDateStamp = DateStampOverlayInfo(
+        filterComplex: '[base][2:v]overlay=enable=between(n\\,0\\,5)[dsOut]',
+        pngInputPaths: ['/tmp/ds1.png', '/tmp/ds2.png'],
+        tempDir: '/tmp/ds',
+        outputMapLabel: 'dsOut',
+      );
+      // Watermark filter has no trailing [label] — FFmpeg auto-selects output
+      final testWatermark = VideoUtils.getWatermarkFilter(
+        0.8,
+        'lower left',
+        10,
+      );
+
+      test('returns empty result when no filters', () {
+        final result = VideoUtils.buildFilterChain(
+          colorOverlayFilter: null,
+          dateStampOverlay: null,
+          watermarkFilterPart: null,
+          watermarkInputIndex: 0,
+          needsColorOverlay: false,
+          pixelFormat: testPixelFormat,
+        );
+        expect(result.hasFilter, isFalse);
+        expect(result.hasMap, isFalse);
+        expect(result.filterComplex, isNull);
+        expect(result.mapLabel, isNull);
+      });
+
+      test('color overlay only produces filter with [base] map', () {
+        final result = VideoUtils.buildFilterChain(
+          colorOverlayFilter: testColorOverlay,
+          dateStampOverlay: null,
+          watermarkFilterPart: null,
+          watermarkInputIndex: 0,
+          needsColorOverlay: true,
+          pixelFormat: testPixelFormat,
+        );
+        expect(result.hasFilter, isTrue);
+        expect(result.hasMap, isTrue);
+        // Post-processing appends format conversion
+        expect(result.filterComplex, contains(testColorOverlay));
+        expect(result.filterComplex, contains('[base]format=yuv420p[vout]'));
+        expect(result.mapLabel, equals('[vout]'));
+      });
+
+      test('date stamps only produces filter with outputMapLabel', () {
+        final result = VideoUtils.buildFilterChain(
+          colorOverlayFilter: null,
+          dateStampOverlay: testDateStamp,
+          watermarkFilterPart: null,
+          watermarkInputIndex: 0,
+          needsColorOverlay: false,
+          pixelFormat: testPixelFormat,
+        );
+        expect(result.hasFilter, isTrue);
+        expect(result.hasMap, isTrue);
+        expect(result.filterComplex, equals(testDateStamp.filterComplex));
+        expect(result.mapLabel, equals('[dsOut]'));
+      });
+
+      test('watermark only produces filter with no map label', () {
+        final result = VideoUtils.buildFilterChain(
+          colorOverlayFilter: null,
+          dateStampOverlay: null,
+          watermarkFilterPart: testWatermark,
+          watermarkInputIndex: 1,
+          needsColorOverlay: false,
+          pixelFormat: testPixelFormat,
+        );
+        expect(result.hasFilter, isTrue);
+        expect(result.hasMap, isFalse);
+        expect(result.filterComplex, equals(testWatermark));
+        expect(result.mapLabel, isNull);
+      });
+
+      test(
+        'color overlay + date stamps combines chains with post-processing',
+        () {
+          final result = VideoUtils.buildFilterChain(
+            colorOverlayFilter: testColorOverlay,
+            dateStampOverlay: testDateStamp,
+            watermarkFilterPart: null,
+            watermarkInputIndex: 0,
+            needsColorOverlay: true,
+            pixelFormat: testPixelFormat,
+          );
+          expect(result.hasFilter, isTrue);
+          expect(result.hasMap, isTrue);
+          // Should contain both chains
+          expect(result.filterComplex, contains(testColorOverlay));
+          expect(result.filterComplex, contains(testDateStamp.filterComplex));
+          // Post-processing: format conversion appended, map is [vout]
+          expect(result.filterComplex, contains('[dsOut]format=yuv420p[vout]'));
+          expect(result.mapLabel, equals('[vout]'));
+        },
+      );
+
+      test(
+        'color overlay + watermark replaces input labels and applies post-processing',
+        () {
+          final result = VideoUtils.buildFilterChain(
+            colorOverlayFilter: testColorOverlay,
+            dateStampOverlay: null,
+            watermarkFilterPart: testWatermark,
+            watermarkInputIndex: 2,
+            needsColorOverlay: true,
+            pixelFormat: testPixelFormat,
+          );
+          expect(result.hasFilter, isTrue);
+          expect(result.filterComplex, contains(testColorOverlay));
+          // Watermark [0:v] should be replaced with [base] (in the watermark part)
+          // The color overlay itself still has [0:v], but the watermark's [0:v] is gone
+          final afterColorOverlay = result.filterComplex!.substring(
+            result.filterComplex!.indexOf(';') + 1,
+          );
+          expect(afterColorOverlay, contains('[base]'));
+          expect(afterColorOverlay, isNot(contains('[0:v]')));
+          // Watermark [1:v] should be replaced with [2:v]
+          expect(afterColorOverlay, contains('[2:v]'));
+          expect(afterColorOverlay, isNot(contains('[1:v]')));
+        },
+      );
+
+      test(
+        'date stamps + watermark replaces input labels without post-processing',
+        () {
+          final result = VideoUtils.buildFilterChain(
+            colorOverlayFilter: null,
+            dateStampOverlay: testDateStamp,
+            watermarkFilterPart: testWatermark,
+            watermarkInputIndex: 4,
+            needsColorOverlay: false,
+            pixelFormat: testPixelFormat,
+          );
+          expect(result.hasFilter, isTrue);
+          expect(result.filterComplex, contains(testDateStamp.filterComplex));
+          // Watermark [0:v] replaced with [dsOut]
+          expect(result.filterComplex, contains('[dsOut]'));
+          // Watermark [1:v] replaced with [4:v]
+          expect(result.filterComplex, contains('[4:v]'));
+          // No post-processing (needsColorOverlay is false)
+          expect(result.filterComplex, isNot(contains('[vout]')));
+        },
+      );
+
+      test('all three overlays combines everything with post-processing', () {
+        final result = VideoUtils.buildFilterChain(
+          colorOverlayFilter: testColorOverlay,
+          dateStampOverlay: testDateStamp,
+          watermarkFilterPart: testWatermark,
+          watermarkInputIndex: 5,
+          needsColorOverlay: true,
+          pixelFormat: testPixelFormat,
+        );
+        expect(result.hasFilter, isTrue);
+        expect(result.filterComplex, contains(testColorOverlay));
+        expect(result.filterComplex, contains(testDateStamp.filterComplex));
+        // Watermark [0:v] replaced with [dsOut] (date stamp output)
+        expect(result.filterComplex, contains('[dsOut]'));
+        // Watermark [1:v] replaced with [5:v]
+        expect(result.filterComplex, contains('[5:v]'));
+      });
+
+      test('post-processing only applies when needsColorOverlay is true', () {
+        // Date stamps with needsColorOverlay=false should NOT get format conversion
+        final result = VideoUtils.buildFilterChain(
+          colorOverlayFilter: null,
+          dateStampOverlay: testDateStamp,
+          watermarkFilterPart: null,
+          watermarkInputIndex: 0,
+          needsColorOverlay: false,
+          pixelFormat: testPixelFormat,
+        );
+        expect(result.filterComplex, isNot(contains('[vout]')));
+        expect(result.filterComplex, isNot(contains('format=yuv420p')));
+        expect(result.mapLabel, equals('[dsOut]'));
+      });
+
+      test('different pixel formats are used in post-processing', () {
+        final result = VideoUtils.buildFilterChain(
+          colorOverlayFilter: testColorOverlay,
+          dateStampOverlay: null,
+          watermarkFilterPart: null,
+          watermarkInputIndex: 0,
+          needsColorOverlay: true,
+          pixelFormat: 'yuv422p10le', // ProRes pixel format
+        );
+        expect(result.filterComplex, contains('format=yuv422p10le[vout]'));
+        expect(result.mapLabel, equals('[vout]'));
+      });
+
+      test('empty string colorOverlayFilter treated as no color overlay', () {
+        final result = VideoUtils.buildFilterChain(
+          colorOverlayFilter: '',
+          dateStampOverlay: null,
+          watermarkFilterPart: null,
+          watermarkInputIndex: 0,
+          needsColorOverlay: false,
+          pixelFormat: testPixelFormat,
+        );
+        expect(result.hasFilter, isFalse);
+        expect(result.hasMap, isFalse);
+      });
+
+      test('empty string watermarkFilterPart treated as no watermark', () {
+        final result = VideoUtils.buildFilterChain(
+          colorOverlayFilter: null,
+          dateStampOverlay: testDateStamp,
+          watermarkFilterPart: '',
+          watermarkInputIndex: 0,
+          needsColorOverlay: false,
+          pixelFormat: testPixelFormat,
+        );
+        // Should produce date-stamp-only result, not date+watermark
+        expect(result.filterComplex, equals(testDateStamp.filterComplex));
+        expect(result.mapLabel, equals('[dsOut]'));
+      });
+    });
+
     group('pickBitrateKbps', () {
       // Resolution setting string tests
       test('returns 100000 kbps for "8K" setting string', () {

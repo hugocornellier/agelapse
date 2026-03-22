@@ -1095,8 +1095,10 @@ class _CameraViewState extends State<CameraView>
       // Apply mirror setting via camera_desktop on macOS/Linux.
       if (Platform.isMacOS || Platform.isLinux) {
         try {
-          await CameraDesktopPlugin()
-              .setMirror(_controller!.cameraId, isMirrored);
+          await CameraDesktopPlugin().setMirror(
+            _controller!.cameraId,
+            isMirrored,
+          );
         } catch (e) {
           // Non-fatal — continue with default mirror state.
         }

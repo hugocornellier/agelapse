@@ -42,13 +42,31 @@ jobs:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   integration-macos:
-    name: Integration macOS (${{ matrix.flutter-channel }})
+    name: Integration macOS ${{ matrix.group }} (${{ matrix.flutter-channel }})
     runs-on: macos-14
-    timeout-minutes: 150
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
         flutter-channel: [stable, beta]
+        group: [fast, video]
+        include:
+          - group: fast
+            test-files: >-
+              smoke_test.dart
+              app_test.dart
+              database_test.dart
+              error_handling_test.dart
+              image_format_test.dart
+              stabilization_test.dart
+              export_test.dart
+              screenshot_test.dart
+              e2e_workflow_test.dart
+          - group: video
+            test-files: >-
+              video_compilation_test.dart
+              video_codec_test.dart
+              video_playback_test.dart
     steps:
       - uses: actions/checkout@v4
 
@@ -81,20 +99,7 @@ jobs:
       - name: Run integration tests (sequential, one file at a time)
         run: |
           set -eo pipefail
-          TEST_FILES=(
-            smoke_test.dart
-            app_test.dart
-            database_test.dart
-            error_handling_test.dart
-            image_format_test.dart
-            stabilization_test.dart
-            video_compilation_test.dart
-            video_codec_test.dart
-            video_playback_test.dart
-            export_test.dart
-            screenshot_test.dart
-            e2e_workflow_test.dart
-          )
+          read -ra TEST_FILES <<< "${{ matrix.test-files }}"
           FAILED=()
           for f in "${TEST_FILES[@]}"; do
             echo "========================================="
@@ -230,6 +235,7 @@ jobs:
           sudo udevadm trigger --name-match=kvm
 
       - name: Run integration tests on Android emulator
+        id: android-tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
@@ -238,16 +244,47 @@ jobs:
           profile: pixel_6
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
-          script: flutter test integration_test/ -d emulator-5554
+          script: flutter test integration_test/ -d emulator-5554 2>&1 | tee /tmp/test-output.log; exit 0
+
+      - name: Verify test results
+        run: |
+          if grep -q "Some tests failed" /tmp/test-output.log; then
+            echo "::error::Integration tests had failures"
+            exit 1
+          fi
+          if grep -qE "^🎉 [0-9]+ tests passed" /tmp/test-output.log; then
+            echo "All tests passed"
+          else
+            echo "::error::Could not verify test results"
+            exit 1
+          fi
 
   integration-linux:
-    name: Integration Linux (${{ matrix.flutter-channel }})
+    name: Integration Linux ${{ matrix.group }} (${{ matrix.flutter-channel }})
     runs-on: ubuntu-latest
-    timeout-minutes: 150
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
         flutter-channel: [stable, beta]
+        group: [fast, video]
+        include:
+          - group: fast
+            test-files: >-
+              smoke_test.dart
+              app_test.dart
+              database_test.dart
+              error_handling_test.dart
+              image_format_test.dart
+              stabilization_test.dart
+              export_test.dart
+              screenshot_test.dart
+              e2e_workflow_test.dart
+          - group: video
+            test-files: >-
+              video_compilation_test.dart
+              video_codec_test.dart
+              video_playback_test.dart
     steps:
       - uses: actions/checkout@v4
 
@@ -279,20 +316,7 @@ jobs:
       - name: Run integration tests (sequential, one file at a time)
         run: |
           set -eo pipefail
-          TEST_FILES=(
-            smoke_test.dart
-            app_test.dart
-            database_test.dart
-            error_handling_test.dart
-            image_format_test.dart
-            stabilization_test.dart
-            video_compilation_test.dart
-            video_codec_test.dart
-            video_playback_test.dart
-            export_test.dart
-            screenshot_test.dart
-            e2e_workflow_test.dart
-          )
+          read -ra TEST_FILES <<< "${{ matrix.test-files }}"
           FAILED=()
           for f in "${TEST_FILES[@]}"; do
             echo "========================================="
@@ -316,13 +340,33 @@ jobs:
           echo "All ${#TEST_FILES[@]} test files passed."
 
   integration-windows:
-    name: Integration Windows (${{ matrix.flutter-channel }})
+    name: Integration Windows ${{ matrix.group }} (${{ matrix.flutter-channel }})
     runs-on: windows-latest
-    timeout-minutes: 150
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
         flutter-channel: [stable, beta]
+        group: [fast, video]
+        include:
+          - group: fast
+            test-files: >-
+              smoke_test.dart
+              app_test.dart
+              database_test.dart
+              error_handling_test.dart
+              image_format_test.dart
+              stabilization_test.dart
+              export_test.dart
+              screenshot_test.dart
+              e2e_workflow_test.dart
+          # video_playback_test.dart is excluded on Windows because the CI
+          # runner has no video playback backend (Windows Media Foundation
+          # requires a desktop session with GPU).
+          - group: video
+            test-files: >-
+              video_compilation_test.dart
+              video_codec_test.dart
     steps:
       - uses: actions/checkout@v4
 
@@ -350,20 +394,7 @@ jobs:
         shell: bash
         run: |
           set -eo pipefail
-          TEST_FILES=(
-            smoke_test.dart
-            app_test.dart
-            database_test.dart
-            error_handling_test.dart
-            image_format_test.dart
-            stabilization_test.dart
-            video_compilation_test.dart
-            video_codec_test.dart
-            video_playback_test.dart
-            export_test.dart
-            screenshot_test.dart
-            e2e_workflow_test.dart
-          )
+          IFS=' ' read -ra TEST_FILES <<< "${{ matrix.test-files }}"
           FAILED=()
           for f in "${TEST_FILES[@]}"; do
             echo "========================================="

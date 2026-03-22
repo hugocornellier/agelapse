@@ -296,10 +296,19 @@ void main() {
     });
 
     // ===== HEVC Tests =====
+    // HEVC VideoToolbox requires hardware encoder access which is
+    // unavailable on GitHub Actions macOS runners. Skip on CI.
 
     testWidgets('HEVC 1080p landscape', (tester) async {
       if (Platform.isAndroid) {
         markTestSkipped('HEVC is not available on Android');
+        return;
+      }
+      if ((Platform.isMacOS || Platform.isIOS) &&
+          Platform.environment['CI'] == 'true') {
+        markTestSkipped(
+          'HEVC VideoToolbox unavailable on CI (no hardware encoder)',
+        );
         return;
       }
       await runCodecTest(
@@ -317,6 +326,13 @@ void main() {
     testWidgets('HEVC 4K landscape', (tester) async {
       if (Platform.isAndroid) {
         markTestSkipped('HEVC is not available on Android');
+        return;
+      }
+      if ((Platform.isMacOS || Platform.isIOS) &&
+          Platform.environment['CI'] == 'true') {
+        markTestSkipped(
+          'HEVC VideoToolbox unavailable on CI (no hardware encoder)',
+        );
         return;
       }
       await runCodecTest(
@@ -540,6 +556,13 @@ void main() {
     ) async {
       if (Platform.isAndroid) {
         markTestSkipped('HEVC is not available on Android');
+        return;
+      }
+      if ((Platform.isMacOS || Platform.isIOS) &&
+          Platform.environment['CI'] == 'true') {
+        markTestSkipped(
+          'HEVC VideoToolbox unavailable on CI (no hardware encoder)',
+        );
         return;
       }
       app.main();

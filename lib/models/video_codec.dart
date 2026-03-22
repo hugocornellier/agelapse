@@ -135,7 +135,7 @@ enum VideoCodec {
   String get encoderApple {
     switch (this) {
       case VideoCodec.h264:
-        return 'h264_videotoolbox';
+        return 'h264_videotoolbox -allow_sw 1';
       case VideoCodec.hevc:
         return 'hevc_videotoolbox -allow_sw 1';
       case VideoCodec.prores422:

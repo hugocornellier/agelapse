@@ -156,6 +156,54 @@ void main() {
       });
     });
 
+    group('pixelFormatForSource', () {
+      test('returns default pixelFormat when highBitDepth is false', () {
+        for (final codec in VideoCodec.values) {
+          expect(
+            codec.pixelFormatForSource(highBitDepth: false),
+            codec.pixelFormat,
+          );
+        }
+      });
+
+      test('h264 stays 8-bit even with high bit depth source', () {
+        expect(
+          VideoCodec.h264.pixelFormatForSource(highBitDepth: true),
+          'yuv420p',
+        );
+      });
+
+      test('hevc upgrades to 10-bit with high bit depth source', () {
+        expect(
+          VideoCodec.hevc.pixelFormatForSource(highBitDepth: true),
+          'yuv420p10le',
+        );
+      });
+
+      test('prores keeps native 10-bit regardless of source', () {
+        expect(
+          VideoCodec.prores422.pixelFormatForSource(highBitDepth: true),
+          'yuv422p10le',
+        );
+        expect(
+          VideoCodec.prores422hq.pixelFormatForSource(highBitDepth: true),
+          'yuv422p10le',
+        );
+        expect(
+          VideoCodec.prores4444.pixelFormatForSource(highBitDepth: true),
+          'yuva444p10le',
+        );
+      });
+
+      test('vp9 stays 8-bit alpha with high bit depth when supportsAlpha', () {
+        // VP9 alpha can't do 10-bit, stays at yuva420p
+        expect(
+          VideoCodec.vp9.pixelFormatForSource(highBitDepth: true),
+          'yuva420p',
+        );
+      });
+    });
+
     group('supportsAlpha', () {
       test('only prores4444 and vp9 support alpha', () {
         expect(VideoCodec.h264.supportsAlpha, false);
@@ -202,8 +250,9 @@ void main() {
       // These tests verify the encoder strings contain expected substrings
       // without depending on the specific platform the test runs on.
 
-      test('encoderApple returns videotoolbox for h264', () {
-        expect(VideoCodec.h264.encoderApple, 'h264_videotoolbox');
+      test('encoderApple returns videotoolbox for h264 with sw fallback', () {
+        expect(VideoCodec.h264.encoderApple, contains('h264_videotoolbox'));
+        expect(VideoCodec.h264.encoderApple, contains('-allow_sw 1'));
       });
 
       test('encoderApple returns videotoolbox for hevc with sw fallback', () {
@@ -261,15 +310,16 @@ void main() {
 
       test('valid encoder combinations are non-empty', () {
         // Apple encoders (all except VP9)
-        for (final codec
-            in VideoCodec.values.where((c) => c != VideoCodec.vp9)) {
+        for (final codec in VideoCodec.values.where(
+          (c) => c != VideoCodec.vp9,
+        )) {
           expect(codec.encoderApple, isNotEmpty);
         }
         // Desktop encoders (h264, hevc, vp9 only)
         for (final codec in [
           VideoCodec.h264,
           VideoCodec.hevc,
-          VideoCodec.vp9
+          VideoCodec.vp9,
         ]) {
           expect(codec.encoderDesktop, isNotEmpty);
         }

@@ -572,8 +572,12 @@ class StabUtils {
           : cat.CatLandmarkType.rightEyeBottom,
     );
 
-    final points =
-        [outer, top, inner, bottom].whereType<cat.CatLandmark>().toList();
+    final points = [
+      outer,
+      top,
+      inner,
+      bottom,
+    ].whereType<cat.CatLandmark>().toList();
     if (points.isEmpty) return null;
 
     final x = points.map((p) => p.x).reduce((a, b) => a + b) / points.length;
@@ -605,8 +609,12 @@ class StabUtils {
           : dog.DogLandmarkType.rightEyeBottom,
     );
 
-    final points =
-        [outer, top, inner, bottom].whereType<dog.DogLandmark>().toList();
+    final points = [
+      outer,
+      top,
+      inner,
+      bottom,
+    ].whereType<dog.DogLandmark>().toList();
     if (points.isEmpty) return null;
 
     final x = points.map((p) => p.x).reduce((a, b) => a + b) / points.length;
@@ -627,41 +635,50 @@ class StabUtils {
         final cats = await _catDetectorIsolate!.detectCats(bytes);
         if (cats.isEmpty) return <FaceLike>[];
 
-        final double w =
-            imageWidth?.toDouble() ?? cats.first.imageWidth.toDouble();
-        final List<FaceLike> faces = [];
-
-        for (final c in cats) {
-          final bb = c.boundingBox;
-          final bbox = Rect.fromLTRB(bb.left, bb.top, bb.right, bb.bottom);
-
-          if (filterByFaceSize && (bbox.width / w) <= 0.1) continue;
-
-          Point<double>? leftEye;
-          Point<double>? rightEye;
-
-          if (c.face != null && c.face!.hasLandmarks) {
-            leftEye = _computeCatEyeCenter(c.face!, left: true);
-            rightEye = _computeCatEyeCenter(c.face!, left: false);
-          }
-
-          faces.add(FaceLike(
-              boundingBox: bbox, leftEye: leftEye, rightEye: rightEye));
-        }
-
-        // If filtering removed all cats, retry without filter
-        if (faces.isEmpty && cats.isNotEmpty) {
-          return getCatFacesFromBytes(bytes,
-              filterByFaceSize: false, imageWidth: imageWidth);
-        }
-
-        return faces;
+        return _convertCatFaces(cats,
+            filterByFaceSize: filterByFaceSize, imageWidth: imageWidth);
       } catch (e) {
         LogService.instance.log("Error detecting cat faces: $e");
         _catDetectorIsolate = null;
         return <FaceLike>[];
       }
     });
+  }
+
+  static List<FaceLike> _convertCatFaces(
+    List<cat.Cat> cats, {
+    bool filterByFaceSize = true,
+    int? imageWidth,
+  }) {
+    final double w = imageWidth?.toDouble() ?? cats.first.imageWidth.toDouble();
+    final List<FaceLike> faces = [];
+
+    for (final c in cats) {
+      final bb = c.boundingBox;
+      final bbox = Rect.fromLTRB(bb.left, bb.top, bb.right, bb.bottom);
+
+      if (filterByFaceSize && (bbox.width / w) <= 0.1) continue;
+
+      Point<double>? leftEye;
+      Point<double>? rightEye;
+
+      if (c.face != null && c.face!.hasLandmarks) {
+        leftEye = _computeCatEyeCenter(c.face!, left: true);
+        rightEye = _computeCatEyeCenter(c.face!, left: false);
+      }
+
+      faces.add(
+        FaceLike(boundingBox: bbox, leftEye: leftEye, rightEye: rightEye),
+      );
+    }
+
+    // If filtering removed all cats, retry without filter
+    if (faces.isEmpty && cats.isNotEmpty) {
+      return _convertCatFaces(cats,
+          filterByFaceSize: false, imageWidth: imageWidth);
+    }
+
+    return faces;
   }
 
   /// Detects dogs in image bytes and returns FaceLike wrappers with eye centers.
@@ -677,41 +694,50 @@ class StabUtils {
         final dogs = await _dogDetectorIsolate!.detectDogs(bytes);
         if (dogs.isEmpty) return <FaceLike>[];
 
-        final double w =
-            imageWidth?.toDouble() ?? dogs.first.imageWidth.toDouble();
-        final List<FaceLike> faces = [];
-
-        for (final d in dogs) {
-          final bb = d.boundingBox;
-          final bbox = Rect.fromLTRB(bb.left, bb.top, bb.right, bb.bottom);
-
-          if (filterByFaceSize && (bbox.width / w) <= 0.1) continue;
-
-          Point<double>? leftEye;
-          Point<double>? rightEye;
-
-          if (d.face != null && d.face!.hasLandmarks) {
-            leftEye = _computeDogEyeCenter(d.face!, left: true);
-            rightEye = _computeDogEyeCenter(d.face!, left: false);
-          }
-
-          faces.add(FaceLike(
-              boundingBox: bbox, leftEye: leftEye, rightEye: rightEye));
-        }
-
-        // If filtering removed all dogs, retry without filter
-        if (faces.isEmpty && dogs.isNotEmpty) {
-          return getDogFacesFromBytes(bytes,
-              filterByFaceSize: false, imageWidth: imageWidth);
-        }
-
-        return faces;
+        return _convertDogFaces(dogs,
+            filterByFaceSize: filterByFaceSize, imageWidth: imageWidth);
       } catch (e) {
         LogService.instance.log("Error detecting dog faces: $e");
         _dogDetectorIsolate = null;
         return <FaceLike>[];
       }
     });
+  }
+
+  static List<FaceLike> _convertDogFaces(
+    List<dog.Dog> dogs, {
+    bool filterByFaceSize = true,
+    int? imageWidth,
+  }) {
+    final double w = imageWidth?.toDouble() ?? dogs.first.imageWidth.toDouble();
+    final List<FaceLike> faces = [];
+
+    for (final d in dogs) {
+      final bb = d.boundingBox;
+      final bbox = Rect.fromLTRB(bb.left, bb.top, bb.right, bb.bottom);
+
+      if (filterByFaceSize && (bbox.width / w) <= 0.1) continue;
+
+      Point<double>? leftEye;
+      Point<double>? rightEye;
+
+      if (d.face != null && d.face!.hasLandmarks) {
+        leftEye = _computeDogEyeCenter(d.face!, left: true);
+        rightEye = _computeDogEyeCenter(d.face!, left: false);
+      }
+
+      faces.add(
+        FaceLike(boundingBox: bbox, leftEye: leftEye, rightEye: rightEye),
+      );
+    }
+
+    // If filtering removed all dogs, retry without filter
+    if (faces.isEmpty && dogs.isNotEmpty) {
+      return _convertDogFaces(dogs,
+          filterByFaceSize: false, imageWidth: imageWidth);
+    }
+
+    return faces;
   }
 
   /// Dispatches face detection to the correct detector based on project type.

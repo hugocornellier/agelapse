@@ -433,9 +433,13 @@ void main() {
       const pre2001 = '/photos/999999999999.jpg'; // 12 digits — earlier
       const post2001 = '/photos/1000000000000.jpg'; // 13 digits — later
       expect(
-          GalleryUtils.compareByNumericBasename(pre2001, post2001), isNegative);
+        GalleryUtils.compareByNumericBasename(pre2001, post2001),
+        isNegative,
+      );
       expect(
-          GalleryUtils.compareByNumericBasename(post2001, pre2001), isPositive);
+        GalleryUtils.compareByNumericBasename(post2001, pre2001),
+        isPositive,
+      );
     });
 
     test('sorts list correctly across 12/13 digit boundary', () {

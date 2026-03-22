@@ -206,10 +206,7 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
             });
           },
           child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              maxWidth: 100,
-              maxHeight: 100,
-            ),
+            constraints: const BoxConstraints(maxWidth: 100, maxHeight: 100),
             child: AspectRatio(
               aspectRatio: 1,
               child: Image.asset(
@@ -345,8 +342,7 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
     }
 
     if (!mounted) return;
-    Navigator.pushReplacement(
-      context,
+    Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
         builder: (context) => MainNavigation(
           projectId: projectId,
@@ -354,6 +350,7 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
           showFlashingCircle: false,
         ),
       ),
+      (route) => false,
     );
   }
 

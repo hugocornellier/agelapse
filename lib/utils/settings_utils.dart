@@ -548,8 +548,9 @@ class SettingsUtil {
         projectId,
       );
       final codec = VideoCodec.fromString(value);
-      if (!VideoCodec.availableCodecs(isTransparentVideo: false)
-          .contains(codec)) {
+      if (!VideoCodec.availableCodecs(
+        isTransparentVideo: false,
+      ).contains(codec)) {
         return VideoCodec.h264;
       }
       return codec;

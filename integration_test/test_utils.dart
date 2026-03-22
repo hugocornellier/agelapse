@@ -125,6 +125,30 @@ String getSampleFacePath(int day) {
   return getFixturePath(p.join('sample_faces', 'day$day.jpg'));
 }
 
+/// Returns the path to a sample dog image by day number (1, 2, or 3).
+/// On mobile platforms, this extracts the asset to a temp file first.
+Future<String> getSampleDogPathAsync(int day) async {
+  return getFixturePathAsync(p.join('sample_dogs', 'day$day.jpg'));
+}
+
+/// Synchronous version for backwards compatibility.
+/// On mobile, call getSampleDogPathAsync first.
+String getSampleDogPath(int day) {
+  return getFixturePath(p.join('sample_dogs', 'day$day.jpg'));
+}
+
+/// Returns the path to a sample cat image by day number (1-4).
+/// On mobile platforms, this extracts the asset to a temp file first.
+Future<String> getSampleCatPathAsync(int day) async {
+  return getFixturePathAsync(p.join('sample_cats', 'day$day.jpg'));
+}
+
+/// Synchronous version for backwards compatibility.
+/// On mobile, call getSampleCatPathAsync first.
+String getSampleCatPath(int day) {
+  return getFixturePath(p.join('sample_cats', 'day$day.jpg'));
+}
+
 /// Returns the absolute path to a sample file for testing.
 /// [filename] is the name of the file in samples_for_testing/
 String getSampleForTestingPath(String filename) {
@@ -145,6 +169,13 @@ Future<void> preloadFixtures() async {
     'sample_faces/day1.jpg',
     'sample_faces/day2.jpg',
     'sample_faces/day3.jpg',
+    'sample_dogs/day1.jpg',
+    'sample_dogs/day2.jpg',
+    'sample_dogs/day3.jpg',
+    'sample_cats/day1.jpg',
+    'sample_cats/day2.jpg',
+    'sample_cats/day3.jpg',
+    'sample_cats/day4.jpg',
     'sample-avif.avif',
     'sample-heic.HEIC',
   ];

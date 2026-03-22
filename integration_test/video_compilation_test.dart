@@ -214,6 +214,12 @@ void main() {
         markTestSkipped('8K HEVC test only runs on macOS');
         return;
       }
+      if (Platform.environment['CI'] == 'true') {
+        markTestSkipped(
+          'HEVC VideoToolbox unavailable on CI (no hardware encoder)',
+        );
+        return;
+      }
 
       app.main();
       await tester.pumpAndSettle(const Duration(seconds: 2));

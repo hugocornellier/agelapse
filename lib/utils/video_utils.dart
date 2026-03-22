@@ -48,6 +48,21 @@ class DateStampOverlayInfo {
   });
 }
 
+/// Result of building an FFmpeg filter chain for video compilation.
+class FilterChainResult {
+  /// Raw filter_complex expression (without `-filter_complex` flag or quotes).
+  final String? filterComplex;
+
+  /// Stream label for `-map`, e.g. `[base]` or `[vout]`.
+  /// Null when FFmpeg should auto-select the last output.
+  final String? mapLabel;
+
+  const FilterChainResult({this.filterComplex, this.mapLabel});
+
+  bool get hasFilter => filterComplex != null && filterComplex!.isNotEmpty;
+  bool get hasMap => mapLabel != null && mapLabel!.isNotEmpty;
+}
+
 class VideoUtils {
   static int currentFrame = 1;
 
@@ -91,6 +106,89 @@ class VideoUtils {
   @visibleForTesting
   static void resetProgressThrottle() {
     _lastProgressUpdate = DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
+  /// Builds the FFmpeg filter_complex string from overlay components.
+  ///
+  /// Pure function — all async work (loading settings, generating PNGs) must
+  /// be done by the caller before invoking this.
+  @visibleForTesting
+  static FilterChainResult buildFilterChain({
+    required String? colorOverlayFilter,
+    required DateStampOverlayInfo? dateStampOverlay,
+    required String? watermarkFilterPart,
+    required int watermarkInputIndex,
+    required bool needsColorOverlay,
+    required String pixelFormat,
+  }) {
+    final bool hasColor =
+        colorOverlayFilter != null && colorOverlayFilter.isNotEmpty;
+    final bool hasDateStamp = dateStampOverlay != null;
+    final bool hasWatermark =
+        watermarkFilterPart != null && watermarkFilterPart.isNotEmpty;
+
+    String? filterComplex;
+    String? mapLabel;
+
+    if (hasColor && hasDateStamp && hasWatermark) {
+      // Color overlay + date stamps + watermark
+      final wmFilter = watermarkFilterPart
+          .replaceFirst('[0:v]', '[${dateStampOverlay.outputMapLabel}]')
+          .replaceFirst('[1:v]', '[$watermarkInputIndex:v]');
+      filterComplex =
+          '$colorOverlayFilter;${dateStampOverlay.filterComplex};$wmFilter';
+      final wmOutMatch = RegExp(r'\[(\w+)\]$').firstMatch(wmFilter);
+      mapLabel = wmOutMatch != null ? '[${wmOutMatch.group(1)}]' : null;
+    } else if (hasColor && hasDateStamp) {
+      // Color overlay + date stamps
+      filterComplex = '$colorOverlayFilter;${dateStampOverlay.filterComplex}';
+      mapLabel = '[${dateStampOverlay.outputMapLabel}]';
+    } else if (hasColor && hasWatermark) {
+      // Color overlay + watermark
+      final wmFilter = watermarkFilterPart
+          .replaceFirst('[0:v]', '[base]')
+          .replaceFirst('[1:v]', '[$watermarkInputIndex:v]');
+      filterComplex = '$colorOverlayFilter;$wmFilter';
+      final wmOutMatch = RegExp(r'\[(\w+)\]$').firstMatch(wmFilter);
+      mapLabel = wmOutMatch != null ? '[${wmOutMatch.group(1)}]' : null;
+    } else if (hasColor) {
+      // Color overlay only
+      filterComplex = colorOverlayFilter;
+      mapLabel = '[base]';
+    } else if (hasDateStamp && hasWatermark) {
+      // Date stamps + watermark
+      final wmFilter = watermarkFilterPart
+          .replaceFirst('[0:v]', '[${dateStampOverlay.outputMapLabel}]')
+          .replaceFirst('[1:v]', '[$watermarkInputIndex:v]');
+      filterComplex = '${dateStampOverlay.filterComplex};$wmFilter';
+      final wmOutMatch = RegExp(r'\[(\w+)\]$').firstMatch(wmFilter);
+      mapLabel = wmOutMatch != null ? '[${wmOutMatch.group(1)}]' : null;
+    } else if (hasDateStamp) {
+      // Date stamps only
+      filterComplex = dateStampOverlay.filterComplex;
+      mapLabel = '[${dateStampOverlay.outputMapLabel}]';
+    } else if (hasWatermark) {
+      // Watermark only
+      filterComplex = watermarkFilterPart;
+      mapLabel = null;
+    } else {
+      // No filters
+      return const FilterChainResult();
+    }
+
+    // Post-processing: when compositing onto solid background, append
+    // format conversion so hardware encoders receive the correct pixel format.
+    if (needsColorOverlay && mapLabel != null && mapLabel.isNotEmpty) {
+      final labelMatch = RegExp(r'\[(\w+)\]').firstMatch(mapLabel);
+      if (labelMatch != null) {
+        final currentLabel = labelMatch.group(1)!;
+        filterComplex =
+            '$filterComplex;[$currentLabel]format=$pixelFormat[vout]';
+        mapLabel = '[vout]';
+      }
+    }
+
+    return FilterChainResult(filterComplex: filterComplex, mapLabel: mapLabel);
   }
 
   /// Calculates the ETA for video compilation based on frames processed.
@@ -686,6 +784,9 @@ class VideoUtils {
           // Generate date stamp overlay with PNG assets (if enabled)
           // When color overlay is present, video input shifts to index 1
           // and date stamp PNGs shift by +1.
+          // Input index offset: 0 normally, 1 when color overlay is present
+          final int idxOffset = needsColorOverlay ? 1 : 0;
+
           final dateStampOverlay = await _generateDateStampOverlay(
             projectId: projectId,
             framesDir: framesDir,
@@ -694,8 +795,34 @@ class VideoUtils {
             videoHeight: videoHeight,
             fps: framerate,
             videoInputLabel: needsColorOverlay ? 'base' : '0',
-            inputIndexOffset: needsColorOverlay ? 1 : 0,
+            inputIndexOffset: idxOffset,
           );
+
+          // Load watermark settings
+          final bool wmEnabled = await SettingsUtil.loadWatermarkSetting(
+            projectId.toString(),
+          );
+          final String wmPos = (await DB.instance.getSettingValueByTitle(
+            'watermark_position',
+          ))
+              .toLowerCase();
+          final String wmFilePath = await DirUtils.getWatermarkFilePath(
+            projectId,
+          );
+
+          String? wmFilterPart;
+          String? wmPath;
+          int wmInputIndex =
+              1 + idxOffset + (dateStampOverlay?.pngInputPaths.length ?? 0);
+          if (wmEnabled &&
+              Utils.isImage(wmFilePath) &&
+              await File(wmFilePath).exists()) {
+            final String wmOpacityVal =
+                await DB.instance.getSettingValueByTitle('watermark_opacity');
+            final double wmOpacity = double.tryParse(wmOpacityVal) ?? 0.8;
+            wmPath = wmFilePath;
+            wmFilterPart = getWatermarkFilter(wmOpacity, wmPos, 10);
+          }
 
           final bool ok = await _encodeWindows(
             framesDir: framesDir,
@@ -712,6 +839,9 @@ class VideoUtils {
             videoBg: videoBg,
             videoWidth: videoWidth,
             videoHeight: videoHeight,
+            watermarkFilterPart: wmFilterPart,
+            watermarkFilePath: wmPath,
+            watermarkInputIndex: wmInputIndex,
           );
 
           // Clean up date stamp temp PNGs
@@ -836,72 +966,22 @@ class VideoUtils {
             "[0:v][1:v]overlay=shortest=1,format=${effectiveCodec.pixelFormat}[base]";
       }
 
-      // Build combined filter string
-      String filterArgs = "";
-      String mapArg = "";
-      if (colorOverlayFilter.isNotEmpty &&
-          dateStampOverlay != null &&
-          watermarkFilterPart != null) {
-        // Color overlay + date stamps + watermark
-        final wmFilter = watermarkFilterPart
-            .replaceFirst('[0:v]', '[${dateStampOverlay.outputMapLabel}]')
-            .replaceFirst('[1:v]', '[$watermarkInputIndex:v]');
-        filterArgs =
-            "-filter_complex \"$colorOverlayFilter;${dateStampOverlay.filterComplex};$wmFilter\"";
-        final wmOutMatch = RegExp(r'\[(\w+)\]$').firstMatch(wmFilter);
-        mapArg = wmOutMatch != null ? "-map \"[${wmOutMatch.group(1)}]\"" : "";
-      } else if (colorOverlayFilter.isNotEmpty && dateStampOverlay != null) {
-        // Color overlay + date stamps (no watermark)
-        filterArgs =
-            "-filter_complex \"$colorOverlayFilter;${dateStampOverlay.filterComplex}\"";
-        mapArg = "-map \"[${dateStampOverlay.outputMapLabel}]\"";
-      } else if (colorOverlayFilter.isNotEmpty && watermarkFilterPart != null) {
-        // Color overlay + watermark (no date stamps)
-        final wmFilter = watermarkFilterPart
-            .replaceFirst('[0:v]', '[base]')
-            .replaceFirst('[1:v]', '[$watermarkInputIndex:v]');
-        filterArgs = "-filter_complex \"$colorOverlayFilter;$wmFilter\"";
-        final wmOutMatch = RegExp(r'\[(\w+)\]$').firstMatch(wmFilter);
-        mapArg = wmOutMatch != null ? "-map \"[${wmOutMatch.group(1)}]\"" : "";
-      } else if (colorOverlayFilter.isNotEmpty) {
-        // Color overlay only (no date stamps, no watermark)
-        filterArgs = "-filter_complex \"$colorOverlayFilter\"";
-        mapArg = "-map \"[base]\"";
-      } else if (dateStampOverlay != null && watermarkFilterPart != null) {
-        // Date stamps + watermark (no color overlay)
-        final wmFilter = watermarkFilterPart
-            .replaceFirst('[0:v]', '[${dateStampOverlay.outputMapLabel}]')
-            .replaceFirst('[1:v]', '[$watermarkInputIndex:v]');
-        filterArgs =
-            "-filter_complex \"${dateStampOverlay.filterComplex};$wmFilter\"";
-        final wmOutMatch = RegExp(r'\[(\w+)\]$').firstMatch(wmFilter);
-        mapArg = wmOutMatch != null ? "-map \"[${wmOutMatch.group(1)}]\"" : "";
-      } else if (dateStampOverlay != null) {
-        // Only date stamp overlay
-        filterArgs = "-filter_complex \"${dateStampOverlay.filterComplex}\"";
-        mapArg = "-map \"[${dateStampOverlay.outputMapLabel}]\"";
-      } else if (watermarkFilterPart != null) {
-        // Only watermark
-        filterArgs = "-filter_complex \"$watermarkFilterPart\"";
-      }
+      // Build combined filter chain
+      final filterResult = buildFilterChain(
+        colorOverlayFilter:
+            colorOverlayFilter.isNotEmpty ? colorOverlayFilter : null,
+        dateStampOverlay: dateStampOverlay,
+        watermarkFilterPart: watermarkFilterPart,
+        watermarkInputIndex: watermarkInputIndex,
+        needsColorOverlay: needsColorOverlay,
+        pixelFormat: effectiveCodec.pixelFormat,
+      );
 
-      // When compositing transparent PNGs onto solid background, ensure the final
-      // output is in the correct pixel format. Each date stamp/watermark overlay
-      // with rgba PNGs produces rgba output, so we must convert at the very end.
-      if (needsColorOverlay && filterArgs.isNotEmpty && mapArg.isNotEmpty) {
-        final outputMatch = RegExp(r'-map "\[(\w+)\]"').firstMatch(mapArg);
-        if (outputMatch != null) {
-          final currentLabel = outputMatch.group(1)!;
-          final pixFmt = effectiveCodec.pixelFormat;
-          // Append format conversion before the closing quote of filter_complex
-          filterArgs = filterArgs.replaceFirst(
-            '"',
-            ';[$currentLabel]format=$pixFmt[vout]"',
-            filterArgs.lastIndexOf('"'),
-          );
-          mapArg = '-map "[vout]"';
-        }
-      }
+      String filterArgs = filterResult.hasFilter
+          ? '-filter_complex "${filterResult.filterComplex}"'
+          : "";
+      String mapArg =
+          filterResult.hasMap ? '-map "${filterResult.mapLabel}"' : "";
 
       final String listPath = await _buildConcatListFromDir(
         framesDir,
@@ -1652,6 +1732,9 @@ class VideoUtils {
     VideoBackground? videoBg,
     int? videoWidth,
     int? videoHeight,
+    String? watermarkFilterPart,
+    String? watermarkFilePath,
+    int watermarkInputIndex = 0,
   }) async {
     LogService.instance.log("[VIDEO] _encodeWindows started");
     LogService.instance.log("[VIDEO] framesDir: $framesDir");
@@ -1720,31 +1803,32 @@ class VideoUtils {
       }
     }
 
-    // Build filter_complex
-    if (needsColorOverlay && dateStampOverlay != null) {
-      // Color overlay + date stamps
-      final colorFilter =
-          '[0:v][1:v]overlay=shortest=1,format=${effectiveCodec.pixelFormat}[base]';
-      args.addAll([
-        '-filter_complex',
-        '$colorFilter;${dateStampOverlay.filterComplex}',
-      ]);
-      args.addAll(['-map', '[${dateStampOverlay.outputMapLabel}]']);
-    } else if (needsColorOverlay) {
-      // Color overlay only
-      args.addAll([
-        '-filter_complex',
-        '[0:v][1:v]overlay=shortest=1,format=${effectiveCodec.pixelFormat}[base]',
-      ]);
-      args.addAll(['-map', '[base]']);
-    } else if (dateStampOverlay != null) {
-      // Date stamps only
-      args.addAll(['-filter_complex', dateStampOverlay.filterComplex]);
-      args.addAll(['-map', '[${dateStampOverlay.outputMapLabel}]']);
+    // Add watermark input
+    if (watermarkFilePath != null) {
+      args.addAll(['-i', watermarkFilePath]);
+    }
+
+    // Build filter_complex via shared filter chain builder
+    final String? colorOverlayFilterStr = needsColorOverlay
+        ? '[0:v][1:v]overlay=shortest=1,format=${effectiveCodec.pixelFormat}[base]'
+        : null;
+    final filterResult = buildFilterChain(
+      colorOverlayFilter: colorOverlayFilterStr,
+      dateStampOverlay: dateStampOverlay,
+      watermarkFilterPart: watermarkFilterPart,
+      watermarkInputIndex: watermarkInputIndex,
+      needsColorOverlay: needsColorOverlay,
+      pixelFormat: effectiveCodec.pixelFormat,
+    );
+    if (filterResult.hasFilter) {
+      args.addAll(['-filter_complex', filterResult.filterComplex!]);
+    }
+    if (filterResult.hasMap) {
+      args.addAll(['-map', filterResult.mapLabel!]);
     }
 
     // For alpha output without filter_complex, add format filter
-    if (videoHasAlpha && dateStampOverlay == null && !needsColorOverlay) {
+    if (videoHasAlpha && !filterResult.hasFilter && !needsColorOverlay) {
       args.addAll(['-vf', 'format=${effectiveCodec.pixelFormat}']);
     }
 

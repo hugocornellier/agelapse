@@ -273,6 +273,13 @@ void main() {
         markTestSkipped('HEVC is not available on Android');
         return;
       }
+      if ((Platform.isMacOS || Platform.isIOS) &&
+          Platform.environment['CI'] == 'true') {
+        markTestSkipped(
+          'HEVC VideoToolbox unavailable on CI (no hardware encoder)',
+        );
+        return;
+      }
       await compileAndPlay(
         tester: tester,
         testName: 'HEVC playback',

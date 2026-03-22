@@ -5,10 +5,10 @@ packages:
     dependency: transitive
     description:
       name: animal_detection
-      sha256: "3a9a2db919b97e2f3f681c7247342dc5d44a7d062f2431d1b6f633749942b41a"
+      sha256: cbb865c2ed9a43e213d81ac2b00e11aa3514d4136df27ef68698c3c4e2511dc8
       url: "https://pub.dev"
     source: hosted
-    version: "0.0.4"
+    version: "0.0.5"
   animated_bottom_navigation_bar:
     dependency: "direct main"
     description:
@@ -125,10 +125,10 @@ packages:
     dependency: "direct main"
     description:
       name: cat_detection
-      sha256: "2ddf5af66d7ec7d007b2e5c6517921b2a2d613f3fbe618fb06795e4ab07a5d3d"
+      sha256: ddb8fd832d898ac23e75498edada113aea48bf80282c22e731b76295b27aed27
       url: "https://pub.dev"
     source: hosted
-    version: "0.0.5"
+    version: "0.0.7"
   change_case:
     dependency: transitive
     description:
@@ -294,10 +294,10 @@ packages:
     dependency: "direct main"
     description:
       name: dog_detection
-      sha256: "1c0aa88e656fda22a3e94594f909de5c57e2ba6d199d83370d64118de1cd3f39"
+      sha256: "5e2ec8b9d10b1096c4218b43b70698bf70612b6ad51d18d649dab739a74dff0c"
       url: "https://pub.dev"
     source: hosted
-    version: "0.0.5"
+    version: "0.0.7"
   downloadsfolder:
     dependency: "direct main"
     description:
@@ -350,10 +350,10 @@ packages:
     dependency: "direct main"
     description:
       name: face_detection_tflite
-      sha256: ad21da3cf9f5beaa398798fdb23f63e45ebfc8858010d0f38e971628b5008bca
+      sha256: ebc220ad4643099a2de2e7b4996beead8d25ffca755e50742e1901236497a697
       url: "https://pub.dev"
     source: hosted
-    version: "5.0.8"
+    version: "5.0.9"
   fake_async:
     dependency: transitive
     description:
@@ -593,10 +593,10 @@ packages:
     dependency: transitive
     description:
       name: flutter_litert
-      sha256: abea9d1893bb3fbdc1b415c3fe03e7f209e8e8d99b6f2d4ab67ce90a4164b98e
+      sha256: bc445f19088c8c0fc76be03eabab5f40f93ec380daedb836c7e9e30812ae228f
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.5"
+    version: "2.0.6"
   flutter_local_notifications:
     dependency: "direct main"
     description:
@@ -701,10 +701,10 @@ packages:
     dependency: "direct main"
     description:
       name: hand_detection
-      sha256: e47a7d0ccda9c7fc4d8fc63dacce43ca5293f3d9597c833312260d52dcd1eff8
+      sha256: "9b42d2b2af47a383063605329ef69949b2d99bcf53ea9e1d23031fcfd90ad302"
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.1"
+    version: "2.0.2"
   heif_converter:
     dependency: "direct main"
     description:
@@ -1130,10 +1130,10 @@ packages:
     dependency: "direct main"
     description:
       name: pose_detection
-      sha256: "57ef392e5bf76f3dc7daf7946dd61b57a33062aca2efd4f21b4549b43f67aba3"
+      sha256: "5df2778a52a589e5217b41cc9b7e6fed9ef4323b2b0d414db156312edf5259e2"
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.1"
+    version: "2.0.2"
   posix:
     dependency: transitive
     description:
