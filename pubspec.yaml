@@ -99,6 +99,7 @@ flutter:
     - assets/test_fixtures/sample_faces/
     - assets/test_fixtures/sample_dogs/
     - assets/test_fixtures/sample_cats/
+    - assets/test_fixtures/sample_poses/
     - assets/test_fixtures/sample-avif.avif
     - assets/test_fixtures/sample-heic.HEIC
     # Font licenses (for legal compliance)

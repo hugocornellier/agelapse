@@ -149,6 +149,19 @@ String getSampleCatPath(int day) {
   return getFixturePath(p.join('sample_cats', 'day$day.jpg'));
 }
 
+/// Returns the path to a sample pose image by filename.
+/// Valid filenames: pregnancy1.jpg, pregnancy2.jpg, muscle1.jpg, muscle2.jpg, two_people.jpeg
+/// On mobile platforms, this extracts the asset to a temp file first.
+Future<String> getSamplePosePathAsync(String filename) async {
+  return getFixturePathAsync(p.join('sample_poses', filename));
+}
+
+/// Synchronous version for backwards compatibility.
+/// On mobile, call getSamplePosePathAsync first.
+String getSamplePosePath(String filename) {
+  return getFixturePath(p.join('sample_poses', filename));
+}
+
 /// Returns the absolute path to a sample file for testing.
 /// [filename] is the name of the file in samples_for_testing/
 String getSampleForTestingPath(String filename) {
@@ -176,6 +189,11 @@ Future<void> preloadFixtures() async {
     'sample_cats/day2.jpg',
     'sample_cats/day3.jpg',
     'sample_cats/day4.jpg',
+    'sample_poses/pregnancy1.jpg',
+    'sample_poses/pregnancy2.jpg',
+    'sample_poses/muscle1.jpg',
+    'sample_poses/muscle2.jpg',
+    'sample_poses/two_people.jpeg',
     'sample-avif.avif',
     'sample-heic.HEIC',
   ];

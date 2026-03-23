@@ -533,5 +533,146 @@ void main() {
         expect(capturedFrame, 36);
       });
     });
+
+    group('blurSigma', () {
+      test('1080p produces sigma 20', () {
+        expect(VideoUtils.blurSigma(1080), 20);
+      });
+
+      test('2160p (4K) produces sigma 40', () {
+        expect(VideoUtils.blurSigma(2160), 40);
+      });
+
+      test('720p produces sigma 13', () {
+        expect(VideoUtils.blurSigma(720), 13);
+      });
+
+      test('clamps minimum to 10', () {
+        expect(VideoUtils.blurSigma(100), 10);
+      });
+
+      test('clamps maximum to 50', () {
+        expect(VideoUtils.blurSigma(5000), 50);
+      });
+    });
+
+    group('buildBlurFilter', () {
+      test('contains expected filter components at 1080p', () {
+        final filter = VideoUtils.buildBlurFilter(1080);
+        expect(filter, contains('split=2'));
+        expect(filter, contains('[orig]'));
+        expect(filter, contains('[bg]'));
+        expect(filter, contains('format=rgb24'));
+        expect(filter, contains('scale=iw*3:ih*3'));
+        expect(filter, contains('crop=iw/3:ih/3'));
+        expect(filter, contains('gblur=sigma=20'));
+        expect(filter, contains('[blurred]'));
+        expect(filter, contains('overlay=0:0'));
+        expect(filter, contains('[base]'));
+      });
+
+      test('uses resolution-aware sigma at 4K', () {
+        final filter = VideoUtils.buildBlurFilter(2160);
+        expect(filter, contains('gblur=sigma=40'));
+      });
+    });
+
+    group('buildFilterChain with blur filter', () {
+      // Reusable test fixtures (mirrors the fixtures at the top of buildFilterChain group)
+      const testPixelFormat = 'yuv420p';
+      // Blur filter produced by buildBlurFilter(1080)
+      final testBlurFilter = VideoUtils.buildBlurFilter(1080);
+      final testDateStamp = DateStampOverlayInfo(
+        filterComplex: '[base][2:v]overlay=enable=between(n\\,0\\,5)[dsOut]',
+        pngInputPaths: ['/tmp/ds1.png', '/tmp/ds2.png'],
+        tempDir: '/tmp/ds',
+        outputMapLabel: 'dsOut',
+      );
+      final testWatermark = VideoUtils.getWatermarkFilter(
+        0.8,
+        'lower left',
+        10,
+      );
+
+      test(
+          'blur filter only produces filter with [base] map and format post-processing',
+          () {
+        final result = VideoUtils.buildFilterChain(
+          colorOverlayFilter: testBlurFilter,
+          dateStampOverlay: null,
+          watermarkFilterPart: null,
+          watermarkInputIndex: 0,
+          needsColorOverlay: true,
+          pixelFormat: testPixelFormat,
+        );
+        expect(result.hasFilter, isTrue);
+        expect(result.hasMap, isTrue);
+        expect(result.filterComplex, contains(testBlurFilter));
+        expect(result.filterComplex, contains('[base]format=yuv420p[vout]'));
+        expect(result.mapLabel, equals('[vout]'));
+      });
+
+      test('blur filter + date stamps combines chains with post-processing',
+          () {
+        final result = VideoUtils.buildFilterChain(
+          colorOverlayFilter: testBlurFilter,
+          dateStampOverlay: testDateStamp,
+          watermarkFilterPart: null,
+          watermarkInputIndex: 0,
+          needsColorOverlay: true,
+          pixelFormat: testPixelFormat,
+        );
+        expect(result.hasFilter, isTrue);
+        expect(result.hasMap, isTrue);
+        expect(result.filterComplex, contains(testBlurFilter));
+        expect(result.filterComplex, contains(testDateStamp.filterComplex));
+        expect(result.filterComplex, contains('[dsOut]format=yuv420p[vout]'));
+        expect(result.mapLabel, equals('[vout]'));
+      });
+
+      test(
+          'blur filter + watermark replaces input labels and applies post-processing',
+          () {
+        final result = VideoUtils.buildFilterChain(
+          colorOverlayFilter: testBlurFilter,
+          dateStampOverlay: null,
+          watermarkFilterPart: testWatermark,
+          watermarkInputIndex: 2,
+          needsColorOverlay: true,
+          pixelFormat: testPixelFormat,
+        );
+        expect(result.hasFilter, isTrue);
+        expect(result.filterComplex, contains(testBlurFilter));
+        // Watermark [0:v] should be replaced with [base] in the watermark part
+        final afterBlurFilter = result.filterComplex!.substring(
+          result.filterComplex!.indexOf(';') + 1,
+        );
+        expect(afterBlurFilter, contains('[base]'));
+        expect(afterBlurFilter, isNot(contains('[0:v]')));
+        // Watermark [1:v] should be replaced with [2:v]
+        expect(afterBlurFilter, contains('[2:v]'));
+        expect(afterBlurFilter, isNot(contains('[1:v]')));
+      });
+
+      test('blur filter + date stamps + watermark combines everything', () {
+        final result = VideoUtils.buildFilterChain(
+          colorOverlayFilter: testBlurFilter,
+          dateStampOverlay: testDateStamp,
+          watermarkFilterPart: testWatermark,
+          watermarkInputIndex: 5,
+          needsColorOverlay: true,
+          pixelFormat: testPixelFormat,
+        );
+        expect(result.hasFilter, isTrue);
+        expect(result.filterComplex, contains(testBlurFilter));
+        expect(result.filterComplex, contains(testDateStamp.filterComplex));
+        // Watermark [0:v] replaced with [dsOut] (date stamp output)
+        expect(result.filterComplex, contains('[dsOut]'));
+        // Watermark [1:v] replaced with [5:v]
+        expect(result.filterComplex, contains('[5:v]'));
+        // Watermark filter has no trailing output label, so no post-processing map
+        expect(result.mapLabel, isNull);
+      });
+    });
   });
 }

@@ -77,6 +77,24 @@ class VideoUtils {
   static int outputFps(int inputFps) =>
       inputFps > _minOutputFps ? inputFps : _minOutputFps;
 
+  /// Calculates Gaussian blur sigma based on video height.
+  /// Produces ~20 at 1080p, ~40 at 4K, clamped to [10, 50].
+  @visibleForTesting
+  static int blurSigma(int videoHeight) =>
+      (videoHeight / 54).round().clamp(10, 50);
+
+  /// Builds the FFmpeg filter for blurred background.
+  /// Splits input, scales up the background copy 3x (pushing transparent black
+  /// edges off-screen), crops back to original size, blurs, then overlays
+  /// the original frame (with alpha) on top.
+  @visibleForTesting
+  static String buildBlurFilter(int videoHeight) {
+    final sigma = blurSigma(videoHeight);
+    return '[0:v]split=2[orig][bg];'
+        '[bg]format=rgb24,scale=iw*3:ih*3,crop=iw/3:ih/3,gblur=sigma=$sigma[blurred];'
+        '[blurred][orig]overlay=0:0[base]';
+  }
+
   // Throttling for progress updates (max 10 updates/sec = 100ms interval)
   static DateTime _lastProgressUpdate = DateTime.fromMillisecondsSinceEpoch(0);
   static const Duration _progressThrottleInterval = Duration(milliseconds: 100);
@@ -659,10 +677,15 @@ class VideoUtils {
           : userCodec;
 
       // Whether transparent PNGs need compositing onto a solid color
-      final bool needsColorOverlay = isTransparent && !videoHasAlpha;
+      final bool needsColorOverlay =
+          isTransparent && !videoHasAlpha && !videoBg.isBlurred;
+      final bool needsBlurOverlay =
+          isTransparent && !videoHasAlpha && videoBg.isBlurred;
+      final bool needsBackgroundComposite =
+          needsColorOverlay || needsBlurOverlay;
 
       LogService.instance.log(
-        "[VIDEO] Codec: ${effectiveCodec.name}, videoHasAlpha: $videoHasAlpha, needsColorOverlay: $needsColorOverlay",
+        "[VIDEO] Codec: ${effectiveCodec.name}, videoHasAlpha: $videoHasAlpha, needsColorOverlay: $needsColorOverlay, needsBlurOverlay: $needsBlurOverlay",
       );
 
       final String videoOutputPath = await DirUtils.getVideoOutputPath(
@@ -794,7 +817,7 @@ class VideoUtils {
             videoWidth: videoWidth,
             videoHeight: videoHeight,
             fps: framerate,
-            videoInputLabel: needsColorOverlay ? 'base' : '0',
+            videoInputLabel: needsBackgroundComposite ? 'base' : '0',
             inputIndexOffset: idxOffset,
           );
 
@@ -836,6 +859,7 @@ class VideoUtils {
             effectiveCodec: effectiveCodec,
             videoHasAlpha: videoHasAlpha,
             needsColorOverlay: needsColorOverlay,
+            needsBlurOverlay: needsBlurOverlay,
             videoBg: videoBg,
             videoWidth: videoWidth,
             videoHeight: videoHeight,
@@ -921,7 +945,7 @@ class VideoUtils {
         videoWidth: videoWidth,
         videoHeight: videoHeight,
         fps: framerate,
-        videoInputLabel: needsColorOverlay ? 'base' : '0',
+        videoInputLabel: needsBackgroundComposite ? 'base' : '0',
         inputIndexOffset: needsColorOverlay ? 1 : 0,
       );
 
@@ -959,21 +983,23 @@ class VideoUtils {
       // Build color overlay filter prefix (transparent PNGs on solid video bg)
       // format= converts rgba overlay output to the codec's pixel format so
       // hardware encoders (e.g. h264_videotoolbox) don't receive unsupported frames.
-      String colorOverlayFilter = "";
+      String backgroundFilter = "";
       if (needsColorOverlay && videoBg.solidColorHex != null) {
         // [0:v] = color source, [1:v] = concat frames → overlay → [base]
-        colorOverlayFilter =
+        backgroundFilter =
             "[0:v][1:v]overlay=shortest=1,format=${effectiveCodec.pixelFormat}[base]";
+      } else if (needsBlurOverlay) {
+        backgroundFilter = buildBlurFilter(videoHeight);
       }
 
       // Build combined filter chain
       final filterResult = buildFilterChain(
         colorOverlayFilter:
-            colorOverlayFilter.isNotEmpty ? colorOverlayFilter : null,
+            backgroundFilter.isNotEmpty ? backgroundFilter : null,
         dateStampOverlay: dateStampOverlay,
         watermarkFilterPart: watermarkFilterPart,
         watermarkInputIndex: watermarkInputIndex,
-        needsColorOverlay: needsColorOverlay,
+        needsColorOverlay: needsBackgroundComposite,
         pixelFormat: effectiveCodec.pixelFormat,
       );
 
@@ -1069,7 +1095,7 @@ class VideoUtils {
           "\"$videoOutputPath\"";
 
       LogService.instance.log(
-        '[VIDEO] DEBUG needsColorOverlay=$needsColorOverlay videoHasAlpha=$videoHasAlpha',
+        '[VIDEO] DEBUG needsColorOverlay=$needsColorOverlay needsBlurOverlay=$needsBlurOverlay videoHasAlpha=$videoHasAlpha',
       );
       LogService.instance.log('[VIDEO] DEBUG filterArgs=$filterArgs');
       LogService.instance.log('[VIDEO] DEBUG mapArg=$mapArg');
@@ -1729,6 +1755,7 @@ class VideoUtils {
     required VideoCodec effectiveCodec,
     required bool videoHasAlpha,
     bool needsColorOverlay = false,
+    bool needsBlurOverlay = false,
     VideoBackground? videoBg,
     int? videoWidth,
     int? videoHeight,
@@ -1809,15 +1836,21 @@ class VideoUtils {
     }
 
     // Build filter_complex via shared filter chain builder
-    final String? colorOverlayFilterStr = needsColorOverlay
-        ? '[0:v][1:v]overlay=shortest=1,format=${effectiveCodec.pixelFormat}[base]'
-        : null;
+    final String? backgroundFilterStr;
+    if (needsColorOverlay) {
+      backgroundFilterStr =
+          '[0:v][1:v]overlay=shortest=1,format=${effectiveCodec.pixelFormat}[base]';
+    } else if (needsBlurOverlay && videoHeight != null) {
+      backgroundFilterStr = buildBlurFilter(videoHeight);
+    } else {
+      backgroundFilterStr = null;
+    }
     final filterResult = buildFilterChain(
-      colorOverlayFilter: colorOverlayFilterStr,
+      colorOverlayFilter: backgroundFilterStr,
       dateStampOverlay: dateStampOverlay,
       watermarkFilterPart: watermarkFilterPart,
       watermarkInputIndex: watermarkInputIndex,
-      needsColorOverlay: needsColorOverlay,
+      needsColorOverlay: needsColorOverlay || needsBlurOverlay,
       pixelFormat: effectiveCodec.pixelFormat,
     );
     if (filterResult.hasFilter) {

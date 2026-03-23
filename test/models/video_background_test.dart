@@ -63,6 +63,18 @@ void main() {
         expect(bg.keepTransparent, false);
         expect(bg.solidColorHex, '#000000');
       });
+
+      test('parses BLURRED value', () {
+        final bg = VideoBackground.fromString('BLURRED');
+        expect(bg.keepTransparent, false);
+        expect(bg.solidColorHex, isNull);
+        expect(bg.isBlurred, true);
+      });
+
+      test('parses blurred value case-insensitively', () {
+        final bg = VideoBackground.fromString('blurred');
+        expect(bg.isBlurred, true);
+      });
     });
 
     group('toDbValue', () {
@@ -76,6 +88,11 @@ void main() {
         expect(bg.toDbValue(), '#FF0000');
       });
 
+      test('blurred returns BLURRED', () {
+        const bg = VideoBackground.blurred();
+        expect(bg.toDbValue(), 'BLURRED');
+      });
+
       test('round-trips through fromString', () {
         const transparent = VideoBackground.transparent();
         final roundTripped = VideoBackground.fromString(
@@ -87,6 +104,12 @@ void main() {
         final roundTripped2 = VideoBackground.fromString(solid.toDbValue());
         expect(roundTripped2.keepTransparent, false);
         expect(roundTripped2.solidColorHex, '#ABCDEF');
+
+        const blurred = VideoBackground.blurred();
+        final roundTripped3 = VideoBackground.fromString(blurred.toDbValue());
+        expect(roundTripped3.isBlurred, true);
+        expect(roundTripped3.keepTransparent, false);
+        expect(roundTripped3.solidColorHex, isNull);
       });
     });
 
@@ -105,6 +128,55 @@ void main() {
     group('keepTransparentValue constant', () {
       test('is TRANSPARENT', () {
         expect(VideoBackground.keepTransparentValue, 'TRANSPARENT');
+      });
+    });
+
+    group('blurred constructor', () {
+      test('creates blurred background', () {
+        const bg = VideoBackground.blurred();
+        expect(bg.keepTransparent, false);
+        expect(bg.solidColorHex, isNull);
+        expect(bg.isBlurred, true);
+        expect(bg.isSolidColor, false);
+      });
+
+      test('does not require alpha codec', () {
+        const bg = VideoBackground.blurred();
+        expect(bg.requiresAlphaCodec, false);
+      });
+    });
+
+    group('isBlurred getter', () {
+      test('returns true for blurred', () {
+        const bg = VideoBackground.blurred();
+        expect(bg.isBlurred, true);
+      });
+
+      test('returns false for transparent', () {
+        const bg = VideoBackground.transparent();
+        expect(bg.isBlurred, false);
+      });
+
+      test('returns false for solidColor', () {
+        final bg = VideoBackground.solidColor('#000000');
+        expect(bg.isBlurred, false);
+      });
+    });
+
+    group('isSolidColor getter', () {
+      test('returns true for solidColor', () {
+        final bg = VideoBackground.solidColor('#000000');
+        expect(bg.isSolidColor, true);
+      });
+
+      test('returns false for transparent', () {
+        const bg = VideoBackground.transparent();
+        expect(bg.isSolidColor, false);
+      });
+
+      test('returns false for blurred', () {
+        const bg = VideoBackground.blurred();
+        expect(bg.isSolidColor, false);
       });
     });
   });
