@@ -21,9 +21,10 @@ import '../services/thumbnail_service.dart';
 import 'camera_utils.dart';
 import 'dir_utils.dart';
 import 'export_naming_utils.dart';
+import 'image_format_utils.dart';
 import 'image_utils.dart';
 import 'settings_utils.dart';
-import 'utils.dart';
+import 'test_mode.dart' as test_config;
 
 /// Result from directory scanning operation
 class DirectoryScanResult {
@@ -158,28 +159,8 @@ class GalleryUtils {
   static const int minImageSizeBytes = 10000;
 
   /// Allowed image extensions for directory scanning
-  static const Set<String> allowedImageExtensions = {
-    '.jpg',
-    '.jpeg',
-    '.png',
-    '.webp',
-    '.bmp',
-    '.tif',
-    '.tiff',
-    '.heic',
-    '.heif',
-    '.avif',
-    '.gif',
-    // RAW formats
-    '.dng',
-    '.cr2',
-    '.cr3',
-    '.nef',
-    '.arw',
-    '.raf',
-    '.orf',
-    '.rw2',
-  };
+  static const Set<String> allowedImageExtensions =
+      ImageFormats.acceptedExtensions;
 
   /// Compares two file paths by their basename as integers (timestamps).
   /// Falls back to string comparison for non-numeric basenames.
@@ -560,6 +541,8 @@ class GalleryUtils {
     required Function onImagesLoaded,
     int? timestamp,
     VoidCallback? increaseSuccessfulImportCount,
+    String? originalFilePath,
+    String? sourceFilename,
   }) async {
     final imageProcessor = ImageProcessor(
       imagePath: imagePath,
@@ -568,6 +551,8 @@ class GalleryUtils {
       onImagesLoaded: onImagesLoaded,
       timestamp: timestamp,
       increaseSuccessfulImportCount: increaseSuccessfulImportCount,
+      originalFilePath: originalFilePath,
+      sourceFilename: sourceFilename,
     );
 
     await imageProcessor.process();
@@ -594,21 +579,7 @@ class GalleryUtils {
           return false;
         }
 
-        const allowed = {
-          '.jpg',
-          '.jpeg',
-          '.png',
-          '.webp',
-          '.bmp',
-          '.tif',
-          '.tiff',
-          '.heic',
-          '.heif',
-          '.avif',
-          '.gif',
-        };
-        final ext = path.extension(lowerName);
-        if (!allowed.contains(ext)) return false;
+        if (!ImageFormats.isAcceptedPath(lowerName)) return false;
 
         return f.size >= 10000;
       }).toList()
@@ -640,6 +611,7 @@ class GalleryUtils {
             activeProcessingDateNotifier,
             onImagesLoaded: onImagesLoaded,
             increaseSuccessfulImportCount: increaseSuccessfulImportCount,
+            sourceFilename: path.basename(f.name),
           );
         } catch (_) {
         } finally {
@@ -685,7 +657,7 @@ class GalleryUtils {
           increasePhotosImported,
         );
       }
-    } else if (Utils.isImage(file.path)) {
+    } else if (ImageFormats.isAcceptedPath(file.path)) {
       increasePhotosImported(1);
 
       await processPickedImage(
@@ -694,6 +666,7 @@ class GalleryUtils {
         activeProcessingDateNotifier,
         onImagesLoaded: onImagesLoaded,
         increaseSuccessfulImportCount: increaseSuccessfulImportCount,
+        sourceFilename: path.basename(file.path),
       );
 
       _tickBatchProgress(setProgressInMain);
@@ -715,7 +688,7 @@ class GalleryUtils {
       List<ZipEntry> entries = (await reader.entries()).where((entry) {
         final String basenameOnly = path.basename(entry.name);
         return entry.size >= 10000 &&
-            Utils.isImage(basenameOnly) &&
+            ImageFormats.isAcceptedPath(basenameOnly) &&
             !entry.isDir;
       }).toList()
         ..sort((a, b) => a.name.compareTo(b.name));
@@ -744,6 +717,7 @@ class GalleryUtils {
             activeProcessingDateNotifier,
             onImagesLoaded: onImagesLoaded,
             increaseSuccessfulImportCount: increaseSuccessfulImportCount,
+            sourceFilename: path.basename(entry.name),
           );
         } catch (_) {
           //
@@ -818,6 +792,10 @@ class GalleryUtils {
     ValueNotifier<String> activeProcessingDateNotifier, {
     int? timestamp,
     VoidCallback? increaseSuccessfulImportCount,
+    String? originalFilePath,
+    String? sourceFilename,
+    String? sourceRelativePath,
+    String? sourceLocationType,
   }) async {
     Uint8List? bytes;
     try {
@@ -901,6 +879,10 @@ class GalleryUtils {
         imageTimestampFromExif,
         bytes: bytes,
         increaseSuccessfulImportCount: increaseSuccessfulImportCount,
+        originalFilePath: originalFilePath,
+        sourceFilename: sourceFilename,
+        sourceRelativePath: sourceRelativePath,
+        sourceLocationType: sourceLocationType ?? 'direct_import',
       );
 
       if (result) {
@@ -971,6 +953,7 @@ class GalleryUtils {
 
     final zipPath = params.zipFilePath;
     final zipFile = File(zipPath);
+    final sourceFilenames = params.sourceFilenames;
 
     try {
       zipFile.parent.createSync(recursive: true);
@@ -1051,11 +1034,27 @@ class GalleryUtils {
           final stamp = DateFormat('yyyy-MM-dd_HH-mm-ss').format(dt);
 
           var newName = '$stamp$ext';
+          if (folder == 'Raw') {
+            final sourceFilename = sourceFilenames[base];
+            if (sourceFilename != null) {
+              final sanitizedSourceFilename = path.basename(
+                sourceFilename.trim(),
+              );
+              if (sanitizedSourceFilename.isNotEmpty) {
+                newName = path.extension(sanitizedSourceFilename).isEmpty
+                    ? '$sanitizedSourceFilename$ext'
+                    : sanitizedSourceFilename;
+              }
+            }
+          }
+
           final dup = counts[newName];
           if (dup != null) {
             final n = dup + 1;
             counts[newName] = n;
-            newName = '$stamp ($n)$ext';
+            final baseName = path.basenameWithoutExtension(newName);
+            final nameExt = path.extension(newName);
+            newName = '$baseName ($n)$nameExt';
           } else {
             counts[newName] = 1;
           }
@@ -1256,8 +1255,17 @@ class GalleryUtils {
 
       String zipTargetPath;
       String zipWorkPath;
+      final rawTimestamps = (filesToExport['Raw'] ?? const <String>[])
+          .map(path.basenameWithoutExtension)
+          .where((timestamp) => timestamp.isNotEmpty)
+          .toSet()
+          .toList();
+      final sourceFilenames = await DB.instance.getSourceFilenamesBatch(
+        rawTimestamps,
+        projectId,
+      );
 
-      if (Platform.isAndroid || Platform.isIOS) {
+      if (Platform.isAndroid || Platform.isIOS || test_config.isTestMode) {
         zipWorkPath = await DirUtils.getZipFileExportPath(
           projectId,
           projectName,
@@ -1381,6 +1389,7 @@ class GalleryUtils {
           projectName,
           filesToExport,
           zipWorkPath,
+          sourceFilenames,
         ),
         onError: errorPort.sendPort,
         onExit: exitPort.sendPort,
@@ -1391,7 +1400,9 @@ class GalleryUtils {
 
       final result = await completer.future;
 
-      if (!(Platform.isAndroid || Platform.isIOS) && result == 'success') {
+      if (!(Platform.isAndroid || Platform.isIOS) &&
+          !test_config.isTestMode &&
+          result == 'success') {
         final suggested = ExportNamingUtils.generateZipFilename(
           projectName: projectName,
         );
@@ -1465,6 +1476,7 @@ class ZipIsolateParams {
   final String projectName;
   final Map<String, List<String>> filesToExport;
   final String zipFilePath;
+  final Map<String, String> sourceFilenames;
 
   ZipIsolateParams(
     this.sendPort,
@@ -1472,5 +1484,6 @@ class ZipIsolateParams {
     this.projectName,
     this.filesToExport,
     this.zipFilePath,
+    this.sourceFilenames,
   );
 }

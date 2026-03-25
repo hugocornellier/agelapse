@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/database_helper.dart';
@@ -8,6 +9,7 @@ import '../utils/utils.dart';
 import '../widgets/grid_painter_se.dart';
 import '../widgets/info_tooltip_icon.dart';
 import '../utils/output_image_loader.dart';
+import '../widgets/macos_page_scaffold.dart';
 
 class SetEyePositionPage extends StatefulWidget {
   final int projectId;
@@ -565,29 +567,141 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
           }
         }
       },
-      child: Scaffold(
+      child: _buildPageScaffold(),
+    );
+  }
+
+  Widget _buildPageBody() {
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                _buildControlsSection(),
+                const SizedBox(height: 16.0),
+                Expanded(child: _buildImageLayer(context)),
+              ],
+            ),
+          ),
+          if (_isInfoWidgetVisible) _buildInfoBanner(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPageScaffold() {
+    if (Platform.isMacOS) {
+      return MacosPageScaffold(
+        title: 'Output Position',
+        onBack: _handleBackTap,
         backgroundColor: AppColors.settingsBackground,
-        appBar: _buildAppBar(),
-        body: GestureDetector(
-          onTap: () => FocusScope.of(context).unfocus(),
-          child: Stack(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    _buildControlsSection(),
-                    const SizedBox(height: 16.0),
-                    Expanded(child: _buildImageLayer(context)),
-                  ],
-                ),
+        showBottomDivider: true,
+        actions: _buildAppBarActions(),
+        body: _buildPageBody(),
+      );
+    }
+    return Scaffold(
+      backgroundColor: AppColors.settingsBackground,
+      appBar: _buildAppBar(),
+      body: _buildPageBody(),
+    );
+  }
+
+  void _handleBackTap() {
+    if (_hasUnsavedChanges) {
+      _showUnsavedChangesDialog().then((saveChanges) async {
+        if (saveChanges == true) {
+          await _saveChanges();
+          if (mounted) Navigator.of(context).pop();
+        } else if (saveChanges == false) {
+          if (mounted) Navigator.of(context).pop();
+        }
+      });
+    } else {
+      Navigator.pop(context);
+    }
+  }
+
+  List<Widget> _buildAppBarActions() {
+    return [
+      MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: _showHelpDialog,
+          child: Container(
+            width: 40,
+            height: 40,
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: AppColors.settingsCardBackground,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.settingsCardBorder,
+                width: 1,
               ),
-              if (_isInfoWidgetVisible) _buildInfoBanner(),
-            ],
+            ),
+            child: Icon(
+              Icons.help_outline_rounded,
+              color: AppColors.settingsTextSecondary,
+              size: 20,
+            ),
           ),
         ),
       ),
-    );
+      if (_hasUnsavedChanges)
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: _isSaving
+                ? null
+                : () async {
+                    final bool shouldProceed =
+                        await Utils.showConfirmChangeDialog(
+                      context,
+                      "eye position",
+                    );
+                    if (shouldProceed) await _saveChanges();
+                  },
+            child: Container(
+              width: 44,
+              height: 44,
+              margin: const EdgeInsets.only(right: 8),
+              decoration: BoxDecoration(
+                color: _showCheckmark
+                    ? AppColors.success.withValues(alpha: 0.15)
+                    : AppColors.settingsAccent.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _showCheckmark
+                      ? AppColors.success.withValues(alpha: 0.3)
+                      : AppColors.settingsAccent.withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              child: _isSaving
+                  ? Padding(
+                      padding: EdgeInsets.all(12),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.settingsAccent,
+                      ),
+                    )
+                  : Icon(
+                      _showCheckmark
+                          ? Icons.check_circle_rounded
+                          : Icons.save_rounded,
+                      color: _showCheckmark
+                          ? AppColors.success
+                          : AppColors.settingsAccent,
+                      size: 22,
+                    ),
+            ),
+          ),
+        ),
+    ];
   }
 
   Future<bool?> _showUnsavedChangesDialog() {
@@ -762,20 +876,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
       leading: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
-          onTap: () {
-            if (_hasUnsavedChanges) {
-              _showUnsavedChangesDialog().then((saveChanges) async {
-                if (saveChanges == true) {
-                  await _saveChanges();
-                  if (mounted) Navigator.of(context).pop();
-                } else if (saveChanges == false) {
-                  if (mounted) Navigator.of(context).pop();
-                }
-              });
-            } else {
-              Navigator.pop(context);
-            }
-          },
+          onTap: _handleBackTap,
           child: Container(
             margin: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -791,82 +892,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
           ),
         ),
       ),
-      actions: [
-        MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: _showHelpDialog,
-            child: Container(
-              width: 40,
-              height: 40,
-              margin: const EdgeInsets.only(right: 8),
-              decoration: BoxDecoration(
-                color: AppColors.settingsCardBackground,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppColors.settingsCardBorder,
-                  width: 1,
-                ),
-              ),
-              child: Icon(
-                Icons.help_outline_rounded,
-                color: AppColors.settingsTextSecondary,
-                size: 20,
-              ),
-            ),
-          ),
-        ),
-        if (_hasUnsavedChanges)
-          MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: _isSaving
-                  ? null
-                  : () async {
-                      final bool shouldProceed =
-                          await Utils.showConfirmChangeDialog(
-                        context,
-                        "eye position",
-                      );
-                      if (shouldProceed) await _saveChanges();
-                    },
-              child: Container(
-                width: 44,
-                height: 44,
-                margin: const EdgeInsets.only(right: 8),
-                decoration: BoxDecoration(
-                  color: _showCheckmark
-                      ? AppColors.success.withValues(alpha: 0.15)
-                      : AppColors.settingsAccent.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: _showCheckmark
-                        ? AppColors.success.withValues(alpha: 0.3)
-                        : AppColors.settingsAccent.withValues(alpha: 0.3),
-                    width: 1,
-                  ),
-                ),
-                child: _isSaving
-                    ? Padding(
-                        padding: EdgeInsets.all(12),
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppColors.settingsAccent,
-                        ),
-                      )
-                    : Icon(
-                        _showCheckmark
-                            ? Icons.check_circle_rounded
-                            : Icons.save_rounded,
-                        color: _showCheckmark
-                            ? AppColors.success
-                            : AppColors.settingsAccent,
-                        size: 22,
-                      ),
-              ),
-            ),
-          ),
-      ],
+      actions: _buildAppBarActions(),
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(1),
         child: Container(height: 1, color: AppColors.settingsDivider),

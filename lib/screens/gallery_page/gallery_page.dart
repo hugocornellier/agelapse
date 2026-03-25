@@ -18,6 +18,7 @@ import '../../services/thumbnail_service.dart';
 import '../../styles/styles.dart';
 import '../../utils/project_utils.dart';
 import '../../utils/dir_utils.dart';
+import '../../utils/gallery_photo_operations.dart';
 import '../../utils/gallery_utils.dart';
 import '../../utils/settings_utils.dart';
 import '../../utils/date_stamp_utils.dart';
@@ -455,101 +456,12 @@ class GalleryPageState extends State<GalleryPage>
     bool needsRecompile,
   ) async {
     try {
-      String oldRawPhotoPath =
-          await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-        oldTimestamp,
-        projectId,
+      await GalleryPhotoOperations.changePhotoDate(
+        oldTimestamp: oldTimestamp,
+        newTimestamp: newTimestamp,
+        projectId: projectId,
       );
-      File oldRawFile = File(oldRawPhotoPath);
-      if (!await oldRawFile.exists()) {
-        throw Exception('Original file not found');
-      }
-      String fileExtension = path.extension(oldRawPhotoPath);
-      String newRawPhotoPath = path.join(
-        path.dirname(oldRawPhotoPath),
-        '$newTimestamp$fileExtension',
-      );
-      await oldRawFile.rename(newRawPhotoPath);
-      String oldRawThumbPath = oldRawPhotoPath.replaceAll(
-        DirUtils.photosRawDirname,
-        DirUtils.thumbnailDirname,
-      );
-      oldRawThumbPath = path.join(
-        path.dirname(oldRawThumbPath),
-        "${path.basenameWithoutExtension(oldRawPhotoPath)}.jpg",
-      );
-      File oldRawThumbFile = File(oldRawThumbPath);
-      if (await oldRawThumbFile.exists()) {
-        String newRawThumbPath = path.join(
-          path.dirname(oldRawThumbPath),
-          "$newTimestamp.jpg",
-        );
-        await oldRawThumbFile.rename(newRawThumbPath);
-      }
-      List<String> orientations = ['portrait', 'landscape'];
-      for (String orientation in orientations) {
-        try {
-          String oldStabPath = await DirUtils
-              .getStabilizedImagePathFromRawPathAndProjectOrientation(
-            projectId,
-            oldRawPhotoPath,
-            orientation,
-          );
-          File oldStabFile = File(oldStabPath);
-          if (await oldStabFile.exists()) {
-            String newStabPath = path.join(
-              path.dirname(oldStabPath),
-              '$newTimestamp.png',
-            );
-            await oldStabFile.rename(newStabPath);
-            String oldStabThumbPath = FaceStabilizer.getStabThumbnailPath(
-              oldStabPath,
-            );
-            File oldStabThumbFile = File(oldStabThumbPath);
-            if (await oldStabThumbFile.exists()) {
-              String newStabThumbPath = FaceStabilizer.getStabThumbnailPath(
-                newStabPath,
-              );
-              await DirUtils.createDirectoryIfNotExists(newStabThumbPath);
-              await oldStabThumbFile.rename(newStabThumbPath);
-            }
-          }
-        } catch (e) {
-          LogService.instance.log(
-            'No stabilized file found for $orientation: $e',
-          );
-        }
-      }
-      final oldPhotoRecord = await DB.instance.getPhotoByTimestamp(
-        oldTimestamp,
-        projectId,
-      );
-      if (oldPhotoRecord == null) return;
-      final int oldId = oldPhotoRecord['id'] as int;
-      int? newId = await DB.instance.updatePhotoTimestamp(
-        oldTimestamp,
-        newTimestamp,
-        projectId,
-      );
-      final String currentGuidePhoto =
-          await SettingsUtil.loadSelectedGuidePhoto(projectId.toString());
-      if (currentGuidePhoto == oldId.toString() && newId != null) {
-        await DB.instance.setSettingByTitle(
-          "selected_guide_photo",
-          newId.toString(),
-          projectId.toString(),
-        );
-      }
-      final int newTsInt = int.parse(newTimestamp);
-      final int newOffsetMin = DateTime.fromMillisecondsSinceEpoch(
-        newTsInt,
-        isUtc: true,
-      ).toLocal().timeZoneOffset.inMinutes;
-      await DB.instance.setCaptureOffsetMinutesByTimestamp(
-        newTimestamp,
-        projectId,
-        newOffsetMin,
-      );
+
       await _loadImages();
 
       // Trigger video recompilation if needed
@@ -776,13 +688,25 @@ class GalleryPageState extends State<GalleryPage>
     } else {
       await tempOriginFile.writeAsBytes(originBytes);
     }
-    await GalleryUtils.processPickedImage(
-      tempOriginPhotoPath,
-      projectId,
-      activeProcessingDateNotifier,
-      onImagesLoaded: _loadImages,
-      timestamp: asset.createDateTime.millisecondsSinceEpoch,
-    );
+    try {
+      await GalleryUtils.processPickedImage(
+        tempOriginPhotoPath,
+        projectId,
+        activeProcessingDateNotifier,
+        onImagesLoaded: _loadImages,
+        timestamp: asset.createDateTime.millisecondsSinceEpoch,
+        originalFilePath: originPath,
+        sourceFilename: asset.title ?? path.basename(originPath),
+      );
+    } finally {
+      // Clean up temp file after import completes (success or failure)
+      final tempFile = File(tempOriginPhotoPath);
+      if (await tempFile.exists()) {
+        try {
+          await tempFile.delete();
+        } catch (_) {}
+      }
+    }
   }
 
   Future<String> _getTemporaryPhotoPath(
@@ -2416,14 +2340,12 @@ class GalleryPageState extends State<GalleryPage>
         }
       },
       onManualStab: () {
-        Navigator.push(
+        Utils.navigateToScreen(
           context,
-          MaterialPageRoute(
-            builder: (context) => ManualStabilizationPage(
-              imagePath: imageFile.path,
-              projectId: widget.projectId,
-              onSaveComplete: _loadImages,
-            ),
+          ManualStabilizationPage(
+            imagePath: imageFile.path,
+            projectId: widget.projectId,
+            onSaveComplete: _loadImages,
           ),
         );
       },

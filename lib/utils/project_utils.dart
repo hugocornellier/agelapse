@@ -13,6 +13,7 @@ import '../services/log_service.dart';
 import '../services/stabilization_service.dart';
 import '../services/thumbnail_service.dart';
 import 'dir_utils.dart';
+import 'linked_source_utils.dart';
 import 'notification_util.dart';
 import 'capture_timezone.dart';
 
@@ -88,6 +89,16 @@ class ProjectUtils {
   static Future<void> deleteFile(File file) async => await file.delete();
 
   static Future<bool> deleteImage(File image, int projectId) async {
+    // Query original file info BEFORE deleting from DB
+    final String timestamp = path.basenameWithoutExtension(image.path);
+    Map<String, dynamic>? originalInfo;
+    try {
+      originalInfo = await DB.instance.getOriginalInfoByTimestamp(
+        timestamp,
+        projectId,
+      );
+    } catch (_) {}
+
     // Delete from database FIRST - this is the source of truth.
     // If DB deletion fails, return false so the image stays in the gallery
     // and the user can retry the deletion.
@@ -112,15 +123,6 @@ class ProjectUtils {
     // DB deletion succeeded. Now try to delete files.
     // If file deletion fails, that's OK - orphaned files will be cleaned up
     // during video export when we validate against the database.
-    final String timestamp = path.basenameWithoutExtension(image.path);
-
-    try {
-      await deletePngFileIfExists(image);
-    } catch (e) {
-      LogService.instance.log(
-        "Failed to delete PNG file (will be cleaned up later): ${image.path}, Error: $e",
-      );
-    }
 
     // Delete raw thumbnail
     try {
@@ -175,18 +177,64 @@ class ProjectUtils {
       );
     }
 
-    return true;
-  }
+    final sourceLocationType = originalInfo?['sourceLocationType'] as String?;
+    final sourceRelativePath = originalInfo?['sourceRelativePath'] as String?;
 
-  static Future<void> deletePngFileIfExists(File image) async {
-    if (image.path.endsWith('.jpg')) {
-      String newPath = convertExtensionToPng(image.path);
-
-      File newImage = File(newPath);
-      if (await newImage.exists()) {
-        await deleteFile(newImage);
+    // For direct_import photos with a known source path, delete the source file.
+    if (sourceLocationType == 'direct_import' &&
+        sourceRelativePath != null &&
+        sourceRelativePath.trim().isNotEmpty) {
+      try {
+        final linkedConfig = await LinkedSourceUtils.loadConfig(projectId);
+        if (linkedConfig.hasUsableDesktopRoot) {
+          final externalPath = path.normalize(
+            path.join(linkedConfig.rootPath, sourceRelativePath),
+          );
+          if (!path.isWithin(linkedConfig.rootPath, externalPath)) {
+            LogService.instance.log(
+              "Blocked external file deletion outside linked root: $externalPath",
+            );
+          } else {
+            try {
+              final File externalFile = File(externalPath);
+              if (await externalFile.exists()) {
+                await externalFile.delete();
+                LogService.instance.log(
+                  "Deleted linked source file: $externalPath",
+                );
+              }
+            } catch (e) {
+              LogService.instance.log(
+                "Failed to delete linked source file $externalPath: $e",
+              );
+            }
+          }
+        }
+      } catch (e) {
+        LogService.instance.log(
+          "Failed to delete linked source file (non-fatal): $e",
+        );
       }
     }
+
+    // For external_linked photos, record a tombstone so the sync service
+    // does not reimport this file the next time the folder is scanned.
+    if (sourceLocationType == 'external_linked' &&
+        sourceRelativePath != null &&
+        sourceRelativePath.trim().isNotEmpty) {
+      try {
+        await DB.instance.insertDeletedLinkedSource(
+          projectId,
+          sourceRelativePath,
+        );
+      } catch (e) {
+        LogService.instance.log(
+          "Failed to insert deleted linked source tombstone (non-fatal): $e",
+        );
+      }
+    }
+
+    return true;
   }
 
   static Future<ui.Image> loadImage(String assetPath) async {

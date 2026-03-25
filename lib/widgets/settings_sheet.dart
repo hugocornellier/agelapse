@@ -18,6 +18,7 @@ import '../models/video_background.dart';
 import '../models/video_codec.dart';
 import '../utils/dir_utils.dart';
 import '../utils/notification_util.dart';
+import '../utils/linked_source_utils.dart';
 import '../utils/settings_utils.dart';
 import '../utils/stabilizer_utils/stabilizer_utils.dart';
 import '../utils/date_stamp_utils.dart';
@@ -81,6 +82,8 @@ class SettingsSheetState extends State<SettingsSheet> {
       _dateStampSettingsCompleter.future;
 
   bool _isDefaultProject = false;
+  bool _linkedSourceEnabled = false;
+  String _linkedSourceDisplayPath = '';
   TimeOfDay _selectedTime = const TimeOfDay(hour: 17, minute: 0);
   bool notificationsEnabled = false;
   String dailyNotificationTime = "not set";
@@ -224,12 +227,15 @@ class SettingsSheetState extends State<SettingsSheet> {
   Future<void> _initializeProjectSettings() async {
     final data = await DB.instance.getSettingByTitle('default_project');
     final defaultProject = data?['value'];
+    final linkedConfig = await LinkedSourceUtils.loadConfig(widget.projectId);
 
     if (defaultProject == null || defaultProject == "none") {
       _isDefaultProject = false;
     } else {
       _isDefaultProject = int.tryParse(defaultProject) == widget.projectId;
     }
+    _linkedSourceEnabled = linkedConfig.enabled;
+    _linkedSourceDisplayPath = linkedConfig.displayPath;
     setState(() {});
   }
 
@@ -1377,8 +1383,158 @@ class SettingsSheetState extends State<SettingsSheet> {
             );
           },
         ),
+        const SizedBox(height: 8),
+        _buildLinkedSourceSettings(),
       ],
     );
+  }
+
+  Widget _buildLinkedSourceSettings() {
+    final supportsLinkedSource = LinkedSourceUtils.supportsDesktopLinkedFolders;
+
+    return Column(
+      children: [
+        BoolSettingSwitch(
+          title: 'Sync source photos from folder',
+          initialValue: _linkedSourceEnabled,
+          showInfo: true,
+          showDivider: _linkedSourceEnabled,
+          infoContent:
+              'When enabled, the project can watch a desktop folder for new source photos and prefer those originals for export/save.',
+          onChanged: (bool value) async {
+            if (!supportsLinkedSource) {
+              setState(() => _linkedSourceEnabled = false);
+              return;
+            }
+
+            if (!value) {
+              await LinkedSourceUtils.disableLinkedSource(widget.projectId);
+              setState(() {
+                _linkedSourceEnabled = false;
+                _linkedSourceDisplayPath = '';
+              });
+              await widget.refreshSettings();
+              return;
+            }
+
+            final selectedPath = await _pickLinkedSourceFolder();
+            if (selectedPath == null) {
+              setState(() => _linkedSourceEnabled = false);
+              return;
+            }
+
+            await LinkedSourceUtils.persistDesktopFolderSelection(
+              widget.projectId,
+              selectedPath,
+            );
+            setState(() {
+              _linkedSourceEnabled = true;
+              _linkedSourceDisplayPath = selectedPath;
+            });
+            await widget.refreshSettings();
+          },
+        ),
+        if (_linkedSourceEnabled) ...[
+          SettingListTile(
+            title: 'Linked folder',
+            infoContent:
+                'This folder is treated as the external source-photo home for this project.',
+            showInfo: true,
+            showDivider: true,
+            contentWidget: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 220),
+              child: Text(
+                _linkedSourceDisplayPath.isEmpty
+                    ? 'Not set'
+                    : _linkedSourceDisplayPath,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: AppColors.settingsTextPrimary,
+                  fontSize: AppTypography.sm,
+                ),
+              ),
+            ),
+          ),
+          SettingListTile(
+            title: 'Folder actions',
+            infoContent: '',
+            showInfo: false,
+            showDivider: false,
+            contentWidget: Wrap(
+              spacing: 8,
+              children: [
+                TextButton(
+                  onPressed: () async {
+                    final selectedPath = await _pickLinkedSourceFolder();
+                    if (selectedPath == null) return;
+                    await LinkedSourceUtils.persistDesktopFolderSelection(
+                      widget.projectId,
+                      selectedPath,
+                    );
+                    setState(() {
+                      _linkedSourceEnabled = true;
+                      _linkedSourceDisplayPath = selectedPath;
+                    });
+                    await widget.refreshSettings();
+                  },
+                  child: const Text('Change'),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    await LinkedSourceUtils.disableLinkedSource(
+                        widget.projectId);
+                    setState(() {
+                      _linkedSourceEnabled = false;
+                      _linkedSourceDisplayPath = '';
+                    });
+                    await widget.refreshSettings();
+                  },
+                  child: const Text('Disable'),
+                ),
+              ],
+            ),
+          ),
+        ] else if (!supportsLinkedSource) ...[
+          SettingListTile(
+            title: 'Linked folder',
+            infoContent: '',
+            showInfo: false,
+            showDivider: false,
+            contentWidget: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 220),
+              child: Text(
+                'Desktop only',
+                style: TextStyle(
+                  color: AppColors.settingsTextSecondary,
+                  fontSize: AppTypography.sm,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Future<String?> _pickLinkedSourceFolder() async {
+    final selectedPath = await FilePicker.platform.getDirectoryPath();
+    if (selectedPath == null || selectedPath.trim().isEmpty) return null;
+
+    final projectDirPath = await DirUtils.getProjectDirPath(widget.projectId);
+    final validationError = LinkedSourceUtils.validateLinkedFolderPath(
+      projectId: widget.projectId,
+      selectedPath: selectedPath,
+      projectDirPath: projectDirPath,
+    );
+
+    if (validationError != null && mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(validationError)));
+      return null;
+    }
+
+    return selectedPath;
   }
 
   Widget _buildNotificationSettings() {
@@ -3741,7 +3897,11 @@ class ImagePickerWidgetState extends State<ImagePickerWidget> {
       final mat = cv.imdecode(bytes, cv.IMREAD_COLOR);
       if (!mat.isEmpty) {
         try {
-          final (success, pngBytes) = cv.imencode('.png', mat);
+          final (success, pngBytes) = cv.imencode(
+            '.png',
+            mat,
+            params: cv.VecI32.fromList([cv.IMWRITE_PNG_COMPRESSION, 1]),
+          );
           mat.dispose();
           if (success) {
             await DirUtils.createDirectoryIfNotExists(watermarkFilePath);

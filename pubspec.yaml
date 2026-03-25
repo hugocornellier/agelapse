@@ -102,6 +102,15 @@ flutter:
     - assets/test_fixtures/sample_poses/
     - assets/test_fixtures/sample-avif.avif
     - assets/test_fixtures/sample-heic.HEIC
+    - assets/test_fixtures/format_samples/jpg/
+    - assets/test_fixtures/format_samples/png/
+    - assets/test_fixtures/format_samples/webp/
+    - assets/test_fixtures/format_samples/bmp/
+    - assets/test_fixtures/format_samples/tiff/
+
+    - assets/test_fixtures/format_samples/heic/
+    - assets/test_fixtures/format_samples/avif/
+    - assets/test_fixtures/format_samples/jp2/
     # Font licenses (for legal compliance)
     - assets/fonts/Inter/OFL.txt
     - assets/fonts/Roboto/LICENSE.txt

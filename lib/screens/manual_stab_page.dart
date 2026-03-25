@@ -16,6 +16,7 @@ import '../utils/settings_utils.dart';
 import '../utils/stabilizer_utils/stabilizer_utils.dart';
 import '../widgets/grid_painter_se.dart';
 import '../widgets/info_tooltip_icon.dart';
+import '../widgets/macos_page_scaffold.dart';
 import '../widgets/transform_tool/transform_tool_exports.dart';
 
 class ManualStabilizationPage extends StatefulWidget {
@@ -252,63 +253,209 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
           // Main content - absorb pointer during save
           AbsorbPointer(
             absorbing: isSaving,
-            child: Scaffold(
-              backgroundColor: AppColors.settingsBackground,
-              appBar: _buildAppBar(),
-              body: GestureDetector(
-                onTap: () {
-                  _log('Page body tapped (unfocusing all fields)');
-                  FocusScope.of(context).unfocus();
-                },
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    const double minPreviewHeight = 300;
-                    const double controlsEstimatedHeight =
-                        220; // controls + spacing
-                    final double availableForPreview = constraints.maxHeight -
-                        32 -
-                        controlsEstimatedHeight; // 32 for padding
-                    final double previewHeight =
-                        availableForPreview >= minPreviewHeight
-                            ? availableForPreview
-                            : minPreviewHeight;
-                    final bool shouldEnableScroll =
-                        availableForPreview < minPreviewHeight;
-
-                    _log(
-                      'Layout: maxHeight=${constraints.maxHeight}, availableForPreview=$availableForPreview, previewHeight=$previewHeight, mode=stable-scrollable, scrollEnabled=$shouldEnableScroll',
-                    );
-
-                    // Keep one stable widget tree to avoid TextField destruction
-                    // when keyboard insets change parent constraints.
-                    return SingleChildScrollView(
-                      physics: shouldEnableScroll
-                          ? const ClampingScrollPhysics()
-                          : const NeverScrollableScrollPhysics(),
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildControlsSection(),
-                          const SizedBox(height: 20),
-                          SizedBox(
-                            height: previewHeight,
-                            child: _buildPreviewSection(),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
-              bottomNavigationBar: _buildToolbar(context),
-            ),
+            child: _buildPageScaffold(),
           ),
           // Save overlay
           if (isSaving) _buildSaveOverlay(),
         ],
       ),
     );
+  }
+
+  Widget _buildPageBody() {
+    return GestureDetector(
+      onTap: () {
+        _log('Page body tapped (unfocusing all fields)');
+        FocusScope.of(context).unfocus();
+      },
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          const double minPreviewHeight = 300;
+          const double controlsEstimatedHeight = 220; // controls + spacing
+          final double availableForPreview = constraints.maxHeight -
+              32 -
+              controlsEstimatedHeight; // 32 for padding
+          final double previewHeight = availableForPreview >= minPreviewHeight
+              ? availableForPreview
+              : minPreviewHeight;
+          final bool shouldEnableScroll =
+              availableForPreview < minPreviewHeight;
+
+          _log(
+            'Layout: maxHeight=${constraints.maxHeight}, availableForPreview=$availableForPreview, previewHeight=$previewHeight, mode=stable-scrollable, scrollEnabled=$shouldEnableScroll',
+          );
+
+          // Keep one stable widget tree to avoid TextField destruction
+          // when keyboard insets change parent constraints.
+          return SingleChildScrollView(
+            physics: shouldEnableScroll
+                ? const ClampingScrollPhysics()
+                : const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildControlsSection(),
+                const SizedBox(height: 20),
+                SizedBox(
+                  height: previewHeight,
+                  child: _buildPreviewSection(),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildPageScaffold() {
+    if (Platform.isMacOS) {
+      return MacosPageScaffold(
+        title: 'Manual Stabilization',
+        onBack: _handleBackTap,
+        backgroundColor: AppColors.settingsBackground,
+        showBottomDivider: true,
+        actions: _buildAppBarActions(),
+        body: Column(
+          children: [
+            Expanded(child: _buildPageBody()),
+            _buildToolbar(context),
+          ],
+        ),
+      );
+    }
+    return Scaffold(
+      backgroundColor: AppColors.settingsBackground,
+      appBar: _buildAppBar(),
+      body: _buildPageBody(),
+      bottomNavigationBar: _buildToolbar(context),
+    );
+  }
+
+  void _handleBackTap() {
+    // Block back during save
+    if (_savePhase != _SavePhase.idle) return;
+
+    if (_hasUnsavedChanges) {
+      _showUnsavedChangesDialog().then((saveChanges) async {
+        if (saveChanges == true) {
+          await _saveChanges();
+        } else if (saveChanges == false) {
+          if (mounted) Navigator.of(context).pop();
+        }
+      });
+    } else {
+      Navigator.pop(context);
+    }
+  }
+
+  List<Widget> _buildAppBarActions() {
+    return [
+      // Help button
+      MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: _showHelpDialog,
+          child: Container(
+            width: 40,
+            height: 40,
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: AppColors.settingsCardBackground,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.settingsCardBorder,
+                width: 1,
+              ),
+            ),
+            child: Icon(
+              Icons.help_outline_rounded,
+              color: AppColors.settingsTextSecondary,
+              size: 20,
+            ),
+          ),
+        ),
+      ),
+      // Reset button (only when unsaved changes exist and not saving)
+      if (_hasUnsavedChanges && _savePhase == _SavePhase.idle)
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: () async {
+              final bool? shouldReset = await _showResetConfirmDialog();
+              if (shouldReset == true) {
+                await _resetChanges();
+              }
+            },
+            child: Container(
+              width: 44,
+              height: 44,
+              margin: const EdgeInsets.only(right: 8),
+              decoration: BoxDecoration(
+                color: AppColors.settingsCardBorder.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.settingsCardBorder,
+                  width: 1,
+                ),
+              ),
+              child: Icon(
+                Icons.restore_rounded,
+                color: AppColors.settingsTextSecondary,
+                size: 22,
+              ),
+            ),
+          ),
+        ),
+      // Save button (only when unsaved changes exist and not saving)
+      if (_hasUnsavedChanges && _savePhase == _SavePhase.idle)
+        Builder(
+          builder: (context) {
+            final isWide = MediaQuery.of(context).size.width > 600;
+            return MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: _saveChanges,
+                child: Container(
+                  height: 44,
+                  padding: EdgeInsets.symmetric(horizontal: isWide ? 16 : 11),
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.settingsAccent.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.settingsAccent.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.save_rounded,
+                        color: AppColors.settingsAccent,
+                        size: 22,
+                      ),
+                      if (isWide) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          'Save Changes',
+                          style: TextStyle(
+                            color: AppColors.settingsAccent,
+                            fontSize: AppTypography.md,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+    ];
   }
 
   /// Builds the full-screen save overlay showing "Saving..." or checkmark.
@@ -420,23 +567,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       leading: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
-          onTap: () {
-            // Block back during save
-            if (_savePhase != _SavePhase.idle) return;
-
-            if (_hasUnsavedChanges) {
-              _showUnsavedChangesDialog().then((saveChanges) async {
-                if (saveChanges == true) {
-                  await _saveChanges();
-                  // _saveChanges handles navigation
-                } else if (saveChanges == false) {
-                  if (mounted) Navigator.of(context).pop();
-                }
-              });
-            } else {
-              Navigator.pop(context);
-            }
-          },
+          onTap: _handleBackTap,
           child: Container(
             margin: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -452,111 +583,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
           ),
         ),
       ),
-      actions: [
-        // Help button
-        MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: _showHelpDialog,
-            child: Container(
-              width: 40,
-              height: 40,
-              margin: const EdgeInsets.only(right: 8),
-              decoration: BoxDecoration(
-                color: AppColors.settingsCardBackground,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppColors.settingsCardBorder,
-                  width: 1,
-                ),
-              ),
-              child: Icon(
-                Icons.help_outline_rounded,
-                color: AppColors.settingsTextSecondary,
-                size: 20,
-              ),
-            ),
-          ),
-        ),
-        // Reset button (only when unsaved changes exist and not saving)
-        if (_hasUnsavedChanges && _savePhase == _SavePhase.idle)
-          MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: () async {
-                final bool? shouldReset = await _showResetConfirmDialog();
-                if (shouldReset == true) {
-                  await _resetChanges();
-                }
-              },
-              child: Container(
-                width: 44,
-                height: 44,
-                margin: const EdgeInsets.only(right: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.settingsCardBorder.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: AppColors.settingsCardBorder,
-                    width: 1,
-                  ),
-                ),
-                child: Icon(
-                  Icons.restore_rounded,
-                  color: AppColors.settingsTextSecondary,
-                  size: 22,
-                ),
-              ),
-            ),
-          ),
-        // Save button (only when unsaved changes exist and not saving)
-        if (_hasUnsavedChanges && _savePhase == _SavePhase.idle)
-          Builder(
-            builder: (context) {
-              final isWide = MediaQuery.of(context).size.width > 600;
-              return MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: _saveChanges,
-                  child: Container(
-                    height: 44,
-                    padding: EdgeInsets.symmetric(horizontal: isWide ? 16 : 11),
-                    margin: const EdgeInsets.only(right: 8),
-                    decoration: BoxDecoration(
-                      color: AppColors.settingsAccent.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: AppColors.settingsAccent.withValues(alpha: 0.3),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.save_rounded,
-                          color: AppColors.settingsAccent,
-                          size: 22,
-                        ),
-                        if (isWide) ...[
-                          const SizedBox(width: 8),
-                          Text(
-                            'Save Changes',
-                            style: TextStyle(
-                              color: AppColors.settingsAccent,
-                              fontSize: AppTypography.md,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-      ],
+      actions: _buildAppBarActions(),
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(1),
         child: Container(height: 1, color: AppColors.settingsDivider),

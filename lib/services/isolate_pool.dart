@@ -43,7 +43,7 @@ class _Worker {
 /// await IsolatePool.instance.initialize();
 ///
 /// // Execute operations
-/// final result = await IsolatePool.instance.execute('readToPng', {'filePath': path});
+/// final result = await IsolatePool.instance.execute('stabilizeCV', {...});
 ///
 /// // Cleanup on app exit
 /// await IsolatePool.instance.dispose();
@@ -165,22 +165,6 @@ class IsolatePool {
     void Function()? onCacheClear,
   }) async {
     switch (operation) {
-      case 'readToPng':
-        final filePath = params['filePath'] as String;
-        final preserveBitDepth = params['preserveBitDepth'] as bool? ?? false;
-        final fileBytes = await File(filePath).readAsBytes();
-        final decodeFlag = preserveBitDepth
-            ? (cv.IMREAD_ANYDEPTH | cv.IMREAD_COLOR)
-            : cv.IMREAD_COLOR;
-        final mat = cv.imdecode(fileBytes, decodeFlag);
-        if (mat.isEmpty) {
-          mat.dispose();
-          return null;
-        }
-        final (success, pngBytes) = cv.imencode('.png', mat);
-        mat.dispose();
-        return success ? pngBytes : null;
-
       case 'writePngFromBytes':
         // Atomic write: temp file + rename to prevent partial writes
         final filePath = params['filePath'] as String;
@@ -256,7 +240,11 @@ class IsolatePool {
         }
         mat.dispose();
 
-        final (success, pngBytes) = cv.imencode('.png', result);
+        final (success, pngBytes) = cv.imencode(
+          '.png',
+          result,
+          params: cv.VecI32.fromList([cv.IMWRITE_PNG_COMPRESSION, 1]),
+        );
         result.dispose();
         return success ? pngBytes : null;
 
@@ -336,7 +324,11 @@ class IsolatePool {
             interpolation: cv.INTER_CUBIC);
         matAlpha.dispose();
 
-        final (successAlpha, pngBytesAlpha) = cv.imencode('.png', thumbAlpha);
+        final (successAlpha, pngBytesAlpha) = cv.imencode(
+          '.png',
+          thumbAlpha,
+          params: cv.VecI32.fromList([cv.IMWRITE_PNG_COMPRESSION, 1]),
+        );
         thumbAlpha.dispose();
         return successAlpha ? pngBytesAlpha : null;
 
@@ -442,7 +434,11 @@ class IsolatePool {
           borderValue: borderValue,
         );
 
-        final (success, bytes) = cv.imencode('.png', dst);
+        final (success, bytes) = cv.imencode(
+          '.png',
+          dst,
+          params: cv.VecI32.fromList([cv.IMWRITE_PNG_COMPRESSION, 3]),
+        );
 
         rotMat.dispose();
         dst.dispose();

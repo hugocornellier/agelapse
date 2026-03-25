@@ -201,6 +201,17 @@ jobs:
       matrix:
         flutter-channel: [stable, beta]
     steps:
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false
+          android: false
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: false
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-java@v4

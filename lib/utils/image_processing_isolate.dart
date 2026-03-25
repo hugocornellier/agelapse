@@ -15,6 +15,11 @@ class ImageProcessingInput {
   final int thumbnailWidth;
   final int thumbnailQuality;
 
+  /// Pre-decoded JPEG/PNG bytes for formats that cv.imdecode can't handle
+  /// (e.g. HEIC, AVIF, RAW). When provided, used as a fallback if the
+  /// primary decode of [bytes] fails.
+  final Uint8List? preDecodedBytes;
+
   const ImageProcessingInput({
     required this.bytes,
     this.rotation,
@@ -22,6 +27,7 @@ class ImageProcessingInput {
     required this.extension,
     this.thumbnailWidth = 500,
     this.thumbnailQuality = 90,
+    this.preDecodedBytes,
   });
 }
 
@@ -70,7 +76,16 @@ ImageProcessingOutput processImageIsolateEntry(ImageProcessingInput input) {
     rawImage = cv.imdecode(input.bytes, cv.IMREAD_COLOR);
     if (rawImage.isEmpty) {
       rawImage.dispose();
-      return const ImageProcessingOutput.failure('Failed to decode image');
+      // Fallback: try pre-decoded bytes (for HEIC, AVIF, RAW, etc.)
+      if (input.preDecodedBytes != null) {
+        rawImage = cv.imdecode(input.preDecodedBytes!, cv.IMREAD_COLOR);
+        if (rawImage.isEmpty) {
+          rawImage.dispose();
+          return const ImageProcessingOutput.failure('Failed to decode image');
+        }
+      } else {
+        return const ImageProcessingOutput.failure('Failed to decode image');
+      }
     }
 
     // Track if we need to re-encode the full image
@@ -106,7 +121,11 @@ ImageProcessingOutput processImageIsolateEntry(ImageProcessingInput input) {
     Uint8List? processedBytes;
     if (needsReencode) {
       if (input.extension.toLowerCase() == ".png") {
-        final (success, encoded) = cv.imencode('.png', rawImage);
+        final (success, encoded) = cv.imencode(
+          '.png',
+          rawImage,
+          params: cv.VecI32.fromList([cv.IMWRITE_PNG_COMPRESSION, 1]),
+        );
         if (!success) {
           return const ImageProcessingOutput.failure('Failed to encode PNG');
         }

@@ -25,6 +25,7 @@ class DB {
   static const String projectTable = "Projects";
   static const String videoTable = "Videos";
   static const String customFontTable = "CustomFonts";
+  static const String deletedLinkedSourcesTable = "DeletedLinkedSources";
 
   DB._internal();
 
@@ -117,6 +118,13 @@ class DB {
           "fileSize INTEGER NOT NULL, "
           "installedAt INTEGER NOT NULL"
           ");",
+      deletedLinkedSourcesTable: "CREATE TABLE $deletedLinkedSourcesTable("
+          "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+          "projectID INTEGER NOT NULL, "
+          "sourceRelativePath TEXT NOT NULL, "
+          "deletedAt INTEGER NOT NULL, "
+          "UNIQUE(projectID, sourceRelativePath)"
+          ");",
     };
 
     for (MapEntry<String, String> entry in tablesToCreate.entries) {
@@ -137,6 +145,9 @@ class DB {
     );
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_photos_project_stabilized_landscape ON $photoTable(projectID, stabilizedLandscape);',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_photos_source_path ON $photoTable(projectID, sourceRelativePath) WHERE sourceRelativePath IS NOT NULL;',
     );
   }
 
@@ -238,6 +249,11 @@ class DB {
           settingTable,
           where: 'projectID = ?',
           whereArgs: [projectId.toString()],
+        );
+        await txn.delete(
+          deletedLinkedSourcesTable,
+          where: 'projectID = ?',
+          whereArgs: [projectId],
         );
         await txn.delete(projectTable, where: 'id = ?', whereArgs: [projectId]);
       });
@@ -366,6 +382,15 @@ class DB {
     'camera_timer_duration': '0',
     // Lossless storage (preserves source bit depth for RAW/DNG imports)
     'lossless_storage': 'auto',
+    'linked_source_enabled': 'false',
+    'linked_source_mode': 'none',
+    'linked_source_display_path': '',
+    'linked_source_root_path': '',
+    'linked_source_tree_uri': '',
+    'linked_source_bookmark': '',
+    'linked_source_managed_by_app': 'false',
+    'linked_source_last_scan_started_at': '0',
+    'linked_source_last_scan_completed_at': '0',
   };
 
   Future<Map<String, dynamic>?> getSettingByTitle(
@@ -500,25 +525,38 @@ class DB {
     String fileExtension,
     int imageLength,
     String originalFilename,
-    String orientation,
-  ) async {
-    // Check if photo already exists to prevent duplicates
-    final existing = await doesPhotoExistByTimestamp(timestamp, projectID);
-    if (existing) return;
-
+    String orientation, {
+    String? sourceFilename,
+    String? sourceRelativePath,
+    String? sourceLocationType,
+  }) async {
     final db = await database;
-    await db.insert(photoTable, {
-      'timestamp': timestamp,
-      'projectID': projectID,
-      'fileExtension': fileExtension,
-      'imageLength': imageLength,
-      'originalFilename': originalFilename,
-      'originalOrientation': orientation,
-      'stabilizedPortrait': 0,
-      'stabilizedLandscape': 0,
-      'stabFailed': 0,
-      'noFacesFound': 0,
-      'favorite': 0,
+    await db.transaction((txn) async {
+      final existing = await txn.query(
+        photoTable,
+        columns: ['timestamp'],
+        where: 'timestamp = ? AND projectID = ?',
+        whereArgs: [timestamp, projectID],
+        limit: 1,
+      );
+      if (existing.isNotEmpty) return;
+
+      await txn.insert(photoTable, {
+        'timestamp': timestamp,
+        'projectID': projectID,
+        'fileExtension': fileExtension,
+        'imageLength': imageLength,
+        'originalFilename': originalFilename,
+        'originalOrientation': orientation,
+        'stabilizedPortrait': 0,
+        'stabilizedLandscape': 0,
+        'stabFailed': 0,
+        'noFacesFound': 0,
+        'favorite': 0,
+        'sourceFilename': sourceFilename,
+        'sourceRelativePath': sourceRelativePath,
+        'sourceLocationType': sourceLocationType,
+      });
     });
   }
 
@@ -539,6 +577,9 @@ class DB {
       'captureOffsetMinutes': 'INTEGER',
       'faceCount': 'INTEGER',
       'faceEmbedding': 'BLOB',
+      'sourceFilename': 'TEXT',
+      'sourceRelativePath': 'TEXT',
+      'sourceLocationType': 'TEXT',
     };
 
     for (final entry in toAdd.entries) {
@@ -716,6 +757,136 @@ class DB {
     } else {
       return null;
     }
+  }
+
+  Future<Map<String, dynamic>?> getOriginalInfoByTimestamp(
+    String timestamp,
+    int projectId,
+  ) async {
+    final db = await database;
+    final results = await db.query(
+      photoTable,
+      columns: [
+        'timestamp',
+        'fileExtension',
+        'originalFilename',
+        'sourceFilename',
+        'sourceRelativePath',
+        'sourceLocationType',
+      ],
+      where: 'timestamp = ? AND projectID = ?',
+      whereArgs: [timestamp, projectId],
+      limit: 1,
+    );
+    return results.isNotEmpty ? results.first : null;
+  }
+
+  /// Batch query to get original source filenames for multiple timestamps.
+  /// Returns a map of timestamp -> sourceFilename. Queries in chunks to avoid
+  /// SQLite parameter limits.
+  Future<Map<String, String>> getSourceFilenamesBatch(
+    List<String> timestamps,
+    int projectId,
+  ) async {
+    if (timestamps.isEmpty) return {};
+
+    final db = await database;
+    final Map<String, String> result = {};
+
+    const chunkSize = 500;
+    for (int i = 0; i < timestamps.length; i += chunkSize) {
+      final chunk = timestamps.skip(i).take(chunkSize).toList();
+      final placeholders = List.filled(chunk.length, '?').join(',');
+
+      final rows = await db.query(
+        photoTable,
+        columns: ['timestamp', 'sourceFilename', 'originalFilename'],
+        where: 'timestamp IN ($placeholders) AND projectID = ?',
+        whereArgs: [...chunk, projectId],
+      );
+
+      for (final row in rows) {
+        final timestamp = row['timestamp'] as String?;
+        final sourceFilename = row['sourceFilename'] as String?;
+        final originalFilename = row['originalFilename'] as String?;
+        if (timestamp == null) continue;
+        final effectiveFilename = sourceFilename?.trim().isNotEmpty == true
+            ? sourceFilename!.trim()
+            : (originalFilename?.trim() ?? '');
+        if (effectiveFilename.isEmpty) continue;
+        result[timestamp] = effectiveFilename;
+      }
+    }
+
+    return result;
+  }
+
+  Future<Map<String, dynamic>?> getPhotoBySourceRelativePath(
+    String relativePath,
+    int projectId,
+  ) async {
+    final db = await database;
+    final results = await db.query(
+      photoTable,
+      where: 'sourceRelativePath = ? AND projectID = ?',
+      whereArgs: [relativePath, projectId],
+      limit: 1,
+    );
+    return results.isNotEmpty ? results.first : null;
+  }
+
+  Future<List<Map<String, dynamic>>> getPhotosBySourceLocationType(
+    int projectId,
+    String sourceLocationType,
+  ) async {
+    final db = await database;
+    return db.query(
+      photoTable,
+      where: 'projectID = ? AND sourceLocationType = ?',
+      whereArgs: [projectId, sourceLocationType],
+    );
+  }
+
+  Future<void> updatePhotoSourceInfo(
+    String timestamp,
+    int projectId, {
+    String? sourceFilename,
+    String? sourceRelativePath,
+    String? sourceLocationType,
+  }) async {
+    final db = await database;
+    final data = <String, Object?>{};
+    if (sourceFilename != null) data['sourceFilename'] = sourceFilename;
+    if (sourceRelativePath != null) {
+      data['sourceRelativePath'] = sourceRelativePath;
+    }
+    if (sourceLocationType != null) {
+      data['sourceLocationType'] = sourceLocationType;
+    }
+    if (data.isEmpty) return;
+    await db.update(
+      photoTable,
+      data,
+      where: 'timestamp = ? AND projectID = ?',
+      whereArgs: [timestamp, projectId],
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getPhotosByImageLength(
+    int projectId,
+    int imageLength, {
+    bool whereSourceRelativePathIsNull = false,
+  }) async {
+    final db = await database;
+    final where = StringBuffer('projectID = ? AND imageLength = ?');
+    if (whereSourceRelativePathIsNull) {
+      where.write(' AND sourceRelativePath IS NULL');
+    }
+    return db.query(
+      photoTable,
+      where: where.toString(),
+      whereArgs: [projectId, imageLength],
+    );
   }
 
   Future<List<Map<String, dynamic>>> getUnstabilizedPhotos(
@@ -1349,6 +1520,47 @@ class DB {
       'SELECT COUNT(*) as count FROM $customFontTable',
     );
     return result.first['count'] as int? ?? 0;
+  }
+
+  /* ┌──────────────────────────────┐
+     │                              │
+     │   Deleted Linked Sources     │
+     │                              │
+     └──────────────────────────────┘ */
+
+  /// Records that a linked source file was explicitly deleted by the user,
+  /// preventing the sync service from reimporting it.
+  Future<void> insertDeletedLinkedSource(
+    int projectId,
+    String sourceRelativePath,
+  ) async {
+    final db = await database;
+    await db.insert(
+      deletedLinkedSourcesTable,
+      {
+        'projectID': projectId,
+        'sourceRelativePath': sourceRelativePath,
+        'deletedAt': DateTime.now().millisecondsSinceEpoch,
+      },
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
+  }
+
+  /// Returns true if the given relative path was explicitly deleted by the user
+  /// for this project (i.e. it is in the tombstone table).
+  Future<bool> isLinkedSourceDeleted(
+    int projectId,
+    String sourceRelativePath,
+  ) async {
+    final db = await database;
+    final results = await db.query(
+      deletedLinkedSourcesTable,
+      columns: ['id'],
+      where: 'projectID = ? AND sourceRelativePath = ?',
+      whereArgs: [projectId, sourceRelativePath],
+      limit: 1,
+    );
+    return results.isNotEmpty;
   }
 }
 

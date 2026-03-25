@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 
 import '../utils/project_utils.dart';
+import '../utils/linked_source_utils.dart';
 import '../utils/settings_utils.dart';
 import '../utils/utils.dart';
 import 'database_helper.dart';
@@ -29,6 +30,15 @@ class SettingsCache {
   double eyeOffsetY;
   bool galleryDateLabelsEnabled;
   bool exportDateStampEnabled;
+  bool linkedSourceEnabled;
+  String linkedSourceMode;
+  String linkedSourceDisplayPath;
+  String linkedSourceRootPath;
+  String linkedSourceTreeUri;
+  String linkedSourceBookmark;
+  bool linkedSourceManagedByApp;
+  int linkedSourceLastScanStartedAt;
+  int linkedSourceLastScanCompletedAt;
 
   SettingsCache({
     required this.hasOpenedNonEmptyGallery,
@@ -54,6 +64,15 @@ class SettingsCache {
     required this.eyeOffsetY,
     required this.galleryDateLabelsEnabled,
     required this.exportDateStampEnabled,
+    this.linkedSourceEnabled = false,
+    this.linkedSourceMode = 'none',
+    this.linkedSourceDisplayPath = '',
+    this.linkedSourceRootPath = '',
+    this.linkedSourceTreeUri = '',
+    this.linkedSourceBookmark = '',
+    this.linkedSourceManagedByApp = false,
+    this.linkedSourceLastScanStartedAt = 0,
+    this.linkedSourceLastScanCompletedAt = 0,
   });
 
   /// Dispose native resources. Call this when the cache is no longer needed.
@@ -88,6 +107,7 @@ class SettingsCache {
       SettingsUtil.hasTakenFirstPhoto(projectId.toString()),
       SettingsUtil.loadGalleryDateLabelsEnabled(projectId.toString()),
       SettingsUtil.loadExportDateStampEnabled(projectId.toString()),
+      LinkedSourceUtils.loadConfig(projectId),
     ]);
 
     final int photoCount = settings[2] as int;
@@ -131,6 +151,18 @@ class SettingsCache {
       eyeOffsetY: double.parse(settings[15] as String),
       galleryDateLabelsEnabled: settings[18] as bool? ?? false,
       exportDateStampEnabled: settings[19] as bool? ?? false,
+      linkedSourceEnabled: (settings[20] as LinkedSourceConfig).enabled,
+      linkedSourceMode: (settings[20] as LinkedSourceConfig).mode,
+      linkedSourceDisplayPath: (settings[20] as LinkedSourceConfig).displayPath,
+      linkedSourceRootPath: (settings[20] as LinkedSourceConfig).rootPath,
+      linkedSourceTreeUri: (settings[20] as LinkedSourceConfig).treeUri,
+      linkedSourceBookmark: (settings[20] as LinkedSourceConfig).bookmark,
+      linkedSourceManagedByApp:
+          (settings[20] as LinkedSourceConfig).managedByApp,
+      linkedSourceLastScanStartedAt:
+          (settings[20] as LinkedSourceConfig).lastScanStartedAt,
+      linkedSourceLastScanCompletedAt:
+          (settings[20] as LinkedSourceConfig).lastScanCompletedAt,
     );
   }
 
@@ -165,6 +197,18 @@ class SettingsCache {
       eyeOffsetY: double.parse(defaults['eyeOffsetYPortrait']!),
       galleryDateLabelsEnabled: false,
       exportDateStampEnabled: false,
+      linkedSourceEnabled: defaults['linked_source_enabled'] == 'true',
+      linkedSourceMode: defaults['linked_source_mode']!,
+      linkedSourceDisplayPath: defaults['linked_source_display_path']!,
+      linkedSourceRootPath: defaults['linked_source_root_path']!,
+      linkedSourceTreeUri: defaults['linked_source_tree_uri']!,
+      linkedSourceBookmark: defaults['linked_source_bookmark']!,
+      linkedSourceManagedByApp:
+          defaults['linked_source_managed_by_app'] == 'true',
+      linkedSourceLastScanStartedAt:
+          int.tryParse(defaults['linked_source_last_scan_started_at']!) ?? 0,
+      linkedSourceLastScanCompletedAt:
+          int.tryParse(defaults['linked_source_last_scan_completed_at']!) ?? 0,
     );
   }
 }

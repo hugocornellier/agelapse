@@ -113,6 +113,47 @@ String getFixturePath(String relativePath) {
   return p.join(getProjectRoot(), 'assets', 'test_fixtures', relativePath);
 }
 
+/// Supported format sample names for format_samples/ fixture directories.
+const formatSampleFormats = [
+  'jpg',
+  'png',
+  'webp',
+  'bmp',
+  'tiff',
+  'heic',
+  'avif',
+  'jp2',
+];
+
+/// File extensions for each format sample directory.
+const formatSampleExtensions = {
+  'jpg': 'jpg',
+  'png': 'png',
+  'webp': 'webp',
+  'bmp': 'bmp',
+  'tiff': 'tiff',
+  'heic': 'heic',
+  'avif': 'avif',
+  'jp2': 'jp2',
+};
+
+/// Sample day numbers available in format_samples/.
+const formatSampleDays = ['day1', 'day11', 'day12'];
+
+/// Returns the path to a format sample image.
+/// [format] is one of: jpg, png, webp, bmp, tiff, gif, heic, avif, jp2
+/// [day] is one of: 'day1', 'day11', 'day12'
+Future<String> getFormatSamplePathAsync(String format, String day) async {
+  final ext = formatSampleExtensions[format] ?? format;
+  return getFixturePathAsync(p.join('format_samples', format, '$day.$ext'));
+}
+
+/// Synchronous version for backwards compatibility on desktop.
+String getFormatSamplePath(String format, String day) {
+  final ext = formatSampleExtensions[format] ?? format;
+  return getFixturePath(p.join('format_samples', format, '$day.$ext'));
+}
+
 /// Returns the path to a sample face image by day number (1, 2, or 3).
 /// On mobile platforms, this extracts the asset to a temp file first.
 Future<String> getSampleFacePathAsync(int day) async {
@@ -196,6 +237,10 @@ Future<void> preloadFixtures() async {
     'sample_poses/two_people.jpeg',
     'sample-avif.avif',
     'sample-heic.HEIC',
+    // Format samples for comprehensive format testing
+    for (final fmt in formatSampleFormats)
+      for (final day in formatSampleDays)
+        'format_samples/$fmt/$day.${formatSampleExtensions[fmt]}',
   ];
 
   final errors = <String>[];

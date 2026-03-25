@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../styles/styles.dart';
+import '../widgets/macos_page_scaffold.dart';
 
 class TipsPage extends StatefulWidget {
   final int projectId;
@@ -22,28 +23,10 @@ class TipsPageState extends State<TipsPage> {
   @override
   Widget build(BuildContext context) {
     final appBarColor = AppColors.background;
-    return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        backgroundColor: appBarColor,
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              "Tips",
-              style: TextStyle(
-                fontSize: AppTypography.xxxl,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.close, size: 30),
-              onPressed: () => closePage(),
-            ),
-          ],
-        ),
-      ),
+    return MacosPageScaffold(
+      title: 'Tips',
+      onClose: () => closePage(),
+      backgroundColor: AppColors.background,
       body: Container(color: appBarColor, child: _buildTipsPage()),
     );
   }

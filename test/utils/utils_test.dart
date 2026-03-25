@@ -193,6 +193,17 @@ void main() {
       test('handles apng extension', () {
         expect(Utils.isImage('animation.apng'), isTrue);
       });
+
+      test('handles RAW camera formats', () {
+        expect(Utils.isImage('photo.dng'), isTrue);
+        expect(Utils.isImage('photo.cr2'), isTrue);
+        expect(Utils.isImage('photo.cr3'), isTrue);
+        expect(Utils.isImage('photo.nef'), isTrue);
+        expect(Utils.isImage('photo.arw'), isTrue);
+        expect(Utils.isImage('photo.raf'), isTrue);
+        expect(Utils.isImage('photo.orf'), isTrue);
+        expect(Utils.isImage('photo.rw2'), isTrue);
+      });
     });
   });
 }

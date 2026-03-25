@@ -4,6 +4,7 @@ import 'package:mime/mime.dart';
 import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'capture_timezone.dart';
+import 'image_format_utils.dart';
 import '../widgets/confirm_action_dialog.dart';
 
 class Utils {
@@ -76,8 +77,22 @@ class Utils {
     return '$formattedDate, $formattedTime ($tzLabel)';
   }
 
-  static void navigateToScreen(BuildContext context, Widget screen) =>
+  static void navigateToScreen(BuildContext context, Widget screen) {
+    if (Platform.isMacOS) {
+      Navigator.push(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => screen,
+          transitionsBuilder: (_, animation, __, child) =>
+              FadeTransition(opacity: animation, child: child),
+          transitionDuration: const Duration(milliseconds: 150),
+          reverseTransitionDuration: const Duration(milliseconds: 150),
+        ),
+      );
+    } else {
       Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+    }
+  }
 
   static void navigateToScreenNoAnim(BuildContext context, Widget screen) {
     Navigator.push(
@@ -90,11 +105,25 @@ class Utils {
     );
   }
 
-  static void navigateToScreenReplace(BuildContext context, Widget screen) =>
+  static void navigateToScreenReplace(BuildContext context, Widget screen) {
+    if (Platform.isMacOS) {
+      Navigator.pushReplacement(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => screen,
+          transitionsBuilder: (_, animation, __, child) =>
+              FadeTransition(opacity: animation, child: child),
+          transitionDuration: const Duration(milliseconds: 150),
+          reverseTransitionDuration: const Duration(milliseconds: 150),
+        ),
+      );
+    } else {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => screen),
       );
+    }
+  }
 
   static void navigateToScreenReplaceNoAnim(
     BuildContext context,
@@ -121,31 +150,7 @@ class Utils {
     final String extension = path.extension(filepath).toLowerCase();
     if (extension == ".pdf") return false;
 
-    var validExtensions = {
-      ".heic",
-      ".heif",
-      ".jpg",
-      ".jpeg",
-      ".jfif",
-      ".pjpeg",
-      ".pjp",
-      ".png",
-      ".apng",
-      ".tiff",
-      ".bmp",
-      ".webp",
-      ".avif",
-      // RAW formats
-      ".dng",
-      ".cr2",
-      ".cr3",
-      ".nef",
-      ".arw",
-      ".raf",
-      ".orf",
-      ".rw2",
-    };
-    if (validExtensions.contains(extension)) return true;
+    if (ImageFormats.isAcceptedPath(filepath)) return true;
 
     final String? mimeType = lookupMimeType(filepath);
     if (mimeType != null) {

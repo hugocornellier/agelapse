@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:agelapse/main.dart' as app;
@@ -27,6 +28,45 @@ void main() {
 
   group('Export ZIP Tests', () {
     int? testProjectId;
+    final createdZipPaths = <String>{};
+
+    Future<File?> findRecentZipFile({
+      required int sinceEpochMs,
+      required int projectId,
+    }) async {
+      final thresholdMs =
+          sinceEpochMs - const Duration(seconds: 5).inMilliseconds;
+      final exportsDir = Directory(await DirUtils.getExportsDirPath(projectId));
+
+      final deadline = DateTime.now().add(const Duration(seconds: 15));
+      while (DateTime.now().isBefore(deadline)) {
+        File? newest;
+        DateTime? newestModified;
+
+        if (await exportsDir.exists()) {
+          await for (final entity in exportsDir.list(followLinks: false)) {
+            if (entity is! File || !entity.path.endsWith('.zip')) continue;
+
+            final modified = await entity.lastModified();
+            if (modified.millisecondsSinceEpoch < thresholdMs) continue;
+
+            if (newestModified == null || modified.isAfter(newestModified)) {
+              newest = entity;
+              newestModified = modified;
+            }
+          }
+        }
+
+        if (newest != null) {
+          createdZipPaths.add(newest.path);
+          return newest;
+        }
+
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+
+      return null;
+    }
 
     setUpAll(() async {
       initDatabase();
@@ -60,6 +100,16 @@ void main() {
         } catch (_) {}
         testProjectId = null;
       }
+
+      for (final zipPath in createdZipPaths.toList()) {
+        try {
+          final zipFile = File(zipPath);
+          if (await zipFile.exists()) {
+            await zipFile.delete();
+          }
+        } catch (_) {}
+      }
+      createdZipPaths.clear();
     });
 
     tearDownAll(() async {
@@ -131,6 +181,7 @@ void main() {
       }
 
       // 3. Run export
+      final exportStartedAt = DateTime.now().millisecondsSinceEpoch;
       double lastProgress = 0;
       final result = await GalleryUtils.exportZipFile(
         testProjectId!,
@@ -149,26 +200,22 @@ void main() {
         reason: 'Progress should reach at least 98%',
       );
 
-      // 5. Verify ZIP file exists (check exports dir since actual filename includes timestamp)
-      final exportsDir = await DirUtils.getExportsDirPath(testProjectId!);
-      final exportsDirEntity = Directory(exportsDir);
+      // 5. Verify ZIP file exists in the actual save location used by the platform
+      final zipFile = await findRecentZipFile(
+        sinceEpochMs: exportStartedAt,
+        projectId: testProjectId!,
+      );
       expect(
-        await exportsDirEntity.exists(),
+        zipFile,
+        isNotNull,
+        reason: 'A ZIP file should be created after export',
+      );
+      expect(
+        await zipFile!.exists(),
         isTrue,
-        reason: 'Exports directory should exist',
+        reason: 'Created ZIP file should exist on disk',
       );
 
-      final zipFiles = await exportsDirEntity
-          .list()
-          .where((e) => e is File && e.path.endsWith('.zip'))
-          .toList();
-      expect(
-        zipFiles.isNotEmpty,
-        isTrue,
-        reason: 'At least one ZIP file should exist in exports',
-      );
-
-      final zipFile = File(zipFiles.first.path);
       final zipSize = await zipFile.length();
       expect(
         zipSize,
@@ -202,6 +249,75 @@ void main() {
         'error',
         reason: 'Export with no files should return error',
       );
+    });
+
+    testWidgets('export raw photos uses sourceFilename with duplicate suffixes',
+        (
+      tester,
+    ) async {
+      app.main();
+      await tester.pumpAndSettle(const Duration(seconds: 3));
+
+      if (fixturesUnavailable) {
+        markTestSkipped('Fixtures unavailable: $fixtureLoadError');
+        return;
+      }
+
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      testProjectId = await DB.instance.addProject(
+        'Export Source Filename Test',
+        'face',
+        timestamp,
+      );
+      expect(testProjectId, isNotNull);
+
+      final rawDir = await DirUtils.getRawPhotoDirPath(testProjectId!);
+      await Directory(rawDir).create(recursive: true);
+
+      final rawImagePaths = <String>[];
+      final sourceFilename = 'IMG_4821.JPG';
+      for (int day = 1; day <= 2; day++) {
+        final fixturePath = await getSampleFacePathAsync(day);
+        final photoTimestamp = (timestamp + day * 1000).toString();
+        final destPath = path.join(rawDir, '$photoTimestamp.jpg');
+
+        await File(fixturePath).copy(destPath);
+        rawImagePaths.add(destPath);
+
+        final fileLen = await File(destPath).length();
+        await DB.instance.addPhoto(
+          photoTimestamp,
+          testProjectId!,
+          '.jpg',
+          fileLen,
+          '$photoTimestamp.jpg',
+          'portrait',
+          sourceFilename: sourceFilename,
+        );
+      }
+
+      final exportStartedAt = DateTime.now().millisecondsSinceEpoch;
+      final result = await GalleryUtils.exportZipFile(
+        testProjectId!,
+        'Export Source Filename Test',
+        {'Raw': rawImagePaths, 'Stabilized': []},
+        (_) {},
+      );
+
+      expect(result, 'success', reason: 'Export should succeed');
+
+      final zipFile = await findRecentZipFile(
+        sinceEpochMs: exportStartedAt,
+        projectId: testProjectId!,
+      );
+      expect(zipFile, isNotNull, reason: 'ZIP should be created');
+
+      final zipBytes = await zipFile!.readAsBytes();
+      final archive = ZipDecoder().decodeBytes(zipBytes);
+      final exportedNames = archive.files.map((file) => file.name).toSet();
+
+      expect(exportedNames, contains('Raw/IMG_4821.JPG'));
+      expect(exportedNames, contains('Raw/IMG_4821 (2).JPG'));
     });
   });
 }

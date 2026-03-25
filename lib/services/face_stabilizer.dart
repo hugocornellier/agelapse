@@ -13,11 +13,10 @@ import 'stabilization_settings.dart';
 import 'thumbnail_service.dart';
 import '../models/stabilization_mode.dart';
 import 'package:pose_detection/pose_detection.dart' as pose;
-import 'package:heif_converter/heif_converter.dart';
 import 'package:path/path.dart' as path;
 import '../utils/camera_utils.dart';
 import '../utils/dir_utils.dart';
-import '../utils/heic_utils.dart';
+import '../utils/format_decode_utils.dart';
 import '../utils/settings_utils.dart';
 import '../utils/stabilizer_utils/stabilizer_utils.dart';
 import '../utils/video_utils.dart';
@@ -76,7 +75,6 @@ class FaceStabilizer {
   late double originalRightAnkleY;
   late double originalRightHipX;
   late double originalRightHipY;
-  final Map<String, String> heicToJpgMap = {};
   late int pregRightAnkleYGoal;
   late int pregRightAnkleXGoal;
   late int muscRightHipYGoal;
@@ -116,14 +114,6 @@ class FaceStabilizer {
 
     await _poseDetector?.dispose();
     _poseDetector = null;
-
-    // Delete temp HEIC-to-JPG conversions created by this instance
-    for (final tempPath in heicToJpgMap.values) {
-      try {
-        await File(tempPath).delete();
-      } catch (_) {}
-    }
-    heicToJpgMap.clear();
   }
 
   Future<void>? _initFuture;
@@ -206,7 +196,6 @@ class FaceStabilizer {
       token?.throwIfCancelled();
       await _ensureReady();
 
-      rawPhotoPath = await _convertHeicToJpgIfNeeded(rawPhotoPath);
       if (rawPhotoPath.contains("_flipped_flipped")) {
         token?.throwIfCancelled();
         final bool success = await tryRotation(
@@ -220,10 +209,8 @@ class FaceStabilizer {
       double? rotationDegrees, scaleFactor, translateX, translateY;
 
       token?.throwIfCancelled();
-      final Uint8List? srcBytes = await StabUtils.preparePNG(
-        rawPhotoPath,
-        lossless: lossless,
-      );
+      final Uint8List? srcBytes =
+          await FormatDecodeUtils.loadCvCompatibleBytes(rawPhotoPath);
       if (srcBytes == null) return StabilizationResult(success: false);
 
       token?.throwIfCancelled();
@@ -241,7 +228,7 @@ class FaceStabilizer {
         imgHeight,
         targetBoundingBox,
         userRanOutOfSpaceCallback,
-        pngBytes: srcBytes,
+        cvBytes: srcBytes,
       );
       if (rotationDegrees == null || scaleFactor == null) {
         return StabilizationResult(success: false);
@@ -338,7 +325,7 @@ class FaceStabilizer {
       return StabilizationResult(success: false);
     } finally {
       await IsolatePool.instance.clearMatCache();
-      _lastPngBytes = null;
+      _lastCvBytes = null;
       _lastRawFaces = null;
     }
   }
@@ -488,7 +475,6 @@ class FaceStabilizer {
     );
 
     List<String> toDelete = [
-      await DirUtils.getPngPathFromRawPhotoPath(rawPhotoPath),
       stabilizedJpgPhotoPath,
     ];
 
@@ -1779,37 +1765,6 @@ class FaceStabilizer {
     toDelete.add(stabilizedPngPath);
   }
 
-  Future<String> _convertHeicToJpgIfNeeded(String rawPhotoPath) async {
-    if (path.extension(rawPhotoPath).toLowerCase() == ".heic") {
-      if (heicToJpgMap.containsKey(rawPhotoPath)) {
-        return heicToJpgMap[rawPhotoPath]!;
-      } else {
-        final String basename = path.basename(
-          rawPhotoPath.replaceAll(".heic", ".jpg"),
-        );
-        final String tempDir = await DirUtils.getTemporaryDirPath();
-        final String tempJpgPath = path.join(tempDir, basename);
-
-        if (Platform.isWindows) {
-          final success = await HeicUtils.convertHeicToJpgAt(
-            rawPhotoPath,
-            tempJpgPath,
-          );
-          if (!success) return rawPhotoPath;
-        } else {
-          await HeifConverter.convert(
-            rawPhotoPath,
-            output: tempJpgPath,
-            format: 'jpeg',
-          );
-        }
-        heicToJpgMap[rawPhotoPath] = tempJpgPath;
-        return tempJpgPath;
-      }
-    }
-    return rawPhotoPath;
-  }
-
   Future<bool> tryRotation(
     String rawPhotoPath,
     void Function() userRanOutOfSpaceCallback,
@@ -1825,11 +1780,20 @@ class FaceStabilizer {
       timestamp,
       projectId,
     );
-    rawPhotoPath = await _convertHeicToJpgIfNeeded(rawPhotoPath);
+
+    // Pre-decode on main thread so the isolate receives cv-compatible bytes
+    // (avoids crash for TIFF/JP2 on Apple where cv.imdecode segfaults).
+    final Uint8List? preDecodedBytes =
+        FormatDecodeUtils.needsConversion(path.extension(rawPhotoPath))
+            ? await FormatDecodeUtils.loadCvCompatibleBytes(rawPhotoPath)
+            : null;
 
     token?.throwIfCancelled();
     final File rotatedCounterClockwiseImage =
-        await StabUtils.rotateImageCounterClockwise(rawPhotoPath);
+        await StabUtils.rotateImageCounterClockwise(
+      rawPhotoPath,
+      preDecodedBytes: preDecodedBytes,
+    );
     final result1 = await stabilize(
       rotatedCounterClockwiseImage.path,
       token,
@@ -1841,6 +1805,7 @@ class FaceStabilizer {
     token?.throwIfCancelled();
     final File rotatedClockwiseImage = await StabUtils.rotateImageClockwise(
       rawPhotoPath,
+      preDecodedBytes: preDecodedBytes,
     );
     final result2 = await stabilize(
       rotatedClockwiseImage.path,
@@ -1961,7 +1926,7 @@ class FaceStabilizer {
     int imgHeight,
     Rect? targetBoundingBox,
     userRanOutOfSpaceCallback, {
-    Uint8List? pngBytes,
+    Uint8List? cvBytes,
   }) async {
     try {
       if (projectType == "face") {
@@ -1971,7 +1936,7 @@ class FaceStabilizer {
           imgHeight,
           targetBoundingBox,
           userRanOutOfSpaceCallback,
-          pngBytes: pngBytes,
+          cvBytes: cvBytes,
         );
       } else if (projectType == "cat" || projectType == "dog") {
         return await _calculateRotationAngleAndScaleAnimal(
@@ -1980,12 +1945,18 @@ class FaceStabilizer {
           imgHeight,
           targetBoundingBox,
           userRanOutOfSpaceCallback,
-          pngBytes: pngBytes,
+          cvBytes: cvBytes,
         );
       } else if (projectType == "pregnancy") {
-        return await _calculateRotationAngleAndScalePregnancy(rawPhotoPath);
+        final Uint8List? bytes = cvBytes ??
+            await FormatDecodeUtils.loadCvCompatibleBytes(rawPhotoPath);
+        if (bytes == null) return (null, null);
+        return await _calculateRotationAngleAndScalePregnancy(bytes);
       } else if (projectType == "musc") {
-        return await _calculateRotationAngleAndScaleMusc(rawPhotoPath);
+        final Uint8List? bytes = cvBytes ??
+            await FormatDecodeUtils.loadCvCompatibleBytes(rawPhotoPath);
+        if (bytes == null) return (null, null);
+        return await _calculateRotationAngleAndScaleMusc(bytes);
       } else {
         return (null, null);
       }
@@ -2003,7 +1974,7 @@ class FaceStabilizer {
     int imgHeight,
     Rect? targetBoundingBox,
     userRanOutOfSpaceCallback, {
-    Uint8List? pngBytes,
+    Uint8List? cvBytes,
   }) async {
     List<Point<double>?> eyes;
 
@@ -2012,7 +1983,7 @@ class FaceStabilizer {
       rawPhotoPath,
       imgWidth,
       filterByFaceSize: !noFaceSizeFilter,
-      pngBytes: pngBytes,
+      cvBytes: cvBytes,
     );
     if (faces == null || faces.isEmpty) {
       LogService.instance.log(
@@ -2066,7 +2037,7 @@ class FaceStabilizer {
     int imgHeight,
     Rect? targetBoundingBox,
     userRanOutOfSpaceCallback, {
-    Uint8List? pngBytes,
+    Uint8List? cvBytes,
   }) async {
     List<Point<double>?> eyes;
 
@@ -2079,7 +2050,7 @@ class FaceStabilizer {
       rawPhotoPath,
       imgWidth,
       filterByFaceSize: !noFaceSizeFilter,
-      pngBytes: pngBytes,
+      cvBytes: cvBytes,
     );
     if (faces == null || faces.isEmpty) {
       LogService.instance.log("No faces found. Attempting to flip...");
@@ -2197,18 +2168,9 @@ class FaceStabilizer {
         "Using reference embedding from photo $refTimestamp for face matching",
       );
 
-      Uint8List imageBytes;
-      if (_lastPngBytes != null) {
-        imageBytes = _lastPngBytes!;
-        LogService.instance.log(
-          "Using cached PNG bytes for embedding extraction",
-        );
-      } else {
-        final String pngPath = await DirUtils.getPngPathFromRawPhotoPath(
-          rawPhotoPath,
-        );
-        imageBytes = await File(pngPath).readAsBytes();
-      }
+      final Uint8List? imageBytes = _lastCvBytes ??
+          await FormatDecodeUtils.loadCvCompatibleBytes(rawPhotoPath);
+      if (imageBytes == null) return null;
 
       final List<dynamic>? rawFaces = _lastRawFaces;
 
@@ -2228,15 +2190,9 @@ class FaceStabilizer {
   /// Extracts and stores the face embedding for a single-face photo.
   Future<void> _extractAndStoreEmbedding(String rawPhotoPath) async {
     try {
-      Uint8List imageBytes;
-      if (_lastPngBytes != null) {
-        imageBytes = _lastPngBytes!;
-      } else {
-        final String pngPath = await DirUtils.getPngPathFromRawPhotoPath(
-          rawPhotoPath,
-        );
-        imageBytes = await File(pngPath).readAsBytes();
-      }
+      final Uint8List? imageBytes = _lastCvBytes ??
+          await FormatDecodeUtils.loadCvCompatibleBytes(rawPhotoPath);
+      if (imageBytes == null) return;
 
       final Float32List? embedding = await StabUtils.getFaceEmbeddingFromBytes(
         imageBytes,
@@ -2369,17 +2325,11 @@ class FaceStabilizer {
   }
 
   Future<(double?, double?)> _calculateRotationAngleAndScalePregnancy(
-    String rawPhotoPath,
+    Uint8List cvBytes,
   ) async {
-    await StabUtils.preparePNG(rawPhotoPath, lossless: lossless);
-    final String pngPath = await DirUtils.getPngPathFromRawPhotoPath(
-      rawPhotoPath,
-    );
-
     List<pose.Pose>? poses;
     try {
-      final Uint8List imageBytes = await File(pngPath).readAsBytes();
-      poses = await _poseDetector?.detect(imageBytes);
+      poses = await _poseDetector?.detect(cvBytes);
     } catch (e) {
       LogService.instance.log("Error caught => $e");
     }
@@ -2412,17 +2362,11 @@ class FaceStabilizer {
   }
 
   Future<(double?, double?)> _calculateRotationAngleAndScaleMusc(
-    String rawPhotoPath,
+    Uint8List cvBytes,
   ) async {
-    await StabUtils.preparePNG(rawPhotoPath, lossless: lossless);
-    final String pngPath = await DirUtils.getPngPathFromRawPhotoPath(
-      rawPhotoPath,
-    );
-
     List<pose.Pose>? poses;
     try {
-      final Uint8List imageBytes = await File(pngPath).readAsBytes();
-      poses = await _poseDetector?.detect(imageBytes);
+      poses = await _poseDetector?.detect(cvBytes);
     } catch (e) {
       LogService.instance.log("Error caught => $e");
     }
@@ -2465,8 +2409,15 @@ class FaceStabilizer {
     if (rawPhotoPath.contains("_flipped")) {
       newPath = rawPhotoPath.replaceAll("_flipped", "_flipped_flipped");
     } else {
+      // Pre-decode on main thread so the isolate receives cv-compatible bytes
+      // (avoids crash for TIFF/JP2 on Apple where cv.imdecode segfaults).
+      final Uint8List? preDecodedBytes =
+          FormatDecodeUtils.needsConversion(path.extension(rawPhotoPath))
+              ? await FormatDecodeUtils.loadCvCompatibleBytes(rawPhotoPath)
+              : null;
       final File flippedImgFile = await StabUtils.flipImageHorizontally(
         rawPhotoPath,
+        preDecodedBytes: preDecodedBytes,
       );
       newPath = flippedImgFile.path;
     }
@@ -2672,7 +2623,7 @@ class FaceStabilizer {
     return horizontalDistance;
   }
 
-  Uint8List? _lastPngBytes;
+  Uint8List? _lastCvBytes;
   List<dynamic>? _lastRawFaces;
 
   /// Dispatches face detection to the correct detector based on project type.
@@ -2694,17 +2645,17 @@ class FaceStabilizer {
     String rawPhotoPath,
     int width, {
     bool filterByFaceSize = true,
-    Uint8List? pngBytes,
+    Uint8List? cvBytes,
   }) async {
     await _ensureReady();
-    pngBytes ??= await StabUtils.preparePNG(rawPhotoPath, lossless: lossless);
-    if (pngBytes == null) return null;
-    _lastPngBytes = pngBytes;
+    cvBytes ??= await FormatDecodeUtils.loadCvCompatibleBytes(rawPhotoPath);
+    if (cvBytes == null) return null;
+    _lastCvBytes = cvBytes;
 
     // Cat/dog don't return raw faces (no embedding support)
     if (projectType == "cat" || projectType == "dog") {
       final faces = await _detectFaces(
-        pngBytes,
+        cvBytes,
         filterByFaceSize: filterByFaceSize,
         imageWidth: width,
       );
@@ -2713,7 +2664,7 @@ class FaceStabilizer {
     }
 
     final result = await StabUtils.getFacesFromBytesWithRaw(
-      pngBytes,
+      cvBytes,
       filterByFaceSize: filterByFaceSize,
       imageWidth: width,
     );

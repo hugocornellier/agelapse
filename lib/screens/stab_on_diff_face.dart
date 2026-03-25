@@ -7,6 +7,7 @@ import '../styles/styles.dart';
 import '../utils/camera_utils.dart';
 import '../utils/dir_utils.dart';
 import '../utils/stabilizer_utils/stabilizer_utils.dart';
+import '../widgets/macos_page_scaffold.dart';
 
 class StabDiffFacePage extends StatefulWidget {
   final int projectId;
@@ -257,65 +258,6 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      toolbarHeight: 56,
-      elevation: 0,
-      scrolledUnderElevation: 0,
-      shadowColor: Colors.transparent,
-      surfaceTintColor: Colors.transparent,
-      backgroundColor: AppColors.settingsBackground,
-      title: Text(
-        'Stabilize on Other Face',
-        style: TextStyle(
-          fontSize: AppTypography.xxl,
-          fontWeight: FontWeight.w600,
-          color: AppColors.settingsTextPrimary,
-        ),
-      ),
-      leading: GestureDetector(
-        onTap: () => Navigator.pop(context),
-        child: Container(
-          margin: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: AppColors.settingsCardBackground,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.settingsCardBorder, width: 1),
-          ),
-          child: Icon(
-            Icons.arrow_back,
-            color: AppColors.settingsTextPrimary,
-            size: 20,
-          ),
-        ),
-      ),
-      actions: [
-        GestureDetector(
-          onTap: _showHelpDialog,
-          child: Container(
-            width: 40,
-            height: 40,
-            margin: const EdgeInsets.only(right: 8),
-            decoration: BoxDecoration(
-              color: AppColors.settingsCardBackground,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.settingsCardBorder, width: 1),
-            ),
-            child: Icon(
-              Icons.help_outline_rounded,
-              color: AppColors.settingsTextSecondary,
-              size: 20,
-            ),
-          ),
-        ),
-      ],
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(1),
-        child: Container(height: 1, color: AppColors.settingsDivider),
-      ),
-    );
-  }
-
   void _showHelpDialog() {
     showDialog(
       context: context,
@@ -370,80 +312,111 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.settingsBackground,
-      appBar: _buildAppBar(),
-      body: Center(
-        child: stabCompletedSuccessfully == null
-            ? !isLoading
-                ? LayoutBuilder(
-                    builder: (context, constraints) {
-                      return _buildImageWithContours(
-                        constraints,
-                        widget.userRanOutOfSpaceCallback,
-                      );
-                    },
-                  )
-                : Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppColors.settingsAccent,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        loadingStatus,
-                        style: TextStyle(
-                          color: AppColors.settingsTextSecondary,
-                          fontSize: AppTypography.md,
-                        ),
-                      ),
-                    ],
-                  )
-            : stabCompletedSuccessfully!
-                ? Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.check_circle_rounded,
+    final body = Center(
+      child: stabCompletedSuccessfully == null
+          ? !isLoading
+              ? LayoutBuilder(
+                  builder: (context, constraints) {
+                    return _buildImageWithContours(
+                      constraints,
+                      widget.userRanOutOfSpaceCallback,
+                    );
+                  },
+                )
+              : Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
                         color: AppColors.settingsAccent,
-                        size: 48,
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        loadingStatus,
-                        style: TextStyle(
-                          color: AppColors.settingsTextPrimary,
-                          fontSize: AppTypography.lg,
-                          fontWeight: FontWeight.w500,
-                        ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      loadingStatus,
+                      style: TextStyle(
+                        color: AppColors.settingsTextSecondary,
+                        fontSize: AppTypography.md,
                       ),
-                    ],
-                  )
-                : Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.error_outline_rounded,
-                        color: AppColors.warningMuted,
-                        size: 48,
+                    ),
+                  ],
+                )
+          : stabCompletedSuccessfully!
+              ? Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.check_circle_rounded,
+                      color: AppColors.settingsAccent,
+                      size: 48,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      loadingStatus,
+                      style: TextStyle(
+                        color: AppColors.settingsTextPrimary,
+                        fontSize: AppTypography.lg,
+                        fontWeight: FontWeight.w500,
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        loadingStatus,
-                        style: TextStyle(
-                          color: AppColors.settingsTextPrimary,
-                          fontSize: AppTypography.lg,
-                          fontWeight: FontWeight.w500,
-                        ),
+                    ),
+                  ],
+                )
+              : Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.error_outline_rounded,
+                      color: AppColors.warningMuted,
+                      size: 48,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      loadingStatus,
+                      style: TextStyle(
+                        color: AppColors.settingsTextPrimary,
+                        fontSize: AppTypography.lg,
+                        fontWeight: FontWeight.w500,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
+                ),
+    );
+
+    return MacosPageScaffold(
+      title: 'Stabilize on Other Face',
+      onBack: () => Navigator.pop(context),
+      backgroundColor: AppColors.settingsBackground,
+      showBottomDivider: true,
+      actions: [
+        _buildHelpButton(),
+      ],
+      body: body,
+    );
+  }
+
+  Widget _buildHelpButton() {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: _showHelpDialog,
+        child: Container(
+          width: 40,
+          height: 40,
+          margin: const EdgeInsets.only(right: 8),
+          decoration: BoxDecoration(
+            color: AppColors.settingsCardBackground,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.settingsCardBorder, width: 1),
+          ),
+          child: Icon(
+            Icons.help_outline_rounded,
+            color: AppColors.settingsTextSecondary,
+            size: 20,
+          ),
+        ),
       ),
     );
   }

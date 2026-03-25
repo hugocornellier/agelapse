@@ -14,6 +14,7 @@ import '../screens/project_page.dart';
 import '../screens/info_page.dart';
 import '../screens/camera_page/camera_page.dart';
 import '../services/database_helper.dart';
+import '../services/project_folder_sync_service.dart';
 import '../services/settings_cache.dart';
 import '../services/stabilization_service.dart';
 import '../services/stabilization_progress.dart';
@@ -26,6 +27,7 @@ import '../styles/styles.dart';
 import '../utils/utils.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/global_drop_overlay.dart';
+import '../widgets/macos_page_scaffold.dart';
 
 class MainNavigation extends StatefulWidget {
   final int projectId;
@@ -60,6 +62,9 @@ class MainNavigationState extends State<MainNavigation>
   // Key to access CreatePage state for fullscreen trigger
   final GlobalKey<CreatePageState> _createPageKey =
       GlobalKey<CreatePageState>();
+  // Nested navigator for macOS — keeps CustomAppBar fixed during page transitions
+  final GlobalKey<NavigatorState> _nestedNavKey = GlobalKey<NavigatorState>();
+  final ValueNotifier<int> _selectedIndexNotifier = ValueNotifier<int>(0);
   int photoCount = 0;
   late bool _showFlashingCircle;
   late String projectIdStr;
@@ -71,6 +76,7 @@ class MainNavigationState extends State<MainNavigation>
   SettingsCache? _settingsCache;
   bool _photoTakenToday = false;
   bool _userRanOutOfSpace = false;
+  bool _isSyncingProjectFolder = false;
 
   // Global drag-and-drop state (UI only - GlobalDropService is source of truth)
   bool _globalDragActive = false;
@@ -81,6 +87,7 @@ class MainNavigationState extends State<MainNavigation>
 
   /// Subscription to the stabilization service progress stream.
   StreamSubscription<StabilizationProgress>? _stabSubscription;
+  StreamSubscription<SyncState>? _syncSubscription;
 
   /// Stream controller to notify UI components of stabilization updates.
   /// Emits typed events for progress updates, completion, cancellation, etc.
@@ -112,6 +119,7 @@ class MainNavigationState extends State<MainNavigation>
     WidgetsBinding.instance.addObserver(this);
     projectIdStr = widget.projectId.toString();
     _selectedIndex = widget.index ?? 0;
+    _selectedIndexNotifier.value = _selectedIndex;
     _showFlashingCircle = widget.showFlashingCircle;
 
     // Subscribe to stabilization progress stream for reactive UI updates
@@ -160,6 +168,28 @@ class MainNavigationState extends State<MainNavigation>
       }
     });
 
+    _syncSubscription = ProjectFolderSyncService.instance.stateStream.listen((
+      state,
+    ) {
+      if (!mounted) return;
+
+      final bool syncing =
+          state == SyncState.scanning || state == SyncState.importing;
+      if (_isSyncingProjectFolder != syncing) {
+        setState(() => _isSyncingProjectFolder = syncing);
+      }
+
+      if (state == SyncState.complete) {
+        unawaited(_handleLinkedSyncCompletion());
+      }
+
+      if (state == SyncState.error) {
+        if (_isSyncingProjectFolder) {
+          setState(() => _isSyncingProjectFolder = false);
+        }
+      }
+    });
+
     // If the project is a newly created one, we use a settingsCache filled
     // default values instead of loading project data
     if (widget.initialSettingsCache != null) {
@@ -178,8 +208,11 @@ class MainNavigationState extends State<MainNavigation>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _stabSubscription?.cancel();
+    _syncSubscription?.cancel();
     _stabUpdateController.close();
+    ProjectFolderSyncService.instance.stopWatching();
     _settingsCache?.dispose();
+    _selectedIndexNotifier.dispose();
     super.dispose();
   }
 
@@ -189,6 +222,9 @@ class MainNavigationState extends State<MainNavigation>
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused) {
       _clearDragState();
+    } else if (state == AppLifecycleState.resumed &&
+        _settingsCache?.linkedSourceEnabled == true) {
+      ProjectFolderSyncService.instance.scheduleDebouncedRescan();
     }
   }
 
@@ -199,6 +235,9 @@ class MainNavigationState extends State<MainNavigation>
 
   Future<void> _initPhotosThenStabilize() async {
     await loadPhotos();
+    if (!mounted) return;
+
+    await _runStartupSyncIfNeeded();
     if (!mounted) return;
 
     _checkPhotoTakenToday();
@@ -307,6 +346,7 @@ class MainNavigationState extends State<MainNavigation>
 
   Future<void> refreshSettings() async {
     await _refreshSettingsCache();
+    await _runStartupSyncIfNeeded();
   }
 
   Future<void> initPhotoCount() async {
@@ -420,7 +460,7 @@ class MainNavigationState extends State<MainNavigation>
   /// - Video compilation with FFmpeg process tracking
   Future<void> _startStabilization() async {
     // Wait for import to finish before starting stabilization
-    while (_isImporting) {
+    while (_isImporting || _isSyncingProjectFolder) {
       await Future.delayed(const Duration(milliseconds: 100));
     }
 
@@ -429,6 +469,37 @@ class MainNavigationState extends State<MainNavigation>
       widget.projectId,
       onUserRanOutOfSpace: userRanOutOfSpaceCallback,
     );
+  }
+
+  Future<void> _runStartupSyncIfNeeded() async {
+    final cache = _settingsCache;
+    if (cache == null) return;
+
+    if (!cache.linkedSourceEnabled) {
+      await ProjectFolderSyncService.instance.stopWatching();
+      return;
+    }
+
+    final result = await ProjectFolderSyncService.instance.runStartupSync(
+      widget.projectId,
+      cache,
+    );
+    if (!mounted) return;
+
+    if (result.filesImported > 0) {
+      await loadPhotos();
+      if (!mounted) return;
+      _checkPhotoTakenToday();
+    }
+  }
+
+  Future<void> _handleLinkedSyncCompletion() async {
+    await loadPhotos();
+    if (!mounted) return;
+    _checkPhotoTakenToday();
+    await _refreshSettingsCache();
+    if (!mounted) return;
+    await _startStabilization();
   }
 
   void _hideFlashingCircle() {
@@ -557,9 +628,15 @@ class MainNavigationState extends State<MainNavigation>
       return;
     }
 
+    // Pop any pushed pages in the nested navigator before switching tabs
+    if (Platform.isMacOS) {
+      _nestedNavKey.currentState?.popUntil((route) => route.isFirst);
+    }
+
     setState(() {
       _prevIndex = selectedIndex;
       _selectedIndex = index;
+      _selectedIndexNotifier.value = index;
     });
 
     if (index == 3) {
@@ -676,10 +753,12 @@ class MainNavigationState extends State<MainNavigation>
         onCreatePageDuringLoading()) {
       appBar = CustomAppBar(
         projectId: widget.projectId,
+        projectName: widget.projectName,
         goToPage: _onItemTapped,
         progressPercent: progressPercent,
         stabilizingRunningInMain: _stabilizingActive,
         videoCreationActiveInMain: _videoCreationActive,
+        isSyncingProjectFolder: _isSyncingProjectFolder,
         selectedIndex: _selectedIndex,
         stabCallback: _startStabilization,
         cancelStabCallback: _cancelStabilizationProcess,
@@ -702,12 +781,32 @@ class MainNavigationState extends State<MainNavigation>
           photoCount > 1;
     }
 
+    // On macOS, use a nested Navigator so CustomAppBar stays fixed
+    // during page transitions. The ValueNotifier drives tab rebuilds.
+    Widget contentArea;
+    if (Platform.isMacOS) {
+      contentArea = MacosTitleBarScope(
+        child: Navigator(
+          key: _nestedNavKey,
+          onGenerateRoute: (_) => PageRouteBuilder(
+            pageBuilder: (_, __, ___) => ValueListenableBuilder<int>(
+              valueListenable: _selectedIndexNotifier,
+              builder: (_, index, __) => _widgetOptions.elementAt(index),
+            ),
+            transitionDuration: Duration.zero,
+          ),
+        ),
+      );
+    } else {
+      contentArea = _widgetOptions.elementAt(_selectedIndex);
+    }
+
     final scaffold = Scaffold(
       backgroundColor: AppColors.backgroundDark,
       body: Column(
         children: [
           if (appBar != null) appBar,
-          Expanded(child: _widgetOptions.elementAt(_selectedIndex)),
+          Expanded(child: contentArea),
         ],
       ),
       bottomNavigationBar: navbarShouldBeHidden()

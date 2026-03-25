@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../styles/styles.dart';
+import '../widgets/macos_page_scaffold.dart';
 
 class CreateFirstVideoPage extends StatefulWidget {
   final int projectId;
@@ -21,15 +22,9 @@ class CreateFirstVideoPageState extends State<CreateFirstVideoPage> {
   @override
   Widget build(BuildContext context) {
     final appBarColor = AppColors.background;
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(""),
-        backgroundColor: appBarColor,
-        automaticallyImplyLeading: false,
-        actions: [
-          IconButton(icon: const Icon(Icons.close), onPressed: () => close()),
-        ],
-      ),
+    return MacosPageScaffold(
+      onClose: () => close(),
+      backgroundColor: AppColors.background,
       body: Container(color: appBarColor, child: _buildCreateFirstVideoPage()),
     );
   }

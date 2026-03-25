@@ -3,6 +3,7 @@ import '../services/settings_cache.dart';
 import '../styles/styles.dart';
 import '../utils/settings_utils.dart';
 import '../widgets/main_navigation.dart';
+import '../widgets/macos_page_scaffold.dart';
 import '../widgets/settings_sheet.dart';
 
 class SetUpNotificationsPage extends StatefulWidget {
@@ -35,14 +36,9 @@ class SetUpNotificationsPageState extends State<SetUpNotificationsPage> {
   @override
   Widget build(BuildContext context) {
     final appBarColor = AppColors.background;
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(""),
-        backgroundColor: appBarColor,
-        actions: [
-          IconButton(icon: const Icon(Icons.close), onPressed: () => close()),
-        ],
-      ),
+    return MacosPageScaffold(
+      onClose: () => close(),
+      backgroundColor: AppColors.background,
       body: Container(
         color: appBarColor,
         child: _buildSetUpNotificationsPage(),
@@ -152,8 +148,8 @@ class SetUpNotificationsPageState extends State<SetUpNotificationsPage> {
   void close() {
     SettingsUtil.setHasOpenedNotifPageToTrue(widget.projectId.toString());
 
-    Navigator.pushReplacement(
-      context,
+    // Use root navigator to avoid pushing MainNavigation inside itself
+    Navigator.of(context, rootNavigator: true).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation1, animation2) => MainNavigation(
           projectId: widget.projectId,

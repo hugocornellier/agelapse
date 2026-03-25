@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import '../styles/styles.dart';
+import '../widgets/macos_page_scaffold.dart';
 
 class FAQPage extends StatelessWidget {
   const FAQPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('F.A.Q.')),
+    return MacosPageScaffold(
+      title: 'F.A.Q.',
+      onBack: () => Navigator.pop(context),
       body: Container(
         color: AppColors.overlay.withValues(alpha: 0.54),
         child: ListView(

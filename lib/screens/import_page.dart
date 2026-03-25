@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../styles/styles.dart';
-import '../utils/utils.dart';
 import '../widgets/main_navigation.dart';
+import '../widgets/macos_page_scaffold.dart';
 
 class ImportPage extends StatefulWidget {
   final int projectId;
@@ -21,17 +21,9 @@ class ImportPageState extends State<ImportPage> {
   @override
   Widget build(BuildContext context) {
     final backgroundColor = AppColors.background;
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(""),
-        backgroundColor: backgroundColor,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.close, size: 30),
-            onPressed: () => navigateToIndex(0),
-          ),
-        ],
-      ),
+    return MacosPageScaffold(
+      onClose: () => navigateToIndex(0),
+      backgroundColor: AppColors.background,
       body: Container(color: backgroundColor, child: _buildImportPage()),
     );
   }
@@ -150,6 +142,9 @@ class ImportPageState extends State<ImportPage> {
       showFlashingCircle: true,
     );
 
-    Utils.navigateToScreenReplace(context, destination);
+    // Use root navigator to avoid pushing MainNavigation inside itself
+    Navigator.of(context, rootNavigator: true).pushReplacement(
+      MaterialPageRoute(builder: (_) => destination),
+    );
   }
 }

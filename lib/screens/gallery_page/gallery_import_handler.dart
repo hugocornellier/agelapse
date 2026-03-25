@@ -197,13 +197,25 @@ class GalleryImportHandler {
       await tempOriginFile.writeAsBytes(originBytes);
     }
 
-    await GalleryUtils.processPickedImage(
-      tempOriginPhotoPath,
-      projectId,
-      activeProcessingDateNotifier,
-      onImagesLoaded: loadImages,
-      timestamp: asset.createDateTime.millisecondsSinceEpoch,
-    );
+    try {
+      await GalleryUtils.processPickedImage(
+        tempOriginPhotoPath,
+        projectId,
+        activeProcessingDateNotifier,
+        onImagesLoaded: loadImages,
+        timestamp: asset.createDateTime.millisecondsSinceEpoch,
+        originalFilePath: originPath,
+        sourceFilename: asset.title ?? path.basename(originPath),
+      );
+    } finally {
+      // Clean up temp file after import completes (success or failure)
+      final tempFile = File(tempOriginPhotoPath);
+      if (await tempFile.exists()) {
+        try {
+          await tempFile.delete();
+        } catch (_) {}
+      }
+    }
   }
 
   Future<String> _getTemporaryPhotoPath(

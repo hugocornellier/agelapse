@@ -3,8 +3,8 @@ import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import '../services/database_helper.dart';
 import '../styles/styles.dart';
 import '../utils/settings_utils.dart';
-import '../utils/utils.dart';
 import '../widgets/main_navigation.dart';
+import '../widgets/macos_page_scaffold.dart';
 
 class GuideModeTutorialPage extends StatefulWidget {
   final int projectId;
@@ -56,20 +56,11 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
 
   @override
   Widget build(BuildContext context) {
-    final appBarColor = AppColors.background;
-    return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: const Text(""),
-        backgroundColor: appBarColor,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: () => goToCamera(),
-          ),
-        ],
-      ),
-      body: Container(color: appBarColor, child: _buildGuideModeTutorialPage()),
+    return MacosPageScaffold(
+      onClose: () => goToCamera(),
+      backgroundColor: AppColors.background,
+      body: Container(
+          color: AppColors.background, child: _buildGuideModeTutorialPage()),
     );
   }
 
@@ -292,13 +283,16 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
   }
 
   void goToCamera() {
-    Utils.navigateToScreenReplaceNoAnim(
-      context,
-      MainNavigation(
-        projectId: widget.projectId,
-        projectName: widget.projectName,
-        showFlashingCircle: false,
-        index: 2,
+    // Use root navigator to avoid pushing MainNavigation inside itself
+    Navigator.of(context, rootNavigator: true).pushReplacement(
+      PageRouteBuilder(
+        pageBuilder: (context, animation1, animation2) => MainNavigation(
+          projectId: widget.projectId,
+          projectName: widget.projectName,
+          showFlashingCircle: false,
+          index: 2,
+        ),
+        transitionDuration: Duration.zero,
       ),
     );
   }

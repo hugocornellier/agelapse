@@ -147,121 +147,138 @@ class GalleryPhotoOperations {
     required String newTimestamp,
     required int projectId,
   }) async {
-    // Get raw file path
-    String oldRawPhotoPath =
+    final String oldRawPhotoPath =
         await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
       oldTimestamp,
       projectId,
     );
-    File oldRawFile = File(oldRawPhotoPath);
-    if (!await oldRawFile.exists()) {
+    if (!await File(oldRawPhotoPath).exists()) {
       throw Exception('Original file not found');
     }
 
-    // Rename raw file
-    String fileExtension = path.extension(oldRawPhotoPath);
-    String newRawPhotoPath = path.join(
+    final String fileExtension = path.extension(oldRawPhotoPath);
+    final String newRawPhotoPath = path.join(
       path.dirname(oldRawPhotoPath),
       '$newTimestamp$fileExtension',
     );
-    await oldRawFile.rename(newRawPhotoPath);
+    final String thumbDir = path.dirname(
+      oldRawPhotoPath.replaceAll(
+        DirUtils.photosRawDirname,
+        DirUtils.thumbnailDirname,
+      ),
+    );
+    final String oldRawThumbPath = path.join(thumbDir, '$oldTimestamp.jpg');
+    final String newRawThumbPath = path.join(thumbDir, '$newTimestamp.jpg');
 
-    // Rename raw thumbnail
-    String oldRawThumbPath = oldRawPhotoPath.replaceAll(
-      DirUtils.photosRawDirname,
-      DirUtils.thumbnailDirname,
-    );
-    oldRawThumbPath = path.join(
-      path.dirname(oldRawThumbPath),
-      "${path.basenameWithoutExtension(oldRawPhotoPath)}.jpg",
-    );
-    File oldRawThumbFile = File(oldRawThumbPath);
-    if (await oldRawThumbFile.exists()) {
-      String newRawThumbPath = path.join(
-        path.dirname(oldRawThumbPath),
-        "$newTimestamp.jpg",
-      );
-      await oldRawThumbFile.rename(newRawThumbPath);
+    final renames = <({String from, String to})>[
+      (from: oldRawPhotoPath, to: newRawPhotoPath),
+    ];
+
+    if (await File(oldRawThumbPath).exists()) {
+      renames.add((from: oldRawThumbPath, to: newRawThumbPath));
     }
 
-    // Rename stabilized files in both orientations
-    List<String> orientations = ['portrait', 'landscape'];
-    for (String orientation in orientations) {
-      try {
-        String oldStabPath = await DirUtils
-            .getStabilizedImagePathFromRawPathAndProjectOrientation(
-          projectId,
-          oldRawPhotoPath,
-          orientation,
-        );
-        File oldStabFile = File(oldStabPath);
-        if (await oldStabFile.exists()) {
-          String newStabPath = path.join(
-            path.dirname(oldStabPath),
-            '$newTimestamp.png',
-          );
-          await oldStabFile.rename(newStabPath);
+    for (final orientation in ['portrait', 'landscape']) {
+      final String oldStabPath =
+          await DirUtils.getStabilizedImagePathFromRawPathAndProjectOrientation(
+        projectId,
+        oldRawPhotoPath,
+        orientation,
+      );
+      if (!await File(oldStabPath).exists()) continue;
 
-          // Rename stabilized thumbnail
-          String oldStabThumbPath = FaceStabilizer.getStabThumbnailPath(
-            oldStabPath,
-          );
-          File oldStabThumbFile = File(oldStabThumbPath);
-          if (await oldStabThumbFile.exists()) {
-            String newStabThumbPath = FaceStabilizer.getStabThumbnailPath(
-              newStabPath,
-            );
-            await DirUtils.createDirectoryIfNotExists(newStabThumbPath);
-            await oldStabThumbFile.rename(newStabThumbPath);
-          }
-        }
-      } catch (e) {
-        LogService.instance.log(
-          'No stabilized file found for $orientation: $e',
+      final String newStabPath = path.join(
+        path.dirname(oldStabPath),
+        '$newTimestamp.png',
+      );
+      renames.add((from: oldStabPath, to: newStabPath));
+
+      final String oldStabThumbPath = FaceStabilizer.getStabThumbnailPath(
+        oldStabPath,
+      );
+      if (await File(oldStabThumbPath).exists()) {
+        renames.add((
+          from: oldStabThumbPath,
+          to: FaceStabilizer.getStabThumbnailPath(newStabPath),
+        ));
+      }
+    }
+
+    for (final rename in renames) {
+      if (await File(rename.to).exists()) {
+        throw FileSystemException(
+          'Target path already exists during date change',
+          rename.to,
         );
       }
     }
 
-    // Update database
-    final oldPhotoRecord = await DB.instance.getPhotoByTimestamp(
-      oldTimestamp,
-      projectId,
-    );
-    if (oldPhotoRecord == null) return;
+    final completedRenames = <({String from, String to})>[];
+    try {
+      for (final rename in renames) {
+        await DirUtils.createDirectoryIfNotExists(rename.to);
+        await File(rename.from).rename(rename.to);
+        completedRenames.add(rename);
+      }
 
-    final int oldId = oldPhotoRecord['id'] as int;
-    int? newId = await DB.instance.updatePhotoTimestamp(
-      oldTimestamp,
-      newTimestamp,
-      projectId,
-    );
+      final oldPhotoRecord = await DB.instance.getPhotoByTimestamp(
+        oldTimestamp,
+        projectId,
+      );
+      if (oldPhotoRecord == null) {
+        throw StateError('Photo record not found for timestamp $oldTimestamp');
+      }
 
-    // Update guide photo reference if needed
-    final String currentGuidePhoto = await SettingsUtil.loadSelectedGuidePhoto(
-      projectId.toString(),
-    );
-    if (currentGuidePhoto == oldId.toString() && newId != null) {
-      await DB.instance.setSettingByTitle(
-        "selected_guide_photo",
-        newId.toString(),
+      final int oldId = oldPhotoRecord['id'] as int;
+      final int? newId = await DB.instance.updatePhotoTimestamp(
+        oldTimestamp,
+        newTimestamp,
+        projectId,
+      );
+      if (newId == null) {
+        throw StateError('Failed to update photo timestamp in database');
+      }
+
+      final String currentGuidePhoto =
+          await SettingsUtil.loadSelectedGuidePhoto(
         projectId.toString(),
       );
+      if (currentGuidePhoto == oldId.toString()) {
+        await DB.instance.setSettingByTitle(
+          "selected_guide_photo",
+          newId.toString(),
+          projectId.toString(),
+        );
+      }
+
+      final int newTsInt = int.parse(newTimestamp);
+      final int newOffsetMin = DateTime.fromMillisecondsSinceEpoch(
+        newTsInt,
+        isUtc: true,
+      ).toLocal().timeZoneOffset.inMinutes;
+      await DB.instance.setCaptureOffsetMinutesByTimestamp(
+        newTimestamp,
+        projectId,
+        newOffsetMin,
+      );
+
+      await DB.instance.setNewVideoNeeded(projectId);
+    } catch (e) {
+      for (final rename in completedRenames.reversed) {
+        try {
+          final revertedFile = File(rename.to);
+          if (await revertedFile.exists()) {
+            await DirUtils.createDirectoryIfNotExists(rename.from);
+            await revertedFile.rename(rename.from);
+          }
+        } catch (rollbackError) {
+          LogService.instance.log(
+            'Rollback failed for ${rename.to} -> ${rename.from}: $rollbackError',
+          );
+        }
+      }
+      rethrow;
     }
-
-    // Update capture timezone offset
-    final int newTsInt = int.parse(newTimestamp);
-    final int newOffsetMin = DateTime.fromMillisecondsSinceEpoch(
-      newTsInt,
-      isUtc: true,
-    ).toLocal().timeZoneOffset.inMinutes;
-    await DB.instance.setCaptureOffsetMinutesByTimestamp(
-      newTimestamp,
-      projectId,
-      newOffsetMin,
-    );
-
-    // Mark video as needing regeneration
-    await DB.instance.setNewVideoNeeded(projectId);
   }
 
   /// Sets a photo as the guide photo for face stabilization.

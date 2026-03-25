@@ -4,8 +4,14 @@ import '../styles/styles.dart';
 class InProgress extends StatelessWidget {
   final String message;
   final Function(int)? goToPage;
+  final Color? backgroundColor;
 
-  const InProgress({super.key, required this.message, this.goToPage});
+  const InProgress({
+    super.key,
+    required this.message,
+    this.goToPage,
+    this.backgroundColor,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -17,9 +23,10 @@ class InProgress extends StatelessWidget {
           : null,
       child: Container(
         width: double.infinity,
-        color: message == "No storage space on device."
-            ? AppColors.danger
-            : AppColors.accentDarker,
+        color: backgroundColor ??
+            (message == "No storage space on device."
+                ? AppColors.danger
+                : AppColors.accentDarker),
         constraints: const BoxConstraints(maxHeight: 32.0),
         alignment: Alignment.center,
         child: Text(

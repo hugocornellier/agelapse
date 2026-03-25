@@ -1,12 +1,15 @@
 import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import '../screens/project_page.dart';
 import 'package:flutter/material.dart';
 import '../services/database_helper.dart';
 import '../services/log_service.dart';
 import '../styles/styles.dart';
+import '../utils/linked_source_utils.dart';
 import '../utils/notification_util.dart';
 import '../utils/test_mode.dart' as test_config;
 import '../utils/window_utils.dart';
+import '../utils/dir_utils.dart';
 import 'main_navigation.dart';
 
 class CreateProjectSheet extends StatefulWidget {
@@ -28,6 +31,8 @@ class CreateProjectSheet extends StatefulWidget {
 class CreateProjectSheetState extends State<CreateProjectSheet> {
   final TextEditingController _nameController = TextEditingController();
   String _selectedImage = 'assets/images/face.png';
+  bool _useLinkedSourceFolder = false;
+  String _linkedSourceFolderPath = '';
 
   static Future<String?> checkForStabilizedImage(String dirPath) async {
     final directory = Directory(dirPath);
@@ -96,6 +101,8 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
                         ),
                       ),
                       _buildTextField(),
+                      const SizedBox(height: 16),
+                      _buildLinkedSourceSection(),
                       const Spacer(),
                       _buildActionButton(),
                       const SizedBox(height: 48),
@@ -149,6 +156,7 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
                     ),
                   ),
                   _buildTextField(),
+                  _buildLinkedSourceSection(),
                   _buildActionButton(),
                 ],
               ),
@@ -266,6 +274,94 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
     );
   }
 
+  Widget _buildLinkedSourceSection() {
+    final supportsLinkedSource = LinkedSourceUtils.supportsDesktopLinkedFolders;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Use linked source folder',
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+            ),
+            Switch.adaptive(
+              value: _useLinkedSourceFolder,
+              onChanged: supportsLinkedSource
+                  ? (value) async {
+                      if (!value) {
+                        setState(() {
+                          _useLinkedSourceFolder = false;
+                          _linkedSourceFolderPath = '';
+                        });
+                        return;
+                      }
+
+                      final selectedPath =
+                          await FilePicker.platform.getDirectoryPath();
+                      if (selectedPath == null || selectedPath.trim().isEmpty) {
+                        setState(() => _useLinkedSourceFolder = false);
+                        return;
+                      }
+
+                      setState(() {
+                        _useLinkedSourceFolder = true;
+                        _linkedSourceFolderPath = selectedPath;
+                      });
+                    }
+                  : null,
+            ),
+          ],
+        ),
+        if (_useLinkedSourceFolder) ...[
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceElevated,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              _linkedSourceFolderPath.isEmpty
+                  ? 'No folder selected'
+                  : _linkedSourceFolderPath,
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: AppTypography.sm,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () async {
+                final selectedPath =
+                    await FilePicker.platform.getDirectoryPath();
+                if (selectedPath == null || selectedPath.trim().isEmpty) return;
+                setState(() => _linkedSourceFolderPath = selectedPath);
+              },
+              child: const Text('Choose Folder'),
+            ),
+          ),
+        ] else if (!supportsLinkedSource) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Linked source folders are currently available on desktop only.',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: AppTypography.sm,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   void _createProject() async {
     final projectName = _nameController.text.trim();
     if (projectName.isEmpty) {
@@ -339,6 +435,25 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
     // Transition window to default state after completing welcome flow
     if (widget.isFullPage) {
       await WindowUtils.transitionToDefaultWindowState();
+    }
+
+    if (_useLinkedSourceFolder && _linkedSourceFolderPath.trim().isNotEmpty) {
+      final projectDirPath = await DirUtils.getProjectDirPath(projectId);
+      final validationError = LinkedSourceUtils.validateLinkedFolderPath(
+        projectId: projectId,
+        selectedPath: _linkedSourceFolderPath,
+        projectDirPath: projectDirPath,
+      );
+      if (validationError == null) {
+        await LinkedSourceUtils.persistDesktopFolderSelection(
+          projectId,
+          _linkedSourceFolderPath,
+        );
+      } else {
+        LogService.instance.log(
+          '[LinkedSource] Skipping invalid project-create selection: $validationError',
+        );
+      }
     }
 
     if (!mounted) return;

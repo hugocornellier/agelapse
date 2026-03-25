@@ -18,6 +18,8 @@ import '../../utils/date_stamp_utils.dart';
 import '../../utils/capture_timezone.dart';
 import '../../utils/gallery_photo_operations.dart';
 import '../../utils/gallery_permission_handler.dart';
+import '../../utils/test_mode.dart' as test_config;
+import '../../widgets/format_aware_image.dart';
 import '../../widgets/confirm_action_dialog.dart';
 import '../manual_stab_page.dart';
 import '../stab_on_diff_face.dart';
@@ -482,32 +484,35 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     final bool isDesktop =
         Platform.isMacOS || Platform.isWindows || Platform.isLinux;
 
+    final content = Column(
+      children: [
+        _buildHeader(),
+        Expanded(
+          child: Stack(
+            children: [
+              _buildPageView(),
+              if (isDesktop) ...[
+                if (_canGoPrevious) _buildLeftArrow(),
+                if (_canGoNext) _buildRightArrow(),
+              ],
+            ],
+          ),
+        ),
+        _buildPageCounter(),
+        _buildActionBar(),
+      ],
+    );
+
+    // On macOS inside the nested navigator, the persistent title bar is above us
+    final usesSafeArea = !Platform.isMacOS;
+
     return Focus(
       focusNode: _focusNode,
       autofocus: true,
       onKeyEvent: _handleKeyEvent,
       child: Scaffold(
         backgroundColor: AppColors.settingsBackground,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _buildHeader(),
-              Expanded(
-                child: Stack(
-                  children: [
-                    _buildPageView(),
-                    if (isDesktop) ...[
-                      if (_canGoPrevious) _buildLeftArrow(),
-                      if (_canGoNext) _buildRightArrow(),
-                    ],
-                  ],
-                ),
-              ),
-              _buildPageCounter(),
-              _buildActionBar(),
-            ],
-          ),
-        ),
+        body: usesSafeArea ? SafeArea(child: content) : content,
       ),
     );
   }
@@ -772,11 +777,10 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
         maxWidth: MediaQuery.of(context).size.width * 0.9,
         maxHeight: MediaQuery.of(context).size.height * 0.65,
       ),
-      child: Image.file(
-        imageFile,
+      child: FormatAwareImage(
+        imageFile: imageFile,
         fit: BoxFit.contain,
-        errorBuilder: (context, error, stack) =>
-            Container(color: AppColors.overlay),
+        errorWidget: Container(color: AppColors.overlay),
       ),
     );
   }
@@ -951,7 +955,28 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     String? tempFile;
     try {
       String imagePathToSave = _currentImagePath;
-      final originalFilename = path.basename(_currentImagePath);
+      String saveFilename = path.basename(_currentImagePath);
+      Map<String, dynamic>? photoData;
+
+      // For raw images, resolve through the unified original resolver and use
+      // the stored source filename when available.
+      if (_isRaw) {
+        final timestamp = path.basenameWithoutExtension(_currentImagePath);
+        photoData = await DB.instance.getPhotoByTimestamp(
+          timestamp,
+          widget.projectId,
+        );
+        if (photoData != null) {
+          saveFilename =
+              (photoData['sourceFilename'] as String?)?.trim().isNotEmpty ==
+                      true
+                  ? (photoData['sourceFilename'] as String).trim()
+                  : (photoData['originalFilename'] as String? ??
+                      path.basename(_currentImagePath));
+
+          imagePathToSave = _currentImagePath;
+        }
+      }
 
       // Apply date stamp if enabled (only for stabilized images)
       if (_exportDateStampEnabled && !_isRaw) {
@@ -959,7 +984,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
         final timestampMs = int.tryParse(timestamp);
         if (timestampMs != null) {
           // Get captureOffsetMinutes from photo metadata for accurate timezone
-          final photoData = await _previewPhotoFuture;
+          photoData ??= await _previewPhotoFuture;
           final int? captureOffsetMinutes = CaptureTimezone.extractOffset(
             photoData,
           );
@@ -994,7 +1019,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
 
           // Create temp file for date-stamped image (use original filename)
           final tempDir = await getTemporaryDirectory();
-          tempFile = '${tempDir.path}/$originalFilename';
+          tempFile = '${tempDir.path}/$saveFilename';
 
           final success = await DateStampUtils.compositeDate(
             inputPath: _currentImagePath,
@@ -1017,6 +1042,13 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
             imagePathToSave = tempFile;
           }
         }
+      }
+
+      if (_isRaw && path.basename(imagePathToSave) != saveFilename) {
+        final tempDir = await getTemporaryDirectory();
+        tempFile = path.join(tempDir.path, saveFilename);
+        await File(imagePathToSave).copy(tempFile);
+        imagePathToSave = tempFile;
       }
 
       final XFile image = XFile(imagePathToSave);
@@ -1049,6 +1081,16 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
   Future<void> _saveImageToDownloadsOrGallery(XFile image) async {
     if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
       final bytes = await image.readAsBytes();
+      if (test_config.isTestMode) {
+        final tempPath = await DirUtils.getTemporaryDirPath();
+        await _ensureDirExists(tempPath);
+        final targetPath = await _uniquePath(
+          tempPath,
+          path.basename(image.path),
+        );
+        await File(targetPath).writeAsBytes(bytes, flush: true);
+        return;
+      }
       final downloadsPath = await _preferredUserDownloads();
       await _ensureDirExists(downloadsPath);
       final targetPath = await _uniquePath(
@@ -1141,9 +1183,9 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     final ext = path.extension(filename);
     var candidate = path.join(dir, filename);
     if (!await File(candidate).exists()) return candidate;
-    var i = 1;
+    var i = 2;
     while (await File(candidate).exists()) {
-      candidate = path.join(dir, '$name($i)$ext');
+      candidate = path.join(dir, '$name ($i)$ext');
       i++;
     }
     return candidate;
@@ -1272,15 +1314,11 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     String newTimestamp,
     bool needsRecompile,
   ) async {
-    // Update database
-    await DB.instance.updatePhotoTimestamp(
-      currentTimestamp,
-      newTimestamp,
-      widget.projectId,
+    await GalleryPhotoOperations.changePhotoDate(
+      oldTimestamp: currentTimestamp,
+      newTimestamp: newTimestamp,
+      projectId: widget.projectId,
     );
-
-    // Rename files
-    await _renamePhotoFiles(currentTimestamp, newTimestamp);
 
     // Reload images
     await widget.loadImages();
@@ -1295,40 +1333,6 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Photo date updated')));
-    }
-  }
-
-  Future<void> _renamePhotoFiles(
-    String currentTimestamp,
-    String newTimestamp,
-  ) async {
-    // Get all paths for the current photo
-    final rawPath = await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-      currentTimestamp,
-      widget.projectId,
-    );
-
-    if (await File(rawPath).exists()) {
-      final newRawPath = rawPath.replaceAll(currentTimestamp, newTimestamp);
-      await File(rawPath).rename(newRawPath);
-    }
-
-    // Rename stabilized and thumbnail files if they exist
-    final stabPath =
-        await DirUtils.getStabilizedImagePathFromRawPathAndProjectOrientation(
-      widget.projectId,
-      rawPath,
-      widget.projectOrientation,
-    );
-    if (await File(stabPath).exists()) {
-      final newStabPath = stabPath.replaceAll(currentTimestamp, newTimestamp);
-      await File(stabPath).rename(newStabPath);
-    }
-
-    final thumbPath = FaceStabilizer.getStabThumbnailPath(stabPath);
-    if (await File(thumbPath).exists()) {
-      final newThumbPath = thumbPath.replaceAll(currentTimestamp, newTimestamp);
-      await File(thumbPath).rename(newThumbPath);
     }
   }
 
@@ -1386,14 +1390,12 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
   }
 
   void _navigateToManualStabilization(File imageFile) {
-    Navigator.push(
+    Utils.navigateToScreen(
       context,
-      MaterialPageRoute(
-        builder: (context) => ManualStabilizationPage(
-          imagePath: imageFile.path,
-          projectId: widget.projectId,
-          onSaveComplete: widget.loadImages,
-        ),
+      ManualStabilizationPage(
+        imagePath: imageFile.path,
+        projectId: widget.projectId,
+        onSaveComplete: widget.loadImages,
       ),
     );
   }

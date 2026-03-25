@@ -11,6 +11,7 @@ void main() {
     test('CustomAppBar stores required parameters', () {
       final widget = CustomAppBar(
         projectId: 1,
+        projectName: 'Test Project',
         goToPage: (index) {},
         progressPercent: 50.0,
         stabilizingRunningInMain: false,
@@ -40,6 +41,7 @@ void main() {
     test('CustomAppBar accepts optional stabUpdateStream', () {
       final widget = CustomAppBar(
         projectId: 1,
+        projectName: 'Test Project',
         goToPage: (index) {},
         progressPercent: 0.0,
         stabilizingRunningInMain: false,
@@ -65,6 +67,7 @@ void main() {
 
       final widget = CustomAppBar(
         projectId: 1,
+        projectName: 'Test Project',
         goToPage: (index) {
           receivedIndex = index;
         },
@@ -90,6 +93,7 @@ void main() {
     test('CustomAppBar creates state', () {
       final widget = CustomAppBar(
         projectId: 1,
+        projectName: 'Test Project',
         goToPage: (index) {},
         progressPercent: 0.0,
         stabilizingRunningInMain: false,
@@ -114,6 +118,7 @@ void main() {
     test('handles stabilizing state', () {
       final widget = CustomAppBar(
         projectId: 1,
+        projectName: 'Test Project',
         goToPage: (index) {},
         progressPercent: 30.0,
         stabilizingRunningInMain: true,
@@ -137,6 +142,7 @@ void main() {
     test('handles video creation state', () {
       final widget = CustomAppBar(
         projectId: 1,
+        projectName: 'Test Project',
         goToPage: (index) {},
         progressPercent: 60.0,
         stabilizingRunningInMain: false,
@@ -159,6 +165,7 @@ void main() {
     test('handles import state', () {
       final widget = CustomAppBar(
         projectId: 1,
+        projectName: 'Test Project',
         goToPage: (index) {},
         progressPercent: 75.0,
         stabilizingRunningInMain: false,
@@ -181,6 +188,7 @@ void main() {
     test('handles out of space state', () {
       final widget = CustomAppBar(
         projectId: 1,
+        projectName: 'Test Project',
         goToPage: (index) {},
         progressPercent: 0.0,
         stabilizingRunningInMain: false,
@@ -207,6 +215,7 @@ void main() {
 
       final widget = CustomAppBar(
         projectId: 1,
+        projectName: 'Test Project',
         goToPage: (index) {},
         progressPercent: 0.0,
         stabilizingRunningInMain: false,
@@ -234,6 +243,7 @@ void main() {
 
       final widget = CustomAppBar(
         projectId: 1,
+        projectName: 'Test Project',
         goToPage: (index) {},
         progressPercent: 0.0,
         stabilizingRunningInMain: false,
@@ -261,6 +271,7 @@ void main() {
 
       final widget = CustomAppBar(
         projectId: 1,
+        projectName: 'Test Project',
         goToPage: (index) {},
         progressPercent: 0.0,
         stabilizingRunningInMain: false,
@@ -288,6 +299,7 @@ void main() {
 
       final widget = CustomAppBar(
         projectId: 1,
+        projectName: 'Test Project',
         goToPage: (index) {},
         progressPercent: 0.0,
         stabilizingRunningInMain: false,

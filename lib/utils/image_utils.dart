@@ -28,9 +28,13 @@ class ImageUtils {
     return success ? bytes : null;
   }
 
-  /// Encode cv.Mat to PNG bytes
+  /// Encode cv.Mat to PNG bytes (lossless, fast compression)
   static Uint8List? encodePng(cv.Mat mat) {
-    final (success, bytes) = cv.imencode('.png', mat);
+    final (success, bytes) = cv.imencode(
+      '.png',
+      mat,
+      params: cv.VecI32.fromList([cv.IMWRITE_PNG_COMPRESSION, 1]),
+    );
     return success ? bytes : null;
   }
 

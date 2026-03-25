@@ -41,6 +41,15 @@ void main() {
       expect(DB.defaultValues['aspect_ratio'], '16:9');
       expect(DB.defaultValues['selected_guide_photo'], 'not set');
       expect(DB.defaultValues['stabilization_mode'], 'slow');
+      expect(DB.defaultValues['linked_source_enabled'], 'false');
+      expect(DB.defaultValues['linked_source_mode'], 'none');
+      expect(DB.defaultValues['linked_source_display_path'], '');
+      expect(DB.defaultValues['linked_source_root_path'], '');
+      expect(DB.defaultValues['linked_source_tree_uri'], '');
+      expect(DB.defaultValues['linked_source_bookmark'], '');
+      expect(DB.defaultValues['linked_source_managed_by_app'], 'false');
+      expect(DB.defaultValues['linked_source_last_scan_started_at'], '0');
+      expect(DB.defaultValues['linked_source_last_scan_completed_at'], '0');
     });
 
     test('defaultValues has correct count', () {

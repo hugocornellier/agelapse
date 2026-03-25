@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import '../widgets/in_progress_widget.dart';
 
 class ProgressWidget extends StatelessWidget {
+  static const Color _syncPurple = Color(0xFF7C3AED);
+
   final bool stabilizingRunningInMain;
   final bool videoCreationActiveInMain;
   final bool importRunningInMain;
+  final bool isSyncingProjectFolder;
   final double progressPercent;
   final Function(int) goToPage;
   final int selectedIndex;
@@ -16,6 +19,7 @@ class ProgressWidget extends StatelessWidget {
     required this.stabilizingRunningInMain,
     required this.videoCreationActiveInMain,
     required this.importRunningInMain,
+    this.isSyncingProjectFolder = false,
     required this.progressPercent,
     required this.goToPage,
     this.selectedIndex = -1,
@@ -46,6 +50,12 @@ class ProgressWidget extends StatelessWidget {
           InProgress(
             message: "No storage space on device.",
             goToPage: goToPage,
+          ),
+        ] else if (isSyncingProjectFolder) ...[
+          InProgress(
+            message: "Syncing project folder...",
+            goToPage: goToPage,
+            backgroundColor: _syncPurple,
           ),
         ] else if (importRunningInMain) ...[
           InProgress(

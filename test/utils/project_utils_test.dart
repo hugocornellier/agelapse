@@ -253,10 +253,6 @@ void main() {
       expect(ProjectUtils.deleteImage, isA<Function>());
     });
 
-    test('deletePngFileIfExists method exists', () {
-      expect(ProjectUtils.deletePngFileIfExists, isA<Function>());
-    });
-
     test('loadImage method exists', () {
       expect(ProjectUtils.loadImage, isA<Function>());
     });

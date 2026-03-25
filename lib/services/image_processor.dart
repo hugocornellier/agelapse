@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
@@ -16,6 +15,8 @@ class ImageProcessor {
   Function? onImagesLoaded;
   int? timestamp;
   VoidCallback? increaseSuccessfulImportCount;
+  String? originalFilePath;
+  String? sourceFilename;
 
   ImageProcessor({
     required this.imagePath,
@@ -24,113 +25,43 @@ class ImageProcessor {
     required this.onImagesLoaded,
     this.timestamp,
     this.increaseSuccessfulImportCount,
+    this.originalFilePath,
+    this.sourceFilename,
   });
 
   Future<bool> process() async {
     try {
-      XFile xFile = XFile(imagePath!);
-
+      final XFile xFile = XFile(imagePath!);
       final String extension = path.extension(imagePath!).toLowerCase();
 
-      if (extension == ".avif") {
-        final Uint8List? avifBytes = await CameraUtils.readBytesInIsolate(
+      // For AVIF and RAW formats, extract EXIF timestamp from the original
+      // bytes before import. importXFile's internal EXIF parser may not
+      // handle these formats, so we pre-extract and pass as an override.
+      // No format conversion is performed — the original file is imported
+      // as-is.
+      int? overrideTs;
+      if (extension == ".avif" || RawDecoder.isRawExtension(extension)) {
+        final Uint8List? bytes = await CameraUtils.readBytesInIsolate(
           imagePath!,
         );
-
-        int? overrideTs;
-        if (avifBytes != null) {
+        if (bytes != null) {
           final Map<String, dynamic> exif =
-              await GalleryUtils.tryReadExifFromBytes(avifBytes);
+              await GalleryUtils.tryReadExifFromBytes(bytes);
           if (exif.isNotEmpty) {
             final res = await GalleryUtils.parseExifDate(exif);
             overrideTs = res.$2;
           }
         }
-
-        final String pngPath = imagePath!.replaceAll(".avif", ".png");
-
-        final bool conversionSuccess = await GalleryUtils.convertAvifToPng(
-          imagePath!,
-          pngPath,
-        );
-
-        if (!conversionSuccess) {
-          return false;
-        }
-
-        final File pngFile = File(pngPath);
-        if (!await pngFile.exists()) {
-          return false;
-        }
-
-        xFile = XFile(pngPath);
-
-        final bool result = await GalleryUtils.importXFile(
-          xFile,
-          projectId!,
-          activeProcessingDateNotifier!,
-          timestamp: overrideTs ?? timestamp,
-          increaseSuccessfulImportCount: increaseSuccessfulImportCount,
-        );
-
-        final tempFile = File(imagePath!);
-        if (await tempFile.exists()) {
-          await tempFile.delete();
-        }
-
-        return result;
-      }
-
-      // RAW/DNG: decode to PNG, then import
-      if (RawDecoder.isRawExtension(extension)) {
-        final Uint8List? rawBytes = await CameraUtils.readBytesInIsolate(
-          imagePath!,
-        );
-
-        int? overrideTs;
-        if (rawBytes != null) {
-          final Map<String, dynamic> exif =
-              await GalleryUtils.tryReadExifFromBytes(rawBytes);
-          if (exif.isNotEmpty) {
-            final res = await GalleryUtils.parseExifDate(exif);
-            overrideTs = res.$2;
-          }
-        }
-
-        final tempDir = path.dirname(imagePath!);
-        final String? decodedPath = await RawDecoder.decodeToFile(
-          imagePath!,
-          tempDir,
-        );
-
-        if (decodedPath == null || !await File(decodedPath).exists()) {
-          return false;
-        }
-
-        xFile = XFile(decodedPath);
-
-        final bool result = await GalleryUtils.importXFile(
-          xFile,
-          projectId!,
-          activeProcessingDateNotifier!,
-          timestamp: overrideTs ?? timestamp,
-          increaseSuccessfulImportCount: increaseSuccessfulImportCount,
-        );
-
-        // Clean up decoded temp file
-        try {
-          await File(decodedPath).delete();
-        } catch (_) {}
-
-        return result;
       }
 
       final bool result = await GalleryUtils.importXFile(
         xFile,
         projectId!,
         activeProcessingDateNotifier!,
-        timestamp: timestamp,
+        timestamp: overrideTs ?? timestamp,
         increaseSuccessfulImportCount: increaseSuccessfulImportCount,
+        originalFilePath: originalFilePath ?? imagePath,
+        sourceFilename: sourceFilename,
       );
 
       return result;
@@ -148,5 +79,7 @@ class ImageProcessor {
     onImagesLoaded = null;
     timestamp = null;
     increaseSuccessfulImportCount = null;
+    originalFilePath = null;
+    sourceFilename = null;
   }
 }

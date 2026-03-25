@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -67,6 +68,7 @@ class CreatePage extends StatefulWidget {
 
 class CreatePageState extends State<CreatePage>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+  static const Duration _videoControlsHideDelay = Duration(milliseconds: 700);
   VideoPlayerController? _videoPlayerController;
   ChewieController? _chewieController;
   // media_kit player for Linux (handles 8K better with texture scaling)
@@ -86,8 +88,10 @@ class CreatePageState extends State<CreatePage>
   bool showOverlayIcon = false;
   IconData overlayIcon = Icons.play_arrow;
   bool _isWaiting = false;
+  bool _showMediaKitControls = true;
   late AnimationController _animationController;
   late Animation<double> _opacityAnimation;
+  Timer? _mediaKitControlsHideTimer;
 
   // Playback unsupported (codec not decodable on this platform)
   bool _playbackUnsupported = false;
@@ -122,6 +126,7 @@ class CreatePageState extends State<CreatePage>
 
   @override
   void dispose() {
+    _mediaKitControlsHideTimer?.cancel();
     _disposeVideoControllers();
     _animationController.dispose();
 
@@ -438,6 +443,7 @@ class CreatePageState extends State<CreatePage>
     await _mediaKitPlayer!.open(Media(videoFile.path));
     _mediaKitPlayer!.setPlaylistMode(PlaylistMode.loop);
     _mediaKitPlayer!.setRate(playbackSpeed);
+    _showMediaKitControlsTemporarily();
 
     // Wait for controller to be ready after opening media
     await _mediaKitController!.waitUntilFirstFrameRendered;
@@ -472,7 +478,7 @@ class CreatePageState extends State<CreatePage>
       showControls: true,
       allowPlaybackSpeedChanging: true,
       playbackSpeeds: const [0.5, 1.0, 1.5, 2.0],
-      hideControlsTimer: const Duration(seconds: 3),
+      hideControlsTimer: _videoControlsHideDelay,
       deviceOrientationsOnEnterFullScreen: [
         DeviceOrientation.landscapeRight,
         DeviceOrientation.landscapeLeft,
@@ -543,6 +549,7 @@ class CreatePageState extends State<CreatePage>
         _mediaKitPlayer?.playOrPause();
         final isPlaying = _mediaKitPlayer?.state.playing ?? false;
         overlayIcon = isPlaying ? Icons.pause : Icons.play_arrow;
+        _showMediaKitControls = true;
       } else {
         if (_videoPlayerController!.value.isPlaying) {
           _videoPlayerController!.pause();
@@ -557,12 +564,41 @@ class CreatePageState extends State<CreatePage>
       _animationController.forward();
     });
 
+    if (Platform.isLinux) {
+      _showMediaKitControlsTemporarily();
+    }
+
     Future.delayed(const Duration(seconds: 1), () {
       if (mounted) {
         setState(() {
           showOverlayIcon = false;
         });
       }
+    });
+  }
+
+  void _showMediaKitControlsTemporarily() {
+    _mediaKitControlsHideTimer?.cancel();
+    if (mounted && !_showMediaKitControls) {
+      setState(() {
+        _showMediaKitControls = true;
+      });
+    }
+    _mediaKitControlsHideTimer = Timer(_videoControlsHideDelay, () {
+      if (!mounted) return;
+      setState(() {
+        _showMediaKitControls = false;
+      });
+    });
+  }
+
+  void _hideMediaKitControlsSoon() {
+    _mediaKitControlsHideTimer?.cancel();
+    _mediaKitControlsHideTimer = Timer(_videoControlsHideDelay, () {
+      if (!mounted) return;
+      setState(() {
+        _showMediaKitControls = false;
+      });
     });
   }
 
@@ -1236,34 +1272,38 @@ class CreatePageState extends State<CreatePage>
   Widget _buildMediaKitVideoPlayer() {
     return AspectRatio(
       aspectRatio: _getVideoAspectRatio(),
-      child: GestureDetector(
-        onTap: togglePlayback,
-        onDoubleTap: _enterFullscreen,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Video(
-              controller: _mediaKitController!,
-              controls: (state) => _buildMediaKitControls(state),
-            ),
-            if (showOverlayIcon)
-              FadeTransition(
-                opacity: _opacityAnimation,
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: AppColors.overlay.withAlpha(128),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    overlayIcon,
-                    color: AppColors.textPrimary,
-                    size: 50,
+      child: MouseRegion(
+        onEnter: (_) => _showMediaKitControlsTemporarily(),
+        onExit: (_) => _hideMediaKitControlsSoon(),
+        child: GestureDetector(
+          onTap: togglePlayback,
+          onDoubleTap: _enterFullscreen,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Video(
+                controller: _mediaKitController!,
+                controls: (state) => _buildMediaKitControls(state),
+              ),
+              if (showOverlayIcon)
+                FadeTransition(
+                  opacity: _opacityAnimation,
+                  child: Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: AppColors.overlay.withAlpha(128),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      overlayIcon,
+                      color: AppColors.textPrimary,
+                      size: 50,
+                    ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -1271,55 +1311,64 @@ class CreatePageState extends State<CreatePage>
 
   Widget _buildMediaKitControls(VideoState state) {
     // Simple controls for media_kit on Linux
-    return Stack(
-      children: [
-        // Fullscreen button in top-right
-        Positioned(
-          top: 8,
-          right: 8,
-          child: IconButton(
-            icon: Icon(
-              Icons.fullscreen,
-              color: AppColors.textPrimary,
-              size: 28,
-            ),
-            onPressed: _enterFullscreen,
-          ),
-        ),
-        // Playback speed in bottom-left
-        Positioned(
-          bottom: 8,
-          left: 8,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.overlay.withAlpha(180),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: PopupMenuButton<double>(
-              initialValue: playbackSpeed,
-              onSelected: (speed) {
-                setState(() {
-                  playbackSpeed = speed;
-                  _mediaKitPlayer?.setRate(speed);
-                });
-              },
-              itemBuilder: (context) => [
-                for (final speed in [0.5, 1.0, 1.5, 2.0])
-                  PopupMenuItem(value: speed, child: Text('${speed}x')),
-              ],
-              child: Text(
-                '${playbackSpeed}x',
-                style: TextStyle(
+    return IgnorePointer(
+      ignoring: !_showMediaKitControls,
+      child: AnimatedOpacity(
+        opacity: _showMediaKitControls ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 150),
+        child: Stack(
+          children: [
+            // Fullscreen button in top-right
+            Positioned(
+              top: 8,
+              right: 8,
+              child: IconButton(
+                icon: Icon(
+                  Icons.fullscreen,
                   color: AppColors.textPrimary,
-                  fontSize: AppTypography.sm,
-                  fontWeight: FontWeight.w600,
+                  size: 28,
+                ),
+                onPressed: _enterFullscreen,
+              ),
+            ),
+            // Playback speed in bottom-left
+            Positioned(
+              bottom: 8,
+              left: 8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.overlay.withAlpha(180),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: PopupMenuButton<double>(
+                  initialValue: playbackSpeed,
+                  onOpened: _showMediaKitControlsTemporarily,
+                  onSelected: (speed) {
+                    setState(() {
+                      playbackSpeed = speed;
+                      _mediaKitPlayer?.setRate(speed);
+                    });
+                    _showMediaKitControlsTemporarily();
+                  },
+                  itemBuilder: (context) => [
+                    for (final speed in [0.5, 1.0, 1.5, 2.0])
+                      PopupMenuItem(value: speed, child: Text('${speed}x')),
+                  ],
+                  child: Text(
+                    '${playbackSpeed}x',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: AppTypography.sm,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 

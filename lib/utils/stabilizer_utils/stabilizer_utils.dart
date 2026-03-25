@@ -6,7 +6,6 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:heif_converter/heif_converter.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
@@ -21,11 +20,8 @@ import '../../services/database_helper.dart';
 import '../../services/isolate_manager.dart';
 import '../../services/isolate_pool.dart';
 import '../../services/log_service.dart';
-import '../../services/raw_decoder.dart';
 import '../camera_utils.dart';
 import '../dir_utils.dart';
-import '../heic_utils.dart';
-import '../project_utils.dart';
 import '../settings_utils.dart';
 
 class FaceLike {
@@ -135,25 +131,6 @@ class StabUtils {
   /// Validates PNG bytes by decoding and checking dimensions.
   /// Returns (width, height) if valid, null if corrupt/invalid.
   /// This guards against truncated cache files causing OpenCV resize failures.
-  static Future<(int, int)?> _validatePngDimensions(Uint8List bytes) async {
-    try {
-      final mat = cv.imdecode(bytes, cv.IMREAD_COLOR);
-      if (mat.isEmpty) {
-        mat.dispose();
-        return null;
-      }
-      final width = mat.cols;
-      final height = mat.rows;
-      mat.dispose();
-      if (width <= 0 || height <= 0) {
-        return null;
-      }
-      return (width, height);
-    } catch (e) {
-      return null;
-    }
-  }
-
   static Future<List<Map<String, dynamic>>> getUnstabilizedPhotos(
     int projectId,
   ) async {
@@ -793,27 +770,6 @@ class StabUtils {
     var bytes = params['bytes'];
 
     switch (operation) {
-      case 'readToPng':
-        // Read any image format and return PNG bytes
-        try {
-          final fileBytes = await File(filePath!).readAsBytes();
-          final preserveBitDepth = params['preserveBitDepth'] as bool? ?? false;
-          final decodeFlag = preserveBitDepth
-              ? (cv.IMREAD_ANYDEPTH | cv.IMREAD_COLOR)
-              : cv.IMREAD_COLOR;
-          final mat = cv.imdecode(fileBytes, decodeFlag);
-          if (mat.isEmpty) {
-            mat.dispose();
-            sendPort.send(null);
-            return;
-          }
-          final (success, pngBytes) = cv.imencode('.png', mat);
-          mat.dispose();
-          sendPort.send(success ? pngBytes : null);
-        } catch (e) {
-          sendPort.send(null);
-        }
-        break;
       case 'writePngFromBytes':
         // Write bytes atomically: temp file + rename to prevent partial writes
         if (bytes == null) {
@@ -907,7 +863,11 @@ class StabUtils {
           }
           mat.dispose();
 
-          final (success, pngBytes) = cv.imencode('.png', result);
+          final (success, pngBytes) = cv.imencode(
+            '.png',
+            result,
+            params: cv.VecI32.fromList([cv.IMWRITE_PNG_COMPRESSION, 1]),
+          );
           result.dispose();
           sendPort.send(
             success ? pngBytes : 'Error compositeBlackPng: encode failed',
@@ -1005,7 +965,11 @@ class StabUtils {
               interpolation: cv.INTER_CUBIC);
           mat.dispose();
 
-          final (success, pngBytes) = cv.imencode('.png', thumb);
+          final (success, pngBytes) = cv.imencode(
+            '.png',
+            thumb,
+            params: cv.VecI32.fromList([cv.IMWRITE_PNG_COMPRESSION, 1]),
+          );
           thumb.dispose();
           sendPort.send(
             success
@@ -1016,47 +980,6 @@ class StabUtils {
           sendPort.send('Error thumbnailFromPngKeepAlpha: $e');
         }
         break;
-    }
-  }
-
-  /// Read any image file and return PNG bytes (using opencv for fast native decoding)
-  /// Uses persistent isolate pool to avoid spawn/kill overhead.
-  static Future<Uint8List?> readImageAsPngBytesInIsolate(
-    String filePath, {
-    CancellationToken? token,
-    bool preserveBitDepth = false,
-  }) async {
-    token?.throwIfCancelled();
-
-    if (IsolatePool.instance.isInitialized) {
-      return await IsolatePool.instance.execute<Uint8List>('readToPng', {
-        'filePath': filePath,
-        'preserveBitDepth': preserveBitDepth,
-      });
-    }
-
-    // Fallback to individual isolate if pool not initialized
-    ReceivePort receivePort = ReceivePort();
-    var params = {
-      'sendPort': receivePort.sendPort,
-      'filePath': filePath,
-      'operation': 'readToPng',
-      'preserveBitDepth': preserveBitDepth,
-    };
-
-    final isolate = await Isolate.spawn(
-      performFileOperationInBackground,
-      params,
-    );
-    IsolateManager.instance.register(isolate);
-
-    try {
-      final result = await receivePort.first;
-      return result as Uint8List?;
-    } finally {
-      receivePort.close();
-      IsolateManager.instance.unregister(isolate);
-      isolate.kill(priority: Isolate.immediate);
     }
   }
 
@@ -1274,162 +1197,41 @@ class StabUtils {
     return true;
   }
 
-  /// Prepares a PNG version of the image and returns the PNG bytes.
-  /// Also writes to disk for caching. If PNG already exists, reads and returns it.
-  static Future<Uint8List?> preparePNG(
-    String imgPath, {
-    bool lossless = false,
+  static Future<File> flipImageHorizontally(
+    String imagePath, {
+    Uint8List? preDecodedBytes,
   }) async {
-    final String pngPath = await DirUtils.getPngPathFromRawPhotoPath(imgPath);
-    await DirUtils.createDirectoryIfNotExists(pngPath);
-    final File pngFile = File(pngPath);
-
-    final bool rawExists = await File(imgPath).exists();
-    if (!rawExists) {
-      return null;
-    }
-
-    // If PNG already cached, read and validate before returning
-    final bool pngExists = await pngFile.exists();
-    if (pngExists) {
-      final int len = await pngFile.length();
-      if (len > 0) {
-        final cachedBytes = await pngFile.readAsBytes();
-        // Validate cached PNG has valid dimensions (guards against truncated/corrupt cache)
-        final dims = await _validatePngDimensions(cachedBytes);
-        if (dims != null && dims.$1 > 0 && dims.$2 > 0) {
-          return cachedBytes;
-        }
-        // Cache is corrupt/invalid - delete and regenerate
-        LogService.instance.log(
-          '[preparePNG] Cached PNG invalid (dims=$dims), regenerating: $pngPath',
-        );
-        try {
-          await pngFile.delete();
-        } catch (_) {}
-      }
-    }
-
-    bool conversionToJpgNeeded = false;
-    String jpgImgPath = "";
-
-    final String lowerExt = path.extension(imgPath).toLowerCase();
-    if (lowerExt == ".heic" || lowerExt == ".heif") {
-      conversionToJpgNeeded = true;
-      jpgImgPath = path.setExtension(imgPath, ".jpg");
-
-      if (Platform.isMacOS) {
-        // macOS: use built-in sips command
-        final result = await Process.run('sips', [
-          '-s',
-          'format',
-          'jpeg',
-          imgPath,
-          '--out',
-          jpgImgPath,
-        ]);
-        if (result.exitCode != 0 || !await File(jpgImgPath).exists()) {
-          return null;
-        }
-      } else if (Platform.isWindows) {
-        // Windows: use bundled HeicConverter.exe
-        final success = await HeicUtils.convertHeicToJpgAt(imgPath, jpgImgPath);
-        if (!success) {
-          return null;
-        }
-      } else if (Platform.isLinux) {
-        // Linux (both .deb and Flatpak): use heif_converter package
-        // Pure Dart/native implementation, no external binary needed
-        try {
-          await HeifConverter.convert(
-            imgPath,
-            output: jpgImgPath,
-            format: 'jpeg',
-          );
-          if (!await File(jpgImgPath).exists()) {
-            return null;
-          }
-        } catch (e) {
-          LogService.instance.log('[STABILIZE] HEIC conversion error: $e');
-          return null;
-        }
-      } else {
-        // iOS/Android - use heif_converter package
-        try {
-          await HeifConverter.convert(
-            imgPath,
-            output: jpgImgPath,
-            format: 'jpeg',
-          );
-          if (!await File(jpgImgPath).exists()) {
-            return null;
-          }
-        } catch (e) {
-          return null;
-        }
-      }
-
-      imgPath = jpgImgPath;
-    }
-
-    // RAW/DNG: decode via RawDecoder first, then encode to PNG
-    bool conversionFromRawNeeded = false;
-    String rawDecodedPath = "";
-    if (RawDecoder.isRawExtension(lowerExt)) {
-      conversionFromRawNeeded = true;
-      final tempDir = path.dirname(imgPath);
-      final decoded = await RawDecoder.decodeToFile(imgPath, tempDir);
-      if (decoded == null) {
-        return null;
-      }
-      rawDecodedPath = decoded;
-      imgPath = decoded;
-    }
-
-    final Uint8List? pngBytes = await readImageAsPngBytesInIsolate(
-      imgPath,
-      preserveBitDepth: lossless,
-    );
-    if (pngBytes != null) {
-      // Write to disk for caching (fire-and-forget for future runs)
-      await writePngBytesToFileInIsolate(pngPath, pngBytes);
-    }
-
-    if (conversionToJpgNeeded) {
-      await ProjectUtils.deleteFile(File(jpgImgPath));
-    }
-
-    if (conversionFromRawNeeded && rawDecodedPath.isNotEmpty) {
-      await ProjectUtils.deleteFile(File(rawDecodedPath));
-    }
-
-    // Return bytes directly - caller doesn't need to read from disk
-    return pngBytes;
-  }
-
-  static Future<File> flipImageHorizontally(String imagePath) async {
     return await processImageInIsolate(
       imagePath,
       'flip_horizontal',
       '_flipped.png',
+      preDecodedBytes: preDecodedBytes,
     );
   }
 
   // Rotate Image 90 Degrees Clockwise
-  static Future<File> rotateImageClockwise(String imagePath) async {
+  static Future<File> rotateImageClockwise(
+    String imagePath, {
+    Uint8List? preDecodedBytes,
+  }) async {
     return await processImageInIsolate(
       imagePath,
       'rotate_clockwise',
       '_rotated_clockwise.png',
+      preDecodedBytes: preDecodedBytes,
     );
   }
 
   // Rotate Image 90 Degrees Counter-Clockwise
-  static Future<File> rotateImageCounterClockwise(String imagePath) async {
+  static Future<File> rotateImageCounterClockwise(
+    String imagePath, {
+    Uint8List? preDecodedBytes,
+  }) async {
     return await processImageInIsolate(
       imagePath,
       'rotate_counter_clockwise',
       '_rotated_counter_clockwise.png',
+      preDecodedBytes: preDecodedBytes,
     );
   }
 
@@ -1445,7 +1247,10 @@ class StabUtils {
     String operation = params['operation'];
 
     try {
-      final Uint8List imageBytes = await File(filePath).readAsBytes();
+      final Uint8List? preDecodedBytes =
+          params['preDecodedBytes'] as Uint8List?;
+      final Uint8List imageBytes =
+          preDecodedBytes ?? await File(filePath).readAsBytes();
       final mat = cv.imdecode(imageBytes, cv.IMREAD_COLOR);
 
       if (mat.isEmpty) {
@@ -1476,7 +1281,11 @@ class StabUtils {
       final String newPath = path.join(tempDir.path, newName);
       final File processedImageFile = File(newPath);
 
-      final (success, pngBytes) = cv.imencode('.png', processedMat);
+      final (success, pngBytes) = cv.imencode(
+        '.png',
+        processedMat,
+        params: cv.VecI32.fromList([cv.IMWRITE_PNG_COMPRESSION, 1]),
+      );
       processedMat.dispose();
 
       if (!success) {
@@ -1495,6 +1304,7 @@ class StabUtils {
     String operation,
     String suffix, {
     CancellationToken? token,
+    Uint8List? preDecodedBytes,
   }) async {
     token?.throwIfCancelled();
 
@@ -1506,6 +1316,7 @@ class StabUtils {
       'operation': operation,
       'suffix': suffix,
       'rootIsolateToken': rootIsolateToken,
+      if (preDecodedBytes != null) 'preDecodedBytes': preDecodedBytes,
     };
 
     final isolate = await Isolate.spawn(
@@ -1707,7 +1518,11 @@ class StabUtils {
     );
 
     // Encode to PNG (preserves alpha channel if present)
-    final (bool success, Uint8List bytes) = cv.imencode('.png', dst);
+    final (bool success, Uint8List bytes) = cv.imencode(
+      '.png',
+      dst,
+      params: cv.VecI32.fromList([cv.IMWRITE_PNG_COMPRESSION, 1]),
+    );
 
     // Cleanup
     rotMat.dispose();
@@ -1793,7 +1608,11 @@ class StabUtils {
         borderValue: borderValue,
       );
 
-      final (bool success, Uint8List bytes) = cv.imencode('.png', dst);
+      final (bool success, Uint8List bytes) = cv.imencode(
+        '.png',
+        dst,
+        params: cv.VecI32.fromList([cv.IMWRITE_PNG_COMPRESSION, 3]),
+      );
 
       rotMat.dispose();
       dst.dispose();

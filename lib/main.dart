@@ -59,6 +59,7 @@ Future<void> _main() async {
       minimumSize: minSize,
       center: true,
       title: 'AgeLapse v2.5.0',
+      titleBarStyle: Platform.isMacOS ? TitleBarStyle.hidden : null,
     );
 
     await windowManager.waitUntilReadyToShow(options, () async {
