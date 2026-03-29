@@ -21,9 +21,9 @@ dependencies:
   device_info_plus: ^12.3.0
   downloadsfolder: ^1.2.0
   exif_reader: ^4.1.0
-  cat_detection: ^0.0.7
-  dog_detection: ^0.0.7
-  face_detection_tflite: ^5.0.9
+  cat_detection: ^0.0.9
+  dog_detection: ^0.0.9
+  face_detection_tflite: ^5.0.11
   ffmpeg_kit_flutter_new:
     git:
       url: https://github.com/hugocornellier/ffmpeg_kit_flutter.git
@@ -41,8 +41,8 @@ dependencies:
   flutter_svg: ^2.2.4
   flutter_timezone: ^5.0.2
   font_awesome_flutter: ^11.0.0
-  hand_detection: ^2.0.2
-  heif_converter: ^1.0.1
+  hand_detection: ^2.0.4
+  heic2png: ^0.0.11
   intl: ^0.20.2
   media_kit: ^1.2.6
   media_kit_libs_linux: ^1.2.1
@@ -54,7 +54,7 @@ dependencies:
   path: ^1.9.1
   path_provider: ^2.1.5
   permission_handler: ^12.0.1
-  pose_detection: ^2.0.2
+  pose_detection: ^2.0.4
   provider: ^6.1.5
   saver_gallery: ^4.1.0
   sensors_plus: ^7.0.0
@@ -95,7 +95,6 @@ flutter:
     - assets/relax.svg
     - assets/ffmpeg/windows/ffmpeg.exe
     - assets/ffmpeg/windows/LICENSE
-    - assets/heic/windows/heicConverter.exe
     - assets/test_fixtures/sample_faces/
     - assets/test_fixtures/sample_dogs/
     - assets/test_fixtures/sample_cats/

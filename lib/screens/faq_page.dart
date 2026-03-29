@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import '../styles/styles.dart';
-import '../widgets/macos_page_scaffold.dart';
+import '../widgets/desktop_page_scaffold.dart';
 
 class FAQPage extends StatelessWidget {
   const FAQPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MacosPageScaffold(
+    return DesktopPageScaffold(
       title: 'F.A.Q.',
       onBack: () => Navigator.pop(context),
       body: Container(

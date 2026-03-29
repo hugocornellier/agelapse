@@ -23,10 +23,16 @@ android {
 
     defaultConfig {
         applicationId = "com.hugocornellier.agelapse"
-        minSdk = flutter.minSdkVersion
+        minSdk = 28
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+    }
+
+    packaging {
+        jniLibs {
+            pickFirsts += setOf("**/libc++_shared.so")
+        }
     }
 
     signingConfigs {

@@ -91,7 +91,8 @@ class DB {
           "id INTEGER PRIMARY KEY AUTOINCREMENT, "
           "title TEXT NOT NULL, "
           "value TEXT NOT NULL, "
-          "projectID TEXT NOT NULL"
+          "projectID TEXT NOT NULL, "
+          "UNIQUE(title, projectID)"
           ");",
       projectTable: "CREATE TABLE $projectTable("
           "id INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -148,6 +149,18 @@ class DB {
     );
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_photos_source_path ON $photoTable(projectID, sourceRelativePath) WHERE sourceRelativePath IS NOT NULL;',
+    );
+
+    // Deduplicate existing setting rows (keep lowest id per title+projectID)
+    // then create unique index — both are idempotent on already-clean databases.
+    await db.execute('''
+      DELETE FROM $settingTable WHERE id NOT IN (
+        SELECT MIN(id) FROM $settingTable GROUP BY title, projectID
+      )
+    ''');
+    await db.execute(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_setting_title_project '
+      'ON $settingTable(title, projectID)',
     );
   }
 
@@ -419,7 +432,11 @@ class DB {
       projectId: projectId,
     );
 
-    await addSetting(defaultSetting);
+    await db.insert(
+      settingTable,
+      defaultSetting.toJson(),
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
 
     return defaultSetting.toJson();
   }
@@ -463,7 +480,7 @@ class DB {
     final db = await database;
 
     if (title == 'framerate') {
-      setSettingByTitle('framerate_is_default', 'false', projectId);
+      await setSettingByTitle('framerate_is_default', 'false', projectId);
     }
 
     // Ensure setting exists before updating (creates with default if missing)

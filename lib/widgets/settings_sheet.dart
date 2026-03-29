@@ -236,6 +236,7 @@ class SettingsSheetState extends State<SettingsSheet> {
     }
     _linkedSourceEnabled = linkedConfig.enabled;
     _linkedSourceDisplayPath = linkedConfig.displayPath;
+    if (!mounted) return;
     setState(() {});
   }
 
@@ -334,6 +335,7 @@ class SettingsSheetState extends State<SettingsSheet> {
       _customResolutionModified = false;
     }
 
+    if (!mounted) return;
     setState(() {});
   }
 
@@ -347,6 +349,7 @@ class SettingsSheetState extends State<SettingsSheet> {
     enableWatermark = results[0] as bool;
     watermarkPosition = results[1] as String;
     watermarkOpacity = results[2] as String;
+    if (!mounted) return;
     setState(() {});
   }
 
@@ -358,6 +361,7 @@ class SettingsSheetState extends State<SettingsSheet> {
     ]);
     gridCount = results[0] as int;
     _galleryGridMode = results[1] as String;
+    if (!mounted) return gridCount;
     setState(() {});
     return gridCount;
   }
@@ -398,6 +402,7 @@ class SettingsSheetState extends State<SettingsSheet> {
     // Load custom fonts
     await _loadCustomFonts();
 
+    if (!mounted) return;
     setState(() {});
   }
 
@@ -420,12 +425,14 @@ class SettingsSheetState extends State<SettingsSheet> {
       );
 
       if (result == null || result.files.isEmpty) {
+        if (!mounted) return null;
         setState(() => _isLoadingCustomFonts = false);
         return null;
       }
 
       final filePath = result.files.first.path;
       if (filePath == null) {
+        if (!mounted) return null;
         setState(() => _isLoadingCustomFonts = false);
         return null;
       }
@@ -435,10 +442,9 @@ class SettingsSheetState extends State<SettingsSheet> {
         filePath,
       );
       if (!validation.isValid) {
+        if (!mounted) return null;
         setState(() => _isLoadingCustomFonts = false);
-        if (mounted) {
-          _showFontErrorDialog(validation.errorMessage ?? 'Invalid font file');
-        }
+        _showFontErrorDialog(validation.errorMessage ?? 'Invalid font file');
         return null;
       }
 
@@ -447,6 +453,7 @@ class SettingsSheetState extends State<SettingsSheet> {
         validation.suggestedName ?? 'Custom Font',
       );
       if (displayName == null) {
+        if (!mounted) return null;
         setState(() => _isLoadingCustomFonts = false);
         return null;
       }
@@ -459,14 +466,14 @@ class SettingsSheetState extends State<SettingsSheet> {
 
       // Refresh custom fonts list
       await _loadCustomFonts();
+      if (!mounted) return null;
       setState(() => _isLoadingCustomFonts = false);
 
       return font.familyName;
     } catch (e) {
+      if (!mounted) return null;
       setState(() => _isLoadingCustomFonts = false);
-      if (mounted) {
-        _showFontErrorDialog(e.toString());
-      }
+      _showFontErrorDialog(e.toString());
       return null;
     }
   }
@@ -1409,6 +1416,7 @@ class SettingsSheetState extends State<SettingsSheet> {
 
             if (!value) {
               await LinkedSourceUtils.disableLinkedSource(widget.projectId);
+              if (!mounted) return;
               setState(() {
                 _linkedSourceEnabled = false;
                 _linkedSourceDisplayPath = '';
@@ -1419,6 +1427,7 @@ class SettingsSheetState extends State<SettingsSheet> {
 
             final selectedPath = await _pickLinkedSourceFolder();
             if (selectedPath == null) {
+              if (!mounted) return;
               setState(() => _linkedSourceEnabled = false);
               return;
             }
@@ -1427,6 +1436,7 @@ class SettingsSheetState extends State<SettingsSheet> {
               widget.projectId,
               selectedPath,
             );
+            if (!mounted) return;
             setState(() {
               _linkedSourceEnabled = true;
               _linkedSourceDisplayPath = selectedPath;
@@ -1471,6 +1481,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                       widget.projectId,
                       selectedPath,
                     );
+                    if (!mounted) return;
                     setState(() {
                       _linkedSourceEnabled = true;
                       _linkedSourceDisplayPath = selectedPath;
@@ -1483,6 +1494,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                   onPressed: () async {
                     await LinkedSourceUtils.disableLinkedSource(
                         widget.projectId);
+                    if (!mounted) return;
                     setState(() {
                       _linkedSourceEnabled = false;
                       _linkedSourceDisplayPath = '';
@@ -3886,6 +3898,7 @@ class ImagePickerWidgetState extends State<ImagePickerWidget> {
       type: FileType.image,
       allowMultiple: false,
     );
+    if (!mounted) return;
     setState(() => uploading = true);
 
     if (result != null && result.files.isNotEmpty) {
@@ -3910,13 +3923,16 @@ class ImagePickerWidgetState extends State<ImagePickerWidget> {
               pngBytes,
             );
           }
+          if (!mounted) return;
           setState(() => uploading = false);
         } catch (e) {
           mat.dispose();
+          if (!mounted) return;
           setState(() => uploading = false);
         }
       } else {
         mat.dispose();
+        if (!mounted) return;
         setState(() => uploading = false);
       }
     }

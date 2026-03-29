@@ -778,7 +778,7 @@ class VideoUtils {
       );
       if (framerateIsDefault) {
         framerate = await getOptimalFramerateFromStabPhotoCount(projectId);
-        DB.instance.setSettingByTitle(
+        await DB.instance.setSettingByTitle(
           'framerate',
           framerate.toString(),
           projectId.toString(),
@@ -907,6 +907,130 @@ class VideoUtils {
         } catch (e, stackTrace) {
           LogService.instance.log(
             "[VIDEO] ERROR in Windows/Linux encoding: $e",
+          );
+          LogService.instance.log("[VIDEO] Stack trace: $stackTrace");
+          return false;
+        }
+      }
+
+      if (Platform.isMacOS) {
+        LogService.instance.log("[VIDEO] Using macOS encoding path");
+        try {
+          final String framesDir = path.join(
+            stabilizedDirPath,
+            projectOrientation,
+          );
+
+          // Get frame dimensions for date stamp overlay
+          final dimensions = await _getFrameDimensions(framesDir);
+          if (dimensions == null) {
+            LogService.instance.log(
+              "[VIDEO] ERROR: Could not get frame dimensions",
+            );
+            return false;
+          }
+          final (videoWidth, videoHeight) = dimensions;
+
+          // Input index offset: 0 normally, 1 when color overlay is present
+          final int idxOffset = needsColorOverlay ? 1 : 0;
+
+          final dateStampOverlay = await _generateDateStampOverlay(
+            projectId: projectId,
+            framesDir: framesDir,
+            orientation: projectOrientation,
+            videoWidth: videoWidth,
+            videoHeight: videoHeight,
+            fps: framerate,
+            videoInputLabel: needsBackgroundComposite ? 'base' : '0',
+            inputIndexOffset: idxOffset,
+          );
+
+          // Load watermark settings
+          final bool wmEnabled = await SettingsUtil.loadWatermarkSetting(
+            projectId.toString(),
+          );
+          final String wmPos = (await DB.instance.getSettingValueByTitle(
+            'watermark_position',
+          ))
+              .toLowerCase();
+          final String wmFilePath = await DirUtils.getWatermarkFilePath(
+            projectId,
+          );
+
+          String? wmFilterPart;
+          String? wmPath;
+          int wmInputIndex =
+              1 + idxOffset + (dateStampOverlay?.pngInputPaths.length ?? 0);
+          if (wmEnabled &&
+              Utils.isImage(wmFilePath) &&
+              await File(wmFilePath).exists()) {
+            final String wmOpacityVal =
+                await DB.instance.getSettingValueByTitle('watermark_opacity');
+            final double wmOpacity = double.tryParse(wmOpacityVal) ?? 0.8;
+            wmPath = wmFilePath;
+            wmFilterPart = getWatermarkFilter(wmOpacity, wmPos, 10);
+          }
+
+          final bool ok = await _encodeMacOS(
+            framesDir: framesDir,
+            outputPath: videoOutputPath,
+            fps: framerate,
+            projectId: projectId,
+            orientation: projectOrientation,
+            onLog: (line) => LogService.instance.log("[FFMPEG] $line"),
+            onProgress: setCurrentFrame,
+            dateStampOverlay: dateStampOverlay,
+            effectiveCodec: effectiveCodec,
+            videoHasAlpha: videoHasAlpha,
+            needsColorOverlay: needsColorOverlay,
+            needsBlurOverlay: needsBlurOverlay,
+            videoBg: videoBg,
+            videoWidth: videoWidth,
+            videoHeight: videoHeight,
+            watermarkFilterPart: wmFilterPart,
+            watermarkFilePath: wmPath,
+            watermarkInputIndex: wmInputIndex,
+          );
+
+          // Clean up date stamp temp PNGs
+          if (dateStampOverlay != null) {
+            try {
+              final tempDir = Directory(dateStampOverlay.tempDir);
+              if (await tempDir.exists()) {
+                await tempDir.delete(recursive: true);
+              }
+            } catch (e) {
+              LogService.instance.log(
+                "[VIDEO] Failed to clean up date stamp PNGs: $e",
+              );
+            }
+          }
+          LogService.instance.log("[VIDEO] _encodeMacOS returned: $ok");
+          if (ok) {
+            final String resolution = await SettingsUtil.loadVideoResolution(
+              projectId.toString(),
+            );
+            await DB.instance.addVideo(
+              projectId,
+              resolution,
+              (await SettingsUtil.loadWatermarkSetting(
+                projectId.toString(),
+              ))
+                  .toString(),
+              (await DB.instance.getSettingValueByTitle(
+                'watermark_position',
+              ))
+                  .toLowerCase(),
+              totalPhotoCount,
+              framerate,
+            );
+            LogService.instance.log("[VIDEO] Video record added to database");
+          }
+
+          return ok;
+        } catch (e, stackTrace) {
+          LogService.instance.log(
+            "[VIDEO] ERROR in macOS encoding: $e",
           );
           LogService.instance.log("[VIDEO] Stack trace: $stackTrace");
           return false;
@@ -1106,142 +1230,60 @@ class VideoUtils {
 
       bool success = false;
       try {
-        if (Platform.isMacOS) {
-          LogService.instance.log("[VIDEO] Using macOS encoding path");
+        LogService.instance.log(
+          "[VIDEO] Using mobile (FFmpegKit) encoding path",
+        );
 
-          final exeDir = path.dirname(Platform.resolvedExecutable);
-          final resourcesDir = path.normalize(
-            path.join(exeDir, '..', 'Resources'),
+        // Reset throttle counters for new compilation
+        _logLineCount = 0;
+        _lastProgressUpdate = DateTime.now();
+
+        kitcfg.FFmpegKitConfig.enableLogCallback((kitlog.Log log) {
+          final String output = log.getMessage();
+          // Always parse for progress (internally throttled)
+          parseFFmpegOutput(output, framerate, setCurrentFrame);
+          // Throttle logging to reduce UI thread load
+          _logLineCount++;
+          if (_logLineCount % _logEveryNthLine == 0) {
+            LogService.instance.log("[FFMPEG] $output");
+          }
+        });
+
+        LogService.instance.log(
+          "[VIDEO] Executing ffmpeg command: $ffmpegCommand",
+        );
+        final kitsession.FFmpegSession session = await kit.FFmpegKit.execute(
+          ffmpegCommand,
+        );
+        FFmpegProcessManager.instance.registerSession(session);
+
+        final returnCode = await session.getReturnCode();
+        FFmpegProcessManager.instance.unregisterSession();
+        LogService.instance.log(
+          "[VIDEO] FFmpegKit return code: ${returnCode?.getValue()}",
+        );
+
+        if (kitrc.ReturnCode.isSuccess(returnCode)) {
+          final String resolution = await SettingsUtil.loadVideoResolution(
+            projectId.toString(),
           );
-          final ffmpegExe = path.join(resourcesDir, 'ffmpeg');
-          final cmd = '"$ffmpegExe" $ffmpegCommand';
-
-          LogService.instance.log('[VIDEO] ffmpeg executable: $ffmpegExe');
-          LogService.instance.log('[VIDEO] ffmpeg command: $ffmpegCommand');
-
-          // Use 'sh' without absolute path - works in both .deb (/bin/sh)
-          // and Flatpak (sandbox provides sh in PATH)
-          final proc = await Process.start(
-              'sh',
-              [
-                '-c',
-                cmd,
-              ],
-              runInShell: false);
-          FFmpegProcessManager.instance.registerProcess(proc);
-
-          // Reset throttle counters for new compilation
-          _logLineCount = 0;
-          _lastProgressUpdate = DateTime.now();
-
-          proc.stdout
-              .transform(utf8.decoder)
-              .transform(const LineSplitter())
-              .listen((line) {
-            // Throttle stdout logging
-            _logLineCount++;
-            if (_logLineCount % _logEveryNthLine == 0) {
-              LogService.instance.log("[FFMPEG] $line");
-            }
-          });
-          proc.stderr
-              .transform(utf8.decoder)
-              .transform(const LineSplitter())
-              .listen((line) {
-            // Always parse for progress, but throttle logging
-            parseFFmpegOutput(line, framerate, setCurrentFrame);
-            _logLineCount++;
-            if (_logLineCount % _logEveryNthLine == 0) {
-              LogService.instance.log("[FFMPEG] $line");
-            }
-          });
-
-          final code = await proc.exitCode;
-          FFmpegProcessManager.instance.unregisterProcess();
-          LogService.instance.log("[VIDEO] ffmpeg exit code: $code");
-
-          try {
-            await File(listPath).delete();
-          } catch (e) {
-            LogService.instance.log("[VIDEO] Failed to delete concat list: $e");
-          }
-          if (code == 0) {
-            final String resolution = await SettingsUtil.loadVideoResolution(
-              projectId.toString(),
-            );
-            await DB.instance.addVideo(
-              projectId,
-              resolution,
-              watermarkEnabled.toString(),
-              watermarkPos,
-              totalPhotoCount,
-              framerate,
-            );
-            LogService.instance.log(
-              "[VIDEO] Video compilation successful, record added to database",
-            );
-            success = true;
-          } else {
-            LogService.instance.log(
-              "[VIDEO] ffmpeg failed with exit code: $code",
-            );
-          }
+          await DB.instance.addVideo(
+            projectId,
+            resolution,
+            watermarkEnabled.toString(),
+            watermarkPos,
+            totalPhotoCount,
+            framerate,
+          );
+          LogService.instance.log(
+            "[VIDEO] Video compilation successful, record added to database",
+          );
+          success = true;
         } else {
+          final logs = await session.getAllLogsAsString();
           LogService.instance.log(
-            "[VIDEO] Using mobile (FFmpegKit) encoding path",
+            "[VIDEO] FFmpegKit failed. Full logs: $logs",
           );
-
-          // Reset throttle counters for new compilation
-          _logLineCount = 0;
-          _lastProgressUpdate = DateTime.now();
-
-          kitcfg.FFmpegKitConfig.enableLogCallback((kitlog.Log log) {
-            final String output = log.getMessage();
-            // Always parse for progress (internally throttled)
-            parseFFmpegOutput(output, framerate, setCurrentFrame);
-            // Throttle logging to reduce UI thread load
-            _logLineCount++;
-            if (_logLineCount % _logEveryNthLine == 0) {
-              LogService.instance.log("[FFMPEG] $output");
-            }
-          });
-
-          LogService.instance.log(
-            "[VIDEO] Executing ffmpeg command: $ffmpegCommand",
-          );
-          final kitsession.FFmpegSession session = await kit.FFmpegKit.execute(
-            ffmpegCommand,
-          );
-          FFmpegProcessManager.instance.registerSession(session);
-
-          final returnCode = await session.getReturnCode();
-          FFmpegProcessManager.instance.unregisterSession();
-          LogService.instance.log(
-            "[VIDEO] FFmpegKit return code: ${returnCode?.getValue()}",
-          );
-
-          if (kitrc.ReturnCode.isSuccess(returnCode)) {
-            final String resolution = await SettingsUtil.loadVideoResolution(
-              projectId.toString(),
-            );
-            await DB.instance.addVideo(
-              projectId,
-              resolution,
-              watermarkEnabled.toString(),
-              watermarkPos,
-              totalPhotoCount,
-              framerate,
-            );
-            LogService.instance.log(
-              "[VIDEO] Video compilation successful, record added to database",
-            );
-            success = true;
-          } else {
-            final logs = await session.getAllLogsAsString();
-            LogService.instance.log(
-              "[VIDEO] FFmpegKit failed. Full logs: $logs",
-            );
-          }
         }
       } catch (e, stackTrace) {
         LogService.instance.log("[VIDEO] ERROR in video compilation: $e");
@@ -1363,15 +1405,6 @@ class VideoUtils {
       projectId,
       projectOrientation,
     );
-  }
-
-  static Future<void> createGif(String videoOutputPath, int framerate) async {
-    if (Platform.isWindows) return;
-    final String gifPath = videoOutputPath.replaceAll(
-      path.extension(videoOutputPath),
-      ".gif",
-    );
-    await kit.FFmpegKit.execute('-i $videoOutputPath $gifPath');
   }
 
   static Future<bool> videoOutputSettingsChanged(
@@ -1610,6 +1643,9 @@ class VideoUtils {
     int? projectId,
     String? orientation,
   }) async {
+    if (fps <= 0) {
+      throw ArgumentError('fps must be positive, got $fps');
+    }
     LogService.instance.log(
       "[VIDEO] Building concat list from directory: $framesDir",
     );
@@ -1741,6 +1777,269 @@ class VideoUtils {
     }
     // 1080p and below: Level 4.1, Main profile
     return ('main', '4.1');
+  }
+
+  static Future<bool> _encodeMacOS({
+    required String framesDir,
+    required String outputPath,
+    required int fps,
+    required int projectId,
+    required String orientation,
+    void Function(String line)? onLog,
+    void Function(int frameIndex)? onProgress,
+    DateStampOverlayInfo? dateStampOverlay,
+    required VideoCodec effectiveCodec,
+    required bool videoHasAlpha,
+    bool needsColorOverlay = false,
+    bool needsBlurOverlay = false,
+    VideoBackground? videoBg,
+    int? videoWidth,
+    int? videoHeight,
+    String? watermarkFilterPart,
+    String? watermarkFilePath,
+    int watermarkInputIndex = 0,
+  }) async {
+    LogService.instance.log("[VIDEO] _encodeMacOS started");
+    LogService.instance.log("[VIDEO] framesDir: $framesDir");
+    LogService.instance.log("[VIDEO] outputPath: $outputPath");
+    LogService.instance.log("[VIDEO] fps: $fps");
+    if (dateStampOverlay != null) {
+      LogService.instance.log(
+        "[VIDEO] Date stamp overlay enabled with ${dateStampOverlay.pngInputPaths.length} PNGs",
+      );
+    }
+
+    // macOS FFmpeg path: bundled in app Resources
+    final exeDir = path.dirname(Platform.resolvedExecutable);
+    final resourcesDir = path.normalize(path.join(exeDir, '..', 'Resources'));
+    final exe = path.join(resourcesDir, 'ffmpeg');
+    LogService.instance.log("[VIDEO] Resolved ffmpeg executable: $exe");
+
+    await _ensureOutDir(outputPath);
+    final listPath = await _buildConcatListFromDir(
+      framesDir,
+      fps,
+      projectId: projectId,
+      orientation: orientation,
+    );
+
+    // Get resolution setting
+    final resolution = await SettingsUtil.loadVideoResolution(
+      projectId.toString(),
+    );
+    final kbps = pickBitrateKbps(resolution);
+    LogService.instance.log(
+      "[VIDEO] Resolution: $resolution, Codec: ${effectiveCodec.name}, Bitrate: ${kbps}k",
+    );
+
+    // macOS-specific: auto-upgrade H.264 to HEVC for 8K (VideoToolbox limit)
+    VideoCodec finalCodec = effectiveCodec;
+    if (effectiveCodec == VideoCodec.h264 &&
+        videoWidth != null &&
+        videoHeight != null &&
+        _resolutionNeedsHevc(
+          resolution,
+          actualWidth: videoWidth,
+          actualHeight: videoHeight,
+        )) {
+      LogService.instance.log(
+        "[VIDEO] 8K resolution detected, upgrading H.264 to HEVC (h264_videotoolbox doesn't support 8K)",
+      );
+      finalCodec = VideoCodec.hevc;
+    }
+
+    // Build FFmpeg arguments
+    final args = <String>['-y'];
+
+    // Add color source input (input 0) when compositing transparent PNGs onto solid bg
+    if (needsColorOverlay &&
+        videoBg != null &&
+        videoBg.solidColorHex != null &&
+        videoWidth != null &&
+        videoHeight != null) {
+      final String hex = videoBg.solidColorHex!.replaceFirst('#', '0x');
+      final int outFps = outputFps(fps);
+      args.addAll([
+        '-f',
+        'lavfi',
+        '-i',
+        'color=c=$hex:s=${videoWidth}x$videoHeight:r=$outFps',
+      ]);
+    }
+
+    // Add video frames input (input 0 normally, input 1 with color overlay)
+    args.addAll(['-f', 'concat', '-safe', '0', '-i', listPath]);
+
+    // Add date stamp PNG inputs
+    if (dateStampOverlay != null) {
+      for (final pngPath in dateStampOverlay.pngInputPaths) {
+        args.addAll(['-i', pngPath]);
+      }
+    }
+
+    // Add watermark input
+    if (watermarkFilePath != null) {
+      args.addAll(['-i', watermarkFilePath]);
+    }
+
+    // Build filter_complex via shared filter chain builder
+    final String? backgroundFilterStr;
+    if (needsColorOverlay) {
+      backgroundFilterStr =
+          '[0:v][1:v]overlay=shortest=1,format=${finalCodec.pixelFormat}[base]';
+    } else if (needsBlurOverlay && videoHeight != null) {
+      backgroundFilterStr = buildBlurFilter(videoHeight);
+    } else {
+      backgroundFilterStr = null;
+    }
+    final filterResult = buildFilterChain(
+      colorOverlayFilter: backgroundFilterStr,
+      dateStampOverlay: dateStampOverlay,
+      watermarkFilterPart: watermarkFilterPart,
+      watermarkInputIndex: watermarkInputIndex,
+      needsColorOverlay: needsColorOverlay || needsBlurOverlay,
+      pixelFormat: finalCodec.pixelFormat,
+    );
+    if (filterResult.hasFilter) {
+      args.addAll(['-filter_complex', filterResult.filterComplex!]);
+    }
+    if (filterResult.hasMap) {
+      args.addAll(['-map', filterResult.mapLabel!]);
+    }
+
+    // For alpha output without filter_complex, add format filter
+    if (videoHasAlpha && !filterResult.hasFilter && !needsColorOverlay) {
+      args.addAll(['-vf', 'format=${finalCodec.pixelFormat}']);
+    }
+
+    LogService.instance.log(
+      "[VIDEO] Using ${finalCodec.displayName} encoder: ${finalCodec.encoder}",
+    );
+
+    // Detect high-bit-depth source frames for 10-bit output
+    final bool highBitDepth = await _hasHighBitDepthFrames(framesDir);
+
+    // Video encoding settings based on codec model
+    final pixFmt = finalCodec.pixelFormatForSource(highBitDepth: highBitDepth);
+    final int outFps = outputFps(fps);
+    args.addAll(['-vsync', 'cfr', '-r', '$outFps', '-pix_fmt', pixFmt]);
+
+    // Color space metadata for correct rendering in all players
+    args.addAll([
+      '-color_primaries',
+      'bt709',
+      '-color_trc',
+      'bt709',
+      '-colorspace',
+      'bt709',
+    ]);
+
+    // Encoder — uses .encoder which returns encoderApple on macOS
+    // (e.g. h264_videotoolbox, hevc_videotoolbox, prores_ks)
+    final encoderParts = finalCodec.encoder.split(' ');
+    args.addAll(['-c:v', ...encoderParts]);
+
+    // macOS uses VideoToolbox hardware encoders which auto-negotiate
+    // profile/level correctly. Do NOT set -profile:v / -level here —
+    // explicit Level 5.1 causes VideoToolbox to reject 4K@30fps
+    // (exceeds macroblock throughput limit).
+
+    if (finalCodec == VideoCodec.vp9) {
+      args.addAll([
+        '-b:v',
+        '${kbps}k',
+        '-crf',
+        '30',
+        '-row-mt',
+        '1',
+        '-auto-alt-ref',
+        '0',
+      ]);
+    } else if (finalCodec.usesBitrateControl) {
+      args.addAll([
+        '-b:v',
+        '${kbps}k',
+        '-maxrate',
+        '${(kbps * 1.5).round()}k',
+        '-bufsize',
+        '${(kbps * 3).round()}k',
+      ]);
+    }
+
+    if (finalCodec.usesMovFlags) {
+      args.addAll(['-movflags', '+faststart']);
+    }
+
+    // macOS-specific: codec tag (e.g. -tag:v avc1 for H.264, -tag:v hvc1 for HEVC)
+    final tag = finalCodec.codecTag;
+    if (tag.isNotEmpty) {
+      args.addAll(tag.split(' '));
+    }
+
+    if (!videoHasAlpha) {
+      args.addAll(['-g', '240']);
+    }
+
+    args.add(outputPath);
+
+    LogService.instance.log("[VIDEO] ffmpeg arguments: ${args.join(' ')}");
+    LogService.instance.log("[VIDEO] Starting ffmpeg process...");
+
+    try {
+      final proc = await Process.start(exe, args, runInShell: false);
+      FFmpegProcessManager.instance.registerProcess(proc);
+      LogService.instance.log(
+        "[VIDEO] ffmpeg process started with PID: ${proc.pid}",
+      );
+
+      proc.stdout
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen((line) {
+        if (onLog != null) onLog(line);
+      });
+      proc.stderr
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen((line) {
+        if (onLog != null) onLog(line);
+        final m = RegExp(r'frame=\s*(\d+)').firstMatch(line);
+        if (m != null && onProgress != null) {
+          final f = int.tryParse(m.group(1)!);
+          if (f != null) onProgress(f);
+        }
+      });
+
+      final code = await proc.exitCode;
+      FFmpegProcessManager.instance.unregisterProcess();
+      LogService.instance.log("[VIDEO] ffmpeg process exited with code: $code");
+
+      try {
+        await File(listPath).delete();
+        LogService.instance.log("[VIDEO] Cleaned up concat list file");
+      } catch (e) {
+        LogService.instance.log("[VIDEO] Failed to clean up concat list: $e");
+      }
+
+      // Check if output file was created
+      final outputFile = File(outputPath);
+      if (await outputFile.exists()) {
+        final size = await outputFile.length();
+        LogService.instance.log(
+          "[VIDEO] Output file created: $outputPath (${(size / 1024 / 1024).toStringAsFixed(2)} MB)",
+        );
+      } else {
+        LogService.instance.log(
+          "[VIDEO] WARNING: Output file was not created: $outputPath",
+        );
+      }
+
+      return code == 0;
+    } catch (e, stackTrace) {
+      LogService.instance.log("[VIDEO] ERROR starting ffmpeg process: $e");
+      LogService.instance.log("[VIDEO] Stack trace: $stackTrace");
+      return false;
+    }
   }
 
   static Future<bool> _encodeWindows({

@@ -75,13 +75,24 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 32),
-                      Text(
-                        'Create New Project',
-                        style: TextStyle(
-                          fontSize: AppTypography.xxxl,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Create New Project',
+                            style: TextStyle(
+                              fontSize: AppTypography.xxxl,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          if (widget.showCloseButton)
+                            IconButton(
+                              icon: Icon(Icons.close,
+                                  color: AppColors.textPrimary),
+                              onPressed: () => Navigator.of(context).pop(),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 48),
                       Padding(

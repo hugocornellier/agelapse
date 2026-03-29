@@ -73,17 +73,18 @@ ImageProcessingOutput processImageIsolateEntry(ImageProcessingInput input) {
 
   try {
     // 1. Decode image bytes
-    rawImage = cv.imdecode(input.bytes, cv.IMREAD_COLOR);
-    if (rawImage.isEmpty) {
-      rawImage.dispose();
-      // Fallback: try pre-decoded bytes (for HEIC, AVIF, RAW, etc.)
-      if (input.preDecodedBytes != null) {
-        rawImage = cv.imdecode(input.preDecodedBytes!, cv.IMREAD_COLOR);
-        if (rawImage.isEmpty) {
-          rawImage.dispose();
-          return const ImageProcessingOutput.failure('Failed to decode image');
-        }
-      } else {
+    // Prefer pre-decoded bytes when available (for HEIC, AVIF, RAW, JP2, TIFF
+    // on Apple) since cv.imdecode may not support these formats natively.
+    if (input.preDecodedBytes != null) {
+      rawImage = cv.imdecode(input.preDecodedBytes!, cv.IMREAD_COLOR);
+      if (rawImage.isEmpty) {
+        rawImage.dispose();
+        return const ImageProcessingOutput.failure('Failed to decode image');
+      }
+    } else {
+      rawImage = cv.imdecode(input.bytes, cv.IMREAD_COLOR);
+      if (rawImage.isEmpty) {
+        rawImage.dispose();
         return const ImageProcessingOutput.failure('Failed to decode image');
       }
     }

@@ -3,7 +3,7 @@ import 'dart:isolate';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
-import 'package:heif_converter/heif_converter.dart';
+import 'package:heic2png/heic2png.dart';
 import 'package:path/path.dart' as path;
 import 'package:saver_gallery/saver_gallery.dart';
 import 'package:vibration/vibration.dart';
@@ -14,7 +14,6 @@ import '../services/log_service.dart';
 import '../services/thumbnail_service.dart';
 import 'dir_utils.dart';
 import 'format_decode_utils.dart';
-import 'heic_utils.dart';
 import 'image_processing_isolate.dart';
 import 'linked_source_utils.dart';
 
@@ -173,7 +172,7 @@ class CameraUtils {
       String?
           heicPathToDelete; // Track original HEIC for cleanup after conversion
       try {
-        final int? newPhotoLength = await image?.length();
+        int? newPhotoLength = await image?.length();
         if (newPhotoLength == null) {
           return false;
         }
@@ -212,60 +211,17 @@ class CameraUtils {
         // Imports store the original file byte-for-byte in photos_raw/.
         if (!import && (extension == ".heic" || extension == ".heif")) {
           final String heicPath = imgPath;
-          final String jpgPath = path.setExtension(heicPath, ".jpg");
+          final String pngPath = path.setExtension(heicPath, ".png");
 
-          if (Platform.isMacOS) {
-            // macOS: use built-in sips command
-            final result = await Process.run('sips', [
-              '-s',
-              'format',
-              'jpeg',
-              heicPath,
-              '--out',
-              jpgPath,
-            ]);
-            if (result.exitCode != 0 || !await File(jpgPath).exists()) {
-              return false;
-            }
-          } else if (Platform.isWindows) {
-            // Windows: use bundled HeicConverter.exe
-            final success =
-                await HeicUtils.convertHeicToJpgAt(heicPath, jpgPath);
-            if (!success) {
-              return false;
-            }
-          } else if (Platform.isLinux) {
-            // Linux: use heif_converter package
-            try {
-              await HeifConverter.convert(
-                heicPath,
-                output: jpgPath,
-                format: 'jpeg',
-              );
-              if (!await File(jpgPath).exists()) {
-                return false;
-              }
-            } catch (_) {
-              return false;
-            }
-          } else {
-            // iOS/Android - use heif_converter package
-            try {
-              await HeifConverter.convert(
-                heicPath,
-                output: jpgPath,
-                format: 'jpeg',
-              );
-              if (!await File(jpgPath).exists()) {
-                return false;
-              }
-            } catch (_) {
-              return false;
-            }
+          final success = await Heic2png.convert(heicPath, pngPath);
+          if (!success || !await File(pngPath).exists()) {
+            return false;
           }
+
           heicPathToDelete = heicPath; // Mark original for cleanup
-          imgPath = jpgPath;
-          extension = ".jpg";
+          imgPath = pngPath;
+          extension = ".png";
+          newPhotoLength = await File(pngPath).length();
         }
 
         sourceFilename ??= import

@@ -118,6 +118,8 @@ void main() {
         // Find and tap the CREATE button (in the form)
         final createButton = find.text('CREATE');
         if (createButton.evaluate().isNotEmpty) {
+          await tester.ensureVisible(createButton);
+          await tester.pumpAndSettle();
           await tester.tap(createButton);
           await tester.pumpAndSettle(const Duration(seconds: 3));
         }

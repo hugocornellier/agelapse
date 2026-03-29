@@ -3,6 +3,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:heic2png/heic2png.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:opencv_dart/opencv_dart.dart' as cv;
 import 'package:agelapse/main.dart' as app;
@@ -244,51 +245,36 @@ void main() {
                 reason: '$format/$day thumbnail should be JPEG (byte 1)');
           }
 
-          // For HEIC: pre-convert to JPG, then decode
+          // For HEIC: pre-convert to PNG via heic2png, then decode
           if (format == 'heic') {
             Uint8List? preDecoded;
-
-            if (Platform.isMacOS) {
-              final tempDir = await Directory.systemTemp
-                  .createTemp('agelapse_heic_import_');
-              try {
-                final jpgPath = p.join(tempDir.path, '$day.jpg');
-                final result = await Process.run('sips', [
-                  '-s',
-                  'format',
-                  'jpeg',
-                  filePath,
-                  '--out',
-                  jpgPath,
-                ]);
-                if (result.exitCode == 0) {
-                  preDecoded = await File(jpgPath).readAsBytes();
-                }
-              } finally {
-                await tempDir.delete(recursive: true);
-              }
+            try {
+              preDecoded = await Heic2png.convertToBytes(
+                filePath,
+                preserveMetadata: false,
+              );
+            } catch (_) {
+              // HEIC codec may not be available (e.g. Windows CI without HEIC Video Extensions)
             }
-            // On other platforms, heif_converter would be used — skip if not macOS
-            if (preDecoded == null && !Platform.isMacOS) {
-              // Can't test HEIC pre-conversion on this platform without heif_converter
+
+            if (preDecoded == null) {
+              // heic2png conversion failed on this platform — skip
               return;
             }
 
-            if (preDecoded != null) {
-              final output = processImageIsolateEntry(ImageProcessingInput(
-                bytes: bytes,
-                extension: '.heic',
-                preDecodedBytes: preDecoded,
-              ));
+            final output = processImageIsolateEntry(ImageProcessingInput(
+              bytes: bytes,
+              extension: '.heic',
+              preDecodedBytes: preDecoded,
+            ));
 
-              expect(output.success, isTrue,
-                  reason: 'HEIC/$day should decode via pre-converted JPG '
-                      '(got: ${output.error})');
-              expect(output.width, greaterThan(0));
-              expect(output.height, greaterThan(0));
-              expect(output.thumbnailBytes, isNotNull,
-                  reason: 'HEIC/$day should produce a thumbnail');
-            }
+            expect(output.success, isTrue,
+                reason: 'HEIC/$day should decode via pre-converted PNG '
+                    '(got: ${output.error})');
+            expect(output.width, greaterThan(0));
+            expect(output.height, greaterThan(0));
+            expect(output.thumbnailBytes, isNotNull,
+                reason: 'HEIC/$day should produce a thumbnail');
           }
 
           // For TIFF on Apple: pre-convert to PNG via sips, then decode
@@ -564,8 +550,7 @@ void main() {
     });
 
     for (final day in formatSampleDays) {
-      test('HEIC sample $day converts to JPG on macOS', () async {
-        if (!Platform.isMacOS) return;
+      test('HEIC sample $day converts to PNG via heic2png', () async {
         if (!await ensureFixturesLoaded()) {
           markTestSkipped('Test fixtures not available');
           return;
@@ -578,25 +563,49 @@ void main() {
           return;
         }
 
-        final jpgPath = p.join(tempDir.path, '$day-from-heic.jpg');
-        final result = await Process.run('sips', [
-          '-s',
-          'format',
-          'jpeg',
-          heicPath,
-          '--out',
-          jpgPath,
-        ]);
+        final pngPath = p.join(tempDir.path, '$day-from-heic.png');
+        bool success;
+        try {
+          success = await Heic2png.convert(heicPath, pngPath);
+        } catch (_) {
+          markTestSkipped('HEIC codec not available on this platform');
+          return;
+        }
+        expect(success, isTrue,
+            reason: 'heic2png should convert HEIC $day to PNG');
 
-        expect(result.exitCode, equals(0),
-            reason: 'sips should convert HEIC $day to JPG: ${result.stderr}');
+        final pngFile = File(pngPath);
+        expect(await pngFile.exists(), isTrue);
 
-        final jpgFile = File(jpgPath);
-        expect(await jpgFile.exists(), isTrue);
+        final pngBytes = await pngFile.readAsBytes();
+        expect(pngBytes[0], equals(0x89), reason: 'PNG magic byte 0');
+        expect(pngBytes[1], equals(0x50), reason: 'PNG magic byte 1');
+      });
 
-        final jpgBytes = await jpgFile.readAsBytes();
-        expect(jpgBytes[0], equals(0xFF), reason: 'JPG magic byte 0');
-        expect(jpgBytes[1], equals(0xD8), reason: 'JPG magic byte 1');
+      test('HEIC sample $day convertToBytes returns PNG bytes', () async {
+        if (!await ensureFixturesLoaded()) {
+          markTestSkipped('Test fixtures not available');
+          return;
+        }
+
+        final heicPath = await getFormatSamplePathAsync('heic', day);
+        final heicFile = File(heicPath);
+        if (!await heicFile.exists()) {
+          markTestSkipped('HEIC sample $day not found');
+          return;
+        }
+
+        Uint8List? pngBytes;
+        try {
+          pngBytes = await Heic2png.convertToBytes(heicPath);
+        } catch (_) {
+          markTestSkipped('HEIC codec not available on this platform');
+          return;
+        }
+        expect(pngBytes, isNotNull,
+            reason: 'heic2png should return bytes for HEIC $day');
+        expect(pngBytes[0], equals(0x89), reason: 'PNG magic byte 0');
+        expect(pngBytes[1], equals(0x50), reason: 'PNG magic byte 1');
       });
     }
   });

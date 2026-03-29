@@ -24,10 +24,11 @@ import '../services/theme_provider.dart';
 import '../utils/gallery_utils.dart';
 import 'package:path/path.dart' as path;
 import '../styles/styles.dart';
+import '../utils/platform_utils.dart';
 import '../utils/utils.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/global_drop_overlay.dart';
-import '../widgets/macos_page_scaffold.dart';
+import '../widgets/desktop_page_scaffold.dart';
 
 class MainNavigation extends StatefulWidget {
   final int projectId;
@@ -629,7 +630,7 @@ class MainNavigationState extends State<MainNavigation>
     }
 
     // Pop any pushed pages in the nested navigator before switching tabs
-    if (Platform.isMacOS) {
+    if (hasCustomTitleBar) {
       _nestedNavKey.currentState?.popUntil((route) => route.isFirst);
     }
 
@@ -731,6 +732,33 @@ class MainNavigationState extends State<MainNavigation>
       _selectedIndex == 3 &&
       (!_hideNavBar || _stabilizingActive || _videoCreationActive);
 
+  static const double _sidebarWidth = 52;
+
+  Widget _buildDesktopSidebar(List<IconData> iconList) {
+    return Container(
+      width: _sidebarWidth,
+      color: AppColors.surface,
+      child: Column(
+        children: [
+          const SizedBox(height: 42),
+          const SizedBox(height: 12),
+          ...List.generate(iconList.length, (index) {
+            final isActive = _selectedIndex == index;
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 6),
+              child: _DesktopNavButton(
+                icon: iconList[index],
+                isActive: isActive,
+                onTap: () => _onItemTapped(index),
+              ),
+            );
+          }),
+          const Spacer(),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Watch ThemeProvider to rebuild when theme changes.
@@ -781,11 +809,11 @@ class MainNavigationState extends State<MainNavigation>
           photoCount > 1;
     }
 
-    // On macOS, use a nested Navigator so CustomAppBar stays fixed
+    // On macOS/Linux, use a nested Navigator so CustomAppBar stays fixed
     // during page transitions. The ValueNotifier drives tab rebuilds.
     Widget contentArea;
-    if (Platform.isMacOS) {
-      contentArea = MacosTitleBarScope(
+    if (hasCustomTitleBar) {
+      contentArea = DesktopTitleBarScope(
         child: Navigator(
           key: _nestedNavKey,
           onGenerateRoute: (_) => PageRouteBuilder(
@@ -801,44 +829,76 @@ class MainNavigationState extends State<MainNavigation>
       contentArea = _widgetOptions.elementAt(_selectedIndex);
     }
 
-    final scaffold = Scaffold(
-      backgroundColor: AppColors.backgroundDark,
-      body: Column(
-        children: [
-          if (appBar != null) appBar,
-          Expanded(child: contentArea),
-        ],
-      ),
-      bottomNavigationBar: navbarShouldBeHidden()
-          ? null
-          : Container(
-              decoration: BoxDecoration(
-                color: AppColors.backgroundDark,
-                border: Border(
-                  top: BorderSide(color: AppColors.surfaceElevated, width: 0.7),
+    final scaffold = hasCustomTitleBar
+        ? Scaffold(
+            backgroundColor: AppColors.surface,
+            body: Row(
+              children: [
+                _buildDesktopSidebar(iconList),
+                Expanded(
+                  child: Column(
+                    children: [
+                      if (appBar != null) appBar,
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(12),
+                          ),
+                          child: Container(
+                            color: AppColors.backgroundDark,
+                            child: contentArea,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              child: AnimatedBottomNavigationBar.builder(
-                itemCount: iconList.length,
-                tabBuilder: (int index, bool isActive) {
-                  final color = isActive
-                      ? AppColors.accentLight
-                      : AppColors.textSecondary;
-                  return Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [Icon(iconList[index], size: 24, color: color)],
-                  );
-                },
-                height: 60,
-                gapLocation: GapLocation.none,
-                notchSmoothness: NotchSmoothness.defaultEdge,
-                splashColor: Colors.transparent,
-                activeIndex: _selectedIndex,
-                onTap: _onItemTapped,
-                backgroundColor: AppColors.backgroundDark,
-              ),
+              ],
             ),
-    );
+          )
+        : Scaffold(
+            backgroundColor: AppColors.backgroundDark,
+            body: Column(
+              children: [
+                if (appBar != null) appBar,
+                Expanded(child: contentArea),
+              ],
+            ),
+            bottomNavigationBar: navbarShouldBeHidden()
+                ? null
+                : Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.backgroundDark,
+                      border: Border(
+                        top: BorderSide(
+                          color: AppColors.surfaceElevated,
+                          width: 0.7,
+                        ),
+                      ),
+                    ),
+                    child: AnimatedBottomNavigationBar.builder(
+                      itemCount: iconList.length,
+                      tabBuilder: (int index, bool isActive) {
+                        final color = isActive
+                            ? AppColors.accentLight
+                            : AppColors.textSecondary;
+                        return Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(iconList[index], size: 24, color: color),
+                          ],
+                        );
+                      },
+                      height: 60,
+                      gapLocation: GapLocation.none,
+                      notchSmoothness: NotchSmoothness.defaultEdge,
+                      splashColor: Colors.transparent,
+                      activeIndex: _selectedIndex,
+                      onTap: _onItemTapped,
+                      backgroundColor: AppColors.backgroundDark,
+                    ),
+                  ),
+          );
 
     // Only wrap with DropTarget on desktop platforms
     final bool isDesktop =
@@ -864,6 +924,56 @@ class MainNavigationState extends State<MainNavigation>
         if (_globalDragActive && !GlobalDropService.instance.importSheetOpen)
           GlobalDropOverlay(isDragging: _globalDragActive),
       ],
+    );
+  }
+}
+
+class _DesktopNavButton extends StatefulWidget {
+  final IconData icon;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _DesktopNavButton({
+    required this.icon,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  @override
+  State<_DesktopNavButton> createState() => _DesktopNavButtonState();
+}
+
+class _DesktopNavButtonState extends State<_DesktopNavButton> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color iconColor = widget.isActive
+        ? AppColors.accentLight
+        : _hovering
+            ? AppColors.textPrimary
+            : AppColors.textSecondary;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: widget.isActive
+                ? AppColors.textPrimary.withValues(alpha: 0.1)
+                : _hovering
+                    ? AppColors.textPrimary.withValues(alpha: 0.05)
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(widget.icon, size: 22, color: iconColor),
+        ),
+      ),
     );
   }
 }

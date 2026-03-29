@@ -20,9 +20,14 @@ import '../widgets/main_navigation.dart';
 import '../theme/theme.dart';
 import '../services/database_import_ffi.dart';
 import '../utils/dir_utils.dart';
+import '../utils/platform_utils.dart';
+import '../screens/create_project_page.dart';
 import '../utils/test_mode.dart' as test_config;
 import 'constants/window_constants.dart';
 import 'styles/styles.dart';
+
+/// Global navigator key for menu bar actions.
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -59,7 +64,7 @@ Future<void> _main() async {
       minimumSize: minSize,
       center: true,
       title: 'AgeLapse v2.5.0',
-      titleBarStyle: Platform.isMacOS ? TitleBarStyle.hidden : null,
+      titleBarStyle: hasCustomTitleBar ? TitleBarStyle.hidden : null,
     );
 
     await windowManager.waitUntilReadyToShow(options, () async {
@@ -214,6 +219,7 @@ class AgeLapse extends StatelessWidget {
       create: (_) => ThemeProvider(theme, materialTheme),
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) => MaterialApp(
+          navigatorKey: navigatorKey,
           title: 'AgeLapse',
           theme: themeProvider.lightTheme,
           darkTheme: themeProvider.darkTheme,
@@ -225,6 +231,10 @@ class AgeLapse extends StatelessWidget {
             // Update system UI overlay based on current theme
             _updateSystemUiOverlay(themeProvider.isLightMode);
 
+            if ((Platform.isLinux || Platform.isWindows) &&
+                !test_config.isTestMode) {
+              return VirtualWindowFrameInit()(context, child);
+            }
             return child!;
           },
           home: homePage,
@@ -262,6 +272,46 @@ class AgeLapse extends StatelessWidget {
                     meta: true,
                   ),
                   onSelected: () => SystemNavigator.pop(),
+                ),
+              ],
+            ),
+          ],
+        ),
+        PlatformMenu(
+          label: 'File',
+          menus: [
+            PlatformMenuItemGroup(
+              members: [
+                PlatformMenuItem(
+                  label: 'Create New Project',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyN,
+                    meta: true,
+                  ),
+                  onSelected: () {
+                    final nav = navigatorKey.currentState;
+                    if (nav == null) return;
+                    // Don't push if already on CreateProjectPage
+                    bool alreadyOnPage = false;
+                    nav.popUntil((route) {
+                      if (route.settings.name == 'createProject') {
+                        alreadyOnPage = true;
+                      }
+                      return true; // don't actually pop
+                    });
+                    if (alreadyOnPage) return;
+                    nav.push(
+                      PageRouteBuilder(
+                        settings: const RouteSettings(name: 'createProject'),
+                        pageBuilder: (_, __, ___) => const CreateProjectPage(),
+                        transitionsBuilder: (_, animation, __, child) =>
+                            FadeTransition(opacity: animation, child: child),
+                        transitionDuration: const Duration(milliseconds: 150),
+                        reverseTransitionDuration:
+                            const Duration(milliseconds: 150),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),

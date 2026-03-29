@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../styles/styles.dart';
 import '../widgets/main_navigation.dart';
-import '../widgets/macos_page_scaffold.dart';
+import '../widgets/desktop_page_scaffold.dart';
 
 class ImportPage extends StatefulWidget {
   final int projectId;
@@ -21,7 +21,7 @@ class ImportPageState extends State<ImportPage> {
   @override
   Widget build(BuildContext context) {
     final backgroundColor = AppColors.background;
-    return MacosPageScaffold(
+    return DesktopPageScaffold(
       onClose: () => navigateToIndex(0),
       backgroundColor: AppColors.background,
       body: Container(color: backgroundColor, child: _buildImportPage()),

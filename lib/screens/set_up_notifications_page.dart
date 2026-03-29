@@ -3,7 +3,7 @@ import '../services/settings_cache.dart';
 import '../styles/styles.dart';
 import '../utils/settings_utils.dart';
 import '../widgets/main_navigation.dart';
-import '../widgets/macos_page_scaffold.dart';
+import '../widgets/desktop_page_scaffold.dart';
 import '../widgets/settings_sheet.dart';
 
 class SetUpNotificationsPage extends StatefulWidget {
@@ -36,7 +36,7 @@ class SetUpNotificationsPageState extends State<SetUpNotificationsPage> {
   @override
   Widget build(BuildContext context) {
     final appBarColor = AppColors.background;
-    return MacosPageScaffold(
+    return DesktopPageScaffold(
       onClose: () => close(),
       backgroundColor: AppColors.background,
       body: Container(

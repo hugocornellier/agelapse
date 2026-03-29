@@ -19,6 +19,7 @@ import flutter_avif_macos
 import flutter_local_notifications
 import flutter_timezone
 import hand_detection
+import heic2png
 import media_kit_video
 import package_info_plus
 import photo_manager
@@ -47,6 +48,7 @@ func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   FlutterLocalNotificationsPlugin.register(with: registry.registrar(forPlugin: "FlutterLocalNotificationsPlugin"))
   FlutterTimezonePlugin.register(with: registry.registrar(forPlugin: "FlutterTimezonePlugin"))
   HandDetectionPlugin.register(with: registry.registrar(forPlugin: "HandDetectionPlugin"))
+  Heic2pngPlugin.register(with: registry.registrar(forPlugin: "Heic2pngPlugin"))
   MediaKitVideoPlugin.register(with: registry.registrar(forPlugin: "MediaKitVideoPlugin"))
   FPPPackageInfoPlusPlugin.register(with: registry.registrar(forPlugin: "FPPPackageInfoPlusPlugin"))
   PhotoManagerPlugin.register(with: registry.registrar(forPlugin: "PhotoManagerPlugin"))

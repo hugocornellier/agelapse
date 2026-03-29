@@ -65,6 +65,7 @@ class IsolatePool {
 
   final List<_Worker> _workers = [];
   final List<IsolateTask> _taskQueue = [];
+  final Set<ReceivePort> _activeResponsePorts = {};
   bool _initialized = false;
   bool _isShuttingDown = false;
 
@@ -758,9 +759,11 @@ class IsolatePool {
     Map<String, dynamic> params,
   ) async {
     worker.isBusy = true;
+    // Declared before try so it's accessible in finally for cleanup.
+    final responsePort = ReceivePort();
+    _activeResponsePorts.add(responsePort);
 
     try {
-      final responsePort = ReceivePort();
       worker.sendPort.send({
         'operation': operation,
         'params': params,
@@ -776,7 +779,11 @@ class IsolatePool {
         LogService.instance.log('IsolatePool error: ${response['error']}');
         return null;
       }
+    } on StateError {
+      // Port was closed during killAll() — expected during cancellation.
+      return null;
     } finally {
+      _activeResponsePorts.remove(responsePort);
       worker.isBusy = false;
       _processQueue();
     }
@@ -814,6 +821,14 @@ class IsolatePool {
   /// Kill all workers instantly (for cancellation).
   void killAll() {
     LogService.instance.log('IsolatePool: Killing all workers');
+
+    // Close all active response ports first — this causes responsePort.first
+    // to throw StateError, unblocking any awaiting _executeOnWorker callers.
+    for (final port in _activeResponsePorts) {
+      port.close();
+    }
+    _activeResponsePorts.clear();
+
     for (final worker in _workers) {
       worker.isolate.kill(priority: Isolate.immediate);
     }

@@ -1,15 +1,15 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/database_helper.dart';
 import '../../services/thumbnail_service.dart';
 import '../styles/styles.dart';
+import '../utils/platform_utils.dart';
 import '../utils/utils.dart';
 import '../widgets/grid_painter_se.dart';
 import '../widgets/info_tooltip_icon.dart';
 import '../utils/output_image_loader.dart';
-import '../widgets/macos_page_scaffold.dart';
+import '../widgets/desktop_page_scaffold.dart';
 
 class SetEyePositionPage extends StatefulWidget {
   final int projectId;
@@ -593,8 +593,8 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
   }
 
   Widget _buildPageScaffold() {
-    if (Platform.isMacOS) {
-      return MacosPageScaffold(
+    if (hasCustomTitleBar) {
+      return DesktopPageScaffold(
         title: 'Output Position',
         onBack: _handleBackTap,
         backgroundColor: AppColors.settingsBackground,

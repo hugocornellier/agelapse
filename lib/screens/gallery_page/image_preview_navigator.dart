@@ -18,6 +18,7 @@ import '../../utils/date_stamp_utils.dart';
 import '../../utils/capture_timezone.dart';
 import '../../utils/gallery_photo_operations.dart';
 import '../../utils/gallery_permission_handler.dart';
+import '../../utils/platform_utils.dart';
 import '../../utils/test_mode.dart' as test_config;
 import '../../widgets/format_aware_image.dart';
 import '../../widgets/confirm_action_dialog.dart';
@@ -503,8 +504,8 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
       ],
     );
 
-    // On macOS inside the nested navigator, the persistent title bar is above us
-    final usesSafeArea = !Platform.isMacOS;
+    // On macOS/Linux inside the nested navigator, the persistent title bar is above us
+    final usesSafeArea = !hasCustomTitleBar;
 
     return Focus(
       focusNode: _focusNode,
@@ -520,7 +521,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
   Widget _buildHeader() {
     return Container(
       height: 56,
-      color: AppColors.settingsCardBackground,
+      color: AppColors.settingsBackground,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
@@ -855,7 +856,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
   Widget _buildActionBar() {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.settingsCardBackground,
+        color: AppColors.settingsBackground,
         border: Border(
           top: BorderSide(color: AppColors.settingsDivider, width: 1),
         ),

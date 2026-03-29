@@ -4,7 +4,7 @@ import '../services/database_helper.dart';
 import '../styles/styles.dart';
 import '../utils/settings_utils.dart';
 import '../widgets/main_navigation.dart';
-import '../widgets/macos_page_scaffold.dart';
+import '../widgets/desktop_page_scaffold.dart';
 
 class GuideModeTutorialPage extends StatefulWidget {
   final int projectId;
@@ -56,7 +56,7 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
 
   @override
   Widget build(BuildContext context) {
-    return MacosPageScaffold(
+    return DesktopPageScaffold(
       onClose: () => goToCamera(),
       backgroundColor: AppColors.background,
       body: Container(

@@ -2,13 +2,12 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
-import 'package:heif_converter/heif_converter.dart';
+import 'package:heic2png/heic2png.dart';
 import 'package:path/path.dart' as path;
 
 import '../services/log_service.dart';
 import '../services/raw_decoder.dart';
 import 'gallery_utils.dart';
-import 'heic_utils.dart';
 
 /// Centralized utility for decoding HEIC/AVIF/RAW bytes into cv-compatible
 /// bytes that OpenCV's `cv.imdecode` can process.
@@ -88,74 +87,13 @@ class FormatDecodeUtils {
     return null;
   }
 
-  /// Decode HEIC/HEIF to PNG bytes (lossless) using platform-specific strategies.
-  ///
-  /// - macOS: `sips --format png` → PNG (lossless)
-  /// - Windows: bundled HeicConverter.exe via [HeicUtils] → JPG (lossy, known limitation)
-  /// - Linux/iOS/Android: `heif_converter` package with format 'png' → PNG (lossless)
+  /// Decode HEIC/HEIF to PNG bytes (lossless) via [Heic2png] on all platforms.
   static Future<Uint8List?> _decodeHeic(
     String inputPath,
     String tempDir,
   ) async {
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-
     try {
-      if (Platform.isMacOS) {
-        // macOS: sips → PNG (lossless)
-        final tempPngPath = path.join(tempDir, '_fmt_decode_$timestamp.png');
-        final result = await Process.run('sips', [
-          '-s',
-          'format',
-          'png',
-          inputPath,
-          '--out',
-          tempPngPath,
-        ]);
-        if (result.exitCode != 0 || !await File(tempPngPath).exists()) {
-          LogService.instance.log(
-            '[FormatDecode] sips HEIC conversion failed '
-            '(exit ${result.exitCode})',
-          );
-          return null;
-        }
-        return _readAndCleanup(tempPngPath);
-      } else if (Platform.isWindows) {
-        // Windows: HeicConverter.exe → JPG (lossy — known limitation)
-        final tempJpgPath = path.join(tempDir, '_fmt_decode_$timestamp.jpg');
-        final success = await HeicUtils.convertHeicToJpgAt(
-          inputPath,
-          tempJpgPath,
-        );
-        if (!success) {
-          LogService.instance.log(
-            '[FormatDecode] HeicUtils Windows conversion failed',
-          );
-          return null;
-        }
-        return _readAndCleanup(tempJpgPath);
-      } else {
-        // Linux / iOS / Android: heif_converter → PNG (lossless)
-        final tempPngPath = path.join(tempDir, '_fmt_decode_$timestamp.png');
-        try {
-          await HeifConverter.convert(
-            inputPath,
-            output: tempPngPath,
-            format: 'png',
-          );
-          if (!await File(tempPngPath).exists()) {
-            LogService.instance.log(
-              '[FormatDecode] HeifConverter produced no output',
-            );
-            return null;
-          }
-        } catch (e) {
-          LogService.instance.log(
-            '[FormatDecode] HeifConverter error: $e',
-          );
-          return null;
-        }
-        return _readAndCleanup(tempPngPath);
-      }
+      return await Heic2png.convertToBytes(inputPath, preserveMetadata: false);
     } catch (e) {
       LogService.instance.log('[FormatDecode] HEIC decode error: $e');
       return null;

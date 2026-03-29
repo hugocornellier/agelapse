@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../services/database_helper.dart';
 import '../styles/styles.dart';
+import '../utils/utils.dart';
 import '../widgets/main_navigation.dart';
 import '../widgets/project_select_sheet.dart';
 import 'create_project_page.dart';
@@ -143,12 +144,9 @@ class ProjectsPageState extends State<ProjectsPage> {
   }
 
   void _openCreateProjectPage() {
-    Navigator.pushReplacement(
+    Utils.navigateToScreenReplace(
       context,
-      MaterialPageRoute(
-        builder: (context) =>
-            const CreateProjectPage(showCloseButton: false, isFullPage: true),
-      ),
+      const CreateProjectPage(showCloseButton: false, isFullPage: true),
     );
   }
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../styles/styles.dart';
-import '../widgets/macos_page_scaffold.dart';
+import '../widgets/desktop_page_scaffold.dart';
 
 class TipsPage extends StatefulWidget {
   final int projectId;
@@ -23,7 +23,7 @@ class TipsPageState extends State<TipsPage> {
   @override
   Widget build(BuildContext context) {
     final appBarColor = AppColors.background;
-    return MacosPageScaffold(
+    return DesktopPageScaffold(
       title: 'Tips',
       onClose: () => closePage(),
       backgroundColor: AppColors.background,

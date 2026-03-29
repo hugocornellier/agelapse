@@ -58,9 +58,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
   }
 
   Future<void> _onNewButtonTapped() async {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => const CreateProjectPage()),
-    );
+    Utils.navigateToScreenReplace(context, const CreateProjectPage());
   }
 
   static Future<String> getProjectImage(int projectId) async {

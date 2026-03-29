@@ -12,11 +12,12 @@ import '../services/thumbnail_service.dart';
 import '../styles/styles.dart';
 import '../utils/dir_utils.dart';
 import '../utils/image_utils.dart';
+import '../utils/platform_utils.dart';
 import '../utils/settings_utils.dart';
 import '../utils/stabilizer_utils/stabilizer_utils.dart';
 import '../widgets/grid_painter_se.dart';
 import '../widgets/info_tooltip_icon.dart';
-import '../widgets/macos_page_scaffold.dart';
+import '../widgets/desktop_page_scaffold.dart';
 import '../widgets/transform_tool/transform_tool_exports.dart';
 
 class ManualStabilizationPage extends StatefulWidget {
@@ -310,8 +311,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
   }
 
   Widget _buildPageScaffold() {
-    if (Platform.isMacOS) {
-      return MacosPageScaffold(
+    if (hasCustomTitleBar) {
+      return DesktopPageScaffold(
         title: 'Manual Stabilization',
         onBack: _handleBackTap,
         backgroundColor: AppColors.settingsBackground,

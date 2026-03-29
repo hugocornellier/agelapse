@@ -7,7 +7,7 @@ import '../styles/styles.dart';
 import '../utils/camera_utils.dart';
 import '../utils/dir_utils.dart';
 import '../utils/stabilizer_utils/stabilizer_utils.dart';
-import '../widgets/macos_page_scaffold.dart';
+import '../widgets/desktop_page_scaffold.dart';
 
 class StabDiffFacePage extends StatefulWidget {
   final int projectId;
@@ -385,7 +385,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
                 ),
     );
 
-    return MacosPageScaffold(
+    return DesktopPageScaffold(
       title: 'Stabilize on Other Face',
       onBack: () => Navigator.pop(context),
       backgroundColor: AppColors.settingsBackground,

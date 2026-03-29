@@ -112,7 +112,13 @@ jobs:
 
       - name: Install iOS pods
         working-directory: ios
-        run: pod install --repo-update
+        run: |
+          for attempt in 1 2 3; do
+            pod install --repo-update && break
+            echo "pod install attempt $attempt failed, retrying in $((attempt * 15))s..."
+            [ "$attempt" -eq 3 ] && exit 1
+            sleep $((attempt * 15))
+          done
 
       - name: Build iOS (no codesign)
         run: flutter build ios --debug --no-codesign
@@ -145,7 +151,13 @@ jobs:
 
       - name: Install macOS pods
         working-directory: macos
-        run: pod install --repo-update
+        run: |
+          for attempt in 1 2 3; do
+            pod install --repo-update && break
+            echo "pod install attempt $attempt failed, retrying in $((attempt * 15))s..."
+            [ "$attempt" -eq 3 ] && exit 1
+            sleep $((attempt * 15))
+          done
 
       - name: Build macOS
         run: flutter build macos --debug
@@ -164,7 +176,7 @@ jobs:
       - name: Install Linux dependencies
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y ninja-build libgtk-3-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libmpv-dev
+          sudo apt-get install -y ninja-build libgtk-3-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libmpv-dev libheif-dev libpng-dev
 
       - uses: subosito/flutter-action@v2
         with:

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 import '../styles/styles.dart';
+import 'desktop_window_controls.dart';
 import '../services/database_helper.dart';
 import '../services/face_stabilizer.dart';
 import '../services/log_service.dart';
@@ -60,10 +61,9 @@ class CustomAppBar extends StatefulWidget {
 }
 
 class CustomAppBarState extends State<CustomAppBar> {
-  static const double _macTitleBarHeight = 42;
-  static const double _macTrafficLightInset = 85;
-  static const double _macHorizontalPadding = 12;
-  static const double _macCenterLogoWidth = 125;
+  static const double _titleBarHeight = 42;
+  static const double _horizontalPadding = 12;
+  static const double _centerLogoWidth = 125;
   static const List<Color> _projectBadgePalette = [
     Color(0xFF2D6CDF),
     Color(0xFF8E44AD),
@@ -274,13 +274,14 @@ class CustomAppBarState extends State<CustomAppBar> {
 
   @override
   Widget build(BuildContext context) {
-    final bool useMacWindowToolbar = Platform.isMacOS;
+    final bool useDesktopTitleBar =
+        Platform.isMacOS || Platform.isLinux || Platform.isWindows;
 
     return Column(
       children: [
         Container(
           padding: EdgeInsets.only(
-            top: useMacWindowToolbar ? 0 : MediaQuery.of(context).padding.top,
+            top: useDesktopTitleBar ? 0 : MediaQuery.of(context).padding.top,
           ),
           decoration: BoxDecoration(
             border: Border(
@@ -289,13 +290,16 @@ class CustomAppBarState extends State<CustomAppBar> {
                 width: 0.7,
               ),
             ),
-            color: useMacWindowToolbar
+            color: useDesktopTitleBar
                 ? AppColors.surface
                 : AppColors.backgroundDark,
           ),
           child: Column(
             children: [
-              if (useMacWindowToolbar) _buildMacTitleBar(context),
+              if (Platform.isMacOS)
+                _buildMacTitleBar(context)
+              else if (useDesktopTitleBar)
+                _buildDesktopTitleBar(context),
               ProgressWidget(
                 stabilizingRunningInMain: widget.stabilizingRunningInMain,
                 videoCreationActiveInMain: widget.videoCreationActiveInMain,
@@ -307,7 +311,7 @@ class CustomAppBarState extends State<CustomAppBar> {
                 minutesRemaining: widget.minutesRemaining,
                 userRanOutOfSpace: widget.userRanOutOfSpace,
               ),
-              if (!useMacWindowToolbar) _buildLegacyHeader(context),
+              if (!useDesktopTitleBar) _buildLegacyHeader(context),
             ],
           ),
         ),
@@ -315,26 +319,73 @@ class CustomAppBarState extends State<CustomAppBar> {
     );
   }
 
-  Widget _buildMacTitleBar(BuildContext context) {
+  Widget _buildDesktopTitleBar(BuildContext context) {
     return SizedBox(
-      height: _macTitleBarHeight,
+      height: _titleBarHeight,
       child: Stack(
         fit: StackFit.expand,
         children: [
           Padding(
-            padding: const EdgeInsets.only(
-              left: _macTrafficLightInset,
-              right: 56,
-            ),
+            padding: const EdgeInsets.only(right: 120),
             child: DragToMoveArea(child: const SizedBox.expand()),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: _macHorizontalPadding,
+            padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
+            child: Row(
+              children: [
+                _buildProjectSwitcher(context),
+                const Spacer(),
+                IconButton(
+                  tooltip: 'Settings',
+                  icon: const Icon(Icons.settings, size: 22),
+                  splashRadius: 18,
+                  onPressed: () => showSettingsModal(
+                    context,
+                    widget.projectId,
+                    widget.stabCallback,
+                    widget.cancelStabCallback,
+                    widget.refreshSettings,
+                    widget.clearRawAndStabPhotos,
+                    widget.recompileVideoCallback,
+                    widget.settingsCache,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _buildWindowControls(),
+              ],
+            ),
+          ),
+          IgnorePointer(
+            child: Center(
+              child: Image.asset(
+                'assets/images/agelapselogo.png',
+                width: _centerLogoWidth,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMacTitleBar(BuildContext context) {
+    return SizedBox(
+      height: _titleBarHeight,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 56),
+            child: DragToMoveArea(child: const SizedBox.expand()),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(
+              left: 36,
+              right: _horizontalPadding,
             ),
             child: Row(
               children: [
-                const SizedBox(width: _macTrafficLightInset),
                 _buildProjectSwitcher(context),
                 const Spacer(),
                 IconButton(
@@ -359,7 +410,7 @@ class CustomAppBarState extends State<CustomAppBar> {
             child: Center(
               child: Image.asset(
                 'assets/images/agelapselogo.png',
-                width: _macCenterLogoWidth,
+                width: _centerLogoWidth,
                 fit: BoxFit.contain,
               ),
             ),
@@ -429,6 +480,10 @@ class CustomAppBarState extends State<CustomAppBar> {
         ),
       ),
     );
+  }
+
+  Widget _buildWindowControls() {
+    return const DesktopWindowControls();
   }
 
   Widget _buildLegacyHeader(BuildContext context) {

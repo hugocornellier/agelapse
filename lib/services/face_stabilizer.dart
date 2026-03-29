@@ -190,133 +190,26 @@ class FaceStabilizer {
     void Function() userRanOutOfSpaceCallback, {
     Rect? targetBoundingBox,
   }) async {
-    final String srcId = path.basenameWithoutExtension(rawPhotoPath);
-
     try {
       token?.throwIfCancelled();
       await _ensureReady();
 
-      if (rawPhotoPath.contains("_flipped_flipped")) {
-        token?.throwIfCancelled();
-        final bool success = await tryRotation(
+      if (_isEyeBasedProject) {
+        return await _stabilizeWithOrientationRetry(
           rawPhotoPath,
-          userRanOutOfSpaceCallback,
           token,
+          userRanOutOfSpaceCallback,
+          targetBoundingBox: targetBoundingBox,
         );
-        return StabilizationResult(success: success);
-      }
-
-      double? rotationDegrees, scaleFactor, translateX, translateY;
-
-      token?.throwIfCancelled();
-      final Uint8List? srcBytes =
-          await FormatDecodeUtils.loadCvCompatibleBytes(rawPhotoPath);
-      if (srcBytes == null) return StabilizationResult(success: false);
-
-      token?.throwIfCancelled();
-      final dims = await StabUtils.getImageDimensionsFromBytesAsync(
-        srcBytes,
-        token: token,
-      );
-      if (dims == null) return StabilizationResult(success: false);
-      final (int imgWidth, int imgHeight) = dims;
-
-      token?.throwIfCancelled();
-      (scaleFactor, rotationDegrees) = await _calculateRotationAndScale(
-        rawPhotoPath,
-        imgWidth,
-        imgHeight,
-        targetBoundingBox,
-        userRanOutOfSpaceCallback,
-        cvBytes: srcBytes,
-      );
-      if (rotationDegrees == null || scaleFactor == null) {
-        return StabilizationResult(success: false);
-      }
-
-      (translateX, translateY) = _calculateTranslateData(
-        scaleFactor,
-        rotationDegrees,
-        imgWidth,
-        imgHeight,
-      );
-      if (translateX == null || translateY == null) {
-        return StabilizationResult(success: false);
-      }
-
-      if (projectType == "musc") translateY = 0;
-
-      token?.throwIfCancelled();
-      Uint8List? imageBytesStabilized =
-          await StabUtils.generateStabilizedImageBytesCVAsync(
-        srcBytes,
-        rotationDegrees,
-        scaleFactor,
-        translateX,
-        translateY,
-        canvasWidth,
-        canvasHeight,
-        token: token,
-        srcId: srcId,
-        backgroundColorBGR: backgroundColorBGR,
-        preserveBitDepth: lossless,
-      );
-      if (imageBytesStabilized == null) {
-        return StabilizationResult(success: false);
-      }
-
-      String stabilizedPhotoPath = await StabUtils.getStabilizedImagePath(
-        rawPhotoPath,
-        projectId,
-        projectOrientation,
-      );
-      stabilizedPhotoPath = _cleanUpPhotoPath(stabilizedPhotoPath);
-      rawPhotoPath = _cleanUpPhotoPath(rawPhotoPath);
-
-      token?.throwIfCancelled();
-      final (
-        bool result,
-        double? preScore,
-        double? twoPassScore,
-        double? threePassScore,
-        double? fourPassScore,
-        double? finalScore,
-        double? finalEyeDeltaY,
-        double? finalEyeDistance,
-      ) = await _finalizeStabilization(
-        rawPhotoPath,
-        stabilizedPhotoPath,
-        imgWidth,
-        imgHeight,
-        translateX,
-        translateY,
-        rotationDegrees,
-        scaleFactor,
-        imageBytesStabilized,
-        srcBytes,
-        token,
-        srcId,
-      );
-
-      LogService.instance.log("Result => '$result'");
-
-      if (result) {
-        unawaited(
-          createStabThumbnail(stabilizedPhotoPath.replaceAll('.jpg', '.png')),
+      } else {
+        return await _stabilizeSingleAttempt(
+          rawPhotoPath,
+          rawPhotoPath,
+          token,
+          userRanOutOfSpaceCallback,
+          targetBoundingBox: targetBoundingBox,
         );
       }
-
-      return StabilizationResult(
-        success: result,
-        preScore: preScore,
-        twoPassScore: twoPassScore,
-        threePassScore: threePassScore,
-        fourPassScore: fourPassScore,
-        finalScore: finalScore,
-        finalEyeDeltaY: finalEyeDeltaY,
-        finalEyeDistance: finalEyeDistance,
-        goalEyeDistance: eyeDistanceGoal,
-      );
     } on CancelledException {
       LogService.instance.log("Stabilization cancelled");
       return StabilizationResult.cancelled();
@@ -328,6 +221,228 @@ class FaceStabilizer {
       _lastCvBytes = null;
       _lastRawFaces = null;
     }
+  }
+
+  /// Tries to stabilize an eye-based project by attempting multiple orientations:
+  /// original, flipped, counter-clockwise rotation, clockwise rotation.
+  /// Returns the first successful result, or StabilizationResult(success: false) if all fail.
+  Future<StabilizationResult> _stabilizeWithOrientationRetry(
+    String originalPath,
+    CancellationToken? token,
+    void Function() userRanOutOfSpaceCallback, {
+    Rect? targetBoundingBox,
+  }) async {
+    // Pre-decode on main thread so the isolate receives cv-compatible bytes
+    // (avoids crash for TIFF/JP2 on Apple where cv.imdecode segfaults).
+    final Uint8List? preDecodedBytes =
+        FormatDecodeUtils.needsConversion(path.extension(originalPath))
+            ? await FormatDecodeUtils.loadCvCompatibleBytes(originalPath)
+            : null;
+
+    final tempFiles = <String>[];
+    try {
+      // Attempt 1: original image — pass targetBoundingBox (it references original coords)
+      token?.throwIfCancelled();
+      final result1 = await _stabilizeSingleAttempt(
+        originalPath,
+        originalPath,
+        token,
+        userRanOutOfSpaceCallback,
+        targetBoundingBox: targetBoundingBox,
+      );
+      if (result1.success) return result1;
+      if (result1.cancelled) return result1;
+
+      // Attempt 2: horizontally flipped — bounding box is not meaningful for transformed variants
+      token?.throwIfCancelled();
+      final File flippedFile = await StabUtils.flipImageHorizontally(
+        originalPath,
+        preDecodedBytes: preDecodedBytes,
+      );
+      tempFiles.add(flippedFile.path);
+      final result2 = await _stabilizeSingleAttempt(
+        flippedFile.path,
+        originalPath,
+        token,
+        userRanOutOfSpaceCallback,
+        targetBoundingBox: null,
+      );
+      if (result2.success) return result2;
+      if (result2.cancelled) return result2;
+
+      // Attempt 3: rotated counter-clockwise
+      token?.throwIfCancelled();
+      final File ccwFile = await StabUtils.rotateImageCounterClockwise(
+        originalPath,
+        preDecodedBytes: preDecodedBytes,
+      );
+      tempFiles.add(ccwFile.path);
+      final result3 = await _stabilizeSingleAttempt(
+        ccwFile.path,
+        originalPath,
+        token,
+        userRanOutOfSpaceCallback,
+        targetBoundingBox: null,
+      );
+      if (result3.success) return result3;
+      if (result3.cancelled) return result3;
+
+      // Attempt 4: rotated clockwise
+      token?.throwIfCancelled();
+      final File cwFile = await StabUtils.rotateImageClockwise(
+        originalPath,
+        preDecodedBytes: preDecodedBytes,
+      );
+      tempFiles.add(cwFile.path);
+      final result4 = await _stabilizeSingleAttempt(
+        cwFile.path,
+        originalPath,
+        token,
+        userRanOutOfSpaceCallback,
+        targetBoundingBox: null,
+      );
+      if (result4.success) return result4;
+      if (result4.cancelled) return result4;
+
+      // All orientations failed
+      await DB.instance.setPhotoNoFacesFound(
+        path.basenameWithoutExtension(originalPath),
+        projectId,
+      );
+      unawaited(
+        _emitThumbnailFailure(originalPath, ThumbnailStatus.noFacesFound),
+      );
+      return StabilizationResult(success: false);
+    } finally {
+      for (final p in tempFiles) {
+        try {
+          await File(p).delete();
+        } catch (_) {}
+      }
+    }
+  }
+
+  /// Processes a single image attempt. [inputPath] is the image to process
+  /// (may be flipped/rotated). [originalPath] is the canonical source path
+  /// used for output naming and DB lookups.
+  Future<StabilizationResult> _stabilizeSingleAttempt(
+    String inputPath,
+    String originalPath,
+    CancellationToken? token,
+    void Function() userRanOutOfSpaceCallback, {
+    Rect? targetBoundingBox,
+  }) async {
+    final String srcId = path.basenameWithoutExtension(originalPath);
+
+    double? rotationDegrees, scaleFactor, translateX, translateY;
+
+    token?.throwIfCancelled();
+    final Uint8List? srcBytes =
+        await FormatDecodeUtils.loadCvCompatibleBytes(inputPath);
+    if (srcBytes == null) return StabilizationResult(success: false);
+
+    token?.throwIfCancelled();
+    final dims = await StabUtils.getImageDimensionsFromBytesAsync(
+      srcBytes,
+      token: token,
+    );
+    if (dims == null) return StabilizationResult(success: false);
+    final (int imgWidth, int imgHeight) = dims;
+
+    token?.throwIfCancelled();
+    (scaleFactor, rotationDegrees) = await _calculateRotationAndScale(
+      originalPath,
+      imgWidth,
+      imgHeight,
+      targetBoundingBox,
+      userRanOutOfSpaceCallback,
+      cvBytes: srcBytes,
+    );
+    if (rotationDegrees == null || scaleFactor == null) {
+      return StabilizationResult(success: false);
+    }
+
+    (translateX, translateY) = _calculateTranslateData(
+      scaleFactor,
+      rotationDegrees,
+      imgWidth,
+      imgHeight,
+    );
+    if (translateX == null || translateY == null) {
+      return StabilizationResult(success: false);
+    }
+
+    if (projectType == "musc") translateY = 0;
+
+    token?.throwIfCancelled();
+    Uint8List? imageBytesStabilized =
+        await StabUtils.generateStabilizedImageBytesCVAsync(
+      srcBytes,
+      rotationDegrees,
+      scaleFactor,
+      translateX,
+      translateY,
+      canvasWidth,
+      canvasHeight,
+      token: token,
+      srcId: srcId,
+      backgroundColorBGR: backgroundColorBGR,
+      preserveBitDepth: lossless,
+    );
+    if (imageBytesStabilized == null) {
+      return StabilizationResult(success: false);
+    }
+
+    final String stabilizedPhotoPath = await StabUtils.getStabilizedImagePath(
+      originalPath,
+      projectId,
+      projectOrientation,
+    );
+
+    token?.throwIfCancelled();
+    final (
+      bool result,
+      double? preScore,
+      double? twoPassScore,
+      double? threePassScore,
+      double? fourPassScore,
+      double? finalScore,
+      double? finalEyeDeltaY,
+      double? finalEyeDistance,
+    ) = await _finalizeStabilization(
+      originalPath,
+      stabilizedPhotoPath,
+      imgWidth,
+      imgHeight,
+      translateX,
+      translateY,
+      rotationDegrees,
+      scaleFactor,
+      imageBytesStabilized,
+      srcBytes,
+      token,
+      srcId,
+    );
+
+    LogService.instance.log("Result => '$result'");
+
+    if (result) {
+      unawaited(
+        createStabThumbnail(stabilizedPhotoPath.replaceAll('.jpg', '.png')),
+      );
+    }
+
+    return StabilizationResult(
+      success: result,
+      preScore: preScore,
+      twoPassScore: twoPassScore,
+      threePassScore: threePassScore,
+      fourPassScore: fourPassScore,
+      finalScore: finalScore,
+      finalEyeDeltaY: finalEyeDeltaY,
+      finalEyeDistance: finalEyeDistance,
+      goalEyeDistance: eyeDistanceGoal,
+    );
   }
 
   /// Returns (success, preScore, twoPassScore, threePassScore, fourPassScore, finalScore, finalEyeDeltaY, finalEyeDistance)
@@ -372,8 +487,6 @@ class FaceStabilizer {
         null,
       ); // No scores for non-eye-based projects
     }
-
-    rawPhotoPath = _cleanUpPhotoPath(rawPhotoPath);
 
     final Point<double> goalLeftEye = Point(leftEyeXGoal, bothEyesYGoal);
     final Point<double> goalRightEye = Point(rightEyeXGoal, bothEyesYGoal);
@@ -1765,63 +1878,6 @@ class FaceStabilizer {
     toDelete.add(stabilizedPngPath);
   }
 
-  Future<bool> tryRotation(
-    String rawPhotoPath,
-    void Function() userRanOutOfSpaceCallback,
-    CancellationToken? token,
-  ) async {
-    LogService.instance.log(
-      "Tried mirroring, but faces were still not found. Trying rotation.",
-    );
-    final String timestamp = path.basenameWithoutExtension(
-      rawPhotoPath.replaceAll("_flipped_flipped", ""),
-    );
-    rawPhotoPath = await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-      timestamp,
-      projectId,
-    );
-
-    // Pre-decode on main thread so the isolate receives cv-compatible bytes
-    // (avoids crash for TIFF/JP2 on Apple where cv.imdecode segfaults).
-    final Uint8List? preDecodedBytes =
-        FormatDecodeUtils.needsConversion(path.extension(rawPhotoPath))
-            ? await FormatDecodeUtils.loadCvCompatibleBytes(rawPhotoPath)
-            : null;
-
-    token?.throwIfCancelled();
-    final File rotatedCounterClockwiseImage =
-        await StabUtils.rotateImageCounterClockwise(
-      rawPhotoPath,
-      preDecodedBytes: preDecodedBytes,
-    );
-    final result1 = await stabilize(
-      rotatedCounterClockwiseImage.path,
-      token,
-      userRanOutOfSpaceCallback,
-    );
-    if (result1.success) return true;
-    if (result1.cancelled) return false;
-
-    token?.throwIfCancelled();
-    final File rotatedClockwiseImage = await StabUtils.rotateImageClockwise(
-      rawPhotoPath,
-      preDecodedBytes: preDecodedBytes,
-    );
-    final result2 = await stabilize(
-      rotatedClockwiseImage.path,
-      token,
-      userRanOutOfSpaceCallback,
-    );
-    if (result2.success) return true;
-    if (result2.cancelled) return false;
-
-    await DB.instance.setPhotoNoFacesFound(timestamp, projectId);
-    unawaited(
-      _emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.noFacesFound),
-    );
-    return false;
-  }
-
   Future<void> createStabThumbnail(String stabilizedPhotoPath) async {
     // Check if transparent background is enabled
     final bgColor = await SettingsUtil.loadBackgroundColor(
@@ -1987,9 +2043,8 @@ class FaceStabilizer {
     );
     if (faces == null || faces.isEmpty) {
       LogService.instance.log(
-        "No $projectType faces found. Attempting to flip...",
+        "No $projectType faces found.",
       );
-      await flipAndTryAgain(rawPhotoPath, userRanOutOfSpaceCallback);
       return (null, null);
     }
 
@@ -2053,8 +2108,7 @@ class FaceStabilizer {
       cvBytes: cvBytes,
     );
     if (faces == null || faces.isEmpty) {
-      LogService.instance.log("No faces found. Attempting to flip...");
-      await flipAndTryAgain(rawPhotoPath, userRanOutOfSpaceCallback);
+      LogService.instance.log("No faces found.");
       return (null, null);
     }
 
@@ -2398,33 +2452,6 @@ class FaceStabilizer {
     return (scaleFactor, rotationDegrees);
   }
 
-  Future<void> flipAndTryAgain(
-    String rawPhotoPath,
-    userRanOutOfSpaceCallback, {
-    CancellationToken? token,
-  }) async {
-    final String newPath;
-    if (rawPhotoPath.contains("rotated")) return;
-
-    if (rawPhotoPath.contains("_flipped")) {
-      newPath = rawPhotoPath.replaceAll("_flipped", "_flipped_flipped");
-    } else {
-      // Pre-decode on main thread so the isolate receives cv-compatible bytes
-      // (avoids crash for TIFF/JP2 on Apple where cv.imdecode segfaults).
-      final Uint8List? preDecodedBytes =
-          FormatDecodeUtils.needsConversion(path.extension(rawPhotoPath))
-              ? await FormatDecodeUtils.loadCvCompatibleBytes(rawPhotoPath)
-              : null;
-      final File flippedImgFile = await StabUtils.flipImageHorizontally(
-        rawPhotoPath,
-        preDecodedBytes: preDecodedBytes,
-      );
-      newPath = flippedImgFile.path;
-    }
-
-    await stabilize(newPath, token, userRanOutOfSpaceCallback);
-  }
-
   /// Returns the thumbnail path for a stabilized photo.
   /// When [preserveAlpha] is null (default), checks if a .png thumbnail exists
   /// first, then falls back to .jpg. When explicitly set, uses that format.
@@ -2548,13 +2575,6 @@ class FaceStabilizer {
     final double newTranslateX = translateX - overshotAverageX.toDouble();
     final double newTranslateY = translateY - overshotAverageY.toDouble();
     return (newTranslateX, newTranslateY);
-  }
-
-  String _cleanUpPhotoPath(String photoPath) {
-    return photoPath
-        .replaceAll('_flipped', '')
-        .replaceAll('_rotated_counter_clockwise', '')
-        .replaceAll('_rotated_clockwise', '');
   }
 
   List<Point<double>> getCentermostEyes(

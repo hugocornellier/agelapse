@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'capture_timezone.dart';
 import 'image_format_utils.dart';
+import 'platform_utils.dart';
 import '../widgets/confirm_action_dialog.dart';
 
 class Utils {
@@ -78,7 +79,7 @@ class Utils {
   }
 
   static void navigateToScreen(BuildContext context, Widget screen) {
-    if (Platform.isMacOS) {
+    if (hasCustomTitleBar) {
       Navigator.push(
         context,
         PageRouteBuilder(
@@ -106,7 +107,7 @@ class Utils {
   }
 
   static void navigateToScreenReplace(BuildContext context, Widget screen) {
-    if (Platform.isMacOS) {
+    if (hasCustomTitleBar) {
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(

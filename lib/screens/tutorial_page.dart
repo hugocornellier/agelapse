@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import '../styles/styles.dart';
-import '../widgets/macos_page_scaffold.dart';
+import '../widgets/desktop_page_scaffold.dart';
 
 class TutorialPage extends StatelessWidget {
   const TutorialPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MacosPageScaffold(
+    return DesktopPageScaffold(
       title: 'Tutorials',
       onBack: () => Navigator.pop(context),
       body: Theme(
