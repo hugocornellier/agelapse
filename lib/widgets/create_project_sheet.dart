@@ -497,7 +497,7 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
           "CREATE",
           style: TextStyle(
             fontSize: AppTypography.lg,
-            color: AppColors.textPrimary,
+            color: Colors.white,
             fontWeight: FontWeight.bold,
           ),
         ),

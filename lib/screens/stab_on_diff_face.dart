@@ -398,23 +398,27 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
   }
 
   Widget _buildHelpButton() {
+    const size = DesktopPageScaffold.navButtonSize;
+    const iconSize = DesktopPageScaffold.navIconSize;
+    const radius = DesktopPageScaffold.navButtonRadius;
+
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: _showHelpDialog,
         child: Container(
-          width: 40,
-          height: 40,
-          margin: const EdgeInsets.only(right: 8),
+          width: size,
+          height: size,
+          margin: const EdgeInsets.only(right: 6),
           decoration: BoxDecoration(
             color: AppColors.settingsCardBackground,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(radius),
             border: Border.all(color: AppColors.settingsCardBorder, width: 1),
           ),
           child: Icon(
             Icons.help_outline_rounded,
             color: AppColors.settingsTextSecondary,
-            size: 20,
+            size: iconSize,
           ),
         ),
       ),

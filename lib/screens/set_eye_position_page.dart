@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import '../../services/database_helper.dart';
 import '../../services/thumbnail_service.dart';
 import '../styles/styles.dart';
-import '../utils/platform_utils.dart';
 import '../utils/utils.dart';
 import '../widgets/grid_painter_se.dart';
 import '../widgets/info_tooltip_icon.dart';
@@ -249,12 +248,6 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
               padding: const EdgeInsets.only(left: 4, bottom: 12),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.tune_rounded,
-                    size: 18,
-                    color: AppColors.settingsTextSecondary,
-                  ),
-                  const SizedBox(width: 8),
                   Text(
                     'POSITION CONTROLS',
                     style: TextStyle(
@@ -593,19 +586,12 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
   }
 
   Widget _buildPageScaffold() {
-    if (hasCustomTitleBar) {
-      return DesktopPageScaffold(
-        title: 'Output Position',
-        onBack: _handleBackTap,
-        backgroundColor: AppColors.settingsBackground,
-        showBottomDivider: true,
-        actions: _buildAppBarActions(),
-        body: _buildPageBody(),
-      );
-    }
-    return Scaffold(
+    return DesktopPageScaffold(
+      title: 'Output Position',
+      onBack: _handleBackTap,
       backgroundColor: AppColors.settingsBackground,
-      appBar: _buildAppBar(),
+      showBottomDivider: true,
+      actions: _buildAppBarActions(),
       body: _buildPageBody(),
     );
   }
@@ -626,18 +612,22 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
   }
 
   List<Widget> _buildAppBarActions() {
+    const size = DesktopPageScaffold.navButtonSize;
+    const iconSize = DesktopPageScaffold.navIconSize;
+    const radius = DesktopPageScaffold.navButtonRadius;
+
     return [
       MouseRegion(
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
           onTap: _showHelpDialog,
           child: Container(
-            width: 40,
-            height: 40,
-            margin: const EdgeInsets.only(right: 8),
+            width: size,
+            height: size,
+            margin: const EdgeInsets.only(right: 6),
             decoration: BoxDecoration(
               color: AppColors.settingsCardBackground,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(radius),
               border: Border.all(
                 color: AppColors.settingsCardBorder,
                 width: 1,
@@ -646,7 +636,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
             child: Icon(
               Icons.help_outline_rounded,
               color: AppColors.settingsTextSecondary,
-              size: 20,
+              size: iconSize,
             ),
           ),
         ),
@@ -666,14 +656,14 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                     if (shouldProceed) await _saveChanges();
                   },
             child: Container(
-              width: 44,
-              height: 44,
-              margin: const EdgeInsets.only(right: 8),
+              width: size,
+              height: size,
+              margin: const EdgeInsets.only(right: 6),
               decoration: BoxDecoration(
                 color: _showCheckmark
                     ? AppColors.success.withValues(alpha: 0.15)
                     : AppColors.settingsAccent.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(radius),
                 border: Border.all(
                   color: _showCheckmark
                       ? AppColors.success.withValues(alpha: 0.3)
@@ -683,7 +673,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
               ),
               child: _isSaving
                   ? Padding(
-                      padding: EdgeInsets.all(12),
+                      padding: EdgeInsets.all(8),
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
                         color: AppColors.settingsAccent,
@@ -696,7 +686,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
                       color: _showCheckmark
                           ? AppColors.success
                           : AppColors.settingsAccent,
-                      size: 22,
+                      size: iconSize,
                     ),
             ),
           ),
@@ -853,49 +843,6 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      toolbarHeight: 56,
-      elevation: 0,
-      scrolledUnderElevation: 0,
-      shadowColor: Colors.transparent,
-      surfaceTintColor: Colors.transparent,
-      backgroundColor: AppColors.settingsBackground,
-      title: Text(
-        'Output Position',
-        style: TextStyle(
-          fontSize: AppTypography.xxl,
-          fontWeight: FontWeight.w600,
-          color: AppColors.settingsTextPrimary,
-        ),
-      ),
-      leading: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: _handleBackTap,
-          child: Container(
-            margin: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppColors.settingsCardBackground,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.settingsCardBorder, width: 1),
-            ),
-            child: Icon(
-              Icons.arrow_back,
-              color: AppColors.settingsTextPrimary,
-              size: 20,
-            ),
-          ),
-        ),
-      ),
-      actions: _buildAppBarActions(),
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(1),
-        child: Container(height: 1, color: AppColors.settingsDivider),
       ),
     );
   }

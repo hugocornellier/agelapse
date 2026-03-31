@@ -352,6 +352,10 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
   }
 
   List<Widget> _buildAppBarActions() {
+    const size = DesktopPageScaffold.navButtonSize;
+    const iconSize = DesktopPageScaffold.navIconSize;
+    const radius = DesktopPageScaffold.navButtonRadius;
+
     return [
       // Help button
       MouseRegion(
@@ -359,12 +363,12 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
         child: GestureDetector(
           onTap: _showHelpDialog,
           child: Container(
-            width: 40,
-            height: 40,
-            margin: const EdgeInsets.only(right: 8),
+            width: size,
+            height: size,
+            margin: const EdgeInsets.only(right: 6),
             decoration: BoxDecoration(
               color: AppColors.settingsCardBackground,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(radius),
               border: Border.all(
                 color: AppColors.settingsCardBorder,
                 width: 1,
@@ -373,7 +377,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
             child: Icon(
               Icons.help_outline_rounded,
               color: AppColors.settingsTextSecondary,
-              size: 20,
+              size: iconSize,
             ),
           ),
         ),
@@ -390,12 +394,12 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
               }
             },
             child: Container(
-              width: 44,
-              height: 44,
-              margin: const EdgeInsets.only(right: 8),
+              width: size,
+              height: size,
+              margin: const EdgeInsets.only(right: 6),
               decoration: BoxDecoration(
                 color: AppColors.settingsCardBorder.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(radius),
                 border: Border.all(
                   color: AppColors.settingsCardBorder,
                   width: 1,
@@ -404,7 +408,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
               child: Icon(
                 Icons.restore_rounded,
                 color: AppColors.settingsTextSecondary,
-                size: 22,
+                size: iconSize,
               ),
             ),
           ),
@@ -419,12 +423,12 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
               child: GestureDetector(
                 onTap: _saveChanges,
                 child: Container(
-                  height: 44,
-                  padding: EdgeInsets.symmetric(horizontal: isWide ? 16 : 11),
-                  margin: const EdgeInsets.only(right: 8),
+                  height: size,
+                  padding: EdgeInsets.symmetric(horizontal: isWide ? 12 : 8),
+                  margin: const EdgeInsets.only(right: 6),
                   decoration: BoxDecoration(
                     color: AppColors.settingsAccent.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(radius),
                     border: Border.all(
                       color: AppColors.settingsAccent.withValues(alpha: 0.3),
                       width: 1,
@@ -436,15 +440,15 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                       Icon(
                         Icons.save_rounded,
                         color: AppColors.settingsAccent,
-                        size: 22,
+                        size: iconSize,
                       ),
                       if (isWide) ...[
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
                         Text(
                           'Save Changes',
                           style: TextStyle(
                             color: AppColors.settingsAccent,
-                            fontSize: AppTypography.md,
+                            fontSize: AppTypography.sm,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -550,8 +554,11 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
   }
 
   PreferredSizeWidget _buildAppBar() {
+    const iconSize = DesktopPageScaffold.navIconSize;
+    const radius = DesktopPageScaffold.navButtonRadius;
+
     return AppBar(
-      toolbarHeight: 56,
+      toolbarHeight: DesktopPageScaffold.navBarHeight,
       elevation: 0,
       scrolledUnderElevation: 0,
       shadowColor: Colors.transparent,
@@ -560,7 +567,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       title: Text(
         'Manual Stabilization',
         style: TextStyle(
-          fontSize: AppTypography.xxl,
+          fontSize: AppTypography.lg,
           fontWeight: FontWeight.w600,
           color: AppColors.settingsTextPrimary,
         ),
@@ -573,13 +580,13 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
             margin: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: AppColors.settingsCardBackground,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(radius),
               border: Border.all(color: AppColors.settingsCardBorder, width: 1),
             ),
             child: Icon(
               Icons.arrow_back,
               color: AppColors.settingsTextPrimary,
-              size: 20,
+              size: iconSize,
             ),
           ),
         ),
@@ -661,14 +668,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
               padding: const EdgeInsets.only(left: 4, bottom: 12),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.tune_rounded,
-                    size: 18,
-                    color: AppColors.settingsTextSecondary,
-                  ),
-                  const SizedBox(width: 8),
                   Text(
-                    'TRANSFORM CONTROLS',
+                    'CONTROLS',
                     style: TextStyle(
                       fontSize: AppTypography.sm,
                       fontWeight: FontWeight.w600,
@@ -1378,12 +1379,6 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       padding: const EdgeInsets.only(left: 4, bottom: 12),
       child: Row(
         children: [
-          Icon(
-            Icons.preview_rounded,
-            size: 18,
-            color: AppColors.settingsTextSecondary,
-          ),
-          const SizedBox(width: 8),
           Text(
             'PREVIEW',
             style: TextStyle(

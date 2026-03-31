@@ -128,7 +128,6 @@ class AppColors {
   // Computed colors
   static Color get darkOverlay => overlay.withValues(alpha: 0.5);
 
-  // DEPRECATED aliases - remove after full migration
   static Color get lightGrey => textSecondary;
   static Color get lightBlue => accentLight;
   static Color get darkerLightBlue => accentDark;

@@ -75,8 +75,9 @@ class DesktopPageScaffold extends StatelessWidget {
           // Title bar zone — only needed when NOT inside a nested navigator
           // (i.e. when there's no persistent title bar above us)
           if (!hasPersistentTitleBar)
-            SizedBox(
+            Container(
               height: titleBarHeight,
+              color: AppColors.surface,
               child: Stack(
                 children: [
                   Padding(
@@ -113,9 +114,14 @@ class DesktopPageScaffold extends StatelessWidget {
     );
   }
 
+  static const double navBarHeight = 52;
+  static const double navButtonSize = 32;
+  static const double navIconSize = 16;
+  static const double navButtonRadius = 10;
+
   Widget _buildSecondaryNavBar() {
     return Container(
-      height: 48,
+      height: navBarHeight,
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
@@ -144,14 +150,14 @@ class DesktopPageScaffold extends StatelessWidget {
                 color: AppColors.textPrimary,
               )
             else
-              const SizedBox(width: 40),
+              SizedBox(width: navButtonSize),
             // Title
             if (title != null) ...[
               const SizedBox(width: 8),
               Text(
                 title!,
                 style: TextStyle(
-                  fontSize: AppTypography.xxl,
+                  fontSize: AppTypography.lg,
                   fontWeight: FontWeight.w600,
                   color: onBack != null
                       ? AppColors.settingsTextPrimary
@@ -178,14 +184,14 @@ class DesktopPageScaffold extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          width: 40,
-          height: 40,
+          width: navButtonSize,
+          height: navButtonSize,
           decoration: BoxDecoration(
             color: AppColors.settingsCardBackground,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(navButtonRadius),
             border: Border.all(color: AppColors.settingsCardBorder, width: 1),
           ),
-          child: Icon(icon, color: color, size: 20),
+          child: Icon(icon, color: color, size: navIconSize),
         ),
       ),
     );
@@ -195,7 +201,7 @@ class DesktopPageScaffold extends StatelessWidget {
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: AppBar(
-        toolbarHeight: 56,
+        toolbarHeight: navBarHeight,
         elevation: 0,
         scrolledUnderElevation: 0,
         shadowColor: Colors.transparent,
@@ -206,7 +212,7 @@ class DesktopPageScaffold extends StatelessWidget {
             ? Text(
                 title!,
                 style: TextStyle(
-                  fontSize: AppTypography.xxl,
+                  fontSize: AppTypography.lg,
                   fontWeight: FontWeight.w600,
                   color: AppColors.settingsTextPrimary,
                 ),
@@ -221,7 +227,7 @@ class DesktopPageScaffold extends StatelessWidget {
                     margin: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: AppColors.settingsCardBackground,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(navButtonRadius),
                       border: Border.all(
                         color: AppColors.settingsCardBorder,
                         width: 1,
@@ -230,7 +236,7 @@ class DesktopPageScaffold extends StatelessWidget {
                     child: Icon(
                       Icons.arrow_back,
                       color: AppColors.settingsTextPrimary,
-                      size: 20,
+                      size: navIconSize,
                     ),
                   ),
                 ),
@@ -239,7 +245,7 @@ class DesktopPageScaffold extends StatelessWidget {
         actions: [
           if (onClose != null)
             IconButton(
-              icon: Icon(Icons.close, size: 30),
+              icon: Icon(Icons.close, size: navIconSize),
               onPressed: onClose,
             ),
           if (actions != null) ...actions!,

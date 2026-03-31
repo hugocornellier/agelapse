@@ -11,9 +11,15 @@ class FancyButton {
     Color? backgroundColor,
   }) {
     final bgColor = backgroundColor ?? AppColors.surfaceElevated;
-    // Use accent color for icon background, with theme-appropriate opacity
-    final iconBgColor = AppColors.accent.withValues(alpha: 0.15);
-    final iconColor = AppColors.accent;
+    final luminance = bgColor.computeLuminance();
+    final onDarkBg = luminance < 0.3;
+    final textColor = onDarkBg ? Colors.white : AppColors.textPrimary;
+    final iconBgColor = onDarkBg
+        ? Colors.white.withValues(alpha: 0.15)
+        : AppColors.accent.withValues(alpha: 0.15);
+    final iconColor = onDarkBg ? Colors.white : AppColors.accent;
+    final chevronColor =
+        onDarkBg ? Colors.white.withValues(alpha: 0.6) : AppColors.textTertiary;
 
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
@@ -43,14 +49,14 @@ class FancyButton {
               text,
               style: TextStyle(
                 fontSize: AppTypography.lg,
-                color: AppColors.textPrimary,
+                color: textColor,
                 fontWeight: FontWeight.w500,
               ),
             ),
           ),
           Icon(
             Icons.chevron_right_rounded,
-            color: AppColors.textTertiary,
+            color: chevronColor,
             size: 22,
           ),
         ],

@@ -90,7 +90,7 @@ class CreateFirstVideoPageState extends State<CreateFirstVideoPage> {
           text.toUpperCase(),
           style: TextStyle(
             fontSize: AppTypography.lg,
-            color: AppColors.textPrimary,
+            color: Colors.white,
             fontWeight: FontWeight.bold,
           ),
         ),

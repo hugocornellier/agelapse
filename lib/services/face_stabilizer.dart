@@ -155,6 +155,10 @@ class FaceStabilizer {
       final poseDetector = pose.PoseDetector(
         mode: pose.PoseMode.boxesAndLandmarks,
         landmarkModel: pose.PoseLandmarkModel.heavy,
+        // pose_detection >= 2.0.3 defaults to Metal on iOS, which shifts results.
+        performanceConfig: Platform.isIOS
+            ? pose.PerformanceConfig.disabled
+            : const pose.PerformanceConfig(),
       );
       await poseDetector.initialize();
       _poseDetector = poseDetector;

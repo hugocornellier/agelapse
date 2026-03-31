@@ -6,7 +6,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../styles/styles.dart';
 
 /// Bottom sheet and option tile builders for gallery import/export operations.
-/// Extracted from gallery_page.dart for reusability and reduced file size.
 class GalleryBottomSheets {
   /// Builds the container wrapper for option bottom sheets.
   /// Includes drag handle, title with close button, and content area.

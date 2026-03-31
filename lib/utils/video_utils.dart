@@ -389,7 +389,6 @@ class VideoUtils {
       return null;
     }
 
-    // Fixed 8px margin to exactly match image preview
     int marginV = 8;
     int marginH = 8;
 

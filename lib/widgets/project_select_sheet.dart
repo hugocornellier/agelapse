@@ -244,7 +244,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                   Icon(
                     Icons.add,
                     size: isDesktop ? 20 : 16,
-                    color: AppColors.textPrimary,
+                    color: Colors.white,
                   ),
                   const SizedBox(width: 6),
                   Text(
@@ -252,7 +252,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                     style: TextStyle(
                       fontSize: isDesktop ? AppTypography.lg : AppTypography.sm,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                      color: Colors.white,
                     ),
                   ),
                 ],
@@ -472,7 +472,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                             Icon(
                               Icons.add,
                               size: 16,
-                              color: AppColors.textPrimary,
+                              color: Colors.white,
                             ),
                             SizedBox(width: 4),
                             Text(
@@ -480,7 +480,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                               style: TextStyle(
                                 fontSize: AppTypography.sm,
                                 fontWeight: FontWeight.w500,
-                                color: AppColors.textPrimary,
+                                color: Colors.white,
                               ),
                             ),
                           ],

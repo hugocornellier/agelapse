@@ -20,6 +20,9 @@ class MainFlutterWindow: NSWindow {
     let registrar = flutterViewController.registrar(forPlugin: "RawDecoderPlugin")
     RawDecoderPlugin.register(with: registrar)
 
+    let editMenuRegistrar = flutterViewController.registrar(forPlugin: "EditMenuPlugin")
+    EditMenuPlugin.register(with: editMenuRegistrar)
+
     super.awakeFromNib()
 
     NotificationCenter.default.addObserver(

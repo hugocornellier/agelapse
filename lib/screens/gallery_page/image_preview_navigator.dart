@@ -858,14 +858,16 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
       decoration: BoxDecoration(
         color: AppColors.settingsBackground,
         border: Border(
-          top: BorderSide(color: AppColors.settingsDivider, width: 1),
+          top: BorderSide(
+              color: AppColors.settingsDivider.withValues(alpha: 0.6),
+              width: 1),
         ),
       ),
       padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 8,
-        bottom: MediaQuery.of(context).padding.bottom + 8,
+        left: 12,
+        right: 12,
+        top: 12,
+        bottom: MediaQuery.of(context).padding.bottom + 12,
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -930,13 +932,13 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
         onTap: onPressed,
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          width: 48,
-          height: 48,
+          width: 40,
+          height: 40,
           decoration: BoxDecoration(
             color: active
                 ? activeColor.withValues(alpha: 0.15)
                 : AppColors.settingsCardBorder,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(
             icon,

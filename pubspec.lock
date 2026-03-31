@@ -5,10 +5,10 @@ packages:
     dependency: transitive
     description:
       name: animal_detection
-      sha256: "0654ee5e00b0f41d0a25cdf57366318dca07a5befca8f413885c6fed31cd34c8"
+      sha256: f9a8b8b58eb698d1fd494eb9a002def153edcba0dec334a8d0a4f86d06581270
       url: "https://pub.dev"
     source: hosted
-    version: "0.0.7"
+    version: "0.0.8"
   animated_bottom_navigation_bar:
     dependency: "direct main"
     description:
@@ -45,10 +45,10 @@ packages:
     dependency: transitive
     description:
       name: async
-      sha256: "758e6d74e971c3e5aceb4110bfd6698efc7f501675bcfe0c775459a8140750eb"
+      sha256: e2eb0491ba5ddb6177742d2da23904574082139b07c1e33b8503b9f46f3e1a37
       url: "https://pub.dev"
     source: hosted
-    version: "2.13.0"
+    version: "2.13.1"
   async_zip:
     dependency: "direct main"
     description:
@@ -85,10 +85,10 @@ packages:
     dependency: transitive
     description:
       name: camera_android_camerax
-      sha256: c0be4298e3888ba6cf5c1fb1ae1203f08dcbb14d4f545ce5262f473cf8c33e28
+      sha256: "2c178975759aac0f0ef7ce1ec698b6e2acd792127ea7f38fa79a424fbebeae7f"
       url: "https://pub.dev"
     source: hosted
-    version: "0.7.1"
+    version: "0.7.1+2"
   camera_avfoundation:
     dependency: transitive
     description:
@@ -125,10 +125,10 @@ packages:
     dependency: "direct main"
     description:
       name: cat_detection
-      sha256: a433e165259aaa0ce1359729a8434c6f367d7f0acaad87cf1548518a59af12b5
+      sha256: "090a565246e8c48375377f482d95aef7bf6ff197003cc9fbc58dc20b0d6beadd"
       url: "https://pub.dev"
     source: hosted
-    version: "0.0.9"
+    version: "0.0.10"
   change_case:
     dependency: transitive
     description:
@@ -229,10 +229,10 @@ packages:
     dependency: transitive
     description:
       name: cupertino_icons
-      sha256: ba631d1c7f7bef6b729a622b7b752645a2d076dba9976925b8f25725a30e1ee6
+      sha256: "41e005c33bd814be4d3096aff55b1908d419fde52ca656c8c47719ec745873cd"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.8"
+    version: "1.0.9"
   dartcv4:
     dependency: transitive
     description:
@@ -294,10 +294,10 @@ packages:
     dependency: "direct main"
     description:
       name: dog_detection
-      sha256: "730a29cf779fea15ed53d39b9bf53da8bdf404a6e148e8e1b4bd7609fb550521"
+      sha256: b25977137819a72b176cd854670fdfa0eafca4f9d2cba9763b78ff4975084691
       url: "https://pub.dev"
     source: hosted
-    version: "0.0.9"
+    version: "0.0.10"
   downloadsfolder:
     dependency: "direct main"
     description:
@@ -350,10 +350,10 @@ packages:
     dependency: "direct main"
     description:
       name: face_detection_tflite
-      sha256: f68cf5bab447f92a82bde951bc311cfbdf44ba8b4ca117d093c75375a9f3cabd
+      sha256: "345fae4aea2669db99d660d1fb7dfe91393195ad1a9086d41a7e02fcac11bb78"
       url: "https://pub.dev"
     source: hosted
-    version: "5.0.11"
+    version: "5.0.12"
   fake_async:
     dependency: transitive
     description:
@@ -415,10 +415,10 @@ packages:
     dependency: transitive
     description:
       name: file_selector_android
-      sha256: "51e8fd0446de75e4b62c065b76db2210c704562d072339d333bd89c57a7f8a7c"
+      sha256: bf7ab65776d7e176280c853679e7742668586ba1663f7f1561e897fadad6c3ba
       url: "https://pub.dev"
     source: hosted
-    version: "0.5.2+4"
+    version: "0.5.2+5"
   file_selector_ios:
     dependency: transitive
     description:
@@ -646,10 +646,10 @@ packages:
     dependency: transitive
     description:
       name: flutter_plugin_android_lifecycle
-      sha256: ee8068e0e1cd16c4a82714119918efdeed33b3ba7772c54b5d094ab53f9b7fd1
+      sha256: "38d1c268de9097ff59cf0e844ac38759fc78f76836d37edad06fa21e182055a0"
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.33"
+    version: "2.0.34"
   flutter_svg:
     dependency: "direct main"
     description:
@@ -701,10 +701,10 @@ packages:
     dependency: "direct main"
     description:
       name: hand_detection
-      sha256: "48944427a5fe435f5d58ab46a23bc5a80380d7c181478ad6dc3af54bdc12d55b"
+      sha256: f54d4e95b3b325cba5fce39b9e411ccb8dc49242222474bbd299268ed973745a
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.4"
+    version: "2.0.5"
   heic2png:
     dependency: "direct main"
     description:
@@ -1130,10 +1130,10 @@ packages:
     dependency: "direct main"
     description:
       name: pose_detection
-      sha256: "883ced7ba6f1d62abc17c48bd2dfd7b84853d123f532a53eac5002d89135db64"
+      sha256: ee695f553cf322b8caa5478282aca2e12ee81b8f485beb98ec3e193737e9ebf1
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.4"
+    version: "2.0.6"
   posix:
     dependency: transitive
     description:

@@ -10,9 +10,6 @@ import '../widgets/fancy_button.dart';
 import '../widgets/grid_painter_se.dart';
 import '../widgets/info_tooltip_icon.dart';
 import '../utils/output_image_loader.dart';
-import 'create_first_video_page.dart';
-import 'guide_mode_tutorial_page.dart';
-import 'tips_page.dart';
 
 class ProjectPage extends StatefulWidget {
   final int projectId;
@@ -227,9 +224,7 @@ class ProjectPageState extends State<ProjectPage> {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24.0),
                   child: cache.noPhotos ||
-                          !cache.hasOpenedNonEmptyGallery ||
-                          !cache.hasTakenMoreThanOnePhoto ||
-                          !cache.hasViewedFirstVideo
+                          !cache.hasOpenedNonEmptyGallery
                       ? _buildNoPhotosContent(context, includeOutput: true)
                       : _buildDashboardContent(),
                 ),
@@ -289,14 +284,7 @@ class ProjectPageState extends State<ProjectPage> {
             final takePhotoButton = buildFancyButton(
               text: 'Take photo',
               icon: Icons.camera_alt,
-              onPressed: () => Utils.navigateToScreenNoAnim(
-                context,
-                TipsPage(
-                  projectId: widget.projectId,
-                  projectName: widget.projectName,
-                  goToPage: widget.goToPage,
-                ),
-              ),
+              onPressed: () => widget.goToPage(2),
             );
 
             final importButton = buildFancyButton(
@@ -360,39 +348,6 @@ class ProjectPageState extends State<ProjectPage> {
           text: 'Open gallery',
           icon: Icons.photo_library,
           onPressed: () => widget.goToPage(1),
-        ),
-      ] else if (step == 3) ...[
-        buildFancyButton(
-          text: 'Try guide mode',
-          icon: Icons.lightbulb,
-          onPressed: () => Utils.navigateToScreenNoAnim(
-            context,
-            GuideModeTutorialPage(
-              projectId: widget.projectId,
-              projectName: widget.projectName,
-              goToPage: widget.goToPage,
-              sourcePage: "ProjectPage",
-            ),
-          ),
-        ),
-      ] else if (step == 4) ...[
-        buildFancyButton(
-          text: 'Create video',
-          icon: Icons.video_library,
-          onPressed: () => Utils.navigateToScreenNoAnim(
-            context,
-            CreateFirstVideoPage(
-              projectId: widget.projectId,
-              projectName: widget.projectName,
-              goToPage: widget.goToPage,
-            ),
-          ),
-        ),
-      ] else if (step == 5) ...[
-        buildFancyButton(
-          text: 'View video',
-          icon: Icons.video_library,
-          onPressed: () => widget.goToPage(3),
         ),
       ],
     ];
@@ -488,7 +443,6 @@ class ProjectPageState extends State<ProjectPage> {
 
         return Column(
           children: [
-            // Output settings chips - now above the preview
             _buildOutputSettingsChips(availableWidth),
 
             const SizedBox(height: 20),
@@ -751,12 +705,6 @@ class ProjectPageState extends State<ProjectPage> {
   int _determineStep() {
     if (widget.settingsCache!.noPhotos) return 1;
     if (!widget.settingsCache!.hasOpenedNonEmptyGallery) return 2;
-    if (!widget.settingsCache!.hasSeenGuideModeTut &&
-        widget.settingsCache!.hasTakenFirstPhoto) {
-      return 3;
-    }
-    if (!widget.settingsCache!.hasTakenMoreThanOnePhoto) return 4;
-    if (!widget.settingsCache!.hasViewedFirstVideo) return 5;
     return 0;
   }
 

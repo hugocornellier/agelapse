@@ -852,7 +852,6 @@ Examples
       // Calculate font size (percentage of video height, matching preview)
       final fontSize = (videoHeight * sizePercent / 100).clamp(12.0, 200.0);
 
-      // Fixed padding and border radius to match image preview exactly
       const double paddingH = 8.0;
       const double paddingV = 4.0;
       const double borderRadius = 4.0;

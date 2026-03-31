@@ -90,8 +90,6 @@ Future<void> _main() async {
     FlutterNativeSplash.remove();
 
     debugPaintSizeEnabled = false;
-
-    // Note: SystemUiOverlayStyle is now set dynamically in MaterialApp.builder
   }
 
   runApp(AgeLapse(homePage: await _getHomePage()));
@@ -245,6 +243,8 @@ class AgeLapse extends StatelessWidget {
 
     if (!isDesktop) return materialApp;
 
+    const editMenuChannel = MethodChannel('agelapse.macos.edit_menu');
+
     return PlatformMenuBar(
       menus: [
         PlatformMenu(
@@ -328,7 +328,7 @@ class AgeLapse extends StatelessWidget {
                     LogicalKeyboardKey.keyX,
                     meta: true,
                   ),
-                  onSelected: () {},
+                  onSelected: () => editMenuChannel.invokeMethod('cut'),
                 ),
                 PlatformMenuItem(
                   label: 'Copy',
@@ -336,7 +336,7 @@ class AgeLapse extends StatelessWidget {
                     LogicalKeyboardKey.keyC,
                     meta: true,
                   ),
-                  onSelected: () {},
+                  onSelected: () => editMenuChannel.invokeMethod('copy'),
                 ),
                 PlatformMenuItem(
                   label: 'Paste',
@@ -344,7 +344,7 @@ class AgeLapse extends StatelessWidget {
                     LogicalKeyboardKey.keyV,
                     meta: true,
                   ),
-                  onSelected: () {},
+                  onSelected: () => editMenuChannel.invokeMethod('paste'),
                 ),
                 PlatformMenuItem(
                   label: 'Select All',
@@ -352,7 +352,7 @@ class AgeLapse extends StatelessWidget {
                     LogicalKeyboardKey.keyA,
                     meta: true,
                   ),
-                  onSelected: () {},
+                  onSelected: () => editMenuChannel.invokeMethod('selectAll'),
                 ),
               ],
             ),

@@ -258,6 +258,18 @@ void main() {
     // ===== H.264: should play on all platforms =====
 
     testWidgets('H.264 video compiles and plays back', (tester) async {
+      if (Platform.isLinux && Platform.environment['CI'] == 'true') {
+        markTestSkipped(
+          'Video playback hangs on Linux CI (mpv/media_kit cannot initialise under Xvfb)',
+        );
+        return;
+      }
+      if (Platform.isWindows && Platform.environment['CI'] == 'true') {
+        markTestSkipped(
+          'Video playback unavailable on Windows CI (no Windows Media Foundation backend)',
+        );
+        return;
+      }
       await compileAndPlay(
         tester: tester,
         testName: 'H.264 playback',
@@ -269,6 +281,18 @@ void main() {
     // ===== HEVC: fails on Windows without HEVC Video Extensions =====
 
     testWidgets('HEVC video compiles and plays back', (tester) async {
+      if (Platform.isLinux && Platform.environment['CI'] == 'true') {
+        markTestSkipped(
+          'Video playback hangs on Linux CI (mpv/media_kit cannot initialise under Xvfb)',
+        );
+        return;
+      }
+      if (Platform.isWindows && Platform.environment['CI'] == 'true') {
+        markTestSkipped(
+          'Video playback unavailable on Windows CI (no Windows Media Foundation backend)',
+        );
+        return;
+      }
       if (Platform.isAndroid) {
         markTestSkipped('HEVC is not available on Android');
         return;
@@ -343,6 +367,18 @@ void main() {
     testWidgets('VP9 transparent video compiles and plays back', (
       tester,
     ) async {
+      if (Platform.isLinux && Platform.environment['CI'] == 'true') {
+        markTestSkipped(
+          'Video playback hangs on Linux CI (mpv/media_kit cannot initialise under Xvfb)',
+        );
+        return;
+      }
+      if (Platform.isWindows && Platform.environment['CI'] == 'true') {
+        markTestSkipped(
+          'Video playback unavailable on Windows CI (no Windows Media Foundation backend)',
+        );
+        return;
+      }
       if (Platform.isMacOS || Platform.isIOS) {
         markTestSkipped(
           'VP9 transparent test skipped on Apple (use ProRes 4444)',

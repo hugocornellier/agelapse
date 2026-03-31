@@ -68,6 +68,7 @@ class IsolatePool {
   final Set<ReceivePort> _activeResponsePorts = {};
   bool _initialized = false;
   bool _isShuttingDown = false;
+  int _generation = 0;
 
   /// Whether the pool is initialized and ready.
   bool get isInitialized => _initialized;
@@ -83,15 +84,26 @@ class IsolatePool {
   Future<void> initialize() async {
     if (_initialized) return;
 
+    final gen = _generation;
     LogService.instance.log(
       'IsolatePool: Initializing with $_workerCount workers',
     );
 
+    final workers = <_Worker>[];
     for (int i = 0; i < _workerCount; i++) {
       final worker = await _spawnWorker();
-      _workers.add(worker);
+      // killAll() was called while we were spawning — discard everything.
+      if (gen != _generation) {
+        worker.isolate.kill(priority: Isolate.immediate);
+        for (final w in workers) {
+          w.isolate.kill(priority: Isolate.immediate);
+        }
+        return;
+      }
+      workers.add(worker);
     }
 
+    _workers.addAll(workers);
     _initialized = true;
     LogService.instance.log('IsolatePool: Initialized');
   }
@@ -759,6 +771,7 @@ class IsolatePool {
     Map<String, dynamic> params,
   ) async {
     worker.isBusy = true;
+    final gen = _generation;
     // Declared before try so it's accessible in finally for cleanup.
     final responsePort = ReceivePort();
     _activeResponsePorts.add(responsePort);
@@ -784,8 +797,11 @@ class IsolatePool {
       return null;
     } finally {
       _activeResponsePorts.remove(responsePort);
-      worker.isBusy = false;
-      _processQueue();
+      // Don't touch pool state if killAll() has reset it since we started.
+      if (gen == _generation) {
+        worker.isBusy = false;
+        _processQueue();
+      }
     }
   }
 
@@ -821,13 +837,15 @@ class IsolatePool {
   /// Kill all workers instantly (for cancellation).
   void killAll() {
     LogService.instance.log('IsolatePool: Killing all workers');
+    _generation++;
 
     // Close all active response ports first — this causes responsePort.first
     // to throw StateError, unblocking any awaiting _executeOnWorker callers.
-    for (final port in _activeResponsePorts) {
+    final ports = _activeResponsePorts.toList();
+    _activeResponsePorts.clear();
+    for (final port in ports) {
       port.close();
     }
-    _activeResponsePorts.clear();
 
     for (final worker in _workers) {
       worker.isolate.kill(priority: Isolate.immediate);

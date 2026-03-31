@@ -884,6 +884,7 @@ class GalleryPageState extends State<GalleryPage>
         indicatorColor: AppColors.accentLight,
         labelColor: AppColors.accentLight,
         unselectedLabelColor: AppColors.textSecondary,
+        dividerColor: AppColors.surfaceElevated,
       ),
     );
   }
@@ -983,7 +984,6 @@ class GalleryPageState extends State<GalleryPage>
           } else if (index < files.length) {
             return _buildImageTile(files[index]);
           } else {
-            // Defensive fallback - should never reach here after fix
             return const SizedBox.shrink();
           }
         },

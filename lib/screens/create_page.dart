@@ -321,7 +321,6 @@ class CreatePageState extends State<CreatePage>
       _manualCompileInProgress = false;
     });
 
-    // Now setup the video player to show the newly compiled video
     if (result) {
       setupVideoPlayer();
     } else {
@@ -355,9 +354,6 @@ class CreatePageState extends State<CreatePage>
   }
 
   /// Checks if a video file exists and is valid.
-  /// Previously this would create videos directly, but that bypassed progress
-  /// tracking. Now video creation is handled exclusively by the stabilization
-  /// service (which properly emits progress events) or manual compilation.
   Future<bool> _checkVideoFileExists() async {
     final String projectOrientation = await SettingsUtil.loadProjectOrientation(
       widget.projectId.toString(),

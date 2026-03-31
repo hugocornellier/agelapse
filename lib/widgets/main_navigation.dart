@@ -777,6 +777,7 @@ class MainNavigationState extends State<MainNavigation>
     Widget? appBar;
     if (_selectedIndex == 0 ||
         _selectedIndex == 1 ||
+        (_selectedIndex == 2 && hasCustomTitleBar) ||
         _selectedIndex == 4 ||
         onCreatePageDuringLoading()) {
       appBar = CustomAppBar(

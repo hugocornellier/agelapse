@@ -464,12 +464,15 @@ class _CameraViewState extends State<CameraView>
           widget.projectId.toString(),
         );
         if (!mounted) return;
-        Utils.navigateToScreenNoAnim(
-          context,
-          TookFirstPhotoPage(
-            projectId: widget.projectId,
-            projectName: widget.projectName,
-            goToPage: widget.goToPage,
+        Navigator.of(context, rootNavigator: true).push(
+          PageRouteBuilder(
+            pageBuilder: (_, __, ___) => TookFirstPhotoPage(
+              projectId: widget.projectId,
+              projectName: widget.projectName,
+              goToPage: widget.goToPage,
+            ),
+            transitionDuration: Duration.zero,
+            reverseTransitionDuration: Duration.zero,
           ),
         );
       }
@@ -964,8 +967,6 @@ class _CameraViewState extends State<CameraView>
                 }
               } else {
                 // LANDSCAPE MODE:
-                // The vertical line is now drawn based on offsetY.
-                // The two horizontal lines are based on offsetX.
 
                 double verticalLineX = _orientation == "Landscape Left"
                     ? size.width * (1 - offsetY)

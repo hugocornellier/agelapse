@@ -303,11 +303,12 @@ jobs:
               export_test.dart
               screenshot_test.dart
               e2e_workflow_test.dart
+          # video_playback_test.dart is excluded on Linux because mpv/media_kit
+          # hangs indefinitely under Xvfb with no GPU (same issue as Windows).
           - group: video
             test-files: >-
               video_compilation_test.dart
               video_codec_test.dart
-              video_playback_test.dart
     steps:
       - uses: actions/checkout@v4
 
