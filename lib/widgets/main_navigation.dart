@@ -259,8 +259,7 @@ class MainNavigationState extends State<MainNavigation>
   }
 
   void _checkPhotoTakenToday() {
-    if (!mounted) return;
-    setState(() {
+    setStateIfMounted(() {
       _photoTakenToday = photoWasTakenToday(_imageFiles);
     });
   }
@@ -278,8 +277,7 @@ class MainNavigationState extends State<MainNavigation>
     List<String> imageFiles,
     List<String> stabilizedImageFiles,
   ) {
-    if (!mounted) return;
-    setState(() {
+    setStateIfMounted(() {
       _imageFiles = imageFiles;
       _stabilizedImageFiles = stabilizedImageFiles;
     });
@@ -315,8 +313,7 @@ class MainNavigationState extends State<MainNavigation>
   }
 
   void clearRawAndStabPhotos() {
-    if (!mounted) return;
-    setState(() {
+    setStateIfMounted(() {
       // Use list replacement instead of in-place mutation to avoid
       // race conditions if GalleryPage holds a reference during build
       _imageFiles = [];
@@ -357,23 +354,20 @@ class MainNavigationState extends State<MainNavigation>
   }
 
   Future<void> setUserOnImportTutorialTrue() async {
-    if (!mounted) return;
-    setState(() {
+    setStateIfMounted(() {
       userOnImportTutorial = true;
     });
   }
 
   void setUserOnImportTutorialFalse() {
-    if (!mounted) return;
-    setState(() {
+    setStateIfMounted(() {
       userOnImportTutorial = false;
     });
   }
 
   Future<void> hideNavBar() async {
     await initPhotoCount();
-    if (!mounted) return;
-    setState(() {
+    setStateIfMounted(() {
       _hideNavBar = true;
     });
   }
@@ -383,9 +377,7 @@ class MainNavigationState extends State<MainNavigation>
     Future<void> Function(dynamic file) processFileCallback,
   ) async {
     if (pickedFiles == null) return;
-    if (!mounted) return;
-
-    setState(() {
+    setStateIfMounted(() {
       _isImporting = true;
     });
 
@@ -413,8 +405,7 @@ class MainNavigationState extends State<MainNavigation>
       }
     }
 
-    if (!mounted) return;
-    setState(() {
+    setStateIfMounted(() {
       _isImporting = false;
       _importProgressPercent = 0;
     });
@@ -443,8 +434,7 @@ class MainNavigationState extends State<MainNavigation>
   /// Sets the importing state from child widgets (e.g., drag-drop imports).
   /// This ensures the progress bar displays correctly for all import paths.
   void setImportingInMain(bool value) {
-    if (!mounted) return;
-    setState(() {
+    setStateIfMounted(() {
       _isImporting = value;
       if (!value) {
         _importProgressPercent = 0;
@@ -902,9 +892,6 @@ class MainNavigationState extends State<MainNavigation>
           );
 
     // Only wrap with DropTarget on desktop platforms
-    final bool isDesktop =
-        Platform.isMacOS || Platform.isWindows || Platform.isLinux;
-
     if (!isDesktop) return scaffold;
 
     // Desktop: wrap with global drop target and overlay

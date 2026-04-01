@@ -234,7 +234,6 @@ class GalleryExportHandler {
     required Future<List<String>> Function(String) listFilesInDirectory,
     required void Function(double) setExportProgress,
   }) async {
-    String? dateStampTempDir;
     try {
       Map<String, List<String>> filesToExport = {'Raw': [], 'Stabilized': []};
 
@@ -248,11 +247,42 @@ class GalleryExportHandler {
           projectId,
           projectOrientation!,
         );
-        List<String> stabilizedFiles = await listFilesInDirectory(
-          stabilizedDir,
-        );
+        List<String> stabilizedFiles =
+            await listFilesInDirectory(stabilizedDir);
+        filesToExport['Stabilized']!.addAll(stabilizedFiles);
 
-        // Check if date stamp export is enabled
+        LogService.instance.log(
+          "[EXPORT] stabilized files: ${stabilizedFiles.length}",
+        );
+      }
+
+      return await _dateStampAndExport(
+        projectId: projectId,
+        projectName: projectName,
+        projectIdStr: projectIdStr,
+        filesToExport: filesToExport,
+        setExportProgress: setExportProgress,
+      );
+    } catch (e, st) {
+      LogService.instance.log('[EXPORT] _performExport crashed: $e\n$st');
+      return false;
+    }
+  }
+
+  /// Applies date stamps to stabilized files (if enabled), then exports to ZIP.
+  /// Returns true on success.
+  static Future<bool> _dateStampAndExport({
+    required int projectId,
+    required String projectName,
+    required String projectIdStr,
+    required Map<String, List<String>> filesToExport,
+    required void Function(double) setExportProgress,
+  }) async {
+    String? dateStampTempDir;
+    try {
+      final stabilizedFiles = filesToExport['Stabilized']!;
+
+      if (stabilizedFiles.isNotEmpty) {
         final dateStampEnabled = await SettingsUtil.loadExportDateStampEnabled(
           projectIdStr,
         );
@@ -260,7 +290,7 @@ class GalleryExportHandler {
           "[EXPORT] Date stamp enabled: $dateStampEnabled, stabilized files: ${stabilizedFiles.length}",
         );
 
-        if (dateStampEnabled && stabilizedFiles.isNotEmpty) {
+        if (dateStampEnabled) {
           // Load date stamp settings
           final dateFormat = await SettingsUtil.loadExportDateStampFormat(
             projectIdStr,
@@ -331,14 +361,10 @@ class GalleryExportHandler {
             fontFamily: resolvedFont,
           );
 
-          // Use processed files for export
-          filesToExport['Stabilized']!.addAll(
-            stabilizedFiles.map(
-              (original) => processedMap[original] ?? original,
-            ),
-          );
-        } else {
-          filesToExport['Stabilized']!.addAll(stabilizedFiles);
+          // Replace stabilized list with date-stamped versions
+          filesToExport['Stabilized'] = stabilizedFiles
+              .map((original) => processedMap[original] ?? original)
+              .toList();
         }
       }
 
@@ -368,7 +394,7 @@ class GalleryExportHandler {
 
       return res == 'success';
     } catch (e, st) {
-      LogService.instance.log('[EXPORT] _performExport crashed: $e\n$st');
+      LogService.instance.log('[EXPORT] _dateStampAndExport crashed: $e\n$st');
       return false;
     } finally {
       // Clean up temp directory
@@ -539,7 +565,6 @@ class GalleryExportHandler {
     required bool exportStabilizedFiles,
     required void Function(double) setExportProgress,
   }) async {
-    String? dateStampTempDir;
     try {
       Map<String, List<String>> filesToExport = {'Raw': [], 'Stabilized': []};
 
@@ -552,107 +577,15 @@ class GalleryExportHandler {
         }
       }
 
-      // Check if date stamp export is enabled for stabilized files
-      if (filesToExport['Stabilized']!.isNotEmpty) {
-        final dateStampEnabled = await SettingsUtil.loadExportDateStampEnabled(
-          projectIdStr,
-        );
-
-        if (dateStampEnabled) {
-          final stabilizedFiles = filesToExport['Stabilized']!;
-
-          // Load date stamp settings
-          final dateFormat = await SettingsUtil.loadExportDateStampFormat(
-            projectIdStr,
-          );
-          final datePosition = await SettingsUtil.loadExportDateStampPosition(
-            projectIdStr,
-          );
-          final dateSize = await SettingsUtil.loadExportDateStampSize(
-            projectIdStr,
-          );
-          final gallerySize = await SettingsUtil.loadGalleryDateStampSize(
-            projectIdStr,
-          );
-          final resolvedSize = DateStampUtils.resolveExportSize(
-            dateSize,
-            gallerySize,
-          );
-          final dateOpacity = await SettingsUtil.loadExportDateStampOpacity(
-            projectIdStr,
-          );
-          final exportFont = await SettingsUtil.loadExportDateStampFont(
-            projectIdStr,
-          );
-          final galleryFont = await SettingsUtil.loadGalleryDateStampFont(
-            projectIdStr,
-          );
-          final resolvedFont = DateStampUtils.resolveExportFont(
-            exportFont,
-            galleryFont,
-          );
-
-          // Load watermark settings
-          final watermarkEnabled = await SettingsUtil.loadWatermarkSetting(
-            projectIdStr,
-          );
-          final String? watermarkPos = watermarkEnabled
-              ? (await DB.instance.getSettingValueByTitle(
-                  'watermark_position',
-                ))
-                  .toLowerCase()
-              : null;
-
-          // Load timezone offsets
-          final captureOffsetMap = await CaptureTimezone.loadOffsetsForFiles(
-            stabilizedFiles,
-            projectId,
-          );
-
-          // Create temp directory
-          final tempBase = await DirUtils.getTemporaryDirPath();
-          dateStampTempDir =
-              '$tempBase/date_stamp_export_${DateTime.now().millisecondsSinceEpoch}';
-
-          // Pre-process files with date stamps
-          final processedMap = await DateStampUtils.processBatchWithDateStamps(
-            inputPaths: stabilizedFiles,
-            tempDir: dateStampTempDir,
-            format: dateFormat,
-            position: datePosition,
-            sizePercent: resolvedSize,
-            opacity: dateOpacity,
-            captureOffsetMap: captureOffsetMap,
-            watermarkPosition: watermarkPos,
-            onProgress: (current, total) {
-              setExportProgress((current / total) * 30);
-            },
-            fontFamily: resolvedFont,
-          );
-
-          // Replace with processed files
-          filesToExport['Stabilized'] = stabilizedFiles
-              .map((original) => processedMap[original] ?? original)
-              .toList();
-        }
-      }
-
-      void adjustedProgress(double p) {
-        if (dateStampTempDir != null) {
-          setExportProgress(30 + (p * 0.7));
-        } else {
-          setExportProgress(p);
-        }
-      }
-
-      String res = await GalleryUtils.exportZipFile(
-        projectId,
-        projectName,
-        filesToExport,
-        adjustedProgress,
+      final success = await _dateStampAndExport(
+        projectId: projectId,
+        projectName: projectName,
+        projectIdStr: projectIdStr,
+        filesToExport: filesToExport,
+        setExportProgress: setExportProgress,
       );
 
-      if (res != 'success') {
+      if (!success) {
         LogService.instance.log(
           '[EXPORT] Selected export failed: '
           'raw=${filesToExport['Raw']?.length ?? 0}, '
@@ -692,15 +625,6 @@ class GalleryExportHandler {
     } catch (e, st) {
       LogService.instance.log('[EXPORT] exportSelectedPhotos crashed: $e\n$st');
       return false;
-    } finally {
-      if (dateStampTempDir != null) {
-        try {
-          final dir = Directory(dateStampTempDir);
-          if (await dir.exists()) {
-            await dir.delete(recursive: true);
-          }
-        } catch (_) {}
-      }
     }
   }
 

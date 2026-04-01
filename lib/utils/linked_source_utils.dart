@@ -4,6 +4,7 @@ import 'package:path/path.dart' as path;
 
 import '../services/database_helper.dart';
 import '../services/log_service.dart';
+import 'platform_utils.dart';
 
 class LinkedSourceConfig {
   final bool enabled;
@@ -32,7 +33,7 @@ class LinkedSourceConfig {
       enabled &&
       mode == 'desktop_path' &&
       rootPath.trim().isNotEmpty &&
-      (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
+      isDesktop;
 
   static const empty = LinkedSourceConfig(
     enabled: false,
@@ -60,8 +61,7 @@ class LinkedSourcePlacement {
 }
 
 class LinkedSourceUtils {
-  static bool get supportsDesktopLinkedFolders =>
-      Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+  static bool get supportsDesktopLinkedFolders => isDesktop;
 
   static Future<LinkedSourceConfig> loadConfig(int projectId) async {
     try {
@@ -119,85 +119,41 @@ class LinkedSourceUtils {
     }
   }
 
+  static Future<void> _saveBulkSettings(
+    String projectIdStr,
+    Map<String, String> settings,
+  ) async {
+    for (final entry in settings.entries) {
+      await DB.instance.setSettingByTitle(entry.key, entry.value, projectIdStr);
+    }
+  }
+
   static Future<void> persistDesktopFolderSelection(
     int projectId,
     String folderPath, {
     bool enabled = true,
     bool managedByApp = false,
-  }) async {
-    final projectIdStr = projectId.toString();
-    await DB.instance.setSettingByTitle(
-      'linked_source_enabled',
-      enabled.toString(),
-      projectIdStr,
-    );
-    await DB.instance.setSettingByTitle(
-      'linked_source_mode',
-      'desktop_path',
-      projectIdStr,
-    );
-    await DB.instance.setSettingByTitle(
-      'linked_source_display_path',
-      folderPath,
-      projectIdStr,
-    );
-    await DB.instance.setSettingByTitle(
-      'linked_source_root_path',
-      folderPath,
-      projectIdStr,
-    );
-    await DB.instance.setSettingByTitle(
-      'linked_source_tree_uri',
-      '',
-      projectIdStr,
-    );
-    await DB.instance.setSettingByTitle(
-      'linked_source_bookmark',
-      '',
-      projectIdStr,
-    );
-    await DB.instance.setSettingByTitle(
-      'linked_source_managed_by_app',
-      managedByApp.toString(),
-      projectIdStr,
-    );
-  }
+  }) =>
+      _saveBulkSettings(projectId.toString(), {
+        'linked_source_enabled': enabled.toString(),
+        'linked_source_mode': 'desktop_path',
+        'linked_source_display_path': folderPath,
+        'linked_source_root_path': folderPath,
+        'linked_source_tree_uri': '',
+        'linked_source_bookmark': '',
+        'linked_source_managed_by_app': managedByApp.toString(),
+      });
 
-  static Future<void> disableLinkedSource(int projectId) async {
-    final projectIdStr = projectId.toString();
-    await DB.instance.setSettingByTitle(
-      'linked_source_enabled',
-      'false',
-      projectIdStr,
-    );
-    await DB.instance
-        .setSettingByTitle('linked_source_mode', 'none', projectIdStr);
-    await DB.instance.setSettingByTitle(
-      'linked_source_display_path',
-      '',
-      projectIdStr,
-    );
-    await DB.instance.setSettingByTitle(
-      'linked_source_root_path',
-      '',
-      projectIdStr,
-    );
-    await DB.instance.setSettingByTitle(
-      'linked_source_tree_uri',
-      '',
-      projectIdStr,
-    );
-    await DB.instance.setSettingByTitle(
-      'linked_source_bookmark',
-      '',
-      projectIdStr,
-    );
-    await DB.instance.setSettingByTitle(
-      'linked_source_managed_by_app',
-      'false',
-      projectIdStr,
-    );
-  }
+  static Future<void> disableLinkedSource(int projectId) =>
+      _saveBulkSettings(projectId.toString(), {
+        'linked_source_enabled': 'false',
+        'linked_source_mode': 'none',
+        'linked_source_display_path': '',
+        'linked_source_root_path': '',
+        'linked_source_tree_uri': '',
+        'linked_source_bookmark': '',
+        'linked_source_managed_by_app': 'false',
+      });
 
   static String? validateLinkedFolderPath({
     required int projectId,

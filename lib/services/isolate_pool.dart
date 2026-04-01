@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:opencv_dart/opencv_dart.dart' as cv;
 
 import 'log_service.dart';
+import '../utils/platform_utils.dart';
 
 /// A task to be executed by a worker isolate.
 class IsolateTask {
@@ -57,7 +58,7 @@ class IsolatePool {
   /// Number of worker isolates to maintain.
   /// Desktop: 4 workers, Mobile: 2 workers.
   static int get _workerCount {
-    if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+    if (isDesktop) {
       return 4;
     }
     return 2;

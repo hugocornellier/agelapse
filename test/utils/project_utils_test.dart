@@ -10,39 +10,6 @@ void main() {
     });
   });
 
-  group('ProjectUtils.convertExtensionToPng', () {
-    test('converts .jpg to .png', () {
-      final result = ProjectUtils.convertExtensionToPng('/path/to/image.jpg');
-      expect(result, '/path/to/image.png');
-    });
-
-    test('preserves path without .jpg extension', () {
-      final result = ProjectUtils.convertExtensionToPng('/path/to/image.png');
-      expect(result, '/path/to/image.png');
-    });
-
-    test('only replaces .jpg at end of path', () {
-      final result = ProjectUtils.convertExtensionToPng('/path/jpg/image.jpg');
-      expect(result, '/path/jpg/image.png');
-    });
-
-    test('handles path with no extension', () {
-      final result = ProjectUtils.convertExtensionToPng('/path/to/image');
-      expect(result, '/path/to/image');
-    });
-
-    test('handles empty string', () {
-      final result = ProjectUtils.convertExtensionToPng('');
-      expect(result, '');
-    });
-
-    test('only converts lowercase .jpg', () {
-      // The regex is \.jpg$ so it only matches lowercase
-      final result = ProjectUtils.convertExtensionToPng('/path/to/image.JPG');
-      expect(result, '/path/to/image.JPG');
-    });
-  });
-
   group('ProjectUtils.getTimeDiff', () {
     test('returns 0 for same dates', () {
       final date = DateTime(2024, 1, 15);
@@ -279,8 +246,6 @@ void main() {
 
   group('ProjectUtils Static Nature', () {
     test('all methods are static', () {
-      // ignore: unnecessary_type_check
-      expect(ProjectUtils.convertExtensionToPng is Function, isTrue);
       // ignore: unnecessary_type_check
       expect(ProjectUtils.getTimeDiff is Function, isTrue);
       // ignore: unnecessary_type_check

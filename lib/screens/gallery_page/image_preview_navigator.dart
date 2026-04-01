@@ -21,7 +21,6 @@ import '../../utils/gallery_permission_handler.dart';
 import '../../utils/platform_utils.dart';
 import '../../utils/test_mode.dart' as test_config;
 import '../../widgets/format_aware_image.dart';
-import '../../widgets/confirm_action_dialog.dart';
 import '../manual_stab_page.dart';
 import '../stab_on_diff_face.dart';
 import 'gallery_widgets.dart';
@@ -385,45 +384,29 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     );
   }
 
-  Future<void> _switchToRaw() async {
+  Future<void> _switchView({required bool toRaw}) async {
     final currentTimestamp = _currentTimestamp;
-    final newIndex = _findIndexForTimestamp(
-      widget.rawImageFiles,
-      currentTimestamp,
-    );
+    final targetList =
+        toRaw ? widget.rawImageFiles : widget.stabilizedImageFiles;
+    final newIndex = _findIndexForTimestamp(targetList, currentTimestamp);
 
     if (newIndex >= 0) {
       setState(() {
-        _isRaw = true;
-        _activeButton = 'raw';
+        _isRaw = toRaw;
+        _activeButton = toRaw ? 'raw' : widget.projectOrientation.toLowerCase();
         _currentIndex = newIndex;
       });
       _pageController.jumpToPage(newIndex);
+    } else if (!toRaw && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Stabilized image not available')),
+      );
     }
   }
 
-  Future<void> _switchToStabilized() async {
-    final currentTimestamp = _currentTimestamp;
-    final newIndex = _findIndexForTimestamp(
-      widget.stabilizedImageFiles,
-      currentTimestamp,
-    );
+  Future<void> _switchToRaw() => _switchView(toRaw: true);
 
-    if (newIndex >= 0) {
-      setState(() {
-        _isRaw = false;
-        _activeButton = widget.projectOrientation.toLowerCase();
-        _currentIndex = newIndex;
-      });
-      _pageController.jumpToPage(newIndex);
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Stabilized image not available')),
-        );
-      }
-    }
-  }
+  Future<void> _switchToStabilized() => _switchView(toRaw: false);
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
@@ -482,9 +465,6 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isDesktop =
-        Platform.isMacOS || Platform.isWindows || Platform.isLinux;
-
     final content = Column(
       children: [
         _buildHeader(),
@@ -582,25 +562,14 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
   }
 
   Widget _buildCloseButton() {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => Navigator.of(context).pop(),
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: AppColors.settingsCardBorder,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(
-            Icons.close,
-            color: AppColors.settingsTextPrimary,
-            size: 20,
-          ),
-        ),
-      ),
+    return _buildIconButton(
+      icon: Icons.close,
+      size: 40,
+      radius: 12,
+      bgColor: AppColors.settingsCardBorder,
+      iconColor: AppColors.settingsTextPrimary,
+      iconSize: 20,
+      onTap: () => Navigator.of(context).pop(),
     );
   }
 
@@ -818,21 +787,15 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     required IconData icon,
     required VoidCallback onPressed,
   }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(24),
-        child: Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: AppColors.settingsCardBackground.withValues(alpha: 0.8),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: AppColors.settingsTextPrimary, size: 28),
-        ),
-      ),
+    return _buildIconButton(
+      icon: icon,
+      size: 48,
+      radius: 24,
+      bgColor: AppColors.settingsCardBackground.withValues(alpha: 0.8),
+      iconColor: AppColors.settingsTextPrimary,
+      iconSize: 28,
+      useCircle: true,
+      onTap: onPressed,
     );
   }
 
@@ -926,25 +889,47 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     double iconSize = 22,
   }) {
     activeColor ??= AppColors.settingsAccent;
+    return _buildIconButton(
+      icon: icon,
+      size: 40,
+      radius: 12,
+      containerRadius: 10,
+      bgColor: active
+          ? activeColor.withValues(alpha: 0.15)
+          : AppColors.settingsCardBorder,
+      iconColor: active ? activeColor : AppColors.settingsTextPrimary,
+      iconSize: iconSize,
+      onTap: onPressed,
+    );
+  }
+
+  Widget _buildIconButton({
+    required IconData icon,
+    required double size,
+    required double radius,
+    double? containerRadius,
+    required Color bgColor,
+    required Color iconColor,
+    double iconSize = 22,
+    bool useCircle = false,
+    VoidCallback? onTap,
+  }) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(radius),
         child: Container(
-          width: 40,
-          height: 40,
+          width: size,
+          height: size,
           decoration: BoxDecoration(
-            color: active
-                ? activeColor.withValues(alpha: 0.15)
-                : AppColors.settingsCardBorder,
-            borderRadius: BorderRadius.circular(10),
+            color: bgColor,
+            shape: useCircle ? BoxShape.circle : BoxShape.rectangle,
+            borderRadius: useCircle
+                ? null
+                : BorderRadius.circular(containerRadius ?? radius),
           ),
-          child: Icon(
-            icon,
-            color: active ? activeColor : AppColors.settingsTextPrimary,
-            size: iconSize,
-          ),
+          child: Icon(icon, color: iconColor, size: iconSize),
         ),
       ),
     );
@@ -1082,7 +1067,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
   }
 
   Future<void> _saveImageToDownloadsOrGallery(XFile image) async {
-    if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+    if (isDesktop) {
       final bytes = await image.readAsBytes();
       if (test_config.isTestMode) {
         final tempPath = await DirUtils.getTemporaryDirPath();
@@ -1220,96 +1205,21 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     final timestamp = _currentTimestamp;
     if (timestamp.isEmpty) return;
 
-    DateTime initialDate = DateTime.fromMillisecondsSinceEpoch(
-      int.parse(timestamp),
-    );
-    DateTime? newDate = await showDatePicker(
+    final allFilenames = widget.rawImageFiles
+        .map((f) => path.basenameWithoutExtension(f))
+        .toList();
+
+    final result = await GalleryPhotoOperations.showChangeDateFlow(
       context: context,
-      initialDate: initialDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime.now(),
+      currentTimestamp: timestamp,
+      projectIdStr: widget.projectId.toString(),
+      allImageFilenames: allFilenames,
     );
-    if (newDate == null || !mounted) return;
+    if (result == null || !mounted) return;
 
-    TimeOfDay initialTime = TimeOfDay.fromDateTime(initialDate);
-    TimeOfDay? newTime = await showTimePicker(
-      context: context,
-      initialTime: initialTime,
-    );
-    if (newTime == null || !mounted) return;
-
-    DateTime newDateTime = DateTime(
-      newDate.year,
-      newDate.month,
-      newDate.day,
-      newTime.hour,
-      newTime.minute,
-    );
-    String newTimestamp = newDateTime.millisecondsSinceEpoch.toString();
-
-    // Check if this would change the photo order
-    final orderChanged = _wouldChangeOrder(timestamp, newTimestamp);
-
-    // Check if the formatted date stamp text would change
-    bool dateStampTextChanged = false;
-    final projectIdStr = widget.projectId.toString();
-    final exportStampsEnabled = await SettingsUtil.loadExportDateStampEnabled(
-      projectIdStr,
-    );
-
-    if (exportStampsEnabled && !orderChanged) {
-      // Only check text if stamps are enabled and order didn't change
-      final format = await SettingsUtil.loadExportDateStampFormat(projectIdStr);
-      final oldText = DateStampUtils.formatTimestamp(
-        int.parse(timestamp),
-        format,
-      );
-      final newText = DateStampUtils.formatTimestamp(
-        int.parse(newTimestamp),
-        format,
-      );
-      dateStampTextChanged = oldText != newText;
-    }
-
-    // Determine if we need to show a confirmation dialog and recompile
+    final (newTimestamp, orderChanged, dateStampTextChanged) = result;
     final needsRecompile = orderChanged || dateStampTextChanged;
-
-    if (needsRecompile) {
-      if (!mounted) return;
-      final confirmed = await ConfirmActionDialog.showDateChangeRecompile(
-        context,
-        orderChanged: orderChanged,
-      );
-      if (!confirmed) return;
-    }
-
     await _changePhotoDate(timestamp, newTimestamp, needsRecompile);
-  }
-
-  /// Checks if changing a photo's timestamp would change its position in the sorted list.
-  bool _wouldChangeOrder(String oldTimestamp, String newTimestamp) {
-    final currentFiles = widget.rawImageFiles;
-    if (currentFiles.length <= 1) return false;
-
-    // Extract all timestamps once
-    final allTimestamps =
-        currentFiles.map((f) => path.basenameWithoutExtension(f)).toList();
-    final oldIndex = allTimestamps.indexOf(oldTimestamp);
-
-    // Filter to get timestamps without the one being changed
-    final timestamps = allTimestamps.where((t) => t != oldTimestamp).toList();
-
-    // Add the new timestamp and sort to find new position
-    timestamps.add(newTimestamp);
-    timestamps.sort((a, b) {
-      final ai = int.tryParse(a);
-      final bi = int.tryParse(b);
-      if (ai != null && bi != null) return ai.compareTo(bi);
-      return a.compareTo(b);
-    });
-    final newIndex = timestamps.indexOf(newTimestamp);
-
-    return oldIndex != newIndex;
   }
 
   Future<void> _changePhotoDate(
@@ -1317,19 +1227,14 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     String newTimestamp,
     bool needsRecompile,
   ) async {
-    await GalleryPhotoOperations.changePhotoDate(
+    await GalleryPhotoOperations.changeDateAndReload(
       oldTimestamp: currentTimestamp,
       newTimestamp: newTimestamp,
       projectId: widget.projectId,
+      loadImages: widget.loadImages,
+      recompileCallback: widget.recompileVideoCallback,
+      needsRecompile: needsRecompile,
     );
-
-    // Reload images
-    await widget.loadImages();
-
-    // Trigger video recompilation if needed
-    if (needsRecompile) {
-      await widget.recompileVideoCallback();
-    }
 
     if (mounted) {
       Navigator.of(context).pop();
@@ -1405,22 +1310,12 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
 
   Future<void> _showDeleteDialog(File imageFile) async {
     final int totalPhotos = widget.rawImageFiles.length;
-    final int remainingAfterDelete = totalPhotos - 1;
-    final bool shouldRecompile = remainingAfterDelete >= 2;
+    final bool shouldRecompile = totalPhotos - 1 >= 2;
 
-    final bool confirmed;
-    if (shouldRecompile) {
-      confirmed = await ConfirmActionDialog.showDeleteRecompile(
-        context,
-        photoCount: 1,
-      );
-    } else {
-      confirmed = await ConfirmActionDialog.showDeleteSimple(
-        context,
-        photoCount: 1,
-      );
-    }
-
+    final confirmed = await GalleryPhotoOperations.confirmDeletePhoto(
+      context: context,
+      totalPhotos: totalPhotos,
+    );
     if (confirmed && mounted) {
       await _deleteImage(imageFile, triggerRecompile: shouldRecompile);
     }

@@ -1,8 +1,8 @@
-import 'dart:io';
 import '../models/video_background.dart';
 import '../models/video_codec.dart';
 import '../services/custom_font_manager.dart';
 import '../services/log_service.dart';
+import '../utils/platform_utils.dart';
 import '../utils/utils.dart';
 import '../utils/date_stamp_utils.dart';
 
@@ -29,26 +29,11 @@ class SettingsUtil {
     return await DB.instance.getSettingValueByTitle('theme');
   }
 
-  static Future<bool> loadFramerateIsDefault(String projectId) async {
-    try {
-      String settingValueStr = await DB.instance.getSettingValueByTitle(
-        'framerate_is_default',
-        projectId,
-      );
-      return bool.tryParse(settingValueStr) ?? true;
-    } catch (e) {
-      LogService.instance.log('Failed to load watermark setting: $e');
-      return true;
-    }
-  }
+  static Future<bool> loadFramerateIsDefault(String projectId) async =>
+      _loadBoolSetting('framerate_is_default', projectId, true);
 
-  static Future<bool> loadCameraMirror(String projectId) async {
-    final value = await DB.instance.getSettingValueByTitle(
-      'camera_mirror',
-      projectId,
-    );
-    return value.toLowerCase() == 'true';
-  }
+  static Future<bool> loadCameraMirror(String projectId) async =>
+      _loadBoolSetting('camera_mirror', projectId, false);
 
   static Future<bool> lightThemeActive() async {
     final String activeTheme = await loadTheme();
@@ -63,63 +48,20 @@ class SettingsUtil {
     return result;
   }
 
-  static Future<bool> loadEnableGrid() async {
-    try {
-      String enableGridValueStr = await DB.instance.getSettingValueByTitle(
-        'enable_grid',
-      );
-      return bool.tryParse(enableGridValueStr) ?? false;
-    } catch (e) {
-      return false;
-    }
-  }
+  static Future<bool> loadEnableGrid() async =>
+      _loadBoolSetting('enable_grid', null, false);
 
-  static Future<String> loadCameraFlash(String projectId) async {
-    try {
-      String cameraFlashValueStr = await DB.instance.getSettingValueByTitle(
-        'camera_flash',
-        projectId,
-      );
-      return cameraFlashValueStr;
-    } catch (e) {
-      return "auto";
-    }
-  }
+  static Future<String> loadCameraFlash(String projectId) async =>
+      _loadStringSetting('camera_flash', projectId, "auto");
 
-  static Future<bool> loadSaveToCameraRoll() async {
-    try {
-      String saveToCameraRollStr = await DB.instance.getSettingValueByTitle(
-        'save_to_camera_roll',
-      );
-      return bool.tryParse(saveToCameraRollStr) ?? false;
-    } catch (e) {
-      LogService.instance.log('Failed to load save to camera roll setting: $e');
-      return false;
-    }
-  }
+  static Future<bool> loadSaveToCameraRoll() =>
+      _loadBoolSetting('save_to_camera_roll', null, false);
 
-  static Future<bool> loadWatermarkSetting(String projectId) async {
-    try {
-      String settingValueStr = await DB.instance.getSettingValueByTitle(
-        'enable_watermark',
-        projectId,
-      );
-      return bool.tryParse(settingValueStr) ?? false;
-    } catch (e) {
-      return false;
-    }
-  }
+  static Future<bool> loadWatermarkSetting(String projectId) async =>
+      _loadBoolSetting('enable_watermark', projectId, false);
 
-  static Future<bool> loadNotificationSetting() async {
-    try {
-      String settingValueStr = await DB.instance.getSettingValueByTitle(
-        'enable_notifications',
-      );
-      return bool.tryParse(settingValueStr) ?? true;
-    } catch (e) {
-      return true;
-    }
-  }
+  static Future<bool> loadNotificationSetting() async =>
+      _loadBoolSetting('enable_notifications', null, true);
 
   static Future<String> loadWatermarkPosition() async {
     try {
@@ -131,13 +73,8 @@ class SettingsUtil {
     }
   }
 
-  static Future<String> loadWatermarkOpacity() async {
-    try {
-      return await DB.instance.getSettingValueByTitle('watermark_opacity');
-    } catch (e) {
-      return fallbackWatermarkOpacity;
-    }
-  }
+  static Future<String> loadWatermarkOpacity() async =>
+      _loadStringSetting('watermark_opacity', null, fallbackWatermarkOpacity);
 
   static Future<int> loadFramerate(String projectId) async {
     try {
@@ -162,17 +99,8 @@ class SettingsUtil {
   /// Load auto-compile video setting (per-project).
   /// When enabled, video is automatically compiled after stabilization.
   /// When disabled, user must manually trigger compilation from Create page.
-  static Future<bool> loadAutoCompileVideo(String projectId) async {
-    try {
-      String value = await DB.instance.getSettingValueByTitle(
-        'auto_compile_video',
-        projectId,
-      );
-      return value.toLowerCase() == 'true';
-    } catch (e) {
-      return true; // Default to enabled for backwards compatibility
-    }
-  }
+  static Future<bool> loadAutoCompileVideo(String projectId) async =>
+      _loadBoolSetting('auto_compile_video', projectId, true);
 
   /// Save auto-compile video setting (per-project).
   static Future<void> setAutoCompileVideo(
@@ -212,18 +140,8 @@ class SettingsUtil {
   static Future<String> _loadOffsetCurrentOrientation(
     String projectId,
     String axis,
-  ) async {
-    final String activeProjectOrientation = await loadProjectOrientation(
-      projectId,
-    );
-    final String offsetColName = (activeProjectOrientation == 'landscape')
-        ? "eyeOffset${axis}Landscape"
-        : "eyeOffset${axis}Portrait";
-    return await DB.instance.getSettingValueByTitle(
-      offsetColName,
-      projectId.toString(),
-    );
-  }
+  ) async =>
+      _loadOffsetAxis(projectId, axis, 'eye', null);
 
   static Future<String> loadGuideOffsetXCurrentOrientation(
     String projectId,
@@ -240,18 +158,8 @@ class SettingsUtil {
   static Future<String> _loadGuideOffsetCurrentOrientation(
     String projectId,
     String axis,
-  ) async {
-    final String activeProjectOrientation = await loadProjectOrientation(
-      projectId,
-    );
-    final String offsetColName = (activeProjectOrientation == 'landscape')
-        ? "guideOffset${axis}Landscape"
-        : "guideOffset${axis}Portrait";
-    return await DB.instance.getSettingValueByTitle(
-      offsetColName,
-      projectId.toString(),
-    );
-  }
+  ) async =>
+      _loadOffsetAxis(projectId, axis, 'guide', null);
 
   static Future<String> loadGuideOffsetXCustomOrientation(
     String projectId,
@@ -279,118 +187,39 @@ class SettingsUtil {
     String projectId,
     String axis,
     String customOrientation,
-  ) async {
-    final String offsetColName = (customOrientation == 'landscape')
-        ? "guideOffset${axis}Landscape"
-        : "guideOffset${axis}Portrait";
+  ) async =>
+      _loadOffsetAxis(projectId, axis, 'guide', customOrientation);
 
-    return await DB.instance.getSettingValueByTitle(
-      offsetColName,
-      projectId.toString(),
-    );
-  }
-
-  static Future<bool> hasOpenedNonEmptyGallery(String projectId) async {
-    try {
-      final String settingValueStr = await DB.instance.getSettingValueByTitle(
-        'opened_nonempty_gallery',
-        projectId,
-      );
-      return bool.tryParse(settingValueStr) ?? false;
-    } catch (e) {
-      return false;
-    }
-  }
+  static Future<bool> hasOpenedNonEmptyGallery(String projectId) async =>
+      _loadBoolSetting('opened_nonempty_gallery', projectId, false);
 
   static Future<void> setHasOpenedNonEmptyGalleryToTrue(
-    String projectIdStr,
-  ) async {
-    await DB.instance.setSettingByTitle(
-      'opened_nonempty_gallery',
-      'true',
-      projectIdStr,
-    );
-  }
+          String projectIdStr) async =>
+      _setBoolToTrue('opened_nonempty_gallery', projectIdStr);
 
-  static Future<bool> hasTakenFirstPhoto(String projectId) async {
-    try {
-      final String settingValueStr = await DB.instance.getSettingValueByTitle(
-        'has_taken_first_photo',
-        projectId,
-      );
-      return bool.tryParse(settingValueStr) ?? false;
-    } catch (e) {
-      return false;
-    }
-  }
+  static Future<bool> hasTakenFirstPhoto(String projectId) async =>
+      _loadBoolSetting('has_taken_first_photo', projectId, false);
 
-  static Future<void> setHasTakenFirstPhotoToTrue(String projectIdStr) async {
-    await DB.instance.setSettingByTitle(
-      'has_taken_first_photo',
-      'true',
-      projectIdStr,
-    );
-  }
+  static Future<void> setHasTakenFirstPhotoToTrue(String projectIdStr) async =>
+      _setBoolToTrue('has_taken_first_photo', projectIdStr);
 
-  static Future<bool> hasSeenFirstVideo(String projectId) async {
-    try {
-      final String settingValueStr = await DB.instance.getSettingValueByTitle(
-        'has_viewed_first_video',
-        projectId,
-      );
-      return bool.tryParse(settingValueStr) ?? false;
-    } catch (e) {
-      return false;
-    }
-  }
+  static Future<bool> hasSeenFirstVideo(String projectId) async =>
+      _loadBoolSetting('has_viewed_first_video', projectId, false);
 
-  static Future<void> setHasSeenFirstVideoToTrue(String projectIdStr) async {
-    await DB.instance.setSettingByTitle(
-      'has_viewed_first_video',
-      'true',
-      projectIdStr,
-    );
-  }
+  static Future<void> setHasSeenFirstVideoToTrue(String projectIdStr) async =>
+      _setBoolToTrue('has_viewed_first_video', projectIdStr);
 
-  static Future<bool> hasOpenedNotifPage(String projectId) async {
-    try {
-      final String settingValueStr = await DB.instance.getSettingValueByTitle(
-        'has_opened_notif_page',
-        projectId,
-      );
-      return bool.tryParse(settingValueStr) ?? false;
-    } catch (e) {
-      return false;
-    }
-  }
+  static Future<bool> hasOpenedNotifPage(String projectId) async =>
+      _loadBoolSetting('has_opened_notif_page', projectId, false);
 
-  static Future<void> setHasOpenedNotifPageToTrue(String projectIdStr) async {
-    await DB.instance.setSettingByTitle(
-      'has_opened_notif_page',
-      'true',
-      projectIdStr,
-    );
-  }
+  static Future<void> setHasOpenedNotifPageToTrue(String projectIdStr) async =>
+      _setBoolToTrue('has_opened_notif_page', projectIdStr);
 
-  static Future<bool> hasSeenGuideModeTut(String projectId) async {
-    try {
-      final String settingValueStr = await DB.instance.getSettingValueByTitle(
-        'has_seen_guide_mode_tut',
-        projectId,
-      );
-      return bool.tryParse(settingValueStr) ?? false;
-    } catch (e) {
-      return false;
-    }
-  }
+  static Future<bool> hasSeenGuideModeTut(String projectId) async =>
+      _loadBoolSetting('has_seen_guide_mode_tut', projectId, false);
 
-  static Future<void> setHasSeenGuideModeTutToTrue(String projectIdStr) async {
-    await DB.instance.setSettingByTitle(
-      'has_seen_guide_mode_tut',
-      'true',
-      projectIdStr,
-    );
-  }
+  static Future<void> setHasSeenGuideModeTutToTrue(String projectIdStr) async =>
+      _setBoolToTrue('has_seen_guide_mode_tut', projectIdStr);
 
   static Future<int> loadGridAxisCount(String projectId) async {
     try {
@@ -399,8 +228,6 @@ class SettingsUtil {
         projectId,
       );
       final int parsed = int.tryParse(s) ?? 4;
-      final bool isDesktop =
-          Platform.isMacOS || Platform.isWindows || Platform.isLinux;
       final int maxSteps = isDesktop ? 12 : 6;
       return parsed.clamp(1, maxSteps);
     } catch (_) {
@@ -409,16 +236,8 @@ class SettingsUtil {
   }
 
   /// Load gallery grid mode: 'auto' or 'manual'
-  static Future<String> loadGalleryGridMode(String projectId) async {
-    try {
-      return await DB.instance.getSettingValueByTitle(
-        'gallery_grid_mode',
-        projectId,
-      );
-    } catch (_) {
-      return 'auto';
-    }
-  }
+  static Future<String> loadGalleryGridMode(String projectId) async =>
+      _loadStringSetting('gallery_grid_mode', projectId, 'auto');
 
   /// Save gallery grid mode
   static Future<void> setGalleryGridMode(String projectId, String mode) async {
@@ -445,13 +264,8 @@ class SettingsUtil {
     );
   }
 
-  static Future<String> loadStabilizationMode() async {
-    try {
-      return await DB.instance.getSettingValueByTitle('stabilization_mode');
-    } catch (e) {
-      return 'slow';
-    }
-  }
+  static Future<String> loadStabilizationMode() async =>
+      _loadStringSetting('stabilization_mode', null, 'slow');
 
   static Future<void> saveStabilizationMode(String mode) async {
     await DB.instance.setSettingByTitle('stabilization_mode', mode);
@@ -516,11 +330,11 @@ class SettingsUtil {
         projectId,
       );
       if (value == 'auto') {
-        return Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+        return isDesktop;
       }
       return value.toLowerCase() == 'true';
     } catch (e) {
-      return Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+      return isDesktop;
     }
   }
 
@@ -598,215 +412,105 @@ class SettingsUtil {
   // ==================== Camera Timer ====================
 
   /// Load camera timer duration (per-project): 0 = off, 3 = 3s, 10 = 10s
-  static Future<int> loadCameraTimer(String projectId) async {
-    try {
-      String timerValue = await DB.instance.getSettingValueByTitle(
-        'camera_timer_duration',
-        projectId,
-      );
-      return int.tryParse(timerValue) ?? 0;
-    } catch (e) {
-      return 0;
-    }
-  }
+  static Future<int> loadCameraTimer(String projectId) =>
+      _loadIntSetting('camera_timer_duration', projectId, 0);
 
   // ==================== Date Stamp Settings ====================
 
   /// Load whether gallery date labels are enabled for stabilized thumbnails (per-project)
-  static Future<bool> loadGalleryDateLabelsEnabled(String projectId) async {
-    try {
-      String settingValueStr = await DB.instance.getSettingValueByTitle(
-        'gallery_date_labels_enabled',
-        projectId,
-      );
-      return bool.tryParse(settingValueStr) ?? false;
-    } catch (e) {
-      return false;
-    }
-  }
+  static Future<bool> loadGalleryDateLabelsEnabled(String projectId) async =>
+      _loadBoolSetting('gallery_date_labels_enabled', projectId, false);
 
   /// Load whether gallery date labels are enabled for raw thumbnails (per-project)
-  static Future<bool> loadGalleryRawDateLabelsEnabled(String projectId) async {
-    try {
-      String settingValueStr = await DB.instance.getSettingValueByTitle(
-        'gallery_raw_date_labels_enabled',
-        projectId,
-      );
-      return bool.tryParse(settingValueStr) ?? false;
-    } catch (e) {
-      return false;
-    }
-  }
+  static Future<bool> loadGalleryRawDateLabelsEnabled(String projectId) async =>
+      _loadBoolSetting('gallery_raw_date_labels_enabled', projectId, false);
 
   /// Load gallery date format (per-project)
-  static Future<String> loadGalleryDateFormat(String projectId) async {
-    try {
-      String format = await DB.instance.getSettingValueByTitle(
-        'gallery_date_format',
-        projectId,
-      );
-      return format.isNotEmpty ? format : fallbackGalleryDateFormat;
-    } catch (e) {
-      return fallbackGalleryDateFormat;
-    }
-  }
+  static Future<String> loadGalleryDateFormat(String projectId) async =>
+      _loadNonEmptyStringSetting(
+          'gallery_date_format', projectId, fallbackGalleryDateFormat);
 
   /// Load whether export date stamp is enabled (per-project)
-  static Future<bool> loadExportDateStampEnabled(String projectId) async {
-    try {
-      String settingValueStr = await DB.instance.getSettingValueByTitle(
-        'export_date_stamp_enabled',
-        projectId,
-      );
-      return bool.tryParse(settingValueStr) ?? false;
-    } catch (e) {
-      return false;
-    }
-  }
+  static Future<bool> loadExportDateStampEnabled(String projectId) async =>
+      _loadBoolSetting('export_date_stamp_enabled', projectId, false);
 
   /// Load export date stamp position (per-project)
-  static Future<String> loadExportDateStampPosition(String projectId) async {
-    try {
-      String position = await DB.instance.getSettingValueByTitle(
-        'export_date_stamp_position',
-        projectId,
-      );
-      return position.isNotEmpty ? position : fallbackDateStampPosition;
-    } catch (e) {
-      return fallbackDateStampPosition;
-    }
-  }
+  static Future<String> loadExportDateStampPosition(String projectId) async =>
+      _loadNonEmptyStringSetting(
+          'export_date_stamp_position', projectId, fallbackDateStampPosition);
 
   /// Load export date stamp format (per-project)
-  static Future<String> loadExportDateStampFormat(String projectId) async {
-    try {
-      String format = await DB.instance.getSettingValueByTitle(
-        'export_date_stamp_format',
-        projectId,
-      );
-      return format.isNotEmpty ? format : fallbackExportDateFormat;
-    } catch (e) {
-      return fallbackExportDateFormat;
-    }
-  }
+  static Future<String> loadExportDateStampFormat(String projectId) async =>
+      _loadNonEmptyStringSetting(
+          'export_date_stamp_format', projectId, fallbackExportDateFormat);
 
   /// Load export date stamp size percentage (per-project)
-  static Future<int> loadExportDateStampSize(String projectId) async {
-    try {
-      String sizeStr = await DB.instance.getSettingValueByTitle(
-        'export_date_stamp_size',
-        projectId,
-      );
-      return int.tryParse(sizeStr) ?? fallbackDateStampSizePercent;
-    } catch (e) {
-      return fallbackDateStampSizePercent;
-    }
-  }
+  static Future<int> loadExportDateStampSize(String projectId) =>
+      _loadIntSetting(
+          'export_date_stamp_size', projectId, fallbackDateStampSizePercent);
 
   /// Load export date stamp opacity (per-project)
-  static Future<double> loadExportDateStampOpacity(String projectId) async {
-    try {
-      String opacityStr = await DB.instance.getSettingValueByTitle(
-        'export_date_stamp_opacity',
-        projectId,
-      );
-      return double.tryParse(opacityStr) ?? 1.0;
-    } catch (e) {
-      return 1.0;
-    }
-  }
+  static Future<double> loadExportDateStampOpacity(String projectId) =>
+      _loadDoubleSetting('export_date_stamp_opacity', projectId, 1.0);
 
   /// Load gallery date stamp font (per-project)
   /// Validates that the font exists (bundled or custom) and returns default if not.
-  static Future<String> loadGalleryDateStampFont(String projectId) async {
-    try {
-      String font = await DB.instance.getSettingValueByTitle(
-        'gallery_date_stamp_font',
+  static Future<String> loadGalleryDateStampFont(String projectId) =>
+      _loadFontWithValidation(
         projectId,
+        'gallery_date_stamp_font',
+        DateStampUtils.defaultFont,
       );
-
-      if (font.isEmpty) {
-        return DateStampUtils.defaultFont;
-      }
-
-      // Check if it's a bundled font
-      if (DateStampUtils.isBundledFont(font)) {
-        return font;
-      }
-
-      // Check if it's a custom font that still exists
-      if (DateStampUtils.isCustomFont(font)) {
-        final isAvailable = await CustomFontManager.instance.isFontAvailable(
-          font,
-        );
-        if (isAvailable) {
-          return font;
-        }
-        // Custom font no longer exists, reset to default
-        LogService.instance.log(
-          'Custom font $font no longer available, using default',
-        );
-        await DB.instance.setSettingByTitle(
-          'gallery_date_stamp_font',
-          DateStampUtils.defaultFont,
-          projectId,
-        );
-        return DateStampUtils.defaultFont;
-      }
-
-      return DateStampUtils.defaultFont;
-    } catch (e) {
-      return DateStampUtils.defaultFont;
-    }
-  }
 
   /// Load export date stamp font (per-project)
   /// Returns "_same_as_gallery" or a specific font name
   /// Validates that custom fonts still exist.
-  static Future<String> loadExportDateStampFont(String projectId) async {
+  static Future<String> loadExportDateStampFont(String projectId) =>
+      _loadFontWithValidation(
+        projectId,
+        'export_date_stamp_font',
+        DateStampUtils.fontSameAsGallery,
+        extraSpecialValue: DateStampUtils.fontSameAsGallery,
+      );
+
+  /// Loads and validates a font setting from DB.
+  /// Returns [defaultValue] if the font is missing, invalid, or unavailable.
+  /// [extraSpecialValue] is returned directly if the DB value matches it
+  /// (used for the export font's "same as gallery" token).
+  static Future<String> _loadFontWithValidation(
+    String projectId,
+    String settingKey,
+    String defaultValue, {
+    String? extraSpecialValue,
+  }) async {
     try {
       String font = await DB.instance.getSettingValueByTitle(
-        'export_date_stamp_font',
+        settingKey,
         projectId,
       );
 
-      if (font.isEmpty) {
-        return DateStampUtils.fontSameAsGallery;
-      }
+      if (font.isEmpty) return defaultValue;
 
-      // Check special values
-      if (font == DateStampUtils.fontSameAsGallery) {
-        return font;
-      }
+      if (extraSpecialValue != null && font == extraSpecialValue) return font;
 
-      // Check if it's a bundled font
-      if (DateStampUtils.isBundledFont(font)) {
-        return font;
-      }
+      if (DateStampUtils.isBundledFont(font)) return font;
 
-      // Check if it's a custom font that still exists
       if (DateStampUtils.isCustomFont(font)) {
         final isAvailable = await CustomFontManager.instance.isFontAvailable(
           font,
         );
-        if (isAvailable) {
-          return font;
-        }
-        // Custom font no longer exists, reset to "same as gallery"
+        if (isAvailable) return font;
         LogService.instance.log(
-          'Custom font $font no longer available, using same as gallery',
+          'Custom font $font no longer available, resetting to $defaultValue',
         );
-        await DB.instance.setSettingByTitle(
-          'export_date_stamp_font',
-          DateStampUtils.fontSameAsGallery,
-          projectId,
-        );
-        return DateStampUtils.fontSameAsGallery;
+        await DB.instance
+            .setSettingByTitle(settingKey, defaultValue, projectId);
+        return defaultValue;
       }
 
-      return DateStampUtils.fontSameAsGallery;
+      return defaultValue;
     } catch (e) {
-      return DateStampUtils.fontSameAsGallery;
+      return defaultValue;
     }
   }
 
@@ -835,16 +539,93 @@ class SettingsUtil {
   }
 
   /// Load gallery date stamp size level (per-project)
-  static Future<int> loadGalleryDateStampSize(String projectId) async {
-    try {
-      String sizeStr = await DB.instance.getSettingValueByTitle(
+  static Future<int> loadGalleryDateStampSize(String projectId) async =>
+      _loadIntSettingClamped(
         'gallery_date_stamp_size',
         projectId,
+        fallbackGallerySizeLevel,
+        1,
+        6,
       );
-      return (int.tryParse(sizeStr) ?? fallbackGallerySizeLevel).clamp(1, 6);
-    } catch (e) {
-      return fallbackGallerySizeLevel;
+
+  // ==================== Private Helpers ====================
+
+  static Future<bool> _loadBoolSetting(
+      String key, String? projectId, bool defaultValue) async {
+    try {
+      final s = await DB.instance.getSettingValueByTitle(key, projectId);
+      return bool.tryParse(s) ?? defaultValue;
+    } catch (_) {
+      return defaultValue;
     }
+  }
+
+  static Future<String> _loadStringSetting(
+      String key, String? projectId, String defaultValue) async {
+    try {
+      return await DB.instance.getSettingValueByTitle(key, projectId);
+    } catch (_) {
+      return defaultValue;
+    }
+  }
+
+  static Future<String> _loadNonEmptyStringSetting(
+      String key, String? projectId, String defaultValue) async {
+    try {
+      final s = await DB.instance.getSettingValueByTitle(key, projectId);
+      return s.isNotEmpty ? s : defaultValue;
+    } catch (_) {
+      return defaultValue;
+    }
+  }
+
+  static Future<void> _setBoolToTrue(String key, String projectIdStr) async {
+    await DB.instance.setSettingByTitle(key, 'true', projectIdStr);
+  }
+
+  static Future<int> _loadIntSetting(
+      String key, String? projectId, int defaultValue) async {
+    try {
+      final s = await DB.instance.getSettingValueByTitle(key, projectId);
+      return int.tryParse(s) ?? defaultValue;
+    } catch (_) {
+      return defaultValue;
+    }
+  }
+
+  static Future<double> _loadDoubleSetting(
+      String key, String? projectId, double defaultValue) async {
+    try {
+      final s = await DB.instance.getSettingValueByTitle(key, projectId);
+      return double.tryParse(s) ?? defaultValue;
+    } catch (_) {
+      return defaultValue;
+    }
+  }
+
+  static Future<int> _loadIntSettingClamped(
+      String key, String projectId, int defaultValue, int min, int max) async {
+    try {
+      final s = await DB.instance.getSettingValueByTitle(key, projectId);
+      return (int.tryParse(s) ?? defaultValue).clamp(min, max);
+    } catch (_) {
+      return defaultValue;
+    }
+  }
+
+  static Future<String> _loadOffsetAxis(
+    String projectId,
+    String axis,
+    String prefix,
+    String? customOrientation,
+  ) async {
+    final String orientation =
+        customOrientation ?? await loadProjectOrientation(projectId);
+    final String colName = (orientation == 'landscape')
+        ? "${prefix}Offset${axis}Landscape"
+        : "${prefix}Offset${axis}Portrait";
+    return await DB.instance
+        .getSettingValueByTitle(colName, projectId.toString());
   }
 
   /// Load all date stamp settings at once for efficiency

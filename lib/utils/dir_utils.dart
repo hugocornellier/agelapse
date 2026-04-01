@@ -3,6 +3,7 @@ import 'package:path/path.dart' show join;
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import '../models/video_codec.dart';
+import '../utils/platform_utils.dart';
 import '../utils/settings_utils.dart';
 import '../utils/utils.dart';
 
@@ -18,6 +19,8 @@ class DirUtils {
   static const String thumbnailDirname = 'thumbnails';
   static const String failureDirname = 'failure';
   static const String testDirname = 'test';
+
+  static const List<String> orientations = ['portrait', 'landscape'];
 
   static Future<String> getProjectDirPath(int projectId) async =>
       join(await getAppDocumentsDirPath(), projectId.toString());
@@ -70,7 +73,7 @@ class DirUtils {
   }) {
     if (codec != null) return codec.containerExtension;
     if (!isTransparent) return '.mp4';
-    if (Platform.isMacOS || Platform.isIOS) return '.mov';
+    if (isApple) return '.mov';
     return '.webm';
   }
 
@@ -153,49 +156,55 @@ class DirUtils {
     );
   }
 
+  /// Constructs a stabilized image path from its components without any I/O.
+  static String buildStabilizedImagePath(
+    String stabilizedDirPath,
+    String orientation,
+    String rawImagePath,
+  ) =>
+      path.join(
+        stabilizedDirPath,
+        orientation.toLowerCase(),
+        "${path.basenameWithoutExtension(rawImagePath)}.png",
+      );
+
   static Future<String> getStabilizedImagePathFromRawPathAndProjectOrientation(
     int projectId,
     String rawImagePath,
     String projectOrientation,
-  ) async {
-    if (projectOrientation == 'portrait') {
-      return getStabilizedPortraitImagePathFromRawPath(rawImagePath, projectId);
-    } else {
-      return getStabilizedLandscapeImagePathFromRawPath(
+  ) async =>
+      buildStabilizedImagePath(
+        await getStabilizedDirPath(projectId),
+        projectOrientation,
         rawImagePath,
-        projectId,
       );
-    }
-  }
 
   static Future<String> getStabilizedPortraitImagePathFromRawPath(
     String rawImagePath,
     int projectId,
-  ) async {
-    return path.join(
-      await getStabilizedDirPath(projectId),
-      'portrait',
-      "${path.basenameWithoutExtension(rawImagePath)}.png",
-    );
-  }
+  ) async =>
+      buildStabilizedImagePath(
+        await getStabilizedDirPath(projectId),
+        'portrait',
+        rawImagePath,
+      );
 
   static Future<String> getStabilizedLandscapeImagePathFromRawPath(
     String rawImagePath,
     int projectId,
-  ) async {
-    return path.join(
-      await getStabilizedDirPath(projectId),
-      'landscape',
-      "${path.basenameWithoutExtension(rawImagePath)}.png",
-    );
-  }
+  ) async =>
+      buildStabilizedImagePath(
+        await getStabilizedDirPath(projectId),
+        'landscape',
+        rawImagePath,
+      );
 
   // Cross-platform temp & permanent data directory path fetchers
   static Future<String> getTemporaryDirPath() async =>
       (await getTemporaryDirectory()).path;
 
   static Future<String> getAppDocumentsDirPath() async {
-    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    if (isDesktop) {
       final supportDir = await getApplicationSupportDirectory();
       final appRoot = Directory(path.join(supportDir.path, 'AgeLapse'));
       if (!await appRoot.exists()) {
@@ -341,9 +350,7 @@ class DirUtils {
             if (name.contains('_flipped') ||
                 name.contains('_rotated_clockwise') ||
                 name.contains('_rotated_counter_clockwise')) {
-              try {
-                await entity.delete();
-              } catch (_) {}
+              await deleteFileIfExists(entity.path);
             }
           }
         }
@@ -391,5 +398,13 @@ class DirUtils {
     }
 
     return validGuidePhotos.first;
+  }
+
+  /// Deletes [filePath] synchronously if it exists. Silently ignores errors.
+  static void safeDeleteFileSync(String filePath) {
+    try {
+      final f = File(filePath);
+      if (f.existsSync()) f.deleteSync();
+    } catch (_) {}
   }
 }

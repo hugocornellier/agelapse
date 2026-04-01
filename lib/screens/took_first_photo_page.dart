@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../styles/styles.dart';
 import '../widgets/desktop_page_scaffold.dart';
+import '../widgets/onboarding_action_button.dart';
 
 class TookFirstPhotoPage extends StatefulWidget {
   final int projectId;
@@ -89,27 +90,10 @@ class TookFirstPhotoPageState extends State<TookFirstPhotoPage> {
   Widget _buildActionButton(String text) {
     bool? takingGuidePhoto = text == "Take Guide Photo";
 
-    return FractionallySizedBox(
-      widthFactor: 1.0,
-      child: ElevatedButton(
-        onPressed: () => navigateToIndex(takingGuidePhoto: takingGuidePhoto),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.accentDark,
-          minimumSize: const Size(double.infinity, 50),
-          padding: const EdgeInsets.symmetric(vertical: 18.0),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6.0),
-          ),
-        ),
-        child: Text(
-          text.toUpperCase(),
-          style: TextStyle(
-            fontSize: AppTypography.lg,
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
+    return OnboardingActionButton(
+      text: text,
+      onPressed: () => navigateToIndex(takingGuidePhoto: takingGuidePhoto),
+      textColor: Colors.white,
     );
   }
 

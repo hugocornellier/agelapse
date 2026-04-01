@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:agelapse/widgets/create_project_sheet.dart';
+import 'package:agelapse/utils/gallery_utils.dart';
+import 'package:agelapse/utils/project_utils.dart';
 
 /// Widget tests for CreateProjectSheet.
 void main() {
@@ -58,17 +60,17 @@ void main() {
     });
   });
 
-  group('CreateProjectSheetState Static Methods', () {
+  group('Shared Static Methods (moved to utils)', () {
     test('checkForStabilizedImage method exists', () {
-      expect(CreateProjectSheetState.checkForStabilizedImage, isA<Function>());
+      expect(GalleryUtils.checkForStabilizedImage, isA<Function>());
     });
 
     test('photoWasTakenToday method exists', () {
-      expect(CreateProjectSheetState.photoWasTakenToday, isA<Function>());
+      expect(ProjectUtils.photoWasTakenToday, isA<Function>());
     });
 
     test('checkForStabilizedImage returns Future<String?>', () {
-      final result = CreateProjectSheetState.checkForStabilizedImage(
+      final result = GalleryUtils.checkForStabilizedImage(
         '/nonexistent',
       );
       expect(result, isA<Future<String?>>());
@@ -77,13 +79,13 @@ void main() {
     // Note: photoWasTakenToday requires database access so we only verify the method signature
     test('photoWasTakenToday method signature is correct', () {
       // Verify the method exists and accepts int parameter
-      expect(CreateProjectSheetState.photoWasTakenToday, isA<Function>());
+      expect(ProjectUtils.photoWasTakenToday, isA<Function>());
     });
 
     test(
       'checkForStabilizedImage returns null for nonexistent directory',
       () async {
-        final result = await CreateProjectSheetState.checkForStabilizedImage(
+        final result = await GalleryUtils.checkForStabilizedImage(
           '/nonexistent/path/that/does/not/exist',
         );
         expect(result, isNull);

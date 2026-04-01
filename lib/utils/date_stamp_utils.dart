@@ -131,24 +131,6 @@ class DateStampUtils {
     }
   }
 
-  /// Get display name for font option (async version that handles custom fonts).
-  static Future<String> getFontDisplayNameAsync(String font) async {
-    // First check bundled fonts
-    if (!isCustomFont(font)) {
-      return getFontDisplayName(font);
-    }
-
-    // It's a custom font - get display name from CustomFontManager
-    final customFont =
-        await CustomFontManager.instance.getCustomFontByFamilyName(font);
-    if (customFont != null) {
-      return customFont.displayName;
-    }
-
-    // Fallback
-    return 'Custom Font';
-  }
-
   /// Check if a font family name is a custom font.
   static bool isCustomFont(String fontFamily) {
     return fontFamily.startsWith(CustomFontManager.customFontPrefix);
@@ -157,14 +139,6 @@ class DateStampUtils {
   /// Check if a font family name is a bundled font.
   static bool isBundledFont(String fontFamily) {
     return bundledFonts.contains(fontFamily);
-  }
-
-  /// Get all available fonts (bundled + custom).
-  /// Returns a list of font family names.
-  static Future<List<String>> getAllAvailableFonts() async {
-    final customFonts = await CustomFontManager.instance.getAllCustomFonts();
-    final customFamilyNames = customFonts.map((f) => f.familyName).toList();
-    return [...bundledFonts, ...customFamilyNames];
   }
 
   /// Resolve a font family to ensure it's available.
@@ -293,25 +267,6 @@ class DateStampUtils {
     return exportSize == sizeSameAsGallery ? gallerySize : exportSize;
   }
 
-  /// Get text style for gallery thumbnail date labels.
-  /// Uses a semi-transparent background pill for readability.
-  /// Uses theme-independent PhotoOverlayColors for visibility on photos.
-  static TextStyle getGalleryLabelStyle(double fontSize, {String? fontFamily}) {
-    return TextStyle(
-      fontFamily: fontFamily ?? defaultFont,
-      fontSize: fontSize,
-      fontWeight: FontWeight.w500,
-      color: PhotoOverlayColors.text,
-      shadows: [
-        Shadow(
-          offset: const Offset(0, 1),
-          blurRadius: 2,
-          color: PhotoOverlayColors.textShadow,
-        ),
-      ],
-    );
-  }
-
   /// Get text style for export date stamp.
   /// Includes text shadow for readability on any background.
   /// Uses theme-independent PhotoOverlayColors for visibility on photos.
@@ -374,24 +329,6 @@ class DateStampUtils {
     );
   }
 
-  /// Get display name for gallery format option.
-  static String getGalleryFormatDisplayName(String format) {
-    switch (format) {
-      case galleryFormatMMYY:
-        return 'MM/YY';
-      case galleryFormatMMMDD:
-        return 'MMM DD';
-      case galleryFormatMMMDDYY:
-        return "MMM DD 'YY";
-      case galleryFormatDDMMM:
-        return 'DD MMM';
-      case galleryFormatMMMYYYY:
-        return 'MMM YYYY';
-      default:
-        return 'MM/YY';
-    }
-  }
-
   /// Get example text for gallery format option.
   static String getGalleryFormatExample(String format) {
     final now = DateTime.now();
@@ -399,24 +336,6 @@ class DateStampUtils {
       return DateFormat(format).format(now);
     } catch (e) {
       return '01/24';
-    }
-  }
-
-  /// Get display name for export format option.
-  static String getExportFormatDisplayName(String format) {
-    switch (format) {
-      case exportFormatISO:
-        return 'YYYY-MM-DD';
-      case exportFormatUS:
-        return 'MM/DD/YYYY';
-      case exportFormatEU:
-        return 'DD/MM/YYYY';
-      case exportFormatLong:
-        return 'MMM DD, YYYY';
-      case exportFormatShort:
-        return 'DD MMM YYYY';
-      default:
-        return 'MMM DD, YYYY';
     }
   }
 
@@ -430,72 +349,36 @@ class DateStampUtils {
     }
   }
 
-  /// Get display name for position option.
-  static String getPositionDisplayName(String position) {
-    switch (position.toLowerCase()) {
-      case positionLowerRight:
-        return 'Lower right';
-      case positionLowerLeft:
-        return 'Lower left';
-      case positionUpperRight:
-        return 'Upper right';
-      case positionUpperLeft:
-        return 'Upper left';
-      default:
-        return 'Lower right';
-    }
-  }
-
   // ==================== Custom Format Validation ====================
 
   /// Validate a custom date format pattern for gallery (compact, date only).
   /// Returns null if valid, or an error message if invalid.
-  static String? validateGalleryFormat(String pattern) {
-    if (pattern.isEmpty) {
-      return 'Format cannot be empty';
-    }
-    if (pattern.length > galleryFormatMaxLength) {
-      return 'Maximum $galleryFormatMaxLength characters';
-    }
-
-    // Must contain at least one date token
-    if (!_containsDateToken(pattern)) {
-      return 'Must include at least one date token';
-    }
-
-    // Gallery formats should not include time tokens
-    if (_containsTimeToken(pattern)) {
-      return 'Time tokens not available for thumbnails';
-    }
-
-    // Try parsing to validate
-    try {
-      DateFormat(pattern).format(DateTime.now());
-      return null; // Valid
-    } catch (e) {
-      return 'Invalid format pattern';
-    }
-  }
+  static String? validateGalleryFormat(String pattern) =>
+      _validateFormatPattern(pattern, galleryFormatMaxLength, allowTime: false);
 
   /// Validate a custom date format pattern for export (full, date + time allowed).
   /// Returns null if valid, or an error message if invalid.
-  static String? validateExportFormat(String pattern) {
-    if (pattern.isEmpty) {
-      return 'Format cannot be empty';
-    }
-    if (pattern.length > exportFormatMaxLength) {
-      return 'Maximum $exportFormatMaxLength characters';
-    }
+  static String? validateExportFormat(String pattern) =>
+      _validateFormatPattern(pattern, exportFormatMaxLength, allowTime: true);
 
-    // Must contain at least one date token
+  /// Shared format validation logic.
+  /// [allowTime] — if false, rejects patterns containing time tokens.
+  static String? _validateFormatPattern(
+    String pattern,
+    int maxLength, {
+    required bool allowTime,
+  }) {
+    if (pattern.isEmpty) return 'Format cannot be empty';
+    if (pattern.length > maxLength) return 'Maximum $maxLength characters';
     if (!_containsDateToken(pattern)) {
       return 'Must include at least one date token';
     }
-
-    // Try parsing to validate
+    if (!allowTime && _containsTimeToken(pattern)) {
+      return 'Time tokens not available for thumbnails';
+    }
     try {
       DateFormat(pattern).format(DateTime.now());
-      return null; // Valid
+      return null;
     } catch (e) {
       return 'Invalid format pattern';
     }
@@ -588,30 +471,6 @@ Examples
 "EEEE, MMMM d" → Monday, January 5
 "yyyy-MM-dd HH:mm" → 2024-01-05 14:45
 "h:mm a 'on' MMM d" → 2:45 PM on Jan 5''';
-
-  /// Calculate vertical offset when both watermark and date stamp are in the same corner.
-  /// Returns additional Y offset to stack date stamp below/above watermark.
-  static double calculateWatermarkOffset({
-    required String dateStampPosition,
-    required String watermarkPosition,
-    required double textHeight,
-    required double imageHeight,
-    double gap = 10.0,
-  }) {
-    if (dateStampPosition.toLowerCase() != watermarkPosition.toLowerCase()) {
-      return 0.0;
-    }
-
-    // If in same corner, offset based on whether it's upper or lower
-    final isLower = dateStampPosition.toLowerCase().contains('lower');
-    if (isLower) {
-      // Move date stamp up (negative offset since we measure from top)
-      return -(textHeight + gap);
-    } else {
-      // Move date stamp down (positive offset)
-      return textHeight + gap;
-    }
-  }
 
   /// Parse timestamp from filename (format: {timestamp}.{ext})
   static int? parseTimestampFromFilename(String filename) {

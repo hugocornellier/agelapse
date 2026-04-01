@@ -21,10 +21,7 @@ class CustomDropdownButton<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.settingsCardBorder,
-        borderRadius: BorderRadius.circular(8),
-      ),
+      decoration: settingsDropdownDecoration(),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<T>(
           value: value,

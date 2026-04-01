@@ -167,9 +167,7 @@ class ProjectPageState extends State<ProjectPage> {
     if (!mounted || !cacheReady) return;
 
     await outputImageLoader.initialize();
-    if (!mounted) return;
-
-    setState(() {
+    setStateIfMounted(() {
       _loading = false;
     });
   }
@@ -223,8 +221,7 @@ class ProjectPageState extends State<ProjectPage> {
                 constraints: BoxConstraints(maxWidth: maxContentWidth),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: cache.noPhotos ||
-                          !cache.hasOpenedNonEmptyGallery
+                  child: cache.noPhotos || !cache.hasOpenedNonEmptyGallery
                       ? _buildNoPhotosContent(context, includeOutput: true)
                       : _buildDashboardContent(),
                 ),

@@ -13,7 +13,6 @@ void main() {
         imagePath: '/path/to/image.jpg',
         projectId: 1,
         activeProcessingDateNotifier: notifier,
-        onImagesLoaded: () {},
       );
 
       expect(processor.imagePath, '/path/to/image.jpg');
@@ -32,7 +31,6 @@ void main() {
         imagePath: '/path/to/image.png',
         projectId: 2,
         activeProcessingDateNotifier: notifier,
-        onImagesLoaded: () {},
         timestamp: 1234567890,
       );
 
@@ -50,7 +48,6 @@ void main() {
         imagePath: '/path/to/image.heic',
         projectId: 3,
         activeProcessingDateNotifier: notifier,
-        onImagesLoaded: () {},
         increaseSuccessfulImportCount: () {
           importCount++;
         },
@@ -75,7 +72,6 @@ void main() {
         imagePath: '/path/to/image.jpg',
         projectId: 1,
         activeProcessingDateNotifier: notifier,
-        onImagesLoaded: () {},
         timestamp: 123456,
         increaseSuccessfulImportCount: () {},
       );
@@ -94,7 +90,6 @@ void main() {
       expect(processor.imagePath, isNull);
       expect(processor.projectId, isNull);
       expect(processor.activeProcessingDateNotifier, isNull);
-      expect(processor.onImagesLoaded, isNull);
       expect(processor.timestamp, isNull);
       expect(processor.increaseSuccessfulImportCount, isNull);
 
@@ -108,7 +103,6 @@ void main() {
         imagePath: '/path/to/image.jpg',
         projectId: 1,
         activeProcessingDateNotifier: notifier,
-        onImagesLoaded: () {},
       );
 
       // Should not throw
@@ -128,7 +122,6 @@ void main() {
         imagePath: '/path/to/image.jpg',
         projectId: 1,
         activeProcessingDateNotifier: notifier,
-        onImagesLoaded: () {},
       );
 
       expect(processor.imagePath, endsWith('.jpg'));
@@ -144,7 +137,6 @@ void main() {
         imagePath: '/path/to/image.jpeg',
         projectId: 1,
         activeProcessingDateNotifier: notifier,
-        onImagesLoaded: () {},
       );
 
       expect(processor.imagePath, endsWith('.jpeg'));
@@ -160,7 +152,6 @@ void main() {
         imagePath: '/path/to/image.png',
         projectId: 1,
         activeProcessingDateNotifier: notifier,
-        onImagesLoaded: () {},
       );
 
       expect(processor.imagePath, endsWith('.png'));
@@ -176,7 +167,6 @@ void main() {
         imagePath: '/path/to/image.heic',
         projectId: 1,
         activeProcessingDateNotifier: notifier,
-        onImagesLoaded: () {},
       );
 
       expect(processor.imagePath, endsWith('.heic'));
@@ -192,7 +182,6 @@ void main() {
         imagePath: '/path/to/image.avif',
         projectId: 1,
         activeProcessingDateNotifier: notifier,
-        onImagesLoaded: () {},
       );
 
       expect(processor.imagePath, endsWith('.avif'));
@@ -208,7 +197,6 @@ void main() {
         imagePath: '/path/to/image.webp',
         projectId: 1,
         activeProcessingDateNotifier: notifier,
-        onImagesLoaded: () {},
       );
 
       expect(processor.imagePath, endsWith('.webp'));
@@ -226,7 +214,6 @@ void main() {
         imagePath: '/path/with spaces/image file.jpg',
         projectId: 1,
         activeProcessingDateNotifier: notifier,
-        onImagesLoaded: () {},
       );
 
       expect(processor.imagePath, '/path/with spaces/image file.jpg');
@@ -242,7 +229,6 @@ void main() {
         imagePath: '/path/with-dashes_and_underscores/image (1).jpg',
         projectId: 1,
         activeProcessingDateNotifier: notifier,
-        onImagesLoaded: () {},
       );
 
       expect(processor.imagePath, contains('with-dashes_and_underscores'));
@@ -261,7 +247,6 @@ void main() {
         imagePath: longPath,
         projectId: 1,
         activeProcessingDateNotifier: notifier,
-        onImagesLoaded: () {},
       );
 
       expect(processor.imagePath, longPath);
@@ -279,7 +264,6 @@ void main() {
         imagePath: '/path/to/image.jpg',
         projectId: 1,
         activeProcessingDateNotifier: notifier,
-        onImagesLoaded: () {},
       );
 
       expect(notifier.value, '');

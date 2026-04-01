@@ -1,9 +1,8 @@
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:opencv_dart/opencv_dart.dart' as cv;
 
 import '../services/log_service.dart';
+import 'platform_utils.dart';
 
 /// Input parameters for isolated image processing.
 /// All fields must be transferable across isolate boundaries.
@@ -202,7 +201,7 @@ bool get supportsIsolateProcessing {
 
   // Desktop platforms - opencv_dart works in isolates
   // Mobile platforms - needs testing, disabled for now for safety
-  return Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+  return isDesktop;
 }
 
 /// Process image safely with automatic fallback.

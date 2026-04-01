@@ -1,13 +1,13 @@
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../services/database_helper.dart';
 import '../styles/styles.dart';
+import '../utils/platform_utils.dart';
 import '../utils/utils.dart';
 import '../widgets/main_navigation.dart';
+import '../widgets/onboarding_action_button.dart';
 import '../widgets/project_select_sheet.dart';
 import 'create_project_page.dart';
 
@@ -25,9 +25,7 @@ class ProjectsPageState extends State<ProjectsPage> {
   @override
   void initState() {
     super.initState();
-    final bool isDesktop =
-        !kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
-    if (!isDesktop) {
+    if (kIsWeb || !isDesktop) {
       SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     }
     _getProjects();
@@ -43,10 +41,7 @@ class ProjectsPageState extends State<ProjectsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isDesktop =
-        !kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
-
-    Widget bodyContents = isDesktop
+    Widget bodyContents = !kIsWeb && isDesktop
         ? (_projects.isEmpty
             ? _buildWelcomePageDesktop()
             : _buildProjectSelectScreenDesktop())
@@ -82,18 +77,21 @@ class ProjectsPageState extends State<ProjectsPage> {
     );
   }
 
-  Widget _buildWelcomePageDesktop() {
+  Widget _buildWelcomePageDesktop() => _buildWelcomePage(isDesktop: true);
+
+  Widget _buildWelcomePage({bool isDesktop = false}) {
+    final double spacing = isDesktop ? 64 : 96;
     return _buildScrollableWelcome(
       children: [
         const SizedBox(height: 32),
         _buildWaveImage(),
-        const SizedBox(height: 64),
+        SizedBox(height: spacing),
         Image.asset(
           'assets/images/agelapselogo.png',
           width: 160,
           fit: BoxFit.cover,
         ),
-        const SizedBox(height: 64),
+        SizedBox(height: spacing),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: Text(
@@ -107,39 +105,23 @@ class ProjectsPageState extends State<ProjectsPage> {
             ),
           ),
         ),
-        const SizedBox(height: 24),
+        SizedBox(height: isDesktop ? 24 : 36),
         const Spacer(),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32.0),
-          child: _buildActionButton("Create First Project"),
+          child: _buildActionButton(
+            isDesktop ? "Create First Project" : "Create Project",
+          ),
         ),
-        const SizedBox(height: 32),
+        SizedBox(height: isDesktop ? 32 : 64),
       ],
     );
   }
 
   Widget _buildActionButton(String text) {
-    return FractionallySizedBox(
-      widthFactor: 1.0,
-      child: ElevatedButton(
-        onPressed: () => _openCreateProjectPage(),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.accentDark,
-          minimumSize: const Size(double.infinity, 50),
-          padding: const EdgeInsets.symmetric(vertical: 18.0),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6.0),
-          ),
-        ),
-        child: Text(
-          text.toUpperCase(),
-          style: TextStyle(
-            fontSize: AppTypography.lg,
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
+    return OnboardingActionButton(
+      text: text,
+      onPressed: () => _openCreateProjectPage(),
     );
   }
 
@@ -180,42 +162,6 @@ class ProjectsPageState extends State<ProjectsPage> {
     const String imagePath = 'assets/images/wave-tc.png';
 
     return Image.asset(imagePath, width: double.infinity, fit: BoxFit.cover);
-  }
-
-  Widget _buildWelcomePage() {
-    return _buildScrollableWelcome(
-      children: [
-        const SizedBox(height: 32),
-        _buildWaveImage(),
-        const SizedBox(height: 96),
-        Image.asset(
-          'assets/images/agelapselogo.png',
-          width: 160,
-          fit: BoxFit.cover,
-        ),
-        const SizedBox(height: 96),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Text(
-            'The most powerful tool for creating aging timelapses.'
-            '\n\n'
-            '100% free, forever.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: AppTypography.md,
-              color: AppColors.textPrimary,
-            ),
-          ),
-        ),
-        const SizedBox(height: 36),
-        const Spacer(),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32.0),
-          child: _buildActionButton("Create Project"),
-        ),
-        const SizedBox(height: 64),
-      ],
-    );
   }
 
   void navigateToProject(BuildContext context, Map<String, dynamic> project) {

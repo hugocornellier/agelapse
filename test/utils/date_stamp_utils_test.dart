@@ -365,26 +365,6 @@ void main() {
     });
   });
 
-  group('getGalleryLabelStyle', () {
-    test('returns TextStyle with correct properties', () {
-      final style = DateStampUtils.getGalleryLabelStyle(14.0);
-      expect(style.fontFamily, equals('Inter'));
-      expect(style.fontSize, equals(14.0));
-      expect(style.fontWeight, equals(FontWeight.w500));
-      expect(style.color, equals(Colors.white));
-      expect(style.shadows, isNotNull);
-      expect(style.shadows!.length, equals(1));
-    });
-
-    test('uses custom font family when provided', () {
-      final style = DateStampUtils.getGalleryLabelStyle(
-        14.0,
-        fontFamily: 'Roboto',
-      );
-      expect(style.fontFamily, equals('Roboto'));
-    });
-  });
-
   group('getExportTextStyle', () {
     test('returns TextStyle with correct properties', () {
       final style = DateStampUtils.getExportTextStyle(20.0, 1.0);
@@ -410,38 +390,6 @@ void main() {
     });
   });
 
-  group('getGalleryFormatDisplayName', () {
-    test('returns correct display names', () {
-      expect(
-        DateStampUtils.getGalleryFormatDisplayName('MM/yy'),
-        equals('MM/YY'),
-      );
-      expect(
-        DateStampUtils.getGalleryFormatDisplayName('MMM dd'),
-        equals('MMM DD'),
-      );
-      expect(
-        DateStampUtils.getGalleryFormatDisplayName("MMM dd ''yy"),
-        equals("MMM DD 'YY"),
-      );
-      expect(
-        DateStampUtils.getGalleryFormatDisplayName('dd MMM'),
-        equals('DD MMM'),
-      );
-      expect(
-        DateStampUtils.getGalleryFormatDisplayName('MMM yyyy'),
-        equals('MMM YYYY'),
-      );
-    });
-
-    test('returns default for unknown format', () {
-      expect(
-        DateStampUtils.getGalleryFormatDisplayName('unknown'),
-        equals('MM/YY'),
-      );
-    });
-  });
-
   group('getGalleryFormatExample', () {
     test('returns formatted date string', () {
       final result = DateStampUtils.getGalleryFormatExample('MM/yy');
@@ -453,38 +401,6 @@ void main() {
       final result = DateStampUtils.getGalleryFormatExample('INVALID');
       // DateFormat parses many characters, so it returns a string
       expect(result, isA<String>());
-    });
-  });
-
-  group('getExportFormatDisplayName', () {
-    test('returns correct display names', () {
-      expect(
-        DateStampUtils.getExportFormatDisplayName('yyyy-MM-dd'),
-        equals('YYYY-MM-DD'),
-      );
-      expect(
-        DateStampUtils.getExportFormatDisplayName('MM/dd/yyyy'),
-        equals('MM/DD/YYYY'),
-      );
-      expect(
-        DateStampUtils.getExportFormatDisplayName('dd/MM/yyyy'),
-        equals('DD/MM/YYYY'),
-      );
-      expect(
-        DateStampUtils.getExportFormatDisplayName('MMM dd, yyyy'),
-        equals('MMM DD, YYYY'),
-      );
-      expect(
-        DateStampUtils.getExportFormatDisplayName('dd MMM yyyy'),
-        equals('DD MMM YYYY'),
-      );
-    });
-
-    test('returns default for unknown format', () {
-      expect(
-        DateStampUtils.getExportFormatDisplayName('unknown'),
-        equals('MMM DD, YYYY'),
-      );
     });
   });
 
@@ -500,45 +416,6 @@ void main() {
       final result = DateStampUtils.getExportFormatExample('INVALID');
       // DateFormat parses many characters, so it returns a string
       expect(result, isA<String>());
-    });
-  });
-
-  group('getPositionDisplayName', () {
-    test('returns correct display names', () {
-      expect(
-        DateStampUtils.getPositionDisplayName('lower right'),
-        equals('Lower right'),
-      );
-      expect(
-        DateStampUtils.getPositionDisplayName('lower left'),
-        equals('Lower left'),
-      );
-      expect(
-        DateStampUtils.getPositionDisplayName('upper right'),
-        equals('Upper right'),
-      );
-      expect(
-        DateStampUtils.getPositionDisplayName('upper left'),
-        equals('Upper left'),
-      );
-    });
-
-    test('handles case insensitive input', () {
-      expect(
-        DateStampUtils.getPositionDisplayName('LOWER RIGHT'),
-        equals('Lower right'),
-      );
-      expect(
-        DateStampUtils.getPositionDisplayName('Upper Left'),
-        equals('Upper left'),
-      );
-    });
-
-    test('returns default for unknown position', () {
-      expect(
-        DateStampUtils.getPositionDisplayName('center'),
-        equals('Lower right'),
-      );
     });
   });
 
@@ -650,51 +527,6 @@ void main() {
       final result = DateStampUtils.getFormatPreview('yyyy-MM-dd');
       expect(result, isA<String>());
       expect(result.length, greaterThan(0));
-    });
-  });
-
-  group('calculateWatermarkOffset', () {
-    test('returns 0 when positions are different', () {
-      final offset = DateStampUtils.calculateWatermarkOffset(
-        dateStampPosition: 'lower right',
-        watermarkPosition: 'upper left',
-        textHeight: 20,
-        imageHeight: 500,
-      );
-      expect(offset, equals(0.0));
-    });
-
-    test('returns negative offset for same lower corner', () {
-      final offset = DateStampUtils.calculateWatermarkOffset(
-        dateStampPosition: 'lower right',
-        watermarkPosition: 'lower right',
-        textHeight: 20,
-        imageHeight: 500,
-        gap: 10.0,
-      );
-      expect(offset, equals(-30.0)); // -(20 + 10)
-    });
-
-    test('returns positive offset for same upper corner', () {
-      final offset = DateStampUtils.calculateWatermarkOffset(
-        dateStampPosition: 'upper left',
-        watermarkPosition: 'upper left',
-        textHeight: 20,
-        imageHeight: 500,
-        gap: 10.0,
-      );
-      expect(offset, equals(30.0)); // 20 + 10
-    });
-
-    test('handles case insensitive comparison', () {
-      final offset = DateStampUtils.calculateWatermarkOffset(
-        dateStampPosition: 'LOWER RIGHT',
-        watermarkPosition: 'lower right',
-        textHeight: 20,
-        imageHeight: 500,
-        gap: 10.0,
-      );
-      expect(offset, equals(-30.0));
     });
   });
 

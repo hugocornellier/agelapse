@@ -29,6 +29,10 @@ import 'styles/styles.dart';
 /// Global navigator key for menu bar actions.
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+/// Tracks whether window manager has been initialized (for aggregator test
+/// runs where main() is called multiple times in the same process).
+bool _windowManagerInitialized = false;
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await LogService.instance.initialize();
@@ -44,44 +48,50 @@ Future<void> _main() async {
 
   VideoPlayerMediaKit.ensureInitialized(linux: true);
 
-  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+  if (isDesktop) {
     await DB.instance.createTablesIfNotExist();
     // Initialize custom fonts after database is ready
     await CustomFontManager.instance.initialize();
-    await windowManager.ensureInitialized();
+    // Window manager setup must only run once per process. In aggregator test
+    // runs, main() is called multiple times — repeated waitUntilReadyToShow
+    // calls hang because the window is already initialized.
+    if (!_windowManagerInitialized) {
+      _windowManagerInitialized = true;
+      await windowManager.ensureInitialized();
 
-    final List<Map<String, dynamic>> projects =
-        await DB.instance.getAllProjects();
-    final bool hasProjects = projects.isNotEmpty;
+      final List<Map<String, dynamic>> projects =
+          await DB.instance.getAllProjects();
+      final bool hasProjects = projects.isNotEmpty;
 
-    final Size startSize =
-        hasProjects ? kWindowSizeDefault : kWindowSizeWelcome;
-    final Size minSize =
-        hasProjects ? kWindowMinSizeDefault : kWindowMinSizeWelcome;
+      final Size startSize =
+          hasProjects ? kWindowSizeDefault : kWindowSizeWelcome;
+      final Size minSize =
+          hasProjects ? kWindowMinSizeDefault : kWindowMinSizeWelcome;
 
-    final options = WindowOptions(
-      size: startSize,
-      minimumSize: minSize,
-      center: true,
-      title: 'AgeLapse v2.5.0',
-      titleBarStyle: hasCustomTitleBar ? TitleBarStyle.hidden : null,
-    );
+      final options = WindowOptions(
+        size: startSize,
+        minimumSize: minSize,
+        center: true,
+        title: 'AgeLapse v2.5.0',
+        titleBarStyle: hasCustomTitleBar ? TitleBarStyle.hidden : null,
+      );
 
-    await windowManager.waitUntilReadyToShow(options, () async {
-      if (!test_config.isTestMode) {
-        await windowManager.show();
-        await windowManager.focus();
-      }
-
-      if (!hasProjects) {
-        final currentSize = await windowManager.getSize();
-        if (currentSize.height < kWindowMinSizeWelcome.height) {
-          await windowManager.setSize(
-            Size(currentSize.width, kWindowMinSizeWelcome.height),
-          );
+      await windowManager.waitUntilReadyToShow(options, () async {
+        if (!test_config.isTestMode) {
+          await windowManager.show();
+          await windowManager.focus();
         }
-      }
-    });
+
+        if (!hasProjects) {
+          final currentSize = await windowManager.getSize();
+          if (currentSize.height < kWindowMinSizeWelcome.height) {
+            await windowManager.setSize(
+              Size(currentSize.width, kWindowMinSizeWelcome.height),
+            );
+          }
+        }
+      });
+    }
   } else {
     FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
@@ -172,7 +182,7 @@ Future<String> _loadThemeMode() async {
 
 /// Updates system UI overlay style based on current theme
 void _updateSystemUiOverlay(bool isLight) {
-  if (Platform.isAndroid || Platform.isIOS) {
+  if (isMobile) {
     SystemChrome.setSystemUIOverlayStyle(
       SystemUiOverlayStyle(
         systemNavigationBarColor:
@@ -210,9 +220,6 @@ class AgeLapse extends StatelessWidget {
 
   Widget _buildApp(BuildContext context, Widget homePage, String theme) {
     MaterialTheme materialTheme = const MaterialTheme(TextTheme());
-    final bool isDesktop =
-        Platform.isMacOS || Platform.isWindows || Platform.isLinux;
-
     final materialApp = ChangeNotifierProvider(
       create: (_) => ThemeProvider(theme, materialTheme),
       child: Consumer<ThemeProvider>(

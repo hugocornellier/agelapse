@@ -43,30 +43,13 @@ jobs:
 
   integration-macos:
     name: Integration macOS ${{ matrix.group }} (${{ matrix.flutter-channel }})
-    runs-on: macos-14
-    timeout-minutes: 120
+    runs-on: macos-15
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
         flutter-channel: [stable, beta]
         group: [fast, video]
-        include:
-          - group: fast
-            test-files: >-
-              smoke_test.dart
-              app_test.dart
-              database_test.dart
-              error_handling_test.dart
-              image_format_test.dart
-              stabilization_test.dart
-              export_test.dart
-              screenshot_test.dart
-              e2e_workflow_test.dart
-          - group: video
-            test-files: >-
-              video_compilation_test.dart
-              video_codec_test.dart
-              video_playback_test.dart
     steps:
       - uses: actions/checkout@v4
 
@@ -88,6 +71,8 @@ jobs:
       - name: Install macOS pods
         working-directory: macos
         run: |
+          if pod install 2>/dev/null; then exit 0; fi
+          echo "pod install failed, retrying with --repo-update..."
           for attempt in 1 2 3; do
             pod install --repo-update && break
             echo "pod install attempt $attempt failed, retrying in $((attempt * 15))s..."
@@ -95,43 +80,15 @@ jobs:
             sleep $((attempt * 15))
           done
 
-      - name: Prewarm macOS build
-        run: flutter build macos --debug
-
-      # Due to a Flutter macOS test runner bug, tests must be run one file
-      # at a time with a process kill between runs. Running them together
-      # causes "Failed to foreground app" / "Error waiting for a debug
-      # connection" errors.
-      - name: Run integration tests (sequential, one file at a time)
-        run: |
-          set -eo pipefail
-          read -ra TEST_FILES <<< "${{ matrix.test-files }}"
-          FAILED=()
-          for f in "${TEST_FILES[@]}"; do
-            echo "========================================="
-            echo "Running: $f"
-            echo "========================================="
-            pkill -9 -f "agelapse" 2>/dev/null || true
-            sleep 2
-            if ! flutter test "integration_test/$f" -d macos; then
-              FAILED+=("$f")
-              echo "::error::FAILED: $f"
-            fi
-          done
-          if [ ${#FAILED[@]} -gt 0 ]; then
-            echo ""
-            echo "========================================="
-            echo "FAILED TESTS:"
-            printf '  - %s\n' "${FAILED[@]}"
-            echo "========================================="
-            exit 1
-          fi
-          echo "All ${#TEST_FILES[@]} test files passed."
+      # Aggregator files run all tests in a single build+launch, avoiding
+      # the per-file rebuild overhead and the "debug connection" bug.
+      - name: Run integration tests
+        run: flutter test "integration_test/desktop_${{ matrix.group }}.dart" -d macos --reporter expanded
 
   integration-ios:
     name: Integration iOS (${{ matrix.flutter-channel }})
-    runs-on: macos-14
-    timeout-minutes: 240
+    runs-on: macos-15
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
@@ -139,8 +96,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select Xcode 16.2
-        run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+      - name: Select Xcode 26.2
+        run: sudo xcode-select -s /Applications/Xcode_26.2.app/Contents/Developer
 
       - uses: subosito/flutter-action@v2
         with:
@@ -160,6 +117,8 @@ jobs:
       - name: Install iOS pods
         working-directory: ios
         run: |
+          if pod install 2>/dev/null; then exit 0; fi
+          echo "pod install failed, retrying with --repo-update..."
           for attempt in 1 2 3; do
             pod install --repo-update && break
             echo "pod install attempt $attempt failed, retrying in $((attempt * 15))s..."
@@ -174,7 +133,7 @@ jobs:
         run: |
           RUNTIME=$(xcrun simctl list runtimes | grep -oE 'com.apple.CoreSimulator.SimRuntime.iOS-[0-9-]+' | tail -1)
           echo "Using runtime: $RUNTIME"
-          UDID=$(xcrun simctl create "CI-iPhone" "iPhone 15" "$RUNTIME")
+          UDID=$(xcrun simctl create "CI-iPhone" "iPhone 16" "$RUNTIME")
           echo "Created simulator: $UDID"
           xcrun simctl boot "$UDID"
           xcrun simctl bootstatus "$UDID" -b
@@ -187,11 +146,18 @@ jobs:
       - name: Prewarm Xcode build
         run: flutter build ios --simulator --debug --no-codesign
 
-      - name: Run integration tests
+      # Aggregator files run all tests in a single build+launch, avoiding
+      # the per-file Xcode rebuild overhead (~1 min × 16 files saved).
+      - name: Run fast integration tests
         run: |
           set -o pipefail
           mkdir -p test-results
-          flutter test integration_test/ -d "$SIMULATOR_UDID" --reporter expanded 2>&1 | tee test-results/all.log
+          flutter test integration_test/mobile_fast.dart -d "$SIMULATOR_UDID" --reporter expanded 2>&1 | tee test-results/fast.log
+
+      - name: Run video integration tests
+        run: |
+          set -o pipefail
+          flutter test integration_test/mobile_video.dart -d "$SIMULATOR_UDID" --reporter expanded 2>&1 | tee test-results/video.log
 
       - name: Upload test logs
         if: failure()
@@ -207,7 +173,7 @@ jobs:
   integration-android:
     name: Integration Android (${{ matrix.flutter-channel }})
     runs-on: ubuntu-latest
-    timeout-minutes: 150
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -257,6 +223,8 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
+      # Aggregator files run all tests in a single build+launch, avoiding
+      # the per-file Gradle rebuild overhead (~40s × 17 files saved).
       - name: Run integration tests on Android emulator
         id: android-tests
         uses: reactivecircus/android-emulator-runner@v2
@@ -267,48 +235,22 @@ jobs:
           profile: pixel_6
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
-          script: flutter test integration_test/ -d emulator-5554 2>&1 | tee /tmp/test-output.log; exit 0
-
-      - name: Verify test results
-        run: |
-          if grep -q "Some tests failed" /tmp/test-output.log; then
-            echo "::error::Integration tests had failures"
-            exit 1
-          fi
-          if grep -qE "^🎉 [0-9]+ tests passed" /tmp/test-output.log; then
-            echo "All tests passed"
-          else
-            echo "::error::Could not verify test results"
-            exit 1
-          fi
+          script: |
+            flutter test integration_test/mobile_fast.dart -d emulator-5554 --reporter expanded 2>&1 | tee /tmp/test-fast.log
+            FAST_EXIT=$?
+            flutter test integration_test/mobile_video.dart -d emulator-5554 --reporter expanded 2>&1 | tee /tmp/test-video.log
+            VIDEO_EXIT=$?
+            if [ $FAST_EXIT -ne 0 ] || [ $VIDEO_EXIT -ne 0 ]; then exit 1; fi
 
   integration-linux:
     name: Integration Linux ${{ matrix.group }} (${{ matrix.flutter-channel }})
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
         flutter-channel: [stable, beta]
         group: [fast, video]
-        include:
-          - group: fast
-            test-files: >-
-              smoke_test.dart
-              app_test.dart
-              database_test.dart
-              error_handling_test.dart
-              image_format_test.dart
-              stabilization_test.dart
-              export_test.dart
-              screenshot_test.dart
-              e2e_workflow_test.dart
-          # video_playback_test.dart is excluded on Linux because mpv/media_kit
-          # hangs indefinitely under Xvfb with no GPU (same issue as Windows).
-          - group: video
-            test-files: >-
-              video_compilation_test.dart
-              video_codec_test.dart
     steps:
       - uses: actions/checkout@v4
 
@@ -335,62 +277,19 @@ jobs:
       - name: Prewarm Linux build
         run: flutter build linux --debug
 
-      # Linux has the same "Error waiting for a debug connection" bug as
-      # macOS/Windows when running multiple test files together. Run sequentially.
-      - name: Run integration tests (sequential, one file at a time)
-        run: |
-          set -eo pipefail
-          read -ra TEST_FILES <<< "${{ matrix.test-files }}"
-          FAILED=()
-          for f in "${TEST_FILES[@]}"; do
-            echo "========================================="
-            echo "Running: $f"
-            echo "========================================="
-            pkill -9 -f "agelapse" 2>/dev/null || true
-            sleep 2
-            if ! xvfb-run flutter test "integration_test/$f" -d linux; then
-              FAILED+=("$f")
-              echo "::error::FAILED: $f"
-            fi
-          done
-          if [ ${#FAILED[@]} -gt 0 ]; then
-            echo ""
-            echo "========================================="
-            echo "FAILED TESTS:"
-            printf '  - %s\n' "${FAILED[@]}"
-            echo "========================================="
-            exit 1
-          fi
-          echo "All ${#TEST_FILES[@]} test files passed."
+      # Aggregator files run all tests in a single build+launch.
+      - name: Run integration tests
+        run: xvfb-run flutter test "integration_test/desktop_${{ matrix.group }}.dart" -d linux --reporter expanded
 
   integration-windows:
     name: Integration Windows ${{ matrix.group }} (${{ matrix.flutter-channel }})
     runs-on: windows-latest
-    timeout-minutes: 120
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
         flutter-channel: [stable, beta]
         group: [fast, video]
-        include:
-          - group: fast
-            test-files: >-
-              smoke_test.dart
-              app_test.dart
-              database_test.dart
-              error_handling_test.dart
-              image_format_test.dart
-              stabilization_test.dart
-              export_test.dart
-              screenshot_test.dart
-              e2e_workflow_test.dart
-          # video_playback_test.dart is excluded on Windows because the CI
-          # runner has no video playback backend (Windows Media Foundation
-          # requires a desktop session with GPU).
-          - group: video
-            test-files: >-
-              video_compilation_test.dart
-              video_codec_test.dart
     steps:
       - uses: actions/checkout@v4
 
@@ -412,41 +311,20 @@ jobs:
       - name: Prewarm Windows build
         run: flutter build windows --debug
 
-      # Windows has the same "Error waiting for a debug connection" bug as
-      # macOS when running multiple test files together. Run sequentially.
-      - name: Run integration tests (sequential, one file at a time)
+      # Aggregator files run all tests in a single build+launch.
+      # Handle known libheif DLL teardown crash on Windows where the
+      # process crashes during exit after all tests pass.
+      - name: Run integration tests
         shell: bash
         run: |
-          set -eo pipefail
-          IFS=' ' read -ra TEST_FILES <<< "${{ matrix.test-files }}"
-          FAILED=()
-          for f in "${TEST_FILES[@]}"; do
-            echo "========================================="
-            echo "Running: $f"
-            echo "========================================="
-            taskkill //F //IM "agelapse.exe" 2>/dev/null || true
-            sleep 2
-            TEST_OUTPUT=$(mktemp)
-            EXIT_CODE=0
-            flutter test "integration_test/$f" -d windows 2>&1 | tee "$TEST_OUTPUT" || EXIT_CODE=$?
-            if [ "$EXIT_CODE" -ne 0 ]; then
-              # Handle known libheif DLL teardown crash on Windows where the
-              # process crashes during exit after all tests pass.
-              if grep -q "tests passed" "$TEST_OUTPUT" && ! grep -q "failed" "$TEST_OUTPUT"; then
-                echo "::warning::$f exited $EXIT_CODE but all tests passed (process teardown crash — ignored)"
-              else
-                FAILED+=("$f")
-                echo "::error::FAILED: $f"
-              fi
+          TEST_OUTPUT=$(mktemp)
+          EXIT_CODE=0
+          flutter test "integration_test/desktop_${{ matrix.group }}.dart" -d windows --reporter expanded 2>&1 | tee "$TEST_OUTPUT" || EXIT_CODE=$?
+          if [ "$EXIT_CODE" -ne 0 ]; then
+            if grep -q "tests passed" "$TEST_OUTPUT" && ! grep -q "failed" "$TEST_OUTPUT"; then
+              echo "::warning::Tests exited $EXIT_CODE but all tests passed (process teardown crash — ignored)"
+            else
+              exit 1
             fi
-            rm -f "$TEST_OUTPUT"
-          done
-          if [ ${#FAILED[@]} -gt 0 ]; then
-            echo ""
-            echo "========================================="
-            echo "FAILED TESTS:"
-            printf '  - %s\n' "${FAILED[@]}"
-            echo "========================================="
-            exit 1
           fi
-          echo "All ${#TEST_FILES[@]} test files passed."
+          rm -f "$TEST_OUTPUT"

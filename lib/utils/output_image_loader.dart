@@ -67,13 +67,7 @@ class OutputImageLoader {
     guideImage?.dispose();
 
     // Load placeholder SVG with eye holes aligned to stabilization guides
-    guideImage = await ProjectUtils.loadSvgImage(
-      'assets/images/person-grey.svg',
-      width: 400,
-      height: 480,
-    );
-    ghostImageOffsetX = 0.105;
-    ghostImageOffsetY = 0.292;
+    await _loadPlaceholderImage();
     hasRealGuideImage = false;
     _guideImagePath = null;
     previewTimestampMs = null;
@@ -125,17 +119,8 @@ class OutputImageLoader {
       final stabilizedColumn = DB.instance.getStabilizedColumn(
         projectOrientation!,
       );
-      final stabColOffsetX = "${stabilizedColumn}OffsetX";
-      final stabColOffsetY = "${stabilizedColumn}OffsetY";
-
-      final rawOffsetX = guidePhoto[stabColOffsetX];
-      final rawOffsetY = guidePhoto[stabColOffsetY];
-      final newOffsetX = rawOffsetX is double
-          ? rawOffsetX
-          : double.tryParse(rawOffsetX?.toString() ?? '');
-      final newOffsetY = rawOffsetY is double
-          ? rawOffsetY
-          : double.tryParse(rawOffsetY?.toString() ?? '');
+      final (newOffsetX, newOffsetY) =
+          _extractOffsets(guidePhoto, stabilizedColumn);
 
       // Dispose old image before loading new one
       guideImage?.dispose();
@@ -156,10 +141,7 @@ class OutputImageLoader {
 
         // Load timezone offset for this photo
         if (previewTimestampMs != null) {
-          final offsets = await CaptureTimezone.loadOffsetsForFiles([
-            previewTimestampMs.toString(),
-          ], projectId);
-          captureOffsetMinutes = offsets[previewTimestampMs.toString()];
+          await _loadTimezoneOffset(previewTimestampMs!);
         }
       }
 
@@ -168,6 +150,13 @@ class OutputImageLoader {
       LogService.instance.log('Failed to load real guide image: $e');
       return false;
     }
+  }
+
+  Future<void> _loadTimezoneOffset(int timestampMs) async {
+    final offsets = await CaptureTimezone.loadOffsetsForFiles([
+      timestampMs.toString(),
+    ], projectId);
+    captureOffsetMinutes = offsets[timestampMs.toString()];
   }
 
   Future<void> _loadSettings() async {
@@ -315,6 +304,25 @@ class OutputImageLoader {
     return '${dims.$1} × ${dims.$2}';
   }
 
+  Future<void> _loadPlaceholderImage() async {
+    guideImage = await ProjectUtils.loadSvgImage(
+      'assets/images/person-grey.svg',
+      width: 400,
+      height: 480,
+    );
+    ghostImageOffsetX = 0.105;
+    ghostImageOffsetY = 0.292;
+  }
+
+  (double?, double?) _extractOffsets(
+      Map<String, dynamic> guidePhoto, String stabilizedColumn) {
+    final rawX = guidePhoto["${stabilizedColumn}OffsetX"];
+    final rawY = guidePhoto["${stabilizedColumn}OffsetY"];
+    final x = rawX is double ? rawX : double.tryParse(rawX?.toString() ?? '');
+    final y = rawY is double ? rawY : double.tryParse(rawY?.toString() ?? '');
+    return (x, y);
+  }
+
   Future<void> _initializeImageDirectory() async {
     try {
       final Map<String, Object?>? guidePhoto = await DirUtils.getGuidePhoto(
@@ -330,17 +338,8 @@ class OutputImageLoader {
         final stabilizedColumn = DB.instance.getStabilizedColumn(
           projectOrientation!,
         );
-        final stabColOffsetX = "${stabilizedColumn}OffsetX";
-        final stabColOffsetY = "${stabilizedColumn}OffsetY";
-
-        final rawOffsetX = guidePhoto[stabColOffsetX];
-        final rawOffsetY = guidePhoto[stabColOffsetY];
-        final offsetXData = rawOffsetX is double
-            ? rawOffsetX
-            : double.tryParse(rawOffsetX?.toString() ?? '');
-        final offsetYData = rawOffsetY is double
-            ? rawOffsetY
-            : double.tryParse(rawOffsetY?.toString() ?? '');
+        final (offsetXData, offsetYData) =
+            _extractOffsets(guidePhoto, stabilizedColumn);
 
         ghostImageOffsetX = offsetXData;
         ghostImageOffsetY = offsetYData;
@@ -354,10 +353,7 @@ class OutputImageLoader {
 
           // Load timezone offset for this photo
           if (previewTimestampMs != null) {
-            final offsets = await CaptureTimezone.loadOffsetsForFiles([
-              previewTimestampMs.toString(),
-            ], projectId);
-            captureOffsetMinutes = offsets[previewTimestampMs.toString()];
+            await _loadTimezoneOffset(previewTimestampMs!);
           }
         }
 
@@ -369,22 +365,10 @@ class OutputImageLoader {
           LogService.instance.log(
             "Error caught $e, setting ghostImage to SVG placeholder",
           );
-          guideImage = await ProjectUtils.loadSvgImage(
-            'assets/images/person-grey.svg',
-            width: 400,
-            height: 480,
-          );
-          ghostImageOffsetX = 0.105;
-          ghostImageOffsetY = 0.292;
+          await _loadPlaceholderImage();
         }
       } else {
-        guideImage = await ProjectUtils.loadSvgImage(
-          'assets/images/person-grey.svg',
-          width: 400,
-          height: 480,
-        );
-        ghostImageOffsetX = 0.105;
-        ghostImageOffsetY = 0.292;
+        await _loadPlaceholderImage();
       }
     } catch (e) {
       LogService.instance.log('Failed to initialize image directory: $e');

@@ -144,44 +144,6 @@ void main() {
       });
     });
 
-    group('calculateHorizontalProximityToCenter', () {
-      test('returns zero for point at center', () {
-        final proximity = stabilizer.calculateHorizontalProximityToCenter(
-          Point(500.0, 300.0),
-          1000,
-        );
-        expect(proximity, 0.0);
-      });
-
-      test('returns distance from center for left point', () {
-        final proximity = stabilizer.calculateHorizontalProximityToCenter(
-          Point(100.0, 300.0),
-          1000,
-        );
-        expect(proximity, 400.0);
-      });
-
-      test('returns distance from center for right point', () {
-        final proximity = stabilizer.calculateHorizontalProximityToCenter(
-          Point(900.0, 300.0),
-          1000,
-        );
-        expect(proximity, 400.0);
-      });
-
-      test('y coordinate does not affect horizontal proximity', () {
-        final proximity1 = stabilizer.calculateHorizontalProximityToCenter(
-          Point(200.0, 0.0),
-          1000,
-        );
-        final proximity2 = stabilizer.calculateHorizontalProximityToCenter(
-          Point(200.0, 500.0),
-          1000,
-        );
-        expect(proximity1, proximity2);
-      });
-    });
-
     group('correctionIsNeeded', () {
       test('returns true for high score', () {
         final needed = stabilizer.correctionIsNeeded(
@@ -257,33 +219,6 @@ void main() {
       test('returns true for score just above 0.5', () {
         final needed = stabilizer.correctionIsNeeded(0.51, 0.0, 0.0, 0.0, 0.0);
         expect(needed, isTrue);
-      });
-    });
-
-    group('pow2', () {
-      test('returns 1 for x^0', () {
-        expect(stabilizer.pow2(5.0, 0), 1.0);
-      });
-
-      test('returns x for x^1', () {
-        expect(stabilizer.pow2(5.0, 1), 5.0);
-      });
-
-      test('returns x^2 correctly', () {
-        expect(stabilizer.pow2(3.0, 2), 9.0);
-      });
-
-      test('returns x^3 correctly', () {
-        expect(stabilizer.pow2(2.0, 3), 8.0);
-      });
-
-      test('handles negative base', () {
-        expect(stabilizer.pow2(-2.0, 2), 4.0);
-        expect(stabilizer.pow2(-2.0, 3), -8.0);
-      });
-
-      test('handles decimal base', () {
-        expect(stabilizer.pow2(0.5, 2), 0.25);
       });
     });
   });

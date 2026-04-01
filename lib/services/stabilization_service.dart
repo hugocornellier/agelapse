@@ -450,57 +450,72 @@ class StabilizationService {
     }
   }
 
+  /// Load all video configuration values needed to decide whether to compile.
+  Future<_VideoConfig> _loadVideoConfig(int projectId) async {
+    final newestVideo = await DB.instance.getNewestVideoByProjectId(projectId);
+    // Use cached settings if available, otherwise load fresh
+    final orientation = _currentSettings?.projectOrientation ??
+        await SettingsUtil.loadProjectOrientation(projectId.toString());
+    final stabPhotoCount = await DB.instance
+        .getStabilizedPhotoCountByProjectID(projectId, orientation);
+
+    // Check if video FILE actually exists on disk (not just DB record)
+    // Load settings fresh from DB to get correct file extension
+    final projectIdStr = projectId.toString();
+    final bgColor = await SettingsUtil.loadBackgroundColor(projectIdStr);
+    final isTransparent = SettingsUtil.isTransparent(bgColor);
+    final videoBg = isTransparent
+        ? await SettingsUtil.loadVideoBackground(projectIdStr)
+        : VideoBackground.solidColor(bgColor);
+    final videoHasAlpha = isTransparent && videoBg.keepTransparent;
+    final userCodec = await SettingsUtil.loadVideoCodec(projectIdStr);
+    final effectiveCodec = videoHasAlpha
+        ? VideoCodec.defaultCodec(isTransparentVideo: true)
+        : userCodec;
+
+    final videoPath = await DirUtils.getVideoOutputPath(
+      projectId,
+      orientation,
+      codec: effectiveCodec,
+    );
+    final videoFileExists = await File(videoPath).exists();
+
+    final videoIsNull = newestVideo == null || !videoFileExists;
+    final settingsHaveChanged = await VideoUtils.videoOutputSettingsChanged(
+      projectId,
+      newestVideo,
+    );
+    final newVideoNeededRaw = await DB.instance.getNewVideoNeeded(projectId);
+    final newVideoNeeded = newVideoNeededRaw == 1;
+
+    return _VideoConfig(
+      newestVideo: newestVideo,
+      stabPhotoCount: stabPhotoCount,
+      isTransparent: isTransparent,
+      effectiveCodec: effectiveCodec,
+      videoFileExists: videoFileExists,
+      videoIsNull: videoIsNull,
+      settingsHaveChanged: settingsHaveChanged,
+      newVideoNeeded: newVideoNeeded,
+    );
+  }
+
   /// Check if a video needs to be created without actually creating it.
   /// Used to determine if we should show progress UI when no photos need stabilizing.
   Future<bool> _checkIfVideoNeeded(int projectId) async {
     try {
-      final newestVideo = await DB.instance.getNewestVideoByProjectId(
-        projectId,
-      );
-      // Use cached settings if available, otherwise load fresh
-      final orientation = _currentSettings?.projectOrientation ??
-          await SettingsUtil.loadProjectOrientation(projectId.toString());
-      final stabPhotoCount = await DB.instance
-          .getStabilizedPhotoCountByProjectID(projectId, orientation);
+      final cfg = await _loadVideoConfig(projectId);
 
-      // Check if video FILE actually exists on disk (not just DB record)
-      // Load settings fresh from DB to get correct file extension
-      final projectIdStr = projectId.toString();
-      final bgColor = await SettingsUtil.loadBackgroundColor(projectIdStr);
-      final isTransparent = SettingsUtil.isTransparent(bgColor);
-      final videoBg = isTransparent
-          ? await SettingsUtil.loadVideoBackground(projectIdStr)
-          : VideoBackground.solidColor(bgColor);
-      final videoHasAlpha = isTransparent && videoBg.keepTransparent;
-      final userCodec = await SettingsUtil.loadVideoCodec(projectIdStr);
-      final effectiveCodec = videoHasAlpha
-          ? VideoCodec.defaultCodec(isTransparentVideo: true)
-          : userCodec;
-
-      final videoPath = await DirUtils.getVideoOutputPath(
-        projectId,
-        orientation,
-        codec: effectiveCodec,
-      );
-      final videoFileExists = await File(videoPath).exists();
-
-      final videoIsNull = newestVideo == null || !videoFileExists;
-      final settingsHaveChanged = await VideoUtils.videoOutputSettingsChanged(
-        projectId,
-        newestVideo,
-      );
-      final newVideoNeededRaw = await DB.instance.getNewVideoNeeded(projectId);
-      final newVideoNeeded = newVideoNeededRaw == 1;
-
-      final result = newVideoNeeded ||
-          ((videoIsNull || settingsHaveChanged) && stabPhotoCount > 1);
+      final result = cfg.newVideoNeeded ||
+          ((cfg.videoIsNull || cfg.settingsHaveChanged) &&
+              cfg.stabPhotoCount > 1);
 
       LogService.instance.log(
         'StabilizationService: _checkIfVideoNeeded - '
-        'newestVideo=${newestVideo != null}, videoFileExists=$videoFileExists, '
-        'videoIsNull=$videoIsNull, settingsChanged=$settingsHaveChanged, '
-        'newVideoNeeded=$newVideoNeeded, stabPhotoCount=$stabPhotoCount, '
-        'isTransparent=$isTransparent, codec=${effectiveCodec.name}, result=$result',
+        'newestVideo=${cfg.newestVideo != null}, videoFileExists=${cfg.videoFileExists}, '
+        'videoIsNull=${cfg.videoIsNull}, settingsChanged=${cfg.settingsHaveChanged}, '
+        'newVideoNeeded=${cfg.newVideoNeeded}, stabPhotoCount=${cfg.stabPhotoCount}, '
+        'isTransparent=${cfg.isTransparent}, codec=${cfg.effectiveCodec.name}, result=$result',
       );
 
       return result;
@@ -521,55 +536,22 @@ class StabilizationService {
         projectId.toString(),
       );
 
-      final newestVideo = await DB.instance.getNewestVideoByProjectId(
-        projectId,
-      );
-      // Use cached settings if available, otherwise load fresh
-      final orientation = _currentSettings?.projectOrientation ??
-          await SettingsUtil.loadProjectOrientation(projectId.toString());
-      final stabPhotoCount = await DB.instance
-          .getStabilizedPhotoCountByProjectID(projectId, orientation);
+      final cfg = await _loadVideoConfig(projectId);
 
-      // Check if video FILE actually exists on disk (not just DB record)
-      // Load settings fresh from DB to get correct file extension
-      final projectIdStr = projectId.toString();
-      final bgColor = await SettingsUtil.loadBackgroundColor(projectIdStr);
-      final isTransparent = SettingsUtil.isTransparent(bgColor);
-      final videoBg = isTransparent
-          ? await SettingsUtil.loadVideoBackground(projectIdStr)
-          : VideoBackground.solidColor(bgColor);
-      final videoHasAlpha = isTransparent && videoBg.keepTransparent;
-      final userCodec = await SettingsUtil.loadVideoCodec(projectIdStr);
-      final effectiveCodec = videoHasAlpha
-          ? VideoCodec.defaultCodec(isTransparentVideo: true)
-          : userCodec;
-
-      final videoPath = await DirUtils.getVideoOutputPath(
-        projectId,
-        orientation,
-        codec: effectiveCodec,
-      );
-      final videoFileExists = await File(videoPath).exists();
-
-      final videoIsNull = newestVideo == null || !videoFileExists;
-      final settingsHaveChanged = await VideoUtils.videoOutputSettingsChanged(
-        projectId,
-        newestVideo,
-      );
       final newPhotosStabilized = _successfullyStabilized > 0;
-      final newVideoNeededRaw = await DB.instance.getNewVideoNeeded(projectId);
-      final newVideoNeeded = newVideoNeededRaw == 1;
 
       // Determine if video compilation is needed
-      final shouldCompile = newVideoNeeded ||
-          ((videoIsNull || settingsHaveChanged || newPhotosStabilized) &&
-              stabPhotoCount > 1);
+      final shouldCompile = cfg.newVideoNeeded ||
+          ((cfg.videoIsNull ||
+                  cfg.settingsHaveChanged ||
+                  newPhotosStabilized) &&
+              cfg.stabPhotoCount > 1);
 
       LogService.instance.log(
         'StabilizationService: _tryCreateVideo - '
-        'videoFileExists=$videoFileExists, videoIsNull=$videoIsNull, '
-        'settingsChanged=$settingsHaveChanged, newPhotosStabilized=$newPhotosStabilized, '
-        'newVideoNeeded=$newVideoNeeded, shouldCompile=$shouldCompile',
+        'videoFileExists=${cfg.videoFileExists}, videoIsNull=${cfg.videoIsNull}, '
+        'settingsChanged=${cfg.settingsHaveChanged}, newPhotosStabilized=$newPhotosStabilized, '
+        'newVideoNeeded=${cfg.newVideoNeeded}, shouldCompile=$shouldCompile',
       );
 
       // If auto-compile is disabled, mark that new video is needed but skip compilation
@@ -587,7 +569,7 @@ class StabilizationService {
         _emitProgress(
           StabilizationProgress.compilingVideo(
             currentFrame: 0,
-            totalFrames: stabPhotoCount,
+            totalFrames: cfg.stabPhotoCount,
             progressPercent: 0.0,
             projectId: projectId,
           ),
@@ -596,19 +578,19 @@ class StabilizationService {
         _currentToken?.throwIfCancelled();
 
         // Start ETA tracking for video compilation
-        VideoUtils.resetVideoStopwatch(stabPhotoCount);
+        VideoUtils.resetVideoStopwatch(cfg.stabPhotoCount);
 
         final result = await VideoUtils.createTimelapseFromProjectId(
           projectId,
           (currentFrame) {
-            final pct = stabPhotoCount > 0
-                ? (currentFrame * 100.0 / stabPhotoCount)
+            final pct = cfg.stabPhotoCount > 0
+                ? (currentFrame * 100.0 / cfg.stabPhotoCount)
                 : 0.0;
             final eta = VideoUtils.calculateVideoEta(currentFrame);
             _emitProgress(
               StabilizationProgress.compilingVideo(
                 currentFrame: currentFrame,
-                totalFrames: stabPhotoCount,
+                totalFrames: cfg.stabPhotoCount,
                 progressPercent: pct,
                 eta: eta,
                 projectId: projectId,
@@ -620,7 +602,7 @@ class StabilizationService {
         // Stop ETA tracking
         VideoUtils.stopVideoStopwatch();
 
-        if (newVideoNeeded && result) {
+        if (cfg.newVideoNeeded && result) {
           DB.instance.setNewVideoNotNeeded(projectId);
         }
 
@@ -697,4 +679,29 @@ class StabilizationService {
   void dispose() {
     _progressController.close();
   }
+}
+
+/// Holds all video configuration values loaded from the DB and settings.
+/// Used to avoid duplicating the loading logic between [StabilizationService._checkIfVideoNeeded]
+/// and [StabilizationService._tryCreateVideo].
+class _VideoConfig {
+  const _VideoConfig({
+    required this.newestVideo,
+    required this.stabPhotoCount,
+    required this.isTransparent,
+    required this.effectiveCodec,
+    required this.videoFileExists,
+    required this.videoIsNull,
+    required this.settingsHaveChanged,
+    required this.newVideoNeeded,
+  });
+
+  final Map<String, dynamic>? newestVideo;
+  final int stabPhotoCount;
+  final bool isTransparent;
+  final VideoCodec effectiveCodec;
+  final bool videoFileExists;
+  final bool videoIsNull;
+  final bool settingsHaveChanged;
+  final bool newVideoNeeded;
 }

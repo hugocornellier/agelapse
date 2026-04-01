@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:agelapse/main.dart' as app;
 import 'package:agelapse/services/database_helper.dart';
-import 'package:agelapse/services/database_import.dart';
+import 'package:agelapse/services/database_import_ffi.dart';
 import 'package:agelapse/services/project_folder_sync_service.dart';
 import 'package:agelapse/services/settings_cache.dart';
 import 'package:agelapse/utils/dir_utils.dart';

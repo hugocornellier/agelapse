@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../styles/styles.dart';
+import '../../widgets/bottom_sheet_container.dart';
+import '../../widgets/bottom_sheet_header.dart';
+import '../../widgets/option_tile.dart';
 
 /// Bottom sheet and option tile builders for gallery import/export operations.
 class GalleryBottomSheets {
@@ -14,59 +17,15 @@ class GalleryBottomSheets {
     String title,
     List<Widget> content,
   ) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20.0, 12.0, 20.0, 20.0),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(20.0),
-          topRight: Radius.circular(20.0),
-        ),
-      ),
+    return BottomSheetContainer(
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.textPrimary.withValues(alpha: 0.24),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: AppTypography.xxl,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: AppColors.textPrimary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.close,
-                      color: AppColors.textPrimary.withValues(alpha: 0.7),
-                      size: 18,
-                    ),
-                  ),
-                ),
-              ],
+            BottomSheetHeader(
+              title: title,
+              onClose: () => Navigator.of(context).pop(),
             ),
             const SizedBox(height: 20),
             ...content,
@@ -85,59 +44,12 @@ class GalleryBottomSheets {
     required String subtitle,
     required VoidCallback? onTap,
   }) {
-    return GestureDetector(
+    return OptionTile(
+      icon: icon,
+      title: title,
+      subtitle: subtitle,
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.textPrimary.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: AppColors.textPrimary.withValues(alpha: 0.08),
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: AppColors.textPrimary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: AppColors.textPrimary, size: 22),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: AppTypography.lg,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: AppColors.textPrimary.withValues(alpha: 0.5),
-                      fontSize: AppTypography.sm,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.chevron_right,
-              color: AppColors.textPrimary.withValues(alpha: 0.3),
-              size: 22,
-            ),
-          ],
-        ),
-      ),
+      useMouseRegion: false,
     );
   }
 
@@ -150,89 +62,40 @@ class GalleryBottomSheets {
     required bool isSelected,
     required ValueChanged<bool> onChanged,
   }) {
-    return GestureDetector(
+    return OptionTile(
+      icon: icon,
+      title: title,
+      subtitle: subtitle,
+      isSelected: isSelected,
       onTap: () => onChanged(!isSelected),
-      child: Container(
-        padding: const EdgeInsets.all(14),
+      useMouseRegion: false,
+      trailing: Container(
+        width: 24,
+        height: 24,
         decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.textPrimary.withValues(alpha: 0.08)
-              : AppColors.textPrimary.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(12),
+          color: isSelected ? AppColors.settingsAccent : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
           border: Border.all(
             color: isSelected
-                ? AppColors.settingsAccent.withValues(alpha: 0.5)
-                : AppColors.textPrimary.withValues(alpha: 0.08),
+                ? AppColors.settingsAccent
+                : AppColors.textPrimary.withValues(alpha: 0.3),
+            width: 2,
           ),
         ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? AppColors.settingsAccent.withValues(alpha: 0.2)
-                    : AppColors.textPrimary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                icon,
-                color: isSelected
-                    ? AppColors.settingsAccent
-                    : AppColors.textPrimary,
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: AppTypography.lg,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: AppColors.textPrimary.withValues(alpha: 0.5),
-                      fontSize: AppTypography.sm,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                color:
-                    isSelected ? AppColors.settingsAccent : Colors.transparent,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: isSelected
-                      ? AppColors.settingsAccent
-                      : AppColors.textPrimary.withValues(alpha: 0.3),
-                  width: 2,
-                ),
-              ),
-              child: isSelected
-                  ? Icon(Icons.check, color: AppColors.textPrimary, size: 16)
-                  : null,
-            ),
-          ],
-        ),
+        child: isSelected
+            ? Icon(Icons.check, color: AppColors.textPrimary, size: 16)
+            : null,
       ),
     );
   }
 
-  /// Builds export progress indicator with spinner and percentage.
-  static Widget buildExportProgressIndicator(double progressPercent) {
+  static Widget _buildStatusCard({
+    required Widget icon,
+    required Color iconBgColor,
+    required String title,
+    String? subtitle,
+    List<Widget>? additionalContent,
+  }) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 32),
@@ -243,39 +106,50 @@ class GalleryBottomSheets {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.textPrimary.withValues(alpha: 0.08),
+              color: iconBgColor,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: SizedBox(
-              width: 28,
-              height: 28,
-              child: CircularProgressIndicator(
-                strokeWidth: 3,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  AppColors.settingsAccent,
-                ),
-              ),
-            ),
+            child: icon,
           ),
           const SizedBox(height: 16),
           Text(
-            'Exporting...',
+            title,
             style: TextStyle(
               color: AppColors.textPrimary.withValues(alpha: 0.9),
               fontSize: AppTypography.lg,
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            '$progressPercent%',
-            style: TextStyle(
-              color: AppColors.textPrimary.withValues(alpha: 0.5),
-              fontSize: AppTypography.md,
+          if (subtitle != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              subtitle,
+              style: TextStyle(
+                color: AppColors.textPrimary.withValues(alpha: 0.5),
+                fontSize: AppTypography.md,
+              ),
             ),
-          ),
+          ],
+          if (additionalContent != null) ...additionalContent,
         ],
       ),
+    );
+  }
+
+  /// Builds export progress indicator with spinner and percentage.
+  static Widget buildExportProgressIndicator(double progressPercent) {
+    return _buildStatusCard(
+      icon: SizedBox(
+        width: 28,
+        height: 28,
+        child: CircularProgressIndicator(
+          strokeWidth: 3,
+          valueColor: AlwaysStoppedAnimation<Color>(AppColors.settingsAccent),
+        ),
+      ),
+      iconBgColor: AppColors.textPrimary.withValues(alpha: 0.08),
+      title: 'Exporting...',
+      subtitle: '$progressPercent%',
     );
   }
 
@@ -283,66 +157,92 @@ class GalleryBottomSheets {
   /// Shows platform-specific save location information.
   static Widget buildExportSuccessState({VoidCallback? onShare}) {
     // Determine platform-specific message
-    final String subtitle;
+    final String platformSubtitle;
     if (Platform.isAndroid) {
-      subtitle = 'Saved to Downloads/AgeLapse Exports';
-    } else if (Platform.isIOS) {
-      subtitle = 'Your photos have been exported to a ZIP file';
+      platformSubtitle = 'Saved to Downloads/AgeLapse Exports';
     } else {
-      subtitle = 'Your photos have been exported to a ZIP file';
+      platformSubtitle = 'Your photos have been exported to a ZIP file';
     }
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
+    return _buildStatusCard(
+      icon: Icon(
+        Icons.check_circle_outline,
+        color: AppColors.success,
+        size: 32,
+      ),
+      iconBgColor: AppColors.success.withValues(alpha: 0.15),
+      title: 'Export Complete!',
+      additionalContent: [
+        const SizedBox(height: 12),
+        // Android: Show save location prominently with folder icon
+        if (Platform.isAndroid) ...[
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: AppColors.success.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
+              color: AppColors.textPrimary.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: AppColors.textPrimary.withValues(alpha: 0.1),
+              ),
             ),
-            child: Icon(
-              Icons.check_circle_outline,
-              color: AppColors.success,
-              size: 32,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.folder_outlined,
+                  color: AppColors.textPrimary.withValues(alpha: 0.7),
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  platformSubtitle,
+                  style: TextStyle(
+                    color: AppColors.textPrimary.withValues(alpha: 0.8),
+                    fontSize: AppTypography.md,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 16),
+        ] else ...[
           Text(
-            'Export Complete!',
+            platformSubtitle,
             style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: AppTypography.lg,
-              fontWeight: FontWeight.w500,
+              color: AppColors.textPrimary.withValues(alpha: 0.5),
+              fontSize: AppTypography.sm,
             ),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 12),
-          // Android: Show save location prominently with folder icon
-          if (Platform.isAndroid) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        ],
+        // Show share button on Android (optional action after save)
+        if (Platform.isAndroid && onShare != null) ...[
+          const SizedBox(height: 20),
+          GestureDetector(
+            onTap: onShare,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 12,
+              ),
               decoration: BoxDecoration(
-                color: AppColors.textPrimary.withValues(alpha: 0.06),
+                color: AppColors.textPrimary.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: AppColors.textPrimary.withValues(alpha: 0.1),
+                  color: AppColors.textPrimary.withValues(alpha: 0.15),
                 ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    Icons.folder_outlined,
-                    color: AppColors.textPrimary.withValues(alpha: 0.7),
+                    Icons.share_outlined,
+                    color: AppColors.textPrimary.withValues(alpha: 0.8),
                     size: 18,
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    subtitle,
+                    'Share',
                     style: TextStyle(
                       color: AppColors.textPrimary.withValues(alpha: 0.8),
                       fontSize: AppTypography.md,
@@ -352,57 +252,9 @@ class GalleryBottomSheets {
                 ],
               ),
             ),
-          ] else ...[
-            Text(
-              subtitle,
-              style: TextStyle(
-                color: AppColors.textPrimary.withValues(alpha: 0.5),
-                fontSize: AppTypography.sm,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-          // Show share button on Android (optional action after save)
-          if (Platform.isAndroid && onShare != null) ...[
-            const SizedBox(height: 20),
-            GestureDetector(
-              onTap: onShare,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.textPrimary.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: AppColors.textPrimary.withValues(alpha: 0.15),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.share_outlined,
-                      color: AppColors.textPrimary.withValues(alpha: 0.8),
-                      size: 18,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Share',
-                      style: TextStyle(
-                        color: AppColors.textPrimary.withValues(alpha: 0.8),
-                        fontSize: AppTypography.md,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+          ),
         ],
-      ),
+      ],
     );
   }
 

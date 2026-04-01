@@ -27,6 +27,9 @@ class DB {
   static const String customFontTable = "CustomFonts";
   static const String deletedLinkedSourcesTable = "DeletedLinkedSources";
 
+  static const String _photoWhereClause = 'timestamp = ? AND projectID = ?';
+  static const String _orderByTimestamp = 'CAST(timestamp AS INTEGER)';
+
   DB._internal();
 
   static DB get instance => _instance;
@@ -166,6 +169,50 @@ class DB {
 
   /* ┌──────────────────────┐
      │                      │
+     │    Private Helpers   │
+     │                      │
+     └──────────────────────┘ */
+
+  Future<T?> _querySingle<T>(
+    String table,
+    String where,
+    List<dynamic> whereArgs,
+    T Function(Map<String, dynamic>) mapper, {
+    List<String>? columns,
+  }) async {
+    final db = await database;
+    final results = await db.query(
+      table,
+      columns: columns,
+      where: where,
+      whereArgs: whereArgs,
+      limit: 1,
+    );
+    if (results.isEmpty) return null;
+    return mapper(results.first);
+  }
+
+  Future<T?> _queryFirstByOrder<T>(
+    String table,
+    String where,
+    List<dynamic> whereArgs,
+    String orderBy,
+    T Function(Map<String, dynamic>) mapper,
+  ) async {
+    final db = await database;
+    final results = await db.query(
+      table,
+      where: where,
+      whereArgs: whereArgs,
+      orderBy: orderBy,
+      limit: 1,
+    );
+    if (results.isEmpty) return null;
+    return mapper(results.first);
+  }
+
+  /* ┌──────────────────────┐
+     │                      │
      │       Projects       │
      │                      │
      └──────────────────────┘ */
@@ -180,42 +227,15 @@ class DB {
     });
   }
 
-  Future<String?> getProjectNameById(int projectId) async {
-    final db = await database;
-    final results = await db.query(
-      projectTable,
-      columns: ['name'],
-      where: 'id = ?',
-      whereArgs: [projectId],
-      limit: 1,
-    );
-    if (results.isNotEmpty) {
-      return results.first['name'] as String;
-    }
-    return null;
-  }
+  Future<String?> getProjectNameById(int projectId) => _querySingle(
+      projectTable, 'id = ?', [projectId], (r) => r['name'] as String,
+      columns: ['name']);
 
-  Future<Map<String, dynamic>?> getProject(int id) async {
-    final db = await database;
-    final results = await db.query(
-      projectTable,
-      where: 'id = ?',
-      whereArgs: [id],
-      limit: 1,
-    );
-    return results.isNotEmpty ? results.first : null;
-  }
+  Future<Map<String, dynamic>?> getProject(int id) =>
+      _querySingle(projectTable, 'id = ?', [id], (r) => r);
 
-  Future<Map<String, dynamic>?> getFirstProjectByName(String name) async {
-    final db = await database;
-    final results = await db.query(
-      projectTable,
-      where: 'name = ?',
-      whereArgs: [name],
-      limit: 1,
-    );
-    return results.isNotEmpty ? results.first : null;
-  }
+  Future<Map<String, dynamic>?> getFirstProjectByName(String name) =>
+      _querySingle(projectTable, 'name = ?', [name], (r) => r);
 
   Future<List<Map<String, dynamic>>> getAllProjects() async {
     final db = await database;
@@ -277,22 +297,9 @@ class DB {
     }
   }
 
-  Future<String?> getProjectTypeByProjectId(int projectId) async {
-    final db = await database;
-    final results = await db.query(
-      projectTable,
-      columns: ['type'],
-      where: 'id = ?',
-      whereArgs: [projectId],
-      limit: 1,
-    );
-
-    if (results.isNotEmpty) {
-      return results.first['type'] as String;
-    } else {
-      return null;
-    }
-  }
+  Future<String?> getProjectTypeByProjectId(int projectId) => _querySingle(
+      projectTable, 'id = ?', [projectId], (r) => r['type'] as String,
+      columns: ['type']);
 
   Future<void> setNewVideoNeeded(int projectId) async {
     final db = await database;
@@ -314,22 +321,9 @@ class DB {
     );
   }
 
-  Future<int?> getNewVideoNeeded(int projectId) async {
-    final db = await database;
-    final results = await db.query(
-      projectTable,
-      columns: ['newVideoNeeded'],
-      where: 'id = ?',
-      whereArgs: [projectId],
-      limit: 1,
-    );
-
-    if (results.isNotEmpty) {
-      return results.first['newVideoNeeded'] as int;
-    } else {
-      return null;
-    }
-  }
+  Future<int?> getNewVideoNeeded(int projectId) => _querySingle(
+      projectTable, 'id = ?', [projectId], (r) => r['newVideoNeeded'] as int,
+      columns: ['newVideoNeeded']);
 
   /* ┌──────────────────────┐
      │                      │
@@ -552,7 +546,7 @@ class DB {
       final existing = await txn.query(
         photoTable,
         columns: ['timestamp'],
-        where: 'timestamp = ? AND projectID = ?',
+        where: _photoWhereClause,
         whereArgs: [timestamp, projectID],
         limit: 1,
       );
@@ -613,16 +607,12 @@ class DB {
     final results = await db.query(
       photoTable,
       columns: ['favorite'],
-      where: 'timestamp = ? AND projectID = ?',
+      where: _photoWhereClause,
       whereArgs: [timestamp, projectId],
       limit: 1,
     );
 
-    if (results.isNotEmpty) {
-      return results.first['favorite'] == 1;
-    } else {
-      return false;
-    }
+    return results.isNotEmpty && results.first['favorite'] == 1;
   }
 
   Future<int?> updatePhotoTimestamp(
@@ -646,7 +636,7 @@ class DB {
       );
       await txn.delete(
         photoTable,
-        where: 'timestamp = ? AND projectID = ?',
+        where: _photoWhereClause,
         whereArgs: [oldTimestamp, projectId],
       );
     });
@@ -659,7 +649,7 @@ class DB {
     await db.update(
       photoTable,
       {'favorite': 1},
-      where: 'timestamp = ? AND projectID = ?',
+      where: _photoWhereClause,
       whereArgs: [timestamp, projectId],
     );
   }
@@ -668,7 +658,7 @@ class DB {
     final db = await database;
     return await db.delete(
       photoTable,
-      where: 'timestamp = ? AND projectID = ?',
+      where: _photoWhereClause,
       whereArgs: [timestamp, projectId],
     );
   }
@@ -676,6 +666,21 @@ class DB {
   Future<int> deleteAllPhotos() async {
     final db = await database;
     return await db.delete(photoTable);
+  }
+
+  String? _resolveOrientation(List<Map<String, dynamic>> result,
+      {required bool unanimous}) {
+    if (result.isEmpty) return null;
+    final row = result.first;
+    final total = (row[unanimous ? 'totalNonNull' : 'totalCount'] as int?) ?? 0;
+    if (total == 0) return null;
+    final landscapeCount = (row['landscapeCount'] as int?) ?? 0;
+    if (unanimous) {
+      final portraitCount = (row['portraitCount'] as int?) ?? 0;
+      if (portraitCount == total) return 'portrait';
+      return landscapeCount == total ? 'landscape' : null;
+    }
+    return landscapeCount / total >= 0.5 ? 'landscape' : 'portrait';
   }
 
   Future<String?> checkAllPhotoOrientations() async {
@@ -688,19 +693,7 @@ class DB {
       FROM $photoTable
       WHERE originalOrientation IS NOT NULL
     ''');
-
-    if (result.isEmpty) return null;
-
-    final row = result.first;
-    final int totalNonNull = row['totalNonNull'] as int? ?? 0;
-    if (totalNonNull == 0) return null;
-
-    final int portraitCount = row['portraitCount'] as int? ?? 0;
-    final int landscapeCount = row['landscapeCount'] as int? ?? 0;
-
-    if (portraitCount == totalNonNull) return 'portrait';
-    if (landscapeCount == totalNonNull) return 'landscape';
-    return null;
+    return _resolveOrientation(result, unanimous: true);
   }
 
   Future<String?> checkPhotoOrientationThreshold(int projectId) async {
@@ -716,17 +709,7 @@ class DB {
     ''',
       [projectId],
     );
-
-    if (result.isEmpty) return null;
-
-    final row = result.first;
-    final int totalCount = row['totalCount'] as int? ?? 0;
-    if (totalCount == 0) return null;
-
-    final int landscapeCount = row['landscapeCount'] as int? ?? 0;
-
-    final double landscapeRatio = landscapeCount / totalCount;
-    return landscapeRatio >= 0.5 ? 'landscape' : 'portrait';
+    return _resolveOrientation(result, unanimous: false);
   }
 
   String getStabilizedColumn(String projectOrientation) {
@@ -751,7 +734,7 @@ class DB {
     await db.update(
       photoTable,
       {stabilizedColumn: 0},
-      where: 'timestamp = ? AND projectID = ?',
+      where: _photoWhereClause,
       whereArgs: [timestamp, projectId],
     );
   }
@@ -759,44 +742,25 @@ class DB {
   Future<String?> getPhotoExtensionByTimestampAndProjectId(
     String timestamp,
     int projectId,
-  ) async {
-    final db = await database;
-    final results = await db.query(
-      photoTable,
-      columns: ['fileExtension'],
-      where: 'timestamp = ? AND projectID = ?',
-      whereArgs: [timestamp, projectId],
-      limit: 1,
-    );
-
-    if (results.isNotEmpty) {
-      return results.first['fileExtension'] as String;
-    } else {
-      return null;
-    }
-  }
+  ) =>
+      _querySingle(photoTable, _photoWhereClause, [timestamp, projectId],
+          (r) => r['fileExtension'] as String,
+          columns: ['fileExtension']);
 
   Future<Map<String, dynamic>?> getOriginalInfoByTimestamp(
     String timestamp,
     int projectId,
-  ) async {
-    final db = await database;
-    final results = await db.query(
-      photoTable,
-      columns: [
-        'timestamp',
-        'fileExtension',
-        'originalFilename',
-        'sourceFilename',
-        'sourceRelativePath',
-        'sourceLocationType',
-      ],
-      where: 'timestamp = ? AND projectID = ?',
-      whereArgs: [timestamp, projectId],
-      limit: 1,
-    );
-    return results.isNotEmpty ? results.first : null;
-  }
+  ) =>
+      _querySingle(
+          photoTable, _photoWhereClause, [timestamp, projectId], (r) => r,
+          columns: [
+            'timestamp',
+            'fileExtension',
+            'originalFilename',
+            'sourceFilename',
+            'sourceRelativePath',
+            'sourceLocationType',
+          ]);
 
   /// Batch query to get original source filenames for multiple timestamps.
   /// Returns a map of timestamp -> sourceFilename. Queries in chunks to avoid
@@ -841,16 +805,9 @@ class DB {
   Future<Map<String, dynamic>?> getPhotoBySourceRelativePath(
     String relativePath,
     int projectId,
-  ) async {
-    final db = await database;
-    final results = await db.query(
-      photoTable,
-      where: 'sourceRelativePath = ? AND projectID = ?',
-      whereArgs: [relativePath, projectId],
-      limit: 1,
-    );
-    return results.isNotEmpty ? results.first : null;
-  }
+  ) =>
+      _querySingle(photoTable, 'sourceRelativePath = ? AND projectID = ?',
+          [relativePath, projectId], (r) => r);
 
   Future<List<Map<String, dynamic>>> getPhotosBySourceLocationType(
     int projectId,
@@ -884,7 +841,7 @@ class DB {
     await db.update(
       photoTable,
       data,
-      where: 'timestamp = ? AND projectID = ?',
+      where: _photoWhereClause,
       whereArgs: [timestamp, projectId],
     );
   }
@@ -917,7 +874,7 @@ class DB {
       where:
           '$stabilizedColumn = ? AND noFacesFound = ? AND stabFailed = ? AND projectID = ?',
       whereArgs: [0, 0, 0, projectId],
-      orderBy: 'CAST(timestamp AS INTEGER) ASC',
+      orderBy: '$_orderByTimestamp ASC',
     );
   }
 
@@ -963,7 +920,7 @@ class DB {
     await db.update(
       photoTable,
       data,
-      where: 'timestamp = ? AND projectID = ?',
+      where: _photoWhereClause,
       whereArgs: [timestamp, projectId],
     );
   }
@@ -977,7 +934,7 @@ class DB {
     final results = await db.query(
       photoTable,
       columns: [columnName],
-      where: 'timestamp = ? AND projectID = ?',
+      where: _photoWhereClause,
       whereArgs: [timestamp, projectId],
       limit: 1,
     );
@@ -1003,29 +960,29 @@ class DB {
       where:
           '$stabilizedColumn = ? AND projectID = ? AND ${stabilizedColumn}OffsetX = ?',
       whereArgs: [1, projectId, offsetX.toString()],
-      orderBy: 'CAST(timestamp AS INTEGER) ASC',
+      orderBy: '$_orderByTimestamp ASC',
     );
   }
 
-  Future<void> setPhotoNoFacesFound(String timestamp, int projectId) async {
+  Future<void> _setPhotoField(
+    String timestamp,
+    int projectId,
+    String field,
+  ) async {
     final db = await database;
     await db.update(
       photoTable,
-      {'noFacesFound': 1},
-      where: 'timestamp = ? AND projectID = ?',
+      {field: 1},
+      where: _photoWhereClause,
       whereArgs: [timestamp, projectId],
     );
   }
 
-  Future<void> setPhotoStabFailed(String timestamp, int projectId) async {
-    final db = await database;
-    await db.update(
-      photoTable,
-      {'stabFailed': 1},
-      where: 'timestamp = ? AND projectID = ?',
-      whereArgs: [timestamp, projectId],
-    );
-  }
+  Future<void> setPhotoNoFacesFound(String timestamp, int projectId) =>
+      _setPhotoField(timestamp, projectId, 'noFacesFound');
+
+  Future<void> setPhotoStabFailed(String timestamp, int projectId) =>
+      _setPhotoField(timestamp, projectId, 'stabFailed');
 
   /// Stores face count and optional embedding for a photo.
   /// [faceCount] is the number of faces detected.
@@ -1044,7 +1001,7 @@ class DB {
     await db.update(
       photoTable,
       data,
-      where: 'timestamp = ? AND projectID = ?',
+      where: _photoWhereClause,
       whereArgs: [timestamp, projectId],
     );
   }
@@ -1065,7 +1022,7 @@ class DB {
       WHERE projectID = ?
         AND faceCount = 1
         AND faceEmbedding IS NOT NULL
-      ORDER BY ABS(CAST(timestamp AS INTEGER) - CAST(? AS INTEGER))
+      ORDER BY ABS($_orderByTimestamp - CAST(? AS INTEGER))
       LIMIT 1
     ''',
       [projectId, targetTimestamp],
@@ -1081,7 +1038,7 @@ class DB {
     final results = await db.query(
       photoTable,
       columns: ['faceEmbedding'],
-      where: 'timestamp = ? AND projectID = ?',
+      where: _photoWhereClause,
       whereArgs: [timestamp, projectId],
       limit: 1,
     );
@@ -1098,7 +1055,7 @@ class DB {
     await db.update(
       photoTable,
       {'captureOffsetMinutes': minutes},
-      where: 'timestamp = ? AND projectID = ?',
+      where: _photoWhereClause,
       whereArgs: [timestamp, projectId],
     );
   }
@@ -1111,7 +1068,7 @@ class DB {
     final results = await db.query(
       photoTable,
       columns: ['timestamp'],
-      where: 'timestamp = ? AND projectID = ?',
+      where: _photoWhereClause,
       whereArgs: [timestamp, projectId],
       limit: 1,
     );
@@ -1126,7 +1083,7 @@ class DB {
     final db = await database;
     return await db.query(
       photoTable,
-      where: 'timestamp = ? AND projectID = ?',
+      where: _photoWhereClause,
       whereArgs: [timestamp, projectId],
     );
   }
@@ -1196,7 +1153,7 @@ class DB {
       columns: ['timestamp', 'fileExtension'],
       where: 'projectID = ?',
       whereArgs: [projectId],
-      orderBy: 'CAST(timestamp AS INTEGER) DESC',
+      orderBy: '$_orderByTimestamp DESC',
     );
 
     List<Future<String>> futurePaths = photos.map((photo) async {
@@ -1256,7 +1213,7 @@ class DB {
       where:
           '($stabilizedColumn = ? OR stabFailed = ? OR noFacesFound = ?) AND projectID = ?',
       whereArgs: [1, 1, 1, projectId],
-      orderBy: 'CAST(timestamp AS INTEGER) DESC',
+      orderBy: '$_orderByTimestamp DESC',
     );
   }
 
@@ -1331,7 +1288,7 @@ class DB {
       photoTable,
       where: 'projectID = ?',
       whereArgs: [projectID],
-      orderBy: 'CAST(timestamp AS INTEGER) DESC',
+      orderBy: '$_orderByTimestamp DESC',
     );
   }
 
@@ -1368,31 +1325,16 @@ class DB {
     await DirUtils.deleteDirectoryContents(stabilizedDir);
   }
 
-  Future<String?> getEarliestPhotoTimestamp(int projectId) async {
-    final db = await database;
-    final List<Map<String, dynamic>> results = await db.query(
+  Future<String?> getEarliestPhotoTimestamp(int projectId) =>
+      _queryFirstByOrder(photoTable, 'projectID = ?', [projectId],
+          '$_orderByTimestamp ASC', (r) => r['timestamp'] as String);
+
+  Future<String?> getLatestPhotoTimestamp(int projectId) => _queryFirstByOrder(
       photoTable,
-      orderBy: 'CAST(timestamp AS INTEGER) ASC',
-      where: 'projectID = ?',
-      whereArgs: [projectId],
-      limit: 1,
-    );
-
-    return results.isNotEmpty ? results.first['timestamp'] : null;
-  }
-
-  Future<String?> getLatestPhotoTimestamp(int projectId) async {
-    final db = await database;
-    final List<Map<String, dynamic>> results = await db.query(
-      photoTable,
-      orderBy: 'CAST(timestamp AS INTEGER) DESC',
-      where: 'projectID = ?',
-      whereArgs: [projectId],
-      limit: 1,
-    );
-
-    return results.isNotEmpty ? results.first['timestamp'] : null;
-  }
+      'projectID = ?',
+      [projectId],
+      '$_orderByTimestamp DESC',
+      (r) => r['timestamp'] as String);
 
   /* ┌──────────────────────┐
      │                      │
@@ -1424,17 +1366,9 @@ class DB {
         conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  Future<Map<String, dynamic>?> getNewestVideoByProjectId(int projectId) async {
-    final db = await database;
-    final List<Map<String, dynamic>> results = await db.query(
-      videoTable,
-      where: 'projectID = ?',
-      whereArgs: [projectId],
-      orderBy: 'timestampCreated DESC',
-      limit: 1,
-    );
-    return results.isNotEmpty ? results.first : null;
-  }
+  Future<Map<String, dynamic>?> getNewestVideoByProjectId(int projectId) =>
+      _queryFirstByOrder(videoTable, 'projectID = ?', [projectId],
+          'timestampCreated DESC', (r) => r);
 
   /* ┌──────────────────────┐
      │                      │
@@ -1475,43 +1409,18 @@ class DB {
   }
 
   /// Get a custom font by its ID.
-  Future<CustomFont?> getCustomFontById(int id) async {
-    final db = await database;
-    final results = await db.query(
-      customFontTable,
-      where: 'id = ?',
-      whereArgs: [id],
-      limit: 1,
-    );
-    if (results.isEmpty) return null;
-    return CustomFont.fromJson(results.first);
-  }
+  Future<CustomFont?> getCustomFontById(int id) =>
+      _querySingle(customFontTable, 'id = ?', [id], CustomFont.fromJson);
 
   /// Get a custom font by its family name.
-  Future<CustomFont?> getCustomFontByFamilyName(String familyName) async {
-    final db = await database;
-    final results = await db.query(
-      customFontTable,
-      where: 'familyName = ?',
-      whereArgs: [familyName],
-      limit: 1,
-    );
-    if (results.isEmpty) return null;
-    return CustomFont.fromJson(results.first);
-  }
+  Future<CustomFont?> getCustomFontByFamilyName(String familyName) =>
+      _querySingle(
+          customFontTable, 'familyName = ?', [familyName], CustomFont.fromJson);
 
   /// Get a custom font by its display name.
-  Future<CustomFont?> getCustomFontByDisplayName(String displayName) async {
-    final db = await database;
-    final results = await db.query(
-      customFontTable,
-      where: 'displayName = ?',
-      whereArgs: [displayName],
-      limit: 1,
-    );
-    if (results.isEmpty) return null;
-    return CustomFont.fromJson(results.first);
-  }
+  Future<CustomFont?> getCustomFontByDisplayName(String displayName) =>
+      _querySingle(customFontTable, 'displayName = ?', [displayName],
+          CustomFont.fromJson);
 
   /// Delete a custom font by its ID.
   Future<int> deleteCustomFont(int id) async {

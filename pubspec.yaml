@@ -18,7 +18,7 @@ dependencies:
   desktop_drop:
     git:
       url: https://github.com/hugocornellier/desktop_drop_custom.git
-  device_info_plus: ^12.3.0
+  device_info_plus: ^12.4.0
   downloadsfolder: ^1.2.0
   exif_reader: ^4.1.0
   cat_detection: ^0.0.10
@@ -42,7 +42,7 @@ dependencies:
   flutter_timezone: ^5.0.2
   font_awesome_flutter: ^11.0.0
   hand_detection: ^2.0.5
-  heic2png: ^0.0.11
+  heic2png: ^0.1.0
   intl: ^0.20.2
   media_kit: ^1.2.6
   media_kit_libs_linux: ^1.2.1
@@ -50,7 +50,7 @@ dependencies:
   media_kit_video: ^2.0.1
   mime: ^2.0.0
   opencv_dart: 2.2.1+4
-  package_info_plus: ^9.0.0
+  package_info_plus: ^9.0.1
   path: ^1.9.1
   path_provider: ^2.1.5
   permission_handler: ^12.0.1
@@ -58,7 +58,7 @@ dependencies:
   provider: ^6.1.5
   saver_gallery: ^4.1.0
   sensors_plus: ^7.0.0
-  share_plus: ^12.0.1
+  share_plus: ^12.0.2
   smooth_page_indicator: ^2.0.1
   sqflite: ^2.4.2
   sqflite_common_ffi: ^2.4.0

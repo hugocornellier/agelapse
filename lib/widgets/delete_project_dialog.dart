@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../styles/styles.dart';
+import 'bottom_sheet_container.dart';
+import 'bottom_sheet_header.dart';
+import 'dialog_button_row.dart';
+import 'styled_text_field.dart';
 
 Color get _dangerRed => AppColors.danger;
 
@@ -58,60 +62,15 @@ class _DeleteProjectDialogContentState
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(20.0, 12.0, 20.0, 20.0),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20.0),
-            topRight: Radius.circular(20.0),
-          ),
-        ),
+      child: BottomSheetContainer(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Drag handle
-            Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.textPrimary.withValues(alpha: 0.24),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Delete Project',
-                  style: TextStyle(
-                    fontSize: AppTypography.xl,
-                    fontWeight: FontWeight.w600,
-                    color: _dangerRed,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () => Navigator.of(context).pop(false),
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: AppColors.textPrimary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.close,
-                      color: AppColors.textPrimary.withValues(alpha: 0.7),
-                      size: 18,
-                    ),
-                  ),
-                ),
-              ],
+            BottomSheetHeader(
+              title: 'Delete Project',
+              titleColor: _dangerRed,
+              onClose: () => Navigator.of(context).pop(false),
             ),
             const SizedBox(height: 16),
             // Warning message
@@ -154,92 +113,24 @@ class _DeleteProjectDialogContentState
             ),
             const SizedBox(height: 12),
             // Text field
-            Container(
-              decoration: BoxDecoration(
-                color: AppColors.textPrimary.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: _isNameCorrect
-                      ? _dangerRed.withValues(alpha: 0.5)
-                      : AppColors.textPrimary.withValues(alpha: 0.1),
-                ),
-              ),
-              child: TextField(
-                controller: _controller,
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: AppTypography.lg,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'Project name',
-                  hintStyle: TextStyle(
-                    color: AppColors.textPrimary.withValues(alpha: 0.3),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                  border: InputBorder.none,
-                ),
-              ),
+            StyledTextField(
+              controller: _controller,
+              hintText: 'Project name',
+              borderColor: _isNameCorrect
+                  ? _dangerRed.withValues(alpha: 0.5)
+                  : AppColors.textPrimary.withValues(alpha: 0.1),
             ),
             const SizedBox(height: 20),
             // Buttons
-            Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => Navigator.pop(context, false),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      decoration: BoxDecoration(
-                        color: AppColors.textPrimary.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Center(
-                        child: Text(
-                          'Cancel',
-                          style: TextStyle(
-                            color: AppColors.textPrimary.withValues(alpha: 0.7),
-                            fontSize: AppTypography.lg,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: _isNameCorrect
-                        ? () => Navigator.pop(context, true)
-                        : null,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      decoration: BoxDecoration(
-                        color: _isNameCorrect
-                            ? _dangerRed
-                            : _dangerRed.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Center(
-                        child: Text(
-                          'Delete',
-                          style: TextStyle(
-                            color: _isNameCorrect
-                                ? AppColors.textPrimary
-                                : AppColors.textPrimary.withValues(alpha: 0.4),
-                            fontSize: AppTypography.lg,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+            DialogButtonRow(
+              actionLabel: 'Delete',
+              actionColor: _dangerRed,
+              onCancel: () => Navigator.pop(context, false),
+              onAction:
+                  _isNameCorrect ? () => Navigator.pop(context, true) : null,
+              useMouseRegion: false,
+              isAnimated: true,
+              actionEnabled: _isNameCorrect,
             ),
             const SizedBox(height: 8),
           ],

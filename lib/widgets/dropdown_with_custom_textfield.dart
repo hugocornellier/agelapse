@@ -147,10 +147,7 @@ class DropdownWithCustomTextFieldState
     return Container(
       width: 75,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.settingsCardBorder,
-        borderRadius: BorderRadius.circular(8),
-      ),
+      decoration: settingsDropdownDecoration(),
       child: TextField(
         focusNode: _focusNode,
         controller: _controller,
@@ -179,10 +176,7 @@ class DropdownWithCustomTextFieldState
   Widget _buildDropdown() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.settingsCardBorder,
-        borderRadius: BorderRadius.circular(8),
-      ),
+      decoration: settingsDropdownDecoration(),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<int>(
           value: isCustom ? -1 : currentValue,

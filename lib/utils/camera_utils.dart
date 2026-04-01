@@ -16,80 +16,66 @@ import 'dir_utils.dart';
 import 'format_decode_utils.dart';
 import 'image_processing_isolate.dart';
 import 'linked_source_utils.dart';
+import 'settings_utils.dart';
 
 class CameraUtils {
   static final AsyncMutex _savePhotoMutex = AsyncMutex();
 
-  static Future<bool> loadSaveToCameraRollSetting() async {
+  /// Runs [entryPoint] in a new isolate, passes [params] (plus a SendPort),
+  /// waits for the single reply, then kills the isolate and returns the result.
+  static Future<T?> _executeInIsolate<T>(
+    Future<void> Function(Map<String, dynamic>) entryPoint,
+    Map<String, dynamic> params,
+  ) async {
+    final receivePort = ReceivePort();
     try {
-      String saveToCameraRollStr = await DB.instance.getSettingValueByTitle(
-        'save_to_camera_roll',
+      final isolate = await Isolate.spawn(
+        entryPoint,
+        {'sendPort': receivePort.sendPort, ...params},
       );
-      return bool.tryParse(saveToCameraRollStr) ?? false;
-    } catch (e) {
-      LogService.instance.log('Failed to load save to camera roll setting: $e');
-      return false;
+      final result = await receivePort.first as T?;
+      receivePort.close();
+      isolate.kill(priority: Isolate.immediate);
+      return result;
+    } catch (_) {
+      receivePort.close();
+      return null;
     }
   }
 
   static Future<Uint8List?> readBytesInIsolate(String filePath) async {
-    Future<void> galleryIsolateOperation(Map<String, dynamic> params) async {
-      SendPort sendPort = params['sendPort'];
-      String filePath = params['filePath'];
+    Future<void> operation(Map<String, dynamic> params) async {
+      final SendPort sendPort = params['sendPort'];
       Uint8List? bytes;
       try {
-        bytes = await XFile(filePath).readAsBytes();
+        bytes = await XFile(params['filePath'] as String).readAsBytes();
       } catch (_) {
         sendPort.send(null);
+        return;
       }
       sendPort.send(bytes);
-      bytes = null;
     }
 
-    ReceivePort receivePort = ReceivePort();
-    var params = {'sendPort': receivePort.sendPort, 'filePath': filePath};
-
-    Uint8List? bytes;
-    try {
-      Isolate isolate = await Isolate.spawn(galleryIsolateOperation, params);
-      bytes = await receivePort.first;
-      receivePort.close();
-      isolate.kill(priority: Isolate.immediate);
-      return bytes;
-    } catch (_) {
-      return null;
-    } finally {
-      bytes = null;
-    }
+    return _executeInIsolate<Uint8List>(operation, {'filePath': filePath});
   }
 
   static Future<String> saveImageToFileSystemInIsolate(
     String saveToPath,
     String xFilePath,
   ) async {
-    Future<void> saveImageIsolateOperation(Map<String, dynamic> params) async {
-      SendPort sendPort = params['sendPort'];
-      String saveToPath = params['saveToPath'];
-      String xFilePath = params['xFilePath'];
-
-      XFile xFile = XFile(xFilePath);
-      await xFile.saveTo(saveToPath);
-
+    Future<void> operation(Map<String, dynamic> params) async {
+      final SendPort sendPort = params['sendPort'];
+      await XFile(params['xFilePath'] as String).saveTo(
+        params['saveToPath'] as String,
+      );
       sendPort.send("Success");
     }
 
-    ReceivePort receivePort = ReceivePort();
-    var params = {
-      'sendPort': receivePort.sendPort,
+    final result = await _executeInIsolate<String>(operation, {
       'saveToPath': saveToPath,
       'xFilePath': xFilePath,
-    };
-
-    Isolate isolate = await Isolate.spawn(saveImageIsolateOperation, params);
-    final result = await receivePort.first;
-    receivePort.close();
-    isolate.kill(priority: Isolate.immediate);
-    return result;
+    });
+    return result ?? '';
   }
 
   static Future<String> saveImageToFileSystem(
@@ -350,7 +336,7 @@ class CameraUtils {
         bytes = null;
 
         // Save to gallery if setting is enabled
-        if (!import && await CameraUtils.loadSaveToCameraRollSetting()) {
+        if (!import && await SettingsUtil.loadSaveToCameraRoll()) {
           await CameraUtils.saveToGallery(image);
         }
 
@@ -368,12 +354,7 @@ class CameraUtils {
         // Clean up original HEIC file after successful conversion (camera captures only).
         // For imports, there's no converted file to clean up.
         if (!import && heicPathToDelete != null) {
-          try {
-            final heicFile = File(heicPathToDelete);
-            if (await heicFile.exists()) {
-              await heicFile.delete();
-            }
-          } catch (_) {}
+          await DirUtils.deleteFileIfExists(heicPathToDelete);
         }
       }
     });

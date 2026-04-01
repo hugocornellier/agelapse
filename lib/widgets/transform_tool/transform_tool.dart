@@ -397,53 +397,59 @@ class TransformToolState extends State<TransformTool> {
     switch (event.logicalKey) {
       // Arrow keys for nudging position
       case LogicalKeyboardKey.arrowLeft:
-        _controller.commitToHistory();
-        _controller.nudge(-nudgeAmount, 0);
-        _announceChange('Moved left ${nudgeAmount.round()} pixels');
+        _performKeyboardAction(
+          () => _controller.nudge(-nudgeAmount, 0),
+          'Moved left ${nudgeAmount.round()} pixels',
+        );
         break;
       case LogicalKeyboardKey.arrowRight:
-        _controller.commitToHistory();
-        _controller.nudge(nudgeAmount, 0);
-        _announceChange('Moved right ${nudgeAmount.round()} pixels');
+        _performKeyboardAction(
+          () => _controller.nudge(nudgeAmount, 0),
+          'Moved right ${nudgeAmount.round()} pixels',
+        );
         break;
       case LogicalKeyboardKey.arrowUp:
-        _controller.commitToHistory();
-        _controller.nudge(0, -nudgeAmount);
-        _announceChange('Moved up ${nudgeAmount.round()} pixels');
+        _performKeyboardAction(
+          () => _controller.nudge(0, -nudgeAmount),
+          'Moved up ${nudgeAmount.round()} pixels',
+        );
         break;
       case LogicalKeyboardKey.arrowDown:
-        _controller.commitToHistory();
-        _controller.nudge(0, nudgeAmount);
-        _announceChange('Moved down ${nudgeAmount.round()} pixels');
+        _performKeyboardAction(
+          () => _controller.nudge(0, nudgeAmount),
+          'Moved down ${nudgeAmount.round()} pixels',
+        );
         break;
 
       // Bracket keys for rotation
       case LogicalKeyboardKey.bracketLeft:
-        _controller.commitToHistory();
-        _controller.adjustRotation(-rotateAmount);
-        _announceChange(
+        _performKeyboardAction(
+          () => _controller.adjustRotation(-rotateAmount),
           'Rotated ${rotateAmount.round()} degrees counter-clockwise',
         );
         break;
       case LogicalKeyboardKey.bracketRight:
-        _controller.commitToHistory();
-        _controller.adjustRotation(rotateAmount);
-        _announceChange('Rotated ${rotateAmount.round()} degrees clockwise');
+        _performKeyboardAction(
+          () => _controller.adjustRotation(rotateAmount),
+          'Rotated ${rotateAmount.round()} degrees clockwise',
+        );
         break;
 
       // Plus/minus for scale
       case LogicalKeyboardKey.equal: // + key
       case LogicalKeyboardKey.add:
       case LogicalKeyboardKey.numpadAdd:
-        _controller.commitToHistory();
-        _controller.adjustScale(scaleAmount);
-        _announceChange('Scaled up ${scaleAmount.round()}%');
+        _performKeyboardAction(
+          () => _controller.adjustScale(scaleAmount),
+          'Scaled up ${scaleAmount.round()}%',
+        );
         break;
       case LogicalKeyboardKey.minus:
       case LogicalKeyboardKey.numpadSubtract:
-        _controller.commitToHistory();
-        _controller.adjustScale(-scaleAmount);
-        _announceChange('Scaled down ${scaleAmount.round()}%');
+        _performKeyboardAction(
+          () => _controller.adjustScale(-scaleAmount),
+          'Scaled down ${scaleAmount.round()}%',
+        );
         break;
 
       // Escape to cancel gesture or reset
@@ -457,9 +463,7 @@ class TransformToolState extends State<TransformTool> {
       // Ctrl/Cmd+R to reset
       case LogicalKeyboardKey.keyR:
         if (ctrlOrCmd) {
-          _controller.commitToHistory();
-          _controller.reset();
-          _announceChange('Transform reset');
+          _performKeyboardAction(_controller.reset, 'Transform reset');
         } else {
           handled = false;
         }
@@ -469,9 +473,7 @@ class TransformToolState extends State<TransformTool> {
       case LogicalKeyboardKey.digit0:
       case LogicalKeyboardKey.numpad0:
         if (ctrlOrCmd) {
-          _controller.commitToHistory();
-          _controller.fitToCanvas();
-          _announceChange('Fit to canvas');
+          _performKeyboardAction(_controller.fitToCanvas, 'Fit to canvas');
         } else {
           handled = false;
         }
@@ -479,9 +481,7 @@ class TransformToolState extends State<TransformTool> {
 
       // Home key to reset
       case LogicalKeyboardKey.home:
-        _controller.commitToHistory();
-        _controller.reset();
-        _announceChange('Transform reset');
+        _performKeyboardAction(_controller.reset, 'Transform reset');
         break;
 
       // Ctrl/Cmd+Z to undo
@@ -525,6 +525,12 @@ class TransformToolState extends State<TransformTool> {
     }
 
     return KeyEventResult.ignored;
+  }
+
+  void _performKeyboardAction(VoidCallback action, String announcement) {
+    _controller.commitToHistory();
+    action();
+    _announceChange(announcement);
   }
 
   void _announceChange(String message) {

@@ -9,6 +9,7 @@ import '../services/face_stabilizer.dart';
 import '../services/log_service.dart';
 import '../services/stab_update_event.dart';
 import '../utils/dir_utils.dart';
+import '../utils/platform_utils.dart';
 import '../widgets/project_select_sheet.dart';
 import '../widgets/settings_sheet.dart';
 import '../services/settings_cache.dart';
@@ -274,8 +275,7 @@ class CustomAppBarState extends State<CustomAppBar> {
 
   @override
   Widget build(BuildContext context) {
-    final bool useDesktopTitleBar =
-        Platform.isMacOS || Platform.isLinux || Platform.isWindows;
+    final bool useDesktopTitleBar = isDesktop;
 
     return Column(
       children: [
@@ -319,71 +319,56 @@ class CustomAppBarState extends State<CustomAppBar> {
     );
   }
 
+  void _openSettings(BuildContext context) {
+    showSettingsModal(
+      context,
+      widget.projectId,
+      widget.stabCallback,
+      widget.cancelStabCallback,
+      widget.refreshSettings,
+      widget.clearRawAndStabPhotos,
+      widget.recompileVideoCallback,
+      widget.settingsCache,
+    );
+  }
+
   Widget _buildDesktopTitleBar(BuildContext context) {
-    return SizedBox(
-      height: _titleBarHeight,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(right: 120),
-            child: DragToMoveArea(child: const SizedBox.expand()),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
-            child: Row(
-              children: [
-                _buildProjectSwitcher(context),
-                const Spacer(),
-                IconButton(
-                  tooltip: 'Settings',
-                  icon: const Icon(Icons.settings, size: 22),
-                  splashRadius: 18,
-                  onPressed: () => showSettingsModal(
-                    context,
-                    widget.projectId,
-                    widget.stabCallback,
-                    widget.cancelStabCallback,
-                    widget.refreshSettings,
-                    widget.clearRawAndStabPhotos,
-                    widget.recompileVideoCallback,
-                    widget.settingsCache,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _buildWindowControls(),
-              ],
-            ),
-          ),
-          IgnorePointer(
-            child: Center(
-              child: Image.asset(
-                'assets/images/agelapselogo.png',
-                width: _centerLogoWidth,
-                fit: BoxFit.contain,
-              ),
-            ),
-          ),
-        ],
-      ),
+    return _buildTitleBar(
+      context,
+      dragAreaRightPadding: 120,
+      rowPadding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
+      windowControls: _buildWindowControls(),
     );
   }
 
   Widget _buildMacTitleBar(BuildContext context) {
+    return _buildTitleBar(
+      context,
+      dragAreaRightPadding: 56,
+      rowPadding: const EdgeInsets.only(
+        left: 36,
+        right: _horizontalPadding,
+      ),
+    );
+  }
+
+  Widget _buildTitleBar(
+    BuildContext context, {
+    required double dragAreaRightPadding,
+    required EdgeInsets rowPadding,
+    Widget? windowControls,
+  }) {
     return SizedBox(
       height: _titleBarHeight,
       child: Stack(
         fit: StackFit.expand,
         children: [
           Padding(
-            padding: const EdgeInsets.only(right: 56),
+            padding: EdgeInsets.only(right: dragAreaRightPadding),
             child: DragToMoveArea(child: const SizedBox.expand()),
           ),
           Padding(
-            padding: const EdgeInsets.only(
-              left: 36,
-              right: _horizontalPadding,
-            ),
+            padding: rowPadding,
             child: Row(
               children: [
                 _buildProjectSwitcher(context),
@@ -392,17 +377,12 @@ class CustomAppBarState extends State<CustomAppBar> {
                   tooltip: 'Settings',
                   icon: const Icon(Icons.settings, size: 22),
                   splashRadius: 18,
-                  onPressed: () => showSettingsModal(
-                    context,
-                    widget.projectId,
-                    widget.stabCallback,
-                    widget.cancelStabCallback,
-                    widget.refreshSettings,
-                    widget.clearRawAndStabPhotos,
-                    widget.recompileVideoCallback,
-                    widget.settingsCache,
-                  ),
+                  onPressed: () => _openSettings(context),
                 ),
+                if (windowControls != null) ...[
+                  const SizedBox(width: 8),
+                  windowControls,
+                ],
               ],
             ),
           ),
@@ -536,16 +516,7 @@ class CustomAppBarState extends State<CustomAppBar> {
         ),
         IconButton(
           icon: const Icon(Icons.settings, size: 26),
-          onPressed: () => showSettingsModal(
-            context,
-            widget.projectId,
-            widget.stabCallback,
-            widget.cancelStabCallback,
-            widget.refreshSettings,
-            widget.clearRawAndStabPhotos,
-            widget.recompileVideoCallback,
-            widget.settingsCache,
-          ),
+          onPressed: () => _openSettings(context),
         ),
       ],
     );

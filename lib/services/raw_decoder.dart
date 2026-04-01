@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 
 import 'log_service.dart';
+import '../utils/platform_utils.dart';
 
 /// Decodes RAW/DNG image files to standard formats (PNG/TIFF).
 ///
@@ -40,7 +41,7 @@ class RawDecoder {
   }) async {
     final baseName = path.basenameWithoutExtension(rawPath);
 
-    if (Platform.isMacOS || Platform.isIOS) {
+    if (isApple) {
       return _decodeApple(rawPath, outputDir, baseName, sixteenBit);
     }
     return _decodeFfmpeg(rawPath, outputDir, baseName, sixteenBit);

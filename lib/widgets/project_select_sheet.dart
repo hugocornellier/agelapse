@@ -1,5 +1,4 @@
 import 'dart:io';
-import '../screens/project_page.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
 import '../screens/create_project_page.dart';
@@ -11,8 +10,14 @@ import '../utils/project_utils.dart';
 import '../utils/settings_utils.dart';
 import '../utils/utils.dart';
 import '../screens/projects_page.dart';
+import 'bottom_sheet_container.dart';
+import 'bottom_sheet_header.dart';
 import 'delete_project_dialog.dart';
+import 'dialog_button_row.dart';
+import 'empty_state.dart';
 import 'main_navigation.dart';
+import 'option_tile.dart';
+import 'styled_text_field.dart';
 
 class ProjectSelectionSheet extends StatefulWidget {
   final bool isDefaultProject;
@@ -89,7 +94,8 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
       stabilizedDirPath,
       activeProjectOrientation,
     );
-    String? pngPath = await checkForStabilizedImage(stabilizedDirActivePath);
+    String? pngPath =
+        await GalleryUtils.checkForStabilizedImage(stabilizedDirActivePath);
     if (pngPath != null) {
       return pngPath;
     }
@@ -98,7 +104,8 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
       stabilizedDirPath,
       activeProjectOrientation == "portrait" ? "landscape" : "portrait",
     );
-    pngPath = await checkForStabilizedImage(stabilizedDirInactivePath);
+    pngPath =
+        await GalleryUtils.checkForStabilizedImage(stabilizedDirInactivePath);
     if (pngPath != null) {
       return pngPath;
     }
@@ -123,29 +130,6 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
           GalleryUtils.compareByNumericBasename(a.path, b.path) <= 0 ? a : b,
     );
     return minFile.path;
-  }
-
-  static Future<String?> checkForStabilizedImage(String dirPath) async {
-    final directory = Directory(dirPath);
-    if (await directory.exists()) {
-      try {
-        final pngFiles = await directory
-            .list()
-            .where((item) => item.path.endsWith('.png') && item is File)
-            .toList();
-        if (pngFiles.isNotEmpty) {
-          final minFile = pngFiles.reduce(
-            (a, b) => GalleryUtils.compareByNumericBasename(a.path, b.path) <= 0
-                ? a
-                : b,
-          );
-          return minFile.path;
-        }
-      } catch (e) {
-        return null;
-      }
-    }
-    return null;
   }
 
   @override
@@ -294,7 +278,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
       future: getProjectImage(project['id']),
       builder: (context, snapshot) {
         return FutureBuilder<bool>(
-          future: photoWasTakenToday(project['id']),
+          future: ProjectUtils.photoWasTakenToday(project['id']),
           builder: (context, photoSnapshot) {
             final bool takenToday = photoSnapshot.data ?? false;
             final bool hasImage = snapshot.hasData &&
@@ -531,37 +515,10 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 40),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.folder_outlined,
-              size: 48,
-              color: AppColors.textPrimary.withValues(alpha: 0.3),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'No projects yet',
-              style: TextStyle(
-                fontSize: AppTypography.lg,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textPrimary.withValues(alpha: 0.5),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Tap "+ New" to create your first project',
-              style: TextStyle(
-                fontSize: AppTypography.sm,
-                color: AppColors.textPrimary.withValues(alpha: 0.3),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return const EmptyState(
+      icon: Icons.folder_outlined,
+      title: 'No projects yet',
+      subtitle: 'Tap "+ New" to create your first project',
     );
   }
 
@@ -590,67 +547,18 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Container(
-          padding: const EdgeInsets.fromLTRB(20.0, 12.0, 20.0, 20.0),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(20.0),
-              topRight: Radius.circular(20.0),
-            ),
-          ),
+        return BottomSheetContainer(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Drag handle
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.textPrimary.withValues(alpha: 0.24),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    project['name'],
-                    style: TextStyle(
-                      fontSize: AppTypography.xl,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                  MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: GestureDetector(
-                      onTap: () => Navigator.of(context).pop(),
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: AppColors.textPrimary.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          Icons.close,
-                          color: AppColors.textPrimary.withValues(alpha: 0.7),
-                          size: 18,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+              BottomSheetHeader(
+                title: project['name'],
+                onClose: () => Navigator.of(context).pop(),
               ),
               const SizedBox(height: 16),
               // Options
-              _buildOptionTile(
+              OptionTile(
                 icon: Icons.edit_outlined,
                 title: 'Rename Project',
                 subtitle: 'Change the project name',
@@ -660,7 +568,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                 },
               ),
               const SizedBox(height: 8),
-              _buildOptionTile(
+              OptionTile(
                 icon: Icons.delete_outline,
                 title: 'Delete Project',
                 subtitle: 'Permanently remove this project',
@@ -678,79 +586,6 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
     );
   }
 
-  Widget _buildOptionTile({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-    bool isDestructive = false,
-  }) {
-    final color = isDestructive ? AppColors.danger : AppColors.textPrimary;
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.textPrimary.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isDestructive
-                  ? AppColors.danger.withValues(alpha: 0.2)
-                  : AppColors.textPrimary.withValues(alpha: 0.08),
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: isDestructive
-                      ? AppColors.danger.withValues(alpha: 0.15)
-                      : AppColors.textPrimary.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: color, size: 20),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        color: color,
-                        fontSize: AppTypography.lg,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        color: isDestructive
-                            ? AppColors.danger.withValues(alpha: 0.6)
-                            : AppColors.textPrimary.withValues(alpha: 0.5),
-                        fontSize: AppTypography.sm,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.chevron_right,
-                color: color.withValues(alpha: 0.3),
-                size: 20,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   void _showEditProjectNamePopup(
     BuildContext context,
     Map<String, dynamic> project,
@@ -765,167 +600,39 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).viewInsets.bottom,
           ),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(20.0, 12.0, 20.0, 20.0),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(20.0),
-                topRight: Radius.circular(20.0),
-              ),
-            ),
+          child: BottomSheetContainer(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Drag handle
-                Center(
-                  child: Container(
-                    width: 36,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.textPrimary.withValues(alpha: 0.24),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Header
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Rename Project',
-                      style: TextStyle(
-                        fontSize: AppTypography.xl,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                    MouseRegion(
-                      cursor: SystemMouseCursors.click,
-                      child: GestureDetector(
-                        onTap: () => Navigator.of(context).pop(),
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: AppColors.textPrimary.withValues(
-                              alpha: 0.08,
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            Icons.close,
-                            color: AppColors.textPrimary.withValues(alpha: 0.7),
-                            size: 18,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                BottomSheetHeader(
+                  title: 'Rename Project',
+                  onClose: () => Navigator.of(context).pop(),
                 ),
                 const SizedBox(height: 20),
                 // Input field
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.textPrimary.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppColors.textPrimary.withValues(alpha: 0.1),
-                    ),
-                  ),
-                  child: TextField(
-                    controller: _editProjectNameController,
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: AppTypography.lg,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: 'Enter project name',
-                      hintStyle: TextStyle(
-                        color: AppColors.textPrimary.withValues(alpha: 0.3),
-                        fontSize: AppTypography.lg,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      border: InputBorder.none,
-                    ),
-                    autofocus: true,
-                  ),
+                StyledTextField(
+                  controller: _editProjectNameController,
+                  hintText: 'Enter project name',
+                  autofocus: true,
                 ),
                 const SizedBox(height: 16),
                 // Buttons
-                Row(
-                  children: [
-                    Expanded(
-                      child: MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: GestureDetector(
-                          onTap: () => Navigator.pop(context),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            decoration: BoxDecoration(
-                              color: AppColors.textPrimary.withValues(
-                                alpha: 0.08,
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Center(
-                              child: Text(
-                                'Cancel',
-                                style: TextStyle(
-                                  color: AppColors.textPrimary.withValues(
-                                    alpha: 0.7,
-                                  ),
-                                  fontSize: AppTypography.lg,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: GestureDetector(
-                          onTap: () async {
-                            final newName = _editProjectNameController.text;
-                            if (newName.trim().isEmpty) return;
-                            await DB.instance.updateProjectName(
-                              project['id'],
-                              newName,
-                            );
-                            _getProjects();
-                            if (!context.mounted) return;
-                            Navigator.pop(context);
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            decoration: BoxDecoration(
-                              color: AppColors.settingsAccent,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Center(
-                              child: Text(
-                                'Save',
-                                style: TextStyle(
-                                  color: AppColors.textPrimary,
-                                  fontSize: AppTypography.lg,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                DialogButtonRow(
+                  actionLabel: 'Save',
+                  actionColor: AppColors.settingsAccent,
+                  onCancel: () => Navigator.pop(context),
+                  onAction: () async {
+                    final newName = _editProjectNameController.text;
+                    if (newName.trim().isEmpty) return;
+                    await DB.instance.updateProjectName(
+                      project['id'],
+                      newName,
+                    );
+                    _getProjects();
+                    if (!context.mounted) return;
+                    Navigator.pop(context);
+                  },
                 ),
                 const SizedBox(height: 8),
               ],
@@ -964,16 +671,6 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
     }
   }
 
-  static Future<bool> photoWasTakenToday(int projectId) async {
-    var photos = await DB.instance.getPhotosByProjectID(projectId);
-    final DateTime today = DateTime.now();
-    return photos.any((photo) {
-      final timestampInt = int.parse(photo['timestamp']!);
-      final photoDate = DateTime.fromMillisecondsSinceEpoch(timestampInt);
-      return photoDate.isSameDate(today);
-    });
-  }
-
   Widget _buildProjectItem(Map<String, dynamic> project) {
     return FutureBuilder<String>(
       future: getProjectImage(project['id']),
@@ -982,7 +679,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
           return _buildProjectItemSkeleton();
         }
         return FutureBuilder<bool>(
-          future: photoWasTakenToday(project['id']),
+          future: ProjectUtils.photoWasTakenToday(project['id']),
           builder: (context, photoSnapshot) {
             if (photoSnapshot.connectionState == ConnectionState.waiting) {
               return _buildProjectItemSkeleton();

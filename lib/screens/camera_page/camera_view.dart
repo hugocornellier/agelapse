@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:math' as math;
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,18 +8,18 @@ import '../../services/database_helper.dart';
 import '../../services/log_service.dart';
 import '../../styles/styles.dart';
 import '../../utils/camera_utils.dart';
-import '../../utils/dir_utils.dart';
 import '../../utils/utils.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:vibration/vibration.dart';
+import '../../utils/platform_utils.dart';
 import '../../utils/settings_utils.dart';
 import '../guide_mode_tutorial_page.dart';
 import '../took_first_photo_page.dart';
 import 'grid_mode.dart';
+import 'camera_grid.dart';
 import 'countdown_overlay.dart';
 import 'capture_flash_overlay.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'dart:ui' as ui;
 import 'package:camera_desktop/camera_desktop.dart';
 
 class RotatingIconButton extends StatelessWidget {
@@ -136,7 +135,7 @@ class _CameraViewState extends State<CameraView>
     _initializeTimerAnimation();
     _initialize();
 
-    if (Platform.isAndroid || Platform.isIOS) {
+    if (isMobile) {
       _accelerometerSubscription = accelerometerEventStream().listen((
         AccelerometerEvent event,
       ) {
@@ -211,8 +210,7 @@ class _CameraViewState extends State<CameraView>
     final int gridModeIndex = await SettingsUtil.loadGridModeIndex(
       widget.projectId.toString(),
     );
-    if (!mounted) return;
-    setState(() {
+    setStateIfMounted(() {
       _gridMode = GridMode.values[gridModeIndex];
     });
 
@@ -232,7 +230,7 @@ class _CameraViewState extends State<CameraView>
 
     // On desktop platforms, load grid offsets based on project orientation
     // (mobile uses accelerometer to detect orientation and load offsets)
-    if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+    if (isDesktop) {
       // projectOrientation is lowercase ("landscape" or "portrait") from loadProjectOrientation()
       final customOrientation = projectOrientation.toLowerCase() == "landscape"
           ? "landscape"
@@ -245,16 +243,14 @@ class _CameraViewState extends State<CameraView>
         widget.projectId.toString(),
         customOrientation,
       );
-      if (!mounted) return;
-      setState(() {
+      setStateIfMounted(() {
         _orientation = projectOrientation;
         offsetX = double.parse(offsetXStr);
         offsetY = double.parse(offsetYStr);
       });
     }
 
-    takingGuidePhoto =
-        (widget.takingGuidePhoto != null && widget.takingGuidePhoto == true);
+    takingGuidePhoto = widget.takingGuidePhoto ?? false;
 
     final String flashSetting = await SettingsUtil.loadCameraFlash(
       widget.projectId.toString(),
@@ -411,7 +407,7 @@ class _CameraViewState extends State<CameraView>
   /// Trigger feedback (vibration) for each countdown tick
   Future<void> _triggerCountdownFeedback() async {
     // Use shorter vibration for countdown ticks on mobile
-    if (Platform.isAndroid || Platform.isIOS) {
+    if (isMobile) {
       try {
         final hasVibrator = await Vibration.hasVibrator();
         if (hasVibrator == true) {
@@ -641,37 +637,36 @@ class _CameraViewState extends State<CameraView>
         ),
       );
 
-  Widget _rightSideControls() =>
-      (Platform.isMacOS || Platform.isWindows || Platform.isLinux)
-          ? const SizedBox.shrink()
-          : Positioned(
-              bottom: 21,
-              right: 16,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(width: 16),
-                  Container(
-                    padding: const EdgeInsets.all(0),
-                    decoration: BoxDecoration(
-                      color: AppColors.overlay.withValues(alpha: 0.54),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: RotatingIconButton(
-                      rotationTurns: getRotation(_orientation),
-                      onPressed: _switchLiveCamera,
-                      child: Icon(
-                        Platform.isIOS
-                            ? Icons.flip_camera_ios_outlined
-                            : Icons.flip_camera_android_outlined,
-                        color: AppColors.textPrimary,
-                        size: 27,
-                      ),
-                    ),
+  Widget _rightSideControls() => isDesktop
+      ? const SizedBox.shrink()
+      : Positioned(
+          bottom: 21,
+          right: 16,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(width: 16),
+              Container(
+                padding: const EdgeInsets.all(0),
+                decoration: BoxDecoration(
+                  color: AppColors.overlay.withValues(alpha: 0.54),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: RotatingIconButton(
+                  rotationTurns: getRotation(_orientation),
+                  onPressed: _switchLiveCamera,
+                  child: Icon(
+                    Platform.isIOS
+                        ? Icons.flip_camera_ios_outlined
+                        : Icons.flip_camera_android_outlined,
+                    color: AppColors.textPrimary,
+                    size: 27,
                   ),
-                ],
+                ),
               ),
-            );
+            ],
+          ),
+        );
 
   void _toggleGrid() {
     setState(() {
@@ -703,9 +698,11 @@ class _CameraViewState extends State<CameraView>
   }
 
   Widget _liveFeedBody() {
-    if (_cameras.isEmpty) return Container();
-    if (_controller == null) return Container();
-    if (_controller?.value.isInitialized == false) return Container();
+    if (_cameras.isEmpty ||
+        _controller == null ||
+        !(_controller!.value.isInitialized)) {
+      return const SizedBox.shrink();
+    }
 
     final camera = _controller!.value;
     final size = MediaQuery.of(context).size;
@@ -764,6 +761,7 @@ class _CameraViewState extends State<CameraView>
                 offsetX,
                 offsetY,
                 orientation: _orientation,
+                useSelectedGuidePhoto: true,
               ),
             if (_isCountingDown && _pulseAnimation != null)
               CountdownOverlay(
@@ -1239,323 +1237,6 @@ class _GridPainter extends CustomPainter {
   bool shouldRepaint(covariant _GridPainter oldDelegate) {
     return offsetX != oldDelegate.offsetX ||
         offsetY != oldDelegate.offsetY ||
-        orientation != oldDelegate.orientation;
-  }
-}
-
-class CameraGridOverlay extends StatefulWidget {
-  final int projectId;
-  final GridMode gridMode;
-  final double offsetX;
-  final double offsetY;
-  final String orientation;
-
-  const CameraGridOverlay(
-    this.projectId,
-    this.gridMode,
-    this.offsetX,
-    this.offsetY, {
-    required this.orientation,
-    super.key,
-  });
-
-  @override
-  CameraGridOverlayState createState() => CameraGridOverlayState();
-}
-
-class CameraGridOverlayState extends State<CameraGridOverlay> {
-  double? ghostImageOffsetX;
-  double? ghostImageOffsetY;
-  String? stabPhotoPath;
-  ui.Image? guideImage;
-
-  @override
-  void initState() {
-    super.initState();
-    _initGuidePhoto();
-  }
-
-  Future<void> _initGuidePhoto() async {
-    final projectOrientation = await SettingsUtil.loadProjectOrientation(
-      widget.projectId.toString(),
-    );
-    final stabPhotos = await DB.instance.getStabilizedPhotosByProjectID(
-      widget.projectId,
-      projectOrientation,
-    );
-
-    if (stabPhotos.isNotEmpty) {
-      Map<String, dynamic> guidePhoto;
-      String timestamp;
-
-      final String selectedGuidePhoto =
-          await SettingsUtil.loadSelectedGuidePhoto(
-        widget.projectId.toString(),
-      );
-      if (selectedGuidePhoto == "not set") {
-        guidePhoto = stabPhotos.first;
-        timestamp = guidePhoto['timestamp'].toString();
-      } else {
-        final guidePhotoRecord = await DB.instance.getPhotoById(
-          selectedGuidePhoto,
-          widget.projectId,
-        );
-
-        if (guidePhotoRecord != null) {
-          guidePhoto = guidePhotoRecord;
-          timestamp = guidePhotoRecord['timestamp'].toString();
-        } else {
-          guidePhoto = stabPhotos.first;
-          timestamp = guidePhoto['timestamp'].toString();
-        }
-      }
-
-      final rawPhotoPath = await getRawPhotoPathFromTimestamp(timestamp);
-      final stabilizedPath = await DirUtils.getStabilizedImagePath(
-        rawPhotoPath,
-        widget.projectId,
-      );
-
-      final projectOrientation = await SettingsUtil.loadProjectOrientation(
-        widget.projectId.toString(),
-      );
-      final stabilizedColumn = DB.instance.getStabilizedColumn(
-        projectOrientation,
-      );
-      final stabColOffsetX = "${stabilizedColumn}OffsetX";
-      final stabColOffsetY = "${stabilizedColumn}OffsetY";
-      final offsetXDataRaw = await DB.instance.getPhotoColumnValueByTimestamp(
-        timestamp,
-        stabColOffsetX,
-        widget.projectId,
-      );
-      final offsetYDataRaw = await DB.instance.getPhotoColumnValueByTimestamp(
-        timestamp,
-        stabColOffsetY,
-        widget.projectId,
-      );
-      final offsetXData = double.tryParse(offsetXDataRaw);
-      final offsetYData = double.tryParse(offsetYDataRaw);
-      if (!mounted) return;
-
-      setState(() {
-        ghostImageOffsetX = offsetXData;
-        ghostImageOffsetY = offsetYData;
-        stabPhotoPath = stabilizedPath;
-      });
-
-      _loadImage(stabilizedPath, timestamp);
-    }
-  }
-
-  Future<void> _loadImage(String path, String timestamp) async {
-    try {
-      final file = File(path);
-      if (!await file.exists()) {
-        LogService.instance.log('Guide image file does not exist: $path');
-        return;
-      }
-      final bytes = await file.readAsBytes();
-      final codec = await ui.instantiateImageCodec(bytes, targetWidth: 800);
-      final frameInfo = await codec.getNextFrame();
-      codec.dispose();
-      if (mounted) {
-        final oldImage = guideImage;
-        setState(() {
-          guideImage = frameInfo.image;
-        });
-        oldImage?.dispose();
-      } else {
-        frameInfo.image.dispose();
-      }
-    } catch (e) {
-      LogService.instance.log('Error loading guide image: $e');
-    }
-  }
-
-  @override
-  void dispose() {
-    guideImage?.dispose();
-    super.dispose();
-  }
-
-  Future<String> getRawPhotoPathFromTimestamp(String timestamp) async =>
-      await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-        timestamp,
-        widget.projectId,
-      );
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      ignoring: true,
-      child: CustomPaint(
-        painter: _CameraGridPainter(
-          widget.offsetX,
-          widget.offsetY,
-          ghostImageOffsetX,
-          ghostImageOffsetY,
-          guideImage,
-          widget.projectId,
-          widget.gridMode,
-          widget.orientation,
-        ),
-      ),
-    );
-  }
-}
-
-class _CameraGridPainter extends CustomPainter {
-  final double offsetX;
-  final double offsetY;
-  final double? ghostImageOffsetX;
-  final double? ghostImageOffsetY;
-  final ui.Image? guideImage;
-  final int projectId;
-  final GridMode gridMode;
-  final String orientation;
-
-  _CameraGridPainter(
-    this.offsetX,
-    this.offsetY,
-    this.ghostImageOffsetX,
-    this.ghostImageOffsetY,
-    this.guideImage,
-    this.projectId,
-    this.gridMode,
-    this.orientation,
-  );
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // Determine if we are in landscape.
-    final bool isLandscape =
-        (orientation == "Landscape Left" || orientation == "Landscape Right");
-
-    if (gridMode == GridMode.none) return;
-
-    if (gridMode == GridMode.gridOnly || gridMode == GridMode.doubleGhostGrid) {
-      final paint = Paint()
-        ..color = AppColors.textPrimary.withAlpha(153)
-        ..strokeWidth = 1;
-
-      if (!isLandscape) {
-        final offsetXInPixels = size.width * offsetX;
-        final centerX = size.width / 2;
-        final leftX = centerX - offsetXInPixels;
-        final rightX = centerX + offsetXInPixels;
-        canvas.drawLine(Offset(leftX, 0), Offset(leftX, size.height), paint);
-        canvas.drawLine(Offset(rightX, 0), Offset(rightX, size.height), paint);
-
-        final y = size.height * offsetY;
-        canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-      } else {
-        double verticalLineX = 0;
-        if (orientation == "Landscape Left") {
-          verticalLineX = size.width * (1 - offsetY);
-        } else {
-          verticalLineX = size.width * offsetY;
-        }
-
-        canvas.drawLine(
-          Offset(verticalLineX, 0),
-          Offset(verticalLineX, size.height),
-          paint,
-        );
-
-        final offsetYInPixels = size.height * offsetX;
-        final centerY = size.height / 2;
-        final topY = centerY - offsetYInPixels;
-        final bottomY = centerY + offsetYInPixels;
-        canvas.drawLine(Offset(0, topY), Offset(size.width, topY), paint);
-        canvas.drawLine(Offset(0, bottomY), Offset(size.width, bottomY), paint);
-      }
-    }
-
-    if (gridMode == GridMode.ghostOnly ||
-        gridMode == GridMode.doubleGhostGrid) {
-      _drawGuideImage(canvas, size, isLandscape);
-    }
-  }
-
-  void _drawGuideImage(Canvas canvas, Size size, bool isLandscape) {
-    if (guideImage != null &&
-        ghostImageOffsetX != null &&
-        ghostImageOffsetY != null) {
-      final imagePaint = Paint()..color = AppColors.textPrimary.withAlpha(77);
-      final imageWidth = guideImage!.width.toDouble();
-      final imageHeight = guideImage!.height.toDouble();
-
-      final double baseDimension = isLandscape ? size.height : size.width;
-      final scale = _calculateImageScale(
-        baseDimension,
-        imageWidth,
-        imageHeight,
-      );
-      final scaledWidth = imageWidth * scale;
-      final scaledHeight = imageHeight * scale;
-      final eyeOffsetFromCenterInGhostPhoto =
-          (0.5 - ghostImageOffsetY!) * scaledHeight;
-
-      if (!isLandscape) {
-        final eyeOffsetFromCenterGuideLines = (0.5 - offsetY) * size.height;
-        final difference =
-            eyeOffsetFromCenterGuideLines - eyeOffsetFromCenterInGhostPhoto;
-
-        final rect = Rect.fromCenter(
-          center: Offset(size.width / 2, size.height / 2 - difference),
-          width: scaledWidth,
-          height: scaledHeight,
-        );
-        canvas.drawImageRect(
-          guideImage!,
-          Offset.zero & Size(imageWidth, imageHeight),
-          rect,
-          imagePaint,
-        );
-      } else {
-        final eyeOffsetFromCenterGuideLines = (0.5 - offsetY) * size.width;
-        final difference =
-            eyeOffsetFromCenterGuideLines - eyeOffsetFromCenterInGhostPhoto;
-
-        final center = Offset(size.width / 2, size.height / 2);
-        canvas.save();
-        canvas.translate(center.dx, center.dy);
-        final angle =
-            orientation == "Landscape Left" ? math.pi / 2 : -math.pi / 2;
-        canvas.rotate(angle);
-        final rect = Rect.fromCenter(
-          center: Offset(0, -difference),
-          width: scaledWidth,
-          height: scaledHeight,
-        );
-        canvas.drawImageRect(
-          guideImage!,
-          Offset.zero & Size(imageWidth, imageHeight),
-          rect,
-          imagePaint,
-        );
-        canvas.restore();
-      }
-    }
-  }
-
-  double _calculateImageScale(
-    double baseDimension,
-    double imageWidth,
-    double imageHeight,
-  ) {
-    return (baseDimension * offsetX) / (imageWidth * ghostImageOffsetX!);
-  }
-
-  @override
-  bool shouldRepaint(covariant _CameraGridPainter oldDelegate) {
-    return offsetX != oldDelegate.offsetX ||
-        offsetY != oldDelegate.offsetY ||
-        ghostImageOffsetX != oldDelegate.ghostImageOffsetX ||
-        ghostImageOffsetY != oldDelegate.ghostImageOffsetY ||
-        guideImage != oldDelegate.guideImage ||
-        gridMode != oldDelegate.gridMode ||
         orientation != oldDelegate.orientation;
   }
 }

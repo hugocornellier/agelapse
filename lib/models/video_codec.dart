@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import '../utils/platform_utils.dart';
+
 /// Video codec selection for timelapse output.
 ///
 /// Stored in settings as the enum name string (e.g., 'h264', 'hevc',
@@ -182,7 +184,7 @@ enum VideoCodec {
 
   /// Resolves the correct encoder string for the current platform.
   String get encoder {
-    if (Platform.isMacOS || Platform.isIOS) return encoderApple;
+    if (isApple) return encoderApple;
     if (Platform.isAndroid) return encoderAndroid;
     return encoderDesktop;
   }
@@ -192,10 +194,10 @@ enum VideoCodec {
   String get codecTag {
     switch (this) {
       case VideoCodec.h264:
-        if (Platform.isMacOS || Platform.isIOS) return '-tag:v avc1';
+        if (isApple) return '-tag:v avc1';
         return '';
       case VideoCodec.hevc:
-        if (Platform.isMacOS || Platform.isIOS) return '-tag:v hvc1';
+        if (isApple) return '-tag:v hvc1';
         return '';
       default:
         return '';
@@ -206,7 +208,7 @@ enum VideoCodec {
   /// [isTransparentVideo] means the output video itself should have alpha.
   static List<VideoCodec> availableCodecs({required bool isTransparentVideo}) {
     if (isTransparentVideo) {
-      if (Platform.isMacOS || Platform.isIOS) return [prores4444];
+      if (isApple) return [prores4444];
       return [vp9];
     }
 
@@ -223,7 +225,7 @@ enum VideoCodec {
   /// Returns the default codec for the current state.
   static VideoCodec defaultCodec({required bool isTransparentVideo}) {
     if (isTransparentVideo) {
-      if (Platform.isMacOS || Platform.isIOS) return prores4444;
+      if (isApple) return prores4444;
       return vp9;
     }
     return h264;

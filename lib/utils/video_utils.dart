@@ -16,6 +16,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
+import '../utils/platform_utils.dart';
 import '../utils/settings_utils.dart';
 import '../utils/utils.dart';
 import '../utils/date_stamp_utils.dart';
@@ -126,6 +127,25 @@ class VideoUtils {
     _lastProgressUpdate = DateTime.fromMillisecondsSinceEpoch(0);
   }
 
+  /// Extracts the output stream label from a filter string ending with `[label]`.
+  /// Returns `'[label]'` or null if no label is found.
+  static String? _extractOutputLabel(String filterString) {
+    final match = RegExp(r'\[(\w+)\]$').firstMatch(filterString);
+    return match != null ? '[${match.group(1)}]' : null;
+  }
+
+  /// Rewires [baseFilter] by substituting `[0:v]` with `[inputLabel]` and
+  /// `[1:v]` with `[$wmIndex:v]`, as required when a color overlay shifts all
+  /// input indices by 1.
+  static String _composeWatermarkFilter(
+    String baseFilter,
+    String inputLabel,
+    int wmIndex,
+  ) =>
+      baseFilter
+          .replaceFirst('[0:v]', inputLabel)
+          .replaceFirst('[1:v]', '[$wmIndex:v]');
+
   /// Builds the FFmpeg filter_complex string from overlay components.
   ///
   /// Pure function — all async work (loading settings, generating PNGs) must
@@ -150,37 +170,40 @@ class VideoUtils {
 
     if (hasColor && hasDateStamp && hasWatermark) {
       // Color overlay + date stamps + watermark
-      final wmFilter = watermarkFilterPart
-          .replaceFirst('[0:v]', '[${dateStampOverlay.outputMapLabel}]')
-          .replaceFirst('[1:v]', '[$watermarkInputIndex:v]');
+      final wmFilter = _composeWatermarkFilter(
+        watermarkFilterPart,
+        '[${dateStampOverlay.outputMapLabel}]',
+        watermarkInputIndex,
+      );
       filterComplex =
           '$colorOverlayFilter;${dateStampOverlay.filterComplex};$wmFilter';
-      final wmOutMatch = RegExp(r'\[(\w+)\]$').firstMatch(wmFilter);
-      mapLabel = wmOutMatch != null ? '[${wmOutMatch.group(1)}]' : null;
+      mapLabel = _extractOutputLabel(wmFilter);
     } else if (hasColor && hasDateStamp) {
       // Color overlay + date stamps
       filterComplex = '$colorOverlayFilter;${dateStampOverlay.filterComplex}';
       mapLabel = '[${dateStampOverlay.outputMapLabel}]';
     } else if (hasColor && hasWatermark) {
       // Color overlay + watermark
-      final wmFilter = watermarkFilterPart
-          .replaceFirst('[0:v]', '[base]')
-          .replaceFirst('[1:v]', '[$watermarkInputIndex:v]');
+      final wmFilter = _composeWatermarkFilter(
+        watermarkFilterPart,
+        '[base]',
+        watermarkInputIndex,
+      );
       filterComplex = '$colorOverlayFilter;$wmFilter';
-      final wmOutMatch = RegExp(r'\[(\w+)\]$').firstMatch(wmFilter);
-      mapLabel = wmOutMatch != null ? '[${wmOutMatch.group(1)}]' : null;
+      mapLabel = _extractOutputLabel(wmFilter);
     } else if (hasColor) {
       // Color overlay only
       filterComplex = colorOverlayFilter;
       mapLabel = '[base]';
     } else if (hasDateStamp && hasWatermark) {
       // Date stamps + watermark
-      final wmFilter = watermarkFilterPart
-          .replaceFirst('[0:v]', '[${dateStampOverlay.outputMapLabel}]')
-          .replaceFirst('[1:v]', '[$watermarkInputIndex:v]');
+      final wmFilter = _composeWatermarkFilter(
+        watermarkFilterPart,
+        '[${dateStampOverlay.outputMapLabel}]',
+        watermarkInputIndex,
+      );
       filterComplex = '${dateStampOverlay.filterComplex};$wmFilter';
-      final wmOutMatch = RegExp(r'\[(\w+)\]$').firstMatch(wmFilter);
-      mapLabel = wmOutMatch != null ? '[${wmOutMatch.group(1)}]' : null;
+      mapLabel = _extractOutputLabel(wmFilter);
     } else if (hasDateStamp) {
       // Date stamps only
       filterComplex = dateStampOverlay.filterComplex;
@@ -299,27 +322,19 @@ class VideoUtils {
         : null;
 
     // Get list of PNG files
-    final dir = Directory(framesDir);
-    if (!await dir.exists()) return null;
-
-    var files = await dir
-        .list()
-        .where((e) => e is File && e.path.toLowerCase().endsWith('.png'))
-        .map((e) => e.path)
-        .toList();
+    final allFiles = await _listSortedPngFiles(Directory(framesDir));
+    if (allFiles == null) return null;
 
     // Filter to only include files that exist in the database (same as concat list)
     final validTimestamps = await _getValidTimestampsFromDB(
       projectId,
       orientation,
     );
-    files = files.where((filePath) {
+    final files = allFiles.where((filePath) {
       final filename = path.basenameWithoutExtension(filePath);
       final timestamp = int.tryParse(filename);
       return timestamp != null && validTimestamps.contains(timestamp);
     }).toList();
-
-    files.sort(GalleryUtils.compareByNumericBasename);
 
     if (files.isEmpty) return null;
 
@@ -477,88 +492,122 @@ class VideoUtils {
     );
   }
 
-  /// Get video dimensions from the first frame in a directory
-  static Future<(int, int)?> _getFrameDimensions(String framesDir) async {
-    final dir = Directory(framesDir);
-    if (!await dir.exists()) return null;
-
-    final files = await dir
-        .list()
-        .where((e) => e is File && e.path.toLowerCase().endsWith('.png'))
-        .map((e) => e.path)
-        .toList();
-
-    if (files.isEmpty) return null;
-
-    files.sort(GalleryUtils.compareByNumericBasename);
-
-    // Read first frame to get dimensions
+  /// Lists all PNG files in [dir], sorted by numeric basename.
+  /// Returns null if the directory doesn't exist, can't be read, or contains no PNGs.
+  static Future<List<String>?> _listSortedPngFiles(Directory dir) async {
     try {
-      final firstFrame = File(files.first);
-      final bytes = await firstFrame.readAsBytes();
+      if (!await dir.exists()) return null;
+      final files = await dir
+          .list()
+          .where((e) => e is File && e.path.toLowerCase().endsWith('.png'))
+          .map((e) => e.path)
+          .toList();
+      if (files.isEmpty) return null;
+      files.sort(GalleryUtils.compareByNumericBasename);
+      return files;
+    } catch (_) {
+      return null;
+    }
+  }
 
-      // PNG dimensions are at bytes 16-23 (width at 16-19, height at 20-23)
-      // PNG signature is 8 bytes, then IHDR chunk
-      if (bytes.length < 24) return null;
+  /// Loads the three core watermark settings shared by all encoding paths.
+  static Future<({bool enabled, String pos, String filePath})>
+      _loadWatermarkSettings(int projectId) async {
+    final bool enabled = await SettingsUtil.loadWatermarkSetting(
+      projectId.toString(),
+    );
+    final String pos = (await DB.instance.getSettingValueByTitle(
+      'watermark_position',
+    ))
+        .toLowerCase();
+    final String filePath = await DirUtils.getWatermarkFilePath(projectId);
+    return (enabled: enabled, pos: pos, filePath: filePath);
+  }
 
-      // Check PNG signature
+  /// Builds the watermark filter string and returns the active file path,
+  /// or returns nulls when the watermark is disabled / file is missing.
+  static Future<({String? filterPart, String? filePath})> _resolveWatermark(
+      int projectId, String pos, String filePath) async {
+    if (!Utils.isImage(filePath) || !await File(filePath).exists()) {
+      return (filterPart: null, filePath: null);
+    }
+    final String opacityVal =
+        await DB.instance.getSettingValueByTitle('watermark_opacity');
+    final double opacity = double.tryParse(opacityVal) ?? 0.8;
+    return (
+      filterPart: getWatermarkFilter(opacity, pos, 10),
+      filePath: filePath,
+    );
+  }
+
+  /// Deletes the temporary directory used for date stamp PNG assets.
+  static Future<void> _cleanupDateStampTemp(
+    DateStampOverlayInfo? overlay,
+  ) async {
+    if (overlay == null) return;
+    try {
+      final tempDir = Directory(overlay.tempDir);
+      if (await tempDir.exists()) {
+        await tempDir.delete(recursive: true);
+      }
+    } catch (e) {
+      LogService.instance.log(
+        "[VIDEO] Failed to clean up date stamp PNGs: $e",
+      );
+    }
+  }
+
+  /// Reads the PNG signature + IHDR chunk from [filePath].
+  /// Returns `({width, height, bitDepth})` or null if the file is not a valid PNG.
+  static Future<({int width, int height, int bitDepth})?> _readPngIhdr(
+    String filePath,
+  ) async {
+    try {
+      final bytes = await File(filePath).readAsBytes();
+      if (bytes.length < 25) return null;
+      // Verify PNG signature (first 4 bytes of the 8-byte signature)
       if (bytes[0] != 0x89 ||
           bytes[1] != 0x50 ||
           bytes[2] != 0x4E ||
           bytes[3] != 0x47) {
         return null;
       }
-
-      // Width and height are big-endian 4-byte integers at offset 16 and 20
       final width =
           (bytes[16] << 24) | (bytes[17] << 16) | (bytes[18] << 8) | bytes[19];
       final height =
           (bytes[20] << 24) | (bytes[21] << 16) | (bytes[22] << 8) | bytes[23];
-
-      LogService.instance.log("[VIDEO] Frame dimensions: ${width}x$height");
-      return (width, height);
-    } catch (e) {
-      LogService.instance.log("[VIDEO] Failed to read frame dimensions: $e");
+      final bitDepth = bytes[24];
+      return (width: width, height: height, bitDepth: bitDepth);
+    } catch (_) {
       return null;
     }
+  }
+
+  /// Get video dimensions from the first frame in a directory
+  static Future<(int, int)?> _getFrameDimensions(String framesDir) async {
+    final files = await _listSortedPngFiles(Directory(framesDir));
+    if (files == null) return null;
+
+    final ihdr = await _readPngIhdr(files.first);
+    if (ihdr == null) return null;
+
+    LogService.instance.log(
+      "[VIDEO] Frame dimensions: ${ihdr.width}x${ihdr.height}",
+    );
+    return (ihdr.width, ihdr.height);
   }
 
   /// Check if any frames in [framesDir] have bit depth > 8.
   /// Reads the PNG IHDR chunk (byte offset 24) of the first frame.
   static Future<bool> _hasHighBitDepthFrames(String framesDir) async {
-    try {
-      final dir = Directory(framesDir);
-      if (!await dir.exists()) return false;
+    final files = await _listSortedPngFiles(Directory(framesDir));
+    if (files == null) return false;
 
-      final files = await dir
-          .list()
-          .where((e) => e is File && e.path.toLowerCase().endsWith('.png'))
-          .map((e) => e.path)
-          .toList();
+    final ihdr = await _readPngIhdr(files.first);
+    if (ihdr == null) return false;
 
-      if (files.isEmpty) return false;
-      files.sort(GalleryUtils.compareByNumericBasename);
-
-      final firstFrame = File(files.first);
-      final bytes = await firstFrame.readAsBytes();
-
-      // PNG IHDR: bit depth is at byte offset 24
-      if (bytes.length < 25) return false;
-      // Verify PNG signature
-      if (bytes[0] != 0x89 ||
-          bytes[1] != 0x50 ||
-          bytes[2] != 0x4E ||
-          bytes[3] != 0x47) {
-        return false;
-      }
-
-      final bitDepth = bytes[24];
-      LogService.instance.log("[VIDEO] Frame bit depth: $bitDepth");
-      return bitDepth > 8;
-    } catch (e) {
-      LogService.instance.log("[VIDEO] Failed to read frame bit depth: $e");
-      return false;
-    }
+    LogService.instance.log("[VIDEO] Frame bit depth: ${ihdr.bitDepth}");
+    return ihdr.bitDepth > 8;
   }
 
   static int pickBitrateKbps(String resolution) {
@@ -821,32 +870,28 @@ class VideoUtils {
           );
 
           // Load watermark settings
-          final bool wmEnabled = await SettingsUtil.loadWatermarkSetting(
-            projectId.toString(),
-          );
-          final String wmPos = (await DB.instance.getSettingValueByTitle(
-            'watermark_position',
-          ))
-              .toLowerCase();
-          final String wmFilePath = await DirUtils.getWatermarkFilePath(
-            projectId,
-          );
-
-          String? wmFilterPart;
-          String? wmPath;
+          final wmSettings = await _loadWatermarkSettings(projectId);
           int wmInputIndex =
               1 + idxOffset + (dateStampOverlay?.pngInputPaths.length ?? 0);
-          if (wmEnabled &&
-              Utils.isImage(wmFilePath) &&
-              await File(wmFilePath).exists()) {
-            final String wmOpacityVal =
-                await DB.instance.getSettingValueByTitle('watermark_opacity');
-            final double wmOpacity = double.tryParse(wmOpacityVal) ?? 0.8;
-            wmPath = wmFilePath;
-            wmFilterPart = getWatermarkFilter(wmOpacity, wmPos, 10);
-          }
+          final wm = wmSettings.enabled
+              ? await _resolveWatermark(
+                  projectId,
+                  wmSettings.pos,
+                  wmSettings.filePath,
+                )
+              : (filterPart: null, filePath: null);
 
-          final bool ok = await _encodeWindows(
+          final String ffmpegExeWin = await _resolveFfmpegPath();
+          final exeFileWin = File(ffmpegExeWin);
+          if (!ffmpegExeWin.contains(path.separator) ||
+              !await exeFileWin.exists()) {
+            LogService.instance.log(
+              "[VIDEO] WARNING: ffmpeg path '$ffmpegExeWin' may not exist as a file (might be a PATH command)",
+            );
+          }
+          final bool ok = await _encodeDesktop(
+            ffmpegExe: ffmpegExeWin,
+            isMacOS: false,
             framesDir: framesDir,
             outputPath: videoOutputPath,
             fps: framerate,
@@ -862,25 +907,13 @@ class VideoUtils {
             videoBg: videoBg,
             videoWidth: videoWidth,
             videoHeight: videoHeight,
-            watermarkFilterPart: wmFilterPart,
-            watermarkFilePath: wmPath,
+            watermarkFilterPart: wm.filterPart,
+            watermarkFilePath: wm.filePath,
             watermarkInputIndex: wmInputIndex,
           );
 
-          // Clean up date stamp temp PNGs
-          if (dateStampOverlay != null) {
-            try {
-              final tempDir = Directory(dateStampOverlay.tempDir);
-              if (await tempDir.exists()) {
-                await tempDir.delete(recursive: true);
-              }
-            } catch (e) {
-              LogService.instance.log(
-                "[VIDEO] Failed to clean up date stamp PNGs: $e",
-              );
-            }
-          }
-          LogService.instance.log("[VIDEO] _encodeWindows returned: $ok");
+          await _cleanupDateStampTemp(dateStampOverlay);
+          LogService.instance.log("[VIDEO] _encodeDesktop returned: $ok");
           if (ok) {
             final String resolution = await SettingsUtil.loadVideoResolution(
               projectId.toString(),
@@ -888,14 +921,8 @@ class VideoUtils {
             await DB.instance.addVideo(
               projectId,
               resolution,
-              (await SettingsUtil.loadWatermarkSetting(
-                projectId.toString(),
-              ))
-                  .toString(),
-              (await DB.instance.getSettingValueByTitle(
-                'watermark_position',
-              ))
-                  .toLowerCase(),
+              wmSettings.enabled.toString(),
+              wmSettings.pos,
               totalPhotoCount,
               framerate,
             );
@@ -945,32 +972,25 @@ class VideoUtils {
           );
 
           // Load watermark settings
-          final bool wmEnabled = await SettingsUtil.loadWatermarkSetting(
-            projectId.toString(),
-          );
-          final String wmPos = (await DB.instance.getSettingValueByTitle(
-            'watermark_position',
-          ))
-              .toLowerCase();
-          final String wmFilePath = await DirUtils.getWatermarkFilePath(
-            projectId,
-          );
-
-          String? wmFilterPart;
-          String? wmPath;
+          final wmSettingsMac = await _loadWatermarkSettings(projectId);
           int wmInputIndex =
               1 + idxOffset + (dateStampOverlay?.pngInputPaths.length ?? 0);
-          if (wmEnabled &&
-              Utils.isImage(wmFilePath) &&
-              await File(wmFilePath).exists()) {
-            final String wmOpacityVal =
-                await DB.instance.getSettingValueByTitle('watermark_opacity');
-            final double wmOpacity = double.tryParse(wmOpacityVal) ?? 0.8;
-            wmPath = wmFilePath;
-            wmFilterPart = getWatermarkFilter(wmOpacity, wmPos, 10);
-          }
+          final wmMac = wmSettingsMac.enabled
+              ? await _resolveWatermark(
+                  projectId,
+                  wmSettingsMac.pos,
+                  wmSettingsMac.filePath,
+                )
+              : (filterPart: null, filePath: null);
 
-          final bool ok = await _encodeMacOS(
+          final exeDirMac = path.dirname(Platform.resolvedExecutable);
+          final resourcesDirMac = path.normalize(
+            path.join(exeDirMac, '..', 'Resources'),
+          );
+          final ffmpegExeMac = path.join(resourcesDirMac, 'ffmpeg');
+          final bool ok = await _encodeDesktop(
+            ffmpegExe: ffmpegExeMac,
+            isMacOS: true,
             framesDir: framesDir,
             outputPath: videoOutputPath,
             fps: framerate,
@@ -986,25 +1006,13 @@ class VideoUtils {
             videoBg: videoBg,
             videoWidth: videoWidth,
             videoHeight: videoHeight,
-            watermarkFilterPart: wmFilterPart,
-            watermarkFilePath: wmPath,
+            watermarkFilterPart: wmMac.filterPart,
+            watermarkFilePath: wmMac.filePath,
             watermarkInputIndex: wmInputIndex,
           );
 
-          // Clean up date stamp temp PNGs
-          if (dateStampOverlay != null) {
-            try {
-              final tempDir = Directory(dateStampOverlay.tempDir);
-              if (await tempDir.exists()) {
-                await tempDir.delete(recursive: true);
-              }
-            } catch (e) {
-              LogService.instance.log(
-                "[VIDEO] Failed to clean up date stamp PNGs: $e",
-              );
-            }
-          }
-          LogService.instance.log("[VIDEO] _encodeMacOS returned: $ok");
+          await _cleanupDateStampTemp(dateStampOverlay);
+          LogService.instance.log("[VIDEO] _encodeDesktop returned: $ok");
           if (ok) {
             final String resolution = await SettingsUtil.loadVideoResolution(
               projectId.toString(),
@@ -1012,14 +1020,8 @@ class VideoUtils {
             await DB.instance.addVideo(
               projectId,
               resolution,
-              (await SettingsUtil.loadWatermarkSetting(
-                projectId.toString(),
-              ))
-                  .toString(),
-              (await DB.instance.getSettingValueByTitle(
-                'watermark_position',
-              ))
-                  .toLowerCase(),
+              wmSettingsMac.enabled.toString(),
+              wmSettingsMac.pos,
               totalPhotoCount,
               framerate,
             );
@@ -1036,16 +1038,7 @@ class VideoUtils {
         }
       }
 
-      final bool watermarkEnabled = await SettingsUtil.loadWatermarkSetting(
-        projectId.toString(),
-      );
-      final String watermarkPos = (await DB.instance.getSettingValueByTitle(
-        'watermark_position',
-      ))
-          .toLowerCase();
-      final String watermarkFilePath = await DirUtils.getWatermarkFilePath(
-        projectId,
-      );
+      final wmSettingsMobile = await _loadWatermarkSettings(projectId);
 
       final String framesDir = path.join(stabilizedDirPath, projectOrientation);
 
@@ -1088,19 +1081,16 @@ class VideoUtils {
       int watermarkInputIndex =
           1 + idxOffset + (dateStampOverlay?.pngInputPaths.length ?? 0);
       String? watermarkFilterPart;
-      if (watermarkEnabled &&
-          Utils.isImage(watermarkFilePath) &&
-          await File(watermarkFilePath).exists()) {
-        final String watermarkOpacitySettingVal =
-            await DB.instance.getSettingValueByTitle('watermark_opacity');
-        final double watermarkOpacity =
-            double.tryParse(watermarkOpacitySettingVal) ?? 0.8;
-        watermarkInput = "-i \"$watermarkFilePath\"";
-        watermarkFilterPart = getWatermarkFilter(
-          watermarkOpacity,
-          watermarkPos,
-          10,
+      if (wmSettingsMobile.enabled) {
+        final wm = await _resolveWatermark(
+          projectId,
+          wmSettingsMobile.pos,
+          wmSettingsMobile.filePath,
         );
+        if (wm.filePath != null) {
+          watermarkInput = "-i \"${wm.filePath}\"";
+          watermarkFilterPart = wm.filterPart;
+        }
       }
 
       // Build color overlay filter prefix (transparent PNGs on solid video bg)
@@ -1147,7 +1137,7 @@ class VideoUtils {
       // Check if resolution exceeds H.264 VideoToolbox limits (4096px on any dimension)
       // In that case, upgrade h264 -> hevc automatically
       VideoCodec finalCodec = effectiveCodec;
-      if ((Platform.isMacOS || Platform.isIOS) &&
+      if (isApple &&
           effectiveCodec == VideoCodec.h264 &&
           _resolutionNeedsHevc(
             resolution,
@@ -1217,14 +1207,6 @@ class VideoUtils {
           "-pix_fmt $pixFmt "
           "\"$videoOutputPath\"";
 
-      LogService.instance.log(
-        '[VIDEO] DEBUG needsColorOverlay=$needsColorOverlay needsBlurOverlay=$needsBlurOverlay videoHasAlpha=$videoHasAlpha',
-      );
-      LogService.instance.log('[VIDEO] DEBUG filterArgs=$filterArgs');
-      LogService.instance.log('[VIDEO] DEBUG mapArg=$mapArg');
-      LogService.instance.log(
-        '[VIDEO] DEBUG colorSourceInput=$colorSourceInput',
-      );
       LogService.instance.log('[VIDEO] DEBUG full command=$ffmpegCommand');
 
       bool success = false;
@@ -1269,8 +1251,8 @@ class VideoUtils {
           await DB.instance.addVideo(
             projectId,
             resolution,
-            watermarkEnabled.toString(),
-            watermarkPos,
+            wmSettingsMobile.enabled.toString(),
+            wmSettingsMobile.pos,
             totalPhotoCount,
             framerate,
           );
@@ -1289,19 +1271,7 @@ class VideoUtils {
         LogService.instance.log("[VIDEO] Stack trace: $stackTrace");
       }
 
-      // Clean up date stamp temp PNGs
-      if (dateStampOverlay != null) {
-        try {
-          final tempDir = Directory(dateStampOverlay.tempDir);
-          if (await tempDir.exists()) {
-            await tempDir.delete(recursive: true);
-          }
-        } catch (e) {
-          LogService.instance.log(
-            "[VIDEO] Failed to clean up date stamp PNGs: $e",
-          );
-        }
-      }
+      await _cleanupDateStampTemp(dateStampOverlay);
 
       return success;
     } catch (e, stackTrace) {
@@ -1778,7 +1748,9 @@ class VideoUtils {
     return ('main', '4.1');
   }
 
-  static Future<bool> _encodeMacOS({
+  static Future<bool> _encodeDesktop({
+    required String ffmpegExe,
+    required bool isMacOS,
     required String framesDir,
     required String outputPath,
     required int fps,
@@ -1798,7 +1770,9 @@ class VideoUtils {
     String? watermarkFilePath,
     int watermarkInputIndex = 0,
   }) async {
-    LogService.instance.log("[VIDEO] _encodeMacOS started");
+    LogService.instance.log(
+      "[VIDEO] _encodeDesktop started (${isMacOS ? 'macOS' : 'Windows/Linux'})",
+    );
     LogService.instance.log("[VIDEO] framesDir: $framesDir");
     LogService.instance.log("[VIDEO] outputPath: $outputPath");
     LogService.instance.log("[VIDEO] fps: $fps");
@@ -1808,11 +1782,7 @@ class VideoUtils {
       );
     }
 
-    // macOS FFmpeg path: bundled in app Resources
-    final exeDir = path.dirname(Platform.resolvedExecutable);
-    final resourcesDir = path.normalize(path.join(exeDir, '..', 'Resources'));
-    final exe = path.join(resourcesDir, 'ffmpeg');
-    LogService.instance.log("[VIDEO] Resolved ffmpeg executable: $exe");
+    LogService.instance.log("[VIDEO] Resolved ffmpeg executable: $ffmpegExe");
 
     await _ensureOutDir(outputPath);
     final listPath = await _buildConcatListFromDir(
@@ -1827,13 +1797,11 @@ class VideoUtils {
       projectId.toString(),
     );
     final kbps = pickBitrateKbps(resolution);
-    LogService.instance.log(
-      "[VIDEO] Resolution: $resolution, Codec: ${effectiveCodec.name}, Bitrate: ${kbps}k",
-    );
 
     // macOS-specific: auto-upgrade H.264 to HEVC for 8K (VideoToolbox limit)
-    VideoCodec finalCodec = effectiveCodec;
-    if (effectiveCodec == VideoCodec.h264 &&
+    VideoCodec codec = effectiveCodec;
+    if (isMacOS &&
+        effectiveCodec == VideoCodec.h264 &&
         videoWidth != null &&
         videoHeight != null &&
         _resolutionNeedsHevc(
@@ -1844,8 +1812,12 @@ class VideoUtils {
       LogService.instance.log(
         "[VIDEO] 8K resolution detected, upgrading H.264 to HEVC (h264_videotoolbox doesn't support 8K)",
       );
-      finalCodec = VideoCodec.hevc;
+      codec = VideoCodec.hevc;
     }
+
+    LogService.instance.log(
+      "[VIDEO] Resolution: $resolution, Codec: ${codec.name}, Bitrate: ${kbps}k",
+    );
 
     // Build FFmpeg arguments
     final args = <String>['-y'];
@@ -1885,7 +1857,7 @@ class VideoUtils {
     final String? backgroundFilterStr;
     if (needsColorOverlay) {
       backgroundFilterStr =
-          '[0:v][1:v]overlay=shortest=1,format=${finalCodec.pixelFormat}[base]';
+          '[0:v][1:v]overlay=shortest=1,format=${codec.pixelFormat}[base]';
     } else if (needsBlurOverlay && videoHeight != null) {
       backgroundFilterStr = buildBlurFilter(videoHeight);
     } else {
@@ -1897,7 +1869,7 @@ class VideoUtils {
       watermarkFilterPart: watermarkFilterPart,
       watermarkInputIndex: watermarkInputIndex,
       needsColorOverlay: needsColorOverlay || needsBlurOverlay,
-      pixelFormat: finalCodec.pixelFormat,
+      pixelFormat: codec.pixelFormat,
     );
     if (filterResult.hasFilter) {
       args.addAll(['-filter_complex', filterResult.filterComplex!]);
@@ -1908,18 +1880,18 @@ class VideoUtils {
 
     // For alpha output without filter_complex, add format filter
     if (videoHasAlpha && !filterResult.hasFilter && !needsColorOverlay) {
-      args.addAll(['-vf', 'format=${finalCodec.pixelFormat}']);
+      args.addAll(['-vf', 'format=${codec.pixelFormat}']);
     }
 
     LogService.instance.log(
-      "[VIDEO] Using ${finalCodec.displayName} encoder: ${finalCodec.encoder}",
+      "[VIDEO] Using ${codec.displayName} encoder: ${codec.encoder}",
     );
 
     // Detect high-bit-depth source frames for 10-bit output
     final bool highBitDepth = await _hasHighBitDepthFrames(framesDir);
 
     // Video encoding settings based on codec model
-    final pixFmt = finalCodec.pixelFormatForSource(highBitDepth: highBitDepth);
+    final pixFmt = codec.pixelFormatForSource(highBitDepth: highBitDepth);
     final int outFps = outputFps(fps);
     args.addAll(['-vsync', 'cfr', '-r', '$outFps', '-pix_fmt', pixFmt]);
 
@@ -1934,16 +1906,21 @@ class VideoUtils {
     ]);
 
     // Encoder — uses .encoder which returns encoderApple on macOS
-    // (e.g. h264_videotoolbox, hevc_videotoolbox, prores_ks)
-    final encoderParts = finalCodec.encoder.split(' ');
+    // (e.g. h264_videotoolbox, hevc_videotoolbox, prores_ks) or
+    // encoderDesktop on Windows/Linux (e.g. libx264, libx265, libvpx-vp9)
+    final encoderParts = codec.encoder.split(' ');
     args.addAll(['-c:v', ...encoderParts]);
 
     // macOS uses VideoToolbox hardware encoders which auto-negotiate
     // profile/level correctly. Do NOT set -profile:v / -level here —
     // explicit Level 5.1 causes VideoToolbox to reject 4K@30fps
     // (exceeds macroblock throughput limit).
+    if (!isMacOS && codec == VideoCodec.h264) {
+      final (profile, level) = _getH264ProfileAndLevel(resolution);
+      args.addAll(['-profile:v', profile, '-level', level]);
+    }
 
-    if (finalCodec == VideoCodec.vp9) {
+    if (codec == VideoCodec.vp9) {
       args.addAll([
         '-b:v',
         '${kbps}k',
@@ -1954,7 +1931,7 @@ class VideoUtils {
         '-auto-alt-ref',
         '0',
       ]);
-    } else if (finalCodec.usesBitrateControl) {
+    } else if (codec.usesBitrateControl) {
       args.addAll([
         '-b:v',
         '${kbps}k',
@@ -1965,12 +1942,13 @@ class VideoUtils {
       ]);
     }
 
-    if (finalCodec.usesMovFlags) {
+    if (codec.usesMovFlags) {
       args.addAll(['-movflags', '+faststart']);
     }
 
-    // macOS-specific: codec tag (e.g. -tag:v avc1 for H.264, -tag:v hvc1 for HEVC)
-    final tag = finalCodec.codecTag;
+    // Codec tag (e.g. -tag:v avc1 for H.264, -tag:v hvc1 for HEVC on Apple).
+    // Returns '' on non-Apple platforms, so the guard handles it safely.
+    final tag = codec.codecTag;
     if (tag.isNotEmpty) {
       args.addAll(tag.split(' '));
     }
@@ -1985,255 +1963,7 @@ class VideoUtils {
     LogService.instance.log("[VIDEO] Starting ffmpeg process...");
 
     try {
-      final proc = await Process.start(exe, args, runInShell: false);
-      FFmpegProcessManager.instance.registerProcess(proc);
-      LogService.instance.log(
-        "[VIDEO] ffmpeg process started with PID: ${proc.pid}",
-      );
-
-      proc.stdout
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen((line) {
-        if (onLog != null) onLog(line);
-      });
-      proc.stderr
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen((line) {
-        if (onLog != null) onLog(line);
-        final m = RegExp(r'frame=\s*(\d+)').firstMatch(line);
-        if (m != null && onProgress != null) {
-          final f = int.tryParse(m.group(1)!);
-          if (f != null) onProgress(f);
-        }
-      });
-
-      final code = await proc.exitCode;
-      FFmpegProcessManager.instance.unregisterProcess();
-      LogService.instance.log("[VIDEO] ffmpeg process exited with code: $code");
-
-      try {
-        await File(listPath).delete();
-        LogService.instance.log("[VIDEO] Cleaned up concat list file");
-      } catch (e) {
-        LogService.instance.log("[VIDEO] Failed to clean up concat list: $e");
-      }
-
-      // Check if output file was created
-      final outputFile = File(outputPath);
-      if (await outputFile.exists()) {
-        final size = await outputFile.length();
-        LogService.instance.log(
-          "[VIDEO] Output file created: $outputPath (${(size / 1024 / 1024).toStringAsFixed(2)} MB)",
-        );
-      } else {
-        LogService.instance.log(
-          "[VIDEO] WARNING: Output file was not created: $outputPath",
-        );
-      }
-
-      return code == 0;
-    } catch (e, stackTrace) {
-      LogService.instance.log("[VIDEO] ERROR starting ffmpeg process: $e");
-      LogService.instance.log("[VIDEO] Stack trace: $stackTrace");
-      return false;
-    }
-  }
-
-  static Future<bool> _encodeWindows({
-    required String framesDir,
-    required String outputPath,
-    required int fps,
-    required int projectId,
-    required String orientation,
-    void Function(String line)? onLog,
-    void Function(int frameIndex)? onProgress,
-    DateStampOverlayInfo? dateStampOverlay,
-    required VideoCodec effectiveCodec,
-    required bool videoHasAlpha,
-    bool needsColorOverlay = false,
-    bool needsBlurOverlay = false,
-    VideoBackground? videoBg,
-    int? videoWidth,
-    int? videoHeight,
-    String? watermarkFilterPart,
-    String? watermarkFilePath,
-    int watermarkInputIndex = 0,
-  }) async {
-    LogService.instance.log("[VIDEO] _encodeWindows started");
-    LogService.instance.log("[VIDEO] framesDir: $framesDir");
-    LogService.instance.log("[VIDEO] outputPath: $outputPath");
-    LogService.instance.log("[VIDEO] fps: $fps");
-    if (dateStampOverlay != null) {
-      LogService.instance.log(
-        "[VIDEO] Date stamp overlay enabled with ${dateStampOverlay.pngInputPaths.length} PNGs",
-      );
-    }
-
-    final exe = await _resolveFfmpegPath();
-    LogService.instance.log("[VIDEO] Resolved ffmpeg executable: $exe");
-
-    // Verify ffmpeg exists
-    final exeFile = File(exe);
-    if (!exe.contains(path.separator) || !await exeFile.exists()) {
-      LogService.instance.log(
-        "[VIDEO] WARNING: ffmpeg path '$exe' may not exist as a file (might be a PATH command)",
-      );
-    }
-
-    await _ensureOutDir(outputPath);
-    final listPath = await _buildConcatListFromDir(
-      framesDir,
-      fps,
-      projectId: projectId,
-      orientation: orientation,
-    );
-
-    // Get resolution setting
-    final resolution = await SettingsUtil.loadVideoResolution(
-      projectId.toString(),
-    );
-    final kbps = pickBitrateKbps(resolution);
-    LogService.instance.log(
-      "[VIDEO] Resolution: $resolution, Codec: ${effectiveCodec.name}, Bitrate: ${kbps}k",
-    );
-
-    // Build FFmpeg arguments
-    final args = <String>['-y'];
-
-    // Add color source input (input 0) when compositing transparent PNGs onto solid bg
-    if (needsColorOverlay &&
-        videoBg != null &&
-        videoBg.solidColorHex != null &&
-        videoWidth != null &&
-        videoHeight != null) {
-      final String hex = videoBg.solidColorHex!.replaceFirst('#', '0x');
-      final int outFps = outputFps(fps);
-      args.addAll([
-        '-f',
-        'lavfi',
-        '-i',
-        'color=c=$hex:s=${videoWidth}x$videoHeight:r=$outFps',
-      ]);
-    }
-
-    // Add video frames input (input 0 normally, input 1 with color overlay)
-    args.addAll(['-f', 'concat', '-safe', '0', '-i', listPath]);
-
-    // Add date stamp PNG inputs
-    if (dateStampOverlay != null) {
-      for (final pngPath in dateStampOverlay.pngInputPaths) {
-        args.addAll(['-i', pngPath]);
-      }
-    }
-
-    // Add watermark input
-    if (watermarkFilePath != null) {
-      args.addAll(['-i', watermarkFilePath]);
-    }
-
-    // Build filter_complex via shared filter chain builder
-    final String? backgroundFilterStr;
-    if (needsColorOverlay) {
-      backgroundFilterStr =
-          '[0:v][1:v]overlay=shortest=1,format=${effectiveCodec.pixelFormat}[base]';
-    } else if (needsBlurOverlay && videoHeight != null) {
-      backgroundFilterStr = buildBlurFilter(videoHeight);
-    } else {
-      backgroundFilterStr = null;
-    }
-    final filterResult = buildFilterChain(
-      colorOverlayFilter: backgroundFilterStr,
-      dateStampOverlay: dateStampOverlay,
-      watermarkFilterPart: watermarkFilterPart,
-      watermarkInputIndex: watermarkInputIndex,
-      needsColorOverlay: needsColorOverlay || needsBlurOverlay,
-      pixelFormat: effectiveCodec.pixelFormat,
-    );
-    if (filterResult.hasFilter) {
-      args.addAll(['-filter_complex', filterResult.filterComplex!]);
-    }
-    if (filterResult.hasMap) {
-      args.addAll(['-map', filterResult.mapLabel!]);
-    }
-
-    // For alpha output without filter_complex, add format filter
-    if (videoHasAlpha && !filterResult.hasFilter && !needsColorOverlay) {
-      args.addAll(['-vf', 'format=${effectiveCodec.pixelFormat}']);
-    }
-
-    LogService.instance.log(
-      "[VIDEO] Using ${effectiveCodec.displayName} encoder: ${effectiveCodec.encoderDesktop}",
-    );
-
-    // Detect high-bit-depth source frames for 10-bit output
-    final bool highBitDepth = await _hasHighBitDepthFrames(framesDir);
-
-    // Video encoding settings based on codec model
-    final pixFmt = effectiveCodec.pixelFormatForSource(
-      highBitDepth: highBitDepth,
-    );
-    final int outFps = outputFps(fps);
-    args.addAll(['-vsync', 'cfr', '-r', '$outFps', '-pix_fmt', pixFmt]);
-
-    // Color space metadata for correct rendering in all players
-    args.addAll([
-      '-color_primaries',
-      'bt709',
-      '-color_trc',
-      'bt709',
-      '-colorspace',
-      'bt709',
-    ]);
-
-    // Split encoder string into individual args (e.g., "prores_ks -profile:v standard")
-    final encoderParts = effectiveCodec.encoderDesktop.split(' ');
-    args.addAll(['-c:v', ...encoderParts]);
-
-    // Add codec-specific settings
-    if (effectiveCodec == VideoCodec.h264) {
-      final (profile, level) = _getH264ProfileAndLevel(resolution);
-      args.addAll(['-profile:v', profile, '-level', level]);
-    }
-
-    if (effectiveCodec == VideoCodec.vp9) {
-      args.addAll([
-        '-b:v',
-        '${kbps}k',
-        '-crf',
-        '30',
-        '-row-mt',
-        '1',
-        '-auto-alt-ref',
-        '0',
-      ]);
-    } else if (effectiveCodec.usesBitrateControl) {
-      args.addAll([
-        '-b:v',
-        '${kbps}k',
-        '-maxrate',
-        '${(kbps * 1.5).round()}k',
-        '-bufsize',
-        '${(kbps * 3).round()}k',
-      ]);
-    }
-
-    if (effectiveCodec.usesMovFlags) {
-      args.addAll(['-movflags', '+faststart']);
-    }
-
-    if (!videoHasAlpha) {
-      args.addAll(['-g', '240']);
-    }
-
-    args.add(outputPath);
-
-    LogService.instance.log("[VIDEO] ffmpeg arguments: ${args.join(' ')}");
-    LogService.instance.log("[VIDEO] Starting ffmpeg process...");
-
-    try {
-      final proc = await Process.start(exe, args, runInShell: false);
+      final proc = await Process.start(ffmpegExe, args, runInShell: false);
       FFmpegProcessManager.instance.registerProcess(proc);
       LogService.instance.log(
         "[VIDEO] ffmpeg process started with PID: ${proc.pid}",

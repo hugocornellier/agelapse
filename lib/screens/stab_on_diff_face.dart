@@ -7,7 +7,11 @@ import '../styles/styles.dart';
 import '../utils/camera_utils.dart';
 import '../utils/dir_utils.dart';
 import '../utils/stabilizer_utils/stabilizer_utils.dart';
+import '../utils/utils.dart';
+import '../widgets/confirm_action_dialog.dart';
 import '../widgets/desktop_page_scaffold.dart';
+import '../widgets/help_icon_button.dart';
+import '../widgets/quick_guide_dialog.dart';
 
 class StabDiffFacePage extends StatefulWidget {
   final int projectId;
@@ -57,8 +61,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
   }
 
   Future<void> _init() async {
-    if (!mounted) return;
-    setState(() {
+    setStateIfMounted(() {
       // Show different message if main stabilization is running (user may need to wait)
       loadingStatus = widget.stabilizationRunningInMain
           ? "Waiting for stabilizer..."
@@ -146,8 +149,15 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
     dynamic tappedFace,
     VoidCallback userRanOutOfSpaceCallback,
   ) async {
-    final bool? userConfirmed = await _showConfirmationDialog();
-    if (userConfirmed!) {
+    final bool userConfirmed = await ConfirmActionDialog.showSimpleConfirmation(
+      context,
+      title: 'Confirm Stabilization',
+      description: 'Do you want to stabilize on this face?',
+      titleIcon: Icons.face_rounded,
+      accentColor: AppColors.settingsAccent,
+      confirmText: 'Confirm',
+    );
+    if (userConfirmed) {
       setState(() {
         loadingStatus = "Stabilizing image...";
         isLoading = true;
@@ -172,8 +182,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
             await faceStabilizer!.createStabThumbnailFromRawPath(rawImagePath);
 
         // 2. Clear caches BEFORE reloading gallery
-        PaintingBinding.instance.imageCache.clear();
-        PaintingBinding.instance.imageCache.clearLiveImages();
+        Utils.clearFlutterImageCache();
         ThumbnailService.instance.clearCache(thumbnailPath);
       }
 
@@ -192,123 +201,12 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
     }
   }
 
-  Future<bool?> _showConfirmationDialog() async {
-    return showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: AppColors.settingsCardBackground,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Row(
-            children: [
-              Icon(
-                Icons.face_rounded,
-                color: AppColors.settingsAccent,
-                size: 24,
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'Confirm Stabilization',
-                style: TextStyle(
-                  color: AppColors.settingsTextPrimary,
-                  fontSize: AppTypography.xl,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          content: Text(
-            'Do you want to stabilize on this face?',
-            style: TextStyle(
-              color: AppColors.settingsTextSecondary,
-              fontSize: AppTypography.md,
-              height: 1.5,
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(false);
-              },
-              child: Text(
-                'Cancel',
-                style: TextStyle(
-                  color: AppColors.settingsTextSecondary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(true);
-              },
-              child: Text(
-                'Confirm',
-                style: TextStyle(
-                  color: AppColors.settingsAccent,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showHelpDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.settingsCardBackground,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(
-              Icons.lightbulb_outline_rounded,
-              color: AppColors.settingsAccent,
-              size: 24,
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'Quick Guide',
-              style: TextStyle(
-                color: AppColors.settingsTextPrimary,
-                fontSize: AppTypography.xl,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Text(
-            'This screen lets you choose which face to stabilize on when multiple faces are detected in a photo.\n\n'
-            'Detected faces are highlighted with blue outlines. Tap on a face to select it as the stabilization target.\n\n'
-            'Use this when the automatic stabilization picked the wrong person, or when you want to create a timelapse focused on someone else in the photo.',
-            style: TextStyle(
-              color: AppColors.settingsTextSecondary,
-              fontSize: AppTypography.md,
-              height: 1.6,
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(
-              'Got it',
-              style: TextStyle(
-                color: AppColors.settingsAccent,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  void _showHelpDialog() => showQuickGuideDialog(
+        context,
+        'This screen lets you choose which face to stabilize on when multiple faces are detected in a photo.\n\n'
+        'Detected faces are highlighted with blue outlines. Tap on a face to select it as the stabilization target.\n\n'
+        'Use this when the automatic stabilization picked the wrong person, or when you want to create a timelapse focused on someone else in the photo.',
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -323,65 +221,37 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
                     );
                   },
                 )
-              : Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.settingsAccent,
-                      ),
+              : _buildStatusDisplay(
+                  icon: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.settingsAccent,
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      loadingStatus,
-                      style: TextStyle(
-                        color: AppColors.settingsTextSecondary,
-                        fontSize: AppTypography.md,
-                      ),
-                    ),
-                  ],
+                  ),
+                  message: loadingStatus,
+                  messageStyle: TextStyle(
+                    color: AppColors.settingsTextSecondary,
+                    fontSize: AppTypography.md,
+                  ),
                 )
           : stabCompletedSuccessfully!
-              ? Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.check_circle_rounded,
-                      color: AppColors.settingsAccent,
-                      size: 48,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      loadingStatus,
-                      style: TextStyle(
-                        color: AppColors.settingsTextPrimary,
-                        fontSize: AppTypography.lg,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
+              ? _buildStatusDisplay(
+                  icon: Icon(
+                    Icons.check_circle_rounded,
+                    color: AppColors.settingsAccent,
+                    size: 48,
+                  ),
+                  message: loadingStatus,
                 )
-              : Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.error_outline_rounded,
-                      color: AppColors.warningMuted,
-                      size: 48,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      loadingStatus,
-                      style: TextStyle(
-                        color: AppColors.settingsTextPrimary,
-                        fontSize: AppTypography.lg,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
+              : _buildStatusDisplay(
+                  icon: Icon(
+                    Icons.error_outline_rounded,
+                    color: AppColors.warningMuted,
+                    size: 48,
+                  ),
+                  message: loadingStatus,
                 ),
     );
 
@@ -391,37 +261,32 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
       backgroundColor: AppColors.settingsBackground,
       showBottomDivider: true,
       actions: [
-        _buildHelpButton(),
+        HelpIconButton(onTap: _showHelpDialog),
       ],
       body: body,
     );
   }
 
-  Widget _buildHelpButton() {
-    const size = DesktopPageScaffold.navButtonSize;
-    const iconSize = DesktopPageScaffold.navIconSize;
-    const radius = DesktopPageScaffold.navButtonRadius;
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: _showHelpDialog,
-        child: Container(
-          width: size,
-          height: size,
-          margin: const EdgeInsets.only(right: 6),
-          decoration: BoxDecoration(
-            color: AppColors.settingsCardBackground,
-            borderRadius: BorderRadius.circular(radius),
-            border: Border.all(color: AppColors.settingsCardBorder, width: 1),
-          ),
-          child: Icon(
-            Icons.help_outline_rounded,
-            color: AppColors.settingsTextSecondary,
-            size: iconSize,
-          ),
+  Widget _buildStatusDisplay({
+    required Widget icon,
+    required String message,
+    TextStyle? messageStyle,
+  }) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        icon,
+        const SizedBox(height: 16),
+        Text(
+          message,
+          style: messageStyle ??
+              TextStyle(
+                color: AppColors.settingsTextPrimary,
+                fontSize: AppTypography.lg,
+                fontWeight: FontWeight.w500,
+              ),
         ),
-      ),
+      ],
     );
   }
 

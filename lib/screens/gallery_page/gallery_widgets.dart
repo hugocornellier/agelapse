@@ -129,6 +129,80 @@ class ThumbnailStatusHelper {
   }
 }
 
+/// Mixin that provides the common stream-subscription lifecycle for thumbnail
+/// state classes. Each consumer must:
+///   - mix this in on a [State] subclass
+///   - implement [thumbnailPath] (returns the current path from widget)
+///   - implement [onThumbnailEvent] (updates its own state fields on stream event)
+///   - implement [resetThumbnailFields] (resets its own extra state fields to initial values)
+///   - implement [checkInitialThumbnailStatus] (calls [ThumbnailStatusHelper.checkInitialStatus]
+///     with the right arguments and applies the result to its own state fields)
+///   - call [initThumbnailMixin], [didUpdateThumbnailMixin], and [disposeThumbnailMixin]
+///     from the corresponding lifecycle methods
+mixin ThumbnailStateMixin<T extends StatefulWidget> on State<T> {
+  StreamSubscription<ThumbnailEvent>? _thumbnailSubscription;
+  bool _thumbnailCheckedInitial = false;
+
+  /// Returns the current thumbnail path from the widget.
+  String get thumbnailPath;
+
+  /// Called when a stream event arrives for [thumbnailPath].
+  void onThumbnailEvent(ThumbnailEvent event);
+
+  /// Resets any extra state fields introduced by the consumer to their initial
+  /// values (e.g. `_status = null`, `_fileExists = false`, `_ready = false`).
+  void resetThumbnailFields();
+
+  /// Runs [ThumbnailStatusHelper.checkInitialStatus] with the consumer's
+  /// specific arguments and applies the result to state. The mixin handles the
+  /// mounted + path-staleness guard before this is called, so implementations
+  /// only need to apply the result.
+  Future<void> checkInitialThumbnailStatus(String pathAtStart);
+
+  void _subscribeToStream() {
+    _thumbnailSubscription = ThumbnailStatusHelper.subscribeToStream(
+      thumbnailPath: thumbnailPath,
+      onEvent: (event) {
+        if (!mounted) return;
+        onThumbnailEvent(event);
+      },
+    );
+  }
+
+  Future<void> _runInitialCheck() async {
+    if (_thumbnailCheckedInitial) return;
+    _thumbnailCheckedInitial = true;
+    final pathAtStart = thumbnailPath;
+    await checkInitialThumbnailStatus(pathAtStart);
+  }
+
+  void initThumbnailMixin() {
+    _subscribeToStream();
+    _runInitialCheck();
+  }
+
+  void didUpdateThumbnailMixin(String oldPath) {
+    if (oldPath != thumbnailPath) {
+      // 1. Cancel old subscription FIRST
+      _thumbnailSubscription?.cancel();
+
+      // 2. Create new subscription for new path
+      _subscribeToStream();
+
+      // 3. Reset state
+      _thumbnailCheckedInitial = false;
+      resetThumbnailFields();
+
+      // 4. Check initial status for new path
+      _runInitialCheck();
+    }
+  }
+
+  void disposeThumbnailMixin() {
+    _thumbnailSubscription?.cancel();
+  }
+}
+
 class FlashingBox extends StatefulWidget {
   const FlashingBox({super.key});
 
@@ -193,61 +267,32 @@ class StabilizedThumbnail extends StatefulWidget {
   StabilizedThumbnailState createState() => StabilizedThumbnailState();
 }
 
-class StabilizedThumbnailState extends State<StabilizedThumbnail> {
-  StreamSubscription<ThumbnailEvent>? _subscription;
+class StabilizedThumbnailState extends State<StabilizedThumbnail>
+    with ThumbnailStateMixin<StabilizedThumbnail> {
   ThumbnailStatus? _status;
   bool _fileExists = false;
-  bool _checkedInitial = false;
 
   @override
-  void initState() {
-    super.initState();
-    _subscribeToStream();
-    _checkInitialStatus();
+  String get thumbnailPath => widget.thumbnailPath;
+
+  @override
+  void onThumbnailEvent(ThumbnailEvent event) {
+    setState(() {
+      _status = event.status;
+      if (event.status == ThumbnailStatus.success) {
+        _fileExists = true;
+      }
+    });
   }
 
   @override
-  void didUpdateWidget(covariant StabilizedThumbnail oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.thumbnailPath != widget.thumbnailPath) {
-      // 1. Cancel old subscription FIRST
-      _subscription?.cancel();
-
-      // 2. Create new subscription for new path
-      _subscribeToStream();
-
-      // 3. Reset state
-      _status = null;
-      _fileExists = false;
-      _checkedInitial = false;
-
-      // 4. Check initial status for new path
-      _checkInitialStatus();
-    }
+  void resetThumbnailFields() {
+    _status = null;
+    _fileExists = false;
   }
 
-  void _subscribeToStream() {
-    _subscription = ThumbnailStatusHelper.subscribeToStream(
-      thumbnailPath: widget.thumbnailPath,
-      onEvent: (event) {
-        if (!mounted) return;
-        setState(() {
-          _status = event.status;
-          if (event.status == ThumbnailStatus.success) {
-            _fileExists = true;
-          }
-        });
-      },
-    );
-  }
-
-  Future<void> _checkInitialStatus() async {
-    if (_checkedInitial) return;
-    _checkedInitial = true;
-
-    // Capture path at start to detect stale results
-    final pathAtStart = widget.thumbnailPath;
-
+  @override
+  Future<void> checkInitialThumbnailStatus(String pathAtStart) async {
     final result = await ThumbnailStatusHelper.checkInitialStatus(
       thumbnailPath: widget.thumbnailPath,
       projectId: widget.projectId,
@@ -255,10 +300,7 @@ class StabilizedThumbnailState extends State<StabilizedThumbnail> {
       verifyFileSize: true,
       checkDbFlags: true,
     );
-
-    // Guard: ignore result if path changed during async operation
     if (!mounted || widget.thumbnailPath != pathAtStart) return;
-
     if (result != null) {
       setState(() {
         _status = result.status;
@@ -268,8 +310,20 @@ class StabilizedThumbnailState extends State<StabilizedThumbnail> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    initThumbnailMixin();
+  }
+
+  @override
+  void didUpdateWidget(covariant StabilizedThumbnail oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    didUpdateThumbnailMixin(oldWidget.thumbnailPath);
+  }
+
+  @override
   void dispose() {
-    _subscription?.cancel();
+    disposeThumbnailMixin();
     super.dispose();
   }
 
@@ -351,35 +405,25 @@ class StabilizedImagePreview extends StatefulWidget {
   StabilizedImagePreviewState createState() => StabilizedImagePreviewState();
 }
 
-class StabilizedImagePreviewState extends State<StabilizedImagePreview> {
-  StreamSubscription<ThumbnailEvent>? _subscription;
+class StabilizedImagePreviewState extends State<StabilizedImagePreview>
+    with ThumbnailStateMixin<StabilizedImagePreview> {
   ThumbnailStatus? _status;
-  bool _checkedInitial = false;
 
   @override
-  void initState() {
-    super.initState();
-    _subscribeToStream();
-    _checkInitialStatus();
+  String get thumbnailPath => widget.thumbnailPath;
+
+  @override
+  void onThumbnailEvent(ThumbnailEvent event) {
+    setState(() => _status = event.status);
   }
 
-  void _subscribeToStream() {
-    _subscription = ThumbnailStatusHelper.subscribeToStream(
-      thumbnailPath: widget.thumbnailPath,
-      onEvent: (event) {
-        if (!mounted) return;
-        setState(() => _status = event.status);
-      },
-    );
+  @override
+  void resetThumbnailFields() {
+    _status = null;
   }
 
-  Future<void> _checkInitialStatus() async {
-    if (_checkedInitial) return;
-    _checkedInitial = true;
-
-    // Capture path at start to detect stale results
-    final pathAtStart = widget.thumbnailPath;
-
+  @override
+  Future<void> checkInitialThumbnailStatus(String pathAtStart) async {
     final result = await ThumbnailStatusHelper.checkInitialStatus(
       thumbnailPath: widget.thumbnailPath,
       projectId: widget.projectId,
@@ -387,18 +431,21 @@ class StabilizedImagePreviewState extends State<StabilizedImagePreview> {
       verifyFileSize: false,
       checkDbFlags: true,
     );
-
-    // Guard: ignore result if path changed during async operation
     if (!mounted || widget.thumbnailPath != pathAtStart) return;
-
     if (result != null) {
       setState(() => _status = result.status);
     }
   }
 
   @override
+  void initState() {
+    super.initState();
+    initThumbnailMixin();
+  }
+
+  @override
   void dispose() {
-    _subscription?.cancel();
+    disposeThumbnailMixin();
     super.dispose();
   }
 
@@ -492,56 +539,27 @@ class RawThumbnail extends StatefulWidget {
   RawThumbnailState createState() => RawThumbnailState();
 }
 
-class RawThumbnailState extends State<RawThumbnail> {
-  StreamSubscription<ThumbnailEvent>? _subscription;
+class RawThumbnailState extends State<RawThumbnail>
+    with ThumbnailStateMixin<RawThumbnail> {
   bool _ready = false;
-  bool _checkedInitial = false;
 
   @override
-  void initState() {
-    super.initState();
-    _subscribeToStream();
-    _checkInitialStatus();
-  }
+  String get thumbnailPath => widget.thumbnailPath;
 
   @override
-  void didUpdateWidget(covariant RawThumbnail oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.thumbnailPath != widget.thumbnailPath) {
-      // 1. Cancel old subscription FIRST
-      _subscription?.cancel();
-
-      // 2. Create new subscription for new path
-      _subscribeToStream();
-
-      // 3. Reset state
-      _ready = false;
-      _checkedInitial = false;
-
-      // 4. Check initial status for new path
-      _checkInitialStatus();
+  void onThumbnailEvent(ThumbnailEvent event) {
+    if (event.status == ThumbnailStatus.success) {
+      setState(() => _ready = true);
     }
   }
 
-  void _subscribeToStream() {
-    _subscription = ThumbnailStatusHelper.subscribeToStream(
-      thumbnailPath: widget.thumbnailPath,
-      onEvent: (event) {
-        if (!mounted) return;
-        if (event.status == ThumbnailStatus.success) {
-          setState(() => _ready = true);
-        }
-      },
-    );
+  @override
+  void resetThumbnailFields() {
+    _ready = false;
   }
 
-  Future<void> _checkInitialStatus() async {
-    if (_checkedInitial) return;
-    _checkedInitial = true;
-
-    // Capture path at start to detect stale results
-    final pathAtStart = widget.thumbnailPath;
-
+  @override
+  Future<void> checkInitialThumbnailStatus(String pathAtStart) async {
     // Raw thumbnails don't check DB flags - only cache and file existence
     final result = await ThumbnailStatusHelper.checkInitialStatus(
       thumbnailPath: widget.thumbnailPath,
@@ -549,18 +567,27 @@ class RawThumbnailState extends State<RawThumbnail> {
       verifyFileSize: true,
       checkDbFlags: false,
     );
-
-    // Guard: ignore result if path changed during async operation
     if (!mounted || widget.thumbnailPath != pathAtStart) return;
-
     if (result?.status == ThumbnailStatus.success) {
       setState(() => _ready = true);
     }
   }
 
   @override
+  void initState() {
+    super.initState();
+    initThumbnailMixin();
+  }
+
+  @override
+  void didUpdateWidget(covariant RawThumbnail oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    didUpdateThumbnailMixin(oldWidget.thumbnailPath);
+  }
+
+  @override
   void dispose() {
-    _subscription?.cancel();
+    disposeThumbnailMixin();
     super.dispose();
   }
 

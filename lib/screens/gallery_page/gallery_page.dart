@@ -20,6 +20,7 @@ import '../../utils/project_utils.dart';
 import '../../utils/dir_utils.dart';
 import '../../utils/gallery_photo_operations.dart';
 import '../../utils/gallery_utils.dart';
+import '../../utils/platform_utils.dart';
 import '../../utils/settings_utils.dart';
 import '../../utils/date_stamp_utils.dart';
 import '../../utils/capture_timezone.dart';
@@ -28,6 +29,7 @@ import '../../widgets/yellow_tip_bar.dart';
 import '../../widgets/gallery_date_stamp_provider.dart';
 import '../../widgets/info_dialog.dart';
 import '../../widgets/confirm_action_dialog.dart';
+import '../../widgets/icon_badge.dart';
 import '../manual_stab_page.dart';
 import '../stab_on_diff_face.dart';
 import 'gallery_widgets.dart';
@@ -359,95 +361,21 @@ class GalleryPageState extends State<GalleryPage>
   }
 
   Future<void> _showChangeDateDialog(String currentTimestamp) async {
-    DateTime initialDate = DateTime.fromMillisecondsSinceEpoch(
-      int.parse(currentTimestamp),
-    );
-    DateTime? newDate = await showDatePicker(
+    final allFilenames = widget.imageFilesStr
+        .map((f) => path.basenameWithoutExtension(f))
+        .toList();
+
+    final result = await GalleryPhotoOperations.showChangeDateFlow(
       context: context,
-      initialDate: initialDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime.now(),
+      currentTimestamp: currentTimestamp,
+      projectIdStr: projectIdStr,
+      allImageFilenames: allFilenames,
     );
-    if (newDate == null) return;
-    if (!mounted) return;
-    TimeOfDay initialTime = TimeOfDay.fromDateTime(initialDate);
-    TimeOfDay? newTime = await showTimePicker(
-      context: context,
-      initialTime: initialTime,
-    );
-    if (newTime == null) return;
-    if (!mounted) return;
-    DateTime newDateTime = DateTime(
-      newDate.year,
-      newDate.month,
-      newDate.day,
-      newTime.hour,
-      newTime.minute,
-    );
-    String newTimestamp = newDateTime.millisecondsSinceEpoch.toString();
+    if (result == null || !mounted) return;
 
-    // Check if this would change the photo order
-    final orderChanged = _wouldChangeOrder(currentTimestamp, newTimestamp);
-
-    // Check if the formatted date stamp text would change
-    bool dateStampTextChanged = false;
-    final exportStampsEnabled = await SettingsUtil.loadExportDateStampEnabled(
-      projectIdStr,
-    );
-
-    if (exportStampsEnabled && !orderChanged) {
-      // Only check text if stamps are enabled and order didn't change
-      final format = await SettingsUtil.loadExportDateStampFormat(projectIdStr);
-      final oldText = DateStampUtils.formatTimestamp(
-        int.parse(currentTimestamp),
-        format,
-      );
-      final newText = DateStampUtils.formatTimestamp(
-        int.parse(newTimestamp),
-        format,
-      );
-      dateStampTextChanged = oldText != newText;
-    }
-
-    // Determine if we need to show a confirmation dialog and recompile
+    final (newTimestamp, orderChanged, dateStampTextChanged) = result;
     final needsRecompile = orderChanged || dateStampTextChanged;
-
-    if (needsRecompile) {
-      if (!mounted) return;
-      final confirmed = await ConfirmActionDialog.showDateChangeRecompile(
-        context,
-        orderChanged: orderChanged,
-      );
-      if (!confirmed) return;
-    }
-
     await _changePhotoDate(currentTimestamp, newTimestamp, needsRecompile);
-  }
-
-  /// Checks if changing a photo's timestamp would change its position in the sorted list.
-  bool _wouldChangeOrder(String oldTimestamp, String newTimestamp) {
-    final currentFiles = widget.imageFilesStr;
-    if (currentFiles.length <= 1) return false;
-
-    // Extract all timestamps once
-    final allTimestamps =
-        currentFiles.map((f) => path.basenameWithoutExtension(f)).toList();
-    final oldIndex = allTimestamps.indexOf(oldTimestamp);
-
-    // Filter to get timestamps without the one being changed
-    final timestamps = allTimestamps.where((t) => t != oldTimestamp).toList();
-
-    // Add the new timestamp and sort to find new position
-    timestamps.add(newTimestamp);
-    timestamps.sort((a, b) {
-      final ai = int.tryParse(a);
-      final bi = int.tryParse(b);
-      if (ai != null && bi != null) return ai.compareTo(bi);
-      return a.compareTo(b);
-    });
-    final newIndex = timestamps.indexOf(newTimestamp);
-
-    return oldIndex != newIndex;
   }
 
   Future<void> _changePhotoDate(
@@ -456,18 +384,14 @@ class GalleryPageState extends State<GalleryPage>
     bool needsRecompile,
   ) async {
     try {
-      await GalleryPhotoOperations.changePhotoDate(
+      await GalleryPhotoOperations.changeDateAndReload(
         oldTimestamp: oldTimestamp,
         newTimestamp: newTimestamp,
         projectId: projectId,
+        loadImages: _loadImages,
+        recompileCallback: widget.recompileVideoCallback,
+        needsRecompile: needsRecompile,
       );
-
-      await _loadImages();
-
-      // Trigger video recompilation if needed
-      if (needsRecompile) {
-        await widget.recompileVideoCallback();
-      }
     } catch (e) {
       LogService.instance.log('Error changing photo date: $e');
       if (!mounted) return;
@@ -763,12 +687,12 @@ class GalleryPageState extends State<GalleryPage>
             Expanded(
               child: GestureDetector(
                 onScaleStart: (details) {
-                  if (Platform.isAndroid || Platform.isIOS) {
+                  if (isMobile) {
                     _previousScale = _scale;
                   }
                 },
                 onScaleUpdate: (details) {
-                  if (Platform.isAndroid || Platform.isIOS) {
+                  if (isMobile) {
                     setState(() {
                       _scale = _previousScale * details.scale;
                       const int maxSteps = 5;
@@ -1071,19 +995,7 @@ class GalleryPageState extends State<GalleryPage>
       }
       GalleryUtils.startImportBatch(pickedFiles.files.length);
       await widget.processPickedFiles(pickedFiles, processPickedFile);
-      final String projectOrientationRaw =
-          await SettingsUtil.loadProjectOrientation(projectIdStr);
-      setState(() {
-        projectOrientation = projectOrientationRaw;
-      });
-      widget.refreshSettings();
-      widget.stabCallback();
-      setState(() => isImporting = false);
-      _loadImages();
-      _showImportCompleteDialog(
-        successfullyImported,
-        photosImported - successfullyImported,
-      );
+      await _handleImportCompletion(checkMounted: false);
     } catch (e) {
       LogService.instance.log("ERROR CAUGHT IN PICK FILES");
     }
@@ -1176,22 +1088,7 @@ class GalleryPageState extends State<GalleryPage>
     // Check queue for more files (for THIS project only)
     await _processQueuedFiles();
 
-    if (!mounted) return;
-
-    final String projectOrientationRaw =
-        await SettingsUtil.loadProjectOrientation(projectIdStr);
-    setState(() {
-      projectOrientation = projectOrientationRaw;
-      isImporting = false;
-    });
-
-    widget.refreshSettings();
-    widget.stabCallback();
-    _loadImages();
-    _showImportCompleteDialog(
-      successfullyImported,
-      photosImported - successfullyImported,
-    );
+    await _handleImportCompletion();
   }
 
   /// Process any queued files from GlobalDropService.
@@ -1220,6 +1117,30 @@ class GalleryPageState extends State<GalleryPage>
       iconColor: AppColors.success,
       primaryActionLabel: 'View Stabilized',
       onPrimaryAction: () => _tabController.animateTo(0),
+    );
+  }
+
+  /// Shared completion steps for all import flows (file picker, drop zone,
+  /// global drop). Loads updated orientation, resets [isImporting], triggers
+  /// refresh/re-stab, reloads gallery, and shows the completion dialog.
+  ///
+  /// When [checkMounted] is true the method returns early if the widget is no
+  /// longer in the tree (appropriate for async drop flows).
+  Future<void> _handleImportCompletion({bool checkMounted = true}) async {
+    if (checkMounted && !mounted) return;
+    final String projectOrientationRaw =
+        await SettingsUtil.loadProjectOrientation(projectIdStr);
+    if (checkMounted && !mounted) return;
+    setState(() {
+      projectOrientation = projectOrientationRaw;
+      isImporting = false;
+    });
+    widget.refreshSettings();
+    widget.stabCallback();
+    _loadImages();
+    _showImportCompleteDialog(
+      successfullyImported,
+      photosImported - successfullyImported,
     );
   }
 
@@ -1285,9 +1206,6 @@ class GalleryPageState extends State<GalleryPage>
   }
 
   void _showImportOptionsBottomSheet(BuildContext context) {
-    final bool isMobile = Platform.isAndroid || Platform.isIOS;
-    final bool isDesktop =
-        Platform.isMacOS || Platform.isWindows || Platform.isLinux;
     final List<Widget> content = [
       if (isMobile) ...[
         GalleryBottomSheets.buildImportOptionTile(
@@ -1453,21 +1371,7 @@ class GalleryPageState extends State<GalleryPage>
         // Always reset parent state even if widget is disposed
         widget.setImportingInMain(false);
 
-        if (!mounted) return;
-
-        final String projectOrientationRaw =
-            await SettingsUtil.loadProjectOrientation(projectIdStr);
-        setState(() {
-          projectOrientation = projectOrientationRaw;
-          isImporting = false;
-        });
-        widget.refreshSettings();
-        widget.stabCallback();
-        _loadImages();
-        _showImportCompleteDialog(
-          successfullyImported,
-          photosImported - successfullyImported,
-        );
+        await _handleImportCompletion();
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
@@ -1523,17 +1427,12 @@ class GalleryPageState extends State<GalleryPage>
                 ? Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.info.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          Icons.file_download_outlined,
-                          size: 26,
-                          color: AppColors.info.withValues(alpha: 0.9),
-                        ),
+                      IconBadge(
+                        icon: Icons.file_download_outlined,
+                        iconSize: 26,
+                        padding: 12,
+                        iconColor: AppColors.info.withValues(alpha: 0.9),
+                        backgroundColor: AppColors.info.withValues(alpha: 0.2),
                       ),
                       const SizedBox(height: 12),
                       Text(
@@ -1557,17 +1456,13 @@ class GalleryPageState extends State<GalleryPage>
                 : Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.textPrimary.withValues(alpha: 0.06),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          Icons.upload_file_outlined,
-                          size: 26,
-                          color: AppColors.textPrimary.withValues(alpha: 0.7),
-                        ),
+                      IconBadge(
+                        icon: Icons.upload_file_outlined,
+                        iconSize: 26,
+                        padding: 12,
+                        iconColor: AppColors.textPrimary.withValues(alpha: 0.7),
+                        backgroundColor:
+                            AppColors.textPrimary.withValues(alpha: 0.06),
                       ),
                       const SizedBox(height: 12),
                       Text(
@@ -2007,18 +1902,11 @@ class GalleryPageState extends State<GalleryPage>
                   ),
                   child: Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppColors.settingsAccent.withValues(
-                            alpha: 0.2,
-                          ),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          Icons.photo_library_outlined,
-                          color: AppColors.settingsAccent,
-                          size: 22,
+                      IconBadge(
+                        icon: Icons.photo_library_outlined,
+                        iconColor: AppColors.settingsAccent,
+                        backgroundColor: AppColors.settingsAccent.withValues(
+                          alpha: 0.2,
                         ),
                       ),
                       const SizedBox(width: 14),
@@ -2172,7 +2060,7 @@ class GalleryPageState extends State<GalleryPage>
 
                       if (res == 'success') {
                         setState(() => exportSuccessful = true);
-                        if (Platform.isAndroid || Platform.isIOS) {
+                        if (isMobile) {
                           GalleryExportHandler.shareZipFile(
                             widget.projectId,
                             widget.projectName,
@@ -2528,22 +2416,12 @@ class GalleryPageState extends State<GalleryPage>
 
   Future<void> _showDeleteDialog(File image) async {
     final int totalPhotos = widget.imageFilesStr.length;
-    final int remainingAfterDelete = totalPhotos - 1;
-    final bool shouldRecompile = remainingAfterDelete >= 2;
+    final bool shouldRecompile = totalPhotos - 1 >= 2;
 
-    final bool confirmed;
-    if (shouldRecompile) {
-      confirmed = await ConfirmActionDialog.showDeleteRecompile(
-        context,
-        photoCount: 1,
-      );
-    } else {
-      confirmed = await ConfirmActionDialog.showDeleteSimple(
-        context,
-        photoCount: 1,
-      );
-    }
-
+    final confirmed = await GalleryPhotoOperations.confirmDeletePhoto(
+      context: context,
+      totalPhotos: totalPhotos,
+    );
     if (!confirmed || !mounted) return;
 
     File toDelete = image;

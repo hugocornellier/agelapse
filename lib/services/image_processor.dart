@@ -12,7 +12,6 @@ class ImageProcessor {
   String? imagePath;
   int? projectId;
   ValueNotifier<String>? activeProcessingDateNotifier;
-  Function? onImagesLoaded;
   int? timestamp;
   VoidCallback? increaseSuccessfulImportCount;
   String? originalFilePath;
@@ -22,7 +21,6 @@ class ImageProcessor {
     required this.imagePath,
     required this.projectId,
     required this.activeProcessingDateNotifier,
-    required this.onImagesLoaded,
     this.timestamp,
     this.increaseSuccessfulImportCount,
     this.originalFilePath,
@@ -76,7 +74,6 @@ class ImageProcessor {
     imagePath = null;
     projectId = null;
     activeProcessingDateNotifier = null;
-    onImagesLoaded = null;
     timestamp = null;
     increaseSuccessfulImportCount = null;
     originalFilePath = null;

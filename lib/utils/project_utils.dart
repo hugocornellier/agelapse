@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:path/path.dart' as path;
@@ -16,6 +15,7 @@ import 'dir_utils.dart';
 import 'linked_source_utils.dart';
 import 'notification_util.dart';
 import 'capture_timezone.dart';
+import 'utils.dart';
 
 class ProjectUtils {
   static Future<int?> calculateStreak(int projectId) async {
@@ -23,9 +23,6 @@ class ProjectUtils {
     if (photos.isEmpty) return 0;
     return _calculatePhotoStreak(photos);
   }
-
-  static String convertExtensionToPng(String path) =>
-      path.replaceAll(RegExp(r'\.jpg$'), '.png');
 
   static int getTimeDiff(DateTime startTime, DateTime endTime) =>
       endTime.difference(startTime).inDays;
@@ -53,8 +50,7 @@ class ProjectUtils {
 
     // 2. Clear caches for this project
     ThumbnailService.instance.clearAllCache();
-    PaintingBinding.instance.imageCache.clear();
-    PaintingBinding.instance.imageCache.clearLiveImages();
+    Utils.clearFlutterImageCache();
 
     // 3. Reset default project if this was the default (before cascade delete)
     final String defaultProject = await DB.instance.getSettingValueByTitle(
@@ -128,10 +124,7 @@ class ProjectUtils {
     try {
       final String thumbnailDir = await DirUtils.getThumbnailDirPath(projectId);
       final String rawThumbPath = path.join(thumbnailDir, '$timestamp.jpg');
-      final File rawThumb = File(rawThumbPath);
-      if (await rawThumb.exists()) {
-        await rawThumb.delete();
-      }
+      await DirUtils.deleteFileIfExists(rawThumbPath);
     } catch (e) {
       LogService.instance.log(
         "Failed to delete raw thumbnail (will be cleaned up later): ${image.path}, Error: $e",
@@ -149,7 +142,7 @@ class ProjectUtils {
     // Delete stabilized thumbnails (both orientations)
     try {
       final String stabDirPath = await DirUtils.getStabilizedDirPath(projectId);
-      for (final orientation in ['portrait', 'landscape']) {
+      for (final orientation in DirUtils.orientations) {
         final String stabPath = path.join(
           stabDirPath,
           orientation,
@@ -158,10 +151,7 @@ class ProjectUtils {
         final String stabThumbPath = FaceStabilizer.getStabThumbnailPath(
           stabPath,
         );
-        final File stabThumb = File(stabThumbPath);
-        if (await stabThumb.exists()) {
-          await stabThumb.delete();
-        }
+        await DirUtils.deleteFileIfExists(stabThumbPath);
       }
     } catch (e) {
       LogService.instance.log(
@@ -283,32 +273,14 @@ class ProjectUtils {
     final String stabilizedDirPath = await DirUtils.getStabilizedDirPath(
       projectId,
     );
-    final String stabilizedPngPath =
-        "${path.basenameWithoutExtension(image.path)}.png";
 
-    final String stabilizedImagePathPngPortrait = path.join(
-      stabilizedDirPath,
-      'portrait',
-      stabilizedPngPath,
-    );
-    final String stabilizedImagePathPngLandscape = path.join(
-      stabilizedDirPath,
-      'landscape',
-      stabilizedPngPath,
-    );
-
-    final File stabilizedImagePngPortrait = File(
-      stabilizedImagePathPngPortrait,
-    );
-    final File stabilizedImagePngLandscape = File(
-      stabilizedImagePathPngLandscape,
-    );
-
-    if (await stabilizedImagePngPortrait.exists()) {
-      await deleteFile(stabilizedImagePngPortrait);
-    }
-    if (await stabilizedImagePngLandscape.exists()) {
-      await deleteFile(stabilizedImagePngLandscape);
+    for (final orientation in DirUtils.orientations) {
+      final stabPath = DirUtils.buildStabilizedImagePath(
+        stabilizedDirPath,
+        orientation,
+        image.path,
+      );
+      await DirUtils.deleteFileIfExists(stabPath);
     }
   }
 
@@ -444,5 +416,17 @@ class ProjectUtils {
     final codec = await ui.instantiateImageCodec(bytes);
     final frameInfo = await codec.getNextFrame();
     return frameInfo.image;
+  }
+
+  static Future<bool> photoWasTakenToday(int projectId) async {
+    final photos = await DB.instance.getPhotosByProjectID(projectId);
+    final DateTime today = DateTime.now();
+    return photos.any((photo) {
+      final timestampInt = int.parse(photo['timestamp']!);
+      final photoDate = DateTime.fromMillisecondsSinceEpoch(timestampInt);
+      return photoDate.year == today.year &&
+          photoDate.month == today.month &&
+          photoDate.day == today.day;
+    });
   }
 }

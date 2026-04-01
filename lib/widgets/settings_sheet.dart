@@ -19,6 +19,7 @@ import '../models/video_codec.dart';
 import '../utils/dir_utils.dart';
 import '../utils/notification_util.dart';
 import '../utils/linked_source_utils.dart';
+import '../utils/platform_utils.dart';
 import '../utils/settings_utils.dart';
 import '../utils/stabilizer_utils/stabilizer_utils.dart';
 import '../utils/date_stamp_utils.dart';
@@ -31,6 +32,7 @@ import 'confirm_action_dialog.dart';
 import 'delete_project_dialog.dart';
 import 'dropdown_with_custom_textfield.dart';
 import 'main_navigation.dart';
+import 'section_header.dart';
 import 'setting_list_tile.dart';
 
 class SettingsSheet extends StatefulWidget {
@@ -183,6 +185,11 @@ class SettingsSheetState extends State<SettingsSheet> {
     super.dispose();
   }
 
+  /// Wires a future to a completer: completes on success, propagates error on failure.
+  void _wireCompleter<T>(Future<T> future, Completer<T> completer) {
+    future.then(completer.complete).catchError(completer.completeError);
+  }
+
   void _init() {
     // Start all initializations and complete their Completers
     _initializeData().then((result) {
@@ -193,35 +200,11 @@ class SettingsSheetState extends State<SettingsSheet> {
       _notificationCompleter.completeError(e);
     });
 
-    _initializeVideoSettings().then((_) {
-      _videoSettingsCompleter.complete();
-    }).catchError((e) {
-      _videoSettingsCompleter.completeError(e);
-    });
-
-    _initializeWatermarkSettings().then((_) {
-      _watermarkSettingsCompleter.complete();
-    }).catchError((e) {
-      _watermarkSettingsCompleter.completeError(e);
-    });
-
-    _initializeGridCount().then((result) {
-      _gridCountCompleter.complete(result);
-    }).catchError((e) {
-      _gridCountCompleter.completeError(e);
-    });
-
-    _initializeProjectSettings().then((_) {
-      _projectSettingsCompleter.complete();
-    }).catchError((e) {
-      _projectSettingsCompleter.completeError(e);
-    });
-
-    _initializeDateStampSettings().then((_) {
-      _dateStampSettingsCompleter.complete();
-    }).catchError((e) {
-      _dateStampSettingsCompleter.completeError(e);
-    });
+    _wireCompleter(_initializeVideoSettings(), _videoSettingsCompleter);
+    _wireCompleter(_initializeWatermarkSettings(), _watermarkSettingsCompleter);
+    _wireCompleter(_initializeGridCount(), _gridCountCompleter);
+    _wireCompleter(_initializeProjectSettings(), _projectSettingsCompleter);
+    _wireCompleter(_initializeDateStampSettings(), _dateStampSettingsCompleter);
   }
 
   Future<void> _initializeProjectSettings() async {
@@ -236,8 +219,7 @@ class SettingsSheetState extends State<SettingsSheet> {
     }
     _linkedSourceEnabled = linkedConfig.enabled;
     _linkedSourceDisplayPath = linkedConfig.displayPath;
-    if (!mounted) return;
-    setState(() {});
+    setStateIfMounted(() {});
   }
 
   Future<Map<String, bool>> _initializeData() async {
@@ -335,8 +317,7 @@ class SettingsSheetState extends State<SettingsSheet> {
       _customResolutionModified = false;
     }
 
-    if (!mounted) return;
-    setState(() {});
+    setStateIfMounted(() {});
   }
 
   Future<void> _initializeWatermarkSettings() async {
@@ -349,8 +330,7 @@ class SettingsSheetState extends State<SettingsSheet> {
     enableWatermark = results[0] as bool;
     watermarkPosition = results[1] as String;
     watermarkOpacity = results[2] as String;
-    if (!mounted) return;
-    setState(() {});
+    setStateIfMounted(() {});
   }
 
   Future<int> _initializeGridCount() async {
@@ -402,8 +382,7 @@ class SettingsSheetState extends State<SettingsSheet> {
     // Load custom fonts
     await _loadCustomFonts();
 
-    if (!mounted) return;
-    setState(() {});
+    setStateIfMounted(() {});
   }
 
   /// Load all installed custom fonts.
@@ -785,6 +764,23 @@ class SettingsSheetState extends State<SettingsSheet> {
     return items;
   }
 
+  /// Saves a font setting to DB and refreshes, optionally triggering recompile.
+  Future<void> _saveFontSetting(
+    String dbKey,
+    String fontValue,
+    VoidCallback setStateUpdate, {
+    bool recompile = false,
+  }) async {
+    setState(setStateUpdate);
+    await DB.instance.setSettingByTitle(
+      dbKey,
+      fontValue,
+      widget.projectId.toString(),
+    );
+    await widget.refreshSettings();
+    if (recompile) await widget.recompileVideoCallback();
+  }
+
   /// Handle font selection, including importing custom fonts.
   Future<void> _handleGalleryFontSelection(String? value) async {
     if (value == null) return;
@@ -804,17 +800,12 @@ class SettingsSheetState extends State<SettingsSheet> {
           if (!shouldProceed) return;
         }
 
-        setState(() => _galleryDateStampFont = familyName);
-        await DB.instance.setSettingByTitle(
+        await _saveFontSetting(
           'gallery_date_stamp_font',
           familyName,
-          widget.projectId.toString(),
+          () => _galleryDateStampFont = familyName,
+          recompile: affectsExport,
         );
-        await widget.refreshSettings();
-
-        if (affectsExport) {
-          await widget.recompileVideoCallback();
-        }
       }
       return;
     }
@@ -830,17 +821,12 @@ class SettingsSheetState extends State<SettingsSheet> {
       if (!shouldProceed) return;
     }
 
-    setState(() => _galleryDateStampFont = value);
-    await DB.instance.setSettingByTitle(
+    await _saveFontSetting(
       'gallery_date_stamp_font',
       value,
-      widget.projectId.toString(),
+      () => _galleryDateStampFont = value,
+      recompile: affectsExport,
     );
-    await widget.refreshSettings();
-
-    if (affectsExport) {
-      await widget.recompileVideoCallback();
-    }
   }
 
   /// Handle export font selection, including importing custom fonts.
@@ -857,14 +843,12 @@ class SettingsSheetState extends State<SettingsSheet> {
         );
         if (!shouldProceed) return;
 
-        setState(() => _exportDateStampFont = familyName);
-        await DB.instance.setSettingByTitle(
+        await _saveFontSetting(
           'export_date_stamp_font',
           familyName,
-          widget.projectId.toString(),
+          () => _exportDateStampFont = familyName,
+          recompile: true,
         );
-        await widget.refreshSettings();
-        await widget.recompileVideoCallback();
       }
       return;
     }
@@ -876,19 +860,82 @@ class SettingsSheetState extends State<SettingsSheet> {
     );
     if (!shouldProceed) return;
 
-    setState(() => _exportDateStampFont = value);
-    await DB.instance.setSettingByTitle(
+    await _saveFontSetting(
       'export_date_stamp_font',
       value,
+      () => _exportDateStampFont = value,
+      recompile: true,
+    );
+  }
+
+  void _updateSetting(String title, bool value) {
+    DB.instance.setSettingByTitle(title, value.toString().toLowerCase());
+    widget.refreshSettings();
+  }
+
+  Future<void> _saveProjectSetting(String key, String value) async {
+    await DB.instance
+        .setSettingByTitle(key, value, widget.projectId.toString());
+    widget.refreshSettings();
+  }
+
+  Future<void> _saveGlobalSetting(String key, String value) async {
+    await DB.instance.setSettingByTitle(key, value);
+    widget.refreshSettings();
+  }
+
+  /// Shows recompile-video confirmation, then saves the setting and triggers recompile.
+  /// [confirmLabel] is the setting name shown in the dialog.
+  /// [updateState] should call setState to update the local variable.
+  /// [dbKey] is the DB setting key; [dbValue] is the new value to save.
+  Future<void> _confirmAndSaveVideoSetting({
+    required String confirmLabel,
+    required VoidCallback updateState,
+    required String dbKey,
+    required String dbValue,
+  }) async {
+    final shouldProceed = await ConfirmActionDialog.showRecompileVideo(
+      context,
+      confirmLabel,
+    );
+    if (!shouldProceed || !mounted) return;
+    setState(updateState);
+    await DB.instance.setSettingByTitle(
+      dbKey,
+      dbValue,
       widget.projectId.toString(),
     );
     await widget.refreshSettings();
     await widget.recompileVideoCallback();
   }
 
-  void _updateSetting(String title, bool value) {
-    DB.instance.setSettingByTitle(title, value.toString().toLowerCase());
-    widget.refreshSettings();
+  /// Builds a [BoolSettingSwitch] that saves a per-project boolean setting.
+  /// On toggle: calls setState, persists to DB, and calls refreshSettings.
+  Widget _buildSimpleBoolSetting({
+    required String title,
+    required bool initialValue,
+    required void Function(bool) setStateValue,
+    required String dbKey,
+    bool showDivider = true,
+    bool showInfo = false,
+    String infoContent = '',
+  }) {
+    return BoolSettingSwitch(
+      title: title,
+      initialValue: initialValue,
+      showDivider: showDivider,
+      showInfo: showInfo,
+      infoContent: infoContent,
+      onChanged: (bool value) async {
+        setState(() => setStateValue(value));
+        await DB.instance.setSettingByTitle(
+          dbKey,
+          value.toString(),
+          widget.projectId.toString(),
+        );
+        widget.refreshSettings();
+      },
+    );
   }
 
   Future<void> _selectTime() async {
@@ -921,12 +968,8 @@ class SettingsSheetState extends State<SettingsSheet> {
       final selectedDateTimestamp = selectedDateTime.millisecondsSinceEpoch;
       dailyNotificationTime = selectedDateTimestamp.toString();
 
-      await DB.instance.setSettingByTitle(
-        'daily_notification_time',
-        dailyNotificationTime,
-        widget.projectId.toString(),
-      );
-      widget.refreshSettings();
+      await _saveProjectSetting(
+          'daily_notification_time', dailyNotificationTime);
 
       await _scheduleDailyNotification();
     }
@@ -975,7 +1018,12 @@ class SettingsSheetState extends State<SettingsSheet> {
                       _buildSettingsSection(
                         'Stabilization',
                         Icons.center_focus_strong_outlined,
-                        _buildStabilizationSettings,
+                        () => Column(
+                          children: [
+                            _buildStabilizationModeDropdown(),
+                            _buildEyeScaleButton()
+                          ],
+                        ),
                       ),
                     if (!widget.onlyShowNotificationSettings)
                       _buildSettingsSection(
@@ -996,8 +1044,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                         Icons.camera_alt_outlined,
                         _buildCameraSettings,
                       ),
-                    if (!widget.onlyShowVideoSettings &&
-                        (Platform.isAndroid || Platform.isIOS))
+                    if (!widget.onlyShowVideoSettings && isMobile)
                       _buildSettingsSection(
                         'Notifications',
                         Icons.notifications_outlined,
@@ -1008,7 +1055,13 @@ class SettingsSheetState extends State<SettingsSheet> {
                       _buildSettingsSection(
                         'Gallery',
                         Icons.grid_view_outlined,
-                        _buildGallerySettings,
+                        () => Column(
+                          children: [
+                            _buildGalleryGridModeDropdown(),
+                            if (_galleryGridMode == 'manual')
+                              _buildGridColumnsControl(isDesktop),
+                          ],
+                        ),
                       ),
                     if (!widget.onlyShowNotificationSettings)
                       _buildSettingsSection(
@@ -1129,24 +1182,7 @@ class SettingsSheetState extends State<SettingsSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 12),
-            child: Row(
-              children: [
-                Icon(icon, size: 18, color: AppColors.settingsTextSecondary),
-                const SizedBox(width: 8),
-                Text(
-                  title.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: AppTypography.sm,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.settingsTextSecondary,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          SectionHeader(title: title, icon: icon),
           Container(
             decoration: BoxDecoration(
               color: AppColors.settingsCardBackground,
@@ -1203,27 +1239,10 @@ class SettingsSheetState extends State<SettingsSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 12),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.warning_amber_rounded,
-                  size: 18,
-                  color: _dangerRed.withValues(alpha: 0.8),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'DANGER ZONE',
-                  style: TextStyle(
-                    fontSize: AppTypography.sm,
-                    fontWeight: FontWeight.w600,
-                    color: _dangerRed.withValues(alpha: 0.8),
-                    letterSpacing: 1.2,
-                  ),
-                ),
-              ],
-            ),
+          SectionHeader(
+            title: 'Danger Zone',
+            icon: Icons.warning_amber_rounded,
+            color: _dangerRed.withValues(alpha: 0.8),
           ),
           Container(
             decoration: BoxDecoration(
@@ -1416,8 +1435,7 @@ class SettingsSheetState extends State<SettingsSheet> {
 
             if (!value) {
               await LinkedSourceUtils.disableLinkedSource(widget.projectId);
-              if (!mounted) return;
-              setState(() {
+              setStateIfMounted(() {
                 _linkedSourceEnabled = false;
                 _linkedSourceDisplayPath = '';
               });
@@ -1436,8 +1454,7 @@ class SettingsSheetState extends State<SettingsSheet> {
               widget.projectId,
               selectedPath,
             );
-            if (!mounted) return;
-            setState(() {
+            setStateIfMounted(() {
               _linkedSourceEnabled = true;
               _linkedSourceDisplayPath = selectedPath;
             });
@@ -1481,8 +1498,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                       widget.projectId,
                       selectedPath,
                     );
-                    if (!mounted) return;
-                    setState(() {
+                    setStateIfMounted(() {
                       _linkedSourceEnabled = true;
                       _linkedSourceDisplayPath = selectedPath;
                     });
@@ -1494,8 +1510,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                   onPressed: () async {
                     await LinkedSourceUtils.disableLinkedSource(
                         widget.projectId);
-                    if (!mounted) return;
-                    setState(() {
+                    setStateIfMounted(() {
                       _linkedSourceEnabled = false;
                       _linkedSourceDisplayPath = '';
                     });
@@ -1560,11 +1575,7 @@ class SettingsSheetState extends State<SettingsSheet> {
             setState(() {
               notificationsEnabled = value;
             });
-            await DB.instance.setSettingByTitle(
-              'enable_notifications',
-              value.toString(),
-            );
-            widget.refreshSettings();
+            await _saveGlobalSetting('enable_notifications', value.toString());
             if (value) {
               _scheduleDailyNotification();
             } else {
@@ -1605,18 +1616,6 @@ class SettingsSheetState extends State<SettingsSheet> {
           infoContent: '',
           showInfo: false,
         ),
-      ],
-    );
-  }
-
-  Widget _buildGallerySettings() {
-    final bool isDesktop =
-        Platform.isMacOS || Platform.isWindows || Platform.isLinux;
-
-    return Column(
-      children: [
-        _buildGalleryGridModeDropdown(),
-        if (_galleryGridMode == 'manual') _buildGridColumnsControl(isDesktop),
       ],
     );
   }
@@ -1711,22 +1710,11 @@ class SettingsSheetState extends State<SettingsSheet> {
               setState(() {
                 gridCount = value;
               });
-              await DB.instance.setSettingByTitle(
-                'gridAxisCount',
-                value.toString(),
-                widget.projectId.toString(),
-              );
-              widget.refreshSettings();
+              await _saveProjectSetting('gridAxisCount', value.toString());
             }
           },
         );
       },
-    );
-  }
-
-  Widget _buildStabilizationSettings() {
-    return Column(
-      children: [_buildStabilizationModeDropdown(), _buildEyeScaleButton()],
     );
   }
 
@@ -1903,10 +1891,11 @@ class SettingsSheetState extends State<SettingsSheet> {
     );
   }
 
-  Future<void> _showVideoBackgroundColorPicker() async {
-    Color pickerColor = _hexToColor(
-      _videoBackground.solidColorHex ?? '#000000',
-    );
+  Future<Color?> _showColorPickerHelper({
+    required String title,
+    required Color initialColor,
+  }) async {
+    Color pickerColor = initialColor;
     Color? selectedColor;
 
     await showDialog(
@@ -1926,7 +1915,7 @@ class SettingsSheetState extends State<SettingsSheet> {
               ),
               const SizedBox(width: 12),
               Text(
-                'Video Background',
+                title,
                 style: TextStyle(
                   color: AppColors.settingsTextPrimary,
                   fontSize: AppTypography.xl,
@@ -1989,8 +1978,17 @@ class SettingsSheetState extends State<SettingsSheet> {
       },
     );
 
+    return selectedColor;
+  }
+
+  Future<void> _showVideoBackgroundColorPicker() async {
+    final selectedColor = await _showColorPickerHelper(
+      title: 'Video Background',
+      initialColor: _hexToColor(_videoBackground.solidColorHex ?? '#000000'),
+    );
+
     if (selectedColor != null && mounted) {
-      final newHex = _colorToHex(selectedColor!);
+      final newHex = _colorToHex(selectedColor);
       final currentHex = _videoBackground.solidColorHex ?? '#000000';
       if (newHex != currentHex) {
         final shouldProceed =
@@ -2095,167 +2093,95 @@ class SettingsSheetState extends State<SettingsSheet> {
           ),
         ),
         // Stabilized thumbnails toggle
-        BoolSettingSwitch(
+        _buildSimpleBoolSetting(
           title: 'Show on stabilized',
           initialValue: _galleryDateLabelsEnabled,
-          showDivider: true,
-          onChanged: (bool value) async {
-            setState(() => _galleryDateLabelsEnabled = value);
-            await DB.instance.setSettingByTitle(
-              'gallery_date_labels_enabled',
-              value.toString(),
-              widget.projectId.toString(),
-            );
-            widget.refreshSettings();
-          },
+          setStateValue: (v) => _galleryDateLabelsEnabled = v,
+          dbKey: 'gallery_date_labels_enabled',
         ),
         // Raw thumbnails toggle
-        BoolSettingSwitch(
+        _buildSimpleBoolSetting(
           title: 'Show on raw',
           initialValue: _galleryRawDateLabelsEnabled,
-          showDivider: true,
-          onChanged: (bool value) async {
-            setState(() => _galleryRawDateLabelsEnabled = value);
-            await DB.instance.setSettingByTitle(
-              'gallery_raw_date_labels_enabled',
-              value.toString(),
-              widget.projectId.toString(),
-            );
-            widget.refreshSettings();
-          },
+          setStateValue: (v) => _galleryRawDateLabelsEnabled = v,
+          dbKey: 'gallery_raw_date_labels_enabled',
         ),
         // Gallery date format dropdown with Custom option
-        SettingListTile(
-          title: 'Format',
-          showDivider: !_isGalleryCustomFormat,
-          contentWidget: CustomDropdownButton<String>(
-            value: _isGalleryCustomFormat
-                ? DateStampUtils.galleryFormatCustom
-                : _galleryDateFormat,
-            items: [
-              DropdownMenuItem<String>(
-                value: DateStampUtils.galleryFormatMMYY,
-                child: Text(
-                  DateStampUtils.getGalleryFormatExample(
-                    DateStampUtils.galleryFormatMMYY,
-                  ),
-                ),
-              ),
-              DropdownMenuItem<String>(
-                value: DateStampUtils.galleryFormatMMMDD,
-                child: Text(
-                  DateStampUtils.getGalleryFormatExample(
-                    DateStampUtils.galleryFormatMMMDD,
-                  ),
-                ),
-              ),
-              DropdownMenuItem<String>(
-                value: DateStampUtils.galleryFormatMMMDDYY,
-                child: Text(
-                  DateStampUtils.getGalleryFormatExample(
-                    DateStampUtils.galleryFormatMMMDDYY,
-                  ),
-                ),
-              ),
-              DropdownMenuItem<String>(
-                value: DateStampUtils.galleryFormatDDMMM,
-                child: Text(
-                  DateStampUtils.getGalleryFormatExample(
-                    DateStampUtils.galleryFormatDDMMM,
-                  ),
-                ),
-              ),
-              DropdownMenuItem<String>(
-                value: DateStampUtils.galleryFormatMMMYYYY,
-                child: Text(
-                  DateStampUtils.getGalleryFormatExample(
-                    DateStampUtils.galleryFormatMMMYYYY,
-                  ),
-                ),
-              ),
-              const DropdownMenuItem<String>(
-                value: DateStampUtils.galleryFormatCustom,
-                child: Text('Custom...'),
-              ),
-            ],
-            onChanged: galleryEnabled
-                ? (String? value) async {
-                    if (value == DateStampUtils.galleryFormatCustom) {
-                      // Switch to custom mode
-                      setState(() {
-                        _isGalleryCustomFormat = true;
-                        _galleryCustomFormatController.text =
-                            _galleryDateFormat;
-                      });
-                    } else if (value != null) {
-                      setState(() {
-                        _isGalleryCustomFormat = false;
-                        _galleryDateFormat = value;
-                        _galleryCustomFormatError = null;
-                      });
-                      await DB.instance.setSettingByTitle(
-                        'gallery_date_format',
-                        value,
-                        widget.projectId.toString(),
-                      );
-                      widget.refreshSettings();
-                    }
-                  }
-                : null,
-          ),
-          infoContent: DateStampUtils.galleryFormatHelpText,
-          showInfo: true,
-          disabled: !galleryEnabled,
-        ),
-        // Custom format input for gallery (shown when Custom is selected)
-        if (_isGalleryCustomFormat)
-          _buildCustomFormatInput(
-            controller: _galleryCustomFormatController,
-            error: _galleryCustomFormatError,
-            maxLength: DateStampUtils.galleryFormatMaxLength,
-            enabled: galleryEnabled,
-            onChanged: (value) {
-              final error = DateStampUtils.validateGalleryFormat(value);
+        ..._buildDateFormatSection(
+          isCustomFormat: _isGalleryCustomFormat,
+          currentFormat: _galleryDateFormat,
+          customSentinel: DateStampUtils.galleryFormatCustom,
+          presetItems: [
+            DropdownMenuItem<String>(
+              value: DateStampUtils.galleryFormatMMYY,
+              child: Text(DateStampUtils.getGalleryFormatExample(
+                  DateStampUtils.galleryFormatMMYY)),
+            ),
+            DropdownMenuItem<String>(
+              value: DateStampUtils.galleryFormatMMMDD,
+              child: Text(DateStampUtils.getGalleryFormatExample(
+                  DateStampUtils.galleryFormatMMMDD)),
+            ),
+            DropdownMenuItem<String>(
+              value: DateStampUtils.galleryFormatMMMDDYY,
+              child: Text(DateStampUtils.getGalleryFormatExample(
+                  DateStampUtils.galleryFormatMMMDDYY)),
+            ),
+            DropdownMenuItem<String>(
+              value: DateStampUtils.galleryFormatDDMMM,
+              child: Text(DateStampUtils.getGalleryFormatExample(
+                  DateStampUtils.galleryFormatDDMMM)),
+            ),
+            DropdownMenuItem<String>(
+              value: DateStampUtils.galleryFormatMMMYYYY,
+              child: Text(DateStampUtils.getGalleryFormatExample(
+                  DateStampUtils.galleryFormatMMMYYYY)),
+            ),
+          ],
+          customController: _galleryCustomFormatController,
+          customError: _galleryCustomFormatError,
+          maxLength: DateStampUtils.galleryFormatMaxLength,
+          validateFn: DateStampUtils.validateGalleryFormat,
+          helpText: DateStampUtils.galleryFormatHelpText,
+          enabled: galleryEnabled,
+          onSwitchToCustom: () {
+            _isGalleryCustomFormat = true;
+            _galleryCustomFormatController.text = _galleryDateFormat;
+          },
+          onPresetSelected: (value) async {
+            setState(() {
+              _isGalleryCustomFormat = false;
+              _galleryDateFormat = value;
+              _galleryCustomFormatError = null;
+            });
+            await _saveProjectSetting('gallery_date_format', value);
+          },
+          onCustomChanged: (value) {
+            final error = DateStampUtils.validateGalleryFormat(value);
+            setState(() => _galleryCustomFormatError = error);
+          },
+          onCustomSubmit: (value) async {
+            final error = DateStampUtils.validateGalleryFormat(value);
+            if (error == null) {
+              setState(() {
+                _galleryDateFormat = value;
+                _galleryCustomFormatError = null;
+              });
+              await _saveProjectSetting('gallery_date_format', value);
+            } else {
               setState(() => _galleryCustomFormatError = error);
-            },
-            onSubmit: (value) async {
-              final error = DateStampUtils.validateGalleryFormat(value);
-              if (error == null) {
-                setState(() {
-                  _galleryDateFormat = value;
-                  _galleryCustomFormatError = null;
-                });
-                await DB.instance.setSettingByTitle(
-                  'gallery_date_format',
-                  value,
-                  widget.projectId.toString(),
-                );
-                widget.refreshSettings();
-              } else {
-                setState(() => _galleryCustomFormatError = error);
-              }
-            },
-          ),
+            }
+          },
+        ),
         // Gallery font dropdown (includes custom fonts and import option)
-        SettingListTile(
-          title: 'Font',
-          showDivider: true,
-          contentWidget: _isLoadingCustomFonts
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : CustomDropdownButton<String>(
-                  value: _galleryDateStampFont,
-                  items: _buildFontDropdownItems(),
-                  onChanged:
-                      galleryEnabled ? _handleGalleryFontSelection : null,
-                ),
+        _buildFontDropdownTile(
+          fontValue: _galleryDateStampFont,
+          enabled: galleryEnabled,
+          onChanged: _handleGalleryFontSelection,
+          includeSameAsGallery: false,
+          showInfo: true,
           infoContent:
               'Select "Custom (TTF/OTF)" to import your own font file.',
-          showInfo: true,
-          disabled: !galleryEnabled,
         ),
         // Gallery font size dropdown
         SettingListTile(
@@ -2341,26 +2267,14 @@ class SettingsSheetState extends State<SettingsSheet> {
           initialValue: _exportDateStampEnabled,
           showDivider: true,
           onChanged: (bool value) async {
-            // Show confirmation dialog when enabling or disabling
-            final shouldProceed = await ConfirmActionDialog.showRecompileVideo(
-              context,
-              value
+            await _confirmAndSaveVideoSetting(
+              confirmLabel: value
                   ? 'settings (enabling date stamps)'
                   : 'settings (disabling date stamps)',
+              updateState: () => _exportDateStampEnabled = value,
+              dbKey: 'export_date_stamp_enabled',
+              dbValue: value.toString(),
             );
-            if (!shouldProceed) {
-              if (mounted) setState(() {}); // Revert switch visual state
-              return;
-            }
-
-            setState(() => _exportDateStampEnabled = value);
-            await DB.instance.setSettingByTitle(
-              'export_date_stamp_enabled',
-              value.toString(),
-              widget.projectId.toString(),
-            );
-            await widget.refreshSettings();
-            await widget.recompileVideoCallback();
           },
         ),
         // Export position dropdown
@@ -2390,21 +2304,12 @@ class SettingsSheetState extends State<SettingsSheet> {
             onChanged: _exportDateStampEnabled
                 ? (String? value) async {
                     if (value != null) {
-                      final shouldProceed =
-                          await ConfirmActionDialog.showRecompileVideo(
-                        context,
-                        'position',
+                      await _confirmAndSaveVideoSetting(
+                        confirmLabel: 'position',
+                        updateState: () => _exportDateStampPosition = value,
+                        dbKey: 'export_date_stamp_position',
+                        dbValue: value,
                       );
-                      if (!shouldProceed) return;
-
-                      setState(() => _exportDateStampPosition = value);
-                      await DB.instance.setSettingByTitle(
-                        'export_date_stamp_position',
-                        value,
-                        widget.projectId.toString(),
-                      );
-                      await widget.refreshSettings();
-                      await widget.recompileVideoCallback();
                     }
                   }
                 : null,
@@ -2414,153 +2319,88 @@ class SettingsSheetState extends State<SettingsSheet> {
           disabled: !_exportDateStampEnabled,
         ),
         // Export format dropdown with Custom option
-        SettingListTile(
-          title: 'Format',
-          showDivider: !_isExportCustomFormat,
-          contentWidget: CustomDropdownButton<String>(
-            value: _isExportCustomFormat
-                ? DateStampUtils.exportFormatCustom
-                : _exportDateStampFormat,
-            items: [
-              DropdownMenuItem<String>(
-                value: DateStampUtils.exportFormatLong,
-                child: Text(
-                  DateStampUtils.getExportFormatExample(
-                    DateStampUtils.exportFormatLong,
-                  ),
-                ),
-              ),
-              DropdownMenuItem<String>(
-                value: DateStampUtils.exportFormatISO,
-                child: Text(
-                  DateStampUtils.getExportFormatExample(
-                    DateStampUtils.exportFormatISO,
-                  ),
-                ),
-              ),
-              DropdownMenuItem<String>(
-                value: DateStampUtils.exportFormatUS,
-                child: Text(
-                  DateStampUtils.getExportFormatExample(
-                    DateStampUtils.exportFormatUS,
-                  ),
-                ),
-              ),
-              DropdownMenuItem<String>(
-                value: DateStampUtils.exportFormatEU,
-                child: Text(
-                  DateStampUtils.getExportFormatExample(
-                    DateStampUtils.exportFormatEU,
-                  ),
-                ),
-              ),
-              DropdownMenuItem<String>(
-                value: DateStampUtils.exportFormatShort,
-                child: Text(
-                  DateStampUtils.getExportFormatExample(
-                    DateStampUtils.exportFormatShort,
-                  ),
-                ),
-              ),
-              const DropdownMenuItem<String>(
-                value: DateStampUtils.exportFormatCustom,
-                child: Text('Custom...'),
-              ),
-            ],
-            onChanged: _exportDateStampEnabled
-                ? (String? value) async {
-                    if (value == DateStampUtils.exportFormatCustom) {
-                      // Switch to custom mode (no confirmation needed, just UI change)
-                      setState(() {
-                        _isExportCustomFormat = true;
-                        _exportCustomFormatController.text =
-                            _exportDateStampFormat;
-                      });
-                    } else if (value != null) {
-                      final shouldProceed =
-                          await ConfirmActionDialog.showRecompileVideo(
-                        context,
-                        'format',
-                      );
-                      if (!shouldProceed) return;
-
-                      setState(() {
-                        _isExportCustomFormat = false;
-                        _exportDateStampFormat = value;
-                        _exportCustomFormatError = null;
-                      });
-                      await DB.instance.setSettingByTitle(
-                        'export_date_stamp_format',
-                        value,
-                        widget.projectId.toString(),
-                      );
-                      await widget.refreshSettings();
-                      await widget.recompileVideoCallback();
-                    }
-                  }
-                : null,
-          ),
-          infoContent: DateStampUtils.exportFormatHelpText,
-          showInfo: true,
-          disabled: !_exportDateStampEnabled,
-        ),
-        // Custom format input for export (shown when Custom is selected)
-        if (_isExportCustomFormat)
-          _buildCustomFormatInput(
-            controller: _exportCustomFormatController,
-            error: _exportCustomFormatError,
-            maxLength: DateStampUtils.exportFormatMaxLength,
-            enabled: _exportDateStampEnabled,
-            onChanged: (value) {
-              final error = DateStampUtils.validateExportFormat(value);
-              setState(() => _exportCustomFormatError = error);
-            },
-            onSubmit: (value) async {
-              final error = DateStampUtils.validateExportFormat(value);
-              if (error == null) {
-                final shouldProceed =
-                    await ConfirmActionDialog.showRecompileVideo(
-                  context,
-                  'format',
-                );
-                if (!shouldProceed) return;
-
-                setState(() {
+        ..._buildDateFormatSection(
+          isCustomFormat: _isExportCustomFormat,
+          currentFormat: _exportDateStampFormat,
+          customSentinel: DateStampUtils.exportFormatCustom,
+          presetItems: [
+            DropdownMenuItem<String>(
+              value: DateStampUtils.exportFormatLong,
+              child: Text(DateStampUtils.getExportFormatExample(
+                  DateStampUtils.exportFormatLong)),
+            ),
+            DropdownMenuItem<String>(
+              value: DateStampUtils.exportFormatISO,
+              child: Text(DateStampUtils.getExportFormatExample(
+                  DateStampUtils.exportFormatISO)),
+            ),
+            DropdownMenuItem<String>(
+              value: DateStampUtils.exportFormatUS,
+              child: Text(DateStampUtils.getExportFormatExample(
+                  DateStampUtils.exportFormatUS)),
+            ),
+            DropdownMenuItem<String>(
+              value: DateStampUtils.exportFormatEU,
+              child: Text(DateStampUtils.getExportFormatExample(
+                  DateStampUtils.exportFormatEU)),
+            ),
+            DropdownMenuItem<String>(
+              value: DateStampUtils.exportFormatShort,
+              child: Text(DateStampUtils.getExportFormatExample(
+                  DateStampUtils.exportFormatShort)),
+            ),
+          ],
+          customController: _exportCustomFormatController,
+          customError: _exportCustomFormatError,
+          maxLength: DateStampUtils.exportFormatMaxLength,
+          validateFn: DateStampUtils.validateExportFormat,
+          helpText: DateStampUtils.exportFormatHelpText,
+          enabled: _exportDateStampEnabled,
+          onSwitchToCustom: () {
+            _isExportCustomFormat = true;
+            _exportCustomFormatController.text = _exportDateStampFormat;
+          },
+          onPresetSelected: (value) async {
+            await _confirmAndSaveVideoSetting(
+              confirmLabel: 'format',
+              updateState: () {
+                _isExportCustomFormat = false;
+                _exportDateStampFormat = value;
+                _exportCustomFormatError = null;
+              },
+              dbKey: 'export_date_stamp_format',
+              dbValue: value,
+            );
+          },
+          onCustomChanged: (value) {
+            final error = DateStampUtils.validateExportFormat(value);
+            setState(() => _exportCustomFormatError = error);
+          },
+          onCustomSubmit: (value) async {
+            final error = DateStampUtils.validateExportFormat(value);
+            if (error == null) {
+              await _confirmAndSaveVideoSetting(
+                confirmLabel: 'format',
+                updateState: () {
                   _exportDateStampFormat = value;
                   _exportCustomFormatError = null;
-                });
-                await DB.instance.setSettingByTitle(
-                  'export_date_stamp_format',
-                  value,
-                  widget.projectId.toString(),
-                );
-                await widget.refreshSettings();
-                await widget.recompileVideoCallback();
-              } else {
-                setState(() => _exportCustomFormatError = error);
-              }
-            },
-          ),
+                },
+                dbKey: 'export_date_stamp_format',
+                dbValue: value,
+              );
+            } else {
+              setState(() => _exportCustomFormatError = error);
+            }
+          },
+        ),
         // Export font dropdown (includes custom fonts and import option)
-        SettingListTile(
-          title: 'Font',
-          showDivider: true,
-          contentWidget: _isLoadingCustomFonts
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : CustomDropdownButton<String>(
-                  value: _exportDateStampFont,
-                  items: _buildFontDropdownItems(includeSameAsGallery: true),
-                  onChanged: _exportDateStampEnabled
-                      ? _handleExportFontSelection
-                      : null,
-                ),
-          infoContent: '',
+        _buildFontDropdownTile(
+          fontValue: _exportDateStampFont,
+          enabled: _exportDateStampEnabled,
+          onChanged: _handleExportFontSelection,
+          includeSameAsGallery: true,
           showInfo: false,
-          disabled: !_exportDateStampEnabled,
+          infoContent: '',
         ),
         // Export size dropdown
         SettingListTile(
@@ -2585,21 +2425,12 @@ class SettingsSheetState extends State<SettingsSheet> {
             onChanged: _exportDateStampEnabled
                 ? (int? value) async {
                     if (value != null) {
-                      final shouldProceed =
-                          await ConfirmActionDialog.showRecompileVideo(
-                        context,
-                        'size',
+                      await _confirmAndSaveVideoSetting(
+                        confirmLabel: 'size',
+                        updateState: () => _exportDateStampSize = value,
+                        dbKey: 'export_date_stamp_size',
+                        dbValue: value.toString(),
                       );
-                      if (!shouldProceed) return;
-
-                      setState(() => _exportDateStampSize = value);
-                      await DB.instance.setSettingByTitle(
-                        'export_date_stamp_size',
-                        value.toString(),
-                        widget.projectId.toString(),
-                      );
-                      await widget.refreshSettings();
-                      await widget.recompileVideoCallback();
                     }
                   }
                 : null,
@@ -2623,21 +2454,12 @@ class SettingsSheetState extends State<SettingsSheet> {
             onChanged: _exportDateStampEnabled
                 ? (double? value) async {
                     if (value != null) {
-                      final shouldProceed =
-                          await ConfirmActionDialog.showRecompileVideo(
-                        context,
-                        'opacity',
+                      await _confirmAndSaveVideoSetting(
+                        confirmLabel: 'opacity',
+                        updateState: () => _exportDateStampOpacity = value,
+                        dbKey: 'export_date_stamp_opacity',
+                        dbValue: value.toString(),
                       );
-                      if (!shouldProceed) return;
-
-                      setState(() => _exportDateStampOpacity = value);
-                      await DB.instance.setSettingByTitle(
-                        'export_date_stamp_opacity',
-                        value.toString(),
-                        widget.projectId.toString(),
-                      );
-                      await widget.refreshSettings();
-                      await widget.recompileVideoCallback();
                     }
                   }
                 : null,
@@ -2787,6 +2609,79 @@ class SettingsSheetState extends State<SettingsSheet> {
     );
   }
 
+  /// Builds a date format dropdown row plus (conditionally) a custom-format
+  /// text input below it.  Returns a list so the caller can spread it into a
+  /// Column with `..._buildDateFormatSection(...)`.
+  ///
+  /// [isCustomFormat]   - whether the custom text-field is currently active.
+  /// [currentFormat]    - the active preset format string.
+  /// [customSentinel]   - the sentinel value that triggers custom mode.
+  /// [presetItems]      - dropdown items for all presets (excluding Custom...).
+  /// [customController] - controller for the custom text field.
+  /// [customError]      - current validation error (null = valid).
+  /// [maxLength]        - max chars for the custom field.
+  /// [validateFn]       - validates the custom string; returns null if valid.
+  /// [helpText]         - info-icon content for the SettingListTile.
+  /// [enabled]          - whether the dropdown/field is interactive.
+  /// [onSwitchToCustom] - called (inside setState) when user picks Custom...
+  /// [onPresetSelected] - called when user picks a real preset value.
+  /// [onCustomChanged]  - called on every keystroke in the custom field.
+  /// [onCustomSubmit]   - called when the user taps Apply or submits the field.
+  List<Widget> _buildDateFormatSection({
+    required bool isCustomFormat,
+    required String currentFormat,
+    required String customSentinel,
+    required List<DropdownMenuItem<String>> presetItems,
+    required TextEditingController customController,
+    required String? customError,
+    required int maxLength,
+    required String? Function(String) validateFn,
+    required String helpText,
+    required bool enabled,
+    required void Function() onSwitchToCustom,
+    required Future<void> Function(String) onPresetSelected,
+    required void Function(String) onCustomChanged,
+    required Future<void> Function(String) onCustomSubmit,
+  }) {
+    return [
+      SettingListTile(
+        title: 'Format',
+        showDivider: !isCustomFormat,
+        contentWidget: CustomDropdownButton<String>(
+          value: isCustomFormat ? customSentinel : currentFormat,
+          items: [
+            ...presetItems,
+            DropdownMenuItem<String>(
+              value: customSentinel,
+              child: const Text('Custom...'),
+            ),
+          ],
+          onChanged: enabled
+              ? (String? value) async {
+                  if (value == customSentinel) {
+                    setState(onSwitchToCustom);
+                  } else if (value != null) {
+                    await onPresetSelected(value);
+                  }
+                }
+              : null,
+        ),
+        infoContent: helpText,
+        showInfo: true,
+        disabled: !enabled,
+      ),
+      if (isCustomFormat)
+        _buildCustomFormatInput(
+          controller: customController,
+          error: customError,
+          maxLength: maxLength,
+          enabled: enabled,
+          onChanged: onCustomChanged,
+          onSubmit: onCustomSubmit,
+        ),
+    ];
+  }
+
   Widget _buildLoading() {
     return Center(
       child: SizedBox(
@@ -2832,8 +2727,7 @@ class SettingsSheetState extends State<SettingsSheet> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildGridModeDropdown(),
-        if (Platform.isAndroid || Platform.isIOS)
-          _buildSaveToCameraRollSwitch(saveToCameraRoll),
+        if (isMobile) _buildSaveToCameraRollSwitch(saveToCameraRoll),
         BoolSettingSwitch(
           title: 'Mirror front camera',
           initialValue: cameraMirror,
@@ -2849,12 +2743,7 @@ class SettingsSheetState extends State<SettingsSheet> {
               "Setting camera_mirror to ${value.toString()}",
             );
 
-            await DB.instance.setSettingByTitle(
-              'camera_mirror',
-              value.toString(),
-              widget.projectId.toString(),
-            );
-            widget.refreshSettings();
+            await _saveProjectSetting('camera_mirror', value.toString());
           },
         ),
       ],
@@ -2885,12 +2774,7 @@ class SettingsSheetState extends State<SettingsSheet> {
             setState(() {
               _gridModeIndex = newValue;
             });
-            await DB.instance.setSettingByTitle(
-              'grid_mode_index',
-              newValue.toString(),
-              widget.projectId.toString(),
-            );
-            widget.refreshSettings();
+            await _saveProjectSetting('grid_mode_index', newValue.toString());
           }
         },
       ),
@@ -2935,12 +2819,8 @@ class SettingsSheetState extends State<SettingsSheet> {
               await widget.cancelStabCallback();
 
               setState(() => projectOrientation = value);
-              await DB.instance.setSettingByTitle(
-                'project_orientation',
-                value.toLowerCase(),
-                widget.projectId.toString(),
-              );
-              await widget.refreshSettings();
+              await _saveProjectSetting(
+                  'project_orientation', value.toLowerCase());
 
               await resetStabStatusAndRestartStabilization();
             }
@@ -2962,12 +2842,7 @@ class SettingsSheetState extends State<SettingsSheet> {
       infoContent:
           'Frames per second in output video. Higher = smoother playback, larger file size.',
       onChanged: (newValue) async {
-        await DB.instance.setSettingByTitle(
-          'framerate',
-          newValue.toString(),
-          widget.projectId.toString(),
-        );
-        widget.refreshSettings();
+        await _saveProjectSetting('framerate', newValue.toString());
         widget.stabCallback();
       },
     );
@@ -2980,8 +2855,7 @@ class SettingsSheetState extends State<SettingsSheet> {
     );
 
     // Clear ALL caches
-    PaintingBinding.instance.imageCache.clear();
-    PaintingBinding.instance.imageCache.clearLiveImages();
+    Utils.clearFlutterImageCache();
     ThumbnailService.instance.clearAllCache();
 
     widget.clearRawAndStabPhotos();
@@ -2996,7 +2870,12 @@ class SettingsSheetState extends State<SettingsSheet> {
           showDivider: !_isCustomResolution,
           contentWidget: CustomDropdownButton<String>(
             value: _isCustomResolution ? 'Custom' : resolution,
-            items: _getResolutionDropdownItems(),
+            items: const [
+              DropdownMenuItem<String>(value: "1080p", child: Text("1080p")),
+              DropdownMenuItem<String>(value: "4K", child: Text("4K")),
+              DropdownMenuItem<String>(value: "8K", child: Text("8K")),
+              DropdownMenuItem<String>(value: "Custom", child: Text("Custom")),
+            ],
             onChanged: (String? value) async {
               if (value == null) return;
 
@@ -3033,12 +2912,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                   });
 
                   await widget.cancelStabCallback();
-                  await DB.instance.setSettingByTitle(
-                    'video_resolution',
-                    value,
-                    widget.projectId.toString(),
-                  );
-                  await widget.refreshSettings();
+                  await _saveProjectSetting('video_resolution', value);
 
                   await resetStabStatusAndRestartStabilization();
                 }
@@ -3064,57 +2938,10 @@ class SettingsSheetState extends State<SettingsSheet> {
             children: [
               // Width field
               Expanded(
-                child: Column(
-                  children: [
-                    TextField(
-                      controller: _customWidthController,
-                      keyboardType: TextInputType.number,
-                      textAlign: TextAlign.center,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      style: TextStyle(
-                        color: AppColors.settingsTextPrimary,
-                        fontSize: AppTypography.lg,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: '1920',
-                        hintStyle: TextStyle(
-                          color: AppColors.settingsTextTertiary,
-                          fontSize: AppTypography.lg,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 12,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: AppColors.settingsTextTertiary,
-                          ),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: AppColors.settingsTextTertiary,
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: AppColors.settingsAccent,
-                          ),
-                        ),
-                      ),
-                      onSubmitted: (_) => _applyCustomResolution(),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'width',
-                      style: TextStyle(
-                        color: AppColors.settingsTextTertiary,
-                        fontSize: AppTypography.xs,
-                      ),
-                    ),
-                  ],
+                child: _buildDimensionField(
+                  controller: _customWidthController,
+                  hint: '1920',
+                  label: 'width',
                 ),
               ),
               // × symbol
@@ -3133,57 +2960,10 @@ class SettingsSheetState extends State<SettingsSheet> {
               ),
               // Height field
               Expanded(
-                child: Column(
-                  children: [
-                    TextField(
-                      controller: _customHeightController,
-                      keyboardType: TextInputType.number,
-                      textAlign: TextAlign.center,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      style: TextStyle(
-                        color: AppColors.settingsTextPrimary,
-                        fontSize: AppTypography.lg,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: '1080',
-                        hintStyle: TextStyle(
-                          color: AppColors.settingsTextTertiary,
-                          fontSize: AppTypography.lg,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 12,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: AppColors.settingsTextTertiary,
-                          ),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: AppColors.settingsTextTertiary,
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: AppColors.settingsAccent,
-                          ),
-                        ),
-                      ),
-                      onSubmitted: (_) => _applyCustomResolution(),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'height',
-                      style: TextStyle(
-                        color: AppColors.settingsTextTertiary,
-                        fontSize: AppTypography.xs,
-                      ),
-                    ),
-                  ],
+                child: _buildDimensionField(
+                  controller: _customHeightController,
+                  hint: '1080',
+                  label: 'height',
                 ),
               ),
             ],
@@ -3235,6 +3015,89 @@ class SettingsSheetState extends State<SettingsSheet> {
     );
   }
 
+  Widget _buildFontDropdownTile({
+    required String fontValue,
+    required bool enabled,
+    required Future<void> Function(String?) onChanged,
+    bool includeSameAsGallery = false,
+    bool showInfo = false,
+    String infoContent = '',
+  }) {
+    return SettingListTile(
+      title: 'Font',
+      showDivider: true,
+      contentWidget: _isLoadingCustomFonts
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : CustomDropdownButton<String>(
+              value: fontValue,
+              items: _buildFontDropdownItems(
+                includeSameAsGallery: includeSameAsGallery,
+              ),
+              onChanged: enabled ? onChanged : null,
+            ),
+      infoContent: infoContent,
+      showInfo: showInfo,
+      disabled: !enabled,
+    );
+  }
+
+  Widget _buildDimensionField({
+    required TextEditingController controller,
+    required String hint,
+    required String label,
+  }) {
+    return Column(
+      children: [
+        TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          textAlign: TextAlign.center,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          style: TextStyle(
+            color: AppColors.settingsTextPrimary,
+            fontSize: AppTypography.lg,
+          ),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(
+              color: AppColors.settingsTextTertiary,
+              fontSize: AppTypography.lg,
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 12,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: AppColors.settingsTextTertiary),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: AppColors.settingsTextTertiary),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: AppColors.settingsAccent),
+            ),
+          ),
+          onSubmitted: (_) => _applyCustomResolution(),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            color: AppColors.settingsTextTertiary,
+            fontSize: AppTypography.xs,
+          ),
+        ),
+      ],
+    );
+  }
+
   Future<void> _applyCustomResolution() async {
     final widthStr = _customWidthController.text.trim();
     final heightStr = _customHeightController.text.trim();
@@ -3280,24 +3143,10 @@ class SettingsSheetState extends State<SettingsSheet> {
       });
 
       await widget.cancelStabCallback();
-      await DB.instance.setSettingByTitle(
-        'video_resolution',
-        newResolution,
-        widget.projectId.toString(),
-      );
-      await widget.refreshSettings();
+      await _saveProjectSetting('video_resolution', newResolution);
 
       await resetStabStatusAndRestartStabilization();
     }
-  }
-
-  List<DropdownMenuItem<String>> _getResolutionDropdownItems() {
-    return const [
-      DropdownMenuItem<String>(value: "1080p", child: Text("1080p")),
-      DropdownMenuItem<String>(value: "4K", child: Text("4K")),
-      DropdownMenuItem<String>(value: "8K", child: Text("8K")),
-      DropdownMenuItem<String>(value: "Custom", child: Text("Custom")),
-    ];
   }
 
   Widget _buildStabilizationModeDropdown() {
@@ -3639,101 +3488,21 @@ class SettingsSheetState extends State<SettingsSheet> {
 
   /// Converts a Flutter Color to a hex string like '#FF0000'.
   String _colorToHex(Color color) {
-    final r = (color.r * 255.0).round().clamp(0, 255);
-    final g = (color.g * 255.0).round().clamp(0, 255);
-    final b = (color.b * 255.0).round().clamp(0, 255);
-    return '#${r.toRadixString(16).padLeft(2, '0')}'
-            '${g.toRadixString(16).padLeft(2, '0')}'
-            '${b.toRadixString(16).padLeft(2, '0')}'
+    int c(double v) => (v * 255.0).round().clamp(0, 255);
+    return '#${c(color.r).toRadixString(16).padLeft(2, '0')}'
+            '${c(color.g).toRadixString(16).padLeft(2, '0')}'
+            '${c(color.b).toRadixString(16).padLeft(2, '0')}'
         .toUpperCase();
   }
 
   Future<void> _showColorPickerDialog() async {
-    Color pickerColor = _hexToColor(_backgroundColor);
-    Color? selectedColor;
-
-    await showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: AppColors.settingsCardBackground,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Row(
-            children: [
-              Icon(
-                Icons.palette_outlined,
-                color: AppColors.settingsAccent,
-                size: 24,
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'Background Colour',
-                style: TextStyle(
-                  color: AppColors.settingsTextPrimary,
-                  fontSize: AppTypography.xl,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: ColorPicker(
-              pickerColor: pickerColor,
-              onColorChanged: (Color color) {
-                pickerColor = color;
-              },
-              enableAlpha: false,
-              hexInputBar: true,
-              labelTypes: const [],
-              pickerAreaHeightPercent: 0.7,
-              displayThumbColor: true,
-              portraitOnly: true,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(
-                'Cancel',
-                style: TextStyle(
-                  color: AppColors.settingsTextSecondary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-            GestureDetector(
-              onTap: () {
-                selectedColor = pickerColor;
-                Navigator.of(context).pop();
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.settingsAccent,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  'Select',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: AppTypography.md,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
+    final selectedColor = await _showColorPickerHelper(
+      title: 'Background Colour',
+      initialColor: _hexToColor(_backgroundColor),
     );
 
     if (selectedColor != null && mounted) {
-      final newHex = _colorToHex(selectedColor!);
+      final newHex = _colorToHex(selectedColor);
       if (newHex != _backgroundColor) {
         final bool shouldProceed = await Utils.showConfirmChangeDialog(
           context,
@@ -3757,20 +3526,11 @@ class SettingsSheetState extends State<SettingsSheet> {
   }
 
   Widget _buildWatermarkSwitch() {
-    return BoolSettingSwitch(
+    return _buildSimpleBoolSetting(
       title: 'Enable watermark',
       initialValue: enableWatermark,
-      showDivider: true,
-      onChanged: (bool value) async {
-        setState(() => enableWatermark = value);
-        await DB.instance.setSettingByTitle(
-          'enable_watermark',
-          value.toString(),
-          widget.projectId.toString(),
-        );
-
-        widget.refreshSettings();
-      },
+      setStateValue: (v) => enableWatermark = v,
+      dbKey: 'enable_watermark',
     );
   }
 
@@ -3816,12 +3576,7 @@ class SettingsSheetState extends State<SettingsSheet> {
             ? (String? value) async {
                 if (value != null) {
                   setState(() => watermarkPosition = value);
-                  await DB.instance.setSettingByTitle(
-                    'watermark_position',
-                    value,
-                  );
-
-                  widget.refreshSettings();
+                  await _saveGlobalSetting('watermark_position', value);
                 }
               }
             : null,
@@ -3847,9 +3602,7 @@ class SettingsSheetState extends State<SettingsSheet> {
         onChanged: (String? value) async {
           if (value != null) {
             setState(() => watermarkOpacity = value);
-            await DB.instance.setSettingByTitle('watermark_opacity', value);
-
-            widget.refreshSettings();
+            await _saveGlobalSetting('watermark_opacity', value);
           }
         },
       ),

@@ -18,6 +18,8 @@ import '../styles/styles.dart';
 import '../utils/dir_utils.dart';
 import '../utils/export_naming_utils.dart';
 import '../utils/settings_utils.dart';
+import '../utils/platform_utils.dart';
+import '../utils/utils.dart';
 import '../utils/video_utils.dart';
 
 class CreatePage extends StatefulWidget {
@@ -92,6 +94,8 @@ class CreatePageState extends State<CreatePage>
   late AnimationController _animationController;
   late Animation<double> _opacityAnimation;
   Timer? _mediaKitControlsHideTimer;
+
+  bool get _useMediaKit => Platform.isLinux;
 
   // Playback unsupported (codec not decodable on this platform)
   bool _playbackUnsupported = false;
@@ -189,8 +193,7 @@ class CreatePageState extends State<CreatePage>
 
       // Check if there are no photos
       if (rawPhotos.length < 2) {
-        if (!mounted) return;
-        setState(() {
+        setStateIfMounted(() {
           lessThan2Photos = true;
           loadingComplete = true;
         });
@@ -251,16 +254,8 @@ class CreatePageState extends State<CreatePage>
 
   /// Checks if a video exists and gets metadata for the manual compile UI.
   Future<void> _checkVideoState() async {
-    final String projectOrientation = await SettingsUtil.loadProjectOrientation(
-      widget.projectId.toString(),
-    );
-    final VideoCodec codec = await _loadEffectiveCodec();
-    final String videoPath = await DirUtils.getVideoOutputPath(
-      widget.projectId,
-      projectOrientation,
-      codec: codec,
-    );
-    final File videoFile = File(videoPath);
+    final info = await _loadVideoInfo();
+    final File videoFile = info.videoFile;
 
     _videoExists = await videoFile.exists() && await videoFile.length() > 0;
 
@@ -353,20 +348,36 @@ class CreatePageState extends State<CreatePage>
     return SettingsUtil.loadVideoCodec(projectIdStr);
   }
 
-  /// Checks if a video file exists and is valid.
-  Future<bool> _checkVideoFileExists() async {
-    final String projectOrientation = await SettingsUtil.loadProjectOrientation(
+  /// Loads orientation, codec, video path, and File object for the current project.
+  Future<
+      ({
+        String videoPath,
+        VideoCodec codec,
+        String orientation,
+        File videoFile
+      })> _loadVideoInfo() async {
+    final String orientation = await SettingsUtil.loadProjectOrientation(
       widget.projectId.toString(),
     );
     final VideoCodec codec = await _loadEffectiveCodec();
     final String videoPath = await DirUtils.getVideoOutputPath(
       widget.projectId,
-      projectOrientation,
+      orientation,
       codec: codec,
     );
-    final File outFile = File(videoPath);
+    return (
+      videoPath: videoPath,
+      codec: codec,
+      orientation: orientation,
+      videoFile: File(videoPath),
+    );
+  }
 
-    final exists = await outFile.exists() && await outFile.length() > 0;
+  /// Checks if a video file exists and is valid.
+  Future<bool> _checkVideoFileExists() async {
+    final info = await _loadVideoInfo();
+    final exists =
+        await info.videoFile.exists() && await info.videoFile.length() > 0;
     return exists;
   }
 
@@ -380,22 +391,13 @@ class CreatePageState extends State<CreatePage>
       return;
     }
 
-    String projectOrientation = await SettingsUtil.loadProjectOrientation(
-      widget.projectId.toString(),
-    );
-    final VideoCodec codec = await _loadEffectiveCodec();
-    final String videoPath = await DirUtils.getVideoOutputPath(
-      widget.projectId,
-      projectOrientation,
-      codec: codec,
-    );
-    final File videoFile = File(videoPath);
+    final info = await _loadVideoInfo();
 
     // On Linux, use media_kit directly with texture scaling for 8K support
-    if (Platform.isLinux) {
-      await _setupMediaKitPlayer(videoFile);
+    if (_useMediaKit) {
+      await _setupMediaKitPlayer(info.videoFile);
     } else {
-      await _setupStandardVideoPlayer(videoFile);
+      await _setupStandardVideoPlayer(info.videoFile);
     }
 
     setResolution();
@@ -405,9 +407,9 @@ class CreatePageState extends State<CreatePage>
     videoFps = await SettingsUtil.loadFramerate(widget.projectId.toString());
 
     // Load additional metadata for the info section
-    _projectOrientation = projectOrientation;
+    _projectOrientation = info.orientation;
     _stabilizationMode = await SettingsUtil.loadStabilizationMode();
-    _effectiveCodec = codec;
+    _effectiveCodec = info.codec;
 
     // Don't hide nav bar - keep the standard page layout
     playVideo();
@@ -453,8 +455,7 @@ class CreatePageState extends State<CreatePage>
     } catch (e) {
       _videoPlayerController?.dispose();
       _videoPlayerController = null;
-      if (!mounted) return;
-      setState(() {
+      setStateIfMounted(() {
         loadingComplete = true;
         _playbackUnsupported = true;
       });
@@ -487,7 +488,7 @@ class CreatePageState extends State<CreatePage>
   void playVideo() {
     setState(() {
       loadingComplete = true;
-      if (Platform.isLinux) {
+      if (_useMediaKit) {
         _mediaKitPlayer?.play();
       } else {
         _videoPlayerController!.play();
@@ -496,7 +497,7 @@ class CreatePageState extends State<CreatePage>
   }
 
   void setResolution() async {
-    if (Platform.isLinux) {
+    if (_useMediaKit) {
       // For Linux with media_kit, get resolution from settings since
       // the preview texture is scaled down
       final res = await SettingsUtil.loadVideoResolution(
@@ -541,7 +542,7 @@ class CreatePageState extends State<CreatePage>
 
   void togglePlayback() {
     setState(() {
-      if (Platform.isLinux) {
+      if (_useMediaKit) {
         _mediaKitPlayer?.playOrPause();
         final isPlaying = _mediaKitPlayer?.state.playing ?? false;
         overlayIcon = isPlaying ? Icons.pause : Icons.play_arrow;
@@ -560,7 +561,7 @@ class CreatePageState extends State<CreatePage>
       _animationController.forward();
     });
 
-    if (Platform.isLinux) {
+    if (_useMediaKit) {
       _showMediaKitControlsTemporarily();
     }
 
@@ -581,8 +582,7 @@ class CreatePageState extends State<CreatePage>
       });
     }
     _mediaKitControlsHideTimer = Timer(_videoControlsHideDelay, () {
-      if (!mounted) return;
-      setState(() {
+      setStateIfMounted(() {
         _showMediaKitControls = false;
       });
     });
@@ -591,11 +591,30 @@ class CreatePageState extends State<CreatePage>
   void _hideMediaKitControlsSoon() {
     _mediaKitControlsHideTimer?.cancel();
     _mediaKitControlsHideTimer = Timer(_videoControlsHideDelay, () {
-      if (!mounted) return;
-      setState(() {
+      setStateIfMounted(() {
         _showMediaKitControls = false;
       });
     });
+  }
+
+  Widget _buildModalCard(List<Widget> children) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Container(
+          padding: const EdgeInsets.all(32),
+          decoration: BoxDecoration(
+            color: AppColors.settingsCardBackground,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.settingsCardBorder, width: 1),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: children,
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -610,7 +629,7 @@ class CreatePageState extends State<CreatePage>
 
   bool _readyToShowVideoPlayer() {
     if (_playbackUnsupported) return true;
-    if (Platform.isLinux) {
+    if (_useMediaKit) {
       return loadingComplete &&
           (lessThan2Photos || _mediaKitController != null);
     }
@@ -649,81 +668,65 @@ class CreatePageState extends State<CreatePage>
             : 0.0;
     final double progressValue = percent.clamp(0.0, 100.0) / 100.0;
 
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Container(
-          padding: const EdgeInsets.all(32),
-          decoration: BoxDecoration(
-            color: AppColors.settingsCardBackground,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.settingsCardBorder, width: 1),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Circular progress with percentage
-              SizedBox(
-                width: 120,
-                height: 120,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    SizedBox(
-                      width: 120,
-                      height: 120,
-                      child: CircularProgressIndicator(
-                        value: progressValue,
-                        strokeWidth: 8,
-                        backgroundColor: AppColors.settingsCardBorder,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          isStabilizing
-                              ? AppColors.accentLight
-                              : AppColors.settingsAccent,
-                        ),
-                      ),
-                    ),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '${percent.toStringAsFixed(1)}%',
-                          style: TextStyle(
-                            fontSize: AppTypography.display,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.settingsTextPrimary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+    return _buildModalCard([
+      // Circular progress with percentage
+      SizedBox(
+        width: 120,
+        height: 120,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            SizedBox(
+              width: 120,
+              height: 120,
+              child: CircularProgressIndicator(
+                value: progressValue,
+                strokeWidth: 8,
+                backgroundColor: AppColors.settingsCardBorder,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  isStabilizing
+                      ? AppColors.accentLight
+                      : AppColors.settingsAccent,
                 ),
               ),
-              const SizedBox(height: 24),
-              // Status text
-              Text(
-                isStabilizing ? 'Stabilizing' : 'Compiling Video',
-                style: TextStyle(
-                  fontSize: AppTypography.xxl,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.settingsTextPrimary,
-                  letterSpacing: -0.5,
+            ),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '${percent.toStringAsFixed(1)}%',
+                  style: TextStyle(
+                    fontSize: AppTypography.display,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.settingsTextPrimary,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Your video will be available here when complete',
-                style: TextStyle(
-                  fontSize: AppTypography.md,
-                  color: AppColors.settingsTextSecondary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ),
       ),
-    );
+      const SizedBox(height: 24),
+      // Status text
+      Text(
+        isStabilizing ? 'Stabilizing' : 'Compiling Video',
+        style: TextStyle(
+          fontSize: AppTypography.xxl,
+          fontWeight: FontWeight.w600,
+          color: AppColors.settingsTextPrimary,
+          letterSpacing: -0.5,
+        ),
+      ),
+      const SizedBox(height: 8),
+      Text(
+        'Your video will be available here when complete',
+        style: TextStyle(
+          fontSize: AppTypography.md,
+          color: AppColors.settingsTextSecondary,
+        ),
+        textAlign: TextAlign.center,
+      ),
+    ]);
   }
 
   /// Builds the manual compile options UI when auto-compile is disabled.
@@ -732,119 +735,103 @@ class CreatePageState extends State<CreatePage>
         ? '${_lastVideoDate!.month}/${_lastVideoDate!.day}/${_lastVideoDate!.year}'
         : 'Unknown';
 
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Container(
-          padding: const EdgeInsets.all(32),
-          decoration: BoxDecoration(
-            color: AppColors.settingsCardBackground,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.settingsCardBorder, width: 1),
+    return _buildModalCard([
+      Icon(
+        Icons.videocam_outlined,
+        size: 64,
+        color: AppColors.settingsTextSecondary,
+      ),
+      const SizedBox(height: 16),
+      Text(
+        _videoExists ? 'Video Available' : 'No Video Yet',
+        style: TextStyle(
+          fontSize: AppTypography.xxl,
+          fontWeight: FontWeight.w600,
+          color: AppColors.settingsTextPrimary,
+          letterSpacing: -0.5,
+        ),
+      ),
+      const SizedBox(height: 8),
+      if (_videoExists) ...[
+        Text(
+          'Last compiled: $dateStr',
+          style: TextStyle(
+            fontSize: AppTypography.md,
+            color: AppColors.settingsTextSecondary,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.videocam_outlined,
-                size: 64,
-                color: AppColors.settingsTextSecondary,
+        ),
+        if (_newPhotosSinceLastVideo > 0) ...[
+          const SizedBox(height: 4),
+          Text(
+            '$_newPhotosSinceLastVideo new photo${_newPhotosSinceLastVideo == 1 ? '' : 's'} since then',
+            style: TextStyle(
+              fontSize: AppTypography.md,
+              color: AppColors.settingsAccent,
+            ),
+          ),
+        ],
+      ] else ...[
+        Text(
+          'You have ${photoCount ?? 0} stabilized photos',
+          style: TextStyle(
+            fontSize: AppTypography.md,
+            color: AppColors.settingsTextSecondary,
+          ),
+        ),
+      ],
+      const SizedBox(height: 24),
+      if (_videoExists) ...[
+        // View Last Video button
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: _viewLastVideo,
+            icon: const Icon(Icons.play_arrow),
+            label: const Text('View Last Video'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.settingsAccent,
+              foregroundColor: AppColors.textPrimary,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-              const SizedBox(height: 16),
-              Text(
-                _videoExists ? 'Video Available' : 'No Video Yet',
-                style: TextStyle(
-                  fontSize: AppTypography.xxl,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.settingsTextPrimary,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 8),
-              if (_videoExists) ...[
-                Text(
-                  'Last compiled: $dateStr',
-                  style: TextStyle(
-                    fontSize: AppTypography.md,
-                    color: AppColors.settingsTextSecondary,
-                  ),
-                ),
-                if (_newPhotosSinceLastVideo > 0) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    '$_newPhotosSinceLastVideo new photo${_newPhotosSinceLastVideo == 1 ? '' : 's'} since then',
-                    style: TextStyle(
-                      fontSize: AppTypography.md,
-                      color: AppColors.settingsAccent,
-                    ),
-                  ),
-                ],
-              ] else ...[
-                Text(
-                  'You have ${photoCount ?? 0} stabilized photos',
-                  style: TextStyle(
-                    fontSize: AppTypography.md,
-                    color: AppColors.settingsTextSecondary,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 24),
-              if (_videoExists) ...[
-                // View Last Video button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: _viewLastVideo,
-                    icon: const Icon(Icons.play_arrow),
-                    label: const Text('View Last Video'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.settingsAccent,
-                      foregroundColor: AppColors.textPrimary,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-              ],
-              // Compile New Video button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _triggerManualCompilation,
-                  icon: const Icon(Icons.refresh),
-                  label: Text(
-                    _videoExists ? 'Compile New Video' : 'Compile Video',
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _videoExists
-                        ? AppColors.settingsCardBorder
-                        : AppColors.settingsAccent,
-                    foregroundColor: _videoExists
-                        ? AppColors.settingsTextPrimary
-                        : AppColors.textPrimary,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Auto-compile is disabled in Settings',
-                style: TextStyle(
-                  fontSize: AppTypography.sm,
-                  color: AppColors.settingsTextSecondary.withValues(alpha: 0.7),
-                ),
-              ),
-            ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+      ],
+      // Compile New Video button
+      SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: _triggerManualCompilation,
+          icon: const Icon(Icons.refresh),
+          label: Text(
+            _videoExists ? 'Compile New Video' : 'Compile Video',
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _videoExists
+                ? AppColors.settingsCardBorder
+                : AppColors.settingsAccent,
+            foregroundColor: _videoExists
+                ? AppColors.settingsTextPrimary
+                : AppColors.textPrimary,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         ),
       ),
-    );
+      const SizedBox(height: 16),
+      Text(
+        'Auto-compile is disabled in Settings',
+        style: TextStyle(
+          fontSize: AppTypography.sm,
+          color: AppColors.settingsTextSecondary.withValues(alpha: 0.7),
+        ),
+      ),
+    ]);
   }
 
   Widget _buildVideoPlayerSection() {
@@ -989,7 +976,7 @@ class CreatePageState extends State<CreatePage>
         border: Border.all(color: AppColors.surfaceElevated, width: 1),
       ),
       clipBehavior: Clip.antiAlias,
-      child: Platform.isLinux
+      child: _useMediaKit
           ? _buildMediaKitVideoPlayer()
           : _buildChewieVideoPlayer(),
     );
@@ -1230,15 +1217,13 @@ class CreatePageState extends State<CreatePage>
       child: ElevatedButton.icon(
         onPressed: _shareVideo,
         icon: Icon(
-          Platform.isAndroid || Platform.isIOS ? Icons.share : Icons.download,
+          isMobile ? Icons.share : Icons.download,
           size: compact ? 16 : 18,
         ),
         label: Text(
           compact
-              ? (Platform.isAndroid || Platform.isIOS ? 'Share' : 'Export')
-              : (Platform.isAndroid || Platform.isIOS
-                  ? 'Share Video'
-                  : 'Export Video'),
+              ? (isMobile ? 'Share' : 'Export')
+              : (isMobile ? 'Share Video' : 'Export Video'),
           style: TextStyle(
             fontSize: AppTypography.sm,
             fontWeight: FontWeight.w600,
@@ -1369,7 +1354,7 @@ class CreatePageState extends State<CreatePage>
   }
 
   double _getVideoAspectRatio() {
-    if (Platform.isLinux) {
+    if (_useMediaKit) {
       // Parse aspect ratio string like "16:9" or "4:3"
       final parts = aspectRatio.split(':');
       if (parts.length == 2) {
@@ -1383,7 +1368,7 @@ class CreatePageState extends State<CreatePage>
   }
 
   void _enterFullscreen() {
-    if (Platform.isLinux) {
+    if (_useMediaKit) {
       // For media_kit, we'd need to implement native fullscreen
       // For now, just maximize the video area
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1413,51 +1398,35 @@ class CreatePageState extends State<CreatePage>
   }
 
   Widget _buildPlaybackUnsupportedMessage() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Container(
-          padding: const EdgeInsets.all(32),
-          decoration: BoxDecoration(
-            color: AppColors.settingsCardBackground,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.settingsCardBorder, width: 1),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.videocam_outlined,
-                size: 64,
-                color: AppColors.settingsTextSecondary,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Preview Unavailable',
-                style: TextStyle(
-                  fontSize: AppTypography.xxl,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.settingsTextPrimary,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '${_effectiveCodec.displayName} videos cannot be previewed on this device. '
-                'Your video was compiled successfully — use Export to save it.',
-                style: TextStyle(
-                  fontSize: AppTypography.md,
-                  color: AppColors.settingsTextSecondary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              _buildExportButton(compact: false),
-            ],
-          ),
+    return _buildModalCard([
+      Icon(
+        Icons.videocam_outlined,
+        size: 64,
+        color: AppColors.settingsTextSecondary,
+      ),
+      const SizedBox(height: 16),
+      Text(
+        'Preview Unavailable',
+        style: TextStyle(
+          fontSize: AppTypography.xxl,
+          fontWeight: FontWeight.w600,
+          color: AppColors.settingsTextPrimary,
+          letterSpacing: -0.5,
         ),
       ),
-    );
+      const SizedBox(height: 8),
+      Text(
+        '${_effectiveCodec.displayName} videos cannot be previewed on this device. '
+        'Your video was compiled successfully — use Export to save it.',
+        style: TextStyle(
+          fontSize: AppTypography.md,
+          color: AppColors.settingsTextSecondary,
+        ),
+        textAlign: TextAlign.center,
+      ),
+      const SizedBox(height: 24),
+      _buildExportButton(compact: false),
+    ]);
   }
 
   Widget _buildNoPhotosMessage() {
@@ -1570,17 +1539,10 @@ class CreatePageState extends State<CreatePage>
   }
 
   void _shareVideo() async {
-    final String projectOrientation = await SettingsUtil.loadProjectOrientation(
-      widget.projectId.toString(),
-    );
-    final VideoCodec codec = await _loadEffectiveCodec();
-    final String videoOutputPath = await DirUtils.getVideoOutputPath(
-      widget.projectId,
-      projectOrientation,
-      codec: codec,
-    );
+    final info = await _loadVideoInfo();
+    final String videoOutputPath = info.videoPath;
 
-    if (Platform.isAndroid || Platform.isIOS) {
+    if (isMobile) {
       final result = await SharePlus.instance.share(
         ShareParams(files: [XFile(videoOutputPath)]),
       );

@@ -154,6 +154,63 @@ class TransformHandlePainter extends CustomPainter {
     }
   }
 
+  /// Resolves the fill and stroke colors for a handle based on its interaction
+  /// state. The [strokeFallback] parameter allows the rotation handle to supply
+  /// its own stroke color when inactive (defaults to [handleStrokeColor]).
+  ({Color fill, Color stroke}) _resolveHandleColors({
+    required bool isActive,
+    required bool isHovered,
+    Color? strokeFallback,
+  }) {
+    final fill = isActive
+        ? handleActiveColor
+        : (isHovered ? handleHoverColor : handleFillColor);
+    final stroke = isActive
+        ? handleActiveColor.withValues(alpha: 1.0)
+        : (strokeFallback ?? handleStrokeColor);
+    return (fill: fill, stroke: stroke);
+  }
+
+  /// Draws the shadow, fill, and stroke for a circle handle in a single call.
+  /// Extracted because [_drawCircleHandle] and [_drawRotationHandle] share
+  /// this identical three-step sequence.
+  void _drawStyledCircle(
+    Canvas canvas,
+    Offset center,
+    double radius,
+    Color fillColor,
+    Color strokeColor,
+  ) {
+    // Shadow
+    canvas.drawCircle(
+      center + const Offset(1, 1),
+      radius,
+      Paint()
+        ..color = AppColors.overlay.withValues(alpha: 0.3)
+        ..style = PaintingStyle.fill
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
+    );
+
+    // Fill
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..color = fillColor
+        ..style = PaintingStyle.fill,
+    );
+
+    // Stroke
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..color = strokeColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = _effectiveHandleStrokeWidth,
+    );
+  }
+
   void _drawSquareHandle(
     Canvas canvas,
     Offset center,
@@ -165,11 +222,10 @@ class TransformHandlePainter extends CustomPainter {
     final halfSize = (isActive ? size * 1.2 : size) / 2;
 
     // Determine colors based on state
-    final fillColor = isActive
-        ? handleActiveColor
-        : (isHovered ? handleHoverColor : handleFillColor);
-    final strokeColor =
-        isActive ? handleActiveColor.withValues(alpha: 1.0) : handleStrokeColor;
+    final colors =
+        _resolveHandleColors(isActive: isActive, isHovered: isHovered);
+    final fillColor = colors.fill;
+    final strokeColor = colors.stroke;
 
     // Create rotated square path
     final path = Path();
@@ -232,42 +288,9 @@ class TransformHandlePainter extends CustomPainter {
     bool isHovered = false,
   }) {
     final actualRadius = isActive ? radius * 1.2 : radius;
-
-    // Determine colors based on state
-    final fillColor = isActive
-        ? handleActiveColor
-        : (isHovered ? handleHoverColor : handleFillColor);
-    final strokeColor =
-        isActive ? handleActiveColor.withValues(alpha: 1.0) : handleStrokeColor;
-
-    // Draw shadow for depth
-    canvas.drawCircle(
-      center + const Offset(1, 1),
-      actualRadius,
-      Paint()
-        ..color = AppColors.overlay.withValues(alpha: 0.3)
-        ..style = PaintingStyle.fill
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
-    );
-
-    // Draw fill
-    canvas.drawCircle(
-      center,
-      actualRadius,
-      Paint()
-        ..color = fillColor
-        ..style = PaintingStyle.fill,
-    );
-
-    // Draw stroke
-    canvas.drawCircle(
-      center,
-      actualRadius,
-      Paint()
-        ..color = strokeColor
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = _effectiveHandleStrokeWidth,
-    );
+    final colors =
+        _resolveHandleColors(isActive: isActive, isHovered: isHovered);
+    _drawStyledCircle(canvas, center, actualRadius, colors.fill, colors.stroke);
   }
 
   void _drawRotationConnector(Canvas canvas) {
@@ -297,45 +320,17 @@ class TransformHandlePainter extends CustomPainter {
     final baseSize = _effectiveRotationHandleSize;
     final radius = (isActive ? baseSize * 1.2 : baseSize) / 2;
 
-    // Determine colors
-    final fillColor = isActive
-        ? handleActiveColor
-        : (isHovered ? handleHoverColor : handleFillColor);
-    final strokeColor = isActive
-        ? handleActiveColor.withValues(alpha: 1.0)
-        : rotationHandleColor;
-
-    // Draw shadow for depth
-    canvas.drawCircle(
-      position + const Offset(1, 1),
-      radius,
-      Paint()
-        ..color = AppColors.overlay.withValues(alpha: 0.3)
-        ..style = PaintingStyle.fill
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
+    // Determine colors (rotation handle uses rotationHandleColor as stroke fallback)
+    final colors = _resolveHandleColors(
+      isActive: isActive,
+      isHovered: isHovered,
+      strokeFallback: rotationHandleColor,
     );
 
-    // Draw outer circle fill
-    canvas.drawCircle(
-      position,
-      radius,
-      Paint()
-        ..color = fillColor
-        ..style = PaintingStyle.fill,
-    );
-
-    // Draw outer circle stroke
-    canvas.drawCircle(
-      position,
-      radius,
-      Paint()
-        ..color = strokeColor
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = _effectiveHandleStrokeWidth,
-    );
+    _drawStyledCircle(canvas, position, radius, colors.fill, colors.stroke);
 
     // Draw rotation icon (curved arrow)
-    _drawRotationIcon(canvas, position, radius * 0.6, strokeColor);
+    _drawRotationIcon(canvas, position, radius * 0.6, colors.stroke);
   }
 
   void _drawRotationIcon(

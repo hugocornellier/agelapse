@@ -8,6 +8,7 @@ import '../services/raw_decoder.dart';
 import '../styles/styles.dart';
 import '../utils/dir_utils.dart';
 import '../utils/format_decode_utils.dart';
+import '../utils/platform_utils.dart';
 
 /// Displays an image file, decoding HEIC/AVIF/RAW formats on demand when the
 /// current platform cannot render them natively.
@@ -54,7 +55,7 @@ class _FormatAwareImageState extends State<FormatAwareImage> {
     final extension = path.extension(imagePath).toLowerCase();
 
     if (extension == '.heic' || extension == '.heif') {
-      return !(Platform.isMacOS || Platform.isIOS);
+      return !isApple;
     }
 
     return extension == '.avif' || RawDecoder.isRawExtension(extension);

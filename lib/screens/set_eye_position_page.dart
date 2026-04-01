@@ -5,10 +5,15 @@ import '../../services/database_helper.dart';
 import '../../services/thumbnail_service.dart';
 import '../styles/styles.dart';
 import '../utils/utils.dart';
+import '../widgets/collapsible_section_header.dart';
 import '../widgets/grid_painter_se.dart';
+import '../widgets/help_icon_button.dart';
 import '../widgets/info_tooltip_icon.dart';
 import '../utils/output_image_loader.dart';
+import '../widgets/desktop_icon_button.dart';
 import '../widgets/desktop_page_scaffold.dart';
+import '../widgets/quick_guide_dialog.dart';
+import '../widgets/unsaved_changes_dialog.dart';
 
 class SetEyePositionPage extends StatefulWidget {
   final int projectId;
@@ -91,9 +96,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
 
   Future<void> _init() async {
     await outputImageLoader.initialize();
-    if (!mounted) return;
-
-    setState(() {
+    setStateIfMounted(() {
       _defaultOffsetX = outputImageLoader.offsetX;
       _defaultOffsetY = outputImageLoader.offsetY;
       _offsetX = _defaultOffsetX;
@@ -174,43 +177,36 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
     }
   }
 
-  /// Validates and normalizes X text input on blur (max 100% = 0.5 internal)
-  void _commitTextValueX(
+  void _commitTextValue(
     TextEditingController controller,
     double currentOffset,
+    String Function(double) formatFn,
   ) {
     final text = controller.text.trim();
     final parsed = double.tryParse(text);
 
     if (parsed == null || parsed < 0 || parsed > 100) {
-      // Invalid - revert to current offset value
       _suppressTextListener = true;
-      controller.text = _offsetXToPercent(currentOffset);
+      controller.text = formatFn(currentOffset);
       _suppressTextListener = false;
     } else {
-      // Valid - apply the value
       _applyTextInputValues();
     }
   }
+
+  /// Validates and normalizes X text input on blur (max 100% = 0.5 internal)
+  void _commitTextValueX(
+    TextEditingController controller,
+    double currentOffset,
+  ) =>
+      _commitTextValue(controller, currentOffset, _offsetXToPercent);
 
   /// Validates and normalizes Y text input on blur
   void _commitTextValueY(
     TextEditingController controller,
     double currentOffset,
-  ) {
-    final text = controller.text.trim();
-    final parsed = double.tryParse(text);
-
-    if (parsed == null || parsed < 0 || parsed > 100) {
-      // Invalid - revert to current offset value
-      _suppressTextListener = true;
-      controller.text = _offsetToPercent(currentOffset);
-      _suppressTextListener = false;
-    } else {
-      // Valid - apply the value
-      _applyTextInputValues();
-    }
-  }
+  ) =>
+      _commitTextValue(controller, currentOffset, _offsetToPercent);
 
   /// Adjusts X offset by delta percentage points (in display units, doubled)
   void _adjustX(double deltaPct) {
@@ -238,39 +234,10 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Collapsible header
-        MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: () => setState(() => _controlsExpanded = !_controlsExpanded),
-            behavior: HitTestBehavior.opaque,
-            child: Padding(
-              padding: const EdgeInsets.only(left: 4, bottom: 12),
-              child: Row(
-                children: [
-                  Text(
-                    'POSITION CONTROLS',
-                    style: TextStyle(
-                      fontSize: AppTypography.sm,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.settingsTextSecondary,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  AnimatedRotation(
-                    turns: _controlsExpanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 200),
-                    child: Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      size: 20,
-                      color: AppColors.settingsTextSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+        CollapsibleSectionHeader(
+          label: 'POSITION CONTROLS',
+          isExpanded: _controlsExpanded,
+          onTap: () => setState(() => _controlsExpanded = !_controlsExpanded),
         ),
         // Collapsible content
         AnimatedCrossFade(
@@ -511,8 +478,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
     );
 
     // 4. Clear ALL caches
-    PaintingBinding.instance.imageCache.clear();
-    PaintingBinding.instance.imageCache.clearLiveImages();
+    Utils.clearFlutterImageCache();
     ThumbnailService.instance.clearAllCache();
 
     // 5. Refresh settings and clear gallery state
@@ -546,7 +512,10 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
         if (didPop) return;
 
         if (_hasUnsavedChanges) {
-          bool? saveChanges = await _showUnsavedChangesDialog();
+          bool? saveChanges = await showUnsavedChangesDialog(
+            context,
+            additionalContent: _buildRestabilizationWarning(),
+          );
 
           if (saveChanges == true) {
             await _saveChanges();
@@ -598,7 +567,10 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
 
   void _handleBackTap() {
     if (_hasUnsavedChanges) {
-      _showUnsavedChangesDialog().then((saveChanges) async {
+      showUnsavedChangesDialog(
+        context,
+        additionalContent: _buildRestabilizationWarning(),
+      ).then((saveChanges) async {
         if (saveChanges == true) {
           await _saveChanges();
           if (mounted) Navigator.of(context).pop();
@@ -612,233 +584,62 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
   }
 
   List<Widget> _buildAppBarActions() {
-    const size = DesktopPageScaffold.navButtonSize;
-    const iconSize = DesktopPageScaffold.navIconSize;
-    const radius = DesktopPageScaffold.navButtonRadius;
-
     return [
-      MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: _showHelpDialog,
-          child: Container(
-            width: size,
-            height: size,
-            margin: const EdgeInsets.only(right: 6),
-            decoration: BoxDecoration(
-              color: AppColors.settingsCardBackground,
-              borderRadius: BorderRadius.circular(radius),
-              border: Border.all(
-                color: AppColors.settingsCardBorder,
-                width: 1,
-              ),
-            ),
-            child: Icon(
-              Icons.help_outline_rounded,
-              color: AppColors.settingsTextSecondary,
-              size: iconSize,
-            ),
-          ),
-        ),
-      ),
+      HelpIconButton(onTap: _showHelpDialog),
       if (_hasUnsavedChanges)
-        MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: _isSaving
-                ? null
-                : () async {
-                    final bool shouldProceed =
-                        await Utils.showConfirmChangeDialog(
-                      context,
-                      "eye position",
-                    );
-                    if (shouldProceed) await _saveChanges();
-                  },
-            child: Container(
-              width: size,
-              height: size,
-              margin: const EdgeInsets.only(right: 6),
-              decoration: BoxDecoration(
-                color: _showCheckmark
-                    ? AppColors.success.withValues(alpha: 0.15)
-                    : AppColors.settingsAccent.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(radius),
-                border: Border.all(
-                  color: _showCheckmark
-                      ? AppColors.success.withValues(alpha: 0.3)
-                      : AppColors.settingsAccent.withValues(alpha: 0.3),
-                  width: 1,
-                ),
-              ),
-              child: _isSaving
-                  ? Padding(
-                      padding: EdgeInsets.all(8),
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.settingsAccent,
-                      ),
-                    )
-                  : Icon(
-                      _showCheckmark
-                          ? Icons.check_circle_rounded
-                          : Icons.save_rounded,
-                      color: _showCheckmark
-                          ? AppColors.success
-                          : AppColors.settingsAccent,
-                      size: iconSize,
-                    ),
-            ),
-          ),
+        DesktopIconButton(
+          icon:
+              _showCheckmark ? Icons.check_circle_rounded : Icons.save_rounded,
+          onTap: _isSaving
+              ? null
+              : () async {
+                  final bool shouldProceed =
+                      await Utils.showConfirmChangeDialog(
+                    context,
+                    "eye position",
+                  );
+                  if (shouldProceed) await _saveChanges();
+                },
+          isLoading: _isSaving,
+          loadingColor: AppColors.settingsAccent,
+          backgroundColor: _showCheckmark
+              ? AppColors.success.withValues(alpha: 0.15)
+              : AppColors.settingsAccent.withValues(alpha: 0.15),
+          borderColor: _showCheckmark
+              ? AppColors.success.withValues(alpha: 0.3)
+              : AppColors.settingsAccent.withValues(alpha: 0.3),
+          iconColor:
+              _showCheckmark ? AppColors.success : AppColors.settingsAccent,
         ),
     ];
   }
 
-  Future<bool?> _showUnsavedChangesDialog() {
-    return showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: AppColors.settingsCardBackground,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Row(
-            children: [
-              Icon(
-                Icons.save_outlined,
-                color: AppColors.settingsAccent,
-                size: 24,
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'Unsaved Changes',
-                style: TextStyle(
-                  color: AppColors.settingsTextPrimary,
-                  fontSize: AppTypography.xl,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                'You have unsaved changes. Do you want to save them before leaving?',
-                style: TextStyle(
-                  color: AppColors.settingsTextSecondary,
-                  fontSize: AppTypography.md,
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 16.0),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.warningMuted.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: AppColors.warningMuted.withValues(alpha: 0.3),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.warning_amber_rounded,
-                      color: AppColors.warningMuted,
-                      size: 20,
-                    ),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'All photos will need to be re-stabilized.',
-                        style: TextStyle(
-                          color: AppColors.warningMuted,
-                          fontSize: AppTypography.sm,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text(
-                'Discard',
-                style: TextStyle(
-                  color: AppColors.settingsTextSecondary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              onPressed: () => Navigator.of(context).pop(false),
-            ),
-            TextButton(
-              child: Text(
-                'Save',
-                style: TextStyle(
-                  color: AppColors.settingsAccent,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              onPressed: () => Navigator.of(context).pop(true),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showHelpDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.settingsCardBackground,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(
-              Icons.lightbulb_outline_rounded,
-              color: AppColors.settingsAccent,
-              size: 24,
-            ),
-            SizedBox(width: 12),
-            Text(
-              'Quick Guide',
-              style: TextStyle(
-                color: AppColors.settingsTextPrimary,
-                fontSize: AppTypography.xl,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
+  Widget _buildRestabilizationWarning() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.warningMuted.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: AppColors.warningMuted.withValues(alpha: 0.3),
+          width: 1,
         ),
-        content: SingleChildScrollView(
-          child: Text(
-            'This screen controls where eyes are positioned in the output frame.\n\n'
-            'Drag the horizontal guide line up or down to adjust the vertical eye position.\n\n'
-            'Drag the vertical guide lines left or right to adjust the horizontal eye spacing.\n\n'
-            'Your photos are transformed so that detected eyes align to these positions.',
-            style: TextStyle(
-              color: AppColors.settingsTextSecondary,
-              fontSize: AppTypography.md,
-              height: 1.6,
-            ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.warning_amber_rounded,
+            color: AppColors.warningMuted,
+            size: 20,
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+          const SizedBox(width: 10),
+          Expanded(
             child: Text(
-              'Got it',
+              'All photos will need to be re-stabilized.',
               style: TextStyle(
-                color: AppColors.settingsAccent,
-                fontWeight: FontWeight.w600,
+                color: AppColors.warningMuted,
+                fontSize: AppTypography.sm,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
@@ -846,6 +647,14 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
       ),
     );
   }
+
+  void _showHelpDialog() => showQuickGuideDialog(
+        context,
+        'This screen controls where eyes are positioned in the output frame.\n\n'
+        'Drag the horizontal guide line up or down to adjust the vertical eye position.\n\n'
+        'Drag the vertical guide lines left or right to adjust the horizontal eye spacing.\n\n'
+        'Your photos are transformed so that detected eyes align to these positions.',
+      );
 
   Widget _buildInfoBanner() {
     return Positioned(

@@ -5,6 +5,7 @@ import '../styles/styles.dart';
 import '../utils/settings_utils.dart';
 import '../widgets/main_navigation.dart';
 import '../widgets/desktop_page_scaffold.dart';
+import '../widgets/onboarding_action_button.dart';
 
 class GuideModeTutorialPage extends StatefulWidget {
   final int projectId;
@@ -250,35 +251,17 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
   }
 
   Widget _buildActionButton(String text) {
-    return FractionallySizedBox(
-      widthFactor: 1.0,
-      child: ElevatedButton(
-        onPressed: () async {
-          await DB.instance.setSettingByTitle(
-            'grid_mode_index',
-            1.toString(),
-            widget.projectId.toString(),
-          );
+    return OnboardingActionButton(
+      text: text,
+      onPressed: () async {
+        await DB.instance.setSettingByTitle(
+          'grid_mode_index',
+          1.toString(),
+          widget.projectId.toString(),
+        );
 
-          goToCamera();
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.accentDark,
-          minimumSize: const Size(double.infinity, 50),
-          padding: const EdgeInsets.symmetric(vertical: 18.0),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6.0),
-          ),
-        ),
-        child: Text(
-          text.toUpperCase(),
-          style: TextStyle(
-            fontSize: AppTypography.lg,
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
+        goToCamera();
+      },
     );
   }
 

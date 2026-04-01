@@ -15,10 +15,15 @@ import '../utils/image_utils.dart';
 import '../utils/platform_utils.dart';
 import '../utils/settings_utils.dart';
 import '../utils/stabilizer_utils/stabilizer_utils.dart';
+import '../widgets/collapsible_section_header.dart';
+import '../widgets/desktop_icon_button.dart';
 import '../widgets/grid_painter_se.dart';
+import '../widgets/help_icon_button.dart';
 import '../widgets/info_tooltip_icon.dart';
 import '../widgets/desktop_page_scaffold.dart';
+import '../widgets/quick_guide_dialog.dart';
 import '../widgets/transform_tool/transform_tool_exports.dart';
+import '../widgets/unsaved_changes_dialog.dart';
 
 class ManualStabilizationPage extends StatefulWidget {
   final String imagePath;
@@ -236,7 +241,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
         if (isSaving) return;
 
         if (_hasUnsavedChanges) {
-          bool? saveChanges = await _showUnsavedChangesDialog();
+          bool? saveChanges = await showUnsavedChangesDialog(context);
 
           if (saveChanges == true) {
             await _saveChanges();
@@ -339,7 +344,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
     if (_savePhase != _SavePhase.idle) return;
 
     if (_hasUnsavedChanges) {
-      _showUnsavedChangesDialog().then((saveChanges) async {
+      showUnsavedChangesDialog(context).then((saveChanges) async {
         if (saveChanges == true) {
           await _saveChanges();
         } else if (saveChanges == false) {
@@ -358,60 +363,20 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
 
     return [
       // Help button
-      MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: _showHelpDialog,
-          child: Container(
-            width: size,
-            height: size,
-            margin: const EdgeInsets.only(right: 6),
-            decoration: BoxDecoration(
-              color: AppColors.settingsCardBackground,
-              borderRadius: BorderRadius.circular(radius),
-              border: Border.all(
-                color: AppColors.settingsCardBorder,
-                width: 1,
-              ),
-            ),
-            child: Icon(
-              Icons.help_outline_rounded,
-              color: AppColors.settingsTextSecondary,
-              size: iconSize,
-            ),
-          ),
-        ),
-      ),
+      HelpIconButton(onTap: _showHelpDialog),
       // Reset button (only when unsaved changes exist and not saving)
       if (_hasUnsavedChanges && _savePhase == _SavePhase.idle)
-        MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: () async {
-              final bool? shouldReset = await _showResetConfirmDialog();
-              if (shouldReset == true) {
-                await _resetChanges();
-              }
-            },
-            child: Container(
-              width: size,
-              height: size,
-              margin: const EdgeInsets.only(right: 6),
-              decoration: BoxDecoration(
-                color: AppColors.settingsCardBorder.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(radius),
-                border: Border.all(
-                  color: AppColors.settingsCardBorder,
-                  width: 1,
-                ),
-              ),
-              child: Icon(
-                Icons.restore_rounded,
-                color: AppColors.settingsTextSecondary,
-                size: iconSize,
-              ),
-            ),
-          ),
+        DesktopIconButton(
+          icon: Icons.restore_rounded,
+          onTap: () async {
+            final bool? shouldReset = await _showResetConfirmDialog();
+            if (shouldReset == true) {
+              await _resetChanges();
+            }
+          },
+          iconColor: AppColors.settingsTextSecondary,
+          backgroundColor: AppColors.settingsCardBorder.withValues(alpha: 0.5),
+          borderColor: AppColors.settingsCardBorder,
         ),
       // Save button (only when unsaved changes exist and not saving)
       if (_hasUnsavedChanges && _savePhase == _SavePhase.idle)
@@ -599,98 +564,24 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
     );
   }
 
-  void _showHelpDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.settingsCardBackground,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(
-              Icons.lightbulb_outline_rounded,
-              color: AppColors.settingsAccent,
-              size: 24,
-            ),
-            SizedBox(width: 12),
-            Text(
-              'Quick Guide',
-              style: TextStyle(
-                color: AppColors.settingsTextPrimary,
-                fontSize: AppTypography.xl,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Text(
-            'Goal: Center each pupil on its vertical line and place both pupils exactly on the horizontal line.\n\n'
-            'Horiz. Offset (decimal, +/-)\nShifts the image left/right. Increase to move the face right, decrease to move left.\n\n'
-            'Vert. Offset (decimal, +/-)\nShifts the image up/down. Increase to move the face up, decrease to move down.\n\n'
-            'Scale Factor (positive decimal)\nZooms in or out. Values > 1 enlarge, values between 0 and 1 shrink.\n\n'
-            'Rotation (decimal, +/-)\nTilts the image. Positive values rotate clockwise, negative counter-clockwise.\n\n'
-            'Use the toolbar arrows or type exact numbers. Keep adjusting until the pupils touch all three guides.',
-            style: TextStyle(
-              color: AppColors.settingsTextSecondary,
-              fontSize: AppTypography.md,
-              height: 1.6,
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(
-              'Got it',
-              style: TextStyle(
-                color: AppColors.settingsAccent,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  void _showHelpDialog() => showQuickGuideDialog(
+        context,
+        'Goal: Center each pupil on its vertical line and place both pupils exactly on the horizontal line.\n\n'
+        'Horiz. Offset (decimal, +/-)\nShifts the image left/right. Increase to move the face right, decrease to move left.\n\n'
+        'Vert. Offset (decimal, +/-)\nShifts the image up/down. Increase to move the face up, decrease to move down.\n\n'
+        'Scale Factor (positive decimal)\nZooms in or out. Values > 1 enlarge, values between 0 and 1 shrink.\n\n'
+        'Rotation (decimal, +/-)\nTilts the image. Positive values rotate clockwise, negative counter-clockwise.\n\n'
+        'Use the toolbar arrows or type exact numbers. Keep adjusting until the pupils touch all three guides.',
+      );
 
   Widget _buildControlsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Collapsible header
-        MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: () => setState(() => _controlsExpanded = !_controlsExpanded),
-            behavior: HitTestBehavior.opaque,
-            child: Padding(
-              padding: const EdgeInsets.only(left: 4, bottom: 12),
-              child: Row(
-                children: [
-                  Text(
-                    'CONTROLS',
-                    style: TextStyle(
-                      fontSize: AppTypography.sm,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.settingsTextSecondary,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  AnimatedRotation(
-                    turns: _controlsExpanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 200),
-                    child: Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      size: 20,
-                      color: AppColors.settingsTextSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+        CollapsibleSectionHeader(
+          label: 'CONTROLS',
+          isExpanded: _controlsExpanded,
+          onTap: () => setState(() => _controlsExpanded = !_controlsExpanded),
         ),
         // Collapsible content
         AnimatedCrossFade(
@@ -1221,68 +1112,6 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
     }
   }
 
-  Future<bool?> _showUnsavedChangesDialog() {
-    return showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: AppColors.settingsCardBackground,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Row(
-            children: [
-              Icon(
-                Icons.save_outlined,
-                color: AppColors.settingsAccent,
-                size: 24,
-              ),
-              SizedBox(width: 12),
-              Text(
-                'Unsaved Changes',
-                style: TextStyle(
-                  color: AppColors.settingsTextPrimary,
-                  fontSize: AppTypography.xl,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          content: Text(
-            'You have unsaved changes. Do you want to save them before leaving?',
-            style: TextStyle(
-              color: AppColors.settingsTextSecondary,
-              fontSize: AppTypography.md,
-              height: 1.5,
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text(
-                'Discard',
-                style: TextStyle(
-                  color: AppColors.settingsTextSecondary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              onPressed: () => Navigator.of(context).pop(false),
-            ),
-            TextButton(
-              child: Text(
-                'Save',
-                style: TextStyle(
-                  color: AppColors.settingsAccent,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              onPressed: () => Navigator.of(context).pop(true),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   Future<bool?> _showResetConfirmDialog() {
     return showDialog<bool>(
       context: context,
@@ -1593,10 +1422,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
           stabilizedPhotoPath,
         );
 
-        final File stabImageFile = File(stabilizedPhotoPath);
-        final File stabThumbFile = File(stabThumbPath);
-        if (await stabImageFile.exists()) await stabImageFile.delete();
-        if (await stabThumbFile.exists()) await stabThumbFile.delete();
+        await DirUtils.deleteFileIfExists(stabilizedPhotoPath);
+        await DirUtils.deleteFileIfExists(stabThumbPath);
 
         await _faceStabilizer!.saveStabilizedImage(
           imageBytesStabilized,
@@ -1655,6 +1482,23 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
     }
   }
 
+  void _updateTransformSafely(
+    double? tx,
+    double? ty,
+    double mult,
+    double? rot,
+  ) {
+    _updatingFromTextField = true;
+    _transformController?.setTransform(
+      translateX: tx ?? 0,
+      translateY: ty ?? 0,
+      scale: mult,
+      rotation: rot ?? 0,
+    );
+    _updatingFromTextField = false;
+    _checkForUnsavedChanges();
+  }
+
   void _adjustScale(double delta) {
     // Commit to history before making changes (for undo support)
     _transformController?.commitToHistory();
@@ -1691,16 +1535,12 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
 
     double mult = double.tryParse(_inputController3.text) ?? 1.0;
 
-    // Update transform controller so TransformTool re-renders immediately
-    _updatingFromTextField = true;
-    _transformController?.setTransform(
-      translateX: double.tryParse(_inputController1.text) ?? 0,
-      translateY: double.tryParse(_inputController2.text) ?? 0,
-      scale: mult,
-      rotation: rot,
+    _updateTransformSafely(
+      double.tryParse(_inputController1.text),
+      double.tryParse(_inputController2.text),
+      mult,
+      rot,
     );
-    _updatingFromTextField = false;
-    _checkForUnsavedChanges();
 
     final now = DateTime.now();
     if (_lastApplyAt == null ||
@@ -1736,18 +1576,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
         // Commit to history before making changes (for undo support)
         _transformController?.commitToHistory();
 
-        // Update the transform controller so TransformTool re-renders
-        // Use flag to prevent _onTransformControllerChanged from overwriting text fields
-        _updatingFromTextField = true;
-        _transformController?.setTransform(
-          translateX: tx ?? 0,
-          translateY: ty ?? 0,
-          scale: mult,
-          rotation: rot ?? 0,
-        );
-        _updatingFromTextField = false;
+        _updateTransformSafely(tx, ty, mult, rot);
         processRequest(tx, ty, sc, rot, save: false);
-        _checkForUnsavedChanges();
       }
     });
   }
@@ -1770,17 +1600,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
     double mult = double.tryParse(_inputController3.text) ?? 1.0;
     double? rot = double.tryParse(_inputController4.text);
 
-    // Update transform controller so TransformTool re-renders immediately
-    // Use flag to prevent _onTransformControllerChanged from overwriting text fields
-    _updatingFromTextField = true;
-    _transformController?.setTransform(
-      translateX: tx,
-      translateY: ty,
-      scale: mult,
-      rotation: rot ?? 0,
-    );
-    _updatingFromTextField = false;
-    _checkForUnsavedChanges();
+    _updateTransformSafely(tx, ty, mult, rot);
 
     final now = DateTime.now();
     if (_lastApplyAt == null ||
@@ -1804,18 +1624,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       double mult = double.tryParse(_inputController3.text) ?? 1.0;
       double? rot = double.tryParse(_inputController4.text);
       double sc = _baseScale * mult;
-      // Update transform controller so TransformTool re-renders
-      // Use flag to prevent _onTransformControllerChanged from overwriting text fields
-      _updatingFromTextField = true;
-      _transformController?.setTransform(
-        translateX: tx ?? 0,
-        translateY: ty ?? 0,
-        scale: mult,
-        rotation: rot ?? 0,
-      );
-      _updatingFromTextField = false;
+      _updateTransformSafely(tx, ty, mult, rot);
       processRequest(tx, ty, sc, rot, save: false);
-      _checkForUnsavedChanges();
     }
 
     void startHold(String key, VoidCallback onTick) {

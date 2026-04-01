@@ -80,12 +80,23 @@ class StabUtils {
 
   static final AsyncMutex _faceDetectorMutex = AsyncMutex();
 
+  /// Returns [current] if non-null and [isReady] is true; otherwise calls [spawn].
+  static Future<T> _ensureDetector<T>(
+    T? current,
+    bool Function(T) isReady,
+    Future<T> Function() spawn,
+  ) async {
+    if (current == null || !isReady(current)) return await spawn();
+    return current;
+  }
+
   static Future<void> _ensureFDLite() async {
-    if (_faceDetectorIsolate == null || !_faceDetectorIsolate!.isReady) {
-      _faceDetectorIsolate = await fdl.FaceDetectorIsolate.spawn(
-        model: fdl.FaceDetectionModel.backCamera,
-      );
-    }
+    _faceDetectorIsolate = await _ensureDetector<fdl.FaceDetectorIsolate>(
+      _faceDetectorIsolate,
+      (d) => d.isReady,
+      () => fdl.FaceDetectorIsolate.spawn(
+          model: fdl.FaceDetectionModel.backCamera),
+    );
   }
 
   // ============================================================
@@ -96,11 +107,11 @@ class StabUtils {
   static final AsyncMutex _catDetectorMutex = AsyncMutex();
 
   static Future<void> _ensureCatDetector() async {
-    if (_catDetectorIsolate == null || !_catDetectorIsolate!.isReady) {
-      _catDetectorIsolate = await cat.CatDetectorIsolate.spawn(
-        mode: cat.CatDetectionMode.full,
-      );
-    }
+    _catDetectorIsolate = await _ensureDetector<cat.CatDetectorIsolate>(
+      _catDetectorIsolate,
+      (d) => d.isReady,
+      () => cat.CatDetectorIsolate.spawn(mode: cat.CatDetectionMode.full),
+    );
   }
 
   static Future<void> disposeCatDetector() async {
@@ -116,11 +127,11 @@ class StabUtils {
   static final AsyncMutex _dogDetectorMutex = AsyncMutex();
 
   static Future<void> _ensureDogDetector() async {
-    if (_dogDetectorIsolate == null || !_dogDetectorIsolate!.isReady) {
-      _dogDetectorIsolate = await dog.DogDetectorIsolate.spawn(
-        mode: dog.DogDetectionMode.full,
-      );
-    }
+    _dogDetectorIsolate = await _ensureDetector<dog.DogDetectorIsolate>(
+      _dogDetectorIsolate,
+      (d) => d.isReady,
+      () => dog.DogDetectorIsolate.spawn(mode: dog.DogDetectionMode.full),
+    );
   }
 
   static Future<void> disposeDogDetector() async {
@@ -525,78 +536,137 @@ class StabUtils {
   // Cat/Dog Face Detection → FaceLike conversion
   // ============================================================
 
-  /// Computes eye center by averaging the four corner landmarks (outer, top, inner, bottom).
+  /// Averages a list of nullable (x, y) coordinate pairs into a single point.
+  /// Null entries are skipped. Returns null if no valid coordinates remain.
+  static Point<double>? _computeEyeCenterFromCoords(
+    List<(double, double)?> coords,
+  ) {
+    final valid = coords.whereType<(double, double)>().toList();
+    if (valid.isEmpty) return null;
+    final x = valid.map((c) => c.$1).reduce((a, b) => a + b) / valid.length;
+    final y = valid.map((c) => c.$2).reduce((a, b) => a + b) / valid.length;
+    return Point<double>(x, y);
+  }
+
+  /// Computes an eye center from 4 typed landmarks [outer, top, inner, bottom].
+  /// [getLandmark] converts a landmark type to an optional (x, y) coordinate.
+  static Point<double>? _computeEyeCenterFromLandmarks<T>(
+    List<T> landmarks,
+    (double, double)? Function(T) getLandmark,
+  ) {
+    return _computeEyeCenterFromCoords(landmarks.map(getLandmark).toList());
+  }
+
   static Point<double>? _computeCatEyeCenter(
     cat.CatFace face, {
     required bool left,
   }) {
-    final outer = face.getLandmark(
-      left
-          ? cat.CatLandmarkType.leftEyeOuter
-          : cat.CatLandmarkType.rightEyeOuter,
+    return _computeEyeCenterFromLandmarks(
+      [
+        left
+            ? cat.CatLandmarkType.leftEyeOuter
+            : cat.CatLandmarkType.rightEyeOuter,
+        left ? cat.CatLandmarkType.leftEyeTop : cat.CatLandmarkType.rightEyeTop,
+        left
+            ? cat.CatLandmarkType.leftEyeInner
+            : cat.CatLandmarkType.rightEyeInner,
+        left
+            ? cat.CatLandmarkType.leftEyeBottom
+            : cat.CatLandmarkType.rightEyeBottom,
+      ],
+      (t) {
+        final p = face.getLandmark(t);
+        return p != null ? (p.x, p.y) : null;
+      },
     );
-    final top = face.getLandmark(
-      left ? cat.CatLandmarkType.leftEyeTop : cat.CatLandmarkType.rightEyeTop,
-    );
-    final inner = face.getLandmark(
-      left
-          ? cat.CatLandmarkType.leftEyeInner
-          : cat.CatLandmarkType.rightEyeInner,
-    );
-    final bottom = face.getLandmark(
-      left
-          ? cat.CatLandmarkType.leftEyeBottom
-          : cat.CatLandmarkType.rightEyeBottom,
-    );
-
-    final points = [
-      outer,
-      top,
-      inner,
-      bottom,
-    ].whereType<cat.CatLandmark>().toList();
-    if (points.isEmpty) return null;
-
-    final x = points.map((p) => p.x).reduce((a, b) => a + b) / points.length;
-    final y = points.map((p) => p.y).reduce((a, b) => a + b) / points.length;
-    return Point<double>(x, y);
   }
 
-  /// Computes eye center by averaging the four corner landmarks (outer, top, inner, bottom).
   static Point<double>? _computeDogEyeCenter(
     dog.DogFace face, {
     required bool left,
   }) {
-    final outer = face.getLandmark(
-      left
-          ? dog.DogLandmarkType.leftEyeOuter
-          : dog.DogLandmarkType.rightEyeOuter,
+    return _computeEyeCenterFromLandmarks(
+      [
+        left
+            ? dog.DogLandmarkType.leftEyeOuter
+            : dog.DogLandmarkType.rightEyeOuter,
+        left ? dog.DogLandmarkType.leftEyeTop : dog.DogLandmarkType.rightEyeTop,
+        left
+            ? dog.DogLandmarkType.leftEyeInner
+            : dog.DogLandmarkType.rightEyeInner,
+        left
+            ? dog.DogLandmarkType.leftEyeBottom
+            : dog.DogLandmarkType.rightEyeBottom,
+      ],
+      (t) {
+        final p = face.getLandmark(t);
+        return p != null ? (p.x, p.y) : null;
+      },
     );
-    final top = face.getLandmark(
-      left ? dog.DogLandmarkType.leftEyeTop : dog.DogLandmarkType.rightEyeTop,
-    );
-    final inner = face.getLandmark(
-      left
-          ? dog.DogLandmarkType.leftEyeInner
-          : dog.DogLandmarkType.rightEyeInner,
-    );
-    final bottom = face.getLandmark(
-      left
-          ? dog.DogLandmarkType.leftEyeBottom
-          : dog.DogLandmarkType.rightEyeBottom,
-    );
+  }
 
-    final points = [
-      outer,
-      top,
-      inner,
-      bottom,
-    ].whereType<dog.DogLandmark>().toList();
-    if (points.isEmpty) return null;
+  /// Shared detection loop: converts a list of animal detections into FaceLike
+  /// wrappers. [getImageWidth], [getBoundingBox], and [getEyes] are callbacks
+  /// that extract the type-specific fields from each detection result.
+  static List<FaceLike> _convertAnimalFaces<T>(
+    List<T> detections,
+    double Function(T) getImageWidth,
+    dynamic Function(T) getBoundingBox,
+    (Point<double>?, Point<double>?) Function(T) getEyes, {
+    bool filterByFaceSize = true,
+    int? imageWidth,
+    required List<FaceLike> Function(List<T>,
+            {bool filterByFaceSize, int? imageWidth})
+        retry,
+  }) {
+    final double w = imageWidth?.toDouble() ?? getImageWidth(detections.first);
+    final List<FaceLike> faces = [];
 
-    final x = points.map((p) => p.x).reduce((a, b) => a + b) / points.length;
-    final y = points.map((p) => p.y).reduce((a, b) => a + b) / points.length;
-    return Point<double>(x, y);
+    for (final d in detections) {
+      final bb = getBoundingBox(d);
+      final bbox = Rect.fromLTRB(bb.left, bb.top, bb.right, bb.bottom);
+
+      if (filterByFaceSize && (bbox.width / w) <= 0.1) continue;
+
+      final (leftEye, rightEye) = getEyes(d);
+      faces.add(
+          FaceLike(boundingBox: bbox, leftEye: leftEye, rightEye: rightEye));
+    }
+
+    if (faces.isEmpty && detections.isNotEmpty) {
+      return retry(detections, filterByFaceSize: false, imageWidth: imageWidth);
+    }
+
+    return faces;
+  }
+
+  /// Runs an animal detection job inside [mutex], calling [ensure] before
+  /// [detect], and [convert] on the result. Resets [onError] on failure.
+  static Future<List<FaceLike>?> _getAnimalFacesFromBytes<T>(
+    Uint8List bytes,
+    AsyncMutex mutex,
+    Future<void> Function() ensure,
+    Future<List<T>> Function(Uint8List) detect,
+    List<FaceLike> Function(List<T>, {bool filterByFaceSize, int? imageWidth})
+        convert,
+    void Function() onError,
+    String errorLabel, {
+    bool filterByFaceSize = true,
+    int? imageWidth,
+  }) async {
+    return mutex.protect(() async {
+      try {
+        await ensure();
+        final results = await detect(bytes);
+        if (results.isEmpty) return <FaceLike>[];
+        return convert(results,
+            filterByFaceSize: filterByFaceSize, imageWidth: imageWidth);
+      } catch (e) {
+        LogService.instance.log("Error detecting $errorLabel faces: $e");
+        onError();
+        return <FaceLike>[];
+      }
+    });
   }
 
   /// Detects cats in image bytes and returns FaceLike wrappers with eye centers.
@@ -604,58 +674,39 @@ class StabUtils {
     Uint8List bytes, {
     bool filterByFaceSize = true,
     int? imageWidth,
-  }) async {
-    return await _catDetectorMutex.protect(() async {
-      try {
-        await _ensureCatDetector();
-
-        final cats = await _catDetectorIsolate!.detectCats(bytes);
-        if (cats.isEmpty) return <FaceLike>[];
-
-        return _convertCatFaces(cats,
-            filterByFaceSize: filterByFaceSize, imageWidth: imageWidth);
-      } catch (e) {
-        LogService.instance.log("Error detecting cat faces: $e");
-        _catDetectorIsolate = null;
-        return <FaceLike>[];
-      }
-    });
-  }
+  }) =>
+      _getAnimalFacesFromBytes(
+        bytes,
+        _catDetectorMutex,
+        _ensureCatDetector,
+        (b) => _catDetectorIsolate!.detectCats(b),
+        _convertCatFaces,
+        () => _catDetectorIsolate = null,
+        'cat',
+        filterByFaceSize: filterByFaceSize,
+        imageWidth: imageWidth,
+      );
 
   static List<FaceLike> _convertCatFaces(
     List<cat.Cat> cats, {
     bool filterByFaceSize = true,
     int? imageWidth,
   }) {
-    final double w = imageWidth?.toDouble() ?? cats.first.imageWidth.toDouble();
-    final List<FaceLike> faces = [];
-
-    for (final c in cats) {
-      final bb = c.boundingBox;
-      final bbox = Rect.fromLTRB(bb.left, bb.top, bb.right, bb.bottom);
-
-      if (filterByFaceSize && (bbox.width / w) <= 0.1) continue;
-
-      Point<double>? leftEye;
-      Point<double>? rightEye;
-
-      if (c.face != null && c.face!.hasLandmarks) {
-        leftEye = _computeCatEyeCenter(c.face!, left: true);
-        rightEye = _computeCatEyeCenter(c.face!, left: false);
-      }
-
-      faces.add(
-        FaceLike(boundingBox: bbox, leftEye: leftEye, rightEye: rightEye),
-      );
-    }
-
-    // If filtering removed all cats, retry without filter
-    if (faces.isEmpty && cats.isNotEmpty) {
-      return _convertCatFaces(cats,
-          filterByFaceSize: false, imageWidth: imageWidth);
-    }
-
-    return faces;
+    return _convertAnimalFaces<cat.Cat>(
+      cats,
+      (c) => c.imageWidth.toDouble(),
+      (c) => c.boundingBox,
+      (c) {
+        if (c.face == null || !c.face!.hasLandmarks) return (null, null);
+        return (
+          _computeCatEyeCenter(c.face!, left: true),
+          _computeCatEyeCenter(c.face!, left: false),
+        );
+      },
+      filterByFaceSize: filterByFaceSize,
+      imageWidth: imageWidth,
+      retry: _convertCatFaces,
+    );
   }
 
   /// Detects dogs in image bytes and returns FaceLike wrappers with eye centers.
@@ -663,58 +714,39 @@ class StabUtils {
     Uint8List bytes, {
     bool filterByFaceSize = true,
     int? imageWidth,
-  }) async {
-    return await _dogDetectorMutex.protect(() async {
-      try {
-        await _ensureDogDetector();
-
-        final dogs = await _dogDetectorIsolate!.detectDogs(bytes);
-        if (dogs.isEmpty) return <FaceLike>[];
-
-        return _convertDogFaces(dogs,
-            filterByFaceSize: filterByFaceSize, imageWidth: imageWidth);
-      } catch (e) {
-        LogService.instance.log("Error detecting dog faces: $e");
-        _dogDetectorIsolate = null;
-        return <FaceLike>[];
-      }
-    });
-  }
+  }) =>
+      _getAnimalFacesFromBytes(
+        bytes,
+        _dogDetectorMutex,
+        _ensureDogDetector,
+        (b) => _dogDetectorIsolate!.detectDogs(b),
+        _convertDogFaces,
+        () => _dogDetectorIsolate = null,
+        'dog',
+        filterByFaceSize: filterByFaceSize,
+        imageWidth: imageWidth,
+      );
 
   static List<FaceLike> _convertDogFaces(
     List<dog.Dog> dogs, {
     bool filterByFaceSize = true,
     int? imageWidth,
   }) {
-    final double w = imageWidth?.toDouble() ?? dogs.first.imageWidth.toDouble();
-    final List<FaceLike> faces = [];
-
-    for (final d in dogs) {
-      final bb = d.boundingBox;
-      final bbox = Rect.fromLTRB(bb.left, bb.top, bb.right, bb.bottom);
-
-      if (filterByFaceSize && (bbox.width / w) <= 0.1) continue;
-
-      Point<double>? leftEye;
-      Point<double>? rightEye;
-
-      if (d.face != null && d.face!.hasLandmarks) {
-        leftEye = _computeDogEyeCenter(d.face!, left: true);
-        rightEye = _computeDogEyeCenter(d.face!, left: false);
-      }
-
-      faces.add(
-        FaceLike(boundingBox: bbox, leftEye: leftEye, rightEye: rightEye),
-      );
-    }
-
-    // If filtering removed all dogs, retry without filter
-    if (faces.isEmpty && dogs.isNotEmpty) {
-      return _convertDogFaces(dogs,
-          filterByFaceSize: false, imageWidth: imageWidth);
-    }
-
-    return faces;
+    return _convertAnimalFaces<dog.Dog>(
+      dogs,
+      (d) => d.imageWidth.toDouble(),
+      (d) => d.boundingBox,
+      (d) {
+        if (d.face == null || !d.face!.hasLandmarks) return (null, null);
+        return (
+          _computeDogEyeCenter(d.face!, left: true),
+          _computeDogEyeCenter(d.face!, left: false),
+        );
+      },
+      filterByFaceSize: filterByFaceSize,
+      imageWidth: imageWidth,
+      retry: _convertDogFaces,
+    );
   }
 
   /// Dispatches face detection to the correct detector based on project type.

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mime/mime.dart';
-import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'capture_timezone.dart';
 import 'image_format_utils.dart';
@@ -47,9 +46,7 @@ class Utils {
       timestamp,
       offsetMinutes: captureOffsetMinutes,
     );
-    final pattern = (Platform.isAndroid || Platform.isIOS)
-        ? 'MMM d yyyy h:mm a'
-        : 'MMMM d yyyy h:mm a';
+    final pattern = isMobile ? 'MMM d yyyy h:mm a' : 'MMMM d yyyy h:mm a';
     final fmt = DateFormat(pattern);
     final tzLabel = CaptureTimezone.formatOffsetLabel(
       captureOffsetMinutes,
@@ -169,5 +166,19 @@ class Utils {
     String toChange,
   ) async {
     return ConfirmActionDialog.showReStabilization(context, toChange);
+  }
+
+  /// Clears Flutter's in-memory image cache (live and persistent).
+  static void clearFlutterImageCache() {
+    PaintingBinding.instance.imageCache.clear();
+    PaintingBinding.instance.imageCache.clearLiveImages();
+  }
+}
+
+/// Convenience extension for [State] to safely call setState only when mounted.
+extension SafeState on State {
+  void setStateIfMounted(VoidCallback fn) {
+    // ignore: invalid_use_of_protected_member
+    if (mounted) setState(fn);
   }
 }

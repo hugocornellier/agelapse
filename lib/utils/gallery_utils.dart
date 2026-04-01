@@ -22,7 +22,7 @@ import 'camera_utils.dart';
 import 'dir_utils.dart';
 import 'export_naming_utils.dart';
 import 'image_format_utils.dart';
-import 'image_utils.dart';
+import 'platform_utils.dart';
 import 'settings_utils.dart';
 import 'test_mode.dart' as test_config;
 
@@ -339,40 +339,6 @@ class GalleryUtils {
     }
   }
 
-  static String formatDate(File image) {
-    final String filename = path.basenameWithoutExtension(image.path);
-    final int timestamp = int.tryParse(filename) ?? 0;
-    final DateTime dateTime = DateTime.fromMillisecondsSinceEpoch(
-      timestamp,
-      isUtc: true,
-    ).toLocal();
-    final int currentYear = DateTime.now().year;
-
-    const List<String> monthNames = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-
-    final String month = monthNames[dateTime.month - 1];
-    final int day = dateTime.day;
-
-    if (dateTime.year == currentYear) {
-      return '$month $day';
-    } else {
-      return '$month $day ${dateTime.year}';
-    }
-  }
-
   static Future<List<String>> getAllStabAndFailedImagePaths(
     int projectId,
   ) async {
@@ -487,53 +453,6 @@ class GalleryUtils {
     }
   }
 
-  static Future<String> processZipInIsolate(
-    String zipFileExportPath,
-    List<File> imageFiles,
-  ) async {
-    final List<String> filePaths = imageFiles.map((f) => f.path).toList();
-
-    final receivePort = ReceivePort();
-    final params = {
-      'sendPort': receivePort.sendPort,
-      'zipFileExportPath': zipFileExportPath,
-      'filePaths': filePaths,
-    };
-
-    final isolate = await Isolate.spawn(
-      GalleryUtils._galleryIsolateOperation,
-      params,
-    );
-    final res = await receivePort.first;
-    receivePort.close();
-    isolate.kill(priority: Isolate.immediate);
-    return res;
-  }
-
-  static void _galleryIsolateOperation(Map<String, dynamic> params) {
-    final String zipFileExportPath = params['zipFileExportPath'];
-    final List<String> filePaths = List<String>.from(params['filePaths']);
-    final SendPort sendPort = params['sendPort'];
-
-    final encoder = ZipFileEncoder();
-    bool ok = true;
-
-    try {
-      encoder.create(zipFileExportPath);
-      for (final fp in filePaths) {
-        final f = File(fp);
-        if (f.existsSync()) {
-          encoder.addFile(f, path.basename(fp));
-        }
-      }
-    } catch (_) {
-      ok = false;
-    } finally {
-      encoder.close();
-      sendPort.send(ok ? "success" : "error");
-    }
-  }
-
   static Future<void> processPickedImage(
     String imagePath,
     int projectId,
@@ -548,7 +467,6 @@ class GalleryUtils {
       imagePath: imagePath,
       projectId: projectId,
       activeProcessingDateNotifier: activeProcessingDateNotifier,
-      onImagesLoaded: onImagesLoaded,
       timestamp: timestamp,
       increaseSuccessfulImportCount: increaseSuccessfulImportCount,
       originalFilePath: originalFilePath,
@@ -557,6 +475,65 @@ class GalleryUtils {
 
     await imageProcessor.process();
     imageProcessor.dispose();
+  }
+
+  /// Shared post-decode ZIP processing loop used by both desktop and mobile.
+  ///
+  /// [zipEntries] is a list of records describing each accepted entry:
+  ///   - `name`: original entry name (used for sourceFilename and temp path)
+  ///   - `writeTempFile`: async callback that writes the entry content to the
+  ///     already-determined [tempFilePath]
+  ///
+  /// Callers are responsible for decoding the ZIP and filtering entries before
+  /// calling this method, then passing write callbacks appropriate for their
+  /// archive library.
+  static Future<void> _processZipEntries(
+    List<
+            ({
+              String name,
+              Future<void> Function(String tempFilePath) writeTempFile
+            })>
+        zipEntries,
+    int projectId,
+    ValueNotifier<String> activeProcessingDateNotifier,
+    Function onImagesLoaded,
+    Function(int p1) setProgressInMain,
+    void Function() increaseSuccessfulImportCount,
+    void Function(int value) increasePhotosImported,
+  ) async {
+    increasePhotosImported(zipEntries.length);
+    if (zipEntries.isEmpty) {
+      setProgressInMain(100);
+      return;
+    }
+
+    for (int i = 0; i < zipEntries.length; i++) {
+      final entry = zipEntries[i];
+      setProgressInMain(((i / zipEntries.length) * 100).toInt());
+
+      final String tempFilePath = path.join(
+        await DirUtils.getTemporaryDirPath(),
+        path.basename(entry.name).toLowerCase(),
+      );
+
+      try {
+        await entry.writeTempFile(tempFilePath);
+        await processPickedImage(
+          tempFilePath,
+          projectId,
+          activeProcessingDateNotifier,
+          onImagesLoaded: onImagesLoaded,
+          increaseSuccessfulImportCount: increaseSuccessfulImportCount,
+          sourceFilename: path.basename(entry.name),
+        );
+      } catch (_) {
+      } finally {
+        final tempFile = File(tempFilePath);
+        if (await tempFile.exists()) {
+          await tempFile.delete();
+        }
+      }
+    }
   }
 
   static Future<void> processPickedZipFileDesktop(
@@ -578,49 +555,31 @@ class GalleryUtils {
         if (lowerName == '.ds_store' || f.name.startsWith('__MACOSX/')) {
           return false;
         }
-
         if (!ImageFormats.isAcceptedPath(lowerName)) return false;
-
         return f.size >= 10000;
       }).toList()
         ..sort((a, b) => a.name.compareTo(b.name));
 
-      increasePhotosImported(entries.length);
-      if (entries.isEmpty) {
-        setProgressInMain(100);
-        return;
-      }
+      final zipEntries = entries
+          .map((f) => (
+                name: f.name,
+                writeTempFile: (String tempFilePath) async {
+                  final out = OutputFileStream(tempFilePath);
+                  f.writeContent(out);
+                  out.close();
+                },
+              ))
+          .toList();
 
-      for (int i = 0; i < entries.length; i++) {
-        final f = entries[i];
-        setProgressInMain(((i / entries.length) * 100).toInt());
-
-        final String tempFilePath = path.join(
-          await DirUtils.getTemporaryDirPath(),
-          path.basename(f.name).toLowerCase(),
-        );
-
-        final out = OutputFileStream(tempFilePath);
-        f.writeContent(out);
-        out.close();
-
-        try {
-          await processPickedImage(
-            tempFilePath,
-            projectId,
-            activeProcessingDateNotifier,
-            onImagesLoaded: onImagesLoaded,
-            increaseSuccessfulImportCount: increaseSuccessfulImportCount,
-            sourceFilename: path.basename(f.name),
-          );
-        } catch (_) {
-        } finally {
-          final tempFile = File(tempFilePath);
-          if (await tempFile.exists()) {
-            await tempFile.delete();
-          }
-        }
-      }
+      await _processZipEntries(
+        zipEntries,
+        projectId,
+        activeProcessingDateNotifier,
+        onImagesLoaded,
+        setProgressInMain,
+        increaseSuccessfulImportCount,
+        increasePhotosImported,
+      );
     } finally {
       input.close();
     }
@@ -636,7 +595,7 @@ class GalleryUtils {
     required void Function(int value) increasePhotosImported,
   }) async {
     if (path.extension(file.path).toLowerCase() == ".zip") {
-      if (Platform.isAndroid || Platform.isIOS) {
+      if (isMobile) {
         await processPickedZipFile(
           file,
           projectId,
@@ -685,7 +644,7 @@ class GalleryUtils {
     final reader = ZipFileReader();
     try {
       reader.open(File(file.path));
-      List<ZipEntry> entries = (await reader.entries()).where((entry) {
+      final List<ZipEntry> rawEntries = (await reader.entries()).where((entry) {
         final String basenameOnly = path.basename(entry.name);
         return entry.size >= 10000 &&
             ImageFormats.isAcceptedPath(basenameOnly) &&
@@ -693,40 +652,23 @@ class GalleryUtils {
       }).toList()
         ..sort((a, b) => a.name.compareTo(b.name));
 
-      increasePhotosImported(entries.length);
-      if (entries.isEmpty) {
-        setProgressInMain(100); // or 0
-        return;
-      }
+      final zipEntries = rawEntries
+          .map((entry) => (
+                name: entry.name,
+                writeTempFile: (String tempFilePath) =>
+                    reader.readToFile(entry.name, File(tempFilePath)),
+              ))
+          .toList();
 
-      for (int i = 0; i < entries.length; i++) {
-        final entry = entries[i];
-        setProgressInMain(((i / entries.length) * 100).toInt());
-
-        final String tempFilePath = path.join(
-          await DirUtils.getTemporaryDirPath(),
-          path.basename(entry.name).toLowerCase(),
-        );
-        final File tempFile = File(tempFilePath);
-
-        try {
-          await reader.readToFile(entry.name, tempFile);
-          await processPickedImage(
-            tempFilePath,
-            projectId,
-            activeProcessingDateNotifier,
-            onImagesLoaded: onImagesLoaded,
-            increaseSuccessfulImportCount: increaseSuccessfulImportCount,
-            sourceFilename: path.basename(entry.name),
-          );
-        } catch (_) {
-          //
-        } finally {
-          if (await tempFile.exists()) {
-            await tempFile.delete();
-          }
-        }
-      }
+      await _processZipEntries(
+        zipEntries,
+        projectId,
+        activeProcessingDateNotifier,
+        onImagesLoaded,
+        setProgressInMain,
+        increaseSuccessfulImportCount,
+        increasePhotosImported,
+      );
     } finally {
       reader.close();
     }
@@ -1145,9 +1087,7 @@ class GalleryUtils {
           'missing': missing,
           'badname': badname,
         });
-        try {
-          if (zipFile.existsSync()) zipFile.deleteSync();
-        } catch (_) {}
+        DirUtils.safeDeleteFileSync(zipPath);
         send.send('error');
         return;
       }
@@ -1166,9 +1106,7 @@ class GalleryUtils {
           'missing': missing,
           'badname': badname,
         });
-        try {
-          if (zipFile.existsSync()) zipFile.deleteSync();
-        } catch (_) {}
+        DirUtils.safeDeleteFileSync(zipPath);
         send.send('error');
         return;
       }
@@ -1191,9 +1129,7 @@ class GalleryUtils {
       final zipLen = zipFile.lengthSync();
       if (zipLen <= 0) {
         log('ZIP file is empty after close: $zipPath (length=$zipLen)');
-        try {
-          zipFile.deleteSync();
-        } catch (_) {}
+        DirUtils.safeDeleteFileSync(zipPath);
         send.send({
           'type': 'summary',
           'added': added,
@@ -1232,9 +1168,7 @@ class GalleryUtils {
         'missing': missing,
         'badname': badname,
       });
-      try {
-        if (zipFile.existsSync()) zipFile.deleteSync();
-      } catch (_) {}
+      DirUtils.safeDeleteFileSync(zipPath);
       send.send('error');
     }
   }
@@ -1265,7 +1199,7 @@ class GalleryUtils {
         projectId,
       );
 
-      if (Platform.isAndroid || Platform.isIOS || test_config.isTestMode) {
+      if (isMobile || test_config.isTestMode) {
         zipWorkPath = await DirUtils.getZipFileExportPath(
           projectId,
           projectName,
@@ -1400,9 +1334,7 @@ class GalleryUtils {
 
       final result = await completer.future;
 
-      if (!(Platform.isAndroid || Platform.isIOS) &&
-          !test_config.isTestMode &&
-          result == 'success') {
+      if (!isMobile && !test_config.isTestMode && result == 'success') {
         final suggested = ExportNamingUtils.generateZipFilename(
           projectName: projectName,
         );
@@ -1413,9 +1345,7 @@ class GalleryUtils {
           ],
         );
         if (location == null) {
-          try {
-            File(zipWorkPath).deleteSync();
-          } catch (_) {}
+          DirUtils.safeDeleteFileSync(zipWorkPath);
           return 'error';
         }
         zipTargetPath = location.path.toLowerCase().endsWith('.zip')
@@ -1426,9 +1356,7 @@ class GalleryUtils {
           await targetDir.create(recursive: true);
         }
         await File(zipWorkPath).copy(zipTargetPath);
-        try {
-          File(zipWorkPath).deleteSync();
-        } catch (_) {}
+        DirUtils.safeDeleteFileSync(zipWorkPath);
       }
 
       LogService.instance.log('[zip] Export result: $result');
@@ -1439,34 +1367,25 @@ class GalleryUtils {
     }
   }
 
-  @Deprecated('Use ThumbnailService stream-based approach instead')
-  static Future<String> waitForThumbnail(
-    String thumbnailPath,
-    int projectId, {
-    Duration timeout = const Duration(seconds: 30),
-  }) async {
-    final sw = Stopwatch()..start();
-    int? lastLen;
-    while (sw.elapsed < timeout) {
-      final String timestamp = path.basenameWithoutExtension(thumbnailPath);
-      final photo = await DB.instance.getPhotoByTimestamp(timestamp, projectId);
-      if (photo != null) {
-        if (photo['noFacesFound'] == 1) return "no_faces_found";
-        if (photo['stabFailed'] == 1) return "stab_failed";
-      }
-      final f = File(thumbnailPath);
-      if (await f.exists()) {
-        final len = await f.length();
-        if (len > 0 && lastLen != null && len == lastLen) {
-          // Validate image in isolate to avoid blocking UI
-          final valid = await ImageUtils.validateImageInIsolate(thumbnailPath);
-          if (valid) return "success";
-        }
-        lastLen = len;
-      }
-      await Future.delayed(const Duration(milliseconds: 200));
+  /// Returns the path of the numerically-first PNG in [dirPath], or null if
+  /// the directory does not exist or contains no PNG files.
+  static Future<String?> checkForStabilizedImage(String dirPath) async {
+    final directory = Directory(dirPath);
+    if (!await directory.exists()) return null;
+    try {
+      final pngFiles = await directory
+          .list()
+          .where((item) => item.path.endsWith('.png') && item is File)
+          .toList();
+      if (pngFiles.isEmpty) return null;
+      final minFile = pngFiles.reduce(
+        (a, b) =>
+            GalleryUtils.compareByNumericBasename(a.path, b.path) <= 0 ? a : b,
+      );
+      return minFile.path;
+    } catch (e) {
+      return null;
     }
-    return "stab_failed";
   }
 }
 

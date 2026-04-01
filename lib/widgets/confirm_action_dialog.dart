@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../styles/styles.dart';
+import 'dialog_title_row.dart';
 
 /// A reusable confirmation dialog widget for destructive or significant actions.
 ///
@@ -15,6 +16,7 @@ class ConfirmActionDialog extends StatelessWidget {
   final IconData titleIcon;
   final String cancelText;
   final String confirmText;
+  final Color? accentColor;
 
   const ConfirmActionDialog({
     super.key,
@@ -25,17 +27,17 @@ class ConfirmActionDialog extends StatelessWidget {
     this.titleIcon = Icons.warning_amber_rounded,
     this.cancelText = 'Cancel',
     this.confirmText = 'Proceed Anyway',
+    this.accentColor,
   });
 
   // Color getters - dynamic for theme support
   static Color get _dangerColor => AppColors.danger;
-  static Color get _dangerColorLight =>
-      AppColors.danger.withValues(alpha: 0.15);
-  static Color get _dangerColorBorder =>
-      AppColors.danger.withValues(alpha: 0.3);
   static Color get _cardBackground => AppColors.surface;
-  static Color get _textPrimary => AppColors.textPrimary;
   static Color get _textSecondary => AppColors.textSecondary;
+
+  Color get _effectiveAccent => accentColor ?? _dangerColor;
+  Color get _effectiveAccentLight => _effectiveAccent.withValues(alpha: 0.15);
+  Color get _effectiveAccentBorder => _effectiveAccent.withValues(alpha: 0.3);
 
   /// Shows a confirmation dialog for settings that require re-stabilization.
   ///
@@ -166,6 +168,30 @@ class ConfirmActionDialog extends StatelessWidget {
     );
   }
 
+  /// Shows a simple non-destructive confirmation dialog.
+  ///
+  /// Use for confirmations that don't require the danger styling — e.g.,
+  /// "Do you want to stabilize on this face?".
+  static Future<bool> showSimpleConfirmation(
+    BuildContext context, {
+    required String title,
+    required String description,
+    IconData titleIcon = Icons.info_outline_rounded,
+    Color? accentColor,
+    String cancelText = 'Cancel',
+    String confirmText = 'Confirm',
+  }) async {
+    return await _show(
+      context,
+      title: title,
+      description: description,
+      titleIcon: titleIcon,
+      accentColor: accentColor,
+      cancelText: cancelText,
+      confirmText: confirmText,
+    );
+  }
+
   /// Internal method to show the dialog with the given parameters.
   static Future<bool> _show(
     BuildContext context, {
@@ -176,6 +202,7 @@ class ConfirmActionDialog extends StatelessWidget {
     IconData titleIcon = Icons.warning_amber_rounded,
     String cancelText = 'Cancel',
     String confirmText = 'Proceed Anyway',
+    Color? accentColor,
   }) async {
     return await showDialog<bool>(
           context: context,
@@ -188,6 +215,7 @@ class ConfirmActionDialog extends StatelessWidget {
               titleIcon: titleIcon,
               cancelText: cancelText,
               confirmText: confirmText,
+              accentColor: accentColor,
             );
           },
         ) ??
@@ -199,27 +227,11 @@ class ConfirmActionDialog extends StatelessWidget {
     return AlertDialog(
       backgroundColor: _cardBackground,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: _dangerColorLight,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(titleIcon, color: _dangerColor, size: 22),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            title,
-            style: TextStyle(
-              color: _textPrimary,
-              fontSize: AppTypography.xl,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
+      title: DialogTitleRow(
+        icon: titleIcon,
+        title: title,
+        iconColor: _effectiveAccent,
+        iconBackgroundColor: _effectiveAccentLight,
       ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -238,19 +250,19 @@ class ConfirmActionDialog extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: _dangerColorLight,
+                color: _effectiveAccentLight,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: _dangerColorBorder, width: 1),
+                border: Border.all(color: _effectiveAccentBorder, width: 1),
               ),
               child: Row(
                 children: [
-                  Icon(warningIcon, color: _dangerColor, size: 20),
+                  Icon(warningIcon, color: _effectiveAccent, size: 20),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       warningText!,
                       style: TextStyle(
-                        color: _dangerColor,
+                        color: _effectiveAccent,
                         fontSize: AppTypography.sm,
                         fontWeight: FontWeight.w500,
                         height: 1.4,
@@ -279,7 +291,7 @@ class ConfirmActionDialog extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: _dangerColor,
+              color: _effectiveAccent,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(

@@ -94,9 +94,4 @@ class CreateProjectPageState extends State<CreateProjectPage> {
       ),
     );
   }
-
-  @override
-  void dispose() {
-    super.dispose();
-  }
 }

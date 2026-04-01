@@ -203,11 +203,8 @@ class CustomFontManager {
       // We use a temporary name for validation
       final testFamilyName =
           '_validation_test_${DateTime.now().millisecondsSinceEpoch}';
-      final fontLoader = FontLoader(testFamilyName);
-      fontLoader.addFont(Future.value(ByteData.view(bytes.buffer)));
-
       try {
-        await fontLoader.load();
+        await _loadFontBytes(testFamilyName, bytes);
       } catch (e) {
         return FontValidationResult.invalid(
           'Font file is corrupt or unsupported',
@@ -311,6 +308,13 @@ class CustomFontManager {
     return font;
   }
 
+  /// Load raw font bytes into the Flutter engine under [familyName].
+  Future<void> _loadFontBytes(String familyName, Uint8List bytes) async {
+    final fontLoader = FontLoader(familyName);
+    fontLoader.addFont(Future.value(ByteData.view(bytes.buffer)));
+    await fontLoader.load();
+  }
+
   /// Load a custom font into the Flutter engine.
   Future<bool> _loadFontIntoEngine(CustomFont font) async {
     if (_loadedFonts.contains(font.familyName)) {
@@ -327,9 +331,7 @@ class CustomFontManager {
       }
 
       final bytes = await file.readAsBytes();
-      final fontLoader = FontLoader(font.familyName);
-      fontLoader.addFont(Future.value(ByteData.view(bytes.buffer)));
-      await fontLoader.load();
+      await _loadFontBytes(font.familyName, bytes);
 
       _loadedFonts.add(font.familyName);
       return true;
@@ -398,14 +400,7 @@ class CustomFontManager {
     await DB.instance.deleteCustomFont(font.id);
 
     // Delete font file
-    try {
-      final file = File(font.filePath);
-      if (await file.exists()) {
-        await file.delete();
-      }
-    } catch (e) {
-      LogService.instance.log('[CUSTOM_FONT] Failed to delete font file: $e');
-    }
+    await DirUtils.deleteFileIfExists(font.filePath);
 
     // Remove from loaded set (font will remain in engine until app restart)
     _loadedFonts.remove(font.familyName);

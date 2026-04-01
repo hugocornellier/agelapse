@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:agelapse/utils/camera_utils.dart';
+import 'package:agelapse/utils/settings_utils.dart';
 
 /// Unit tests for CameraUtils.
 /// Tests method signatures and pure utility functions.
@@ -11,8 +12,8 @@ void main() {
   });
 
   group('CameraUtils Method Signatures', () {
-    test('loadSaveToCameraRollSetting returns Future<bool>', () {
-      final result = CameraUtils.loadSaveToCameraRollSetting();
+    test('loadSaveToCameraRoll returns Future<bool>', () {
+      final result = SettingsUtil.loadSaveToCameraRoll();
       expect(result, isA<Future<bool>>());
     });
 
@@ -45,7 +46,7 @@ void main() {
     test('all methods are static', () {
       // These should compile without needing an instance
       // ignore: unnecessary_type_check
-      expect(CameraUtils.loadSaveToCameraRollSetting is Function, isTrue);
+      expect(SettingsUtil.loadSaveToCameraRoll is Function, isTrue);
       // ignore: unnecessary_type_check
       expect(CameraUtils.readBytesInIsolate is Function, isTrue);
       // ignore: unnecessary_type_check

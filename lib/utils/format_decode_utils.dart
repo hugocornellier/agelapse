@@ -130,29 +130,15 @@ class FormatDecodeUtils {
         }
       } else {
         // iOS: use Flutter's image codec which handles TIFF natively
-        try {
-          final tiffBytes = await File(inputPath).readAsBytes();
-          final codec = await ui.instantiateImageCodec(tiffBytes);
-          final frame = await codec.getNextFrame();
-          final byteData = await frame.image.toByteData(
-            format: ui.ImageByteFormat.png,
-          );
-          codec.dispose();
-          frame.image.dispose();
-
-          if (byteData == null) {
-            LogService.instance.log(
-              '[FormatDecode] Flutter codec TIFF→PNG returned null',
-            );
-            return null;
-          }
-          return byteData.buffer.asUint8List();
-        } catch (e) {
+        final result = await _decodeWithFlutterCodec(
+          await File(inputPath).readAsBytes(),
+        );
+        if (result == null) {
           LogService.instance.log(
-            '[FormatDecode] Flutter codec TIFF decode error: $e',
+            '[FormatDecode] Flutter codec TIFF→PNG returned null',
           );
-          return null;
         }
+        return result;
       }
 
       return _readAndCleanup(tempPngPath);
@@ -192,35 +178,38 @@ class FormatDecodeUtils {
         }
       } else {
         // iOS: use Flutter's image codec which handles JP2
-        try {
-          final jp2Bytes = await File(inputPath).readAsBytes();
-          final codec = await ui.instantiateImageCodec(jp2Bytes);
-          final frame = await codec.getNextFrame();
-          final byteData = await frame.image.toByteData(
-            format: ui.ImageByteFormat.png,
-          );
-          codec.dispose();
-          frame.image.dispose();
-
-          if (byteData == null) {
-            LogService.instance.log(
-              '[FormatDecode] Flutter codec JP2→PNG returned null',
-            );
-            return null;
-          }
-          return byteData.buffer.asUint8List();
-        } catch (e) {
+        final result = await _decodeWithFlutterCodec(
+          await File(inputPath).readAsBytes(),
+        );
+        if (result == null) {
           LogService.instance.log(
-            '[FormatDecode] Flutter codec JP2 decode error: $e',
+            '[FormatDecode] Flutter codec JP2→PNG returned null',
           );
-          return null;
         }
+        return result;
       }
 
       return _readAndCleanup(tempPngPath);
     } catch (e) {
       LogService.instance.log('[FormatDecode] JP2 decode error: $e');
       _tryDelete(tempPngPath);
+      return null;
+    }
+  }
+
+  /// Decodes [bytes] to PNG via Flutter's image codec.
+  /// Used on iOS for formats (TIFF, JP2) that the codec handles natively.
+  static Future<Uint8List?> _decodeWithFlutterCodec(Uint8List bytes) async {
+    try {
+      final codec = await ui.instantiateImageCodec(bytes);
+      final frame = await codec.getNextFrame();
+      final byteData = await frame.image.toByteData(
+        format: ui.ImageByteFormat.png,
+      );
+      codec.dispose();
+      frame.image.dispose();
+      return byteData?.buffer.asUint8List();
+    } catch (_) {
       return null;
     }
   }

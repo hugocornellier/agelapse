@@ -1,12 +1,11 @@
-import 'dart:io';
 import 'package:file_picker/file_picker.dart';
-import '../screens/project_page.dart';
 import 'package:flutter/material.dart';
 import '../services/database_helper.dart';
 import '../services/log_service.dart';
 import '../styles/styles.dart';
 import '../utils/linked_source_utils.dart';
 import '../utils/notification_util.dart';
+import '../utils/platform_utils.dart';
 import '../utils/test_mode.dart' as test_config;
 import '../utils/window_utils.dart';
 import '../utils/dir_utils.dart';
@@ -33,24 +32,6 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
   String _selectedImage = 'assets/images/face.png';
   bool _useLinkedSourceFolder = false;
   String _linkedSourceFolderPath = '';
-
-  static Future<String?> checkForStabilizedImage(String dirPath) async {
-    final directory = Directory(dirPath);
-    if (await directory.exists()) {
-      try {
-        final pngFiles = await directory
-            .list()
-            .where((item) => item.path.endsWith('.png') && item is File)
-            .toList();
-        if (pngFiles.isNotEmpty) {
-          return pngFiles.first.path;
-        }
-      } catch (e) {
-        return null;
-      }
-    }
-    return null;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -261,7 +242,7 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
         child: TextField(
           controller: _nameController,
           onSubmitted: (_) {
-            if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+            if (isDesktop) {
               _createProject();
             }
           },
@@ -444,7 +425,7 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
     }
 
     // Transition window to default state after completing welcome flow
-    if (widget.isFullPage) {
+    if (widget.isFullPage && !test_config.isTestMode) {
       await WindowUtils.transitionToDefaultWindowState();
     }
 
@@ -503,15 +484,5 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
         ),
       ),
     );
-  }
-
-  static Future<bool> photoWasTakenToday(int projectId) async {
-    var photos = await DB.instance.getPhotosByProjectID(projectId);
-    final DateTime today = DateTime.now();
-    return photos.any((photo) {
-      final timestampInt = int.parse(photo['timestamp']!);
-      final photoDate = DateTime.fromMillisecondsSinceEpoch(timestampInt);
-      return photoDate.isSameDate(today);
-    });
   }
 }
