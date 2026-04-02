@@ -13,10 +13,14 @@ class InfoTooltipIcon extends StatelessWidget {
   /// Whether the icon should appear disabled (greyed out).
   final bool disabled;
 
+  /// Icon size (defaults to 18).
+  final double size;
+
   const InfoTooltipIcon({
     super.key,
     required this.content,
     this.disabled = false,
+    this.size = 18,
   });
 
   @override
@@ -29,7 +33,7 @@ class InfoTooltipIcon extends StatelessWidget {
           padding: const EdgeInsets.only(left: 6),
           child: Icon(
             Icons.info_outline_rounded,
-            size: 18,
+            size: size,
             color: disabled
                 ? AppColors.settingsTextTertiary
                 : AppColors.settingsTextSecondary,

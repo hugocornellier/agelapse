@@ -426,7 +426,7 @@ class FaceStabilizer {
 
     if (result) {
       unawaited(
-        createStabThumbnail(stabilizedPhotoPath.replaceAll('.jpg', '.png')),
+        createStabThumbnail(path.setExtension(stabilizedPhotoPath, '.png')),
       );
     }
 
@@ -1291,6 +1291,7 @@ class FaceStabilizer {
       if (!_areEyesValid(currentEyes)) break;
 
       if (scaleError <= 1.0) break;
+      if (currentEyeDistance < 1.0) break;
 
       double scaleCorrection = eyeDistanceGoal / currentEyeDistance;
       double newScale = bestScale * scaleCorrection;
@@ -1524,7 +1525,7 @@ class FaceStabilizer {
         cleanupRotation = bestRotation - cleanupRotationAngle;
       }
 
-      if (cleanupScaleError > 2.0) {
+      if (cleanupScaleError > 2.0 && cleanupEyeDistance >= 1.0) {
         double scaleCorrection = eyeDistanceGoal / cleanupEyeDistance;
         cleanupScale = bestScale * scaleCorrection;
       }
@@ -1658,7 +1659,7 @@ class FaceStabilizer {
 
     final String result = await saveBytesToPngFileInIsolate(
       pngBytes,
-      stabilizedPhotoPath.replaceAll('.jpg', '.png'),
+      path.setExtension(stabilizedPhotoPath, '.png'),
     );
 
     if (result != "success") {
@@ -1673,6 +1674,11 @@ class FaceStabilizer {
     final ty = translateY ?? 0;
     final rot = rotationDegrees ?? 0;
     final sc = scaleFactor ?? 1;
+
+    if (tx.isInfinite || ty.isInfinite || rot.isInfinite || sc.isInfinite) {
+      LogService.instance.log('ABORT save: infinite transform values detected');
+      return false;
+    }
 
     await setPhotoStabilized(
       rawPhotoPath,
@@ -1799,7 +1805,7 @@ class FaceStabilizer {
       projectId,
       projectOrientation,
     );
-    final String pngPath = stabilizedPath.replaceAll('.jpg', '.png');
+    final String pngPath = path.setExtension(stabilizedPath, '.png');
     await createStabThumbnail(pngPath);
     return getStabThumbnailPath(pngPath);
   }
@@ -1819,7 +1825,7 @@ class FaceStabilizer {
       projectOrientation,
     );
     final String thumbnailPath = getStabThumbnailPath(
-      stabilizedPath.replaceAll('.jpg', '.png'),
+      path.setExtension(stabilizedPath, '.png'),
     );
 
     ThumbnailService.instance.emit(
@@ -2271,6 +2277,7 @@ class FaceStabilizer {
     double hypotenuse = sqrt(
       pow(verticalDistance, 2) + pow(horizontalDistance, 2),
     );
+    if (hypotenuse < 1.0) return (null, null);
     double scaleFactor = bodyDistanceGoal / hypotenuse;
     double rotationDegreesRaw =
         90 - (atan2(verticalDistance, horizontalDistance) * (180 / pi));
@@ -2305,6 +2312,7 @@ class FaceStabilizer {
       pow(verticalDistance.toDouble(), 2) +
           pow(horizontalDistance.toDouble(), 2),
     );
+    if (hypotenuse < 1.0) return (null, null);
     double scaleFactor = eyeDistanceGoal / hypotenuse;
 
     return (scaleFactor, rotationDegrees);
@@ -2732,6 +2740,7 @@ class FaceStabilizer {
     double hypotenuse = sqrt(
       pow(verticalDistance, 2) + pow(horizontalDistance, 2),
     );
+    if (hypotenuse < 1.0) return (1.0, 0.0);
     double scaleFactor = eyeDistanceGoal / hypotenuse;
 
     return (scaleFactor, rotationDegrees);

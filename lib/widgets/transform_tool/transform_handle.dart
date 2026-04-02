@@ -67,10 +67,10 @@ extension TransformHandleExtension on TransformHandle {
     switch (this) {
       case TransformHandle.topLeft:
       case TransformHandle.bottomRight:
-        return SystemMouseCursors.resizeUpLeftDownRight;
+        return SystemMouseCursors.precise;
       case TransformHandle.topRight:
       case TransformHandle.bottomLeft:
-        return SystemMouseCursors.resizeUpRightDownLeft;
+        return SystemMouseCursors.precise;
       case TransformHandle.topCenter:
       case TransformHandle.bottomCenter:
         return SystemMouseCursors.resizeUpDown;

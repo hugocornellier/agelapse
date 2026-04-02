@@ -14,6 +14,7 @@ import '../services/custom_font_manager.dart';
 import '../services/settings_cache.dart';
 import '../screens/projects_page.dart';
 import '../services/database_helper.dart';
+import '../services/menu_bar_service.dart';
 import '../services/theme_provider.dart';
 import '../services/log_service.dart';
 import '../widgets/main_navigation.dart';
@@ -252,133 +253,187 @@ class AgeLapse extends StatelessWidget {
 
     const editMenuChannel = MethodChannel('agelapse.macos.edit_menu');
 
-    return PlatformMenuBar(
-      menus: [
-        PlatformMenu(
-          label: 'AgeLapse',
+    final menuBarService = MenuBarService.instance;
+
+    return ListenableBuilder(
+      listenable: menuBarService,
+      builder: (context, _) {
+        return PlatformMenuBar(
           menus: [
-            PlatformMenuItemGroup(
-              members: [
-                PlatformMenuItem(label: 'About AgeLapse', onSelected: null),
-              ],
-            ),
-            PlatformMenuItemGroup(
-              members: [
-                PlatformMenuItem(
-                  label: 'Hide AgeLapse',
-                  shortcut: const SingleActivator(
-                    LogicalKeyboardKey.keyH,
-                    meta: true,
-                  ),
-                  onSelected: () => SystemNavigator.pop(),
+            PlatformMenu(
+              label: 'AgeLapse',
+              menus: [
+                PlatformMenuItemGroup(
+                  members: [
+                    PlatformMenuItem(
+                      label: 'About AgeLapse',
+                      onSelected: null,
+                    ),
+                  ],
                 ),
-                PlatformMenuItem(
-                  label: 'Quit AgeLapse',
-                  shortcut: const SingleActivator(
-                    LogicalKeyboardKey.keyQ,
-                    meta: true,
-                  ),
-                  onSelected: () => SystemNavigator.pop(),
-                ),
-              ],
-            ),
-          ],
-        ),
-        PlatformMenu(
-          label: 'File',
-          menus: [
-            PlatformMenuItemGroup(
-              members: [
-                PlatformMenuItem(
-                  label: 'Create New Project',
-                  shortcut: const SingleActivator(
-                    LogicalKeyboardKey.keyN,
-                    meta: true,
-                  ),
-                  onSelected: () {
-                    final nav = navigatorKey.currentState;
-                    if (nav == null) return;
-                    // Don't push if already on CreateProjectPage
-                    bool alreadyOnPage = false;
-                    nav.popUntil((route) {
-                      if (route.settings.name == 'createProject') {
-                        alreadyOnPage = true;
-                      }
-                      return true; // don't actually pop
-                    });
-                    if (alreadyOnPage) return;
-                    nav.push(
-                      PageRouteBuilder(
-                        settings: const RouteSettings(name: 'createProject'),
-                        pageBuilder: (_, __, ___) => const CreateProjectPage(),
-                        transitionsBuilder: (_, animation, __, child) =>
-                            FadeTransition(opacity: animation, child: child),
-                        transitionDuration: const Duration(milliseconds: 150),
-                        reverseTransitionDuration:
-                            const Duration(milliseconds: 150),
+                PlatformMenuItemGroup(
+                  members: [
+                    PlatformMenuItem(
+                      label: 'Hide AgeLapse',
+                      shortcut: const SingleActivator(
+                        LogicalKeyboardKey.keyH,
+                        meta: true,
                       ),
+                      onSelected: () => SystemNavigator.pop(),
+                    ),
+                    PlatformMenuItem(
+                      label: 'Quit AgeLapse',
+                      shortcut: const SingleActivator(
+                        LogicalKeyboardKey.keyQ,
+                        meta: true,
+                      ),
+                      onSelected: () => SystemNavigator.pop(),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            PlatformMenu(
+              label: 'File',
+              menus: [
+                PlatformMenuItemGroup(
+                  members: [
+                    PlatformMenuItem(
+                      label: 'Create New Project',
+                      shortcut: const SingleActivator(
+                        LogicalKeyboardKey.keyN,
+                        meta: true,
+                      ),
+                      onSelected: () {
+                        final nav = navigatorKey.currentState;
+                        if (nav == null) return;
+                        bool alreadyOnPage = false;
+                        nav.popUntil((route) {
+                          if (route.settings.name == 'createProject') {
+                            alreadyOnPage = true;
+                          }
+                          return true;
+                        });
+                        if (alreadyOnPage) return;
+                        nav.push(
+                          PageRouteBuilder(
+                            settings:
+                                const RouteSettings(name: 'createProject'),
+                            pageBuilder: (_, __, ___) =>
+                                const CreateProjectPage(),
+                            transitionsBuilder: (_, animation, __, child) =>
+                                FadeTransition(
+                                    opacity: animation, child: child),
+                            transitionDuration:
+                                const Duration(milliseconds: 150),
+                            reverseTransitionDuration:
+                                const Duration(milliseconds: 150),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            PlatformMenu(
+              label: 'Edit',
+              menus: [
+                PlatformMenuItemGroup(
+                  members: [
+                    PlatformMenuItem(
+                      label: 'Cut',
+                      shortcut: const SingleActivator(
+                        LogicalKeyboardKey.keyX,
+                        meta: true,
+                      ),
+                      onSelected: () => editMenuChannel.invokeMethod('cut'),
+                    ),
+                    PlatformMenuItem(
+                      label: 'Copy',
+                      shortcut: const SingleActivator(
+                        LogicalKeyboardKey.keyC,
+                        meta: true,
+                      ),
+                      onSelected: () => editMenuChannel.invokeMethod('copy'),
+                    ),
+                    PlatformMenuItem(
+                      label: 'Paste',
+                      shortcut: const SingleActivator(
+                        LogicalKeyboardKey.keyV,
+                        meta: true,
+                      ),
+                      onSelected: () => editMenuChannel.invokeMethod('paste'),
+                    ),
+                    PlatformMenuItem(
+                      label: 'Select All',
+                      shortcut: const SingleActivator(
+                        LogicalKeyboardKey.keyA,
+                        meta: true,
+                      ),
+                      onSelected: () =>
+                          editMenuChannel.invokeMethod('selectAll'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            if (menuBarService.hasToolsMenu)
+              PlatformMenu(
+                label: 'Tools',
+                menus: [
+                  PlatformMenuItemGroup(
+                    members: [
+                      if (menuBarService.onZoomIn != null)
+                        PlatformMenuItem(
+                          label: 'Zoom In',
+                          shortcut: const SingleActivator(
+                            LogicalKeyboardKey.equal,
+                            meta: true,
+                          ),
+                          onSelected: menuBarService.onZoomIn,
+                        ),
+                      if (menuBarService.onZoomOut != null)
+                        PlatformMenuItem(
+                          label: 'Zoom Out',
+                          shortcut: const SingleActivator(
+                            LogicalKeyboardKey.minus,
+                            meta: true,
+                          ),
+                          onSelected: menuBarService.onZoomOut,
+                        ),
+                      if (menuBarService.onResetZoom != null)
+                        PlatformMenuItem(
+                          label: 'Actual Size',
+                          shortcut: const SingleActivator(
+                            LogicalKeyboardKey.digit1,
+                            meta: true,
+                          ),
+                          onSelected: menuBarService.onResetZoom,
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            PlatformMenu(
+              label: 'Help',
+              menus: [
+                PlatformMenuItem(
+                  label: 'Documentation',
+                  onSelected: () async {
+                    final uri = Uri.parse('https://agelapse.com/docs');
+                    await launchUrl(
+                      uri,
+                      mode: LaunchMode.externalApplication,
                     );
                   },
                 ),
               ],
             ),
           ],
-        ),
-        PlatformMenu(
-          label: 'Edit',
-          menus: [
-            PlatformMenuItemGroup(
-              members: [
-                PlatformMenuItem(
-                  label: 'Cut',
-                  shortcut: const SingleActivator(
-                    LogicalKeyboardKey.keyX,
-                    meta: true,
-                  ),
-                  onSelected: () => editMenuChannel.invokeMethod('cut'),
-                ),
-                PlatformMenuItem(
-                  label: 'Copy',
-                  shortcut: const SingleActivator(
-                    LogicalKeyboardKey.keyC,
-                    meta: true,
-                  ),
-                  onSelected: () => editMenuChannel.invokeMethod('copy'),
-                ),
-                PlatformMenuItem(
-                  label: 'Paste',
-                  shortcut: const SingleActivator(
-                    LogicalKeyboardKey.keyV,
-                    meta: true,
-                  ),
-                  onSelected: () => editMenuChannel.invokeMethod('paste'),
-                ),
-                PlatformMenuItem(
-                  label: 'Select All',
-                  shortcut: const SingleActivator(
-                    LogicalKeyboardKey.keyA,
-                    meta: true,
-                  ),
-                  onSelected: () => editMenuChannel.invokeMethod('selectAll'),
-                ),
-              ],
-            ),
-          ],
-        ),
-        PlatformMenu(
-          label: 'Help',
-          menus: [
-            PlatformMenuItem(
-              label: 'Documentation',
-              onSelected: () async {
-                final uri = Uri.parse('https://agelapse.com/docs');
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              },
-            ),
-          ],
-        ),
-      ],
-      child: materialApp,
+          child: materialApp,
+        );
+      },
     );
   }
 }

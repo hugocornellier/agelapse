@@ -41,8 +41,7 @@ dependencies:
   flutter_svg: ^2.2.4
   flutter_timezone: ^5.0.2
   font_awesome_flutter: ^11.0.0
-  hand_detection: ^2.0.5
-  heic2png: ^0.1.0
+  heic2png: ^0.1.1
   intl: ^0.20.2
   media_kit: ^1.2.6
   media_kit_libs_linux: ^1.2.1
@@ -93,23 +92,31 @@ flutter:
     - assets/images/
     - assets/ghost-custom.svg
     - assets/relax.svg
-    - assets/ffmpeg/windows/ffmpeg.exe
-    - assets/ffmpeg/windows/LICENSE
-    - assets/test_fixtures/sample_faces/
-    - assets/test_fixtures/sample_dogs/
-    - assets/test_fixtures/sample_cats/
-    - assets/test_fixtures/sample_poses/
-    - assets/test_fixtures/sample-avif.avif
-    - assets/test_fixtures/sample-heic.HEIC
-    - assets/test_fixtures/format_samples/jpg/
-    - assets/test_fixtures/format_samples/png/
-    - assets/test_fixtures/format_samples/webp/
-    - assets/test_fixtures/format_samples/bmp/
-    - assets/test_fixtures/format_samples/tiff/
-
-    - assets/test_fixtures/format_samples/heic/
-    - assets/test_fixtures/format_samples/avif/
-    - assets/test_fixtures/format_samples/jp2/
+    # ffmpeg.exe is only needed on Windows (Android uses FFmpegKit, macOS/Linux
+    # use system ffmpeg). The platforms: key ensures it's only bundled for Windows.
+    - path: assets/ffmpeg/windows/ffmpeg.exe
+      platforms:
+        - windows
+    - path: assets/ffmpeg/windows/LICENSE
+      platforms:
+        - windows
+    # Test fixtures are loaded from the filesystem on desktop (see test_utils.dart).
+    # Only declared here for mobile integration tests (rootBundle extraction).
+    # Uncomment if running integration tests on Android/iOS devices.
+    # - assets/test_fixtures/sample_faces/
+    # - assets/test_fixtures/sample_dogs/
+    # - assets/test_fixtures/sample_cats/
+    # - assets/test_fixtures/sample_poses/
+    # - assets/test_fixtures/sample-avif.avif
+    # - assets/test_fixtures/sample-heic.HEIC
+    # - assets/test_fixtures/format_samples/jpg/
+    # - assets/test_fixtures/format_samples/png/
+    # - assets/test_fixtures/format_samples/webp/
+    # - assets/test_fixtures/format_samples/bmp/
+    # - assets/test_fixtures/format_samples/tiff/
+    # - assets/test_fixtures/format_samples/heic/
+    # - assets/test_fixtures/format_samples/avif/
+    # - assets/test_fixtures/format_samples/jp2/
     # Font licenses (for legal compliance)
     - assets/fonts/Inter/OFL.txt
     - assets/fonts/Roboto/LICENSE.txt

@@ -25,8 +25,11 @@ import '../../utils/settings_utils.dart';
 import '../../utils/date_stamp_utils.dart';
 import '../../utils/capture_timezone.dart';
 import '../../utils/utils.dart';
+import '../../models/import_preview_item.dart';
+import '../../utils/image_format_utils.dart';
 import '../../widgets/yellow_tip_bar.dart';
 import '../../widgets/gallery_date_stamp_provider.dart';
+import '../../widgets/import_preview_dialog.dart';
 import '../../widgets/info_dialog.dart';
 import '../../widgets/confirm_action_dialog.dart';
 import '../../widgets/icon_badge.dart';
@@ -580,56 +583,39 @@ class GalleryPageState extends State<GalleryPage>
           requestType: RequestType.image,
         ),
       );
-      if (result == null) {
-        return; // for reference this means switching to the raw tab in the gallery
-      }
-      setState(() {
-        _tabController.index = 1;
-      });
-      GalleryUtils.startImportBatch(result.length);
+      if (result == null || result.isEmpty) return;
+
+      // Write all assets to temp files first
+      final List<String> tempPaths = [];
       for (final AssetEntity asset in result) {
-        await _processAsset(asset);
+        final Uint8List? originBytes = await asset.originBytes;
+        if (originBytes == null) continue;
+        final String originPath = (await asset.originFile)!.path;
+        final String tempPath = await _getTemporaryPhotoPath(asset, originPath);
+        final File tempFile = File(tempPath);
+        if (await _isModifiedLivePhoto(asset, originPath)) {
+          await _writeModifiedLivePhoto(asset, tempFile);
+        } else {
+          await tempFile.writeAsBytes(originBytes);
+        }
+        tempPaths.add(tempPath);
       }
-      widget.refreshSettings();
-      _loadImages();
-      widget.stabCallback();
+
+      if (tempPaths.isEmpty) return;
+
+      try {
+        await _showImportPreview(tempPaths);
+      } finally {
+        // Clean up temp files after import or cancel
+        for (final tempPath in tempPaths) {
+          try {
+            final f = File(tempPath);
+            if (await f.exists()) await f.delete();
+          } catch (_) {}
+        }
+      }
     } catch (e) {
       LogService.instance.log("Error picking images: $e");
-    }
-  }
-
-  Future<void> _processAsset(AssetEntity asset) async {
-    final Uint8List? originBytes = await asset.originBytes;
-    if (originBytes == null) return;
-    final String originPath = (await asset.originFile)!.path;
-    final String tempOriginPhotoPath = await _getTemporaryPhotoPath(
-      asset,
-      originPath,
-    );
-    final File tempOriginFile = File(tempOriginPhotoPath);
-    if (await _isModifiedLivePhoto(asset, originPath)) {
-      await _writeModifiedLivePhoto(asset, tempOriginFile);
-    } else {
-      await tempOriginFile.writeAsBytes(originBytes);
-    }
-    try {
-      await GalleryUtils.processPickedImage(
-        tempOriginPhotoPath,
-        projectId,
-        activeProcessingDateNotifier,
-        onImagesLoaded: _loadImages,
-        timestamp: asset.createDateTime.millisecondsSinceEpoch,
-        originalFilePath: originPath,
-        sourceFilename: asset.title ?? path.basename(originPath),
-      );
-    } finally {
-      // Clean up temp file after import completes (success or failure)
-      final tempFile = File(tempOriginPhotoPath);
-      if (await tempFile.exists()) {
-        try {
-          await tempFile.delete();
-        } catch (_) {}
-      }
     }
   }
 
@@ -976,11 +962,6 @@ class GalleryPageState extends State<GalleryPage>
 
   Future<void> _pickFiles() async {
     try {
-      setState(() {
-        photosImported = 0;
-        successfullyImported = 0;
-        _tabController.index = 1;
-      });
       FilePickerResult? pickedFiles;
       try {
         pickedFiles = await FilePicker.platform.pickFiles(allowMultiple: true);
@@ -989,13 +970,13 @@ class GalleryPageState extends State<GalleryPage>
         return;
       }
       if (pickedFiles == null) return;
-      setState(() => isImporting = true);
-      if (widget.stabilizingRunningInMain) {
-        await widget.cancelStabCallback();
-      }
-      GalleryUtils.startImportBatch(pickedFiles.files.length);
-      await widget.processPickedFiles(pickedFiles, processPickedFile);
-      await _handleImportCompletion(checkMounted: false);
+
+      final filePaths = pickedFiles.files
+          .where((f) => f.path != null)
+          .map((f) => f.path!)
+          .toList();
+
+      await _showImportPreview(filePaths);
     } catch (e) {
       LogService.instance.log("ERROR CAUGHT IN PICK FILES");
     }
@@ -1042,53 +1023,40 @@ class GalleryPageState extends State<GalleryPage>
   /// Process files from global drag-and-drop.
   /// Uses the same logic as the import sheet's drop zone.
   Future<void> _processGlobalDropFiles(List<String> filePaths) async {
-    // If already importing, queue the files
     if (isImporting) {
       GlobalDropService.instance.queueFiles(filePaths, widget.projectId);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${filePaths.length} files queued for import'),
-          ),
+              content: Text('${filePaths.length} files queued for import')),
         );
       }
       return;
     }
 
-    setState(() {
-      photosImported = 0;
-      successfullyImported = 0;
-      _tabController.index = 1; // Switch to Raw tab
-      isImporting = true;
-    });
-
-    widget.setImportingInMain(true);
-
-    if (widget.stabilizingRunningInMain) {
-      await widget.cancelStabCallback();
-    }
-
+    // Check for directories and expand them
     setState(() => preparingImport = true);
-    await Future.delayed(Duration.zero); // Yield to UI
+    await Future.delayed(Duration.zero);
 
     final bool hasDirectories = await compute(_checkForDirectories, filePaths);
 
+    List<String> allFilePaths;
     if (hasDirectories) {
-      await _handleDropWithDirectories(filePaths);
-    } else {
-      setState(() => preparingImport = false);
-      GalleryUtils.startImportBatch(filePaths.length);
-      for (final filePath in filePaths) {
-        await processPickedFile(File(filePath));
+      allFilePaths = await _expandDirectories(filePaths);
+      if (allFilePaths.isEmpty) {
+        if (mounted) setState(() => preparingImport = false);
+        return;
       }
+    } else {
+      allFilePaths = filePaths;
     }
 
-    widget.setImportingInMain(false);
+    if (mounted) setState(() => preparingImport = false);
 
-    // Check queue for more files (for THIS project only)
+    await _showImportPreview(allFilePaths);
+
+    // Check queue for more files
     await _processQueuedFiles();
-
-    await _handleImportCompletion();
   }
 
   /// Process any queued files from GlobalDropService.
@@ -1104,6 +1072,66 @@ class GalleryPageState extends State<GalleryPage>
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
+
+  /// Shows the import preview dialog, then runs the actual import if confirmed.
+  /// All user-initiated import paths should route through this.
+  Future<void> _showImportPreview(List<String> filePaths) async {
+    // Filter for valid image files
+    final validPaths =
+        filePaths.where((p) => ImageFormats.isAcceptedPath(p)).toList();
+
+    if (validPaths.isEmpty) {
+      if (mounted) {
+        showStyledInfoDialog(
+          context,
+          'No supported image files found in the selected items.',
+          title: 'Nothing to Import',
+          icon: Icons.info_outline_rounded,
+          iconColor: AppColors.textSecondary,
+        );
+      }
+      return;
+    }
+
+    // Show preview dialog
+    final List<ImportPreviewItem>? result =
+        await showImportPreviewDialog(context, validPaths);
+
+    if (result == null || result.isEmpty || !mounted) return;
+
+    // User confirmed — run the actual import
+    setState(() {
+      photosImported = 0;
+      successfullyImported = 0;
+      _tabController.index = 1;
+      isImporting = true;
+    });
+
+    widget.setImportingInMain(true);
+
+    if (widget.stabilizingRunningInMain) {
+      await widget.cancelStabCallback();
+    }
+
+    GalleryUtils.startImportBatch(result.length);
+
+    for (final item in result) {
+      if (!mounted) break;
+      await GalleryUtils.processPickedFile(
+        File(item.filePath),
+        projectId,
+        activeProcessingDateNotifier,
+        onImagesLoaded: _loadImages,
+        setProgressInMain: widget.setProgressInMain,
+        increaseSuccessfulImportCount: increaseSuccessfulImportCount,
+        increasePhotosImported: increasePhotosImported,
+        overrideTimestamp: item.timestampMs,
+      );
+    }
+
+    widget.setImportingInMain(false);
+    await _handleImportCompletion();
+  }
 
   void _showImportCompleteDialog(int imported, int skipped) {
     if (importingDialogActive) {
@@ -1321,57 +1349,38 @@ class GalleryPageState extends State<GalleryPage>
         onDraggingChanged(false);
       },
       onDragDone: (details) async {
-        // Reset dragging state immediately when drop occurs
         onDraggingChanged(false);
-
-        // Reset drop received state (modal will close anyway)
         onDropReceivedCountChanged(null);
 
         if (isImporting) return;
-        Navigator.of(context).pop();
-
-        setState(() {
-          photosImported = 0;
-          successfullyImported = 0;
-          _tabController.index = 1;
-          isImporting = true;
-        });
-
-        widget.setImportingInMain(true);
-
-        if (widget.stabilizingRunningInMain) {
-          await widget.cancelStabCallback();
-        }
-
-        setState(() => preparingImport = true);
-
-        await Future.delayed(Duration.zero);
+        Navigator.of(context).pop(); // Close the import bottom sheet
 
         final List<String> itemPaths =
             details.files.map((f) => f.path).toList();
+
+        // Check for directories
+        setState(() => preparingImport = true);
+        await Future.delayed(Duration.zero);
 
         final bool hasDirectories = await compute(
           _checkForDirectories,
           itemPaths,
         );
 
+        List<String> allFilePaths;
         if (hasDirectories) {
-          await _handleDropWithDirectories(itemPaths);
-        } else {
-          // Files-only path - done preparing, start import
-          setState(() => preparingImport = false);
-
-          GalleryUtils.startImportBatch(details.files.length);
-
-          for (final f in details.files) {
-            await processPickedFile(File(f.path));
+          allFilePaths = await _expandDirectories(itemPaths);
+          if (allFilePaths.isEmpty) {
+            if (mounted) setState(() => preparingImport = false);
+            return;
           }
+        } else {
+          allFilePaths = itemPaths;
         }
 
-        // Always reset parent state even if widget is disposed
-        widget.setImportingInMain(false);
+        if (mounted) setState(() => preparingImport = false);
 
-        await _handleImportCompletion();
+        await _showImportPreview(allFilePaths);
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
@@ -1487,14 +1496,11 @@ class GalleryPageState extends State<GalleryPage>
     );
   }
 
-  /// Handles drops that may contain directories.
-  /// Collects all valid images from directories, merges with dropped files,
-  /// and processes them.
-  Future<void> _handleDropWithDirectories(List<String> itemPaths) async {
+  /// Expands a mixed list of files and directories into a flat list of image file paths.
+  Future<List<String>> _expandDirectories(List<String> itemPaths) async {
     final List<String> filePaths = [];
     final List<String> directoryPaths = [];
 
-    // Classify items as files or directories
     for (final itemPath in itemPaths) {
       if (await FileSystemEntity.isDirectory(itemPath)) {
         directoryPaths.add(itemPath);
@@ -1503,101 +1509,17 @@ class GalleryPageState extends State<GalleryPage>
       }
     }
 
-    // Collect all files from directories (runs in isolate)
     if (directoryPaths.isNotEmpty) {
-      // Show "Preparing import..." while scanning directories
-      if (mounted) {
-        setState(() => preparingImport = true);
-      }
-
       for (final dirPath in directoryPaths) {
-        if (!mounted) return;
-
-        final scanResult = await GalleryUtils.collectFilesFromDirectory(
-          dirPath,
-        );
-
-        if (scanResult.wasCancelled) {
-          if (mounted) {
-            setState(() {
-              isImporting = false;
-              preparingImport = false;
-            });
-            widget.setImportingInMain(false);
-          }
-          return;
-        }
-
+        if (!mounted) return [];
+        final scanResult =
+            await GalleryUtils.collectFilesFromDirectory(dirPath);
+        if (scanResult.wasCancelled) return [];
         filePaths.addAll(scanResult.validImagePaths);
       }
-
-      // Done scanning, switch to importing mode
-      if (mounted) {
-        setState(() => preparingImport = false);
-      }
     }
 
-    // Confirm large imports
-    if (filePaths.length > GalleryUtils.largeDirectoryThreshold) {
-      if (!mounted) return;
-
-      final proceed = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: AppColors.surface,
-          title: Text(
-            'Large Import',
-            style: TextStyle(color: AppColors.textPrimary),
-          ),
-          content: Text(
-            'Found ${filePaths.length} images. This may take a while.\n\n'
-            'Continue with import?',
-            style: TextStyle(
-              color: AppColors.textPrimary.withValues(alpha: 0.8),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Import'),
-            ),
-          ],
-        ),
-      );
-
-      if (proceed != true) {
-        if (mounted) {
-          setState(() {
-            isImporting = false;
-            preparingImport = false;
-          });
-          widget.setImportingInMain(false);
-        }
-        return;
-      }
-    }
-
-    if (filePaths.isEmpty) {
-      if (mounted) {
-        setState(() {
-          isImporting = false;
-          preparingImport = false;
-        });
-        widget.setImportingInMain(false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No valid images found in dropped items'),
-          ),
-        );
-      }
-      return;
-    }
-
-    // Sort alphabetically for consistent ordering (matches ZIP behavior)
+    // Sort alphabetically for consistent ordering
     filePaths.sort(
       (a, b) => path
           .basename(a)
@@ -1605,12 +1527,7 @@ class GalleryPageState extends State<GalleryPage>
           .compareTo(path.basename(b).toLowerCase()),
     );
 
-    // Process all files
-    GalleryUtils.startImportBatch(filePaths.length);
-    for (final filePath in filePaths) {
-      if (!mounted) return;
-      await processPickedFile(File(filePath));
-    }
+    return filePaths;
   }
 
   void _showExportOptionsBottomSheet(BuildContext context) {

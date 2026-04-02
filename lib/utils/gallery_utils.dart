@@ -18,6 +18,7 @@ import '../services/face_stabilizer.dart';
 import '../services/image_processor.dart';
 import '../services/log_service.dart';
 import '../services/thumbnail_service.dart';
+import '../models/import_preview_item.dart';
 import 'camera_utils.dart';
 import 'dir_utils.dart';
 import 'export_naming_utils.dart';
@@ -593,6 +594,7 @@ class GalleryUtils {
     required Function(int p1) setProgressInMain,
     required void Function() increaseSuccessfulImportCount,
     required void Function(int value) increasePhotosImported,
+    int? overrideTimestamp,
   }) async {
     if (path.extension(file.path).toLowerCase() == ".zip") {
       if (isMobile) {
@@ -626,6 +628,7 @@ class GalleryUtils {
         onImagesLoaded: onImagesLoaded,
         increaseSuccessfulImportCount: increaseSuccessfulImportCount,
         sourceFilename: path.basename(file.path),
+        timestamp: overrideTimestamp,
       );
 
       _tickBatchProgress(setProgressInMain);
@@ -840,6 +843,105 @@ class GalleryUtils {
       return false;
     } finally {
       bytes = null;
+    }
+  }
+
+  /// Read-only date extraction for import preview. Mirrors the date-detection
+  /// logic in [importXFile] but never saves anything to disk or the database.
+  ///
+  /// Returns an [ImportPreviewItem] describing the best date found and the tier
+  /// it came from (EXIF → Filename → File Modified). Never throws: on any
+  /// error the method falls through to the fileModified tier.
+  static Future<ImportPreviewItem> extractDateForPreview(
+      String filePath) async {
+    final (int ts, int offset, DateSourceTier tier) =
+        await _extractDateTier(filePath);
+    return ImportPreviewItem(
+      filePath: filePath,
+      filename: path.basename(filePath),
+      timestampMs: ts,
+      captureOffsetMinutes: offset,
+      sourceTier: tier,
+    );
+  }
+
+  static Future<(int, int, DateSourceTier)> _extractDateTier(
+      String filePath) async {
+    Future<(int, int, DateSourceTier)> fileModifiedFallback() async {
+      final DateTime lm = await File(filePath).lastModified();
+      final DateTime localMidnight = DateTime(lm.year, lm.month, lm.day);
+      final int ts = localMidnight.toUtc().millisecondsSinceEpoch;
+      final int off = localMidnight.timeZoneOffset.inMinutes;
+      return (ts, off, DateSourceTier.fileModified);
+    }
+
+    try {
+      int? timestampMs;
+      int? captureOffsetMinutes;
+      DateSourceTier sourceTier = DateSourceTier.fileModified;
+
+      // Tier 1: EXIF
+      final Uint8List? bytes = await CameraUtils.readBytesInIsolate(filePath);
+      final Map<String, dynamic> exifData =
+          bytes != null ? await tryReadExifFromBytes(bytes) : {};
+
+      if (exifData.isNotEmpty) {
+        (_, timestampMs) = await GalleryUtils.parseExifDate(exifData);
+
+        if (timestampMs != null) {
+          sourceTier = DateSourceTier.exif;
+
+          final String? gpsDateStr = exifData['GPS GPSDateStamp']?.toString();
+          final String? gpsTimeStr = exifData['GPS GPSTimeStamp']?.toString();
+          if (gpsDateStr != null && gpsTimeStr != null) {
+            captureOffsetMinutes = 0;
+          } else {
+            final String? rawOffset =
+                exifData['EXIF OffsetTimeOriginal']?.toString() ??
+                    exifData['EXIF OffsetTime']?.toString() ??
+                    exifData['EXIF OffsetTimeDigitized']?.toString() ??
+                    exifData['Time Zone for Original Date']?.toString() ??
+                    exifData['Time Zone for Digitized Date']?.toString() ??
+                    exifData['Time Zone for Modification Date']?.toString();
+            if (rawOffset != null) {
+              final norm = _normalizeOffset(rawOffset);
+              final off = GalleryUtils.parseOffset(norm);
+              if (off != null) {
+                captureOffsetMinutes = off.inMinutes;
+              }
+            }
+          }
+        }
+      }
+
+      // Tier 2: filename
+      if (timestampMs == null) {
+        final DateTime? parsed = parseAndFormatDate(
+          path.basenameWithoutExtension(filePath),
+          ValueNotifier(''),
+        );
+        if (parsed != null) {
+          final DateTime localMidnight =
+              DateTime(parsed.year, parsed.month, parsed.day);
+          timestampMs = localMidnight.toUtc().millisecondsSinceEpoch;
+          captureOffsetMinutes = localMidnight.timeZoneOffset.inMinutes;
+          sourceTier = DateSourceTier.filename;
+        }
+      }
+
+      // Tier 3: file modified date
+      if (timestampMs == null) {
+        return fileModifiedFallback();
+      }
+
+      captureOffsetMinutes ??= DateTime.fromMillisecondsSinceEpoch(
+        timestampMs,
+        isUtc: true,
+      ).toLocal().timeZoneOffset.inMinutes;
+
+      return (timestampMs, captureOffsetMinutes, sourceTier);
+    } catch (_) {
+      return fileModifiedFallback();
     }
   }
 

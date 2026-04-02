@@ -403,7 +403,9 @@ class ProjectFolderSyncService {
     final normalizedFile = path.normalize(path.absolute(absolutePath));
     if (normalizedRoot == normalizedFile) return null;
     if (!path.isWithin(normalizedRoot, normalizedFile)) return null;
-    return path.relative(normalizedFile, from: normalizedRoot);
+    return path
+        .relative(normalizedFile, from: normalizedRoot)
+        .replaceAll('\\', '/');
   }
 
   void _emitState(SyncState state) {

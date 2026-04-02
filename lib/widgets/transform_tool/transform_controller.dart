@@ -22,6 +22,7 @@ class TransformController extends ChangeNotifier {
   double handleHitRadius;
   double rotationHandleDistance;
   double rotationZoneRadius;
+  double displayScale;
 
   /// Base scale factor for database value conversion
   final double baseScale;
@@ -40,6 +41,7 @@ class TransformController extends ChangeNotifier {
     this.handleHitRadius = 14.0,
     this.rotationHandleDistance = 30.0,
     this.rotationZoneRadius = 25.0,
+    this.displayScale = 1.0,
     this.historyEnabled = true,
     int maxHistorySize = 100,
   })  : _state = initialState,
@@ -328,18 +330,22 @@ class TransformController extends ChangeNotifier {
 
   /// Determine which handle (if any) is at the given position.
   TransformHandle hitTest(Offset position) {
+    // Scale hit radii/distances to match the painter's counter-scaling.
+    // The painter renders handles at size/displayScale in canvas coords so
+    // they appear consistent on screen; hit zones must match.
+    final scaledHitRadius = handleHitRadius / displayScale;
+    final scaledRotDistance = rotationHandleDistance / displayScale;
+
     // 1. Check rotation handle first
-    final rotHandlePos = _state.getRotationHandlePosition(
-      rotationHandleDistance,
-    );
-    if ((position - rotHandlePos).distance <= handleHitRadius) {
+    final rotHandlePos = _state.getRotationHandlePosition(scaledRotDistance);
+    if ((position - rotHandlePos).distance <= scaledHitRadius) {
       return TransformHandle.rotationHandle;
     }
 
     // 2. Check corner handles
     final corners = _state.corners;
     for (int i = 0; i < cornerHandles.length; i++) {
-      if ((position - corners[i]).distance <= handleHitRadius) {
+      if ((position - corners[i]).distance <= scaledHitRadius) {
         return cornerHandles[i];
       }
     }
@@ -347,7 +353,7 @@ class TransformController extends ChangeNotifier {
     // 3. Check edge handles
     final edges = _state.edgeMidpoints;
     for (int i = 0; i < edgeHandles.length; i++) {
-      if ((position - edges[i]).distance <= handleHitRadius) {
+      if ((position - edges[i]).distance <= scaledHitRadius) {
         return edgeHandles[i];
       }
     }
@@ -369,9 +375,12 @@ class TransformController extends ChangeNotifier {
   bool _isInRotationZone(Offset position) {
     if (_state.containsPoint(position)) return false;
 
+    final scaledZoneRadius = rotationZoneRadius / displayScale;
+    final scaledHitRadius = handleHitRadius / displayScale;
+
     for (final corner in _state.corners) {
       final distance = (position - corner).distance;
-      if (distance <= rotationZoneRadius && distance > handleHitRadius) {
+      if (distance <= scaledZoneRadius && distance > scaledHitRadius) {
         return true;
       }
     }

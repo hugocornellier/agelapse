@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
-
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import '../services/face_stabilizer.dart';
 import '../services/database_helper.dart';
 import '../services/log_service.dart';
+import '../services/menu_bar_service.dart';
 import '../services/stabilization_service.dart';
 import '../services/thumbnail_service.dart';
 import '../styles/styles.dart';
@@ -102,7 +103,81 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
   bool _controlsExpanded = true;
   bool _lossless = false;
 
+  // Init error state
+  String? _initError;
+
+  // Viewport zoom state (visual only — does NOT affect stabilization params)
+  double _viewZoom = 1.0;
+  Offset _viewPanOffset = Offset.zero;
+  Size? _lastPreviewSize;
+  static const double _minViewZoom = 1.0;
+  static const double _maxViewZoom = 5.0;
+  static const double _viewZoomStep = 0.25;
+  static final String _modKey = Platform.isMacOS ? '⌘' : 'Ctrl+';
+
   void _log(String msg) => LogService.instance.log('[ManualStab] $msg');
+
+  void _adjustViewZoom(double delta) {
+    setState(() {
+      _viewZoom = (_viewZoom + delta).clamp(_minViewZoom, _maxViewZoom);
+      if (_viewZoom == _minViewZoom) {
+        _viewPanOffset = Offset.zero;
+      } else {
+        _viewPanOffset = _clampPanOffset(_viewPanOffset);
+      }
+    });
+  }
+
+  void _resetViewZoom() {
+    setState(() {
+      _viewZoom = 1.0;
+      _viewPanOffset = Offset.zero;
+    });
+  }
+
+  Offset _clampPanOffset(Offset offset) {
+    if (_viewZoom <= 1.0) return Offset.zero;
+    if (_lastPreviewSize == null) return offset;
+    final maxPanX = _lastPreviewSize!.width * (_viewZoom - 1) / 2;
+    final maxPanY = _lastPreviewSize!.height * (_viewZoom - 1) / 2;
+    return Offset(
+      offset.dx.clamp(-maxPanX, maxPanX),
+      offset.dy.clamp(-maxPanY, maxPanY),
+    );
+  }
+
+  void _handlePreviewPointerSignal(PointerSignalEvent event) {
+    if (event is PointerScrollEvent) {
+      final isCtrlOrCmd = HardwareKeyboard.instance.isControlPressed ||
+          HardwareKeyboard.instance.isMetaPressed;
+
+      if (isCtrlOrCmd) {
+        final delta = event.scrollDelta.dy > 0 ? -_viewZoomStep : _viewZoomStep;
+        _adjustViewZoom(delta);
+      } else if (_viewZoom > 1.0) {
+        final isShift = HardwareKeyboard.instance.isShiftPressed;
+        setState(() {
+          _viewPanOffset = _clampPanOffset(Offset(
+            _viewPanOffset.dx - (isShift ? event.scrollDelta.dy : 0),
+            _viewPanOffset.dy - (!isShift ? event.scrollDelta.dy : 0),
+          ));
+        });
+      }
+    }
+  }
+
+  /// Handle trackpad two-finger pan/zoom gestures.
+  /// On macOS, these fire as PointerPanZoom events (separate from scroll events).
+  void _handleTrackpadPanZoom(PointerPanZoomUpdateEvent event) {
+    if (_viewZoom > 1.0) {
+      setState(() {
+        _viewPanOffset = _clampPanOffset(Offset(
+          _viewPanOffset.dx + event.panDelta.dx,
+          _viewPanOffset.dy + event.panDelta.dy,
+        ));
+      });
+    }
+  }
 
   @override
   void initState() {
@@ -133,11 +208,34 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       ),
     );
 
-    init();
+    if (isDesktop) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        MenuBarService.instance.registerToolsMenu(
+          onZoomIn: () => _adjustViewZoom(_viewZoomStep),
+          onZoomOut: () => _adjustViewZoom(-_viewZoomStep),
+          onResetZoom: _resetViewZoom,
+        );
+      });
+    }
+
+    init().catchError((e, st) {
+      _log('init() FAILED: $e\n$st');
+      if (mounted) {
+        setState(() => _initError = e is FileSystemException
+            ? 'Could not load photo file.'
+            : 'Failed to load editor.');
+      }
+    });
   }
 
   @override
   void dispose() {
+    if (isDesktop) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        MenuBarService.instance.unregisterToolsMenu();
+      });
+    }
     _debounce?.cancel();
     _checkmarkAnimController.dispose();
     for (final t in _holdTimers.values) {
@@ -177,7 +275,10 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       aspectRatio,
       projectOrientation,
     );
-    canvasWidth = dims!.$1;
+    if (dims == null) {
+      throw StateError('Failed to calculate output dimensions');
+    }
+    canvasWidth = dims.$1;
     canvasHeight = dims.$2;
 
     String localRawPath;
@@ -211,10 +312,10 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
         );
         _inputController3.text = '1';
       } else {
-        _log('ERROR: Failed to decode image dimensions');
+        throw StateError('Failed to decode image dimensions');
       }
     } else {
-      _log('ERROR: Raw file does not exist: $localRawPath');
+      throw FileSystemException('Raw photo not found', localRawPath);
     }
 
     _faceStabilizer = FaceStabilizer(
@@ -254,63 +355,86 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
           // null = user cancelled, do nothing
         }
       },
-      child: Stack(
-        children: [
-          // Main content - absorb pointer during save
-          AbsorbPointer(
-            absorbing: isSaving,
-            child: _buildPageScaffold(),
-          ),
-          // Save overlay
-          if (isSaving) _buildSaveOverlay(),
-        ],
-      ),
+      child: _initError != null
+          ? _buildInitErrorView()
+          : Stack(
+              children: [
+                // Main content - absorb pointer during save
+                AbsorbPointer(
+                  absorbing: isSaving,
+                  child: _buildPageScaffold(),
+                ),
+                // Save overlay
+                if (isSaving) _buildSaveOverlay(),
+              ],
+            ),
     );
   }
 
   Widget _buildPageBody() {
-    return GestureDetector(
-      onTap: () {
-        _log('Page body tapped (unfocusing all fields)');
-        FocusScope.of(context).unfocus();
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.equal, meta: true): () =>
+            _adjustViewZoom(_viewZoomStep),
+        const SingleActivator(LogicalKeyboardKey.minus, meta: true): () =>
+            _adjustViewZoom(-_viewZoomStep),
+        const SingleActivator(LogicalKeyboardKey.digit1, meta: true):
+            _resetViewZoom,
+        // Ctrl variants for Windows/Linux
+        const SingleActivator(LogicalKeyboardKey.equal, control: true): () =>
+            _adjustViewZoom(_viewZoomStep),
+        const SingleActivator(LogicalKeyboardKey.minus, control: true): () =>
+            _adjustViewZoom(-_viewZoomStep),
+        const SingleActivator(LogicalKeyboardKey.digit1, control: true):
+            _resetViewZoom,
       },
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          const double minPreviewHeight = 300;
-          const double controlsEstimatedHeight = 220; // controls + spacing
-          final double availableForPreview = constraints.maxHeight -
-              32 -
-              controlsEstimatedHeight; // 32 for padding
-          final double previewHeight = availableForPreview >= minPreviewHeight
-              ? availableForPreview
-              : minPreviewHeight;
-          final bool shouldEnableScroll =
-              availableForPreview < minPreviewHeight;
+      child: Focus(
+        autofocus: true,
+        child: GestureDetector(
+          onTap: () {
+            _log('Page body tapped (unfocusing all fields)');
+            FocusScope.of(context).unfocus();
+          },
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              const double minPreviewHeight = 300;
+              const double controlsEstimatedHeight = 160; // controls + spacing
+              final double availableForPreview = constraints.maxHeight -
+                  24 -
+                  controlsEstimatedHeight; // 24 for padding
+              final double previewHeight =
+                  availableForPreview >= minPreviewHeight
+                      ? availableForPreview
+                      : minPreviewHeight;
+              final bool shouldEnableScroll =
+                  availableForPreview < minPreviewHeight;
 
-          _log(
-            'Layout: maxHeight=${constraints.maxHeight}, availableForPreview=$availableForPreview, previewHeight=$previewHeight, mode=stable-scrollable, scrollEnabled=$shouldEnableScroll',
-          );
+              _log(
+                'Layout: maxHeight=${constraints.maxHeight}, availableForPreview=$availableForPreview, previewHeight=$previewHeight, mode=stable-scrollable, scrollEnabled=$shouldEnableScroll',
+              );
 
-          // Keep one stable widget tree to avoid TextField destruction
-          // when keyboard insets change parent constraints.
-          return SingleChildScrollView(
-            physics: shouldEnableScroll
-                ? const ClampingScrollPhysics()
-                : const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildControlsSection(),
-                const SizedBox(height: 20),
-                SizedBox(
-                  height: previewHeight,
-                  child: _buildPreviewSection(),
+              // Keep one stable widget tree to avoid TextField destruction
+              // when keyboard insets change parent constraints.
+              return SingleChildScrollView(
+                physics: shouldEnableScroll
+                    ? const ClampingScrollPhysics()
+                    : const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildControlsSection(),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: previewHeight,
+                      child: _buildPreviewSection(),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          );
-        },
+              );
+            },
+          ),
+        ),
       ),
     );
   }
@@ -513,6 +637,70 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
           Icons.check_rounded,
           color: AppColors.textPrimary,
           size: 44,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInitErrorView() {
+    return Scaffold(
+      backgroundColor: AppColors.settingsBackground,
+      appBar: AppBar(
+        backgroundColor: AppColors.settingsBackground,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back,
+            color: AppColors.settingsTextPrimary,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'Manual Stabilization',
+          style: TextStyle(
+            fontSize: AppTypography.lg,
+            fontWeight: FontWeight.w600,
+            color: AppColors.settingsTextPrimary,
+          ),
+        ),
+      ),
+      body: Center(
+        child: Container(
+          margin: const EdgeInsets.all(32),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: AppColors.settingsCardBackground,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.settingsCardBorder, width: 1),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.error_outline, color: AppColors.danger, size: 48),
+              const SizedBox(height: 16),
+              Text(
+                _initError!,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.settingsTextPrimary,
+                  fontSize: AppTypography.md,
+                ),
+              ),
+              const SizedBox(height: 24),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'Go Back',
+                  style: TextStyle(
+                    color: AppColors.settingsAccent,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -731,7 +919,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                 ),
               ),
             ),
-            if (tooltip != null) InfoTooltipIcon(content: tooltip),
+            if (tooltip != null) InfoTooltipIcon(content: tooltip, size: 14),
           ],
         ),
         const SizedBox(height: 8),
@@ -838,11 +1026,11 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
           child: LayoutBuilder(
             builder: (context, constraints) {
               final double aspectRatioValue = _canvasHeight! / _canvasWidth!;
-              final double availableWidth = (constraints.maxWidth - 24).clamp(
+              final double availableWidth = (constraints.maxWidth - 16).clamp(
                 0.0,
                 double.infinity,
               );
-              final double availableHeight = (constraints.maxHeight - 24).clamp(
+              final double availableHeight = (constraints.maxHeight - 16).clamp(
                 0.0,
                 double.infinity,
               );
@@ -869,6 +1057,9 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
               // This ensures handles appear consistent regardless of resolution
               final displayScale = previewWidth / _canvasWidth!.toDouble();
 
+              // Track preview size for viewport pan clamping
+              _lastPreviewSize = Size(previewWidth, previewHeight);
+
               return Container(
                 decoration: BoxDecoration(
                   color: AppColors.settingsCardBackground,
@@ -878,64 +1069,71 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                     width: 1,
                   ),
                 ),
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(8),
                 child: Center(
                   // SizedBox with calculated dimensions forces FittedBox to
                   // expand and fill available space (scales UP, not just down)
                   child: SizedBox(
                     width: previewWidth,
                     height: previewHeight,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: FittedBox(
-                        fit: BoxFit.contain,
-                        child: SizedBox(
-                          width: _canvasWidth!.toDouble(),
-                          height: _canvasHeight!.toDouble(),
-                          child: Stack(
-                            children: [
-                              // TransformTool at OUTPUT dimensions
-                              Positioned.fill(
-                                child: TransformTool(
-                                  imageBytes: _rawImageBytes!,
-                                  canvasSize: Size(
-                                    _canvasWidth!.toDouble(),
-                                    _canvasHeight!.toDouble(),
-                                  ),
-                                  imageSize: Size(
-                                    _rawImageWidth!.toDouble(),
-                                    _rawImageHeight!.toDouble(),
-                                  ),
-                                  baseScale: _baseScale,
-                                  controller: _transformController,
-                                  onChanged: _onTransformChanged,
-                                  onChangeEnd: _onTransformChangeEnd,
-                                  showRotationHandle: true,
-                                  maintainAspectRatio: true,
-                                  displayScale: displayScale,
-                                ),
-                              ),
-                              // Grid overlay - scales together with TransformTool
-                              // IgnorePointer lets events pass through to TransformTool
-                              Positioned.fill(
-                                child: IgnorePointer(
-                                  child: CustomPaint(
-                                    painter: GridPainterSE(
-                                      (_rightEyeXGoal! - _leftEyeXGoal!) /
-                                          (2 * _canvasWidth!),
-                                      _bothEyesYGoal! / _canvasHeight!,
-                                      null,
-                                      null,
-                                      null,
-                                      aspectRatio,
-                                      projectOrientation,
-                                      hideToolTip: true,
-                                      hideCorners: true,
+                    child: ClipRect(
+                      child: Listener(
+                        onPointerSignal: _handlePreviewPointerSignal,
+                        onPointerPanZoomUpdate: _handleTrackpadPanZoom,
+                        child: Transform.translate(
+                          offset: _viewPanOffset,
+                          child: Transform.scale(
+                            scale: _viewZoom,
+                            alignment: Alignment.center,
+                            child: FittedBox(
+                              fit: BoxFit.contain,
+                              child: SizedBox(
+                                width: _canvasWidth!.toDouble(),
+                                height: _canvasHeight!.toDouble(),
+                                child: Stack(
+                                  children: [
+                                    Positioned.fill(
+                                      child: TransformTool(
+                                          imageBytes: _rawImageBytes!,
+                                          canvasSize: Size(
+                                            _canvasWidth!.toDouble(),
+                                            _canvasHeight!.toDouble(),
+                                          ),
+                                          imageSize: Size(
+                                            _rawImageWidth!.toDouble(),
+                                            _rawImageHeight!.toDouble(),
+                                          ),
+                                          baseScale: _baseScale,
+                                          controller: _transformController,
+                                          onChanged: _onTransformChanged,
+                                          onChangeEnd: _onTransformChangeEnd,
+                                          showRotationHandle: true,
+                                          maintainAspectRatio: true,
+                                          displayScale: displayScale,
+                                        ),
                                     ),
-                                  ),
+                                    Positioned.fill(
+                                      child: IgnorePointer(
+                                        child: CustomPaint(
+                                          painter: GridPainterSE(
+                                            (_rightEyeXGoal! - _leftEyeXGoal!) /
+                                                (2 * _canvasWidth!),
+                                            _bothEyesYGoal! / _canvasHeight!,
+                                            null,
+                                            null,
+                                            null,
+                                            aspectRatio,
+                                            projectOrientation,
+                                            hideToolTip: true,
+                                            hideCorners: true,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ],
+                            ),
                           ),
                         ),
                       ),
@@ -1065,11 +1263,12 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       // Save via processRequest
       await processRequest(tx, ty, sc, rot, save: true);
 
-      // Update saved state
-      _savedTx = tx;
-      _savedTy = ty;
-      _savedMult = mult;
-      _savedRot = rot;
+      // Update saved state — parse from formatted text fields to match
+      // what _checkForUnsavedChanges() will compare against
+      _savedTx = double.tryParse(_inputController1.text) ?? 0;
+      _savedTy = double.tryParse(_inputController2.text) ?? 0;
+      _savedMult = double.tryParse(_inputController3.text) ?? 1;
+      _savedRot = double.tryParse(_inputController4.text) ?? 0;
       _hasUnsavedChanges = false;
 
       // Notify gallery to reload with updated images
@@ -1200,6 +1399,9 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       save: false,
     );
 
+    _viewZoom = 1.0;
+    _viewPanOffset = Offset.zero;
+
     setState(() => _hasUnsavedChanges = false);
   }
 
@@ -1217,6 +1419,33 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
               letterSpacing: 1.2,
             ),
           ),
+          if (_viewZoom > 1.0) ...[
+            const SizedBox(width: 8),
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: _resetViewZoom,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.settingsAccent.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '${(_viewZoom * 100).round()}%',
+                    style: TextStyle(
+                      fontSize: AppTypography.xs,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.settingsAccent,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
           const Spacer(),
           if (_isProcessing)
             SizedBox(
@@ -1337,10 +1566,12 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       _lastRot = rot;
 
       // Store as saved values (for reset/unsaved detection)
-      _savedTx = tx;
-      _savedTy = ty;
-      _savedMult = mult;
-      _savedRot = rot;
+      // Parse from formatted text fields to avoid floating-point round-trip
+      // mismatch with _checkForUnsavedChanges()
+      _savedTx = double.tryParse(_inputController1.text) ?? 0;
+      _savedTy = double.tryParse(_inputController2.text) ?? 0;
+      _savedMult = double.tryParse(_inputController3.text) ?? 1;
+      _savedRot = double.tryParse(_inputController4.text) ?? 0;
       _hasUnsavedChanges = false;
     });
   }
@@ -1436,7 +1667,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
           scaleFactor: scaleFactor,
         );
         await _faceStabilizer!.createStabThumbnail(
-          stabilizedPhotoPath.replaceAll('.jpg', '.png'),
+          p.setExtension(stabilizedPhotoPath, '.png'),
         );
 
         // Clear caches so gallery shows updated images
@@ -1509,6 +1740,13 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
     _suppressListener = true;
     _inputController3.text = mult.toStringAsFixed(2);
     _suppressListener = false;
+
+    _updateTransformSafely(
+      double.tryParse(_inputController1.text),
+      double.tryParse(_inputController2.text),
+      mult,
+      double.tryParse(_inputController4.text),
+    );
 
     final now = DateTime.now();
     if (_lastApplyAt == null ||
@@ -1639,10 +1877,10 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       });
     }
 
-    void stopHold(String key) {
+    void stopHold(String key, {bool apply = true}) {
       _holdTimers[key]?.cancel();
       _holdTimers.remove(key);
-      forceApplyNow();
+      if (apply) forceApplyNow();
     }
 
     Widget buildToolbarButton({
@@ -1650,17 +1888,18 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       required IconData icon,
       required VoidCallback onTap,
       required VoidCallback onHold,
-      String? label,
+      String? tooltip,
+      bool affectsTransform = true,
     }) {
-      return MouseRegion(
+      Widget button = MouseRegion(
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTapDown: (_) => startHold(key, onHold),
-          onTapUp: (_) => stopHold(key),
-          onTapCancel: () => stopHold(key),
-          onPanEnd: (_) => stopHold(key),
-          onPanCancel: () => stopHold(key),
+          onTapUp: (_) => stopHold(key, apply: affectsTransform),
+          onTapCancel: () => stopHold(key, apply: affectsTransform),
+          onPanEnd: (_) => stopHold(key, apply: affectsTransform),
+          onPanCancel: () => stopHold(key, apply: affectsTransform),
           child: Container(
             width: 48,
             height: 48,
@@ -1680,12 +1919,22 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                 }
                 _log('Toolbar button "$key" tapped');
                 onTap();
-                forceApplyNow();
+                if (affectsTransform) forceApplyNow();
               },
             ),
           ),
         ),
       );
+
+      if (tooltip != null) {
+        button = Tooltip(
+          message: tooltip,
+          waitDuration: const Duration(milliseconds: 400),
+          child: button,
+        );
+      }
+
+      return button;
     }
 
     return Container(
@@ -1723,6 +1972,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                         icon: Icons.arrow_back_rounded,
                         onTap: () => _adjustOffsets(dx: -1),
                         onHold: () => _adjustOffsets(dx: -1),
+                        tooltip: 'Move Left (←)',
                       ),
                       const SizedBox(width: 4),
                       buildToolbarButton(
@@ -1730,6 +1980,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                         icon: Icons.arrow_forward_rounded,
                         onTap: () => _adjustOffsets(dx: 1),
                         onHold: () => _adjustOffsets(dx: 1),
+                        tooltip: 'Move Right (→)',
                       ),
                       const SizedBox(width: 4),
                       buildToolbarButton(
@@ -1737,6 +1988,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                         icon: Icons.arrow_upward_rounded,
                         onTap: () => _adjustOffsets(dy: -1),
                         onHold: () => _adjustOffsets(dy: -1),
+                        tooltip: 'Move Up (↑)',
                       ),
                       const SizedBox(width: 4),
                       buildToolbarButton(
@@ -1744,6 +1996,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                         icon: Icons.arrow_downward_rounded,
                         onTap: () => _adjustOffsets(dy: 1),
                         onHold: () => _adjustOffsets(dy: 1),
+                        tooltip: 'Move Down (↓)',
                       ),
                     ],
                   ),
@@ -1766,6 +2019,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                         icon: Icons.remove_rounded,
                         onTap: () => _adjustScale(-0.01),
                         onHold: () => _adjustScale(-0.01),
+                        tooltip: 'Scale Down (−)',
                       ),
                       const SizedBox(width: 4),
                       buildToolbarButton(
@@ -1773,6 +2027,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                         icon: Icons.add_rounded,
                         onTap: () => _adjustScale(0.01),
                         onHold: () => _adjustScale(0.01),
+                        tooltip: 'Scale Up (+)',
                       ),
                     ],
                   ),
@@ -1795,6 +2050,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                         icon: Icons.rotate_left_rounded,
                         onTap: () => _adjustRotation(-0.1),
                         onHold: () => _adjustRotation(-0.1),
+                        tooltip: 'Rotate CCW ([)',
                       ),
                       const SizedBox(width: 4),
                       buildToolbarButton(
@@ -1802,6 +2058,40 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                         icon: Icons.rotate_right_rounded,
                         onTap: () => _adjustRotation(0.1),
                         onHold: () => _adjustRotation(0.1),
+                        tooltip: 'Rotate CW (])',
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // View zoom controls (visual only — does not affect stabilization)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.settingsCardBorder.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      buildToolbarButton(
+                        key: 'viewZoomOut',
+                        icon: Icons.zoom_out_rounded,
+                        onTap: () => _adjustViewZoom(-_viewZoomStep),
+                        onHold: () => _adjustViewZoom(-_viewZoomStep),
+                        affectsTransform: false,
+                        tooltip: 'Zoom Out ($_modKey−)',
+                      ),
+                      const SizedBox(width: 4),
+                      buildToolbarButton(
+                        key: 'viewZoomIn',
+                        icon: Icons.zoom_in_rounded,
+                        onTap: () => _adjustViewZoom(_viewZoomStep),
+                        onHold: () => _adjustViewZoom(_viewZoomStep),
+                        affectsTransform: false,
+                        tooltip: 'Zoom In ($_modKey+)',
                       ),
                     ],
                   ),

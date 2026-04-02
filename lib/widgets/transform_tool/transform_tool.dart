@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
@@ -128,9 +129,10 @@ class TransformToolState extends State<TransformTool> {
     if (widget.controller != null) {
       _controller = widget.controller!;
       _ownsController = false;
-      // Update controller settings for touch devices
+      // Update controller settings for touch devices and display scale
       _controller.handleHitRadius = _isTouchDevice ? 22.0 : 14.0;
       _controller.rotationZoneRadius = _isTouchDevice ? 35.0 : 25.0;
+      _controller.displayScale = widget.displayScale;
     } else {
       final initialState = widget.initialState ??
           TransformState.identity(
@@ -145,6 +147,7 @@ class TransformToolState extends State<TransformTool> {
         // Larger hit targets for touch devices (44pt minimum recommended)
         handleHitRadius: _isTouchDevice ? 22.0 : 14.0,
         rotationZoneRadius: _isTouchDevice ? 35.0 : 25.0,
+        displayScale: widget.displayScale,
       );
       _ownsController = true;
     }
@@ -215,6 +218,11 @@ class TransformToolState extends State<TransformTool> {
     // Handle canvas size changes
     if (widget.canvasSize != oldWidget.canvasSize) {
       _controller.updateCanvasSize(widget.canvasSize);
+    }
+
+    // Keep hit detection in sync with display scaling
+    if (widget.displayScale != oldWidget.displayScale) {
+      _controller.displayScale = widget.displayScale;
     }
   }
 
@@ -355,6 +363,11 @@ class TransformToolState extends State<TransformTool> {
   }
 
   void _onPanStart(DragStartDetails details) {
+    // Reject trackpad pan gestures — on macOS with "tap to click" enabled,
+    // two-finger scrolling generates pointer down/move events with kind ==
+    // trackpad, causing phantom drags. Real mouse clicks have kind == mouse.
+    if (details.kind == PointerDeviceKind.trackpad) return;
+
     LogService.instance.log('[TransformTool] onPanStart: requesting focus');
     _focusNode.requestFocus();
     final handle = _controller.hitTest(details.localPosition);
@@ -435,10 +448,14 @@ class TransformToolState extends State<TransformTool> {
         );
         break;
 
-      // Plus/minus for scale
+      // Plus/minus for scale (skip when Cmd/Ctrl held — reserved for viewport zoom)
       case LogicalKeyboardKey.equal: // + key
       case LogicalKeyboardKey.add:
       case LogicalKeyboardKey.numpadAdd:
+        if (ctrlOrCmd) {
+          handled = false;
+          break;
+        }
         _performKeyboardAction(
           () => _controller.adjustScale(scaleAmount),
           'Scaled up ${scaleAmount.round()}%',
@@ -446,6 +463,10 @@ class TransformToolState extends State<TransformTool> {
         break;
       case LogicalKeyboardKey.minus:
       case LogicalKeyboardKey.numpadSubtract:
+        if (ctrlOrCmd) {
+          handled = false;
+          break;
+        }
         _performKeyboardAction(
           () => _controller.adjustScale(-scaleAmount),
           'Scaled down ${scaleAmount.round()}%',

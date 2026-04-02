@@ -24,6 +24,8 @@ import 'export_test.dart' as export_tests;
 import 'screenshot_test.dart' as screenshot_tests;
 import 'e2e_workflow_test.dart' as e2e_workflow_tests;
 import 'linked_source_sync_test.dart' as linked_source_sync_tests;
+import 'import_test.dart' as import_tests;
+import 'gallery_test.dart' as gallery_tests;
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -42,4 +44,6 @@ void main() {
   screenshot_tests.main();
   e2e_workflow_tests.main();
   linked_source_sync_tests.main();
+  import_tests.main();
+  gallery_tests.main();
 }
