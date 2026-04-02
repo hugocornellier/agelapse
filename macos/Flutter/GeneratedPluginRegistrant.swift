@@ -18,7 +18,7 @@ import file_selector_macos
 import flutter_avif_macos
 import flutter_local_notifications
 import flutter_timezone
-import heic2png
+import heic_native
 import media_kit_video
 import package_info_plus
 import photo_manager
@@ -46,7 +46,7 @@ func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   FlutterAvifPlugin.register(with: registry.registrar(forPlugin: "FlutterAvifPlugin"))
   FlutterLocalNotificationsPlugin.register(with: registry.registrar(forPlugin: "FlutterLocalNotificationsPlugin"))
   FlutterTimezonePlugin.register(with: registry.registrar(forPlugin: "FlutterTimezonePlugin"))
-  Heic2pngPlugin.register(with: registry.registrar(forPlugin: "Heic2pngPlugin"))
+  HeicNativePlugin.register(with: registry.registrar(forPlugin: "HeicNativePlugin"))
   MediaKitVideoPlugin.register(with: registry.registrar(forPlugin: "MediaKitVideoPlugin"))
   FPPPackageInfoPlusPlugin.register(with: registry.registrar(forPlugin: "FPPPackageInfoPlusPlugin"))
   PhotoManagerPlugin.register(with: registry.registrar(forPlugin: "PhotoManagerPlugin"))

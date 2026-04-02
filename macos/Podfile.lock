@@ -28,7 +28,7 @@ PODS:
   - flutter_timezone (0.1.0):
     - FlutterMacOS
   - FlutterMacOS (1.0.0)
-  - heic2png (0.0.6):
+  - heic_native (0.1.0):
     - FlutterMacOS
   - media_kit_video (0.0.1):
     - FlutterMacOS
@@ -97,7 +97,7 @@ DEPENDENCIES:
   - flutter_local_notifications (from `Flutter/ephemeral/.symlinks/plugins/flutter_local_notifications/macos`)
   - flutter_timezone (from `Flutter/ephemeral/.symlinks/plugins/flutter_timezone/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
-  - heic2png (from `Flutter/ephemeral/.symlinks/plugins/heic2png/macos`)
+  - heic_native (from `Flutter/ephemeral/.symlinks/plugins/heic_native/macos`)
   - media_kit_video (from `Flutter/ephemeral/.symlinks/plugins/media_kit_video/macos`)
   - package_info_plus (from `Flutter/ephemeral/.symlinks/plugins/package_info_plus/macos`)
   - photo_manager (from `Flutter/ephemeral/.symlinks/plugins/photo_manager/darwin`)
@@ -146,8 +146,8 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/flutter_timezone/macos
   FlutterMacOS:
     :path: Flutter/ephemeral
-  heic2png:
-    :path: Flutter/ephemeral/.symlinks/plugins/heic2png/macos
+  heic_native:
+    :path: Flutter/ephemeral/.symlinks/plugins/heic_native/macos
   media_kit_video:
     :path: Flutter/ephemeral/.symlinks/plugins/media_kit_video/macos
   package_info_plus:
@@ -189,7 +189,7 @@ SPEC CHECKSUMS:
   flutter_local_notifications: 1fc7ffb10a83d6a2eeeeddb152d43f1944b0aad0
   flutter_timezone: d272288c69082ad571630e0d17140b3d6b93dc0c
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
-  heic2png: 9e204dde5869a295255c263f8cb8c73a69cca980
+  heic_native: 239cc73695c37bc191e1e99d49249ed2d5a3b4b9
   media_kit_video: 28d7d27611c7769a2464eb7621c37386a61dcc9a
   package_info_plus: f0052d280d17aa382b932f399edf32507174e870
   photo_manager: 25fd77df14f4f0ba5ef99e2c61814dde77e2bceb

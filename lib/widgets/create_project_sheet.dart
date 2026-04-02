@@ -1,14 +1,11 @@
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import '../services/database_helper.dart';
 import '../services/log_service.dart';
 import '../styles/styles.dart';
-import '../utils/linked_source_utils.dart';
 import '../utils/notification_util.dart';
 import '../utils/platform_utils.dart';
 import '../utils/test_mode.dart' as test_config;
 import '../utils/window_utils.dart';
-import '../utils/dir_utils.dart';
 import 'main_navigation.dart';
 
 class CreateProjectSheet extends StatefulWidget {
@@ -29,9 +26,15 @@ class CreateProjectSheet extends StatefulWidget {
 
 class CreateProjectSheetState extends State<CreateProjectSheet> {
   final TextEditingController _nameController = TextEditingController();
-  String _selectedImage = 'assets/images/face.png';
-  bool _useLinkedSourceFolder = false;
-  String _linkedSourceFolderPath = '';
+  String _selectedType = 'face';
+
+  static const _projectTypes = [
+    ('face', 'Face'),
+    ('cat', 'Cat'),
+    ('dog', 'Dog'),
+    ('musc', 'Muscle'),
+    ('pregnancy', 'Pregnancy'),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -76,25 +79,11 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
                         ],
                       ),
                       const SizedBox(height: 48),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16.0),
-                        child: Text(
-                          'Pose',
-                          style: TextStyle(color: AppColors.textSecondary),
-                        ),
-                      ),
-                      _buildImageSelector(),
+                      _buildTypeLabel(),
+                      _buildTypeDropdown(),
                       const SizedBox(height: 32),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 0.0),
-                        child: Text(
-                          'Name',
-                          style: TextStyle(color: AppColors.textSecondary),
-                        ),
-                      ),
+                      _buildNameLabel(),
                       _buildTextField(),
-                      const SizedBox(height: 16),
-                      _buildLinkedSourceSection(),
                       const Spacer(),
                       _buildActionButton(),
                       const SizedBox(height: 48),
@@ -110,19 +99,8 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
   }
 
   Widget _buildSheetLayout() {
-    return Container(
+    return Padding(
       padding: const EdgeInsets.all(16.0),
-      height: 500,
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.85,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(16.0),
-          topRight: Radius.circular(16.0),
-        ),
-      ),
       child: Stack(
         children: [
           Padding(
@@ -131,24 +109,11 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16.0),
-                    child: Text(
-                      'Pose',
-                      style: TextStyle(color: AppColors.textSecondary),
-                    ),
-                  ),
-                  _buildImageSelector(),
+                  _buildTypeLabel(),
+                  _buildTypeDropdown(),
                   const SizedBox(height: 16),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 16.0, bottom: 0.0),
-                    child: Text(
-                      'Name',
-                      style: TextStyle(color: AppColors.textSecondary),
-                    ),
-                  ),
+                  _buildNameLabel(),
                   _buildTextField(),
-                  _buildLinkedSourceSection(),
                   _buildActionButton(),
                 ],
               ),
@@ -179,9 +144,7 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
                       if (widget.showCloseButton)
                         IconButton(
                           icon: Icon(Icons.close, color: AppColors.textPrimary),
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                          },
+                          onPressed: () => Navigator.of(context).pop(),
                         ),
                     ],
                   ),
@@ -195,162 +158,89 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
     );
   }
 
-  Widget _buildProjectTypeButton(String assetPath) {
-    return Flexible(
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: () {
-            setState(() {
-              _selectedImage = assetPath;
-            });
-          },
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 100, maxHeight: 100),
-            child: AspectRatio(
-              aspectRatio: 1,
-              child: Image.asset(
-                assetPath,
-                fit: BoxFit.contain,
-                color: _selectedImage == assetPath ? AppColors.info : null,
-              ),
-            ),
-          ),
-        ),
+  Widget _buildTypeLabel() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Text(
+        'Type',
+        style: TextStyle(color: AppColors.textSecondary),
       ),
     );
   }
 
-  Widget _buildImageSelector() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        _buildProjectTypeButton('assets/images/face.png'),
-        _buildProjectTypeButton('assets/images/cat.png'),
-        _buildProjectTypeButton('assets/images/dog.png'),
-        _buildProjectTypeButton('assets/images/musc.png'),
-        _buildProjectTypeButton('assets/images/preg.png'),
-      ],
+  Widget _buildNameLabel() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 0.0),
+      child: Text(
+        'Name',
+        style: TextStyle(color: AppColors.textSecondary),
+      ),
+    );
+  }
+
+  Widget _buildTypeDropdown() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _selectedType,
+          isExpanded: true,
+          isDense: true,
+          icon: Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: AppColors.textSecondary,
+            size: 20,
+          ),
+          dropdownColor: AppColors.surfaceElevated,
+          borderRadius: BorderRadius.circular(12),
+          items: _projectTypes
+              .map((t) => DropdownMenuItem<String>(
+                    value: t.$1,
+                    child: Text(t.$2),
+                  ))
+              .toList(),
+          onChanged: (value) {
+            if (value != null) setState(() => _selectedType = value);
+          },
+          style: TextStyle(
+            fontSize: AppTypography.md,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildTextField() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16.0),
-      child: FractionallySizedBox(
-        widthFactor: 1.0,
-        child: TextField(
-          controller: _nameController,
-          onSubmitted: (_) {
-            if (isDesktop) {
-              _createProject();
-            }
-          },
-          style: TextStyle(color: AppColors.textPrimary),
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: AppColors.surfaceElevated,
-            hintText: 'Enter project name',
-            hintStyle: TextStyle(color: AppColors.textSecondary),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(6.0),
-              borderSide: BorderSide.none,
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16.0,
-              vertical: 14.0,
-            ),
+      child: TextField(
+        controller: _nameController,
+        onSubmitted: (_) {
+          if (isDesktop) {
+            _createProject();
+          }
+        },
+        style: TextStyle(color: AppColors.textPrimary),
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: AppColors.surfaceElevated,
+          hintText: 'Enter project name',
+          hintStyle: TextStyle(color: AppColors.textSecondary),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(6.0),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16.0,
+            vertical: 14.0,
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildLinkedSourceSection() {
-    final supportsLinkedSource = LinkedSourceUtils.supportsDesktopLinkedFolders;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Use linked source folder',
-                style: TextStyle(color: AppColors.textSecondary),
-              ),
-            ),
-            Switch.adaptive(
-              value: _useLinkedSourceFolder,
-              onChanged: supportsLinkedSource
-                  ? (value) async {
-                      if (!value) {
-                        setState(() {
-                          _useLinkedSourceFolder = false;
-                          _linkedSourceFolderPath = '';
-                        });
-                        return;
-                      }
-
-                      final selectedPath =
-                          await FilePicker.platform.getDirectoryPath();
-                      if (selectedPath == null || selectedPath.trim().isEmpty) {
-                        setState(() => _useLinkedSourceFolder = false);
-                        return;
-                      }
-
-                      setState(() {
-                        _useLinkedSourceFolder = true;
-                        _linkedSourceFolderPath = selectedPath;
-                      });
-                    }
-                  : null,
-            ),
-          ],
-        ),
-        if (_useLinkedSourceFolder) ...[
-          const SizedBox(height: 8),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceElevated,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              _linkedSourceFolderPath.isEmpty
-                  ? 'No folder selected'
-                  : _linkedSourceFolderPath,
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: AppTypography.sm,
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: () async {
-                final selectedPath =
-                    await FilePicker.platform.getDirectoryPath();
-                if (selectedPath == null || selectedPath.trim().isEmpty) return;
-                setState(() => _linkedSourceFolderPath = selectedPath);
-              },
-              child: const Text('Choose Folder'),
-            ),
-          ),
-        ] else if (!supportsLinkedSource) ...[
-          const SizedBox(height: 8),
-          Text(
-            'Linked source folders are currently available on desktop only.',
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: AppTypography.sm,
-            ),
-          ),
-        ],
-      ],
     );
   }
 
@@ -363,28 +253,9 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
       return;
     }
 
-    String projectType = 'face';
-    switch (_selectedImage) {
-      case 'assets/images/face.png':
-        projectType = 'face';
-        break;
-      case 'assets/images/cat.png':
-        projectType = 'cat';
-        break;
-      case 'assets/images/dog.png':
-        projectType = 'dog';
-        break;
-      case 'assets/images/musc.png':
-        projectType = 'musc';
-        break;
-      case 'assets/images/preg.png':
-        projectType = 'pregnancy';
-        break;
-    }
-
     final int projectId = await DB.instance.addProject(
       projectName,
-      projectType,
+      _selectedType,
       DateTime.now().millisecondsSinceEpoch,
     );
 
@@ -429,33 +300,18 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
       await WindowUtils.transitionToDefaultWindowState();
     }
 
-    if (_useLinkedSourceFolder && _linkedSourceFolderPath.trim().isNotEmpty) {
-      final projectDirPath = await DirUtils.getProjectDirPath(projectId);
-      final validationError = LinkedSourceUtils.validateLinkedFolderPath(
-        projectId: projectId,
-        selectedPath: _linkedSourceFolderPath,
-        projectDirPath: projectDirPath,
-      );
-      if (validationError == null) {
-        await LinkedSourceUtils.persistDesktopFolderSelection(
-          projectId,
-          _linkedSourceFolderPath,
-        );
-      } else {
-        LogService.instance.log(
-          '[LinkedSource] Skipping invalid project-create selection: $validationError',
-        );
-      }
-    }
-
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (context) => MainNavigation(
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => MainNavigation(
           projectId: projectId,
           projectName: projectName,
           showFlashingCircle: false,
         ),
+        transitionsBuilder: (_, animation, __, child) =>
+            FadeTransition(opacity: animation, child: child),
+        transitionDuration: const Duration(milliseconds: 150),
+        reverseTransitionDuration: const Duration(milliseconds: 150),
       ),
       (route) => false,
     );

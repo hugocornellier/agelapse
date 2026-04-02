@@ -1,0 +1,281 @@
+name: Desktop Release
+
+on:
+  push:
+    tags:
+      - 'agelapse-v*.*.*'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref to build from'
+        required: true
+        default: main
+      tag:
+        description: 'Release tag (e.g. agelapse-v2.5.0)'
+        required: true
+      prerelease:
+        description: 'Mark as pre-release'
+        type: boolean
+        default: false
+      draft:
+        description: 'Draft release (private, only you can see it)'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    name: Prepare Release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      build_number: ${{ steps.version.outputs.build_number }}
+      tag: ${{ steps.version.outputs.tag }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+          fetch-depth: 0
+
+      - name: Resolve version from tag and pubspec
+        id: version
+        run: |
+          # Determine the tag
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+            PRERELEASE="${{ github.event.inputs.prerelease }}"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+            PRERELEASE="false"
+          fi
+
+          # Extract version from tag (agelapse-v2.5.0 -> 2.5.0)
+          TAG_VERSION="${TAG#agelapse-v}"
+
+          # Extract version from pubspec.yaml
+          PUBSPEC_VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: *//' | sed 's/+.*//')
+          BUILD_NUMBER=$(grep '^version:' pubspec.yaml | sed 's/.*+//')
+
+          echo "Tag version:     $TAG_VERSION"
+          echo "Pubspec version: $PUBSPEC_VERSION"
+          echo "Build number:    $BUILD_NUMBER"
+
+          if [ "$TAG_VERSION" != "$PUBSPEC_VERSION" ]; then
+            echo "::error::Tag version ($TAG_VERSION) does not match pubspec.yaml ($PUBSPEC_VERSION)"
+            exit 1
+          fi
+
+          echo "version=$TAG_VERSION" >> "$GITHUB_OUTPUT"
+          echo "build_number=$BUILD_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+
+  build-windows:
+    name: Build Windows Installer
+    needs: prepare
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Cache opencv_dart native build
+        uses: actions/cache@v4
+        with:
+          path: .dart_tool/hooks_runner/shared
+          key: opencv-native-windows-release-${{ hashFiles('pubspec.lock') }}
+          restore-keys: opencv-native-windows-
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Windows release
+        run: flutter build windows --release --build-name=${{ needs.prepare.outputs.version }} --build-number=${{ needs.prepare.outputs.build_number }}
+
+      - name: Build Inno Setup installer
+        run: |
+          iscc /DMyAppVersion="${{ needs.prepare.outputs.version }}" packaging\installer.iss
+
+      - name: Rename installer
+        shell: bash
+        run: |
+          mv "dist/installer/AgeLapse_Setup_${{ needs.prepare.outputs.version }}_x64.exe" \
+             "dist/installer/agelapse-windows-${{ needs.prepare.outputs.version }}-x64.exe"
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: dist/installer/agelapse-windows-${{ needs.prepare.outputs.version }}-x64.exe
+          if-no-files-found: error
+
+  build-linux:
+    name: Build Linux Packages
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: false
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y \
+            clang cmake ninja-build pkg-config \
+            libgtk-3-dev \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+            libmpv-dev libheif-dev libpng-dev \
+            flatpak flatpak-builder
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Cache opencv_dart native build
+        uses: actions/cache@v4
+        with:
+          path: .dart_tool/hooks_runner/shared
+          key: opencv-native-linux-release-${{ hashFiles('pubspec.lock') }}
+          restore-keys: opencv-native-linux-
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Linux release
+        run: flutter build linux --release --build-name=${{ needs.prepare.outputs.version }} --build-number=${{ needs.prepare.outputs.build_number }}
+
+      # --- .deb package ---
+      - name: Install Fastforge
+        run: dart pub global activate fastforge
+
+      - name: Build .deb package
+        run: |
+          export PATH="$PATH:$HOME/.pub-cache/bin"
+          fastforge package --platform linux --targets deb
+
+      - name: Rename .deb
+        run: |
+          DEB_FILE=$(find dist -name '*.deb' -type f | head -1)
+          mv "$DEB_FILE" "dist/agelapse-linux-${{ needs.prepare.outputs.version }}-x64.deb"
+
+      - name: Upload .deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-deb
+          path: dist/agelapse-linux-${{ needs.prepare.outputs.version }}-x64.deb
+          if-no-files-found: error
+
+      # --- Linux bundle tarball ---
+      - name: Create bundle tarball
+        run: |
+          cd build/linux/x64/release
+          tar -czvf "$GITHUB_WORKSPACE/dist/agelapse-linux-${{ needs.prepare.outputs.version }}-x64-bundle.tar.gz" bundle/
+
+      - name: Upload bundle tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-bundle
+          path: dist/agelapse-linux-${{ needs.prepare.outputs.version }}-x64-bundle.tar.gz
+          if-no-files-found: error
+
+      # --- Flatpak ---
+      - name: Setup Flatpak
+        run: |
+          sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          sudo flatpak install -y flathub org.freedesktop.Platform//24.08 org.freedesktop.Sdk//24.08
+          sudo flatpak install -y flathub org.freedesktop.Platform.ffmpeg-full//24.08
+
+      - name: Cache Flatpak builder
+        uses: actions/cache@v4
+        with:
+          path: .flatpak-builder
+          key: flatpak-builder-${{ hashFiles('flatpak/com.hugocornellier.agelapse.yaml') }}
+          restore-keys: flatpak-builder-
+
+      - name: Build Flatpak
+        run: |
+          # Copy Flutter bundle into flatpak directory
+          rm -rf flatpak/bundle
+          cp -r build/linux/x64/release/bundle flatpak/bundle
+
+          # Build the Flatpak
+          cd flatpak
+          flatpak-builder --repo=repo --force-clean --ccache build-dir com.hugocornellier.agelapse.yaml
+
+          # Create distributable .flatpak file
+          flatpak build-bundle repo \
+            "$GITHUB_WORKSPACE/dist/agelapse-linux-${{ needs.prepare.outputs.version }}-x64.flatpak" \
+            com.hugocornellier.agelapse
+
+      - name: Upload .flatpak
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-flatpak
+          path: dist/agelapse-linux-${{ needs.prepare.outputs.version }}-x64.flatpak
+          if-no-files-found: error
+
+  publish-release:
+    name: Publish GitHub Release
+    needs: [prepare, build-windows, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: List release assets
+        run: ls -lh release-assets/
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PRERELEASE_FLAG=""
+          if [ "${{ needs.prepare.outputs.prerelease }}" = "true" ]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
+          # Create tag if it doesn't exist (manual dispatch)
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            git tag "${{ needs.prepare.outputs.tag }}" || true
+            git push origin "${{ needs.prepare.outputs.tag }}" || true
+          fi
+
+          DRAFT_FLAG=""
+          if [ "${{ github.event.inputs.draft }}" = "true" ]; then
+            DRAFT_FLAG="--draft"
+          fi
+
+          gh release create "${{ needs.prepare.outputs.tag }}" \
+            --title "AgeLapse v${{ needs.prepare.outputs.version }}" \
+            --generate-notes \
+            $PRERELEASE_FLAG \
+            $DRAFT_FLAG \
+            release-assets/*

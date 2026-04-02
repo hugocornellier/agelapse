@@ -305,31 +305,9 @@ class AgeLapse extends StatelessWidget {
                         meta: true,
                       ),
                       onSelected: () {
-                        final nav = navigatorKey.currentState;
-                        if (nav == null) return;
-                        bool alreadyOnPage = false;
-                        nav.popUntil((route) {
-                          if (route.settings.name == 'createProject') {
-                            alreadyOnPage = true;
-                          }
-                          return true;
-                        });
-                        if (alreadyOnPage) return;
-                        nav.push(
-                          PageRouteBuilder(
-                            settings:
-                                const RouteSettings(name: 'createProject'),
-                            pageBuilder: (_, __, ___) =>
-                                const CreateProjectPage(),
-                            transitionsBuilder: (_, animation, __, child) =>
-                                FadeTransition(
-                                    opacity: animation, child: child),
-                            transitionDuration:
-                                const Duration(milliseconds: 150),
-                            reverseTransitionDuration:
-                                const Duration(milliseconds: 150),
-                          ),
-                        );
+                        final context = navigatorKey.currentContext;
+                        if (context == null) return;
+                        CreateProjectPage.showAsDialog(context);
                       },
                     ),
                   ],

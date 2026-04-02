@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
-import 'package:heic2png/heic2png.dart';
+import 'package:heic_native/heic_native.dart';
 import 'package:path/path.dart' as path;
 
 import '../services/log_service.dart';
@@ -87,13 +87,14 @@ class FormatDecodeUtils {
     return null;
   }
 
-  /// Decode HEIC/HEIF to PNG bytes (lossless) via [Heic2png] on all platforms.
+  /// Decode HEIC/HEIF to PNG bytes (lossless) via [HeicNative] on all platforms.
   static Future<Uint8List?> _decodeHeic(
     String inputPath,
     String tempDir,
   ) async {
     try {
-      return await Heic2png.convertToBytes(inputPath, preserveMetadata: false);
+      return await HeicNative.convertToBytes(inputPath,
+          preserveMetadata: false);
     } catch (e) {
       LogService.instance.log('[FormatDecode] HEIC decode error: $e');
       return null;

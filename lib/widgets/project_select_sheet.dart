@@ -63,7 +63,8 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
   }
 
   Future<void> _onNewButtonTapped() async {
-    Utils.navigateToScreenReplace(context, const CreateProjectPage());
+    Navigator.of(context).pop(); // close the project selector
+    CreateProjectPage.showAsDialog(context);
   }
 
   static Future<String> getProjectImage(int projectId) async {

@@ -16,6 +16,48 @@ class CreateProjectPage extends StatefulWidget {
     this.isFullPage = false,
   });
 
+  /// Show create project as a modal dialog overlaying the current page.
+  static Future<void> showAsDialog(BuildContext context) {
+    return showDialog<void>(
+      context: context,
+      barrierColor: AppColors.overlay.withValues(alpha: 0.5),
+      builder: (context) => Center(
+        child: Container(
+          width: 460,
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.7,
+          ),
+          decoration: BoxDecoration(
+            color: AppColors.background,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppColors.settingsCardBorder,
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.overlay.withValues(alpha: 0.3),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Material(
+              color: AppColors.background,
+              child: const CreateProjectSheet(
+                isDefaultProject: false,
+                showCloseButton: true,
+                isFullPage: false,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   CreateProjectPageState createState() => CreateProjectPageState();
 }
@@ -30,7 +72,7 @@ class CreateProjectPageState extends State<CreateProjectPage> {
         body: CreateProjectSheet(
           isDefaultProject: false,
           showCloseButton: widget.showCloseButton,
-          isFullPage: widget.isFullPage,
+          isFullPage: true,
         ),
       );
     }

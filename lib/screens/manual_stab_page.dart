@@ -1094,23 +1094,23 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                                   children: [
                                     Positioned.fill(
                                       child: TransformTool(
-                                          imageBytes: _rawImageBytes!,
-                                          canvasSize: Size(
-                                            _canvasWidth!.toDouble(),
-                                            _canvasHeight!.toDouble(),
-                                          ),
-                                          imageSize: Size(
-                                            _rawImageWidth!.toDouble(),
-                                            _rawImageHeight!.toDouble(),
-                                          ),
-                                          baseScale: _baseScale,
-                                          controller: _transformController,
-                                          onChanged: _onTransformChanged,
-                                          onChangeEnd: _onTransformChangeEnd,
-                                          showRotationHandle: true,
-                                          maintainAspectRatio: true,
-                                          displayScale: displayScale,
+                                        imageBytes: _rawImageBytes!,
+                                        canvasSize: Size(
+                                          _canvasWidth!.toDouble(),
+                                          _canvasHeight!.toDouble(),
                                         ),
+                                        imageSize: Size(
+                                          _rawImageWidth!.toDouble(),
+                                          _rawImageHeight!.toDouble(),
+                                        ),
+                                        baseScale: _baseScale,
+                                        controller: _transformController,
+                                        onChanged: _onTransformChanged,
+                                        onChangeEnd: _onTransformChangeEnd,
+                                        showRotationHandle: true,
+                                        maintainAspectRatio: true,
+                                        displayScale: displayScale,
+                                      ),
                                     ),
                                     Positioned.fill(
                                       child: IgnorePointer(

@@ -7,7 +7,7 @@ section: "utils"
 priority: "optional"
 maintainer:
   name: "Hugo Cornellier"
-  email: "hugo.cornellier@example.com"
+  email: "agelapse@gmail.com"
 homepage: "https://github.com/hugocornellier/agelapse"
 description: "AgeLapse - create stabilized aging timelapses."
 

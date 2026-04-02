@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "agelapse" "\0"
+            VALUE "CompanyName", "Hugo Cornellier" "\0"
+            VALUE "FileDescription", "AgeLapse" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "agelapse" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2025 com.example. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2025 Hugo Cornellier. All rights reserved." "\0"
             VALUE "OriginalFilename", "agelapse.exe" "\0"
-            VALUE "ProductName", "agelapse" "\0"
+            VALUE "ProductName", "AgeLapse" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

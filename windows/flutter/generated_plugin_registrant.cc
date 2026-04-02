@@ -15,7 +15,7 @@
 #include <file_selector_windows/file_selector_windows.h>
 #include <flutter_avif_windows/flutter_avif_windows_plugin.h>
 #include <flutter_timezone/flutter_timezone_plugin_c_api.h>
-#include <heic2png/heic2png_plugin_c_api.h>
+#include <heic_native/heic_native_plugin_c_api.h>
 #include <media_kit_libs_windows_video/media_kit_libs_windows_video_plugin_c_api.h>
 #include <media_kit_video/media_kit_video_plugin_c_api.h>
 #include <permission_handler_windows/permission_handler_windows_plugin.h>
@@ -46,8 +46,8 @@ void RegisterPlugins(flutter::PluginRegistry* registry) {
       registry->GetRegistrarForPlugin("FlutterAvifWindowsPlugin"));
   FlutterTimezonePluginCApiRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("FlutterTimezonePluginCApi"));
-  Heic2pngPluginCApiRegisterWithRegistrar(
-      registry->GetRegistrarForPlugin("Heic2pngPluginCApi"));
+  HeicNativePluginCApiRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("HeicNativePluginCApi"));
   MediaKitLibsWindowsVideoPluginCApiRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("MediaKitLibsWindowsVideoPluginCApi"));
   MediaKitVideoPluginCApiRegisterWithRegistrar(

@@ -3,7 +3,7 @@ import 'dart:isolate';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
-import 'package:heic2png/heic2png.dart';
+import 'package:heic_native/heic_native.dart';
 import 'package:path/path.dart' as path;
 import 'package:saver_gallery/saver_gallery.dart';
 import 'package:vibration/vibration.dart';
@@ -199,7 +199,7 @@ class CameraUtils {
           final String heicPath = imgPath;
           final String pngPath = path.setExtension(heicPath, ".png");
 
-          final success = await Heic2png.convert(heicPath, pngPath);
+          final success = await HeicNative.convert(heicPath, pngPath);
           if (!success || !await File(pngPath).exists()) {
             return false;
           }

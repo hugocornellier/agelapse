@@ -15,7 +15,7 @@ targets:
         - libmpv2 | libmpv1
       section: utils
       priority: optional
-      maintainer: "Hugo Cornellier <hugo.cornellier@example.com>"
+      maintainer: "Hugo Cornellier <agelapse@gmail.com>"
       homepage: "https://github.com/hugocornellier/agelapse"
       description: "AgeLapse - create stabilized aging timelapses"
       install_path: /opt/agelapse

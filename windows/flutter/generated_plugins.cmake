@@ -12,7 +12,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   file_selector_windows
   flutter_avif_windows
   flutter_timezone
-  heic2png
+  heic_native
   media_kit_libs_windows_video
   media_kit_video
   permission_handler_windows

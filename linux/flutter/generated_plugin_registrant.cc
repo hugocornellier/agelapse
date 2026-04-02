@@ -14,7 +14,7 @@
 #include <file_selector_linux/file_selector_plugin.h>
 #include <flutter_avif_linux/flutter_avif_linux_plugin.h>
 #include <flutter_timezone/flutter_timezone_plugin.h>
-#include <heic2png/heic2png_plugin.h>
+#include <heic_native/heic_native_plugin.h>
 #include <media_kit_libs_linux/media_kit_libs_linux_plugin.h>
 #include <media_kit_video/media_kit_video_plugin.h>
 #include <pose_detection/pose_detection_plugin.h>
@@ -48,9 +48,9 @@ void fl_register_plugins(FlPluginRegistry* registry) {
   g_autoptr(FlPluginRegistrar) flutter_timezone_registrar =
       fl_plugin_registry_get_registrar_for_plugin(registry, "FlutterTimezonePlugin");
   flutter_timezone_plugin_register_with_registrar(flutter_timezone_registrar);
-  g_autoptr(FlPluginRegistrar) heic2png_registrar =
-      fl_plugin_registry_get_registrar_for_plugin(registry, "Heic2pngPlugin");
-  heic2png_plugin_register_with_registrar(heic2png_registrar);
+  g_autoptr(FlPluginRegistrar) heic_native_registrar =
+      fl_plugin_registry_get_registrar_for_plugin(registry, "HeicNativePlugin");
+  heic_native_plugin_register_with_registrar(heic_native_registrar);
   g_autoptr(FlPluginRegistrar) media_kit_libs_linux_registrar =
       fl_plugin_registry_get_registrar_for_plugin(registry, "MediaKitLibsLinuxPlugin");
   media_kit_libs_linux_plugin_register_with_registrar(media_kit_libs_linux_registrar);

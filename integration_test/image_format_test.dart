@@ -3,7 +3,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:heic2png/heic2png.dart';
+import 'package:heic_native/heic_native.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:opencv_dart/opencv_dart.dart' as cv;
 import 'package:agelapse/main.dart' as app;
@@ -249,7 +249,7 @@ void main() {
           if (format == 'heic') {
             Uint8List? preDecoded;
             try {
-              preDecoded = await Heic2png.convertToBytes(
+              preDecoded = await HeicNative.convertToBytes(
                 filePath,
                 preserveMetadata: false,
               );
@@ -566,7 +566,7 @@ void main() {
         final pngPath = p.join(tempDir.path, '$day-from-heic.png');
         bool success;
         try {
-          success = await Heic2png.convert(heicPath, pngPath);
+          success = await HeicNative.convert(heicPath, pngPath);
         } catch (_) {
           markTestSkipped('HEIC codec not available on this platform');
           return;
@@ -597,7 +597,7 @@ void main() {
 
         Uint8List? pngBytes;
         try {
-          pngBytes = await Heic2png.convertToBytes(heicPath);
+          pngBytes = await HeicNative.convertToBytes(heicPath);
         } catch (_) {
           markTestSkipped('HEIC codec not available on this platform');
           return;
