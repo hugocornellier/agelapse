@@ -103,6 +103,8 @@ class CreatePageState extends State<CreatePage>
   // Manual compile state (when auto-compile is disabled)
   bool _autoCompileEnabled = true;
   bool _manualCompileInProgress = false;
+  int _manualFrame = 0;
+  String _manualEta = '';
   bool _videoExists = false;
   DateTime? _lastVideoDate;
   int _newPhotosSinceLastVideo = 0;
@@ -283,6 +285,8 @@ class CreatePageState extends State<CreatePage>
       _manualCompileInProgress = true;
       loadingComplete = false;
       loadingText = "Preparing to compile...";
+      _manualFrame = 0;
+      _manualEta = '';
     });
 
     // Start ETA tracking
@@ -300,6 +304,8 @@ class CreatePageState extends State<CreatePage>
         if (mounted) {
           setState(() {
             loadingText = "Compiling video...\n$percent% complete\n$etaDisplay";
+            _manualFrame = frame;
+            _manualEta = etaDisplay;
           });
         }
       },
@@ -663,9 +669,13 @@ class CreatePageState extends State<CreatePage>
     final bool isStabilizing = widget.stabilizingRunningInMain;
     final double percent = isStabilizing
         ? widget.progressPercent
-        : (photoCount != null && photoCount! > 0)
-            ? (widget.currentFrame * 100.0 / photoCount!)
-            : 0.0;
+        : _manualCompileInProgress
+            ? (photoCount != null && photoCount! > 0
+                ? (_manualFrame * 100.0 / photoCount!)
+                : 0.0)
+            : (photoCount != null && photoCount! > 0)
+                ? (widget.currentFrame * 100.0 / photoCount!)
+                : 0.0;
     final double progressValue = percent.clamp(0.0, 100.0) / 100.0;
 
     return _buildModalCard([
@@ -719,7 +729,9 @@ class CreatePageState extends State<CreatePage>
       ),
       const SizedBox(height: 8),
       Text(
-        'Your video will be available here when complete',
+        _manualCompileInProgress && _manualEta.isNotEmpty
+            ? _manualEta
+            : 'Your video will be available here when complete',
         style: TextStyle(
           fontSize: AppTypography.md,
           color: AppColors.settingsTextSecondary,

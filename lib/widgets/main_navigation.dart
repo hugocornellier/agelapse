@@ -18,6 +18,7 @@ import '../services/project_folder_sync_service.dart';
 import '../services/settings_cache.dart';
 import '../services/stabilization_service.dart';
 import '../services/stabilization_progress.dart';
+import '../utils/project_utils.dart';
 import '../services/stabilization_state.dart';
 import '../services/stab_update_event.dart';
 import '../services/theme_provider.dart';
@@ -241,7 +242,7 @@ class MainNavigationState extends State<MainNavigation>
     await _runStartupSyncIfNeeded();
     if (!mounted) return;
 
-    _checkPhotoTakenToday();
+    await _checkPhotoTakenToday();
     _startStabilization();
   }
 
@@ -258,18 +259,10 @@ class MainNavigationState extends State<MainNavigation>
     );
   }
 
-  void _checkPhotoTakenToday() {
+  Future<void> _checkPhotoTakenToday() async {
+    final result = await ProjectUtils.photoWasTakenToday(widget.projectId);
     setStateIfMounted(() {
-      _photoTakenToday = photoWasTakenToday(_imageFiles);
-    });
-  }
-
-  static bool photoWasTakenToday(List<String> photos) {
-    final DateTime today = DateTime.now();
-    return photos.any((photoPath) {
-      final timestampInt = int.parse(path.basenameWithoutExtension(photoPath));
-      final photoDate = DateTime.fromMillisecondsSinceEpoch(timestampInt);
-      return photoDate.isSameDate(today);
+      _photoTakenToday = result;
     });
   }
 
@@ -480,14 +473,14 @@ class MainNavigationState extends State<MainNavigation>
     if (result.filesImported > 0) {
       await loadPhotos();
       if (!mounted) return;
-      _checkPhotoTakenToday();
+      await _checkPhotoTakenToday();
     }
   }
 
   Future<void> _handleLinkedSyncCompletion() async {
     await loadPhotos();
     if (!mounted) return;
-    _checkPhotoTakenToday();
+    await _checkPhotoTakenToday();
     await _refreshSettingsCache();
     if (!mounted) return;
     await _startStabilization();

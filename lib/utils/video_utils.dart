@@ -107,18 +107,21 @@ class VideoUtils {
 
   // ETA tracking for video compilation
   static final Stopwatch _videoStopwatch = Stopwatch();
+  static final Stopwatch _encodingStopwatch = Stopwatch();
   static int _totalFramesForEta = 0;
 
   /// Resets the video compilation stopwatch. Call before starting compilation.
   static void resetVideoStopwatch(int totalFrames) {
     _videoStopwatch.reset();
     _videoStopwatch.start();
+    _encodingStopwatch.reset();
     _totalFramesForEta = totalFrames;
   }
 
   /// Stops the video compilation stopwatch. Call after compilation completes.
   static void stopVideoStopwatch() {
     _videoStopwatch.stop();
+    _encodingStopwatch.stop();
   }
 
   /// Resets the progress throttle state. For testing only.
@@ -237,9 +240,12 @@ class VideoUtils {
   static String? calculateVideoEta(int framesProcessed) {
     if (framesProcessed <= 0 || _totalFramesForEta <= 0) return null;
     if (!_videoStopwatch.isRunning) return null;
+    if (!_encodingStopwatch.isRunning) _encodingStopwatch.start();
 
-    final elapsedMs = _videoStopwatch.elapsedMilliseconds;
-    if (elapsedMs < 500) return null; // Wait for at least 500ms of data
+    final elapsedMs = _encodingStopwatch.elapsedMilliseconds;
+    if (elapsedMs < 200 || framesProcessed < 3) {
+      return null; // Wait for at least 200ms of encoding data AND at least 3 frames
+    }
 
     final avgTimePerFrame = elapsedMs / framesProcessed;
     final remainingFrames = _totalFramesForEta - framesProcessed;
@@ -610,6 +616,26 @@ class VideoUtils {
     return ihdr.bitDepth > 8;
   }
 
+  /// Get frame dimensions and high-bit-depth flag from the first frame in a
+  /// directory, performing only a single directory listing and IHDR read.
+  static Future<({int width, int height, bool highBitDepth})?> _getFrameInfo(
+      String framesDir) async {
+    final files = await _listSortedPngFiles(Directory(framesDir));
+    if (files == null) return null;
+
+    final ihdr = await _readPngIhdr(files.first);
+    if (ihdr == null) return null;
+
+    LogService.instance.log(
+      "[VIDEO] Frame dimensions: ${ihdr.width}x${ihdr.height}, bit depth: ${ihdr.bitDepth}",
+    );
+    return (
+      width: ihdr.width,
+      height: ihdr.height,
+      highBitDepth: ihdr.bitDepth > 8,
+    );
+  }
+
   static int pickBitrateKbps(String resolution) {
     // Handle resolution setting strings (e.g., "8K", "4K", "1080p")
     if (resolution == "8K") return 100000; // 8K: 100 Mbps
@@ -745,29 +771,32 @@ class VideoUtils {
       LogService.instance.log("[VIDEO] stabilizedDirPath: $stabilizedDirPath");
       LogService.instance.log("[VIDEO] videoOutputPath: $videoOutputPath");
 
-      // Check available disk space
+      // Check available disk space (fire-and-forget: informational only)
       try {
         final outputDir = Directory(path.dirname(videoOutputPath));
         if (await outputDir.exists()) {
           if (Platform.isWindows) {
-            final result = await Process.run(
-                'wmic',
-                [
-                  'logicaldisk',
-                  'where',
-                  'DeviceID="${path.rootPrefix(videoOutputPath).replaceAll('\\', '')}"',
-                  'get',
-                  'FreeSpace',
-                  '/value',
-                ],
-                runInShell: true);
-            LogService.instance.log(
-              "[VIDEO] Disk space check: ${result.stdout.toString().trim()}",
-            );
+            Process.run(
+              'wmic',
+              [
+                'logicaldisk',
+                'where',
+                'DeviceID="${path.rootPrefix(videoOutputPath).replaceAll('\\', '')}"',
+                'get',
+                'FreeSpace',
+                '/value',
+              ],
+              runInShell: true,
+            ).then((result) {
+              LogService.instance.log(
+                "[VIDEO] Disk space check: ${result.stdout.toString().trim()}",
+              );
+            }).catchError((e) {
+              LogService.instance.log("[VIDEO] Disk space check failed: $e");
+            });
           } else if (Platform.isLinux || Platform.isMacOS) {
             // df works in both .deb and Flatpak (available in freedesktop runtime)
-            try {
-              final result = await Process.run('df', ['-h', videoOutputPath]);
+            Process.run('df', ['-h', videoOutputPath]).then((result) {
               if (result.exitCode == 0) {
                 LogService.instance.log(
                   "[VIDEO] Disk space check:\n${result.stdout}",
@@ -777,12 +806,11 @@ class VideoUtils {
                   "[VIDEO] Disk space check unavailable (exit ${result.exitCode})",
                 );
               }
-            } catch (dfError) {
-              // Graceful fallback - disk space check is informational only
+            }).catchError((dfError) {
               LogService.instance.log(
                 "[VIDEO] Disk space check unavailable: $dfError",
               );
-            }
+            });
           }
         }
       } catch (e) {
@@ -842,15 +870,15 @@ class VideoUtils {
             projectOrientation,
           );
 
-          // Get frame dimensions for date stamp overlay
-          final dimensions = await _getFrameDimensions(framesDir);
-          if (dimensions == null) {
+          // Get frame dimensions and bit depth for date stamp overlay
+          final frameInfo = await _getFrameInfo(framesDir);
+          if (frameInfo == null) {
             LogService.instance.log(
               "[VIDEO] ERROR: Could not get frame dimensions",
             );
             return false;
           }
-          final (videoWidth, videoHeight) = dimensions;
+          final (videoWidth, videoHeight) = (frameInfo.width, frameInfo.height);
 
           // Generate date stamp overlay with PNG assets (if enabled)
           // When color overlay is present, video input shifts to index 1
@@ -910,6 +938,7 @@ class VideoUtils {
             watermarkFilterPart: wm.filterPart,
             watermarkFilePath: wm.filePath,
             watermarkInputIndex: wmInputIndex,
+            knownHighBitDepth: frameInfo.highBitDepth,
           );
 
           await _cleanupDateStampTemp(dateStampOverlay);
@@ -947,15 +976,15 @@ class VideoUtils {
             projectOrientation,
           );
 
-          // Get frame dimensions for date stamp overlay
-          final dimensions = await _getFrameDimensions(framesDir);
-          if (dimensions == null) {
+          // Get frame dimensions and bit depth for date stamp overlay
+          final frameInfo = await _getFrameInfo(framesDir);
+          if (frameInfo == null) {
             LogService.instance.log(
               "[VIDEO] ERROR: Could not get frame dimensions",
             );
             return false;
           }
-          final (videoWidth, videoHeight) = dimensions;
+          final (videoWidth, videoHeight) = (frameInfo.width, frameInfo.height);
 
           // Input index offset: 0 normally, 1 when color overlay is present
           final int idxOffset = needsColorOverlay ? 1 : 0;
@@ -1009,6 +1038,7 @@ class VideoUtils {
             watermarkFilterPart: wmMac.filterPart,
             watermarkFilePath: wmMac.filePath,
             watermarkInputIndex: wmInputIndex,
+            knownHighBitDepth: frameInfo.highBitDepth,
           );
 
           await _cleanupDateStampTemp(dateStampOverlay);
@@ -1769,6 +1799,7 @@ class VideoUtils {
     String? watermarkFilterPart,
     String? watermarkFilePath,
     int watermarkInputIndex = 0,
+    bool? knownHighBitDepth,
   }) async {
     LogService.instance.log(
       "[VIDEO] _encodeDesktop started (${isMacOS ? 'macOS' : 'Windows/Linux'})",
@@ -1888,7 +1919,8 @@ class VideoUtils {
     );
 
     // Detect high-bit-depth source frames for 10-bit output
-    final bool highBitDepth = await _hasHighBitDepthFrames(framesDir);
+    final bool highBitDepth =
+        knownHighBitDepth ?? await _hasHighBitDepthFrames(framesDir);
 
     // Video encoding settings based on codec model
     final pixFmt = codec.pixelFormatForSource(highBitDepth: highBitDepth);
@@ -1982,8 +2014,12 @@ class VideoUtils {
         if (onLog != null) onLog(line);
         final m = RegExp(r'frame=\s*(\d+)').firstMatch(line);
         if (m != null && onProgress != null) {
-          final f = int.tryParse(m.group(1)!);
-          if (f != null) onProgress(f);
+          final videoFrame = int.tryParse(m.group(1)!);
+          if (videoFrame != null) {
+            final int outFps = outputFps(fps);
+            final int f = (videoFrame * fps) ~/ outFps;
+            onProgress(f);
+          }
         }
       });
 

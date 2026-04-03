@@ -826,28 +826,40 @@ Examples
 
       final Map<String, String> dateToPath = {};
 
+      // Build render tasks and process in batches to avoid memory spikes
+      final tasks = <({String dateText, String outputPath})>[];
       for (int i = 0; i < uniqueDates.length; i++) {
         final dateText = uniqueDates[i];
         if (dateText.isEmpty) continue;
 
-        // Create safe filename from date text
         final safeFilename = dateText
             .replaceAll(RegExp(r'[^\w\s-]'), '_')
             .replaceAll(RegExp(r'\s+'), '_');
         final outputPath = '${tempDir.path}/date_${i}_$safeFilename.png';
+        tasks.add((dateText: dateText, outputPath: outputPath));
+      }
 
-        final success = await renderDateStampPng(
-          dateText: dateText,
-          outputPath: outputPath,
-          videoHeight: videoHeight,
-          sizePercent: sizePercent,
-          fontFamily: fontFamily,
-        );
-
-        if (success) {
-          dateToPath[dateText] = outputPath;
-        } else {
-          LogService.instance.log("[DATE_STAMP] Failed to render: $dateText");
+      const batchSize = 20;
+      for (int start = 0; start < tasks.length; start += batchSize) {
+        final end = (start + batchSize).clamp(0, tasks.length);
+        final batch = tasks.sublist(start, end);
+        final results = await Future.wait(batch.map(
+          (t) => renderDateStampPng(
+            dateText: t.dateText,
+            outputPath: t.outputPath,
+            videoHeight: videoHeight,
+            sizePercent: sizePercent,
+            fontFamily: fontFamily,
+          ).then((success) {
+            if (!success) {
+              LogService.instance
+                  .log("[DATE_STAMP] Failed to render: ${t.dateText}");
+            }
+            return success ? MapEntry(t.dateText, t.outputPath) : null;
+          }),
+        ));
+        for (final entry in results) {
+          if (entry != null) dateToPath[entry.key] = entry.value;
         }
       }
 

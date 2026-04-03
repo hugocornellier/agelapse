@@ -42,7 +42,7 @@ class ProgressWidget extends StatelessWidget {
 
     final String compilingMessage = hasEta
         ? "Compiling video • $progressPercentAsStr • $minutesRemaining"
-        : "Compiling video • Estimating ETA...";
+        : "Preparing video...";
 
     return Column(
       children: [

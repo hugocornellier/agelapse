@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:path/path.dart' as path;
@@ -24,8 +25,12 @@ class ProjectUtils {
     return _calculatePhotoStreak(photos);
   }
 
-  static int getTimeDiff(DateTime startTime, DateTime endTime) =>
-      endTime.difference(startTime).inDays;
+  /// Returns the difference in whole calendar days, ignoring DST hour shifts.
+  static int getTimeDiff(DateTime startTime, DateTime endTime) {
+    final DateTime startDay = _dateOnlyUtc(startTime);
+    final DateTime endDay = _dateOnlyUtc(endTime);
+    return endDay.difference(startDay).inDays;
+  }
 
   static int parseTimestampFromFilename(String filepath) =>
       int.tryParse(path.basenameWithoutExtension(filepath)) ?? 0;
@@ -308,13 +313,37 @@ class ProjectUtils {
   /// Complexity: O(n) time, O(unique_days) space - avoids O(d log d) sort
   /// by preserving encounter order from pre-sorted input.
   static List<String> getUniquePhotoDates(List<Map<String, dynamic>> photos) {
+    final uniqueDays = _getUniquePhotoDays(photos);
+    return uniqueDays
+        .map((d) => DateTime(d.year, d.month, d.day).toString())
+        .toList();
+  }
+
+  @visibleForTesting
+  static int calculatePhotoStreakFromPhotos(
+    List<Map<String, dynamic>> photos, {
+    DateTime? now,
+  }) {
+    return _calculatePhotoStreak(photos, now: now);
+  }
+
+  @visibleForTesting
+  static bool photoWasTakenTodayForPhotos(
+    List<Map<String, dynamic>> photos, {
+    DateTime? now,
+  }) {
+    final DateTime today = _dateOnlyUtc(now ?? DateTime.now());
+    return photos.any((photo) => _photoCaptureDayUtc(photo) == today);
+  }
+
+  static List<DateTime> _getUniquePhotoDays(List<Map<String, dynamic>> photos) {
     if (photos.isEmpty) return [];
 
     // Debug assertion to catch misuse - validates descending timestamp order
     assert(() {
       for (int i = 1; i < photos.length; i++) {
-        final prev = int.tryParse(photos[i - 1]['timestamp'] ?? '0') ?? 0;
-        final curr = int.tryParse(photos[i]['timestamp'] ?? '0') ?? 0;
+        final prev = _parsePhotoTimestamp(photos[i - 1]);
+        final curr = _parsePhotoTimestamp(photos[i]);
         if (curr > prev) {
           throw StateError(
             'getUniquePhotoDates requires timestamp-descending input. '
@@ -329,17 +358,7 @@ class ProjectUtils {
     DateTime? lastDay;
 
     for (final photo in photos) {
-      final int ts = int.tryParse(photo['timestamp'] ?? '0') ?? 0;
-      final int? offsetMin = CaptureTimezone.extractOffset(photo);
-      final DateTime localLike = CaptureTimezone.toLocalDateTime(
-        ts,
-        offsetMinutes: offsetMin,
-      );
-      final DateTime dayOnly = DateTime(
-        localLike.year,
-        localLike.month,
-        localLike.day,
-      );
+      final DateTime dayOnly = _photoCaptureDayUtc(photo);
 
       // Only add if different from last day (preserves descending order)
       if (lastDay == null || dayOnly != lastDay) {
@@ -348,57 +367,26 @@ class ProjectUtils {
       }
     }
 
-    return days.map((d) => d.toString()).toList();
+    return days;
   }
 
-  static int _calculatePhotoStreak(List<Map<String, dynamic>> photos) {
-    final List<String> uniqueDates = getUniquePhotoDates(photos);
+  static int _calculatePhotoStreak(
+    List<Map<String, dynamic>> photos, {
+    DateTime? now,
+  }) {
+    final List<DateTime> uniqueDates = _getUniquePhotoDays(photos);
     if (uniqueDates.isEmpty) return 0;
 
     int streak = 1;
 
-    final DateTime latestPhotoDate = DateTime.parse(uniqueDates[0]);
-
-    int? latestOffset;
-    for (final p in photos) {
-      final int ts = int.tryParse(p['timestamp'] ?? '0') ?? 0;
-      final int? off = CaptureTimezone.extractOffset(p);
-      final DateTime captureLocal = CaptureTimezone.toLocalDateTime(
-        ts,
-        offsetMinutes: off,
-      );
-      final DateTime capDay = DateTime(
-        captureLocal.year,
-        captureLocal.month,
-        captureLocal.day,
-      );
-      if (capDay.year == latestPhotoDate.year &&
-          capDay.month == latestPhotoDate.month &&
-          capDay.day == latestPhotoDate.day) {
-        latestOffset = off;
-        break;
-      }
-    }
-
-    DateTime nowRef;
-    if (latestOffset != null) {
-      final DateTime nowUtc = DateTime.now().toUtc();
-      nowRef = nowUtc.add(Duration(minutes: latestOffset));
-    } else {
-      nowRef = DateTime.now();
-    }
-    final DateTime todayLocalLike = DateTime(
-      nowRef.year,
-      nowRef.month,
-      nowRef.day,
-    );
-
+    final DateTime latestPhotoDate = uniqueDates[0];
+    final DateTime todayLocalLike = _dateOnlyUtc(now ?? DateTime.now());
     final int headDiff = getTimeDiff(latestPhotoDate, todayLocalLike);
     if (headDiff > 1) return 0;
 
     for (int i = 1; i < uniqueDates.length; i++) {
-      final DateTime currentDate = DateTime.parse(uniqueDates[i]);
-      final DateTime previousDate = DateTime.parse(uniqueDates[i - 1]);
+      final DateTime currentDate = uniqueDates[i];
+      final DateTime previousDate = uniqueDates[i - 1];
 
       final int diff = getTimeDiff(currentDate, previousDate);
       if (diff != 1) {
@@ -420,13 +408,22 @@ class ProjectUtils {
 
   static Future<bool> photoWasTakenToday(int projectId) async {
     final photos = await DB.instance.getPhotosByProjectID(projectId);
-    final DateTime today = DateTime.now();
-    return photos.any((photo) {
-      final timestampInt = int.parse(photo['timestamp']!);
-      final photoDate = DateTime.fromMillisecondsSinceEpoch(timestampInt);
-      return photoDate.year == today.year &&
-          photoDate.month == today.month &&
-          photoDate.day == today.day;
-    });
+    return photoWasTakenTodayForPhotos(photos);
   }
+
+  static int _parsePhotoTimestamp(Map<String, dynamic> photo) =>
+      int.tryParse(photo['timestamp']?.toString() ?? '0') ?? 0;
+
+  static DateTime _photoCaptureDayUtc(Map<String, dynamic> photo) {
+    final int ts = _parsePhotoTimestamp(photo);
+    final int? offsetMin = CaptureTimezone.extractOffset(photo);
+    final DateTime localLike = CaptureTimezone.toLocalDateTime(
+      ts,
+      offsetMinutes: offsetMin,
+    );
+    return _dateOnlyUtc(localLike);
+  }
+
+  static DateTime _dateOnlyUtc(DateTime dateTime) =>
+      DateTime.utc(dateTime.year, dateTime.month, dateTime.day);
 }

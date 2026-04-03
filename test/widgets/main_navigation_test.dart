@@ -163,42 +163,6 @@ void main() {
     });
   });
 
-  group('MainNavigationState.photoWasTakenToday', () {
-    test('returns false for empty list', () {
-      final result = MainNavigationState.photoWasTakenToday([]);
-      expect(result, isFalse);
-    });
-
-    test('returns false for old photos', () {
-      // Use a timestamp from a year ago
-      final oldTimestamp = DateTime.now()
-          .subtract(const Duration(days: 365))
-          .millisecondsSinceEpoch;
-      final result = MainNavigationState.photoWasTakenToday([
-        '/path/$oldTimestamp.jpg',
-      ]);
-      expect(result, isFalse);
-    });
-
-    test('returns true for today\'s photo', () {
-      // Use current timestamp
-      final todayTimestamp = DateTime.now().millisecondsSinceEpoch;
-      final result = MainNavigationState.photoWasTakenToday([
-        '/path/$todayTimestamp.jpg',
-      ]);
-      expect(result, isTrue);
-    });
-
-    test('returns true if any photo is from today', () {
-      final oldTimestamp = DateTime.now()
-          .subtract(const Duration(days: 30))
-          .millisecondsSinceEpoch;
-      final todayTimestamp = DateTime.now().millisecondsSinceEpoch;
-      final result = MainNavigationState.photoWasTakenToday([
-        '/path/$oldTimestamp.jpg',
-        '/path/$todayTimestamp.jpg',
-      ]);
-      expect(result, isTrue);
-    });
-  });
+  // photoWasTakenToday logic moved to ProjectUtils.photoWasTakenToday
+  // (capture-offset aware). See test/utils/project_utils_test.dart.
 }
