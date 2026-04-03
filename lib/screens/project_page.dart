@@ -127,14 +127,10 @@ class ProjectPageState extends State<ProjectPage> {
           setState(() {});
         }
 
-        // Check for date stamp or watermark setting changes
-        final dateStampChanged = oldCache.exportDateStampEnabled !=
-                newCache.exportDateStampEnabled ||
-            oldCache.watermarkEnabled != newCache.watermarkEnabled;
-
-        if (dateStampChanged) {
-          _reloadDateStampSettings();
-        }
+        // Reload date stamp settings — properties like margin, size,
+        // position, opacity aren't tracked in the cache, so always
+        // refresh when any settings change occurs.
+        _reloadDateStampSettings();
       }
     }
   }
@@ -486,6 +482,10 @@ class ProjectPageState extends State<ProjectPage> {
                                     outputImageLoader.dateStampOpacity,
                                 dateStampFontFamily:
                                     outputImageLoader.dateStampFontFamily,
+                                dateStampMarginPercentH:
+                                    outputImageLoader.dateStampMarginPercentH,
+                                dateStampMarginPercentV:
+                                    outputImageLoader.dateStampMarginPercentV,
                                 watermarkEnabled:
                                     outputImageLoader.watermarkEnabled,
                                 watermarkPosition:

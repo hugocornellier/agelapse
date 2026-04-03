@@ -24,6 +24,9 @@ class SettingsUtil {
   static const int fallbackGallerySizeLevel =
       DateStampUtils.defaultGallerySizeLevel;
   static const String fallbackDateStampOpacity = '1.0';
+  static const int fallbackDateStampMargin = 2;
+  static const double fallbackDateStampMarginH = 2.0;
+  static const double fallbackDateStampMarginV = 2.0;
 
   static Future<String> loadTheme() async {
     return await DB.instance.getSettingValueByTitle('theme');
@@ -548,6 +551,49 @@ class SettingsUtil {
         6,
       );
 
+  /// Load export date stamp margin percentage (per-project, 1-6)
+  static Future<int> loadExportDateStampMargin(String projectId) =>
+      _loadIntSettingClamped(
+          'export_date_stamp_margin', projectId, fallbackDateStampMargin, 1, 6);
+
+  /// Load custom export date stamp horizontal margin % (per-project)
+  static Future<double> loadExportDateStampMarginH(String projectId) =>
+      _loadDoubleSetting(
+          'export_date_stamp_margin_h', projectId, fallbackDateStampMarginH);
+
+  /// Load custom export date stamp vertical margin % (per-project)
+  static Future<double> loadExportDateStampMarginV(String projectId) =>
+      _loadDoubleSetting(
+          'export_date_stamp_margin_v', projectId, fallbackDateStampMarginV);
+
+  /// Resolve margin: preset (1-6) uses uniform %, custom (0) uses independent H/V.
+  static (double h, double v) resolveMargin(
+    int marginSetting,
+    double customH,
+    double customV,
+  ) {
+    if (marginSetting == DateStampUtils.marginCustom) {
+      return (customH.clamp(0.5, 15.0), customV.clamp(0.5, 15.0));
+    }
+    final uniform = marginSetting.toDouble().clamp(1.0, 6.0);
+    return (uniform, uniform);
+  }
+
+  /// Load resolved margin (convenience for callers that load directly from DB).
+  static Future<(double h, double v)> loadResolvedMargin(
+      String projectId) async {
+    final results = await Future.wait([
+      loadExportDateStampMargin(projectId),
+      loadExportDateStampMarginH(projectId),
+      loadExportDateStampMarginV(projectId),
+    ]);
+    return resolveMargin(
+      results[0] as int,
+      results[1] as double,
+      results[2] as double,
+    );
+  }
+
   // ==================== Private Helpers ====================
 
   static Future<bool> _loadBoolSetting(
@@ -644,6 +690,9 @@ class SettingsUtil {
       loadGalleryDateStampFont(projectId),
       loadExportDateStampFont(projectId),
       loadGalleryDateStampSize(projectId),
+      loadExportDateStampMargin(projectId),
+      loadExportDateStampMarginH(projectId),
+      loadExportDateStampMarginV(projectId),
     ]);
 
     return DateStampSettings(
@@ -658,6 +707,9 @@ class SettingsUtil {
       galleryFont: results[8] as String,
       exportFont: results[9] as String,
       gallerySizeLevel: results[10] as int,
+      exportMarginPercent: results[11] as int,
+      exportMarginH: results[12] as double,
+      exportMarginV: results[13] as double,
     );
   }
 }
@@ -675,6 +727,9 @@ class DateStampSettings {
   final String galleryFont;
   final String exportFont;
   final int gallerySizeLevel;
+  final int exportMarginPercent;
+  final double exportMarginH;
+  final double exportMarginV;
 
   const DateStampSettings({
     required this.galleryLabelsEnabled,
@@ -688,6 +743,9 @@ class DateStampSettings {
     required this.galleryFont,
     required this.exportFont,
     required this.gallerySizeLevel,
+    required this.exportMarginPercent,
+    required this.exportMarginH,
+    required this.exportMarginV,
   });
 
   /// Get resolved export font (handles "same as gallery" logic)
@@ -697,6 +755,10 @@ class DateStampSettings {
   /// Get resolved export size (handles "same as gallery" logic)
   int get resolvedExportSize =>
       DateStampUtils.resolveExportSize(exportSizePercent, gallerySizeLevel);
+
+  /// Get resolved margin (handles preset vs custom).
+  (double h, double v) get resolvedMargin => SettingsUtil.resolveMargin(
+      exportMarginPercent, exportMarginH, exportMarginV);
 
   /// Default settings
   static const DateStampSettings defaults = DateStampSettings(
@@ -711,5 +773,8 @@ class DateStampSettings {
     galleryFont: DateStampUtils.defaultFont,
     exportFont: DateStampUtils.fontSameAsGallery,
     gallerySizeLevel: DateStampUtils.defaultGallerySizeLevel,
+    exportMarginPercent: 2,
+    exportMarginH: 2.0,
+    exportMarginV: 2.0,
   );
 }

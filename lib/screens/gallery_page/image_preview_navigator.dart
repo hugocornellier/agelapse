@@ -206,6 +206,7 @@ class ImagePreviewNavigator extends StatefulWidget {
   final bool stabilizingRunningInMain;
   final Future<void> Function() loadImages;
   final Future<void> Function() recompileVideoCallback;
+  final ValueNotifier<int>? settingsVersion;
 
   const ImagePreviewNavigator({
     super.key,
@@ -220,6 +221,7 @@ class ImagePreviewNavigator extends StatefulWidget {
     required this.stabilizingRunningInMain,
     required this.loadImages,
     required this.recompileVideoCallback,
+    this.settingsVersion,
   });
 
   @override
@@ -254,6 +256,8 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
   String _exportDateStampFont = DateStampUtils.fontSameAsGallery;
   String _galleryDateStampFont = DateStampUtils.defaultFont;
   int _galleryDateStampSize = DateStampUtils.defaultGallerySizeLevel;
+  double _exportDateStampMarginH = 2.0;
+  double _exportDateStampMarginV = 2.0;
 
   // Cache for capture timezone offsets (timestamp -> offset minutes)
   Map<String, int?> _captureOffsetMap = {};
@@ -268,6 +272,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     _loadPhotoMetadata();
     _loadDateStampSettings();
     _loadCaptureOffsets();
+    widget.settingsVersion?.addListener(_loadDateStampSettings);
   }
 
   Future<void> _loadDateStampSettings() async {
@@ -284,6 +289,9 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
         _exportDateStampFont = settings.exportFont;
         _galleryDateStampFont = settings.galleryFont;
         _galleryDateStampSize = settings.gallerySizeLevel;
+        final resolvedMargin = settings.resolvedMargin;
+        _exportDateStampMarginH = resolvedMargin.$1;
+        _exportDateStampMarginV = resolvedMargin.$2;
       });
     }
   }
@@ -316,6 +324,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
 
   @override
   void dispose() {
+    widget.settingsVersion?.removeListener(_loadDateStampSettings);
     _pageController.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -660,6 +669,8 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
           future: _getImageDimensions(imagePath),
           builder: (context, snapshot) {
             double previewFontSize = 14.0; // Default fallback
+            double displayedWidth = 0.0;
+            double displayedHeight = 0.0;
 
             if (snapshot.hasData && snapshot.data != Size.zero) {
               final imageWidth = snapshot.data!.width;
@@ -675,8 +686,8 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
               final scaleY = containerMaxHeight / imageHeight;
               final scale = scaleX < scaleY ? scaleX : scaleY;
 
-              // Displayed image height
-              final displayedHeight = imageHeight * scale;
+              displayedWidth = imageWidth * scale;
+              displayedHeight = imageHeight * scale;
 
               // Font size: same formula as video output
               // Video uses: (videoHeight * sizePercent / 100).clamp(12.0, 200.0)
@@ -691,6 +702,15 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
               );
             }
 
+            // Don't show overlay until dimensions are known (avoids jump)
+            if (displayedHeight == 0.0) {
+              return imageWidget;
+            }
+
+            // Margin matching video/photo export: width-based for H, height-based for V
+            final marginH = displayedWidth * _exportDateStampMarginH / 100;
+            final marginV = displayedHeight * _exportDateStampMarginV / 100;
+
             return Stack(
               children: [
                 imageWidget,
@@ -698,7 +718,12 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
                   child: Align(
                     alignment: alignment,
                     child: Padding(
-                      padding: const EdgeInsets.all(8.0),
+                      padding: EdgeInsets.only(
+                        left: marginH,
+                        right: marginH,
+                        top: marginV,
+                        bottom: marginV,
+                      ),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
@@ -1002,7 +1027,13 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
                   watermarkPos.toLowerCase()) {
             final isLowerCorner =
                 _exportDateStampPosition.toLowerCase().contains('lower');
-            watermarkOffset = isLowerCorner ? -60.0 : 60.0;
+            final imageBytes = await File(_currentImagePath).readAsBytes();
+            final codec = await ui.instantiateImageCodec(imageBytes);
+            final frame = await codec.getNextFrame();
+            final imageHeight = frame.image.height.toDouble();
+            frame.image.dispose();
+            watermarkOffset =
+                isLowerCorner ? -(imageHeight * 0.05) : (imageHeight * 0.05);
           }
 
           // Create temp file for date-stamped image (use original filename)
@@ -1024,6 +1055,8 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
               _exportDateStampFont,
               _galleryDateStampFont,
             ),
+            marginPercentH: _exportDateStampMarginH,
+            marginPercentV: _exportDateStampMarginV,
           );
 
           if (success) {

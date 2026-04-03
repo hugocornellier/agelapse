@@ -32,6 +32,8 @@ class OutputImageLoader {
   int dateStampSizePercent = 3;
   double dateStampOpacity = 1.0;
   String dateStampFontFamily = 'Inter';
+  double dateStampMarginPercentH = 2.0;
+  double dateStampMarginPercentV = 2.0;
 
   // Watermark settings (for collision detection)
   bool watermarkEnabled = false;
@@ -199,6 +201,7 @@ class OutputImageLoader {
       SettingsUtil.loadWatermarkSetting(projectIdStr),
       SettingsUtil.loadWatermarkPosition(),
       SettingsUtil.loadGalleryDateStampSize(projectIdStr),
+      SettingsUtil.loadResolvedMargin(projectIdStr),
     ]);
 
     dateStampEnabled = results[0] as bool;
@@ -226,6 +229,9 @@ class OutputImageLoader {
 
     watermarkEnabled = results[7] as bool;
     watermarkPosition = results[8] as String?;
+    final margin = results[10] as (double, double);
+    dateStampMarginPercentH = margin.$1;
+    dateStampMarginPercentV = margin.$2;
   }
 
   /// Get formatted date stamp text for preview.

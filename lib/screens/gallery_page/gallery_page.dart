@@ -27,6 +27,7 @@ import '../../utils/capture_timezone.dart';
 import '../../utils/utils.dart';
 import '../../models/import_preview_item.dart';
 import '../../utils/image_format_utils.dart';
+import '../../widgets/grid_painter_se.dart';
 import '../../widgets/yellow_tip_bar.dart';
 import '../../widgets/gallery_date_stamp_provider.dart';
 import '../../widgets/import_preview_dialog.dart';
@@ -151,6 +152,7 @@ class GalleryPageState extends State<GalleryPage>
   ValueNotifier<String> activeProcessingDateNotifier = ValueNotifier<String>(
     '',
   );
+  final ValueNotifier<int> _settingsVersion = ValueNotifier<int>(0);
   late bool showFlashingCircle;
   late int projectId;
   late String projectIdStr;
@@ -173,6 +175,22 @@ class GalleryPageState extends State<GalleryPage>
   bool _isAutoScrolling = false;
   bool _isSelectionMode = false;
   Set<String> _selectedPhotos = {};
+  bool _isInspectionMode = false;
+  String? _projectType;
+  String _aspectRatio = '9:16';
+
+  bool get _isEyeBasedProject =>
+      _projectType == 'face' || _projectType == 'cat' || _projectType == 'dog';
+
+  double get _inspectionChildAspectRatio {
+    final parts = _aspectRatio.split(':');
+    if (parts.length == 2) {
+      final w = double.tryParse(parts[0]);
+      final h = double.tryParse(parts[1]);
+      if (w != null && h != null && h != 0) return w / h;
+    }
+    return 9 / 16;
+  }
 
   // Global drop support - idempotent processing flag
   bool _pendingFilesProcessed = false;
@@ -198,6 +216,7 @@ class GalleryPageState extends State<GalleryPage>
       SettingsUtil.loadGalleryDateFormat(projectIdStr),
       SettingsUtil.loadGalleryDateStampFont(projectIdStr),
       SettingsUtil.loadGalleryDateStampSize(projectIdStr),
+      SettingsUtil.loadAspectRatio(projectIdStr),
     ]);
     if (mounted) {
       setState(() {
@@ -209,7 +228,9 @@ class GalleryPageState extends State<GalleryPage>
         _galleryDateFormat = results[5] as String;
         _galleryDateFont = results[6] as String;
         _galleryDateSizeLevel = results[7] as int;
+        _aspectRatio = results[8] as String;
       });
+      _settingsVersion.value++;
     }
   }
 
@@ -290,6 +311,9 @@ class GalleryPageState extends State<GalleryPage>
     _initializeFromCache();
     _init();
     _tabController = TabController(length: 2, vsync: this);
+    DB.instance.getProjectTypeByProjectId(widget.projectId).then((type) {
+      if (mounted) setState(() => _projectType = type);
+    });
     showFlashingCircle = widget.showFlashingCircle;
     _loadImages();
     _loadCaptureOffsets();
@@ -691,7 +715,7 @@ class GalleryPageState extends State<GalleryPage>
                     (!isImporting && !widget.importRunningInMain)
                         ? _buildTabBarView()
                         : _buildLoadingView(),
-                    if (!_isSelectionMode)
+                    if (!_isSelectionMode && !_isInspectionMode)
                       Positioned(
                         top: 7,
                         right: 8,
@@ -742,6 +766,9 @@ class GalleryPageState extends State<GalleryPage>
                                 case 'select':
                                   setState(() => _isSelectionMode = true);
                                   break;
+                                case 'inspect':
+                                  setState(() => _isInspectionMode = true);
+                                  break;
                               }
                             },
                             itemBuilder: (context) => [
@@ -762,6 +789,14 @@ class GalleryPageState extends State<GalleryPage>
                                 icon: Icons.check_circle_outline,
                                 label: 'Select',
                               ),
+                              if (_isEyeBasedProject) ...[
+                                const PopupMenuDivider(height: 1),
+                                _buildModernMenuItem(
+                                  value: 'inspect',
+                                  icon: Icons.search,
+                                  label: 'Inspect',
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -771,6 +806,7 @@ class GalleryPageState extends State<GalleryPage>
               ),
             ),
             if (_isSelectionMode) _buildSelectionActionBar(),
+            if (_isInspectionMode) _buildInspectionActionBar(),
           ],
         ),
       ),
@@ -886,6 +922,8 @@ class GalleryPageState extends State<GalleryPage>
           maxCrossAxisExtent: _tileExtentForGridCount(context),
           crossAxisSpacing: 2.0,
           mainAxisSpacing: 2.0,
+          childAspectRatio:
+              _isInspectionMode ? _inspectionChildAspectRatio : 1.0,
         ),
         itemCount: itemCount,
         itemBuilder: (context, index) {
@@ -948,6 +986,10 @@ class GalleryPageState extends State<GalleryPage>
   }
 
   double _tileExtentForGridCount(BuildContext context) {
+    if (_isInspectionMode) {
+      final double width = MediaQuery.of(context).size.width;
+      return width < 850 ? width : width / 2;
+    }
     if (_galleryGridMode == 'auto') {
       return 180;
     }
@@ -1606,6 +1648,45 @@ class GalleryPageState extends State<GalleryPage>
     });
   }
 
+  void _exitInspectionMode() {
+    setState(() {
+      _isInspectionMode = false;
+    });
+  }
+
+  Widget _buildInspectionActionBar() {
+    return Container(
+      color: AppColors.surface,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            TextButton.icon(
+              onPressed: _exitInspectionMode,
+              icon: const Icon(Icons.close, size: 20),
+              label: const Text('Done'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.textPrimary,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              'Inspection Mode',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: AppTypography.sm,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const Spacer(),
+            const SizedBox(width: 80),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _selectAllPhotos() {
     final bool isStabilizedTab = _tabController.index == 0;
     final List<String> currentFiles =
@@ -1905,6 +1986,10 @@ class GalleryPageState extends State<GalleryPage>
                               await SettingsUtil.loadExportDateStampOpacity(
                             projectIdStr,
                           );
+                          final (dateMarginH, dateMarginV) =
+                              await SettingsUtil.loadResolvedMargin(
+                            projectIdStr,
+                          );
 
                           // Load watermark settings for overlap prevention
                           final watermarkEnabled =
@@ -1944,6 +2029,8 @@ class GalleryPageState extends State<GalleryPage>
                             onProgress: (current, total) {
                               setExportProgress((current / total) * 30);
                             },
+                            marginPercentH: dateMarginH,
+                            marginPercentV: dateMarginV,
                           );
 
                           // Use processed files for export
@@ -2207,6 +2294,31 @@ class GalleryPageState extends State<GalleryPage>
                   projectId: widget.projectId,
                 );
 
+          if (_isInspectionMode && isStabilized) {
+            final double oX = widget.settingsCache?.eyeOffsetX ?? 0.065;
+            final double oY = widget.settingsCache?.eyeOffsetY ?? 0.421875;
+            return Stack(
+              children: [
+                thumbnail,
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: GridPainterSE(
+                      oX,
+                      oY,
+                      null,
+                      null,
+                      null,
+                      _aspectRatio,
+                      projectOrientation ?? 'portrait',
+                      hideToolTip: true,
+                      hideCorners: true,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }
+
           final config = GalleryDateStampProvider.of(context);
           final bool labelsEnabled = isStabilized
               ? config.stabilizedLabelsEnabled
@@ -2269,6 +2381,7 @@ class GalleryPageState extends State<GalleryPage>
           stabilizingRunningInMain: widget.stabilizingRunningInMain,
           loadImages: _loadImages,
           recompileVideoCallback: widget.recompileVideoCallback,
+          settingsVersion: _settingsVersion,
         ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);

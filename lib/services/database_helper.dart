@@ -382,6 +382,9 @@ class DB {
     'gallery_date_stamp_font': 'Inter',
     'gallery_date_stamp_size': '4',
     'export_date_stamp_font': '_same_as_gallery',
+    'export_date_stamp_margin': '2',
+    'export_date_stamp_margin_h': '2.0',
+    'export_date_stamp_margin_v': '2.0',
     // Video codec and background
     'video_codec': 'h264',
     'video_background': 'TRANSPARENT',

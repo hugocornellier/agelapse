@@ -265,7 +265,8 @@ void main() {
         textWidth: 100,
         textHeight: 20,
         position: 'lower right',
-        marginPercent: 2.0,
+        marginPercentH: 2.0,
+        marginPercentV: 2.0,
       );
       // margin = 1000 * 0.02 = 20 (x), 500 * 0.02 = 10 (y)
       // x = 1000 - 100 - 20 = 880
@@ -281,7 +282,8 @@ void main() {
         textWidth: 100,
         textHeight: 20,
         position: 'lower left',
-        marginPercent: 2.0,
+        marginPercentH: 2.0,
+        marginPercentV: 2.0,
       );
       // x = margin = 20
       // y = 500 - 20 - 10 = 470
@@ -296,7 +298,8 @@ void main() {
         textWidth: 100,
         textHeight: 20,
         position: 'upper right',
-        marginPercent: 2.0,
+        marginPercentH: 2.0,
+        marginPercentV: 2.0,
       );
       // x = 1000 - 100 - 20 = 880
       // y = margin = 10
@@ -311,7 +314,8 @@ void main() {
         textWidth: 100,
         textHeight: 20,
         position: 'upper left',
-        marginPercent: 2.0,
+        marginPercentH: 2.0,
+        marginPercentV: 2.0,
       );
       // x = margin = 20
       // y = margin = 10
@@ -326,7 +330,8 @@ void main() {
         textWidth: 100,
         textHeight: 20,
         position: 'invalid',
-        marginPercent: 2.0,
+        marginPercentH: 2.0,
+        marginPercentV: 2.0,
       );
       expect(offset.dx, equals(880));
       expect(offset.dy, equals(470));
@@ -339,10 +344,121 @@ void main() {
         textWidth: 100,
         textHeight: 20,
         position: 'UPPER LEFT',
-        marginPercent: 2.0,
+        marginPercentH: 2.0,
+        marginPercentV: 2.0,
       );
       expect(offset.dx, equals(20));
       expect(offset.dy, equals(10));
+    });
+
+    test('applies custom margin percentage', () {
+      final offset = DateStampUtils.calculatePosition(
+        imageWidth: 1000,
+        imageHeight: 500,
+        textWidth: 100,
+        textHeight: 20,
+        position: 'lower right',
+        marginPercentH: 5.0,
+        marginPercentV: 5.0,
+      );
+      // margin = 1000 * 0.05 = 50 (x), 500 * 0.05 = 25 (y)
+      // x = 1000 - 100 - 50 = 850
+      // y = 500 - 20 - 25 = 455
+      expect(offset.dx, equals(850));
+      expect(offset.dy, equals(455));
+    });
+
+    test('applies 1% margin (minimum setting)', () {
+      final offset = DateStampUtils.calculatePosition(
+        imageWidth: 1920,
+        imageHeight: 1080,
+        textWidth: 200,
+        textHeight: 30,
+        position: 'lower right',
+        marginPercentH: 1.0,
+        marginPercentV: 1.0,
+      );
+      // marginX = 1920 * 0.01 = 19.2, marginY = 1080 * 0.01 = 10.8
+      // x = 1920 - 200 - 19.2 = 1700.8
+      // y = 1080 - 30 - 10.8 = 1039.2
+      expect(offset.dx, closeTo(1700.8, 0.01));
+      expect(offset.dy, closeTo(1039.2, 0.01));
+    });
+
+    test('applies 6% margin (maximum setting)', () {
+      final offset = DateStampUtils.calculatePosition(
+        imageWidth: 1920,
+        imageHeight: 1080,
+        textWidth: 200,
+        textHeight: 30,
+        position: 'upper left',
+        marginPercentH: 6.0,
+        marginPercentV: 6.0,
+      );
+      // marginX = 1920 * 0.06 = 115.2, marginY = 1080 * 0.06 = 64.8
+      // x = 115.2
+      // y = 64.8
+      expect(offset.dx, closeTo(115.2, 0.01));
+      expect(offset.dy, closeTo(64.8, 0.01));
+    });
+
+    test('uses default 2% margin when not specified', () {
+      final offset = DateStampUtils.calculatePosition(
+        imageWidth: 1000,
+        imageHeight: 500,
+        textWidth: 100,
+        textHeight: 20,
+        position: 'lower right',
+      );
+      // Same as 2% explicit: margin = 20 (x), 10 (y)
+      // x = 1000 - 100 - 20 = 880, y = 500 - 20 - 10 = 470
+      expect(offset.dx, equals(880));
+      expect(offset.dy, equals(470));
+    });
+
+    test('applies different H and V margins', () {
+      final offset = DateStampUtils.calculatePosition(
+        imageWidth: 1920,
+        imageHeight: 1080,
+        textWidth: 200,
+        textHeight: 30,
+        position: 'lower right',
+        marginPercentH: 3.0,
+        marginPercentV: 7.0,
+      );
+      // marginX = 1920 * 0.03 = 57.6
+      // marginY = 1080 * 0.07 = 75.6
+      // x = 1920 - 200 - 57.6 = 1662.4
+      // y = 1080 - 30 - 75.6 = 974.4
+      expect(offset.dx, closeTo(1662.4, 0.01));
+      expect(offset.dy, closeTo(974.4, 0.01));
+    });
+
+    test('H margin affects only X, V margin affects only Y', () {
+      final offsetA = DateStampUtils.calculatePosition(
+        imageWidth: 1000,
+        imageHeight: 1000,
+        textWidth: 100,
+        textHeight: 20,
+        position: 'upper left',
+        marginPercentH: 5.0,
+        marginPercentV: 2.0,
+      );
+      final offsetB = DateStampUtils.calculatePosition(
+        imageWidth: 1000,
+        imageHeight: 1000,
+        textWidth: 100,
+        textHeight: 20,
+        position: 'upper left',
+        marginPercentH: 2.0,
+        marginPercentV: 5.0,
+      );
+      // A: marginX=50, marginY=20 → x=50, y=20
+      // B: marginX=20, marginY=50 → x=20, y=50
+      expect(offsetA.dx, equals(50));
+      expect(offsetA.dy, equals(20));
+      expect(offsetB.dx, equals(20));
+      expect(offsetB.dy, equals(50));
     });
   });
 

@@ -81,6 +81,9 @@ void main() {
           galleryFont: 'Roboto Mono',
           exportFont: 'Custom Font',
           gallerySizeLevel: 4,
+          exportMarginPercent: 2,
+          exportMarginH: 2.0,
+          exportMarginV: 2.0,
         );
 
         expect(settings.galleryLabelsEnabled, isTrue);
@@ -111,6 +114,9 @@ void main() {
           galleryFont: 'Roboto Mono',
           exportFont: 'Custom Export Font',
           gallerySizeLevel: 4,
+          exportMarginPercent: 2,
+          exportMarginH: 2.0,
+          exportMarginV: 2.0,
         );
 
         expect(settings.resolvedExportFont, equals('Custom Export Font'));
@@ -129,6 +135,9 @@ void main() {
           galleryFont: 'Roboto Mono',
           exportFont: DateStampUtils.fontSameAsGallery,
           gallerySizeLevel: 4,
+          exportMarginPercent: 2,
+          exportMarginH: 2.0,
+          exportMarginV: 2.0,
         );
 
         expect(settings.resolvedExportFont, equals('Roboto Mono'));
@@ -149,6 +158,9 @@ void main() {
           galleryFont: 'Inter',
           exportFont: 'Inter',
           gallerySizeLevel: 3,
+          exportMarginPercent: 2,
+          exportMarginH: 2.0,
+          exportMarginV: 2.0,
         );
 
         expect(settings.resolvedExportSize, equals(5));
@@ -167,6 +179,9 @@ void main() {
           galleryFont: 'Inter',
           exportFont: 'Inter',
           gallerySizeLevel: 5,
+          exportMarginPercent: 2,
+          exportMarginH: 2.0,
+          exportMarginV: 2.0,
         );
 
         expect(settings.resolvedExportSize, equals(5));
@@ -246,6 +261,54 @@ void main() {
           equals(DateStampUtils.defaultFont),
         );
       });
+    });
+
+    group('resolveMargin', () {
+      test('preset returns uniform values', () {
+        final (h, v) = SettingsUtil.resolveMargin(3, 5.0, 7.0);
+        expect(h, equals(3.0));
+        expect(v, equals(3.0));
+      });
+
+      test('custom (0) returns independent H/V', () {
+        final (h, v) = SettingsUtil.resolveMargin(0, 3.5, 7.0);
+        expect(h, equals(3.5));
+        expect(v, equals(7.0));
+      });
+
+      test('custom clamps to valid range', () {
+        final (h, v) = SettingsUtil.resolveMargin(0, 0.1, 20.0);
+        expect(h, equals(0.5));
+        expect(v, equals(15.0));
+      });
+
+      test('preset clamps to valid range', () {
+        final (h, v) = SettingsUtil.resolveMargin(10, 2.0, 2.0);
+        expect(h, equals(6.0));
+        expect(v, equals(6.0));
+      });
+    });
+
+    test('resolvedMargin getter returns resolved values', () {
+      const settings = DateStampSettings(
+        galleryLabelsEnabled: false,
+        galleryRawLabelsEnabled: false,
+        galleryFormat: 'MM/yy',
+        exportEnabled: true,
+        exportPosition: 'lower right',
+        exportFormat: 'MMM dd, yyyy',
+        exportSizePercent: 3,
+        exportOpacity: 1.0,
+        galleryFont: 'Inter',
+        exportFont: '_same_as_gallery',
+        gallerySizeLevel: 4,
+        exportMarginPercent: 0,
+        exportMarginH: 4.5,
+        exportMarginV: 8.0,
+      );
+      final (h, v) = settings.resolvedMargin;
+      expect(h, equals(4.5));
+      expect(v, equals(8.0));
     });
   });
 

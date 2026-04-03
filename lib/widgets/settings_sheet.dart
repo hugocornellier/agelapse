@@ -35,6 +35,24 @@ import 'main_navigation.dart';
 import 'section_header.dart';
 import 'setting_list_tile.dart';
 
+typedef _SectionBuilder = Widget Function();
+
+class _Section {
+  final String title;
+  final IconData icon;
+  final _SectionBuilder builder;
+  final Future<dynamic> Function() futureGetter;
+  final bool isDangerZone;
+
+  const _Section(
+    this.title,
+    this.icon,
+    this.builder,
+    this.futureGetter, {
+    this.isDangerZone = false,
+  });
+}
+
 class SettingsSheet extends StatefulWidget {
   final int projectId;
   final bool onlyShowVideoSettings;
@@ -83,6 +101,8 @@ class SettingsSheetState extends State<SettingsSheet> {
   Future<void> get _dateStampSettingsFuture =>
       _dateStampSettingsCompleter.future;
 
+  int _selectedSectionIndex = 0;
+
   bool _isDefaultProject = false;
   bool _linkedSourceEnabled = false;
   String _linkedSourceDisplayPath = '';
@@ -127,6 +147,16 @@ class SettingsSheetState extends State<SettingsSheet> {
   String _exportDateStampPosition = DateStampUtils.positionLowerRight;
   String _exportDateStampFormat = DateStampUtils.exportFormatLong;
   int _exportDateStampSize = 3;
+  int _exportDateStampMargin = 2;
+  bool _isCustomMargin = false;
+  double _customMarginH = 2.0;
+  double _customMarginV = 2.0;
+  final TextEditingController _customMarginHController =
+      TextEditingController();
+  final TextEditingController _customMarginVController =
+      TextEditingController();
+  String? _customMarginHError;
+  String? _customMarginVError;
   double _exportDateStampOpacity = 1.0;
   String _exportDateStampFont = DateStampUtils.fontSameAsGallery;
 
@@ -182,6 +212,8 @@ class SettingsSheetState extends State<SettingsSheet> {
     _customHeightController.dispose();
     _galleryCustomFormatController.dispose();
     _exportCustomFormatController.dispose();
+    _customMarginHController.dispose();
+    _customMarginVController.dispose();
     super.dispose();
   }
 
@@ -360,6 +392,15 @@ class SettingsSheetState extends State<SettingsSheet> {
     _exportDateStampPosition = settings.exportPosition;
     _exportDateStampFormat = settings.exportFormat;
     _exportDateStampSize = settings.exportSizePercent;
+    _exportDateStampMargin = settings.exportMarginPercent;
+    _customMarginH = settings.exportMarginH;
+    _customMarginV = settings.exportMarginV;
+    _isCustomMargin =
+        settings.exportMarginPercent == DateStampUtils.marginCustom;
+    if (_isCustomMargin) {
+      _customMarginHController.text = _customMarginH.toString();
+      _customMarginVController.text = _customMarginV.toString();
+    }
     _exportDateStampOpacity = settings.exportOpacity;
     _exportDateStampFont = settings.exportFont;
 
@@ -982,123 +1023,450 @@ class SettingsSheetState extends State<SettingsSheet> {
     );
   }
 
+  List<_Section> get _visibleSections {
+    final video = widget.onlyShowVideoSettings;
+    final notif = widget.onlyShowNotificationSettings;
+    return [
+      if (!video && !notif)
+        _Section(
+          'Projects',
+          Icons.folder_outlined,
+          _buildProjectSettings,
+          () => _projectSettingsFuture,
+        ),
+      if (!notif)
+        _Section(
+          'Stabilization',
+          Icons.center_focus_strong_outlined,
+          () => Column(
+            children: [
+              _buildStabilizationModeDropdown(),
+              _buildEyeScaleButton()
+            ],
+          ),
+          () => _settingsFuture,
+        ),
+      if (!notif)
+        _Section(
+          'Video',
+          Icons.movie_outlined,
+          _buildVideoSettings,
+          () => _videoSettingsFuture,
+        ),
+      if (!notif)
+        _Section(
+          'Background Colour',
+          Icons.format_color_fill_outlined,
+          _buildBackgroundColourSettings,
+          () => _videoSettingsFuture,
+        ),
+      if (!video && !notif)
+        _Section(
+          'Camera',
+          Icons.camera_alt_outlined,
+          _buildCameraSettings,
+          () => _settingsFuture,
+        ),
+      if (!video && isMobile)
+        _Section(
+          'Notifications',
+          Icons.notifications_outlined,
+          _buildNotificationSettings,
+          () => _notificationInitialization,
+        ),
+      if (!video && !notif)
+        _Section(
+          'Gallery',
+          Icons.grid_view_outlined,
+          () => Column(
+            children: [
+              _buildGalleryGridModeDropdown(),
+              if (_galleryGridMode == 'manual')
+                _buildGridColumnsControl(isDesktop),
+            ],
+          ),
+          () => _gridCountFuture,
+        ),
+      if (!notif)
+        _Section(
+          'Date Stamp',
+          Icons.calendar_today_outlined,
+          _buildDateStampSettings,
+          () => _dateStampSettingsFuture,
+        ),
+      if (!notif)
+        _Section(
+          'Watermark',
+          Icons.branding_watermark_outlined,
+          _buildWatermarkSettings,
+          () => _watermarkSettingsFuture,
+        ),
+      if (!video && !notif)
+        _Section(
+          'Appearance',
+          Icons.palette_outlined,
+          _buildAppearanceSettings,
+          () => _defaultSettingsFuture,
+        ),
+      if (!video && !notif)
+        _Section(
+          'Advanced',
+          Icons.tune_outlined,
+          _buildAdvancedSettings,
+          () => _settingsFuture,
+        ),
+      if (!video && !notif)
+        _Section(
+          'Danger Zone',
+          Icons.warning_amber_rounded,
+          () => const SizedBox.shrink(),
+          () => _defaultSettingsFuture,
+          isDangerZone: true,
+        ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
+      child: isDesktop ? _buildDesktopLayout() : _buildMobileLayout(),
+    );
+  }
+
+  Widget _buildMobileLayout() {
+    final sections = _visibleSections;
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.settingsBackground,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildHeader(),
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final section in sections)
+                    if (section.isDangerZone)
+                      _buildDangerZoneSection()
+                    else
+                      _buildSettingsSection(
+                        section.title,
+                        section.icon,
+                        section.builder,
+                        section.futureGetter(),
+                      ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDesktopLayout() {
+    final sections = _visibleSections;
+    final safeIndex = _selectedSectionIndex.clamp(0, sections.length - 1);
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
       child: Container(
         constraints: BoxConstraints(
+          maxWidth: 820,
           maxHeight: MediaQuery.of(context).size.height * 0.85,
+          minHeight: 400,
+          minWidth: 600,
         ),
         decoration: BoxDecoration(
           color: AppColors.settingsBackground,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.settingsCardBorder, width: 1),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildHeader(),
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Column(
+            children: [
+              _buildDesktopHeader(),
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (!widget.onlyShowVideoSettings &&
-                        !widget.onlyShowNotificationSettings)
-                      _buildSettingsSection(
-                        'Projects',
-                        Icons.folder_outlined,
-                        _buildProjectSettings,
-                      ),
-                    if (!widget.onlyShowNotificationSettings)
-                      _buildSettingsSection(
-                        'Stabilization',
-                        Icons.center_focus_strong_outlined,
-                        () => Column(
-                          children: [
-                            _buildStabilizationModeDropdown(),
-                            _buildEyeScaleButton()
-                          ],
-                        ),
-                      ),
-                    if (!widget.onlyShowNotificationSettings)
-                      _buildSettingsSection(
-                        'Video',
-                        Icons.movie_outlined,
-                        _buildVideoSettings,
-                      ),
-                    if (!widget.onlyShowNotificationSettings)
-                      _buildSettingsSection(
-                        'Background Colour',
-                        Icons.format_color_fill_outlined,
-                        _buildBackgroundColourSettings,
-                      ),
-                    if (!widget.onlyShowVideoSettings &&
-                        !widget.onlyShowNotificationSettings)
-                      _buildSettingsSection(
-                        'Camera',
-                        Icons.camera_alt_outlined,
-                        _buildCameraSettings,
-                      ),
-                    if (!widget.onlyShowVideoSettings && isMobile)
-                      _buildSettingsSection(
-                        'Notifications',
-                        Icons.notifications_outlined,
-                        _buildNotificationSettings,
-                      ),
-                    if (!widget.onlyShowVideoSettings &&
-                        !widget.onlyShowNotificationSettings)
-                      _buildSettingsSection(
-                        'Gallery',
-                        Icons.grid_view_outlined,
-                        () => Column(
-                          children: [
-                            _buildGalleryGridModeDropdown(),
-                            if (_galleryGridMode == 'manual')
-                              _buildGridColumnsControl(isDesktop),
-                          ],
-                        ),
-                      ),
-                    if (!widget.onlyShowNotificationSettings)
-                      _buildSettingsSection(
-                        'Date Stamp',
-                        Icons.calendar_today_outlined,
-                        _buildDateStampSettings,
-                      ),
-                    if (!widget.onlyShowNotificationSettings)
-                      _buildSettingsSection(
-                        'Watermark',
-                        Icons.branding_watermark_outlined,
-                        _buildWatermarkSettings,
-                      ),
-                    if (!widget.onlyShowVideoSettings &&
-                        !widget.onlyShowNotificationSettings)
-                      _buildSettingsSection(
-                        'Appearance',
-                        Icons.palette_outlined,
-                        _buildAppearanceSettings,
-                      ),
-                    if (!widget.onlyShowVideoSettings &&
-                        !widget.onlyShowNotificationSettings)
-                      _buildSettingsSection(
-                        'Advanced',
-                        Icons.tune_outlined,
-                        _buildAdvancedSettings,
-                      ),
-                    if (!widget.onlyShowVideoSettings &&
-                        !widget.onlyShowNotificationSettings)
-                      _buildDangerZoneSection(),
+                    _buildSidebar(sections, safeIndex),
+                    VerticalDivider(width: 1, color: AppColors.settingsDivider),
+                    Expanded(child: _buildContentPane(sections, safeIndex)),
                   ],
                 ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDesktopHeader() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 16, 12, 16),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: AppColors.settingsDivider, width: 1),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Settings',
+            style: TextStyle(
+              fontSize: AppTypography.display,
+              fontWeight: FontWeight.w700,
+              color: AppColors.settingsTextPrimary,
+              letterSpacing: -0.5,
+            ),
+          ),
+          _buildCloseButton(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSidebar(List<_Section> sections, int selectedIndex) {
+    return SizedBox(
+      width: 220,
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        itemCount: sections.length,
+        itemBuilder: (context, index) {
+          final section = sections[index];
+          final isSelected = index == selectedIndex;
+          final isDanger = section.isDangerZone;
+
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isDanger)
+                Divider(
+                  height: 1,
+                  color: AppColors.settingsDivider,
+                  indent: 16,
+                  endIndent: 16,
+                ),
+              if (isDanger) const SizedBox(height: 8),
+              _buildSidebarItem(section, isSelected, isDanger, () {
+                FocusScope.of(context).unfocus();
+                setState(() => _selectedSectionIndex = index);
+              }),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSidebarItem(
+    _Section section,
+    bool isSelected,
+    bool isDanger,
+    VoidCallback onTap,
+  ) {
+    final accentColor = isDanger ? AppColors.danger : AppColors.settingsAccent;
+    final labelColor = isSelected
+        ? accentColor
+        : isDanger
+            ? AppColors.danger.withValues(alpha: 0.7)
+            : AppColors.settingsTextSecondary;
+    final bgColor =
+        isSelected ? accentColor.withValues(alpha: 0.12) : Colors.transparent;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          hoverColor: AppColors.settingsTextPrimary.withValues(alpha: 0.05),
+          splashColor: Colors.transparent,
+          child: Ink(
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(
+                children: [
+                  Icon(
+                    section.icon,
+                    size: 18,
+                    color: labelColor,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      section.title,
+                      style: TextStyle(
+                        fontSize: AppTypography.md,
+                        fontWeight: FontWeight.w500,
+                        color: labelColor,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContentPane(List<_Section> sections, int selectedIndex) {
+    final section = sections[selectedIndex];
+
+    if (section.isDangerZone) {
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionHeader(
+              title: 'Danger Zone',
+              icon: Icons.warning_amber_rounded,
+              color: _dangerRed.withValues(alpha: 0.8),
+            ),
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.settingsCardBackground,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: _dangerRed.withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: _buildDangerZoneContent(),
               ),
             ),
           ],
         ),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SectionHeader(title: section.title, icon: section.icon),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.settingsCardBackground,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.settingsCardBorder, width: 1),
+            ),
+            child: FutureBuilder<void>(
+              future: section.futureGetter(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Center(
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.settingsAccent,
+                        ),
+                      ),
+                    ),
+                  );
+                } else if (snapshot.hasError) {
+                  return Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      'Error loading settings',
+                      style: TextStyle(
+                        color: AppColors.danger,
+                        fontSize: AppTypography.md,
+                      ),
+                    ),
+                  );
+                }
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: section.builder(),
+                );
+              },
+            ),
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildDangerZoneContent() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Delete this project',
+          style: TextStyle(
+            fontSize: AppTypography.lg,
+            fontWeight: FontWeight.w600,
+            color: AppColors.settingsTextPrimary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Once deleted, there is no going back. This will permanently delete all photos and videos associated with this project.',
+          style: TextStyle(
+            fontSize: AppTypography.md,
+            color: AppColors.settingsTextSecondary,
+            height: 1.4,
+          ),
+        ),
+        const SizedBox(height: 16),
+        GestureDetector(
+          onTap: _showDeleteProjectDialog,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            decoration: BoxDecoration(
+              color: _dangerRed.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: _dangerRed.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Center(
+              child: Text(
+                'Delete this project',
+                style: TextStyle(
+                  color: _dangerRed,
+                  fontSize: AppTypography.lg,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1176,6 +1544,7 @@ class SettingsSheetState extends State<SettingsSheet> {
     String title,
     IconData icon,
     Widget Function() buildSettings,
+    Future<dynamic> sectionFuture,
   ) {
     return Padding(
       padding: const EdgeInsets.only(top: 24),
@@ -1190,7 +1559,7 @@ class SettingsSheetState extends State<SettingsSheet> {
               border: Border.all(color: AppColors.settingsCardBorder, width: 1),
             ),
             child: FutureBuilder<void>(
-              future: _getFutureForTitle(title),
+              future: sectionFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Padding(
@@ -1255,53 +1624,7 @@ class SettingsSheetState extends State<SettingsSheet> {
             ),
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Delete this project',
-                    style: TextStyle(
-                      fontSize: AppTypography.lg,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.settingsTextPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Once deleted, there is no going back. This will permanently delete all photos and videos associated with this project.',
-                    style: TextStyle(
-                      fontSize: AppTypography.md,
-                      color: AppColors.settingsTextSecondary,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  GestureDetector(
-                    onTap: _showDeleteProjectDialog,
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      decoration: BoxDecoration(
-                        color: _dangerRed.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: _dangerRed.withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          'Delete this project',
-                          style: TextStyle(
-                            color: _dangerRed,
-                            fontSize: AppTypography.lg,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+              child: _buildDangerZoneContent(),
             ),
           ),
         ],
@@ -1330,33 +1653,6 @@ class SettingsSheetState extends State<SettingsSheet> {
           (route) => false,
         );
       }
-    }
-  }
-
-  Future<void> _getFutureForTitle(String title) {
-    switch (title) {
-      case 'Projects':
-        return _projectSettingsFuture;
-      case 'Stabilization':
-        return _settingsFuture;
-      case 'Background Colour':
-        return _videoSettingsFuture;
-      case 'Camera':
-        return _settingsFuture;
-      case 'Notifications':
-        return _notificationInitialization;
-      case 'Gallery':
-        return _gridCountFuture;
-      case 'Video':
-        return _videoSettingsFuture;
-      case 'Watermark':
-        return _watermarkSettingsFuture;
-      case 'Date Stamp':
-        return _dateStampSettingsFuture;
-      case 'Advanced':
-        return _settingsFuture;
-      default:
-        return _defaultSettingsFuture;
     }
   }
 
@@ -2314,8 +2610,9 @@ class SettingsSheetState extends State<SettingsSheet> {
                   }
                 : null,
           ),
-          infoContent: '',
-          showInfo: false,
+          infoContent:
+              'Corner of the image or video frame where the date stamp is placed.',
+          showInfo: true,
           disabled: !_exportDateStampEnabled,
         ),
         // Export format dropdown with Custom option
@@ -2435,10 +2732,13 @@ class SettingsSheetState extends State<SettingsSheet> {
                   }
                 : null,
           ),
-          infoContent: '',
-          showInfo: false,
+          infoContent:
+              'Font size of the date stamp, as a percentage of image height. Approximate pixel values shown at 1080p.',
+          showInfo: true,
           disabled: !_exportDateStampEnabled,
         ),
+        // Export margin dropdown with Custom option
+        ..._buildMarginSection(),
         // Export opacity dropdown
         SettingListTile(
           title: 'Opacity',
@@ -2464,8 +2764,9 @@ class SettingsSheetState extends State<SettingsSheet> {
                   }
                 : null,
           ),
-          infoContent: '',
-          showInfo: false,
+          infoContent:
+              'Transparency of the date stamp overlay. 100% is fully opaque, 30% is mostly transparent.',
+          showInfo: true,
           disabled: !_exportDateStampEnabled,
         ),
       ],
@@ -2606,6 +2907,207 @@ class SettingsSheetState extends State<SettingsSheet> {
           ),
         ],
       ),
+    );
+  }
+
+  /// Builds the margin dropdown plus conditional custom H/V inputs.
+  List<Widget> _buildMarginSection() {
+    return [
+      SettingListTile(
+        title: 'Margin',
+        showDivider: !_isCustomMargin,
+        contentWidget: CustomDropdownButton<int>(
+          value: _isCustomMargin
+              ? DateStampUtils.marginCustom
+              : _exportDateStampMargin,
+          items: [
+            ...List.generate(6, (index) {
+              final margin = index + 1;
+              final px = DateStampUtils.exportMarginApproxPx[index];
+              return DropdownMenuItem<int>(
+                value: margin,
+                child: Text('$margin% (~${px}px)'),
+              );
+            }),
+            DropdownMenuItem<int>(
+              value: DateStampUtils.marginCustom,
+              child: const Text('Custom...'),
+            ),
+          ],
+          onChanged: _exportDateStampEnabled
+              ? (int? value) async {
+                  if (value == DateStampUtils.marginCustom) {
+                    setState(() {
+                      _isCustomMargin = true;
+                      _customMarginHController.text = _customMarginH.toString();
+                      _customMarginVController.text = _customMarginV.toString();
+                    });
+                    await _confirmAndSaveVideoSetting(
+                      confirmLabel: 'margin',
+                      updateState: () =>
+                          _exportDateStampMargin = DateStampUtils.marginCustom,
+                      dbKey: 'export_date_stamp_margin',
+                      dbValue: DateStampUtils.marginCustom.toString(),
+                    );
+                  } else if (value != null) {
+                    await _confirmAndSaveVideoSetting(
+                      confirmLabel: 'margin',
+                      updateState: () {
+                        _isCustomMargin = false;
+                        _exportDateStampMargin = value;
+                        _customMarginHError = null;
+                        _customMarginVError = null;
+                      },
+                      dbKey: 'export_date_stamp_margin',
+                      dbValue: value.toString(),
+                    );
+                  }
+                }
+              : null,
+        ),
+        infoContent:
+            'Distance from the image edge to the date stamp, as a percentage of image dimensions. '
+            'Select "Custom" to set horizontal and vertical margins independently.',
+        showInfo: true,
+        disabled: !_exportDateStampEnabled,
+      ),
+      if (_isCustomMargin) _buildCustomMarginInputs(),
+    ];
+  }
+
+  /// Builds the custom margin H/V input fields shown when "Custom" is selected.
+  Widget _buildCustomMarginInputs() {
+    return Padding(
+      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildMarginTextField(
+            label: 'Horizontal %',
+            controller: _customMarginHController,
+            error: _customMarginHError,
+            enabled: _exportDateStampEnabled,
+            onChanged: (value) {
+              final error = DateStampUtils.validateCustomMargin(value);
+              setState(() => _customMarginHError = error);
+            },
+          ),
+          const SizedBox(height: 8),
+          _buildMarginTextField(
+            label: 'Vertical %',
+            controller: _customMarginVController,
+            error: _customMarginVError,
+            enabled: _exportDateStampEnabled,
+            onChanged: (value) {
+              final error = DateStampUtils.validateCustomMargin(value);
+              setState(() => _customMarginVError = error);
+            },
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: _exportDateStampEnabled &&
+                      _customMarginHError == null &&
+                      _customMarginVError == null
+                  ? () async {
+                      final h = double.tryParse(_customMarginHController.text);
+                      final v = double.tryParse(_customMarginVController.text);
+                      if (h == null || v == null) return;
+                      await _confirmAndSaveVideoSetting(
+                        confirmLabel: 'margin',
+                        updateState: () {
+                          _customMarginH = h;
+                          _customMarginV = v;
+                        },
+                        dbKey: 'export_date_stamp_margin_h',
+                        dbValue: h.toString(),
+                      );
+                      await DB.instance.setSettingByTitle(
+                        'export_date_stamp_margin_v',
+                        v.toString(),
+                        widget.projectId.toString(),
+                      );
+                    }
+                  : null,
+              child: const Text('Apply'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMarginTextField({
+    required String label,
+    required TextEditingController controller,
+    required String? error,
+    required bool enabled,
+    required void Function(String) onChanged,
+  }) {
+    final hasError = error != null;
+    return Row(
+      children: [
+        SizedBox(
+          width: 100,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: AppTypography.md,
+              color: enabled
+                  ? AppColors.settingsTextPrimary
+                  : AppColors.settingsTextSecondary,
+            ),
+          ),
+        ),
+        Expanded(
+          child: TextField(
+            controller: controller,
+            enabled: enabled,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: TextStyle(
+              fontSize: AppTypography.md,
+              color: enabled
+                  ? AppColors.settingsTextPrimary
+                  : AppColors.settingsTextSecondary,
+            ),
+            decoration: InputDecoration(
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
+              filled: true,
+              fillColor: AppColors.settingsInputBackground,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(
+                  color:
+                      hasError ? AppColors.danger : AppColors.settingsDivider,
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(
+                  color:
+                      hasError ? AppColors.danger : AppColors.settingsDivider,
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(
+                  color: hasError ? AppColors.danger : AppColors.settingsAccent,
+                  width: 1.5,
+                ),
+              ),
+              counterText: '',
+              errorText: error,
+              suffixText: '%',
+            ),
+            onChanged: onChanged,
+          ),
+        ),
+      ],
     );
   }
 
