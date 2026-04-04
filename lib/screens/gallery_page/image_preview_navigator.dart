@@ -671,11 +671,11 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
         }
       }
 
-      // Add inspection grid overlay if enabled
-      if (_isInspectionMode) {
-        imageWidget = Stack(
-          children: [
-            imageWidget,
+      // Always wrap in Stack to keep widget tree stable across inspection toggle
+      imageWidget = Stack(
+        children: [
+          imageWidget,
+          if (_isInspectionMode)
             Positioned.fill(
               child: CustomPaint(
                 painter: GridPainterSE(
@@ -691,9 +691,8 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
                 ),
               ),
             ),
-          ],
-        );
-      }
+        ],
+      );
 
       return Center(child: imageWidget);
     } else {
@@ -955,7 +954,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
       icon: Icons.video_stable,
       active: isStabilizedActive,
       onPressed: isStabilizedActive ? null : _switchToStabilized,
-      tooltip: 'Stabilized',
+      tooltip: 'View Stabilized',
     );
   }
 
@@ -965,7 +964,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
       active: _activeButton == 'raw',
       iconSize: 25,
       onPressed: _activeButton == 'raw' ? null : _switchToRaw,
-      tooltip: 'Raw',
+      tooltip: 'View Raw',
     );
   }
 
