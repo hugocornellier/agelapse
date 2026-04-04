@@ -2277,35 +2277,6 @@ class SettingsSheetState extends State<SettingsSheet> {
     return selectedColor;
   }
 
-  Future<void> _showVideoBackgroundColorPicker() async {
-    final selectedColor = await _showColorPickerHelper(
-      title: 'Video Background',
-      initialColor: _hexToColor(_videoBackground.solidColorHex ?? '#000000'),
-    );
-
-    if (selectedColor != null && mounted) {
-      final newHex = _colorToHex(selectedColor);
-      final currentHex = _videoBackground.solidColorHex ?? '#000000';
-      if (newHex != currentHex) {
-        final shouldProceed =
-            await ConfirmActionDialog.showRecompileVideoSetting(
-          context,
-          'video background colour',
-        );
-
-        if (shouldProceed && mounted) {
-          final newBg = VideoBackground.solidColor(newHex);
-          setState(() => _videoBackground = newBg);
-          await SettingsUtil.saveVideoBackground(
-            widget.projectId.toString(),
-            newBg,
-          );
-          await widget.recompileVideoCallback();
-        }
-      }
-    }
-  }
-
   Widget _buildAutoCompileVideoSwitch() {
     return BoolSettingSwitch(
       title: 'Auto-compile video',
@@ -3784,14 +3755,138 @@ class SettingsSheetState extends State<SettingsSheet> {
   bool get _isTransparentBackground =>
       SettingsUtil.isTransparent(_backgroundColor);
 
+  String get _backgroundMode {
+    if (!_isTransparentBackground) return 'solid';
+    if (_videoBackground.isBlurred) return 'blurred';
+    return 'transparent';
+  }
+
   Widget _buildBackgroundColourSettings() {
+    final mode = _backgroundMode;
     return Column(
       children: [
-        // Background colour picker (only shown when not transparent)
-        if (!_isTransparentBackground)
+        SettingListTile(
+          title: 'Background mode',
+          showDivider: mode == 'solid',
+          showInfo: true,
+          infoContent:
+              'Solid colour: Fills areas not covered by the stabilized image with a solid colour.\n\n'
+              'Transparent: Preserves the alpha channel on photos and video. '
+              'Locks video codec to ProRes 4444 (.mov) on Apple or VP9 (.webm) on other platforms. '
+              'Transparent video files are significantly larger.\n\n'
+              'Blurred: Photos are exported with transparency, but the video background is filled '
+              'with a blurred copy of each frame for a natural look. All codecs available.',
+          contentWidget: CustomDropdownButton<String>(
+            value: mode,
+            items: const [
+              DropdownMenuItem(value: 'solid', child: Text('Solid colour')),
+              DropdownMenuItem(
+                  value: 'transparent', child: Text('Transparent')),
+              DropdownMenuItem(value: 'blurred', child: Text('Blurred')),
+            ],
+            onChanged: (String? newValue) async {
+              if (newValue == null || newValue == mode) return;
+
+              final bool wasTransparentPhotos = _isTransparentBackground;
+              final bool willBeTransparentPhotos = newValue != 'solid';
+
+              // Solid ↔ transparent/blurred changes the photo pipeline (re-stabilization).
+              // Transparent ↔ blurred only changes video output (recompile).
+              final bool photosPipelineChanges =
+                  wasTransparentPhotos != willBeTransparentPhotos;
+
+              if (photosPipelineChanges) {
+                final shouldProceed = await Utils.showConfirmChangeDialog(
+                  context,
+                  "background mode",
+                );
+                if (!shouldProceed || !mounted) {
+                  if (mounted) setState(() {});
+                  return;
+                }
+
+                setState(() {
+                  if (newValue == 'solid') {
+                    _backgroundColor = SettingsUtil.fallbackBackgroundColor;
+                    _videoBackground = const VideoBackground.transparent();
+                  } else if (newValue == 'transparent') {
+                    _backgroundColor = SettingsUtil.transparentBackgroundValue;
+                    _videoBackground = const VideoBackground.transparent();
+                    _videoCodec = VideoCodec.defaultCodec(
+                      isTransparentVideo: true,
+                    );
+                  } else {
+                    _backgroundColor = SettingsUtil.transparentBackgroundValue;
+                    _videoBackground = const VideoBackground.blurred();
+                    if (!VideoCodec.availableCodecs(
+                      isTransparentVideo: false,
+                    ).contains(_videoCodec)) {
+                      _videoCodec = VideoCodec.defaultCodec(
+                        isTransparentVideo: false,
+                      );
+                    }
+                  }
+                });
+
+                await widget.cancelStabCallback();
+                await SettingsUtil.saveBackgroundColor(
+                  widget.projectId.toString(),
+                  _backgroundColor,
+                );
+                await SettingsUtil.saveVideoBackground(
+                  widget.projectId.toString(),
+                  _videoBackground,
+                );
+                await SettingsUtil.saveVideoCodec(
+                  widget.projectId.toString(),
+                  _videoCodec,
+                );
+                await widget.refreshSettings();
+                await resetStabStatusAndRestartStabilization();
+              } else {
+                // Transparent ↔ blurred: video-only recompile.
+                final shouldProceed =
+                    await ConfirmActionDialog.showRecompileVideoSetting(
+                  context,
+                  'background mode',
+                );
+                if (!shouldProceed || !mounted) return;
+
+                setState(() {
+                  if (newValue == 'transparent') {
+                    _videoBackground = const VideoBackground.transparent();
+                    _videoCodec = VideoCodec.defaultCodec(
+                      isTransparentVideo: true,
+                    );
+                  } else {
+                    _videoBackground = const VideoBackground.blurred();
+                    if (!VideoCodec.availableCodecs(
+                      isTransparentVideo: false,
+                    ).contains(_videoCodec)) {
+                      _videoCodec = VideoCodec.defaultCodec(
+                        isTransparentVideo: false,
+                      );
+                    }
+                  }
+                });
+
+                await SettingsUtil.saveVideoBackground(
+                  widget.projectId.toString(),
+                  _videoBackground,
+                );
+                await SettingsUtil.saveVideoCodec(
+                  widget.projectId.toString(),
+                  _videoCodec,
+                );
+                await widget.recompileVideoCallback();
+              }
+            },
+          ),
+        ),
+        if (mode == 'solid')
           SettingListTile(
             title: 'Background colour',
-            showDivider: true,
+            showDivider: false,
             contentWidget: GestureDetector(
               onTap: _showColorPickerDialog,
               child: Container(
@@ -3825,152 +3920,6 @@ class SettingsSheetState extends State<SettingsSheet> {
                 'during stabilization.',
             showInfo: true,
           ),
-        // Transparent toggle
-        BoolSettingSwitch(
-          title: 'Transparent background',
-          initialValue: _isTransparentBackground,
-          showDivider: _isTransparentBackground,
-          showInfo: true,
-          infoContent:
-              'Enable to export photos with a transparent background (alpha channel).\n\n'
-              'By default, videos will also be transparent, using ProRes 4444 (.mov) on Apple or VP9 (.webm) on other platforms.\n\n'
-              'You can set a solid colour or blurred video background in Video settings, which unlocks all codecs.\n\n'
-              'Note: Transparent video files are significantly larger than standard videos.',
-          onChanged: (bool value) async {
-            final newValue = value
-                ? SettingsUtil.transparentBackgroundValue
-                : SettingsUtil.fallbackBackgroundColor;
-
-            final bool shouldProceed = await Utils.showConfirmChangeDialog(
-              context,
-              "transparent background",
-            );
-
-            if (shouldProceed && mounted) {
-              setState(() => _backgroundColor = newValue);
-
-              await widget.cancelStabCallback();
-              await SettingsUtil.saveBackgroundColor(
-                widget.projectId.toString(),
-                newValue,
-              );
-              await widget.refreshSettings();
-
-              await resetStabStatusAndRestartStabilization();
-            } else if (mounted) {
-              setState(() {}); // Revert switch visual state
-            }
-          },
-        ),
-        // Video background settings (only shown when transparent background is enabled)
-        if (_isTransparentBackground) ...[
-          SettingListTile(
-            title: 'Video background',
-            showDivider: _videoBackground.isSolidColor,
-            showInfo: true,
-            infoContent:
-                'Controls how transparent areas appear in the compiled video.\n\n'
-                'Keep transparent: Preserves alpha channel (locks codec to ProRes 4444 / VP9).\n\n'
-                'Solid colour: Composites frames onto a solid colour (all codecs available).\n\n'
-                'Blurred: Fills background with a blurred copy of each frame (all codecs available).',
-            contentWidget: CustomDropdownButton<String>(
-              value: _videoBackground.keepTransparent
-                  ? 'transparent'
-                  : _videoBackground.isBlurred
-                      ? 'blurred'
-                      : 'solid',
-              items: const [
-                DropdownMenuItem(
-                    value: 'transparent', child: Text('Keep transparent')),
-                DropdownMenuItem(value: 'solid', child: Text('Solid colour')),
-                DropdownMenuItem(value: 'blurred', child: Text('Blurred')),
-              ],
-              onChanged: (String? newValue) async {
-                if (newValue == null) return;
-
-                // Determine current mode string
-                final currentMode = _videoBackground.keepTransparent
-                    ? 'transparent'
-                    : _videoBackground.isBlurred
-                        ? 'blurred'
-                        : 'solid';
-                if (newValue == currentMode) return;
-
-                final VideoBackground newBg;
-                switch (newValue) {
-                  case 'transparent':
-                    newBg = const VideoBackground.transparent();
-                    break;
-                  case 'blurred':
-                    newBg = const VideoBackground.blurred();
-                    break;
-                  default:
-                    newBg = VideoBackground.solidColor(
-                      _videoBackground.solidColorHex ?? '#000000',
-                    );
-                }
-
-                final shouldProceed =
-                    await ConfirmActionDialog.showRecompileVideoSetting(
-                  context,
-                  'video background',
-                );
-
-                if (shouldProceed && mounted) {
-                  setState(() {
-                    _videoBackground = newBg;
-                    if (newBg.keepTransparent) {
-                      _videoCodec = VideoCodec.defaultCodec(
-                        isTransparentVideo: true,
-                      );
-                    } else if (!VideoCodec.availableCodecs(
-                      isTransparentVideo: false,
-                    ).contains(_videoCodec)) {
-                      _videoCodec = VideoCodec.defaultCodec(
-                        isTransparentVideo: false,
-                      );
-                    }
-                  });
-
-                  await SettingsUtil.saveVideoBackground(
-                    widget.projectId.toString(),
-                    newBg,
-                  );
-                  await SettingsUtil.saveVideoCodec(
-                    widget.projectId.toString(),
-                    _videoCodec,
-                  );
-                  await widget.recompileVideoCallback();
-                }
-              },
-            ),
-          ),
-          if (_videoBackground.isSolidColor)
-            SettingListTile(
-              title: 'Video background colour',
-              showDivider: false,
-              contentWidget: GestureDetector(
-                onTap: _showVideoBackgroundColorPicker,
-                child: Container(
-                  width: 44,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: _hexToColor(
-                      _videoBackground.solidColorHex ?? '#000000',
-                    ),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: AppColors.settingsCardBorder,
-                      width: 1,
-                    ),
-                  ),
-                ),
-              ),
-              infoContent:
-                  'The solid colour composited behind your transparent images when exporting video.',
-              showInfo: true,
-            ),
-        ],
       ],
     );
   }

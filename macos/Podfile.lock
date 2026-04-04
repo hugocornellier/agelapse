@@ -1,5 +1,5 @@
 PODS:
-  - animal_detection (0.0.1):
+  - animal_detection (1.0.0):
     - FlutterMacOS
   - camera_desktop (0.1.0):
     - FlutterMacOS
@@ -28,7 +28,7 @@ PODS:
   - flutter_timezone (0.1.0):
     - FlutterMacOS
   - FlutterMacOS (1.0.0)
-  - heic_native (0.1.0):
+  - heic_native (0.1.1):
     - FlutterMacOS
   - media_kit_video (0.0.1):
     - FlutterMacOS
@@ -174,7 +174,7 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/window_manager/macos
 
 SPEC CHECKSUMS:
-  animal_detection: b1b510533d0e3720b933b796ccb3fe12bce629d3
+  animal_detection: d0d5bfcbc4954c5c8fb78b3d943e23220b3bfc5d
   camera_desktop: a004fbc4af601b913417413333c0c14000ea9a3f
   cat_detection: 64e964585ce66f3bfb3bf279d7fd618791c4de6f
   desktop_drop: 10a3e6a7fa9dbe350541f2574092fecfa345a07b
@@ -189,7 +189,7 @@ SPEC CHECKSUMS:
   flutter_local_notifications: 1fc7ffb10a83d6a2eeeeddb152d43f1944b0aad0
   flutter_timezone: d272288c69082ad571630e0d17140b3d6b93dc0c
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
-  heic_native: 239cc73695c37bc191e1e99d49249ed2d5a3b4b9
+  heic_native: 4366bb8e1c4f41b5d61116396e6919a5ebb2df83
   media_kit_video: 28d7d27611c7769a2464eb7621c37386a61dcc9a
   package_info_plus: f0052d280d17aa382b932f399edf32507174e870
   photo_manager: 25fd77df14f4f0ba5ef99e2c61814dde77e2bceb
