@@ -76,6 +76,46 @@ install(CODE "
 install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
   DESTINATION "${INSTALL_BUNDLE_DATA_DIR}" COMPONENT Runtime)
 
+# Strip unused TFLite models and sample images from plugin assets.
+# These files are bundled by pub.dev plugins but never loaded at runtime
+# for AgeLapse's specific configuration. Removing them saves ~24 MB.
+# See strip-savings.md for the full audit.
+set(_STRIP_FLUTTER_ASSETS_DIR "${INSTALL_BUNDLE_DATA_DIR}/${FLUTTER_ASSET_DIR_NAME}")
+set(_STRIP_FILES
+  # face_detection_tflite: unused detection model variants (AgeLapse only uses backCamera)
+  "packages/face_detection_tflite/assets/models/selfie_multiclass.tflite"
+  "packages/face_detection_tflite/assets/models/face_detection_full_range.tflite"
+  "packages/face_detection_tflite/assets/models/face_detection_full_range_sparse.tflite"
+  "packages/face_detection_tflite/assets/models/selfie_segmenter_landscape.tflite"
+  "packages/face_detection_tflite/assets/models/selfie_segmenter.tflite"
+  "packages/face_detection_tflite/assets/models/face_detection_front.tflite"
+  "packages/face_detection_tflite/assets/models/face_detection_short_range.tflite"
+  # pose_detection: unused landmark variant (AgeLapse only uses heavy)
+  "packages/pose_detection/assets/models/pose_landmark_full.tflite"
+)
+install(CODE "
+  foreach(_f ${_STRIP_FILES})
+    set(_path \"${_STRIP_FLUTTER_ASSETS_DIR}/\${_f}\")
+    if(EXISTS \"\${_path}\")
+      file(SIZE \"\${_path}\" _sz)
+      math(EXPR _kb \"\${_sz} / 1024\")
+      message(STATUS \"Stripping unused asset: \${_f} (\${_kb} KB)\")
+      file(REMOVE \"\${_path}\")
+    endif()
+  endforeach()
+  # Strip plugin sample images (not used by AgeLapse)
+  foreach(_dir
+    \"${_STRIP_FLUTTER_ASSETS_DIR}/packages/pose_detection/assets/samples\"
+    \"${_STRIP_FLUTTER_ASSETS_DIR}/packages/dog_detection/assets/samples\"
+    \"${_STRIP_FLUTTER_ASSETS_DIR}/packages/animal_detection/assets/samples\"
+  )
+    if(IS_DIRECTORY \"\${_dir}\")
+      message(STATUS \"Stripping unused sample dir: \${_dir}\")
+      file(REMOVE_RECURSE \"\${_dir}\")
+    endif()
+  endforeach()
+  " COMPONENT Runtime)
+
 install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
   CONFIGURATIONS Profile;Release
   COMPONENT Runtime)
