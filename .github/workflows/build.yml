@@ -196,6 +196,15 @@ jobs:
       - name: Build Linux
         run: flutter build linux --debug
 
+      - name: Report flutter_assets size
+        run: |
+          echo "=== flutter_assets total ==="
+          du -sh build/linux/*/release/bundle/data/flutter_assets/ 2>/dev/null || du -sh build/linux/*/debug/bundle/data/flutter_assets/ 2>/dev/null || true
+          echo "=== .tflite models ==="
+          find build/linux -name '*.tflite' -exec ls -lh {} \; 2>/dev/null || true
+          echo "=== sample images ==="
+          find build/linux -path '*/assets/samples/*' -exec ls -lh {} \; 2>/dev/null || true
+
   build-windows:
     name: Build Windows (${{ matrix.flutter-channel }})
     runs-on: windows-latest
@@ -224,3 +233,13 @@ jobs:
 
       - name: Build Windows
         run: flutter build windows --debug
+
+      - name: Report flutter_assets size
+        shell: bash
+        run: |
+          echo "=== flutter_assets total ==="
+          du -sh build/windows/*/runner/Debug/data/flutter_assets/ 2>/dev/null || du -sh build/windows/*/runner/Release/data/flutter_assets/ 2>/dev/null || true
+          echo "=== .tflite models ==="
+          find build/windows -name '*.tflite' -exec ls -lh {} \; 2>/dev/null || true
+          echo "=== sample images ==="
+          find build/windows -path '*/assets/samples/*' -exec ls -lh {} \; 2>/dev/null || true
