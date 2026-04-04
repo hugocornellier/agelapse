@@ -16,6 +16,7 @@ import '../utils/image_utils.dart';
 import '../utils/platform_utils.dart';
 import '../utils/settings_utils.dart';
 import '../utils/stabilizer_utils/stabilizer_utils.dart';
+import '../utils/utils.dart';
 import '../widgets/collapsible_section_header.dart';
 import '../widgets/desktop_icon_button.dart';
 import '../widgets/grid_painter_se.dart';
@@ -1670,9 +1671,11 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
           p.setExtension(stabilizedPhotoPath, '.png'),
         );
 
-        // Clear caches so gallery shows updated images
-        FileImage(File(stabilizedPhotoPath)).evict();
-        FileImage(File(stabThumbPath)).evict();
+        // Clear caches so gallery shows updated images.
+        // Must use clearFlutterImageCache (not just FileImage.evict) because
+        // evict() only clears the persistent cache, not live images held by
+        // mounted Image widgets behind this route.
+        Utils.clearFlutterImageCache();
         ThumbnailService.instance.clearCache(stabThumbPath);
       }
 

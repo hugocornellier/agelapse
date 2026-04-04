@@ -176,6 +176,7 @@ class GalleryPageState extends State<GalleryPage>
   bool _isSelectionMode = false;
   Set<String> _selectedPhotos = {};
   bool _isInspectionMode = false;
+  int _imageRefreshKey = 0;
   String? _projectType;
   String _aspectRatio = '9:16';
 
@@ -2231,15 +2232,19 @@ class GalleryPageState extends State<GalleryPage>
           ).showSnackBar(const SnackBar(content: Text('Guide photo updated')));
         }
       },
-      onManualStab: () {
-        Utils.navigateToScreen(
-          context,
-          ManualStabilizationPage(
-            imagePath: imageFile.path,
-            projectId: widget.projectId,
-            onSaveComplete: _loadImages,
+      onManualStab: () async {
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ManualStabilizationPage(
+              imagePath: imageFile.path,
+              projectId: widget.projectId,
+              onSaveComplete: _loadImages,
+            ),
           ),
         );
+        if (mounted) {
+          setState(() => _imageRefreshKey++);
+        }
       },
       onDelete: () => _showDeleteDialog(imageFile),
     );
@@ -2286,6 +2291,7 @@ class GalleryPageState extends State<GalleryPage>
         builder: (context, constraints) {
           final Widget thumbnail = isStabilized
               ? StabilizedThumbnail(
+                  key: ValueKey('stab_thumb_${timestamp}_$_imageRefreshKey'),
                   thumbnailPath: thumbnailPath,
                   projectId: widget.projectId,
                 )
@@ -2382,6 +2388,11 @@ class GalleryPageState extends State<GalleryPage>
           loadImages: _loadImages,
           recompileVideoCallback: widget.recompileVideoCallback,
           settingsVersion: _settingsVersion,
+          isEyeBasedProject: _isEyeBasedProject,
+          initialInspectionMode: _isInspectionMode,
+          eyeOffsetX: widget.settingsCache?.eyeOffsetX ?? 0.065,
+          eyeOffsetY: widget.settingsCache?.eyeOffsetY ?? 0.421875,
+          aspectRatio: _aspectRatio,
         ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);

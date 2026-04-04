@@ -25,6 +25,7 @@ import '../manual_stab_page.dart';
 import '../stab_on_diff_face.dart';
 import 'gallery_widgets.dart';
 import 'gallery_image_menu.dart';
+import '../../widgets/grid_painter_se.dart';
 
 /// Top-level function for compute() - extracts image dimensions from file header.
 /// Runs in isolate to avoid blocking UI thread with image decoding.
@@ -207,6 +208,11 @@ class ImagePreviewNavigator extends StatefulWidget {
   final Future<void> Function() loadImages;
   final Future<void> Function() recompileVideoCallback;
   final ValueNotifier<int>? settingsVersion;
+  final bool isEyeBasedProject;
+  final bool initialInspectionMode;
+  final double eyeOffsetX;
+  final double eyeOffsetY;
+  final String aspectRatio;
 
   const ImagePreviewNavigator({
     super.key,
@@ -222,6 +228,11 @@ class ImagePreviewNavigator extends StatefulWidget {
     required this.loadImages,
     required this.recompileVideoCallback,
     this.settingsVersion,
+    this.isEyeBasedProject = false,
+    this.initialInspectionMode = false,
+    this.eyeOffsetX = 0.065,
+    this.eyeOffsetY = 0.421875,
+    this.aspectRatio = '9:16',
   });
 
   @override
@@ -240,6 +251,11 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
 
   // Active button state for raw/stabilized toggle
   String _activeButton = 'raw';
+
+  // Bumped after manual stabilization to force Image widget recreation
+  int _imageRefreshKey = 0;
+
+  bool _isInspectionMode = false;
 
   // Cache for image dimensions
   final Map<String, Size> _dimensionsCache = {};
@@ -266,6 +282,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
   void initState() {
     super.initState();
     _isRaw = widget.initialIsRaw;
+    _isInspectionMode = widget.initialInspectionMode;
     _activeButton = _isRaw ? 'raw' : widget.projectOrientation.toLowerCase();
     _currentIndex = widget.initialIndex.clamp(0, _currentList.length - 1);
     _pageController = PageController(initialPage: _currentIndex);
@@ -563,6 +580,29 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
               },
             ),
           ),
+          if (_isInspectionMode && !_isRaw)
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4CAF50).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: const Color(0xFF4CAF50).withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Text(
+                  'Inspection Mode',
+                  style: TextStyle(
+                    color: const Color(0xFF4CAF50),
+                    fontSize: AppTypography.sm,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
           const Spacer(),
           _buildCloseButton(),
         ],
@@ -605,7 +645,9 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
 
     if (!_isRaw && _activeButton != 'raw') {
       // Show stabilized image with status handling
+      final timestamp = path.basenameWithoutExtension(imagePath);
       Widget imageWidget = StabilizedImagePreview(
+        key: ValueKey('stab_preview_${timestamp}_$_imageRefreshKey'),
         thumbnailPath: FaceStabilizer.getStabThumbnailPath(imagePath),
         imagePath: imagePath,
         projectId: widget.projectId,
@@ -614,7 +656,6 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
 
       // Add date stamp overlay preview if enabled
       if (_exportDateStampEnabled) {
-        final timestamp = path.basenameWithoutExtension(imagePath);
         final timestampMs = int.tryParse(timestamp);
         if (timestampMs != null) {
           final formattedDate = DateStampUtils.formatTimestamp(
@@ -628,6 +669,30 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
             imagePath,
           );
         }
+      }
+
+      // Add inspection grid overlay if enabled
+      if (_isInspectionMode) {
+        imageWidget = Stack(
+          children: [
+            imageWidget,
+            Positioned.fill(
+              child: CustomPaint(
+                painter: GridPainterSE(
+                  widget.eyeOffsetX,
+                  widget.eyeOffsetY,
+                  null,
+                  null,
+                  null,
+                  widget.aspectRatio,
+                  widget.projectOrientation,
+                  hideToolTip: true,
+                  hideCorners: true,
+                ),
+              ),
+            ),
+          ],
+        );
       }
 
       return Center(child: imageWidget);
@@ -773,6 +838,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
         maxHeight: MediaQuery.of(context).size.height * 0.65,
       ),
       child: FormatAwareImage(
+        key: ValueKey('${imageFile.path}_$_imageRefreshKey'),
         imageFile: imageFile,
         fit: BoxFit.contain,
         errorWidget: Container(color: AppColors.overlay),
@@ -863,6 +929,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
           _buildDownloadButton(),
           _buildStabilizeToggleButton(),
           _buildRawToggleButton(),
+          if (widget.isEyeBasedProject) _buildInspectToggleButton(),
           _buildMoreOptionsButton(),
         ],
       ),
@@ -877,6 +944,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
       active: _gallerySaveSuccessful,
       activeColor: AppColors.success,
       onPressed: _gallerySaveIsLoading ? null : _saveImage,
+      tooltip: 'Save to device',
     );
   }
 
@@ -887,6 +955,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
       icon: Icons.video_stable,
       active: isStabilizedActive,
       onPressed: isStabilizedActive ? null : _switchToStabilized,
+      tooltip: 'Stabilized',
     );
   }
 
@@ -896,6 +965,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
       active: _activeButton == 'raw',
       iconSize: 25,
       onPressed: _activeButton == 'raw' ? null : _switchToRaw,
+      tooltip: 'Raw',
     );
   }
 
@@ -903,6 +973,26 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     return _buildActionButton(
       icon: Icons.more_vert,
       onPressed: _showOptionsMenu,
+      tooltip: 'More options',
+    );
+  }
+
+  Widget _buildInspectToggleButton() {
+    final bool isStabilizedView = !_isRaw;
+    final bool isActive = _isInspectionMode && isStabilizedView;
+    return Opacity(
+      opacity: isStabilizedView ? 1.0 : 0.3,
+      child: _buildActionButton(
+        icon: Icons.grid_on,
+        active: isActive,
+        activeColor: const Color(0xFF4CAF50),
+        onPressed: isStabilizedView
+            ? () => setState(() => _isInspectionMode = !_isInspectionMode)
+            : null,
+        tooltip: isStabilizedView
+            ? 'Inspection Mode'
+            : 'Inspection Mode — Available on Stabilized view only',
+      ),
     );
   }
 
@@ -912,9 +1002,10 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     bool active = false,
     Color? activeColor,
     double iconSize = 22,
+    String? tooltip,
   }) {
     activeColor ??= AppColors.settingsAccent;
-    return _buildIconButton(
+    Widget button = _buildIconButton(
       icon: icon,
       size: 40,
       radius: 12,
@@ -926,6 +1017,10 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
       iconSize: iconSize,
       onTap: onPressed,
     );
+    if (tooltip != null && isDesktop) {
+      button = Tooltip(message: tooltip, child: button);
+    }
+    return button;
   }
 
   Widget _buildIconButton({
@@ -1330,15 +1425,19 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     }
   }
 
-  void _navigateToManualStabilization(File imageFile) {
-    Utils.navigateToScreen(
-      context,
-      ManualStabilizationPage(
-        imagePath: imageFile.path,
-        projectId: widget.projectId,
-        onSaveComplete: widget.loadImages,
+  Future<void> _navigateToManualStabilization(File imageFile) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ManualStabilizationPage(
+          imagePath: imageFile.path,
+          projectId: widget.projectId,
+          onSaveComplete: widget.loadImages,
+        ),
       ),
     );
+    if (mounted) {
+      setState(() => _imageRefreshKey++);
+    }
   }
 
   Future<void> _showDeleteDialog(File imageFile) async {
