@@ -444,6 +444,12 @@ class StabilizedImagePreviewState extends State<StabilizedImagePreview>
   }
 
   @override
+  void didUpdateWidget(covariant StabilizedImagePreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    didUpdateThumbnailMixin(oldWidget.thumbnailPath);
+  }
+
+  @override
   void dispose() {
     disposeThumbnailMixin();
     super.dispose();

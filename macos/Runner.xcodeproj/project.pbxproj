@@ -250,6 +250,7 @@
 				A52A4B322E8C51350025310C /* ShellScript */,
 				33CC110E2044A8840003C045 /* Bundle Framework */,
 				3399D490228B24CF009A79C7 /* ShellScript */,
+				D1F4A2B83E9C50A700STRIP1 /* Strip Unused Assets */,
 				CE401954A0C7432FD89A768F /* [CP] Embed Pods Frameworks */,
 				BEBA6D915F9B01DC28358143 /* [CP] Copy Pods Resources */,
 			);
@@ -378,6 +379,25 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "echo \"$PRODUCT_NAME.app\" > \"$PROJECT_DIR\"/Flutter/ephemeral/.app_filename && \"$FLUTTER_ROOT\"/packages/flutter_tools/bin/macos_assemble.sh embed\n";
+		};
+		D1F4A2B83E9C50A700STRIP1 /* Strip Unused Assets */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Strip Unused Assets";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Strip unused plugin assets from flutter_assets.\n# These files are bundled by pub.dev plugins but never loaded\n# at runtime. See strip-savings.md for the full audit.\nROOT=\"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/App.framework/Versions/A/Resources/flutter_assets\"\nif [ ! -d \"$ROOT\" ]; then exit 0; fi\n\n# Unused TFLite models\nfor f in selfie_multiclass.tflite face_detection_full_range.tflite face_detection_full_range_sparse.tflite selfie_segmenter_landscape.tflite selfie_segmenter.tflite face_detection_front.tflite face_detection_short_range.tflite; do\n  rm -f \"$ROOT/packages/face_detection_tflite/assets/models/$f\"\ndone\nrm -f \"$ROOT/packages/pose_detection/assets/models/pose_landmark_full.tflite\"\n\n# Plugin sample images\nrm -rf \"$ROOT/packages/pose_detection/assets/samples\"\nrm -rf \"$ROOT/packages/dog_detection/assets/samples\"\nrm -rf \"$ROOT/packages/animal_detection/assets/samples\"\n\n# Web-only assets\nrm -rf \"$ROOT/packages/flutter_avif_web\"\nrm -rf \"$ROOT/packages/media_kit/assets/web\"\nrm -f \"$ROOT/packages/wakelock_plus/assets/no_sleep.js\"\n";
 		};
 		33CC111E2044C6BF0003C045 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;

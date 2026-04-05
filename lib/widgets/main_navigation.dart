@@ -128,45 +128,53 @@ class MainNavigationState extends State<MainNavigation>
     _stabSubscription = StabilizationService.instance.progressStream.listen((
       progress,
     ) {
-      if (mounted) {
-        final prevState = _stabProgress.state;
-        setState(() => _stabProgress = progress);
+      if (!mounted) return;
 
-        // Emit typed events for UI components (gallery, app bar, project page)
-        switch (progress.state) {
-          case StabilizationState.stabilizing:
+      // Ignore progress events from other projects to prevent stale UI
+      // (e.g. blue bar flashing when switching projects).
+      // null projectId means idle/global — always accept those.
+      if (progress.projectId != null &&
+          progress.projectId != widget.projectId) {
+        return;
+      }
+
+      final prevState = _stabProgress.state;
+      setState(() => _stabProgress = progress);
+
+      // Emit typed events for UI components (gallery, app bar, project page)
+      switch (progress.state) {
+        case StabilizationState.stabilizing:
+          _stabUpdateController.add(
+            StabUpdateEvent.photoStabilized(
+              progress.currentPhoto,
+              timestamp: progress.lastStabilizedTimestamp,
+            ),
+          );
+          break;
+        case StabilizationState.completed:
+          _stabUpdateController.add(StabUpdateEvent.stabilizationComplete());
+          // Refresh master photo lists so data is fresh when gallery mounts
+          loadPhotos();
+          break;
+        case StabilizationState.compilingVideo:
+          // Emit completion when video starts (stabilization done)
+          // Only emit once when transitioning to video phase
+          if (prevState != StabilizationState.compilingVideo) {
             _stabUpdateController.add(
-              StabUpdateEvent.photoStabilized(
-                progress.currentPhoto,
-                timestamp: progress.lastStabilizedTimestamp,
-              ),
+              StabUpdateEvent.stabilizationComplete(),
             );
-            break;
-          case StabilizationState.completed:
-            _stabUpdateController.add(StabUpdateEvent.stabilizationComplete());
             // Refresh master photo lists so data is fresh when gallery mounts
             loadPhotos();
-            break;
-          case StabilizationState.compilingVideo:
-            // Emit completion when video starts (stabilization done)
-            // Only emit once when transitioning to video phase
-            if (prevState != StabilizationState.compilingVideo) {
-              _stabUpdateController.add(
-                StabUpdateEvent.stabilizationComplete(),
-              );
-              // Refresh master photo lists so data is fresh when gallery mounts
-              loadPhotos();
-            }
-            break;
-          case StabilizationState.cancelled:
-            _stabUpdateController.add(StabUpdateEvent.cancelled());
-            break;
-          case StabilizationState.error:
-            _stabUpdateController.add(StabUpdateEvent.error());
-            break;
-          default:
-            break;
-        }
+          }
+          break;
+        case StabilizationState.cancelled:
+          _stabUpdateController.add(StabUpdateEvent.cancelled());
+          break;
+        case StabilizationState.error:
+          _stabUpdateController.add(StabUpdateEvent.error());
+          break;
+        default:
+          break;
       }
     });
 

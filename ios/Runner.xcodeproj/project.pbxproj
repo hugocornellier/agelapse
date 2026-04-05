@@ -207,6 +207,7 @@
 				97C146EC1CF9000F007C117D /* Resources */,
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
+				D1F4A2B83E9C50A700STRIP2 /* Strip Unused Assets */,
 				1FDF6F2858E8877F066CFADB /* [CP] Embed Pods Frameworks */,
 				94C8601A9580C0A2FC7A24A4 /* [CP] Copy Pods Resources */,
 			);
@@ -315,6 +316,25 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" embed_and_thin";
+		};
+		D1F4A2B83E9C50A700STRIP2 /* Strip Unused Assets */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Strip Unused Assets";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Strip unused plugin assets from flutter_assets.\n# These files are bundled by pub.dev plugins but never loaded\n# at runtime. See strip-savings.md for the full audit.\nROOT=\"${BUILT_PRODUCTS_DIR}/Runner.app/Frameworks/App.framework/flutter_assets\"\nif [ ! -d \"$ROOT\" ]; then exit 0; fi\n\n# Unused TFLite models\nfor f in selfie_multiclass.tflite face_detection_full_range.tflite face_detection_full_range_sparse.tflite selfie_segmenter_landscape.tflite selfie_segmenter.tflite face_detection_front.tflite face_detection_short_range.tflite; do\n  rm -f \"$ROOT/packages/face_detection_tflite/assets/models/$f\"\ndone\nrm -f \"$ROOT/packages/pose_detection/assets/models/pose_landmark_full.tflite\"\n\n# Plugin sample images\nrm -rf \"$ROOT/packages/pose_detection/assets/samples\"\nrm -rf \"$ROOT/packages/dog_detection/assets/samples\"\nrm -rf \"$ROOT/packages/animal_detection/assets/samples\"\n\n# Web-only assets\nrm -rf \"$ROOT/packages/flutter_avif_web\"\nrm -rf \"$ROOT/packages/media_kit/assets/web\"\nrm -f \"$ROOT/packages/wakelock_plus/assets/no_sleep.js\"\n";
 		};
 		72F78916398F17261832AD76 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;

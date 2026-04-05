@@ -172,6 +172,25 @@ class GalleryUtils {
     return path.basename(a).compareTo(path.basename(b));
   }
 
+  /// Natural-order comparison: splits basenames into alpha/numeric chunks
+  /// so that e.g. IMG_2 sorts before IMG_10.
+  static int compareNatural(String a, String b) {
+    final re = RegExp(r'(\d+|\D+)');
+    final aParts = re.allMatches(path.basenameWithoutExtension(a)).toList();
+    final bParts = re.allMatches(path.basenameWithoutExtension(b)).toList();
+    for (var i = 0; i < aParts.length && i < bParts.length; i++) {
+      final aStr = aParts[i].group(0)!;
+      final bStr = bParts[i].group(0)!;
+      final aNum = int.tryParse(aStr);
+      final bNum = int.tryParse(bStr);
+      final cmp = (aNum != null && bNum != null)
+          ? aNum.compareTo(bNum)
+          : aStr.compareTo(bStr);
+      if (cmp != 0) return cmp;
+    }
+    return aParts.length.compareTo(bParts.length);
+  }
+
   static var fileList = [];
   static int _batchTotal = 0;
   static int _batchDone = 0;

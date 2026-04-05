@@ -24,6 +24,8 @@ class GridPainterSE extends CustomPainter {
   final String dateStampFontFamily;
   final bool watermarkEnabled;
   final String? watermarkPosition;
+  final double dateStampMarginPercentH;
+  final double dateStampMarginPercentV;
 
   GridPainterSE(
     this.offsetX,
@@ -44,6 +46,8 @@ class GridPainterSE extends CustomPainter {
     this.dateStampFontFamily = 'Inter',
     this.watermarkEnabled = false,
     this.watermarkPosition,
+    this.dateStampMarginPercentH = 2.0,
+    this.dateStampMarginPercentV = 2.0,
   });
 
   @override
@@ -239,9 +243,8 @@ class GridPainterSE extends CustomPainter {
     );
     textPainter.layout(maxWidth: size.width * 0.8);
 
-    // Calculate position with 2% margin
-    final marginX = size.width * 0.02;
-    final marginY = size.height * 0.02;
+    final marginX = size.width * (dateStampMarginPercentH / 100);
+    final marginY = size.height * (dateStampMarginPercentV / 100);
 
     double x, y;
     switch (dateStampPosition.toLowerCase()) {
@@ -271,7 +274,7 @@ class GridPainterSE extends CustomPainter {
         watermarkPosition != null &&
         dateStampPosition.toLowerCase() == watermarkPosition!.toLowerCase()) {
       final isLower = dateStampPosition.toLowerCase().contains('lower');
-      final offset = size.height * 0.06;
+      final offset = size.height * 0.05;
       y += isLower ? -offset : offset;
     }
 
@@ -329,6 +332,8 @@ class GridPainterSE extends CustomPainter {
         dateStampOpacity != oldDelegate.dateStampOpacity ||
         dateStampFontFamily != oldDelegate.dateStampFontFamily ||
         watermarkEnabled != oldDelegate.watermarkEnabled ||
-        watermarkPosition != oldDelegate.watermarkPosition;
+        watermarkPosition != oldDelegate.watermarkPosition ||
+        dateStampMarginPercentH != oldDelegate.dateStampMarginPercentH ||
+        dateStampMarginPercentV != oldDelegate.dateStampMarginPercentV;
   }
 }

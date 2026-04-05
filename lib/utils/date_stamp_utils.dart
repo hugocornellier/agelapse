@@ -72,6 +72,24 @@ class DateStampUtils {
   /// Sentinel value for export size "Same as thumbnail" option.
   static const int sizeSameAsGallery = 0;
 
+  /// Approximate pixel margins for each export margin level (1-6) at 1080p reference.
+  static const List<int> exportMarginApproxPx = [11, 22, 32, 43, 54, 65];
+
+  /// Default export date stamp margin level.
+  static const int defaultMarginPercent = 2;
+
+  /// Sentinel value for "Custom" margin option (independent H/V percentages).
+  static const int marginCustom = 0;
+
+  /// Validate a custom margin percentage string. Returns null if valid.
+  static String? validateCustomMargin(String value) {
+    final parsed = double.tryParse(value);
+    if (parsed == null) return 'Must be a number';
+    if (parsed < 0.5) return 'Minimum 0.5%';
+    if (parsed > 15.0) return 'Maximum 15.0%';
+    return null;
+  }
+
   // Font options (bundled, copyright-free fonts)
   static const String fontInter = 'Inter';
   static const String fontRoboto = 'Roboto';
@@ -204,17 +222,19 @@ class DateStampUtils {
   /// [textWidth] - Width of the rendered text in pixels
   /// [textHeight] - Height of the rendered text in pixels
   /// [position] - Corner position (e.g., 'lower right')
-  /// [marginPercent] - Margin from edge as percentage (default 2%)
+  /// [marginPercentH] - Horizontal margin from edge as percentage (default 2%)
+  /// [marginPercentV] - Vertical margin from edge as percentage (default 2%)
   static Offset calculatePosition({
     required double imageWidth,
     required double imageHeight,
     required double textWidth,
     required double textHeight,
     required String position,
-    double marginPercent = 2.0,
+    double marginPercentH = 2.0,
+    double marginPercentV = 2.0,
   }) {
-    final double marginX = imageWidth * (marginPercent / 100);
-    final double marginY = imageHeight * (marginPercent / 100);
+    final double marginX = imageWidth * (marginPercentH / 100);
+    final double marginY = imageHeight * (marginPercentV / 100);
 
     double x, y;
 
@@ -492,6 +512,8 @@ Examples
     required double opacity,
     double watermarkVerticalOffset = 0.0,
     String? fontFamily,
+    double marginPercentH = 2.0,
+    double marginPercentV = 2.0,
   }) async {
     try {
       LogService.instance.log(
@@ -562,7 +584,8 @@ Examples
         textWidth: textPainter.width,
         textHeight: textPainter.height,
         position: position,
-        marginPercent: 2.0,
+        marginPercentH: marginPercentH,
+        marginPercentV: marginPercentV,
       );
 
       // Apply watermark offset to avoid overlap
@@ -619,6 +642,8 @@ Examples
     String? watermarkPosition,
     void Function(int current, int total)? onProgress,
     String? fontFamily,
+    double marginPercentH = 2.0,
+    double marginPercentV = 2.0,
   }) async {
     LogService.instance.log(
       "[DATE_STAMP] processBatchWithDateStamps called: ${inputPaths.length} files, format=$format, position=$position",
@@ -663,11 +688,14 @@ Examples
       double watermarkOffset = 0.0;
       if (watermarkPosition != null &&
           position.toLowerCase() == watermarkPosition.toLowerCase()) {
-        // Estimate based on typical text height (will be proportional to image)
-        // Negative for lower corners (move up), positive for upper (move down)
         final isLowerCorner = position.toLowerCase().contains('lower');
-        // Use a proportional offset - roughly 4% of typical image height + gap
-        watermarkOffset = isLowerCorner ? -60.0 : 60.0;
+        final imageBytes = await File(inputPath).readAsBytes();
+        final codec = await ui.instantiateImageCodec(imageBytes);
+        final frame = await codec.getNextFrame();
+        final imageHeight = frame.image.height.toDouble();
+        frame.image.dispose();
+        watermarkOffset =
+            isLowerCorner ? -(imageHeight * 0.05) : (imageHeight * 0.05);
       }
 
       // Composite date
@@ -680,6 +708,8 @@ Examples
         opacity: opacity,
         watermarkVerticalOffset: watermarkOffset,
         fontFamily: fontFamily,
+        marginPercentH: marginPercentH,
+        marginPercentV: marginPercentV,
       );
 
       if (success) {

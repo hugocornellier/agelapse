@@ -410,8 +410,10 @@ class VideoUtils {
       return null;
     }
 
-    int marginV = 8;
-    int marginH = 8;
+    final (marginSettingH, marginSettingV) =
+        await SettingsUtil.loadResolvedMargin(projectIdStr);
+    int marginV = (videoHeight * marginSettingV / 100).round();
+    int marginH = (videoWidth * marginSettingH / 100).round();
 
     // Check for watermark collision and adjust margin
     final bool sameCornerAsWatermark =

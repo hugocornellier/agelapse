@@ -224,25 +224,39 @@ class CustomAppBarState extends State<CustomAppBar> {
     Future<void> Function() recompileVideoCallback,
     SettingsCache? settingsCache,
   ) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      // Use a very fast animation to minimize perceived lag from shader compilation
-      transitionAnimationController: AnimationController(
-        duration: const Duration(milliseconds: 150),
-        vsync: Navigator.of(context),
-      ),
-      builder: (context) {
-        return SettingsSheet(
+    if (isDesktop) {
+      showDialog(
+        context: context,
+        builder: (context) => SettingsSheet(
           projectId: projectId,
           stabCallback: stabCallback,
           cancelStabCallback: cancelStabCallback,
           refreshSettings: refreshSettingsIn,
           clearRawAndStabPhotos: clearRawAndStabPhotos,
           recompileVideoCallback: recompileVideoCallback,
-        );
-      },
-    );
+        ),
+      );
+    } else {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        // Use a very fast animation to minimize perceived lag from shader compilation
+        transitionAnimationController: AnimationController(
+          duration: const Duration(milliseconds: 150),
+          vsync: Navigator.of(context),
+        ),
+        builder: (context) {
+          return SettingsSheet(
+            projectId: projectId,
+            stabCallback: stabCallback,
+            cancelStabCallback: cancelStabCallback,
+            refreshSettings: refreshSettingsIn,
+            clearRawAndStabPhotos: clearRawAndStabPhotos,
+            recompileVideoCallback: recompileVideoCallback,
+          );
+        },
+      );
+    }
   }
 
   static Future<bool> _isDefaultProject(int projectId) async {

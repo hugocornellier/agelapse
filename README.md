@@ -54,6 +54,7 @@ The face detection model used by AgeLapse is platform-dependent. On Mobile, Goog
 - Linked source folders
 - Preserve original files on import (metadata, filenames, byte for byte)
 - Date stamp font size setting
+- Inspection mode for gallery and image preview (overlay stabilization grid to verify alignment)
 
 #### Improvements
 - Consolidate app colours and theme

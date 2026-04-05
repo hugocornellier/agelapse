@@ -321,6 +321,8 @@ class GalleryExportHandler {
             exportFont,
             galleryFont,
           );
+          final (dateMarginH, dateMarginV) =
+              await SettingsUtil.loadResolvedMargin(projectIdStr);
 
           // Load watermark settings for overlap prevention
           final watermarkEnabled = await SettingsUtil.loadWatermarkSetting(
@@ -359,6 +361,8 @@ class GalleryExportHandler {
               setExportProgress((current / total) * 30);
             },
             fontFamily: resolvedFont,
+            marginPercentH: dateMarginH,
+            marginPercentV: dateMarginV,
           );
 
           // Replace stabilized list with date-stamped versions

@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -44,6 +45,8 @@ class _ImportPreviewDialogState extends State<ImportPreviewDialog> {
   String _sortColumn = 'date';
   bool _sortAscending = true;
   bool _infoExpanded = true;
+  bool _useFilenameOrder = false;
+  List<ImportPreviewItem> _originalItems = [];
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -77,6 +80,7 @@ class _ImportPreviewDialogState extends State<ImportPreviewDialog> {
     if (!_isCancelled && mounted) {
       setState(() {
         _items.sort((a, b) => a.displayDate.compareTo(b.displayDate));
+        _originalItems = List.of(_items);
         _isProcessing = false;
       });
     }
@@ -268,6 +272,23 @@ class _ImportPreviewDialogState extends State<ImportPreviewDialog> {
     );
   }
 
+  void _onToggleFilenameOrder(bool value) {
+    setState(() {
+      _useFilenameOrder = value;
+      if (value) {
+        _items.sort(
+            (a, b) => GalleryUtils.compareNatural(a.filePath, b.filePath));
+        _sortColumn = 'file';
+        _sortAscending = true;
+      } else {
+        _items.clear();
+        _items.addAll(List.of(_originalItems));
+        _sortColumn = 'date';
+        _sortAscending = true;
+      }
+    });
+  }
+
   void _onSort(String column) {
     setState(() {
       if (_sortColumn == column) {
@@ -405,6 +426,25 @@ class _ImportPreviewDialogState extends State<ImportPreviewDialog> {
                   iconBackgroundColor: AppColors.accent.withValues(alpha: 0.15),
                 ),
                 const Spacer(),
+                Text(
+                  'Order by Filename (Force)',
+                  style: TextStyle(
+                    fontSize: AppTypography.sm,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                SizedBox(
+                  height: 24,
+                  child: FittedBox(
+                    child: CupertinoSwitch(
+                      value: _useFilenameOrder,
+                      onChanged: _onToggleFilenameOrder,
+                      activeTrackColor: AppColors.accent,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
                 Text(
                   '${_items.length} files',
                   style: TextStyle(

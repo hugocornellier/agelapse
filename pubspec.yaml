@@ -21,9 +21,9 @@ dependencies:
   device_info_plus: ^12.4.0
   downloadsfolder: ^1.2.0
   exif_reader: ^4.1.0
-  cat_detection: ^0.0.10
-  dog_detection: ^0.0.10
-  face_detection_tflite: ^5.0.12
+  cat_detection: ^1.0.0
+  dog_detection: ^1.0.0
+  face_detection_tflite: ^5.0.13
   ffmpeg_kit_flutter_new:
     git:
       url: https://github.com/hugocornellier/ffmpeg_kit_flutter.git
@@ -34,14 +34,13 @@ dependencies:
     sdk: flutter
   flutter_avif: ^3.1.0
   flutter_colorpicker: ^1.1.0
-  flutter_email_sender: ^8.0.0
   flutter_launcher_icons: ^0.14.4
   flutter_local_notifications: ^21.0.0
   flutter_native_splash: ^2.4.7
   flutter_svg: ^2.2.4
   flutter_timezone: ^5.0.2
   font_awesome_flutter: ^11.0.0
-  heic_native: ^0.1.0
+  heic_native: ^0.1.1
   intl: ^0.20.2
   media_kit: ^1.2.6
   media_kit_libs_linux: ^1.2.1
@@ -53,7 +52,7 @@ dependencies:
   path: ^1.9.1
   path_provider: ^2.1.5
   permission_handler: ^12.0.1
-  pose_detection: ^2.0.6
+  pose_detection: ^2.0.7
   provider: ^6.1.5
   saver_gallery: ^4.1.0
   sensors_plus: ^7.0.0
@@ -91,7 +90,6 @@ flutter:
   assets:
     - assets/images/
     - assets/ghost-custom.svg
-    - assets/relax.svg
     # ffmpeg.exe is only needed on Windows (Android uses FFmpegKit, macOS/Linux
     # use system ffmpeg). The platforms: key ensures it's only bundled for Windows.
     - path: assets/ffmpeg/windows/ffmpeg.exe

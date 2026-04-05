@@ -61,7 +61,7 @@ PODS:
     - Flutter
   - flutter_timezone (0.0.1):
     - Flutter
-  - heic2png (0.0.6):
+  - heic_native (0.1.0):
     - Flutter
   - integration_test (0.0.1):
     - Flutter
@@ -137,7 +137,7 @@ DEPENDENCIES:
   - flutter_local_notifications (from `.symlinks/plugins/flutter_local_notifications/ios`)
   - flutter_native_splash (from `.symlinks/plugins/flutter_native_splash/ios`)
   - flutter_timezone (from `.symlinks/plugins/flutter_timezone/ios`)
-  - heic2png (from `.symlinks/plugins/heic2png/ios`)
+  - heic_native (from `.symlinks/plugins/heic_native/ios`)
   - integration_test (from `.symlinks/plugins/integration_test/ios`)
   - media_kit_video (from `.symlinks/plugins/media_kit_video/ios`)
   - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
@@ -190,8 +190,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/flutter_native_splash/ios"
   flutter_timezone:
     :path: ".symlinks/plugins/flutter_timezone/ios"
-  heic2png:
-    :path: ".symlinks/plugins/heic2png/ios"
+  heic_native:
+    :path: ".symlinks/plugins/heic_native/ios"
   integration_test:
     :path: ".symlinks/plugins/integration_test/ios"
   media_kit_video:
@@ -238,7 +238,7 @@ SPEC CHECKSUMS:
   flutter_local_notifications: 643a3eda1ce1c0599413ca31672536d423dee214
   flutter_native_splash: c32d145d68aeda5502d5f543ee38c192065986cf
   flutter_timezone: 7c838e17ffd4645d261e87037e5bebf6d38fe544
-  heic2png: 53310012d6c9dc0ba887733017dd63885440ea95
+  heic_native: 83fcefd4a17cf94a8c17e8934c9b446a33054399
   integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
   media_kit_video: f3b0d035d89def15cfbbcf7dc2ae278f201e2f83
   package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499

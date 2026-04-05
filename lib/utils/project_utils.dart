@@ -22,7 +22,11 @@ class ProjectUtils {
   static Future<int?> calculateStreak(int projectId) async {
     final photos = await DB.instance.getPhotosByProjectIDNewestFirst(projectId);
     if (photos.isEmpty) return 0;
-    return _calculatePhotoStreak(photos);
+    final streak = _calculatePhotoStreak(photos);
+    LogService.instance.log(
+      '[Streak] projectId=$projectId photos=${photos.length} result=$streak',
+    );
+    return streak;
   }
 
   /// Returns the difference in whole calendar days, ignoring DST hour shifts.
@@ -382,7 +386,19 @@ class ProjectUtils {
     final DateTime latestPhotoDate = uniqueDates[0];
     final DateTime todayLocalLike = _dateOnlyUtc(now ?? DateTime.now());
     final int headDiff = getTimeDiff(latestPhotoDate, todayLocalLike);
-    if (headDiff > 1) return 0;
+
+    // Log all unique days so we can diagnose gaps anywhere in the streak
+    final allDays = uniqueDates.map((d) => d.toIso8601String()).toList();
+    LogService.instance.log(
+      '[Streak] today=$todayLocalLike latest=$latestPhotoDate headDiff=$headDiff '
+      'deviceOffset=${DateTime.now().timeZoneOffset.inMinutes}min '
+      'uniqueDays=${uniqueDates.length} days=$allDays',
+    );
+
+    if (headDiff > 1) {
+      LogService.instance.log('[Streak] headDiff>1, returning 0');
+      return 0;
+    }
 
     for (int i = 1; i < uniqueDates.length; i++) {
       final DateTime currentDate = uniqueDates[i];
@@ -390,12 +406,37 @@ class ProjectUtils {
 
       final int diff = getTimeDiff(currentDate, previousDate);
       if (diff != 1) {
+        // Log raw photo data around the gap for diagnosis
+        _logPhotosAroundGap(photos, previousDate, currentDate);
+        LogService.instance.log(
+          '[Streak] gap at i=$i: $currentDate→$previousDate diff=$diff, '
+          'returning streak=$streak',
+        );
         return streak;
       }
       streak++;
     }
 
     return streak;
+  }
+
+  /// Logs raw timestamps and offsets for photos on the two days surrounding
+  /// a streak gap, so we can diagnose timezone/offset issues from exported logs.
+  static void _logPhotosAroundGap(
+    List<Map<String, dynamic>> photos,
+    DateTime dayBefore,
+    DateTime dayAfter,
+  ) {
+    for (final photo in photos) {
+      final day = _photoCaptureDayUtc(photo);
+      if (day == dayBefore || day == dayAfter) {
+        final ts = _parsePhotoTimestamp(photo);
+        final offset = CaptureTimezone.extractOffset(photo);
+        LogService.instance.log(
+          '[Streak] gap-adjacent photo: ts=$ts offset=$offset day=$day',
+        );
+      }
+    }
   }
 
   static Future<ui.Image> loadImageData(String imagePath) async {

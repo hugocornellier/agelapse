@@ -320,6 +320,20 @@ class CameraUtils {
           sourceLocationType: sourceLocationType,
         );
 
+        // Set capture timezone offset so streak/date calculations stay
+        // correct across DST transitions instead of falling back to
+        // the device's current offset at query time.
+        final int tsInt = int.parse(timestamp);
+        final int captureOffsetMin = DateTime.fromMillisecondsSinceEpoch(
+          tsInt,
+          isUtc: true,
+        ).toLocal().timeZoneOffset.inMinutes;
+        await DB.instance.setCaptureOffsetMinutesByTimestamp(
+          timestamp,
+          projectId,
+          captureOffsetMin,
+        );
+
         if (refreshSettings != null) {
           refreshSettings();
         }
