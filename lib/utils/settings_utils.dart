@@ -197,7 +197,8 @@ class SettingsUtil {
       _loadBoolSetting('opened_nonempty_gallery', projectId, false);
 
   static Future<void> setHasOpenedNonEmptyGalleryToTrue(
-          String projectIdStr) async =>
+    String projectIdStr,
+  ) async =>
       _setBoolToTrue('opened_nonempty_gallery', projectIdStr);
 
   static Future<bool> hasTakenFirstPhoto(String projectId) async =>
@@ -431,7 +432,10 @@ class SettingsUtil {
   /// Load gallery date format (per-project)
   static Future<String> loadGalleryDateFormat(String projectId) async =>
       _loadNonEmptyStringSetting(
-          'gallery_date_format', projectId, fallbackGalleryDateFormat);
+        'gallery_date_format',
+        projectId,
+        fallbackGalleryDateFormat,
+      );
 
   /// Load whether export date stamp is enabled (per-project)
   static Future<bool> loadExportDateStampEnabled(String projectId) async =>
@@ -440,17 +444,26 @@ class SettingsUtil {
   /// Load export date stamp position (per-project)
   static Future<String> loadExportDateStampPosition(String projectId) async =>
       _loadNonEmptyStringSetting(
-          'export_date_stamp_position', projectId, fallbackDateStampPosition);
+        'export_date_stamp_position',
+        projectId,
+        fallbackDateStampPosition,
+      );
 
   /// Load export date stamp format (per-project)
   static Future<String> loadExportDateStampFormat(String projectId) async =>
       _loadNonEmptyStringSetting(
-          'export_date_stamp_format', projectId, fallbackExportDateFormat);
+        'export_date_stamp_format',
+        projectId,
+        fallbackExportDateFormat,
+      );
 
   /// Load export date stamp size percentage (per-project)
   static Future<int> loadExportDateStampSize(String projectId) =>
       _loadIntSetting(
-          'export_date_stamp_size', projectId, fallbackDateStampSizePercent);
+        'export_date_stamp_size',
+        projectId,
+        fallbackDateStampSizePercent,
+      );
 
   /// Load export date stamp opacity (per-project)
   static Future<double> loadExportDateStampOpacity(String projectId) =>
@@ -506,8 +519,11 @@ class SettingsUtil {
         LogService.instance.log(
           'Custom font $font no longer available, resetting to $defaultValue',
         );
-        await DB.instance
-            .setSettingByTitle(settingKey, defaultValue, projectId);
+        await DB.instance.setSettingByTitle(
+          settingKey,
+          defaultValue,
+          projectId,
+        );
         return defaultValue;
       }
 
@@ -554,17 +570,28 @@ class SettingsUtil {
   /// Load export date stamp margin percentage (per-project, 0=custom, 1-6)
   static Future<int> loadExportDateStampMargin(String projectId) =>
       _loadIntSettingClamped(
-          'export_date_stamp_margin', projectId, fallbackDateStampMargin, 0, 6);
+        'export_date_stamp_margin',
+        projectId,
+        fallbackDateStampMargin,
+        0,
+        6,
+      );
 
   /// Load custom export date stamp horizontal margin % (per-project)
   static Future<double> loadExportDateStampMarginH(String projectId) =>
       _loadDoubleSetting(
-          'export_date_stamp_margin_h', projectId, fallbackDateStampMarginH);
+        'export_date_stamp_margin_h',
+        projectId,
+        fallbackDateStampMarginH,
+      );
 
   /// Load custom export date stamp vertical margin % (per-project)
   static Future<double> loadExportDateStampMarginV(String projectId) =>
       _loadDoubleSetting(
-          'export_date_stamp_margin_v', projectId, fallbackDateStampMarginV);
+        'export_date_stamp_margin_v',
+        projectId,
+        fallbackDateStampMarginV,
+      );
 
   /// Resolve margin: preset (1-6) uses uniform %, custom (0) uses independent H/V.
   static (double h, double v) resolveMargin(
@@ -581,7 +608,8 @@ class SettingsUtil {
 
   /// Load resolved margin (convenience for callers that load directly from DB).
   static Future<(double h, double v)> loadResolvedMargin(
-      String projectId) async {
+    String projectId,
+  ) async {
     final results = await Future.wait([
       loadExportDateStampMargin(projectId),
       loadExportDateStampMarginH(projectId),
@@ -597,7 +625,10 @@ class SettingsUtil {
   // ==================== Private Helpers ====================
 
   static Future<bool> _loadBoolSetting(
-      String key, String? projectId, bool defaultValue) async {
+    String key,
+    String? projectId,
+    bool defaultValue,
+  ) async {
     try {
       final s = await DB.instance.getSettingValueByTitle(key, projectId);
       return bool.tryParse(s) ?? defaultValue;
@@ -607,7 +638,10 @@ class SettingsUtil {
   }
 
   static Future<String> _loadStringSetting(
-      String key, String? projectId, String defaultValue) async {
+    String key,
+    String? projectId,
+    String defaultValue,
+  ) async {
     try {
       return await DB.instance.getSettingValueByTitle(key, projectId);
     } catch (_) {
@@ -616,7 +650,10 @@ class SettingsUtil {
   }
 
   static Future<String> _loadNonEmptyStringSetting(
-      String key, String? projectId, String defaultValue) async {
+    String key,
+    String? projectId,
+    String defaultValue,
+  ) async {
     try {
       final s = await DB.instance.getSettingValueByTitle(key, projectId);
       return s.isNotEmpty ? s : defaultValue;
@@ -630,7 +667,10 @@ class SettingsUtil {
   }
 
   static Future<int> _loadIntSetting(
-      String key, String? projectId, int defaultValue) async {
+    String key,
+    String? projectId,
+    int defaultValue,
+  ) async {
     try {
       final s = await DB.instance.getSettingValueByTitle(key, projectId);
       return int.tryParse(s) ?? defaultValue;
@@ -640,7 +680,10 @@ class SettingsUtil {
   }
 
   static Future<double> _loadDoubleSetting(
-      String key, String? projectId, double defaultValue) async {
+    String key,
+    String? projectId,
+    double defaultValue,
+  ) async {
     try {
       final s = await DB.instance.getSettingValueByTitle(key, projectId);
       return double.tryParse(s) ?? defaultValue;
@@ -650,7 +693,12 @@ class SettingsUtil {
   }
 
   static Future<int> _loadIntSettingClamped(
-      String key, String projectId, int defaultValue, int min, int max) async {
+    String key,
+    String projectId,
+    int defaultValue,
+    int min,
+    int max,
+  ) async {
     try {
       final s = await DB.instance.getSettingValueByTitle(key, projectId);
       return (int.tryParse(s) ?? defaultValue).clamp(min, max);
@@ -670,8 +718,10 @@ class SettingsUtil {
     final String colName = (orientation == 'landscape')
         ? "${prefix}Offset${axis}Landscape"
         : "${prefix}Offset${axis}Portrait";
-    return await DB.instance
-        .getSettingValueByTitle(colName, projectId.toString());
+    return await DB.instance.getSettingValueByTitle(
+      colName,
+      projectId.toString(),
+    );
   }
 
   /// Load all date stamp settings at once for efficiency
@@ -758,7 +808,10 @@ class DateStampSettings {
 
   /// Get resolved margin (handles preset vs custom).
   (double h, double v) get resolvedMargin => SettingsUtil.resolveMargin(
-      exportMarginPercent, exportMarginH, exportMarginV);
+        exportMarginPercent,
+        exportMarginH,
+        exportMarginV,
+      );
 
   /// Default settings
   static const DateStampSettings defaults = DateStampSettings(

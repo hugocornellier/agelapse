@@ -171,8 +171,11 @@ void main() {
 
       expect(nose, isNotNull, reason: 'Nose not detected');
       expect(rightAnkle, isNotNull, reason: 'Right ankle not detected');
-      expect(nose!.y, lessThan(rightAnkle!.y),
-          reason: 'Nose should be above right ankle');
+      expect(
+        nose!.y,
+        lessThan(rightAnkle!.y),
+        reason: 'Nose should be above right ankle',
+      );
     });
 
     testWidgets('pregnancy2 detects at least 1 person', (tester) async {
@@ -207,12 +210,16 @@ void main() {
 
       expect(nose, isNotNull, reason: 'Nose not detected');
       expect(rightAnkle, isNotNull, reason: 'Right ankle not detected');
-      expect(nose!.y, lessThan(rightAnkle!.y),
-          reason: 'Nose should be above right ankle');
+      expect(
+        nose!.y,
+        lessThan(rightAnkle!.y),
+        reason: 'Nose should be above right ankle',
+      );
     });
 
-    testWidgets('pregnancy landmarks have reasonable visibility',
-        (tester) async {
+    testWidgets('pregnancy landmarks have reasonable visibility', (
+      tester,
+    ) async {
       if (!await initAppAndFixtures(tester)) return;
 
       final path = await getSamplePosePathAsync('pregnancy1.jpg');
@@ -226,10 +233,16 @@ void main() {
       final nose = pose.getLandmark(PoseLandmarkType.nose)!;
       final rightAnkle = pose.getLandmark(PoseLandmarkType.rightAnkle)!;
 
-      expect(nose.visibility, greaterThan(0.5),
-          reason: 'Nose visibility too low for pregnancy stabilization');
-      expect(rightAnkle.visibility, greaterThan(0.3),
-          reason: 'Right ankle visibility too low for pregnancy stabilization');
+      expect(
+        nose.visibility,
+        greaterThan(0.5),
+        reason: 'Nose visibility too low for pregnancy stabilization',
+      );
+      expect(
+        rightAnkle.visibility,
+        greaterThan(0.3),
+        reason: 'Right ankle visibility too low for pregnancy stabilization',
+      );
     });
 
     testWidgets('full body chain present (nose to ankles)', (tester) async {
@@ -284,15 +297,24 @@ void main() {
       final dy = (rightAnkle.y - nose.y).abs();
       final hypotenuse = sqrt(dx * dx + dy * dy);
 
-      expect(hypotenuse, greaterThan(0),
-          reason: 'Nose-to-ankle distance is zero — cannot compute scale');
+      expect(
+        hypotenuse,
+        greaterThan(0),
+        reason: 'Nose-to-ankle distance is zero — cannot compute scale',
+      );
 
       // Rotation should be computable (non-NaN)
       final rotationRaw = 90 - (atan2(dy, dx) * (180 / pi));
-      expect(rotationRaw.isNaN, false,
-          reason: 'Rotation calculation produced NaN');
-      expect(rotationRaw.isInfinite, false,
-          reason: 'Rotation calculation produced infinity');
+      expect(
+        rotationRaw.isNaN,
+        false,
+        reason: 'Rotation calculation produced NaN',
+      );
+      expect(
+        rotationRaw.isInfinite,
+        false,
+        reason: 'Rotation calculation produced infinity',
+      );
     });
   });
 
@@ -382,10 +404,16 @@ void main() {
       final leftHip = pose.getLandmark(PoseLandmarkType.leftHip)!;
       final rightHip = pose.getLandmark(PoseLandmarkType.rightHip)!;
 
-      expect(leftHip.visibility, greaterThan(0.3),
-          reason: 'Left hip visibility too low for muscle stabilization');
-      expect(rightHip.visibility, greaterThan(0.3),
-          reason: 'Right hip visibility too low for muscle stabilization');
+      expect(
+        leftHip.visibility,
+        greaterThan(0.3),
+        reason: 'Left hip visibility too low for muscle stabilization',
+      );
+      expect(
+        rightHip.visibility,
+        greaterThan(0.3),
+        reason: 'Right hip visibility too low for muscle stabilization',
+      );
     });
 
     testWidgets('muscle scale factor inputs are computable', (tester) async {
@@ -407,18 +435,25 @@ void main() {
       final dy = (rightHip.y - leftHip.y).abs();
       final hypotenuse = sqrt(dx * dx + dy * dy);
 
-      expect(hypotenuse, greaterThan(0),
-          reason: 'Hip-to-hip distance is zero — cannot compute scale');
+      expect(
+        hypotenuse,
+        greaterThan(0),
+        reason: 'Hip-to-hip distance is zero — cannot compute scale',
+      );
 
       // Rotation should be computable
       final rotationDegrees =
           atan2(dy, dx) * (180 / pi) * (rightHip.y > leftHip.y ? -1 : 1);
-      expect(rotationDegrees.isNaN, false,
-          reason: 'Rotation calculation produced NaN');
+      expect(
+        rotationDegrees.isNaN,
+        false,
+        reason: 'Rotation calculation produced NaN',
+      );
     });
 
-    testWidgets('upper body landmarks present for dynamic poses',
-        (tester) async {
+    testWidgets('upper body landmarks present for dynamic poses', (
+      tester,
+    ) async {
       if (!await initAppAndFixtures(tester)) return;
 
       final path = await getSamplePosePathAsync('muscle2.jpg');
@@ -480,8 +515,9 @@ void main() {
       expect(result!.length, greaterThan(0));
     });
 
-    testWidgets('pregnancy end-to-end: detect → compute → stabilize',
-        (tester) async {
+    testWidgets('pregnancy end-to-end: detect → compute → stabilize', (
+      tester,
+    ) async {
       if (!await initAppAndFixtures(tester)) return;
 
       final path = await getSamplePosePathAsync('pregnancy1.jpg');
@@ -527,8 +563,9 @@ void main() {
       expect(stabilized!.length, greaterThan(0));
     });
 
-    testWidgets('muscle end-to-end: detect → compute → stabilize',
-        (tester) async {
+    testWidgets('muscle end-to-end: detect → compute → stabilize', (
+      tester,
+    ) async {
       if (!await initAppAndFixtures(tester)) return;
 
       final path = await getSamplePosePathAsync('muscle1.jpg');

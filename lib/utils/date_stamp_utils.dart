@@ -873,21 +873,24 @@ Examples
       for (int start = 0; start < tasks.length; start += batchSize) {
         final end = (start + batchSize).clamp(0, tasks.length);
         final batch = tasks.sublist(start, end);
-        final results = await Future.wait(batch.map(
-          (t) => renderDateStampPng(
-            dateText: t.dateText,
-            outputPath: t.outputPath,
-            videoHeight: videoHeight,
-            sizePercent: sizePercent,
-            fontFamily: fontFamily,
-          ).then((success) {
-            if (!success) {
-              LogService.instance
-                  .log("[DATE_STAMP] Failed to render: ${t.dateText}");
-            }
-            return success ? MapEntry(t.dateText, t.outputPath) : null;
-          }),
-        ));
+        final results = await Future.wait(
+          batch.map(
+            (t) => renderDateStampPng(
+              dateText: t.dateText,
+              outputPath: t.outputPath,
+              videoHeight: videoHeight,
+              sizePercent: sizePercent,
+              fontFamily: fontFamily,
+            ).then((success) {
+              if (!success) {
+                LogService.instance.log(
+                  "[DATE_STAMP] Failed to render: ${t.dateText}",
+                );
+              }
+              return success ? MapEntry(t.dateText, t.outputPath) : null;
+            }),
+          ),
+        );
         for (final entry in results) {
           if (entry != null) dateToPath[entry.key] = entry.value;
         }

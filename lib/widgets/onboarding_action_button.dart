@@ -40,9 +40,7 @@ class OnboardingActionButton extends StatelessWidget {
           minimumSize: const Size(double.infinity, 50),
           padding: EdgeInsets.symmetric(vertical: verticalPadding),
           shape: useRoundedCorners
-              ? RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(6.0),
-                )
+              ? RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.0))
               : null,
         ),
         child: Text(

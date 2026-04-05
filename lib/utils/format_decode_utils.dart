@@ -93,8 +93,10 @@ class FormatDecodeUtils {
     String tempDir,
   ) async {
     try {
-      return await HeicNative.convertToBytes(inputPath,
-          preserveMetadata: false);
+      return await HeicNative.convertToBytes(
+        inputPath,
+        preserveMetadata: false,
+      );
     } catch (e) {
       LogService.instance.log('[FormatDecode] HEIC decode error: $e');
       return null;
@@ -153,10 +155,7 @@ class FormatDecodeUtils {
   /// Decode JPEG 2000 to PNG bytes on Apple platforms where cv.imdecode crashes.
   ///
   /// Same approach as TIFF — sips on macOS, Flutter codec on iOS.
-  static Future<Uint8List?> _decodeJp2(
-    String inputPath,
-    String tempDir,
-  ) async {
+  static Future<Uint8List?> _decodeJp2(String inputPath, String tempDir) async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final tempPngPath = path.join(tempDir, '_fmt_decode_$timestamp.png');
 
@@ -242,10 +241,7 @@ class FormatDecodeUtils {
   }
 
   /// Decode RAW/DNG to PNG/TIFF bytes using [RawDecoder.decodeToFile].
-  static Future<Uint8List?> _decodeRaw(
-    String inputPath,
-    String tempDir,
-  ) async {
+  static Future<Uint8List?> _decodeRaw(String inputPath, String tempDir) async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     // RawDecoder picks the output filename based on the input basename,
     // so we copy the input to a uniquely-named temp file first to avoid
@@ -259,10 +255,7 @@ class FormatDecodeUtils {
       // produces a uniquely-named output.
       await File(inputPath).copy(tempInputPath);
 
-      final decodedPath = await RawDecoder.decodeToFile(
-        tempInputPath,
-        tempDir,
-      );
+      final decodedPath = await RawDecoder.decodeToFile(tempInputPath, tempDir);
 
       // Clean up the temp copy of the input.
       _tryDelete(tempInputPath);

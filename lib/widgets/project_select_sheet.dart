@@ -95,8 +95,9 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
       stabilizedDirPath,
       activeProjectOrientation,
     );
-    String? pngPath =
-        await GalleryUtils.checkForStabilizedImage(stabilizedDirActivePath);
+    String? pngPath = await GalleryUtils.checkForStabilizedImage(
+      stabilizedDirActivePath,
+    );
     if (pngPath != null) {
       return pngPath;
     }
@@ -105,8 +106,9 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
       stabilizedDirPath,
       activeProjectOrientation == "portrait" ? "landscape" : "portrait",
     );
-    pngPath =
-        await GalleryUtils.checkForStabilizedImage(stabilizedDirInactivePath);
+    pngPath = await GalleryUtils.checkForStabilizedImage(
+      stabilizedDirInactivePath,
+    );
     if (pngPath != null) {
       return pngPath;
     }
@@ -454,11 +456,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(
-                              Icons.add,
-                              size: 16,
-                              color: Colors.white,
-                            ),
+                            Icon(Icons.add, size: 16, color: Colors.white),
                             SizedBox(width: 4),
                             Text(
                               'New',
@@ -626,10 +624,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                   onAction: () async {
                     final newName = _editProjectNameController.text;
                     if (newName.trim().isEmpty) return;
-                    await DB.instance.updateProjectName(
-                      project['id'],
-                      newName,
-                    );
+                    await DB.instance.updateProjectName(project['id'], newName);
                     _getProjects();
                     if (!context.mounted) return;
                     Navigator.pop(context);

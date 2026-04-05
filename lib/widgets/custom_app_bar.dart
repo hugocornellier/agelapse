@@ -359,10 +359,7 @@ class CustomAppBarState extends State<CustomAppBar> {
     return _buildTitleBar(
       context,
       dragAreaRightPadding: 56,
-      rowPadding: const EdgeInsets.only(
-        left: 36,
-        right: _horizontalPadding,
-      ),
+      rowPadding: const EdgeInsets.only(left: 36, right: _horizontalPadding),
     );
   }
 

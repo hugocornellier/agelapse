@@ -247,8 +247,9 @@ class GalleryExportHandler {
           projectId,
           projectOrientation!,
         );
-        List<String> stabilizedFiles =
-            await listFilesInDirectory(stabilizedDir);
+        List<String> stabilizedFiles = await listFilesInDirectory(
+          stabilizedDir,
+        );
         filesToExport['Stabilized']!.addAll(stabilizedFiles);
 
         LogService.instance.log(

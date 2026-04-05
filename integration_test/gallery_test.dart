@@ -112,11 +112,15 @@ void main() {
 
     // ─── Test A: Gallery displays imported photos (UI) ────────────────────
 
-    testWidgets('Test A: gallery tab renders photos without crash',
-        (tester) async {
+    testWidgets('Test A: gallery tab renders photos without crash', (
+      tester,
+    ) async {
       final ts = DateTime.now().millisecondsSinceEpoch;
-      testProjectId =
-          await DB.instance.addProject('GalleryRenderTest', 'face', ts);
+      testProjectId = await DB.instance.addProject(
+        'GalleryRenderTest',
+        'face',
+        ts,
+      );
 
       // Set project as default so app goes directly to main navigation
       await DB.instance.setSettingByTitle(
@@ -140,8 +144,11 @@ void main() {
         await tester.pump(const Duration(seconds: 2));
 
         // Gallery should render without crash
-        expect(find.byType(Scaffold), findsWidgets,
-            reason: 'Gallery page should render a Scaffold without crashing');
+        expect(
+          find.byType(Scaffold),
+          findsWidgets,
+          reason: 'Gallery page should render a Scaffold without crashing',
+        );
       } else {
         // Navigation not visible yet — just verify app is running
         final hasApp = find.byType(MaterialApp).evaluate().isNotEmpty ||
@@ -152,11 +159,15 @@ void main() {
 
     // ─── Test B: Selection mode enter/exit (UI) ───────────────────────────
 
-    testWidgets('Test B: gallery selection mode can be entered and exited',
-        (tester) async {
+    testWidgets('Test B: gallery selection mode can be entered and exited', (
+      tester,
+    ) async {
       final ts = DateTime.now().millisecondsSinceEpoch;
-      testProjectId =
-          await DB.instance.addProject('GallerySelectionTest', 'face', ts);
+      testProjectId = await DB.instance.addProject(
+        'GallerySelectionTest',
+        'face',
+        ts,
+      );
 
       await DB.instance.setSettingByTitle(
         'default_project',
@@ -210,24 +221,34 @@ void main() {
           await tester.pump(const Duration(seconds: 1));
 
           // Action bar should disappear — TextButton with 'Cancel' gone
-          expect(cancelButton.evaluate().isEmpty, isTrue,
-              reason:
-                  'Cancel button should disappear after exiting selection mode');
+          expect(
+            cancelButton.evaluate().isEmpty,
+            isTrue,
+            reason:
+                'Cancel button should disappear after exiting selection mode',
+          );
         }
       }
 
       // App should not have crashed
-      expect(find.byType(Scaffold), findsWidgets,
-          reason: 'App should still have Scaffold after selection test');
+      expect(
+        find.byType(Scaffold),
+        findsWidgets,
+        reason: 'App should still have Scaffold after selection test',
+      );
     });
 
     // ─── Test C: Select all (UI) ──────────────────────────────────────────
 
-    testWidgets('Test C: select-all selects all photos in current tab',
-        (tester) async {
+    testWidgets('Test C: select-all selects all photos in current tab', (
+      tester,
+    ) async {
       final ts = DateTime.now().millisecondsSinceEpoch;
-      testProjectId =
-          await DB.instance.addProject('GallerySelectAllTest', 'face', ts);
+      testProjectId = await DB.instance.addProject(
+        'GallerySelectAllTest',
+        'face',
+        ts,
+      );
 
       await DB.instance.setSettingByTitle(
         'default_project',
@@ -270,21 +291,28 @@ void main() {
         await tester.pump(const Duration(seconds: 1));
 
         // Expect some indication of selected count — app should not crash
-        expect(find.byType(Scaffold), findsWidgets,
-            reason: 'App should not crash after Select All');
+        expect(
+          find.byType(Scaffold),
+          findsWidgets,
+          reason: 'App should not crash after Select All',
+        );
       }
     });
 
     // ─── Test D: Single photo delete (headless) ───────────────────────────
 
-    testWidgets('Test D: deleteImage removes DB record and files from disk',
-        (tester) async {
+    testWidgets('Test D: deleteImage removes DB record and files from disk', (
+      tester,
+    ) async {
       app.main();
       await tester.pump(const Duration(seconds: 2));
 
       final ts = DateTime.now().millisecondsSinceEpoch;
-      testProjectId =
-          await DB.instance.addProject('DeleteSingleTest', 'face', ts);
+      testProjectId = await DB.instance.addProject(
+        'DeleteSingleTest',
+        'face',
+        ts,
+      );
 
       final timestamps = await createTestPhotos(testProjectId!, 3);
 
@@ -298,150 +326,203 @@ void main() {
       final rawFile = File(p.join(rawDir, '${timestamps[0]}.jpg'));
       final thumbFile = File(p.join(thumbDir, '${timestamps[0]}.jpg'));
 
-      expect(await rawFile.exists(), isTrue,
-          reason: 'Raw file should exist before delete');
-      expect(await thumbFile.exists(), isTrue,
-          reason: 'Thumbnail should exist before delete');
+      expect(
+        await rawFile.exists(),
+        isTrue,
+        reason: 'Raw file should exist before delete',
+      );
+      expect(
+        await thumbFile.exists(),
+        isTrue,
+        reason: 'Thumbnail should exist before delete',
+      );
 
-      final deleteResult =
-          await ProjectUtils.deleteImage(rawFile, testProjectId!);
+      final deleteResult = await ProjectUtils.deleteImage(
+        rawFile,
+        testProjectId!,
+      );
       expect(deleteResult, isTrue, reason: 'deleteImage should return true');
 
       // DB should now have 2 photos
       photos = await DB.instance.getPhotosByProjectID(testProjectId!);
-      expect(photos.length, 2,
-          reason: 'DB should have 2 photos after single delete');
+      expect(
+        photos.length,
+        2,
+        reason: 'DB should have 2 photos after single delete',
+      );
 
       // Verify the deleted photo's timestamp is gone from DB
       final deleted = await DB.instance.getPhotoByTimestamp(
         timestamps[0],
         testProjectId!,
       );
-      expect(deleted, isNull,
-          reason: 'Deleted photo timestamp should not exist in DB');
+      expect(
+        deleted,
+        isNull,
+        reason: 'Deleted photo timestamp should not exist in DB',
+      );
 
       // Raw file should be deleted
-      expect(await rawFile.exists(), isFalse,
-          reason: 'Raw file should be deleted from disk');
+      expect(
+        await rawFile.exists(),
+        isFalse,
+        reason: 'Raw file should be deleted from disk',
+      );
 
       // Thumbnail should be deleted
-      expect(await thumbFile.exists(), isFalse,
-          reason: 'Thumbnail should be deleted from disk');
+      expect(
+        await thumbFile.exists(),
+        isFalse,
+        reason: 'Thumbnail should be deleted from disk',
+      );
     });
 
     // ─── Test E: Bulk delete correctness (headless) ───────────────────────
 
     testWidgets(
-        'Test E: bulk delete via deleteImage leaves no files or DB records',
-        (tester) async {
-      app.main();
-      await tester.pump(const Duration(seconds: 2));
+      'Test E: bulk delete via deleteImage leaves no files or DB records',
+      (tester) async {
+        app.main();
+        await tester.pump(const Duration(seconds: 2));
 
-      final ts = DateTime.now().millisecondsSinceEpoch;
-      testProjectId =
-          await DB.instance.addProject('BulkDeleteTest', 'face', ts);
+        final ts = DateTime.now().millisecondsSinceEpoch;
+        testProjectId = await DB.instance.addProject(
+          'BulkDeleteTest',
+          'face',
+          ts,
+        );
 
-      final timestamps = await createTestPhotos(testProjectId!, 5);
+        final timestamps = await createTestPhotos(testProjectId!, 5);
 
-      var photos = await DB.instance.getPhotosByProjectID(testProjectId!);
-      expect(photos.length, 5, reason: 'Should start with 5 photos');
+        var photos = await DB.instance.getPhotosByProjectID(testProjectId!);
+        expect(photos.length, 5, reason: 'Should start with 5 photos');
 
-      // Delete all photos one by one
-      final rawDir = await DirUtils.getRawPhotoDirPath(testProjectId!);
-      for (final timestamp in timestamps) {
-        final rawFile = File(p.join(rawDir, '$timestamp.jpg'));
-        await ProjectUtils.deleteImage(rawFile, testProjectId!);
-      }
-
-      // DB should be empty
-      photos = await DB.instance.getPhotosByProjectID(testProjectId!);
-      expect(photos.length, 0,
-          reason: 'DB should have 0 photos after bulk delete');
-
-      // All raw files should be gone
-      final thumbDir = await DirUtils.getThumbnailDirPath(testProjectId!);
-      final stabDir = await DirUtils.getStabilizedDirPath(testProjectId!);
-
-      for (final timestamp in timestamps) {
-        final rawFile = File(p.join(rawDir, '$timestamp.jpg'));
-        expect(await rawFile.exists(), isFalse,
-            reason: 'Raw file $timestamp should not exist after bulk delete');
-
-        final thumbFile = File(p.join(thumbDir, '$timestamp.jpg'));
-        expect(await thumbFile.exists(), isFalse,
-            reason: 'Thumbnail $timestamp should not exist after bulk delete');
-
-        for (final orientation in DirUtils.orientations) {
-          final stabFile = File(p.join(stabDir, orientation, '$timestamp.png'));
-          expect(await stabFile.exists(), isFalse,
-              reason:
-                  'Stabilized file $timestamp/$orientation should not exist');
+        // Delete all photos one by one
+        final rawDir = await DirUtils.getRawPhotoDirPath(testProjectId!);
+        for (final timestamp in timestamps) {
+          final rawFile = File(p.join(rawDir, '$timestamp.jpg'));
+          await ProjectUtils.deleteImage(rawFile, testProjectId!);
         }
-      }
-    });
+
+        // DB should be empty
+        photos = await DB.instance.getPhotosByProjectID(testProjectId!);
+        expect(
+          photos.length,
+          0,
+          reason: 'DB should have 0 photos after bulk delete',
+        );
+
+        // All raw files should be gone
+        final thumbDir = await DirUtils.getThumbnailDirPath(testProjectId!);
+        final stabDir = await DirUtils.getStabilizedDirPath(testProjectId!);
+
+        for (final timestamp in timestamps) {
+          final rawFile = File(p.join(rawDir, '$timestamp.jpg'));
+          expect(
+            await rawFile.exists(),
+            isFalse,
+            reason: 'Raw file $timestamp should not exist after bulk delete',
+          );
+
+          final thumbFile = File(p.join(thumbDir, '$timestamp.jpg'));
+          expect(
+            await thumbFile.exists(),
+            isFalse,
+            reason: 'Thumbnail $timestamp should not exist after bulk delete',
+          );
+
+          for (final orientation in DirUtils.orientations) {
+            final stabFile = File(
+              p.join(stabDir, orientation, '$timestamp.png'),
+            );
+            expect(
+              await stabFile.exists(),
+              isFalse,
+              reason:
+                  'Stabilized file $timestamp/$orientation should not exist',
+            );
+          }
+        }
+      },
+    );
 
     // ─── Test F: Delete doesn't affect wrong project (headless) ──────────
 
     testWidgets(
-        'Test F: deleting photo from project A does not affect project B',
-        (tester) async {
-      app.main();
-      await tester.pump(const Duration(seconds: 2));
+      'Test F: deleting photo from project A does not affect project B',
+      (tester) async {
+        app.main();
+        await tester.pump(const Duration(seconds: 2));
 
-      final ts = DateTime.now().millisecondsSinceEpoch;
-      testProjectId =
-          await DB.instance.addProject('IsolationTestA', 'face', ts);
-      final projectBId = await DB.instance.addProject(
-        'IsolationTestB',
-        'face',
-        ts + 1000,
-      );
+        final ts = DateTime.now().millisecondsSinceEpoch;
+        testProjectId = await DB.instance.addProject(
+          'IsolationTestA',
+          'face',
+          ts,
+        );
+        final projectBId = await DB.instance.addProject(
+          'IsolationTestB',
+          'face',
+          ts + 1000,
+        );
 
-      // Register teardown for project B too
-      addTearDown(() async {
-        try {
-          final dirB = await DirUtils.getProjectDirPath(projectBId);
-          if (await Directory(dirB).exists()) {
-            await Directory(dirB).delete(recursive: true);
-          }
-          await DB.instance.deleteProject(projectBId);
-        } catch (_) {}
-      });
+        // Register teardown for project B too
+        addTearDown(() async {
+          try {
+            final dirB = await DirUtils.getProjectDirPath(projectBId);
+            if (await Directory(dirB).exists()) {
+              await Directory(dirB).delete(recursive: true);
+            }
+            await DB.instance.deleteProject(projectBId);
+          } catch (_) {}
+        });
 
-      final tsA = await createTestPhotos(testProjectId!, 3);
-      final tsB = await createTestPhotos(projectBId, 3);
+        final tsA = await createTestPhotos(testProjectId!, 3);
+        final tsB = await createTestPhotos(projectBId, 3);
 
-      // Verify initial state
-      var photosA = await DB.instance.getPhotosByProjectID(testProjectId!);
-      var photosB = await DB.instance.getPhotosByProjectID(projectBId);
-      expect(photosA.length, 3);
-      expect(photosB.length, 3);
+        // Verify initial state
+        var photosA = await DB.instance.getPhotosByProjectID(testProjectId!);
+        var photosB = await DB.instance.getPhotosByProjectID(projectBId);
+        expect(photosA.length, 3);
+        expect(photosB.length, 3);
 
-      // Delete 1 photo from project A
-      final rawDirA = await DirUtils.getRawPhotoDirPath(testProjectId!);
-      final rawFileA = File(p.join(rawDirA, '${tsA[0]}.jpg'));
-      final deleteResult =
-          await ProjectUtils.deleteImage(rawFileA, testProjectId!);
-      expect(deleteResult, isTrue);
+        // Delete 1 photo from project A
+        final rawDirA = await DirUtils.getRawPhotoDirPath(testProjectId!);
+        final rawFileA = File(p.join(rawDirA, '${tsA[0]}.jpg'));
+        final deleteResult = await ProjectUtils.deleteImage(
+          rawFileA,
+          testProjectId!,
+        );
+        expect(deleteResult, isTrue);
 
-      // Project A should have 2 photos
-      photosA = await DB.instance.getPhotosByProjectID(testProjectId!);
-      expect(photosA.length, 2,
-          reason: 'Project A should have 2 photos after 1 deletion');
+        // Project A should have 2 photos
+        photosA = await DB.instance.getPhotosByProjectID(testProjectId!);
+        expect(
+          photosA.length,
+          2,
+          reason: 'Project A should have 2 photos after 1 deletion',
+        );
 
-      // Project B should still have 3 photos (untouched)
-      photosB = await DB.instance.getPhotosByProjectID(projectBId);
-      expect(photosB.length, 3,
-          reason: 'Project B should still have 3 photos (unaffected)');
+        // Project B should still have 3 photos (untouched)
+        photosB = await DB.instance.getPhotosByProjectID(projectBId);
+        expect(
+          photosB.length,
+          3,
+          reason: 'Project B should still have 3 photos (unaffected)',
+        );
 
-      // Verify project B's files still exist on disk
-      final rawDirB = await DirUtils.getRawPhotoDirPath(projectBId);
-      for (final timestamp in tsB) {
-        final rawFileB = File(p.join(rawDirB, '$timestamp.jpg'));
-        expect(await rawFileB.exists(), isTrue,
-            reason: 'Project B raw file $timestamp should still exist on disk');
-      }
-    });
+        // Verify project B's files still exist on disk
+        final rawDirB = await DirUtils.getRawPhotoDirPath(projectBId);
+        for (final timestamp in tsB) {
+          final rawFileB = File(p.join(rawDirB, '$timestamp.jpg'));
+          expect(
+            await rawFileB.exists(),
+            isTrue,
+            reason: 'Project B raw file $timestamp should still exist on disk',
+          );
+        }
+      },
+    );
   });
 }
 

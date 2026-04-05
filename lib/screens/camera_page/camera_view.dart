@@ -4,6 +4,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import '../../services/async_mutex.dart';
 import '../../services/database_helper.dart';
 import '../../services/log_service.dart';
 import '../../styles/styles.dart';
@@ -91,6 +92,7 @@ class CameraView extends StatefulWidget {
 class _CameraViewState extends State<CameraView>
     with SingleTickerProviderStateMixin {
   static List<CameraDescription> _cameras = [];
+  static final AsyncMutex _cameraLifecycleMutex = AsyncMutex();
   CameraController? _controller;
   int _cameraIndex = -1;
   int? frontFacingLensIndex;
@@ -167,7 +169,7 @@ class _CameraViewState extends State<CameraView>
   void _getWidgetHeight() {
     final RenderBox? renderBox =
         _widgetKey.currentContext?.findRenderObject() as RenderBox?;
-    if (renderBox != null) {
+    if (renderBox != null && mounted) {
       setState(() {
         _widgetHeight = renderBox.size.height;
       });
@@ -293,7 +295,7 @@ class _CameraViewState extends State<CameraView>
       _cameraIndex = 0;
     }
     if (_cameraIndex != -1) {
-      _startLiveFeed();
+      await _startLiveFeed();
     }
   }
 
@@ -378,6 +380,10 @@ class _CameraViewState extends State<CameraView>
     _triggerCountdownFeedback();
 
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
       if (_countdownValue <= 1) {
         // Countdown complete - take the photo
         _cancelCountdown();
@@ -421,6 +427,8 @@ class _CameraViewState extends State<CameraView>
   }
 
   Future<void> _takePicture() async {
+    if (_controller == null || !_controller!.value.isInitialized) return;
+    if (_pictureTakingCompleter != null) return; // capture already in progress
     _pictureTakingCompleter = Completer<void>();
 
     bool captureSuccess = false;
@@ -506,7 +514,7 @@ class _CameraViewState extends State<CameraView>
       widget.projectId.toString(),
     );
 
-    setState(() {
+    setStateIfMounted(() {
       modifyGridMode = false;
     });
   }
@@ -631,21 +639,19 @@ class _CameraViewState extends State<CameraView>
                 child: _buildIcon(),
               ),
             ),
-            const SizedBox(width: 12),
-            _timerButton(),
           ],
         ),
       );
 
-  Widget _rightSideControls() => isDesktop
-      ? const SizedBox.shrink()
-      : Positioned(
-          bottom: 21,
-          right: 16,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(width: 16),
+  Widget _rightSideControls() => Positioned(
+        bottom: 21,
+        right: 16,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _timerButton(),
+            if (!isDesktop) const SizedBox(width: 12),
+            if (!isDesktop)
               Container(
                 padding: const EdgeInsets.all(0),
                 decoration: BoxDecoration(
@@ -664,9 +670,9 @@ class _CameraViewState extends State<CameraView>
                   ),
                 ),
               ),
-            ],
-          ),
-        );
+          ],
+        ),
+      );
 
   void _toggleGrid() {
     setState(() {
@@ -1077,14 +1083,24 @@ class _CameraViewState extends State<CameraView>
   }
 
   Future _startLiveFeed() async {
-    final camera = _cameras[_cameraIndex];
-    _controller = CameraController(
-      camera,
-      ResolutionPreset.max,
-      enableAudio: false,
-      imageFormatGroup: ImageFormatGroup.jpeg,
-    );
-    _controller?.initialize().then((_) async {
+    await _cameraLifecycleMutex.acquire();
+    try {
+      final camera = _cameras[_cameraIndex];
+      _controller = CameraController(
+        camera,
+        ResolutionPreset.max,
+        enableAudio: false,
+        imageFormatGroup: ImageFormatGroup.jpeg,
+      );
+      try {
+        await _controller?.initialize();
+      } catch (e) {
+        debugPrint('Camera initialization failed: $e');
+        await _controller?.dispose();
+        _controller = null;
+        return;
+      }
+
       if (!mounted) {
         return;
       }
@@ -1103,8 +1119,8 @@ class _CameraViewState extends State<CameraView>
         }
       }
 
-      // Windows doesn't support image streaming, so skip it
-      if (Platform.isWindows) {
+      // Windows and Linux don't need image streaming (callback is a no-op)
+      if (Platform.isWindows || Platform.isLinux) {
         if (widget.onCameraFeedReady != null) {
           widget.onCameraFeedReady!();
         }
@@ -1125,19 +1141,29 @@ class _CameraViewState extends State<CameraView>
       _controller?.getMinZoomLevel().then((value) {});
       _controller?.getMaxZoomLevel().then((value) {});
       if (mounted) setState(() {});
-    });
+    } finally {
+      _cameraLifecycleMutex.release();
+    }
   }
 
   Future<void> _stopLiveFeed() async {
-    if (_pictureTakingCompleter != null) {
-      await _pictureTakingCompleter!.future;
+    await _cameraLifecycleMutex.acquire();
+    try {
+      if (_pictureTakingCompleter != null) {
+        await _pictureTakingCompleter!.future;
+      }
+      if (!Platform.isWindows && _controller?.value.isInitialized == true) {
+        try {
+          await _controller?.stopImageStream();
+        } catch (_) {
+          // Camera may already be stopped or never started streaming.
+        }
+      }
+      await _controller?.dispose();
+      _controller = null;
+    } finally {
+      _cameraLifecycleMutex.release();
     }
-    // Windows doesn't use image streaming
-    if (!Platform.isWindows) {
-      await _controller?.stopImageStream();
-    }
-    await _controller?.dispose();
-    _controller = null;
   }
 
   Future _switchLiveCamera() async {
@@ -1148,7 +1174,7 @@ class _CameraViewState extends State<CameraView>
 
     await _stopLiveFeed();
     await _startLiveFeed();
-    setState(() => _changingCameraLens = false);
+    if (mounted) setState(() => _changingCameraLens = false);
   }
 
   Future<void> setFocusPoint(Offset point) async {
@@ -1180,7 +1206,7 @@ class _CameraViewState extends State<CameraView>
       customOrientation,
     );
 
-    setState(() {
+    setStateIfMounted(() {
       offsetX = double.parse(offsetXStr);
       offsetY = double.parse(offsetYStr);
     });

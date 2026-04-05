@@ -145,13 +145,16 @@ class _ImportPreviewDialogState extends State<ImportPreviewDialog> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildInfoBullet(
-                          'First choice: EXIF metadata (camera date/time)'),
+                        'First choice: EXIF metadata (camera date/time)',
+                      ),
                       const SizedBox(height: 6),
                       _buildInfoBullet(
-                          'Second choice: Filename (e.g. 2023-01-15_photo.jpg)'),
+                        'Second choice: Filename (e.g. 2023-01-15_photo.jpg)',
+                      ),
                       const SizedBox(height: 6),
                       _buildInfoBullet(
-                          'Third choice: File modification date (last resort)'),
+                        'Third choice: File modification date (last resort)',
+                      ),
                       const SizedBox(height: 12),
                       GestureDetector(
                         onTap: () async {
@@ -277,7 +280,8 @@ class _ImportPreviewDialogState extends State<ImportPreviewDialog> {
       _useFilenameOrder = value;
       if (value) {
         _items.sort(
-            (a, b) => GalleryUtils.compareNatural(a.filePath, b.filePath));
+          (a, b) => GalleryUtils.compareNatural(a.filePath, b.filePath),
+        );
         _sortColumn = 'file';
         _sortAscending = true;
       } else {
@@ -513,8 +517,9 @@ class _ImportPreviewDialogState extends State<ImportPreviewDialog> {
                                   TextSpan(
                                     children: [
                                       TextSpan(
-                                        text: DateFormat('yyyy-MM-dd HH:mm')
-                                            .format(item.displayDate),
+                                        text: DateFormat(
+                                          'yyyy-MM-dd HH:mm',
+                                        ).format(item.displayDate),
                                       ),
                                       TextSpan(
                                         text:
@@ -554,8 +559,9 @@ class _ImportPreviewDialogState extends State<ImportPreviewDialog> {
                         if (!isLast)
                           Divider(
                             height: 1,
-                            color:
-                                AppColors.textPrimary.withValues(alpha: 0.06),
+                            color: AppColors.textPrimary.withValues(
+                              alpha: 0.06,
+                            ),
                           ),
                       ],
                     );

@@ -97,14 +97,20 @@ void main() {
             final filePath = await getFormatSamplePathAsync(format, day);
             final file = File(filePath);
 
-            expect(await file.exists(), isTrue,
-                reason: '$day.$format should exist at $filePath');
+            expect(
+              await file.exists(),
+              isTrue,
+              reason: '$day.$format should exist at $filePath',
+            );
 
             final fileSize = await file.length();
             final minSize = _minFileSizes[format] ?? 1000;
-            expect(fileSize, greaterThan(minSize),
-                reason: '$day.$format should be at least $minSize bytes '
-                    '(got $fileSize)');
+            expect(
+              fileSize,
+              greaterThan(minSize),
+              reason: '$day.$format should be at least $minSize bytes '
+                  '(got $fileSize)',
+            );
           });
         }
 
@@ -124,8 +130,11 @@ void main() {
           };
 
           if (recognizedByIsImage.contains(format)) {
-            expect(isRecognized, isTrue,
-                reason: 'Utils.isImage should recognize .$format files');
+            expect(
+              isRecognized,
+              isTrue,
+              reason: 'Utils.isImage should recognize .$format files',
+            );
           }
         });
 
@@ -144,8 +153,11 @@ void main() {
           };
 
           if (recognizedExtensions.contains(format)) {
-            expect(GalleryUtils.allowedImageExtensions.contains(ext), isTrue,
-                reason: 'allowedImageExtensions should include $ext');
+            expect(
+              GalleryUtils.allowedImageExtensions.contains(ext),
+              isTrue,
+              reason: 'allowedImageExtensions should include $ext',
+            );
           }
         });
 
@@ -166,16 +178,22 @@ void main() {
           }
 
           final bytes = await file.readAsBytes();
-          expect(bytes.length, greaterThan(expectedMagic.length),
-              reason: '$format file too small to contain magic bytes');
+          expect(
+            bytes.length,
+            greaterThan(expectedMagic.length),
+            reason: '$format file too small to contain magic bytes',
+          );
 
           for (int i = 0; i < expectedMagic.length; i++) {
             final expected = expectedMagic[i];
             if (expected == -1) continue;
-            expect(bytes[i], equals(expected),
-                reason: '$format magic byte mismatch at offset $i: '
-                    'expected 0x${expected.toRadixString(16)}, '
-                    'got 0x${bytes[i].toRadixString(16)}');
+            expect(
+              bytes[i],
+              equals(expected),
+              reason: '$format magic byte mismatch at offset $i: '
+                  'expected 0x${expected.toRadixString(16)}, '
+                  'got 0x${bytes[i].toRadixString(16)}',
+            );
           }
         });
       });
@@ -201,196 +219,262 @@ void main() {
     for (final format in formatSampleFormats) {
       // Test 2 samples per format (day1, day11)
       for (final day in ['day1', 'day11']) {
-        test('$format/$day decodes and produces thumbnail via import pipeline',
-            () async {
-          if (!await ensureFixturesLoaded()) {
-            markTestSkipped('Test fixtures not available');
-            return;
-          }
+        test(
+          '$format/$day decodes and produces thumbnail via import pipeline',
+          () async {
+            if (!await ensureFixturesLoaded()) {
+              markTestSkipped('Test fixtures not available');
+              return;
+            }
 
-          final filePath = await getFormatSamplePathAsync(format, day);
-          final file = File(filePath);
-          if (!await file.exists()) {
-            markTestSkipped('$format/$day sample not found');
-            return;
-          }
+            final filePath = await getFormatSamplePathAsync(format, day);
+            final file = File(filePath);
+            if (!await file.exists()) {
+              markTestSkipped('$format/$day sample not found');
+              return;
+            }
 
-          final bytes = await file.readAsBytes();
-          expect(bytes.length, greaterThan(0),
-              reason: '$format/$day file should not be empty');
+            final bytes = await file.readAsBytes();
+            expect(
+              bytes.length,
+              greaterThan(0),
+              reason: '$format/$day file should not be empty',
+            );
 
-          // For formats OpenCV can decode directly, test direct decode
-          if (_opencvDirectFormats.contains(format)) {
-            final output = processImageIsolateEntry(ImageProcessingInput(
-              bytes: bytes,
-              extension: '.${formatSampleExtensions[format]}',
-            ));
-
-            expect(output.success, isTrue,
-                reason: '$format/$day should decode successfully via '
-                    'cv.imdecode (got: ${output.error})');
-            expect(output.width, greaterThan(0),
-                reason: '$format/$day should have valid width');
-            expect(output.height, greaterThan(0),
-                reason: '$format/$day should have valid height');
-            expect(output.thumbnailBytes, isNotNull,
-                reason: '$format/$day should produce a thumbnail');
-            expect(output.thumbnailBytes!.length, greaterThan(0),
-                reason: '$format/$day thumbnail should not be empty');
-
-            // Verify thumbnail is valid JPEG
-            expect(output.thumbnailBytes![0], equals(0xFF),
-                reason: '$format/$day thumbnail should be JPEG (byte 0)');
-            expect(output.thumbnailBytes![1], equals(0xD8),
-                reason: '$format/$day thumbnail should be JPEG (byte 1)');
-          }
-
-          // For HEIC: pre-convert to PNG via heic2png, then decode
-          if (format == 'heic') {
-            Uint8List? preDecoded;
-            try {
-              preDecoded = await HeicNative.convertToBytes(
-                filePath,
-                preserveMetadata: false,
+            // For formats OpenCV can decode directly, test direct decode
+            if (_opencvDirectFormats.contains(format)) {
+              final output = processImageIsolateEntry(
+                ImageProcessingInput(
+                  bytes: bytes,
+                  extension: '.${formatSampleExtensions[format]}',
+                ),
               );
-            } catch (_) {
-              // HEIC codec may not be available (e.g. Windows CI without HEIC Video Extensions)
+
+              expect(
+                output.success,
+                isTrue,
+                reason: '$format/$day should decode successfully via '
+                    'cv.imdecode (got: ${output.error})',
+              );
+              expect(
+                output.width,
+                greaterThan(0),
+                reason: '$format/$day should have valid width',
+              );
+              expect(
+                output.height,
+                greaterThan(0),
+                reason: '$format/$day should have valid height',
+              );
+              expect(
+                output.thumbnailBytes,
+                isNotNull,
+                reason: '$format/$day should produce a thumbnail',
+              );
+              expect(
+                output.thumbnailBytes!.length,
+                greaterThan(0),
+                reason: '$format/$day thumbnail should not be empty',
+              );
+
+              // Verify thumbnail is valid JPEG
+              expect(
+                output.thumbnailBytes![0],
+                equals(0xFF),
+                reason: '$format/$day thumbnail should be JPEG (byte 0)',
+              );
+              expect(
+                output.thumbnailBytes![1],
+                equals(0xD8),
+                reason: '$format/$day thumbnail should be JPEG (byte 1)',
+              );
             }
 
-            if (preDecoded == null) {
-              // heic2png conversion failed on this platform — skip
-              return;
-            }
-
-            final output = processImageIsolateEntry(ImageProcessingInput(
-              bytes: bytes,
-              extension: '.heic',
-              preDecodedBytes: preDecoded,
-            ));
-
-            expect(output.success, isTrue,
-                reason: 'HEIC/$day should decode via pre-converted PNG '
-                    '(got: ${output.error})');
-            expect(output.width, greaterThan(0));
-            expect(output.height, greaterThan(0));
-            expect(output.thumbnailBytes, isNotNull,
-                reason: 'HEIC/$day should produce a thumbnail');
-          }
-
-          // For TIFF on Apple: pre-convert to PNG via sips, then decode
-          if (format == 'tiff' && (Platform.isMacOS || Platform.isIOS)) {
-            if (Platform.isMacOS) {
-              final tempDir = await Directory.systemTemp
-                  .createTemp('agelapse_tiff_import_');
+            // For HEIC: pre-convert to PNG via heic2png, then decode
+            if (format == 'heic') {
+              Uint8List? preDecoded;
               try {
-                final pngPath = p.join(tempDir.path, '$day.png');
-                final result = await Process.run('sips', [
-                  '-s',
-                  'format',
-                  'png',
+                preDecoded = await HeicNative.convertToBytes(
                   filePath,
-                  '--out',
-                  pngPath,
-                ]);
-                if (result.exitCode == 0) {
-                  final preDecoded = await File(pngPath).readAsBytes();
-                  final output = processImageIsolateEntry(ImageProcessingInput(
-                    bytes: bytes,
-                    extension: '.tiff',
-                    preDecodedBytes: preDecoded,
-                  ));
-
-                  expect(output.success, isTrue,
-                      reason: 'TIFF/$day should decode via pre-converted PNG '
-                          '(got: ${output.error})');
-                  expect(output.width, greaterThan(0));
-                  expect(output.height, greaterThan(0));
-                  expect(output.thumbnailBytes, isNotNull,
-                      reason: 'TIFF/$day should produce a thumbnail');
-                }
-              } finally {
-                await tempDir.delete(recursive: true);
+                  preserveMetadata: false,
+                );
+              } catch (_) {
+                // HEIC codec may not be available (e.g. Windows CI without HEIC Video Extensions)
               }
-            } else {
-              // iOS — sips not available, skip import pipeline test
-              return;
-            }
-          }
 
-          // For JP2 on Apple: pre-convert to PNG via sips, then decode
-          if (format == 'jp2' && (Platform.isMacOS || Platform.isIOS)) {
-            if (Platform.isMacOS) {
-              final tempDir =
-                  await Directory.systemTemp.createTemp('agelapse_jp2_import_');
-              try {
-                final pngPath = p.join(tempDir.path, '$day.png');
-                final result = await Process.run('sips', [
-                  '-s',
-                  'format',
-                  'png',
-                  filePath,
-                  '--out',
-                  pngPath,
-                ]);
-                if (result.exitCode == 0) {
-                  final preDecoded = await File(pngPath).readAsBytes();
-                  final output = processImageIsolateEntry(ImageProcessingInput(
-                    bytes: bytes,
-                    extension: '.jp2',
-                    preDecodedBytes: preDecoded,
-                  ));
-
-                  expect(output.success, isTrue,
-                      reason: 'JP2/$day should decode via pre-converted PNG '
-                          '(got: ${output.error})');
-                  expect(output.width, greaterThan(0));
-                  expect(output.height, greaterThan(0));
-                  expect(output.thumbnailBytes, isNotNull,
-                      reason: 'JP2/$day should produce a thumbnail');
-                }
-              } finally {
-                await tempDir.delete(recursive: true);
-              }
-            } else {
-              // iOS — sips not available, skip import pipeline test
-              return;
-            }
-          }
-
-          // For AVIF: pre-convert to PNG, then decode
-          if (format == 'avif') {
-            final tempDir =
-                await Directory.systemTemp.createTemp('agelapse_avif_import_');
-            try {
-              final pngPath = p.join(tempDir.path, '$day.png');
-              final converted =
-                  await GalleryUtils.convertAvifToPng(filePath, pngPath);
-
-              if (!converted) {
-                markTestSkipped(
-                    'AVIF conversion not available on this platform');
+              if (preDecoded == null) {
+                // heic2png conversion failed on this platform — skip
                 return;
               }
 
-              final preDecoded = await File(pngPath).readAsBytes();
-              final output = processImageIsolateEntry(ImageProcessingInput(
-                bytes: bytes,
-                extension: '.avif',
-                preDecodedBytes: preDecoded,
-              ));
+              final output = processImageIsolateEntry(
+                ImageProcessingInput(
+                  bytes: bytes,
+                  extension: '.heic',
+                  preDecodedBytes: preDecoded,
+                ),
+              );
 
-              expect(output.success, isTrue,
-                  reason: 'AVIF/$day should decode via pre-converted PNG '
-                      '(got: ${output.error})');
+              expect(
+                output.success,
+                isTrue,
+                reason: 'HEIC/$day should decode via pre-converted PNG '
+                    '(got: ${output.error})',
+              );
               expect(output.width, greaterThan(0));
               expect(output.height, greaterThan(0));
-              expect(output.thumbnailBytes, isNotNull,
-                  reason: 'AVIF/$day should produce a thumbnail');
-            } finally {
-              await tempDir.delete(recursive: true);
+              expect(
+                output.thumbnailBytes,
+                isNotNull,
+                reason: 'HEIC/$day should produce a thumbnail',
+              );
             }
-          }
-        });
+
+            // For TIFF on Apple: pre-convert to PNG via sips, then decode
+            if (format == 'tiff' && (Platform.isMacOS || Platform.isIOS)) {
+              if (Platform.isMacOS) {
+                final tempDir = await Directory.systemTemp.createTemp(
+                  'agelapse_tiff_import_',
+                );
+                try {
+                  final pngPath = p.join(tempDir.path, '$day.png');
+                  final result = await Process.run('sips', [
+                    '-s',
+                    'format',
+                    'png',
+                    filePath,
+                    '--out',
+                    pngPath,
+                  ]);
+                  if (result.exitCode == 0) {
+                    final preDecoded = await File(pngPath).readAsBytes();
+                    final output = processImageIsolateEntry(
+                      ImageProcessingInput(
+                        bytes: bytes,
+                        extension: '.tiff',
+                        preDecodedBytes: preDecoded,
+                      ),
+                    );
+
+                    expect(
+                      output.success,
+                      isTrue,
+                      reason: 'TIFF/$day should decode via pre-converted PNG '
+                          '(got: ${output.error})',
+                    );
+                    expect(output.width, greaterThan(0));
+                    expect(output.height, greaterThan(0));
+                    expect(
+                      output.thumbnailBytes,
+                      isNotNull,
+                      reason: 'TIFF/$day should produce a thumbnail',
+                    );
+                  }
+                } finally {
+                  await tempDir.delete(recursive: true);
+                }
+              } else {
+                // iOS — sips not available, skip import pipeline test
+                return;
+              }
+            }
+
+            // For JP2 on Apple: pre-convert to PNG via sips, then decode
+            if (format == 'jp2' && (Platform.isMacOS || Platform.isIOS)) {
+              if (Platform.isMacOS) {
+                final tempDir = await Directory.systemTemp.createTemp(
+                  'agelapse_jp2_import_',
+                );
+                try {
+                  final pngPath = p.join(tempDir.path, '$day.png');
+                  final result = await Process.run('sips', [
+                    '-s',
+                    'format',
+                    'png',
+                    filePath,
+                    '--out',
+                    pngPath,
+                  ]);
+                  if (result.exitCode == 0) {
+                    final preDecoded = await File(pngPath).readAsBytes();
+                    final output = processImageIsolateEntry(
+                      ImageProcessingInput(
+                        bytes: bytes,
+                        extension: '.jp2',
+                        preDecodedBytes: preDecoded,
+                      ),
+                    );
+
+                    expect(
+                      output.success,
+                      isTrue,
+                      reason: 'JP2/$day should decode via pre-converted PNG '
+                          '(got: ${output.error})',
+                    );
+                    expect(output.width, greaterThan(0));
+                    expect(output.height, greaterThan(0));
+                    expect(
+                      output.thumbnailBytes,
+                      isNotNull,
+                      reason: 'JP2/$day should produce a thumbnail',
+                    );
+                  }
+                } finally {
+                  await tempDir.delete(recursive: true);
+                }
+              } else {
+                // iOS — sips not available, skip import pipeline test
+                return;
+              }
+            }
+
+            // For AVIF: pre-convert to PNG, then decode
+            if (format == 'avif') {
+              final tempDir = await Directory.systemTemp.createTemp(
+                'agelapse_avif_import_',
+              );
+              try {
+                final pngPath = p.join(tempDir.path, '$day.png');
+                final converted = await GalleryUtils.convertAvifToPng(
+                  filePath,
+                  pngPath,
+                );
+
+                if (!converted) {
+                  markTestSkipped(
+                    'AVIF conversion not available on this platform',
+                  );
+                  return;
+                }
+
+                final preDecoded = await File(pngPath).readAsBytes();
+                final output = processImageIsolateEntry(
+                  ImageProcessingInput(
+                    bytes: bytes,
+                    extension: '.avif',
+                    preDecodedBytes: preDecoded,
+                  ),
+                );
+
+                expect(
+                  output.success,
+                  isTrue,
+                  reason: 'AVIF/$day should decode via pre-converted PNG '
+                      '(got: ${output.error})',
+                );
+                expect(output.width, greaterThan(0));
+                expect(output.height, greaterThan(0));
+                expect(
+                  output.thumbnailBytes,
+                  isNotNull,
+                  reason: 'AVIF/$day should produce a thumbnail',
+                );
+              } finally {
+                await tempDir.delete(recursive: true);
+              }
+            }
+          },
+        );
       }
     }
   });
@@ -444,12 +528,16 @@ void main() {
 
             if (cvBytes == null) {
               markTestSkipped(
-                  'Could not decode $format/$day to cv-compatible bytes');
+                'Could not decode $format/$day to cv-compatible bytes',
+              );
               return;
             }
 
-            expect(cvBytes.length, greaterThan(0),
-                reason: '$format/$day cv-compatible bytes should not be empty');
+            expect(
+              cvBytes.length,
+              greaterThan(0),
+              reason: '$format/$day cv-compatible bytes should not be empty',
+            );
 
             // Verify bytes are a valid image format that OpenCV can decode.
             // cv-native formats (jpg, png, webp, bmp) are returned as-is;
@@ -457,17 +545,27 @@ void main() {
             final ext = '.$format';
             if (FormatDecodeUtils.needsConversion(ext)) {
               // Converted formats should be PNG
-              expect(cvBytes[0], equals(0x89),
-                  reason: '$format should be converted to PNG');
-              expect(cvBytes[1], equals(0x50),
-                  reason: '$format should be converted to PNG');
+              expect(
+                cvBytes[0],
+                equals(0x89),
+                reason: '$format should be converted to PNG',
+              );
+              expect(
+                cvBytes[1],
+                equals(0x50),
+                reason: '$format should be converted to PNG',
+              );
             }
 
             // Step 2: Get dimensions
-            final dims =
-                await StabUtils.getImageDimensionsFromBytesAsync(cvBytes);
-            expect(dims, isNotNull,
-                reason: '$format/$day should have readable dimensions');
+            final dims = await StabUtils.getImageDimensionsFromBytesAsync(
+              cvBytes,
+            );
+            expect(
+              dims,
+              isNotNull,
+              reason: '$format/$day should have readable dimensions',
+            );
             expect(dims!.$1, greaterThan(0), reason: 'width > 0');
             expect(dims.$2, greaterThan(0), reason: 'height > 0');
 
@@ -504,15 +602,24 @@ void main() {
               dims.$2, // canvas height = original height
             );
 
-            expect(stabilized, isNotNull,
-                reason: '$format/$day stabilization should produce output');
-            expect(stabilized!.length, greaterThan(0),
-                reason: '$format/$day stabilized bytes should not be empty');
+            expect(
+              stabilized,
+              isNotNull,
+              reason: '$format/$day stabilization should produce output',
+            );
+            expect(
+              stabilized!.length,
+              greaterThan(0),
+              reason: '$format/$day stabilized bytes should not be empty',
+            );
 
             // Step 6: Verify stabilized output is valid (can be decoded)
             final stabMat = cv.imdecode(stabilized, cv.IMREAD_COLOR);
-            expect(stabMat.isEmpty, isFalse,
-                reason: '$format/$day stabilized output should be decodable');
+            expect(
+              stabMat.isEmpty,
+              isFalse,
+              reason: '$format/$day stabilized output should be decodable',
+            );
             expect(stabMat.cols, greaterThan(0));
             expect(stabMat.rows, greaterThan(0));
             stabMat.dispose();
@@ -571,8 +678,11 @@ void main() {
           markTestSkipped('HEIC codec not available on this platform');
           return;
         }
-        expect(success, isTrue,
-            reason: 'heic2png should convert HEIC $day to PNG');
+        expect(
+          success,
+          isTrue,
+          reason: 'heic2png should convert HEIC $day to PNG',
+        );
 
         final pngFile = File(pngPath);
         expect(await pngFile.exists(), isTrue);
@@ -602,8 +712,11 @@ void main() {
           markTestSkipped('HEIC codec not available on this platform');
           return;
         }
-        expect(pngBytes, isNotNull,
-            reason: 'heic2png should return bytes for HEIC $day');
+        expect(
+          pngBytes,
+          isNotNull,
+          reason: 'heic2png should return bytes for HEIC $day',
+        );
         expect(pngBytes[0], equals(0x89), reason: 'PNG magic byte 0');
         expect(pngBytes[1], equals(0x50), reason: 'PNG magic byte 1');
       });
@@ -654,8 +767,11 @@ void main() {
         final pngPath = p.join(tempDir.path, '$day-from-avif.png');
         final result = await GalleryUtils.convertAvifToPng(avifPath, pngPath);
 
-        expect(result, isTrue,
-            reason: 'AVIF $day to PNG conversion should succeed');
+        expect(
+          result,
+          isTrue,
+          reason: 'AVIF $day to PNG conversion should succeed',
+        );
 
         final pngFile = File(pngPath);
         expect(await pngFile.exists(), isTrue);

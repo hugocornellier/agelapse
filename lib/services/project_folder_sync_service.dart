@@ -199,10 +199,7 @@ class ProjectFolderSyncService {
     return size1 == size2;
   }
 
-  Future<SyncResult> _runSync(
-    int projectId,
-    LinkedSourceConfig config,
-  ) async {
+  Future<SyncResult> _runSync(int projectId, LinkedSourceConfig config) async {
     if (_activeSync != null) return _activeSync!;
 
     final completer = Completer<SyncResult>();

@@ -251,73 +251,73 @@ void main() {
       );
     });
 
-    testWidgets('export raw photos uses sourceFilename with duplicate suffixes',
-        (
-      tester,
-    ) async {
-      app.main();
-      await tester.pumpAndSettle(const Duration(seconds: 3));
+    testWidgets(
+      'export raw photos uses sourceFilename with duplicate suffixes',
+      (tester) async {
+        app.main();
+        await tester.pumpAndSettle(const Duration(seconds: 3));
 
-      if (fixturesUnavailable) {
-        markTestSkipped('Fixtures unavailable: $fixtureLoadError');
-        return;
-      }
+        if (fixturesUnavailable) {
+          markTestSkipped('Fixtures unavailable: $fixtureLoadError');
+          return;
+        }
 
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      testProjectId = await DB.instance.addProject(
-        'Export Source Filename Test',
-        'face',
-        timestamp,
-      );
-      expect(testProjectId, isNotNull);
-
-      final rawDir = await DirUtils.getRawPhotoDirPath(testProjectId!);
-      await Directory(rawDir).create(recursive: true);
-
-      final rawImagePaths = <String>[];
-      final sourceFilename = 'IMG_4821.JPG';
-      for (int day = 1; day <= 2; day++) {
-        final fixturePath = await getSampleFacePathAsync(day);
-        final photoTimestamp = (timestamp + day * 1000).toString();
-        final destPath = path.join(rawDir, '$photoTimestamp.jpg');
-
-        await File(fixturePath).copy(destPath);
-        rawImagePaths.add(destPath);
-
-        final fileLen = await File(destPath).length();
-        await DB.instance.addPhoto(
-          photoTimestamp,
-          testProjectId!,
-          '.jpg',
-          fileLen,
-          '$photoTimestamp.jpg',
-          'portrait',
-          sourceFilename: sourceFilename,
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        testProjectId = await DB.instance.addProject(
+          'Export Source Filename Test',
+          'face',
+          timestamp,
         );
-      }
+        expect(testProjectId, isNotNull);
 
-      final exportStartedAt = DateTime.now().millisecondsSinceEpoch;
-      final result = await GalleryUtils.exportZipFile(
-        testProjectId!,
-        'Export Source Filename Test',
-        {'Raw': rawImagePaths, 'Stabilized': []},
-        (_) {},
-      );
+        final rawDir = await DirUtils.getRawPhotoDirPath(testProjectId!);
+        await Directory(rawDir).create(recursive: true);
 
-      expect(result, 'success', reason: 'Export should succeed');
+        final rawImagePaths = <String>[];
+        final sourceFilename = 'IMG_4821.JPG';
+        for (int day = 1; day <= 2; day++) {
+          final fixturePath = await getSampleFacePathAsync(day);
+          final photoTimestamp = (timestamp + day * 1000).toString();
+          final destPath = path.join(rawDir, '$photoTimestamp.jpg');
 
-      final zipFile = await findRecentZipFile(
-        sinceEpochMs: exportStartedAt,
-        projectId: testProjectId!,
-      );
-      expect(zipFile, isNotNull, reason: 'ZIP should be created');
+          await File(fixturePath).copy(destPath);
+          rawImagePaths.add(destPath);
 
-      final zipBytes = await zipFile!.readAsBytes();
-      final archive = ZipDecoder().decodeBytes(zipBytes);
-      final exportedNames = archive.files.map((file) => file.name).toSet();
+          final fileLen = await File(destPath).length();
+          await DB.instance.addPhoto(
+            photoTimestamp,
+            testProjectId!,
+            '.jpg',
+            fileLen,
+            '$photoTimestamp.jpg',
+            'portrait',
+            sourceFilename: sourceFilename,
+          );
+        }
 
-      expect(exportedNames, contains('Raw/IMG_4821.JPG'));
-      expect(exportedNames, contains('Raw/IMG_4821 (2).JPG'));
-    });
+        final exportStartedAt = DateTime.now().millisecondsSinceEpoch;
+        final result = await GalleryUtils.exportZipFile(
+          testProjectId!,
+          'Export Source Filename Test',
+          {'Raw': rawImagePaths, 'Stabilized': []},
+          (_) {},
+        );
+
+        expect(result, 'success', reason: 'Export should succeed');
+
+        final zipFile = await findRecentZipFile(
+          sinceEpochMs: exportStartedAt,
+          projectId: testProjectId!,
+        );
+        expect(zipFile, isNotNull, reason: 'ZIP should be created');
+
+        final zipBytes = await zipFile!.readAsBytes();
+        final archive = ZipDecoder().decodeBytes(zipBytes);
+        final exportedNames = archive.files.map((file) => file.name).toSet();
+
+        expect(exportedNames, contains('Raw/IMG_4821.JPG'));
+        expect(exportedNames, contains('Raw/IMG_4821 (2).JPG'));
+      },
+    );
   });
 }

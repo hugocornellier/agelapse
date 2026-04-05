@@ -535,12 +535,16 @@ class VideoUtils {
   /// Builds the watermark filter string and returns the active file path,
   /// or returns nulls when the watermark is disabled / file is missing.
   static Future<({String? filterPart, String? filePath})> _resolveWatermark(
-      int projectId, String pos, String filePath) async {
+    int projectId,
+    String pos,
+    String filePath,
+  ) async {
     if (!Utils.isImage(filePath) || !await File(filePath).exists()) {
       return (filterPart: null, filePath: null);
     }
-    final String opacityVal =
-        await DB.instance.getSettingValueByTitle('watermark_opacity');
+    final String opacityVal = await DB.instance.getSettingValueByTitle(
+      'watermark_opacity',
+    );
     final double opacity = double.tryParse(opacityVal) ?? 0.8;
     return (
       filterPart: getWatermarkFilter(opacity, pos, 10),
@@ -559,9 +563,7 @@ class VideoUtils {
         await tempDir.delete(recursive: true);
       }
     } catch (e) {
-      LogService.instance.log(
-        "[VIDEO] Failed to clean up date stamp PNGs: $e",
-      );
+      LogService.instance.log("[VIDEO] Failed to clean up date stamp PNGs: $e");
     }
   }
 
@@ -621,7 +623,8 @@ class VideoUtils {
   /// Get frame dimensions and high-bit-depth flag from the first frame in a
   /// directory, performing only a single directory listing and IHDR read.
   static Future<({int width, int height, bool highBitDepth})?> _getFrameInfo(
-      String framesDir) async {
+    String framesDir,
+  ) async {
     final files = await _listSortedPngFiles(Directory(framesDir));
     if (files == null) return null;
 
@@ -779,22 +782,24 @@ class VideoUtils {
         if (await outputDir.exists()) {
           if (Platform.isWindows) {
             Process.run(
-              'wmic',
-              [
-                'logicaldisk',
-                'where',
-                'DeviceID="${path.rootPrefix(videoOutputPath).replaceAll('\\', '')}"',
-                'get',
-                'FreeSpace',
-                '/value',
-              ],
-              runInShell: true,
-            ).then((result) {
+                    'wmic',
+                    [
+                      'logicaldisk',
+                      'where',
+                      'DeviceID="${path.rootPrefix(videoOutputPath).replaceAll('\\', '')}"',
+                      'get',
+                      'FreeSpace',
+                      '/value',
+                    ],
+                    runInShell: true)
+                .then((result) {
               LogService.instance.log(
                 "[VIDEO] Disk space check: ${result.stdout.toString().trim()}",
               );
             }).catchError((e) {
-              LogService.instance.log("[VIDEO] Disk space check failed: $e");
+              LogService.instance.log(
+                "[VIDEO] Disk space check failed: $e",
+              );
             });
           } else if (Platform.isLinux || Platform.isMacOS) {
             // df works in both .deb and Flatpak (available in freedesktop runtime)
@@ -1062,9 +1067,7 @@ class VideoUtils {
 
           return ok;
         } catch (e, stackTrace) {
-          LogService.instance.log(
-            "[VIDEO] ERROR in macOS encoding: $e",
-          );
+          LogService.instance.log("[VIDEO] ERROR in macOS encoding: $e");
           LogService.instance.log("[VIDEO] Stack trace: $stackTrace");
           return false;
         }
@@ -1294,9 +1297,7 @@ class VideoUtils {
           success = true;
         } else {
           final logs = await session.getAllLogsAsString();
-          LogService.instance.log(
-            "[VIDEO] FFmpegKit failed. Full logs: $logs",
-          );
+          LogService.instance.log("[VIDEO] FFmpegKit failed. Full logs: $logs");
         }
       } catch (e, stackTrace) {
         LogService.instance.log("[VIDEO] ERROR in video compilation: $e");

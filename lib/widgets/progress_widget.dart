@@ -38,7 +38,7 @@ class ProgressWidget extends StatelessWidget {
     // Only show percentage and ETA once ETA is available
     final String stabilizingMessage = hasEta
         ? "Stabilizing • $progressPercentAsStr • $minutesRemaining"
-        : "Stabilizing • Estimating ETA...";
+        : "Stabilizing";
 
     final String compilingMessage = hasEta
         ? "Compiling video • $progressPercentAsStr • $minutesRemaining"

@@ -19,6 +19,7 @@ import '../utils/dir_utils.dart';
 import '../utils/export_naming_utils.dart';
 import '../utils/settings_utils.dart';
 import '../utils/platform_utils.dart';
+import '../utils/stabilizer_utils/stabilizer_utils.dart';
 import '../utils/utils.dart';
 import '../utils/video_utils.dart';
 
@@ -86,6 +87,7 @@ class CreatePageState extends State<CreatePage>
   int? photoCount;
   String resolution = "";
   String aspectRatio = "";
+  double _configuredVideoAspectRatio = 16 / 9;
   double playbackSpeed = 1.0;
   bool showOverlayIcon = false;
   IconData overlayIcon = Icons.play_arrow;
@@ -144,6 +146,7 @@ class CreatePageState extends State<CreatePage>
     _chewieController?.dispose();
     _chewieController = null;
 
+    _videoPlayerController?.removeListener(_handleStandardVideoMetricsChanged);
     _videoPlayerController?.dispose();
     _videoPlayerController = null;
 
@@ -398,35 +401,58 @@ class CreatePageState extends State<CreatePage>
     }
 
     final info = await _loadVideoInfo();
+    final projectIdStr = widget.projectId.toString();
+    final metadata = await Future.wait([
+      SettingsUtil.loadVideoResolution(projectIdStr),
+      SettingsUtil.loadAspectRatio(projectIdStr),
+      SettingsUtil.loadFramerate(projectIdStr),
+      SettingsUtil.loadStabilizationMode(),
+    ]);
+
+    final configuredResolution = metadata[0] as String;
+    final configuredAspectRatio = metadata[1] as String;
+    final configuredVideoAspectRatio = _resolveConfiguredVideoAspectRatio(
+      resolutionSetting: configuredResolution,
+      aspectRatioSetting: configuredAspectRatio,
+      orientation: info.orientation,
+    );
+
+    resolution = configuredResolution;
+    aspectRatio = configuredAspectRatio;
+    _configuredVideoAspectRatio = configuredVideoAspectRatio;
+    videoFps = metadata[2] as int;
+    _stabilizationMode = metadata[3] as String;
+
+    bool playerReady = true;
 
     // On Linux, use media_kit directly with texture scaling for 8K support
     if (_useMediaKit) {
       await _setupMediaKitPlayer(info.videoFile);
     } else {
-      await _setupStandardVideoPlayer(info.videoFile);
+      playerReady = await _setupStandardVideoPlayer(
+        info.videoFile,
+        fallbackAspectRatio: configuredVideoAspectRatio,
+      );
     }
 
-    setResolution();
-    aspectRatio = await SettingsUtil.loadAspectRatio(
-      widget.projectId.toString(),
-    );
-    videoFps = await SettingsUtil.loadFramerate(widget.projectId.toString());
+    setResolution(fallbackResolution: configuredResolution);
 
     // Load additional metadata for the info section
     _projectOrientation = info.orientation;
-    _stabilizationMode = await SettingsUtil.loadStabilizationMode();
     _effectiveCodec = info.codec;
+
+    if (!playerReady) {
+      return;
+    }
 
     // Don't hide nav bar - keep the standard page layout
     playVideo();
 
     final bool hasViewedFirstVideo = await SettingsUtil.hasSeenFirstVideo(
-      widget.projectId.toString(),
+      projectIdStr,
     );
     if (!hasViewedFirstVideo) {
-      await SettingsUtil.setHasSeenFirstVideoToTrue(
-        widget.projectId.toString(),
-      );
+      await SettingsUtil.setHasSeenFirstVideoToTrue(projectIdStr);
       widget.refreshSettings();
     }
   }
@@ -453,7 +479,10 @@ class CreatePageState extends State<CreatePage>
     await _mediaKitController!.waitUntilFirstFrameRendered;
   }
 
-  Future<void> _setupStandardVideoPlayer(File videoFile) async {
+  Future<bool> _setupStandardVideoPlayer(
+    File videoFile, {
+    required double fallbackAspectRatio,
+  }) async {
     _videoPlayerController = VideoPlayerController.file(videoFile);
 
     try {
@@ -465,15 +494,155 @@ class CreatePageState extends State<CreatePage>
         loadingComplete = true;
         _playbackUnsupported = true;
       });
-      return;
+      return false;
     }
 
     _videoPlayerController!.setLooping(true);
     _videoPlayerController!.setPlaybackSpeed(playbackSpeed);
+    _videoPlayerController!.addListener(_handleStandardVideoMetricsChanged);
 
-    _chewieController = ChewieController(
+    _chewieController = _buildChewieController(
+      aspectRatio: _resolveStandardVideoAspectRatio(
+        fallbackAspectRatio: fallbackAspectRatio,
+      ),
+    );
+    return true;
+  }
+
+  void playVideo() {
+    setState(() {
+      loadingComplete = true;
+      if (_useMediaKit) {
+        _mediaKitPlayer?.play();
+      } else {
+        _videoPlayerController!.play();
+      }
+    });
+  }
+
+  void setResolution({required String fallbackResolution}) {
+    final nextResolution = _resolveDisplayedResolution(
+      fallbackResolution: fallbackResolution,
+    );
+    if (!mounted) {
+      resolution = nextResolution;
+      return;
+    }
+    setState(() {
+      resolution = nextResolution;
+    });
+  }
+
+  (double, double) getVideoResolution() {
+    final Size size = _videoPlayerController?.value.size ?? Size.zero;
+    return (size.width, size.height);
+  }
+
+  void _handleStandardVideoMetricsChanged() {
+    final controller = _videoPlayerController;
+    if (controller == null) return;
+
+    final size = controller.value.size;
+    if (!_hasValidVideoSize(size)) {
+      return;
+    }
+
+    final nextAspectRatio = controller.value.aspectRatio;
+    final currentAspectRatio = _chewieController?.aspectRatio ?? 0;
+    final nextResolution = _resolveDisplayedResolution(
+      fallbackResolution: resolution,
+    );
+    final aspectRatioChanged =
+        (nextAspectRatio - currentAspectRatio).abs() > 0.001;
+    final resolutionChanged = nextResolution != resolution;
+
+    if (!aspectRatioChanged && !resolutionChanged) {
+      return;
+    }
+
+    if (aspectRatioChanged) {
+      final oldChewieController = _chewieController;
+      _chewieController = _buildChewieController(aspectRatio: nextAspectRatio);
+      oldChewieController?.dispose();
+    }
+
+    if (!mounted) {
+      resolution = nextResolution;
+      return;
+    }
+
+    setState(() {
+      resolution = nextResolution;
+    });
+  }
+
+  double getSmallerSide(double width, double height) =>
+      width < height ? width : height;
+
+  bool _hasValidVideoSize(Size size) => size.width > 0 && size.height > 0;
+
+  String _resolveDisplayedResolution({required String fallbackResolution}) {
+    if (_useMediaKit) {
+      return fallbackResolution;
+    }
+
+    final (double width, double height) = getVideoResolution();
+    if (width <= 0 || height <= 0) {
+      return fallbackResolution;
+    }
+
+    final double smallerSide = getSmallerSide(width, height);
+    if (smallerSide == 4320.0) {
+      return "8K";
+    }
+    if (smallerSide == 2304.0) {
+      return "4K";
+    }
+    if (smallerSide == 1080.0) {
+      return "1080p";
+    }
+
+    // Custom resolution - show as "1728p" format
+    return "${smallerSide.toInt()}p";
+  }
+
+  double _resolveConfiguredVideoAspectRatio({
+    required String resolutionSetting,
+    required String aspectRatioSetting,
+    required String orientation,
+  }) {
+    final dims = StabUtils.getOutputDimensions(
+      resolutionSetting,
+      aspectRatioSetting,
+      orientation,
+    );
+    if (dims != null && dims.$2 != 0) {
+      return dims.$1 / dims.$2;
+    }
+
+    return StabUtils.getAspectRatioAsDecimal(aspectRatioSetting) ?? (16 / 9);
+  }
+
+  double _resolveStandardVideoAspectRatio({
+    required double fallbackAspectRatio,
+  }) {
+    final controller = _videoPlayerController;
+    if (controller == null) {
+      return fallbackAspectRatio;
+    }
+
+    final size = controller.value.size;
+    if (_hasValidVideoSize(size)) {
+      return controller.value.aspectRatio;
+    }
+
+    return fallbackAspectRatio;
+  }
+
+  ChewieController _buildChewieController({required double aspectRatio}) {
+    return ChewieController(
       videoPlayerController: _videoPlayerController!,
-      aspectRatio: _videoPlayerController!.value.aspectRatio,
+      aspectRatio: aspectRatio,
       autoPlay: true,
       looping: true,
       allowFullScreen: true,
@@ -490,55 +659,6 @@ class CreatePageState extends State<CreatePage>
       deviceOrientationsAfterFullScreen: [DeviceOrientation.portraitUp],
     );
   }
-
-  void playVideo() {
-    setState(() {
-      loadingComplete = true;
-      if (_useMediaKit) {
-        _mediaKitPlayer?.play();
-      } else {
-        _videoPlayerController!.play();
-      }
-    });
-  }
-
-  void setResolution() async {
-    if (_useMediaKit) {
-      // For Linux with media_kit, get resolution from settings since
-      // the preview texture is scaled down
-      final res = await SettingsUtil.loadVideoResolution(
-        widget.projectId.toString(),
-      );
-      setState(() {
-        resolution = res;
-      });
-      return;
-    }
-
-    final (double width, double height) = getVideoResolution();
-    final double smallerSide = getSmallerSide(width, height);
-
-    setState(() {
-      if (smallerSide == 4320.0) {
-        resolution = "8K";
-      } else if (smallerSide == 2304.0) {
-        resolution = "4K";
-      } else if (smallerSide == 1080.0) {
-        resolution = "1080p";
-      } else {
-        // Custom resolution - show as "1728p" format
-        resolution = "${smallerSide.toInt()}p";
-      }
-    });
-  }
-
-  (double, double) getVideoResolution() {
-    final Size size = _videoPlayerController!.value.size;
-    return (size.width, size.height);
-  }
-
-  double getSmallerSide(double width, double height) =>
-      width < height ? width : height;
 
   Future<String> getRawPhotoPathFromTimestamp(String timestamp) async =>
       await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
@@ -614,10 +734,7 @@ class CreatePageState extends State<CreatePage>
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: AppColors.settingsCardBorder, width: 1),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: children,
-          ),
+          child: Column(mainAxisSize: MainAxisSize.min, children: children),
         ),
       ),
     );
@@ -818,9 +935,7 @@ class CreatePageState extends State<CreatePage>
         child: ElevatedButton.icon(
           onPressed: _triggerManualCompilation,
           icon: const Icon(Icons.refresh),
-          label: Text(
-            _videoExists ? 'Compile New Video' : 'Compile Video',
-          ),
+          label: Text(_videoExists ? 'Compile New Video' : 'Compile Video'),
           style: ElevatedButton.styleFrom(
             backgroundColor: _videoExists
                 ? AppColors.settingsCardBorder
@@ -1367,16 +1482,20 @@ class CreatePageState extends State<CreatePage>
 
   double _getVideoAspectRatio() {
     if (_useMediaKit) {
-      // Parse aspect ratio string like "16:9" or "4:3"
-      final parts = aspectRatio.split(':');
-      if (parts.length == 2) {
-        final w = double.tryParse(parts[0]) ?? 16;
-        final h = double.tryParse(parts[1]) ?? 9;
-        return w / h;
-      }
-      return 16 / 9;
+      return _configuredVideoAspectRatio;
     }
-    return _videoPlayerController?.value.aspectRatio ?? 16 / 9;
+
+    final controller = _videoPlayerController;
+    if (controller == null) {
+      return _configuredVideoAspectRatio;
+    }
+
+    final size = controller.value.size;
+    if (_hasValidVideoSize(size)) {
+      return controller.value.aspectRatio;
+    }
+
+    return _configuredVideoAspectRatio;
   }
 
   void _enterFullscreen() {
@@ -1404,7 +1523,7 @@ class CreatePageState extends State<CreatePage>
 
   Widget _buildChewieVideoPlayer() {
     return AspectRatio(
-      aspectRatio: _chewieController!.aspectRatio!,
+      aspectRatio: _chewieController!.aspectRatio ?? _getVideoAspectRatio(),
       child: Chewie(controller: _chewieController!),
     );
   }

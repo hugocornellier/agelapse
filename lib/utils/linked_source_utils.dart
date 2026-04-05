@@ -80,8 +80,10 @@ class LinkedSourceUtils {
           'linked_source_root_path',
           projectIdStr,
         ),
-        DB.instance
-            .getSettingValueByTitle('linked_source_tree_uri', projectIdStr),
+        DB.instance.getSettingValueByTitle(
+          'linked_source_tree_uri',
+          projectIdStr,
+        ),
         DB.instance.getSettingValueByTitle(
           'linked_source_bookmark',
           projectIdStr,
@@ -197,8 +199,10 @@ class LinkedSourceUtils {
 
     if (normalizedSource == normalizedRoot ||
         path.isWithin(normalizedRoot, normalizedSource)) {
-      final relativePath =
-          path.relative(normalizedSource, from: normalizedRoot);
+      final relativePath = path.relative(
+        normalizedSource,
+        from: normalizedRoot,
+      );
       final filename = path.basename(normalizedSource);
       return LinkedSourcePlacement(
         absolutePath: normalizedSource,
@@ -225,8 +229,10 @@ class LinkedSourceUtils {
           : path.basename(sourceFilePath),
     );
 
-    final targetPath =
-        await _uniqueSequentialPath(config.rootPath, desiredFilename);
+    final targetPath = await _uniqueSequentialPath(
+      config.rootPath,
+      desiredFilename,
+    );
     try {
       await sourceFile.copy(targetPath);
     } catch (e) {
@@ -262,16 +268,15 @@ class LinkedSourceUtils {
   }
 
   static Future<String> _uniqueSequentialPath(
-      String dir, String filename) async {
+    String dir,
+    String filename,
+  ) async {
     var candidate = path.join(dir, filename);
     if (!await File(candidate).exists()) return candidate;
 
     int suffix = 2;
     while (await File(candidate).exists()) {
-      candidate = path.join(
-        dir,
-        buildSequentialFilename(filename, suffix),
-      );
+      candidate = path.join(dir, buildSequentialFilename(filename, suffix));
       suffix++;
     }
     return candidate;

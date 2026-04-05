@@ -82,8 +82,8 @@ class DesktopPageScaffold extends StatelessWidget {
                 children: [
                   Padding(
                     padding: EdgeInsets.only(
-                        right:
-                            (Platform.isLinux || Platform.isWindows) ? 120 : 0),
+                      right: (Platform.isLinux || Platform.isWindows) ? 120 : 0,
+                    ),
                     child: DragToMoveArea(child: SizedBox.expand()),
                   ),
                   IgnorePointer(
@@ -253,10 +253,7 @@ class DesktopPageScaffold extends StatelessWidget {
         bottom: showBottomDivider
             ? PreferredSize(
                 preferredSize: const Size.fromHeight(1),
-                child: Container(
-                  height: 1,
-                  color: AppColors.settingsDivider,
-                ),
+                child: Container(height: 1, color: AppColors.settingsDivider),
               )
             : null,
       ),

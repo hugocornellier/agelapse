@@ -260,9 +260,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
       onBack: () => Navigator.pop(context),
       backgroundColor: AppColors.settingsBackground,
       showBottomDivider: true,
-      actions: [
-        HelpIconButton(onTap: _showHelpDialog),
-      ],
+      actions: [HelpIconButton(onTap: _showHelpDialog)],
       body: body,
     );
   }

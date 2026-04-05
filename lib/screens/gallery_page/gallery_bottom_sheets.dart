@@ -221,10 +221,7 @@ class GalleryBottomSheets {
           GestureDetector(
             onTap: onShare,
             child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 12,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               decoration: BoxDecoration(
                 color: AppColors.textPrimary.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10),

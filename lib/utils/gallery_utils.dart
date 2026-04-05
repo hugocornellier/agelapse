@@ -581,14 +581,16 @@ class GalleryUtils {
         ..sort((a, b) => a.name.compareTo(b.name));
 
       final zipEntries = entries
-          .map((f) => (
-                name: f.name,
-                writeTempFile: (String tempFilePath) async {
-                  final out = OutputFileStream(tempFilePath);
-                  f.writeContent(out);
-                  out.close();
-                },
-              ))
+          .map(
+            (f) => (
+              name: f.name,
+              writeTempFile: (String tempFilePath) async {
+                final out = OutputFileStream(tempFilePath);
+                f.writeContent(out);
+                out.close();
+              },
+            ),
+          )
           .toList();
 
       await _processZipEntries(
@@ -675,11 +677,13 @@ class GalleryUtils {
         ..sort((a, b) => a.name.compareTo(b.name));
 
       final zipEntries = rawEntries
-          .map((entry) => (
-                name: entry.name,
-                writeTempFile: (String tempFilePath) =>
-                    reader.readToFile(entry.name, File(tempFilePath)),
-              ))
+          .map(
+            (entry) => (
+              name: entry.name,
+              writeTempFile: (String tempFilePath) =>
+                  reader.readToFile(entry.name, File(tempFilePath)),
+            ),
+          )
           .toList();
 
       await _processZipEntries(
@@ -872,9 +876,11 @@ class GalleryUtils {
   /// it came from (EXIF → Filename → File Modified). Never throws: on any
   /// error the method falls through to the fileModified tier.
   static Future<ImportPreviewItem> extractDateForPreview(
-      String filePath) async {
-    final (int ts, int offset, DateSourceTier tier) =
-        await _extractDateTier(filePath);
+    String filePath,
+  ) async {
+    final (int ts, int offset, DateSourceTier tier) = await _extractDateTier(
+      filePath,
+    );
     return ImportPreviewItem(
       filePath: filePath,
       filename: path.basename(filePath),
@@ -885,7 +891,8 @@ class GalleryUtils {
   }
 
   static Future<(int, int, DateSourceTier)> _extractDateTier(
-      String filePath) async {
+    String filePath,
+  ) async {
     Future<(int, int, DateSourceTier)> fileModifiedFallback() async {
       final DateTime lm = await File(filePath).lastModified();
       final DateTime localMidnight = DateTime(lm.year, lm.month, lm.day);
@@ -940,8 +947,11 @@ class GalleryUtils {
           ValueNotifier(''),
         );
         if (parsed != null) {
-          final DateTime localMidnight =
-              DateTime(parsed.year, parsed.month, parsed.day);
+          final DateTime localMidnight = DateTime(
+            parsed.year,
+            parsed.month,
+            parsed.day,
+          );
           timestampMs = localMidnight.toUtc().millisecondsSinceEpoch;
           captureOffsetMinutes = localMidnight.timeZoneOffset.inMinutes;
           sourceTier = DateSourceTier.filename;

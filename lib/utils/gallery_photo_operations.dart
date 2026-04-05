@@ -236,9 +236,7 @@ class GalleryPhotoOperations {
       }
 
       final String currentGuidePhoto =
-          await SettingsUtil.loadSelectedGuidePhoto(
-        projectId.toString(),
-      );
+          await SettingsUtil.loadSelectedGuidePhoto(projectId.toString());
       if (currentGuidePhoto == oldId.toString()) {
         await DB.instance.setSettingByTitle(
           "selected_guide_photo",

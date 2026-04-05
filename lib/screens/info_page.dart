@@ -142,8 +142,10 @@ class InfoPageState extends State<InfoPage> {
               onTap: _copyEmail,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 decoration: BoxDecoration(
                   color: _emailCopied
                       ? AppColors.success.withValues(alpha: 0.1)
@@ -174,14 +176,18 @@ class InfoPageState extends State<InfoPage> {
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 200),
                         child: _emailCopied
-                            ? Icon(Icons.check_rounded,
+                            ? Icon(
+                                Icons.check_rounded,
                                 size: 20,
                                 color: AppColors.success,
-                                key: const ValueKey('check'))
-                            : Icon(Icons.mail_outline_rounded,
+                                key: const ValueKey('check'),
+                              )
+                            : Icon(
+                                Icons.mail_outline_rounded,
                                 size: 20,
                                 color: AppColors.accent,
-                                key: const ValueKey('mail')),
+                                key: const ValueKey('mail'),
+                              ),
                       ),
                     ),
                     const SizedBox(width: 14),

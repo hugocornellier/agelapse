@@ -95,7 +95,8 @@ class StabUtils {
       _faceDetectorIsolate,
       (d) => d.isReady,
       () => fdl.FaceDetectorIsolate.spawn(
-          model: fdl.FaceDetectionModel.backCamera),
+        model: fdl.FaceDetectionModel.backCamera,
+      ),
     );
   }
 
@@ -615,9 +616,11 @@ class StabUtils {
     (Point<double>?, Point<double>?) Function(T) getEyes, {
     bool filterByFaceSize = true,
     int? imageWidth,
-    required List<FaceLike> Function(List<T>,
-            {bool filterByFaceSize, int? imageWidth})
-        retry,
+    required List<FaceLike> Function(
+      List<T>, {
+      bool filterByFaceSize,
+      int? imageWidth,
+    }) retry,
   }) {
     final double w = imageWidth?.toDouble() ?? getImageWidth(detections.first);
     final List<FaceLike> faces = [];
@@ -630,7 +633,8 @@ class StabUtils {
 
       final (leftEye, rightEye) = getEyes(d);
       faces.add(
-          FaceLike(boundingBox: bbox, leftEye: leftEye, rightEye: rightEye));
+        FaceLike(boundingBox: bbox, leftEye: leftEye, rightEye: rightEye),
+      );
     }
 
     if (faces.isEmpty && detections.isNotEmpty) {
@@ -659,8 +663,11 @@ class StabUtils {
         await ensure();
         final results = await detect(bytes);
         if (results.isEmpty) return <FaceLike>[];
-        return convert(results,
-            filterByFaceSize: filterByFaceSize, imageWidth: imageWidth);
+        return convert(
+          results,
+          filterByFaceSize: filterByFaceSize,
+          imageWidth: imageWidth,
+        );
       } catch (e) {
         LogService.instance.log("Error detecting $errorLabel faces: $e");
         onError();

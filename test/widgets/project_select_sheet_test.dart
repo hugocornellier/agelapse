@@ -142,10 +142,7 @@ void main() {
     });
 
     test('checkForStabilizedImage method exists (moved to GalleryUtils)', () {
-      expect(
-        GalleryUtils.checkForStabilizedImage,
-        isA<Function>(),
-      );
+      expect(GalleryUtils.checkForStabilizedImage, isA<Function>());
     });
 
     test('photoWasTakenToday method exists (moved to ProjectUtils)', () {
@@ -162,9 +159,7 @@ void main() {
     });
 
     test('checkForStabilizedImage returns Future<String?>', () {
-      final result = GalleryUtils.checkForStabilizedImage(
-        '/nonexistent',
-      );
+      final result = GalleryUtils.checkForStabilizedImage('/nonexistent');
       expect(result, isA<Future<String?>>());
     });
 

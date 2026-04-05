@@ -537,76 +537,124 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
             color: AppColors.settingsTextSecondary,
           ),
           const SizedBox(width: 8),
-          FutureBuilder<Map<String, dynamic>?>(
-            future: _previewPhotoFuture,
-            builder: (context, snap) {
-              final int? off = CaptureTimezone.extractOffset(snap.data);
-              final timestamp = _currentTimestamp;
-              if (timestamp.isEmpty) {
-                return const SizedBox.shrink();
-              }
-              return Text(
-                Utils.formatUnixTimestampPlatformAware(
-                  int.parse(timestamp),
-                  captureOffsetMinutes: off,
-                ),
-                style: TextStyle(
-                  color: AppColors.settingsTextPrimary,
-                  fontSize: AppTypography.md,
-                ),
-              );
-            },
-          ),
-          const SizedBox(width: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.settingsCardBorder,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: FutureBuilder<Size>(
-              future: _getImageDimensions(_currentImagePath),
+          Flexible(
+            child: FutureBuilder<Map<String, dynamic>?>(
+              future: _previewPhotoFuture,
               builder: (context, snap) {
-                if (!snap.hasData || snap.data == const Size(0, 0)) {
+                final int? off = CaptureTimezone.extractOffset(snap.data);
+                final timestamp = _currentTimestamp;
+                if (timestamp.isEmpty) {
                   return const SizedBox.shrink();
                 }
                 return Text(
-                  '${snap.data!.width.toInt()}x${snap.data!.height.toInt()}',
-                  style: TextStyle(
-                    color: AppColors.settingsTextSecondary,
-                    fontSize: AppTypography.sm,
+                  Utils.formatUnixTimestampPlatformAware(
+                    int.parse(timestamp),
+                    captureOffsetMinutes: off,
                   ),
+                  style: TextStyle(
+                    color: AppColors.settingsTextPrimary,
+                    fontSize: AppTypography.md,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 );
               },
             ),
           ),
-          if (_isInspectionMode && !_isRaw)
-            Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF4CAF50).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: const Color(0xFF4CAF50).withValues(alpha: 0.3),
-                    width: 1,
-                  ),
-                ),
-                child: Text(
-                  'Inspection Mode',
-                  style: TextStyle(
-                    color: const Color(0xFF4CAF50),
-                    fontSize: AppTypography.sm,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
+          if (isDesktop) ...[
+            const SizedBox(width: 12),
+            _buildResolutionBadge(),
+            if (_isInspectionMode && !_isRaw) _buildInspectionModeBadge(),
+          ],
           const Spacer(),
+          _buildInfoButton(),
+          const SizedBox(width: 8),
           _buildCloseButton(),
         ],
       ),
+    );
+  }
+
+  Widget _buildResolutionBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.settingsCardBorder,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: FutureBuilder<Size>(
+        future: _getImageDimensions(_currentImagePath),
+        builder: (context, snap) {
+          if (!snap.hasData || snap.data == const Size(0, 0)) {
+            return const SizedBox.shrink();
+          }
+          return Text(
+            '${snap.data!.width.toInt()}x${snap.data!.height.toInt()}',
+            style: TextStyle(
+              color: AppColors.settingsTextSecondary,
+              fontSize: AppTypography.sm,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildInspectionModeBadge() {
+    return Padding(
+      padding: const EdgeInsets.only(left: 8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFF4CAF50).withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: const Color(0xFF4CAF50).withValues(alpha: 0.3),
+            width: 1,
+          ),
+        ),
+        child: Text(
+          'Inspection Mode',
+          style: TextStyle(
+            color: const Color(0xFF4CAF50),
+            fontSize: AppTypography.sm,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoButton() {
+    return _buildIconButton(
+      icon: Icons.info_outline,
+      size: 40,
+      radius: 12,
+      bgColor: AppColors.settingsCardBorder,
+      iconColor: AppColors.settingsTextPrimary,
+      iconSize: 20,
+      onTap: _showImageInfoDialog,
+    );
+  }
+
+  void _showImageInfoDialog() {
+    final rawPath =
+        _currentIndex >= 0 && _currentIndex < widget.rawImageFiles.length
+            ? widget.rawImageFiles[_currentIndex]
+            : '';
+    final stabPath =
+        _currentIndex >= 0 && _currentIndex < widget.stabilizedImageFiles.length
+            ? widget.stabilizedImageFiles[_currentIndex]
+            : '';
+
+    GalleryImageMenu.showImageInfo(
+      context: context,
+      timestamp: _currentTimestamp,
+      projectId: widget.projectId,
+      rawPath: rawPath,
+      stabPath: stabPath,
+      isInspectionMode: _isInspectionMode,
+      isRaw: _isRaw,
+      getDimensions: _getImageDimensions,
     );
   }
 
@@ -912,8 +960,9 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
         color: AppColors.settingsBackground,
         border: Border(
           top: BorderSide(
-              color: AppColors.settingsDivider.withValues(alpha: 0.6),
-              width: 1),
+            color: AppColors.settingsDivider.withValues(alpha: 0.6),
+            width: 1,
+          ),
         ),
       ),
       padding: EdgeInsets.only(
@@ -1325,6 +1374,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
       onSetGuidePhoto: _setAsGuidePhoto,
       onManualStab: () => _navigateToManualStabilization(imageFile),
       onDelete: () => _showDeleteDialog(imageFile),
+      onImageInfo: _showImageInfoDialog,
     );
   }
 

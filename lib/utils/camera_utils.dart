@@ -29,10 +29,10 @@ class CameraUtils {
   ) async {
     final receivePort = ReceivePort();
     try {
-      final isolate = await Isolate.spawn(
-        entryPoint,
-        {'sendPort': receivePort.sendPort, ...params},
-      );
+      final isolate = await Isolate.spawn(entryPoint, {
+        'sendPort': receivePort.sendPort,
+        ...params,
+      });
       final result = await receivePort.first as T?;
       receivePort.close();
       isolate.kill(priority: Isolate.immediate);
@@ -65,9 +65,9 @@ class CameraUtils {
   ) async {
     Future<void> operation(Map<String, dynamic> params) async {
       final SendPort sendPort = params['sendPort'];
-      await XFile(params['xFilePath'] as String).saveTo(
-        params['saveToPath'] as String,
-      );
+      await XFile(
+        params['xFilePath'] as String,
+      ).saveTo(params['saveToPath'] as String);
       sendPort.send("Success");
     }
 
@@ -294,8 +294,9 @@ class CameraUtils {
         if (processingOutput.thumbnailBytes == null) {
           return false;
         }
-        await File(thumbnailPath)
-            .writeAsBytes(processingOutput.thumbnailBytes!);
+        await File(
+          thumbnailPath,
+        ).writeAsBytes(processingOutput.thumbnailBytes!);
 
         final linkedPlacement = await _maybePlaceSourceInLinkedFolder(
           projectId: projectId,

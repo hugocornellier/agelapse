@@ -228,8 +228,12 @@ class DB {
   }
 
   Future<String?> getProjectNameById(int projectId) => _querySingle(
-      projectTable, 'id = ?', [projectId], (r) => r['name'] as String,
-      columns: ['name']);
+        projectTable,
+        'id = ?',
+        [projectId],
+        (r) => r['name'] as String,
+        columns: ['name'],
+      );
 
   Future<Map<String, dynamic>?> getProject(int id) =>
       _querySingle(projectTable, 'id = ?', [id], (r) => r);
@@ -298,8 +302,12 @@ class DB {
   }
 
   Future<String?> getProjectTypeByProjectId(int projectId) => _querySingle(
-      projectTable, 'id = ?', [projectId], (r) => r['type'] as String,
-      columns: ['type']);
+        projectTable,
+        'id = ?',
+        [projectId],
+        (r) => r['type'] as String,
+        columns: ['type'],
+      );
 
   Future<void> setNewVideoNeeded(int projectId) async {
     final db = await database;
@@ -322,8 +330,12 @@ class DB {
   }
 
   Future<int?> getNewVideoNeeded(int projectId) => _querySingle(
-      projectTable, 'id = ?', [projectId], (r) => r['newVideoNeeded'] as int,
-      columns: ['newVideoNeeded']);
+        projectTable,
+        'id = ?',
+        [projectId],
+        (r) => r['newVideoNeeded'] as int,
+        columns: ['newVideoNeeded'],
+      );
 
   /* ┌──────────────────────┐
      │                      │
@@ -671,8 +683,10 @@ class DB {
     return await db.delete(photoTable);
   }
 
-  String? _resolveOrientation(List<Map<String, dynamic>> result,
-      {required bool unanimous}) {
+  String? _resolveOrientation(
+    List<Map<String, dynamic>> result, {
+    required bool unanimous,
+  }) {
     if (result.isEmpty) return null;
     final row = result.first;
     final total = (row[unanimous ? 'totalNonNull' : 'totalCount'] as int?) ?? 0;
@@ -746,24 +760,32 @@ class DB {
     String timestamp,
     int projectId,
   ) =>
-      _querySingle(photoTable, _photoWhereClause, [timestamp, projectId],
-          (r) => r['fileExtension'] as String,
-          columns: ['fileExtension']);
+      _querySingle(
+        photoTable,
+        _photoWhereClause,
+        [timestamp, projectId],
+        (r) => r['fileExtension'] as String,
+        columns: ['fileExtension'],
+      );
 
   Future<Map<String, dynamic>?> getOriginalInfoByTimestamp(
     String timestamp,
     int projectId,
   ) =>
       _querySingle(
-          photoTable, _photoWhereClause, [timestamp, projectId], (r) => r,
-          columns: [
-            'timestamp',
-            'fileExtension',
-            'originalFilename',
-            'sourceFilename',
-            'sourceRelativePath',
-            'sourceLocationType',
-          ]);
+        photoTable,
+        _photoWhereClause,
+        [timestamp, projectId],
+        (r) => r,
+        columns: [
+          'timestamp',
+          'fileExtension',
+          'originalFilename',
+          'sourceFilename',
+          'sourceRelativePath',
+          'sourceLocationType',
+        ],
+      );
 
   /// Batch query to get original source filenames for multiple timestamps.
   /// Returns a map of timestamp -> sourceFilename. Queries in chunks to avoid
@@ -809,8 +831,14 @@ class DB {
     String relativePath,
     int projectId,
   ) =>
-      _querySingle(photoTable, 'sourceRelativePath = ? AND projectID = ?',
-          [relativePath, projectId], (r) => r);
+      _querySingle(
+          photoTable,
+          'sourceRelativePath = ? AND projectID = ?',
+          [
+            relativePath,
+            projectId,
+          ],
+          (r) => r);
 
   Future<List<Map<String, dynamic>>> getPhotosBySourceLocationType(
     int projectId,
@@ -1329,15 +1357,21 @@ class DB {
   }
 
   Future<String?> getEarliestPhotoTimestamp(int projectId) =>
-      _queryFirstByOrder(photoTable, 'projectID = ?', [projectId],
-          '$_orderByTimestamp ASC', (r) => r['timestamp'] as String);
+      _queryFirstByOrder(
+        photoTable,
+        'projectID = ?',
+        [projectId],
+        '$_orderByTimestamp ASC',
+        (r) => r['timestamp'] as String,
+      );
 
   Future<String?> getLatestPhotoTimestamp(int projectId) => _queryFirstByOrder(
-      photoTable,
-      'projectID = ?',
-      [projectId],
-      '$_orderByTimestamp DESC',
-      (r) => r['timestamp'] as String);
+        photoTable,
+        'projectID = ?',
+        [projectId],
+        '$_orderByTimestamp DESC',
+        (r) => r['timestamp'] as String,
+      );
 
   /* ┌──────────────────────┐
      │                      │
@@ -1370,8 +1404,13 @@ class DB {
   }
 
   Future<Map<String, dynamic>?> getNewestVideoByProjectId(int projectId) =>
-      _queryFirstByOrder(videoTable, 'projectID = ?', [projectId],
-          'timestampCreated DESC', (r) => r);
+      _queryFirstByOrder(
+        videoTable,
+        'projectID = ?',
+        [projectId],
+        'timestampCreated DESC',
+        (r) => r,
+      );
 
   /* ┌──────────────────────┐
      │                      │
@@ -1418,11 +1457,21 @@ class DB {
   /// Get a custom font by its family name.
   Future<CustomFont?> getCustomFontByFamilyName(String familyName) =>
       _querySingle(
-          customFontTable, 'familyName = ?', [familyName], CustomFont.fromJson);
+          customFontTable,
+          'familyName = ?',
+          [
+            familyName,
+          ],
+          CustomFont.fromJson);
 
   /// Get a custom font by its display name.
   Future<CustomFont?> getCustomFontByDisplayName(String displayName) =>
-      _querySingle(customFontTable, 'displayName = ?', [displayName],
+      _querySingle(
+          customFontTable,
+          'displayName = ?',
+          [
+            displayName,
+          ],
           CustomFont.fromJson);
 
   /// Delete a custom font by its ID.
@@ -1465,14 +1514,13 @@ class DB {
   ) async {
     final db = await database;
     await db.insert(
-      deletedLinkedSourcesTable,
-      {
-        'projectID': projectId,
-        'sourceRelativePath': sourceRelativePath,
-        'deletedAt': DateTime.now().millisecondsSinceEpoch,
-      },
-      conflictAlgorithm: ConflictAlgorithm.ignore,
-    );
+        deletedLinkedSourcesTable,
+        {
+          'projectID': projectId,
+          'sourceRelativePath': sourceRelativePath,
+          'deletedAt': DateTime.now().millisecondsSinceEpoch,
+        },
+        conflictAlgorithm: ConflictAlgorithm.ignore);
   }
 
   /// Returns true if the given relative path was explicitly deleted by the user

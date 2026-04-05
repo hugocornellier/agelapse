@@ -915,8 +915,11 @@ class SettingsSheetState extends State<SettingsSheet> {
   }
 
   Future<void> _saveProjectSetting(String key, String value) async {
-    await DB.instance
-        .setSettingByTitle(key, value, widget.projectId.toString());
+    await DB.instance.setSettingByTitle(
+      key,
+      value,
+      widget.projectId.toString(),
+    );
     widget.refreshSettings();
   }
 
@@ -1010,7 +1013,9 @@ class SettingsSheetState extends State<SettingsSheet> {
       dailyNotificationTime = selectedDateTimestamp.toString();
 
       await _saveProjectSetting(
-          'daily_notification_time', dailyNotificationTime);
+        'daily_notification_time',
+        dailyNotificationTime,
+      );
 
       await _scheduleDailyNotification();
     }
@@ -1041,7 +1046,7 @@ class SettingsSheetState extends State<SettingsSheet> {
           () => Column(
             children: [
               _buildStabilizationModeDropdown(),
-              _buildEyeScaleButton()
+              _buildEyeScaleButton(),
             ],
           ),
           () => _settingsFuture,
@@ -1308,11 +1313,7 @@ class SettingsSheetState extends State<SettingsSheet> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               child: Row(
                 children: [
-                  Icon(
-                    section.icon,
-                    size: 18,
-                    color: labelColor,
-                  ),
+                  Icon(section.icon, size: 18, color: labelColor),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -1450,9 +1451,7 @@ class SettingsSheetState extends State<SettingsSheet> {
             decoration: BoxDecoration(
               color: _dangerRed.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: _dangerRed.withValues(alpha: 0.3),
-              ),
+              border: Border.all(color: _dangerRed.withValues(alpha: 0.3)),
             ),
             child: Center(
               child: Text(
@@ -1805,7 +1804,8 @@ class SettingsSheetState extends State<SettingsSheet> {
                 TextButton(
                   onPressed: () async {
                     await LinkedSourceUtils.disableLinkedSource(
-                        widget.projectId);
+                      widget.projectId,
+                    );
                     setStateIfMounted(() {
                       _linkedSourceEnabled = false;
                       _linkedSourceDisplayPath = '';
@@ -2381,28 +2381,43 @@ class SettingsSheetState extends State<SettingsSheet> {
           presetItems: [
             DropdownMenuItem<String>(
               value: DateStampUtils.galleryFormatMMYY,
-              child: Text(DateStampUtils.getGalleryFormatExample(
-                  DateStampUtils.galleryFormatMMYY)),
+              child: Text(
+                DateStampUtils.getGalleryFormatExample(
+                  DateStampUtils.galleryFormatMMYY,
+                ),
+              ),
             ),
             DropdownMenuItem<String>(
               value: DateStampUtils.galleryFormatMMMDD,
-              child: Text(DateStampUtils.getGalleryFormatExample(
-                  DateStampUtils.galleryFormatMMMDD)),
+              child: Text(
+                DateStampUtils.getGalleryFormatExample(
+                  DateStampUtils.galleryFormatMMMDD,
+                ),
+              ),
             ),
             DropdownMenuItem<String>(
               value: DateStampUtils.galleryFormatMMMDDYY,
-              child: Text(DateStampUtils.getGalleryFormatExample(
-                  DateStampUtils.galleryFormatMMMDDYY)),
+              child: Text(
+                DateStampUtils.getGalleryFormatExample(
+                  DateStampUtils.galleryFormatMMMDDYY,
+                ),
+              ),
             ),
             DropdownMenuItem<String>(
               value: DateStampUtils.galleryFormatDDMMM,
-              child: Text(DateStampUtils.getGalleryFormatExample(
-                  DateStampUtils.galleryFormatDDMMM)),
+              child: Text(
+                DateStampUtils.getGalleryFormatExample(
+                  DateStampUtils.galleryFormatDDMMM,
+                ),
+              ),
             ),
             DropdownMenuItem<String>(
               value: DateStampUtils.galleryFormatMMMYYYY,
-              child: Text(DateStampUtils.getGalleryFormatExample(
-                  DateStampUtils.galleryFormatMMMYYYY)),
+              child: Text(
+                DateStampUtils.getGalleryFormatExample(
+                  DateStampUtils.galleryFormatMMMYYYY,
+                ),
+              ),
             ),
           ],
           customController: _galleryCustomFormatController,
@@ -2594,28 +2609,43 @@ class SettingsSheetState extends State<SettingsSheet> {
           presetItems: [
             DropdownMenuItem<String>(
               value: DateStampUtils.exportFormatLong,
-              child: Text(DateStampUtils.getExportFormatExample(
-                  DateStampUtils.exportFormatLong)),
+              child: Text(
+                DateStampUtils.getExportFormatExample(
+                  DateStampUtils.exportFormatLong,
+                ),
+              ),
             ),
             DropdownMenuItem<String>(
               value: DateStampUtils.exportFormatISO,
-              child: Text(DateStampUtils.getExportFormatExample(
-                  DateStampUtils.exportFormatISO)),
+              child: Text(
+                DateStampUtils.getExportFormatExample(
+                  DateStampUtils.exportFormatISO,
+                ),
+              ),
             ),
             DropdownMenuItem<String>(
               value: DateStampUtils.exportFormatUS,
-              child: Text(DateStampUtils.getExportFormatExample(
-                  DateStampUtils.exportFormatUS)),
+              child: Text(
+                DateStampUtils.getExportFormatExample(
+                  DateStampUtils.exportFormatUS,
+                ),
+              ),
             ),
             DropdownMenuItem<String>(
               value: DateStampUtils.exportFormatEU,
-              child: Text(DateStampUtils.getExportFormatExample(
-                  DateStampUtils.exportFormatEU)),
+              child: Text(
+                DateStampUtils.getExportFormatExample(
+                  DateStampUtils.exportFormatEU,
+                ),
+              ),
             ),
             DropdownMenuItem<String>(
               value: DateStampUtils.exportFormatShort,
-              child: Text(DateStampUtils.getExportFormatExample(
-                  DateStampUtils.exportFormatShort)),
+              child: Text(
+                DateStampUtils.getExportFormatExample(
+                  DateStampUtils.exportFormatShort,
+                ),
+              ),
             ),
           ],
           customController: _exportCustomFormatController,
@@ -3303,7 +3333,9 @@ class SettingsSheetState extends State<SettingsSheet> {
 
               setState(() => projectOrientation = value);
               await _saveProjectSetting(
-                  'project_orientation', value.toLowerCase());
+                'project_orientation',
+                value.toLowerCase(),
+              );
 
               await resetStabStatusAndRestartStabilization();
             }
@@ -3791,7 +3823,9 @@ class SettingsSheetState extends State<SettingsSheet> {
             items: const [
               DropdownMenuItem(value: 'solid', child: Text('Solid colour')),
               DropdownMenuItem(
-                  value: 'transparent', child: Text('Transparent')),
+                value: 'transparent',
+                child: Text('Transparent'),
+              ),
               DropdownMenuItem(value: 'blurred', child: Text('Blurred')),
             ],
             onChanged: (String? newValue) async {

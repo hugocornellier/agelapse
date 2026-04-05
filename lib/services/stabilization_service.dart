@@ -200,62 +200,36 @@ class StabilizationService {
 
       // Stabilize each photo
       final Stopwatch stopwatch = Stopwatch()..start();
-      int photosDone = 0;
+      final progressState = _ProgressState(
+        photosDone: 0,
+        totalPhotoCount: allPhotos.length,
+      );
 
-      for (final photo in unstabilizedPhotos) {
+      await _stabilizeBatch(
+        unstabilizedPhotos,
+        stopwatch,
+        progressState,
+        projectId,
+      );
+
+      // Re-check for photos added during stabilization (e.g., user took a photo)
+      const maxRecheckPasses = 3;
+      for (int pass = 0; pass < maxRecheckPasses; pass++) {
         _currentToken?.throwIfCancelled();
+        final newPhotos = await StabUtils.getUnstabilizedPhotos(projectId);
+        if (newPhotos.isEmpty) break;
+
+        _totalPhotos += newPhotos.length;
+        final freshAllPhotos = await DB.instance.getPhotosByProjectID(
+          projectId,
+        );
+        progressState.totalPhotoCount = freshAllPhotos.length;
 
         LogService.instance.log(
-          'StabilizationService: Stabilizing photo ${_currentPhoto + 1}/$_totalPhotos',
+          'StabilizationService: Found ${newPhotos.length} new photos on re-check pass ${pass + 1}',
         );
 
-        final result = await _stabilizePhoto(
-          _currentStabilizer!,
-          photo,
-          _currentToken,
-        );
-
-        if (result.cancelled) {
-          throw CancelledException('User cancelled');
-        }
-
-        if (result.success) {
-          _successfullyStabilized++;
-          // Add to benchmark
-          _benchmark.addResult(
-            finalScore: result.finalScore,
-            finalEyeDeltaY: result.finalEyeDeltaY,
-            finalEyeDistance: result.finalEyeDistance,
-            goalEyeDistance: result.goalEyeDistance,
-            mode: _currentStabilizer?.stabilizationMode,
-          );
-        }
-
-        _currentPhoto++;
-        photosDone++;
-
-        final avgTimePerPhoto = stopwatch.elapsedMilliseconds / photosDone;
-        final remainingPhotos = _totalPhotos - photosDone;
-        final estimatedTimeRemaining = avgTimePerPhoto * remainingPhotos;
-        _eta = _formatDuration(estimatedTimeRemaining.toInt());
-
-        final totalPhotoCount = allPhotos.length;
-        final completed = _stabilizedAtStart + _successfullyStabilized;
-        var pct =
-            totalPhotoCount > 0 ? (completed * 100.0 / totalPhotoCount) : 0.0;
-        if (pct >= 100) pct = 99.9;
-        if (pct < 0) pct = 0.0;
-
-        _emitProgress(
-          StabilizationProgress.stabilizing(
-            currentPhoto: _currentPhoto,
-            totalPhotos: _totalPhotos,
-            progressPercent: pct,
-            eta: _eta,
-            projectId: projectId,
-            lastStabilizedTimestamp: photo['timestamp']?.toString(),
-          ),
-        );
+        await _stabilizeBatch(newPhotos, stopwatch, progressState, projectId);
       }
 
       stopwatch.stop();
@@ -393,6 +367,69 @@ class StabilizationService {
     }
   }
 
+  Future<void> _stabilizeBatch(
+    List<Map<String, dynamic>> photos,
+    Stopwatch stopwatch,
+    _ProgressState progressState,
+    int projectId,
+  ) async {
+    for (final photo in photos) {
+      _currentToken?.throwIfCancelled();
+
+      LogService.instance.log(
+        'StabilizationService: Stabilizing photo ${_currentPhoto + 1}/$_totalPhotos',
+      );
+
+      final result = await _stabilizePhoto(
+        _currentStabilizer!,
+        photo,
+        _currentToken,
+      );
+
+      if (result.cancelled) {
+        throw CancelledException('User cancelled');
+      }
+
+      if (result.success) {
+        _successfullyStabilized++;
+        _benchmark.addResult(
+          finalScore: result.finalScore,
+          finalEyeDeltaY: result.finalEyeDeltaY,
+          finalEyeDistance: result.finalEyeDistance,
+          goalEyeDistance: result.goalEyeDistance,
+          mode: _currentStabilizer?.stabilizationMode,
+        );
+      }
+
+      _currentPhoto++;
+      progressState.photosDone++;
+
+      final avgTimePerPhoto =
+          stopwatch.elapsedMilliseconds / progressState.photosDone;
+      final remainingPhotos = _totalPhotos - progressState.photosDone;
+      final estimatedTimeRemaining = avgTimePerPhoto * remainingPhotos;
+      _eta = _formatDuration(estimatedTimeRemaining.toInt());
+
+      final completed = _stabilizedAtStart + _successfullyStabilized;
+      var pct = progressState.totalPhotoCount > 0
+          ? (completed * 100.0 / progressState.totalPhotoCount)
+          : 0.0;
+      if (pct >= 100) pct = 99.9;
+      if (pct < 0) pct = 0.0;
+
+      _emitProgress(
+        StabilizationProgress.stabilizing(
+          currentPhoto: _currentPhoto,
+          totalPhotos: _totalPhotos,
+          progressPercent: pct,
+          eta: _eta,
+          projectId: projectId,
+          lastStabilizedTimestamp: photo['timestamp']?.toString(),
+        ),
+      );
+    }
+  }
+
   Future<void> _finalCheck(FaceStabilizer stabilizer, int projectId) async {
     // Load fresh settings to compare against stored offsets in photos
     // This detects if user changed settings since photos were stabilized
@@ -456,8 +493,10 @@ class StabilizationService {
     // Use cached settings if available, otherwise load fresh
     final orientation = _currentSettings?.projectOrientation ??
         await SettingsUtil.loadProjectOrientation(projectId.toString());
-    final stabPhotoCount = await DB.instance
-        .getStabilizedPhotoCountByProjectID(projectId, orientation);
+    final stabPhotoCount = await DB.instance.getStabilizedPhotoCountByProjectID(
+      projectId,
+      orientation,
+    );
 
     // Check if video FILE actually exists on disk (not just DB record)
     // Load settings fresh from DB to get correct file extension
@@ -704,4 +743,12 @@ class _VideoConfig {
   final bool videoIsNull;
   final bool settingsHaveChanged;
   final bool newVideoNeeded;
+}
+
+/// Mutable holder for progress tracking across multiple stabilization batches.
+class _ProgressState {
+  int photosDone;
+  int totalPhotoCount;
+
+  _ProgressState({required this.photosDone, required this.totalPhotoCount});
 }

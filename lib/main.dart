@@ -265,10 +265,7 @@ class AgeLapse extends StatelessWidget {
               menus: [
                 PlatformMenuItemGroup(
                   members: [
-                    PlatformMenuItem(
-                      label: 'About AgeLapse',
-                      onSelected: null,
-                    ),
+                    PlatformMenuItem(label: 'About AgeLapse', onSelected: null),
                   ],
                 ),
                 PlatformMenuItemGroup(
@@ -400,10 +397,7 @@ class AgeLapse extends StatelessWidget {
                   label: 'Documentation',
                   onSelected: () async {
                     final uri = Uri.parse('https://agelapse.com/docs');
-                    await launchUrl(
-                      uri,
-                      mode: LaunchMode.externalApplication,
-                    );
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
                   },
                 ),
               ],

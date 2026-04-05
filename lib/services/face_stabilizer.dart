@@ -335,8 +335,9 @@ class FaceStabilizer {
     double? rotationDegrees, scaleFactor, translateX, translateY;
 
     token?.throwIfCancelled();
-    final Uint8List? srcBytes =
-        await FormatDecodeUtils.loadCvCompatibleBytes(inputPath);
+    final Uint8List? srcBytes = await FormatDecodeUtils.loadCvCompatibleBytes(
+      inputPath,
+    );
     if (srcBytes == null) return StabilizationResult(success: false);
 
     token?.throwIfCancelled();
@@ -582,9 +583,7 @@ class FaceStabilizer {
       "Goal: L$goalLeftEye R$goalRightEye | Init: L${eyes[0]} R${eyes[1]}",
     );
 
-    List<String> toDelete = [
-      stabilizedJpgPhotoPath,
-    ];
+    List<String> toDelete = [stabilizedJpgPhotoPath];
 
     final (
       bool successfulStabilization,
@@ -1255,7 +1254,10 @@ class FaceStabilizer {
         rotPassCount++;
         // Release previous best bytes (unless it's the original input)
         previousPassBytes = _updatePreviousPassBytes(
-            previousPassBytes, bestBytes, imageBytesStabilized);
+          previousPassBytes,
+          bestBytes,
+          imageBytesStabilized,
+        );
         bestBytes = rotPassBytes;
         bestScore = rotationPassScore;
         bestTX = rotTX;
@@ -1341,7 +1343,10 @@ class FaceStabilizer {
         scalePassCount++;
         // Release previous best bytes (unless it's the original input)
         previousPassBytes = _updatePreviousPassBytes(
-            previousPassBytes, bestBytes, imageBytesStabilized);
+          previousPassBytes,
+          bestBytes,
+          imageBytesStabilized,
+        );
         bestBytes = scalePassBytes;
         bestScore = scalePassScore;
         bestTX = scaleTX;
@@ -1451,7 +1456,10 @@ class FaceStabilizer {
         transPassCount++;
         // Release previous best bytes (unless it's the original input)
         previousPassBytes = _updatePreviousPassBytes(
-            previousPassBytes, bestBytes, imageBytesStabilized);
+          previousPassBytes,
+          bestBytes,
+          imageBytesStabilized,
+        );
         bestBytes = transPassBytes;
         bestScore = passScore;
         bestTX = transTX;
@@ -2037,7 +2045,11 @@ class FaceStabilizer {
           } else {
             // Fallback to centermost if eyes extraction failed for matched face
             return getCentermostEyesAsync(
-                eyes, facesToUse, imgWidth, imgHeight);
+              eyes,
+              facesToUse,
+              imgWidth,
+              imgHeight,
+            );
           }
         } else {
           // No embedding reference found - fallback to centermost

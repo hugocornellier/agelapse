@@ -374,11 +374,11 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: "2d57062b1d57e3ee5539eeb42a9c16192f84e2d5"
-      resolved-ref: "2d57062b1d57e3ee5539eeb42a9c16192f84e2d5"
+      ref: e028e10
+      resolved-ref: e028e10949b062d898f79b21d6ed11e49eacd82c
       url: "https://github.com/hugocornellier/ffmpeg_kit_flutter.git"
     source: git
-    version: "3.2.0"
+    version: "4.1.0"
   ffmpeg_kit_flutter_platform_interface:
     dependency: transitive
     description:

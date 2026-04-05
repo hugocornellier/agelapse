@@ -79,6 +79,7 @@ class MainNavigationState extends State<MainNavigation>
   bool _photoTakenToday = false;
   bool _userRanOutOfSpace = false;
   bool _isSyncingProjectFolder = false;
+  bool _hasUnseenVideo = false;
 
   // Global drag-and-drop state (UI only - GlobalDropService is source of truth)
   bool _globalDragActive = false;
@@ -153,6 +154,12 @@ class MainNavigationState extends State<MainNavigation>
           break;
         case StabilizationState.completed:
           _stabUpdateController.add(StabUpdateEvent.stabilizationComplete());
+          // Show badge on video button if a video was just compiled
+          // and user is not already on CreatePage
+          if (prevState == StabilizationState.compilingVideo &&
+              _selectedIndex != 3) {
+            _hasUnseenVideo = true; // already inside setState
+          }
           // Refresh master photo lists so data is fresh when gallery mounts
           loadPhotos();
           break;
@@ -160,9 +167,7 @@ class MainNavigationState extends State<MainNavigation>
           // Emit completion when video starts (stabilization done)
           // Only emit once when transitioning to video phase
           if (prevState != StabilizationState.compilingVideo) {
-            _stabUpdateController.add(
-              StabUpdateEvent.stabilizationComplete(),
-            );
+            _stabUpdateController.add(StabUpdateEvent.stabilizationComplete());
             // Refresh master photo lists so data is fresh when gallery mounts
             loadPhotos();
           }
@@ -629,6 +634,7 @@ class MainNavigationState extends State<MainNavigation>
       _prevIndex = selectedIndex;
       _selectedIndex = index;
       _selectedIndexNotifier.value = index;
+      if (index == 3) _hasUnseenVideo = false;
     });
 
     if (index == 3) {
@@ -741,6 +747,7 @@ class MainNavigationState extends State<MainNavigation>
                 icon: iconList[index],
                 isActive: isActive,
                 onTap: () => _onItemTapped(index),
+                showBadge: index == 3 && _hasUnseenVideo,
               ),
             );
           }),
@@ -921,11 +928,13 @@ class _DesktopNavButton extends StatefulWidget {
   final IconData icon;
   final bool isActive;
   final VoidCallback onTap;
+  final bool showBadge;
 
   const _DesktopNavButton({
     required this.icon,
     required this.isActive,
     required this.onTap,
+    this.showBadge = false,
   });
 
   @override
@@ -960,7 +969,61 @@ class _DesktopNavButtonState extends State<_DesktopNavButton> {
                     : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(widget.icon, size: 22, color: iconColor),
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              Icon(widget.icon, size: 22, color: iconColor),
+              if (widget.showBadge)
+                const Positioned(
+                  top: -2,
+                  right: -4,
+                  child: _NotificationBadge(),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NotificationBadge extends StatelessWidget {
+  const _NotificationBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.elasticOut,
+      builder: (context, value, child) {
+        return Transform.scale(scale: value, child: child);
+      },
+      child: Container(
+        width: 16,
+        height: 16,
+        decoration: BoxDecoration(
+          color: Colors.red,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.red.withValues(alpha: 0.4),
+              blurRadius: 4,
+              spreadRadius: 0.5,
+            ),
+          ],
+        ),
+        child: const Center(
+          child: Text(
+            '1',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              height: 1,
+            ),
+          ),
         ),
       ),
     );

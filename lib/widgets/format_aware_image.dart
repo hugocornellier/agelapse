@@ -65,7 +65,10 @@ class _FormatAwareImageState extends State<FormatAwareImage> {
     final extension = path.extension(imagePath).toLowerCase();
     final tempDir = await DirUtils.getTemporaryDirPath();
     return FormatDecodeUtils.decodeToCvCompatibleBytes(
-        imagePath, extension, tempDir);
+      imagePath,
+      extension,
+      tempDir,
+    );
   }
 
   Widget _buildErrorWidget() {

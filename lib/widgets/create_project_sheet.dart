@@ -72,8 +72,10 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
                           ),
                           if (widget.showCloseButton)
                             IconButton(
-                              icon: Icon(Icons.close,
-                                  color: AppColors.textPrimary),
+                              icon: Icon(
+                                Icons.close,
+                                color: AppColors.textPrimary,
+                              ),
                               onPressed: () => Navigator.of(context).pop(),
                             ),
                         ],
@@ -161,20 +163,14 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
   Widget _buildTypeLabel() {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
-      child: Text(
-        'Type',
-        style: TextStyle(color: AppColors.textSecondary),
-      ),
+      child: Text('Type', style: TextStyle(color: AppColors.textSecondary)),
     );
   }
 
   Widget _buildNameLabel() {
     return Padding(
       padding: const EdgeInsets.only(bottom: 0.0),
-      child: Text(
-        'Name',
-        style: TextStyle(color: AppColors.textSecondary),
-      ),
+      child: Text('Name', style: TextStyle(color: AppColors.textSecondary)),
     );
   }
 
@@ -198,10 +194,9 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
           dropdownColor: AppColors.surfaceElevated,
           borderRadius: BorderRadius.circular(12),
           items: _projectTypes
-              .map((t) => DropdownMenuItem<String>(
-                    value: t.$1,
-                    child: Text(t.$2),
-                  ))
+              .map(
+                (t) => DropdownMenuItem<String>(value: t.$1, child: Text(t.$2)),
+              )
               .toList(),
           onChanged: (value) {
             if (value != null) setState(() => _selectedType = value);

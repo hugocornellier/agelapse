@@ -222,8 +222,10 @@ class TransformHandlePainter extends CustomPainter {
     final halfSize = (isActive ? size * 1.2 : size) / 2;
 
     // Determine colors based on state
-    final colors =
-        _resolveHandleColors(isActive: isActive, isHovered: isHovered);
+    final colors = _resolveHandleColors(
+      isActive: isActive,
+      isHovered: isHovered,
+    );
     final fillColor = colors.fill;
     final strokeColor = colors.stroke;
 
@@ -288,8 +290,10 @@ class TransformHandlePainter extends CustomPainter {
     bool isHovered = false,
   }) {
     final actualRadius = isActive ? radius * 1.2 : radius;
-    final colors =
-        _resolveHandleColors(isActive: isActive, isHovered: isHovered);
+    final colors = _resolveHandleColors(
+      isActive: isActive,
+      isHovered: isHovered,
+    );
     _drawStyledCircle(canvas, center, actualRadius, colors.fill, colors.stroke);
   }
 

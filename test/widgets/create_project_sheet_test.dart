@@ -70,9 +70,7 @@ void main() {
     });
 
     test('checkForStabilizedImage returns Future<String?>', () {
-      final result = GalleryUtils.checkForStabilizedImage(
-        '/nonexistent',
-      );
+      final result = GalleryUtils.checkForStabilizedImage('/nonexistent');
       expect(result, isA<Future<String?>>());
     });
 

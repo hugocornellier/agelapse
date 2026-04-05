@@ -595,64 +595,68 @@ void main() {
       );
 
       test(
-          'blur filter only produces filter with [base] map and format post-processing',
-          () {
-        final result = VideoUtils.buildFilterChain(
-          colorOverlayFilter: testBlurFilter,
-          dateStampOverlay: null,
-          watermarkFilterPart: null,
-          watermarkInputIndex: 0,
-          needsColorOverlay: true,
-          pixelFormat: testPixelFormat,
-        );
-        expect(result.hasFilter, isTrue);
-        expect(result.hasMap, isTrue);
-        expect(result.filterComplex, contains(testBlurFilter));
-        expect(result.filterComplex, contains('[base]format=yuv420p[vout]'));
-        expect(result.mapLabel, equals('[vout]'));
-      });
-
-      test('blur filter + date stamps combines chains with post-processing',
-          () {
-        final result = VideoUtils.buildFilterChain(
-          colorOverlayFilter: testBlurFilter,
-          dateStampOverlay: testDateStamp,
-          watermarkFilterPart: null,
-          watermarkInputIndex: 0,
-          needsColorOverlay: true,
-          pixelFormat: testPixelFormat,
-        );
-        expect(result.hasFilter, isTrue);
-        expect(result.hasMap, isTrue);
-        expect(result.filterComplex, contains(testBlurFilter));
-        expect(result.filterComplex, contains(testDateStamp.filterComplex));
-        expect(result.filterComplex, contains('[dsOut]format=yuv420p[vout]'));
-        expect(result.mapLabel, equals('[vout]'));
-      });
+        'blur filter only produces filter with [base] map and format post-processing',
+        () {
+          final result = VideoUtils.buildFilterChain(
+            colorOverlayFilter: testBlurFilter,
+            dateStampOverlay: null,
+            watermarkFilterPart: null,
+            watermarkInputIndex: 0,
+            needsColorOverlay: true,
+            pixelFormat: testPixelFormat,
+          );
+          expect(result.hasFilter, isTrue);
+          expect(result.hasMap, isTrue);
+          expect(result.filterComplex, contains(testBlurFilter));
+          expect(result.filterComplex, contains('[base]format=yuv420p[vout]'));
+          expect(result.mapLabel, equals('[vout]'));
+        },
+      );
 
       test(
-          'blur filter + watermark replaces input labels and applies post-processing',
-          () {
-        final result = VideoUtils.buildFilterChain(
-          colorOverlayFilter: testBlurFilter,
-          dateStampOverlay: null,
-          watermarkFilterPart: testWatermark,
-          watermarkInputIndex: 2,
-          needsColorOverlay: true,
-          pixelFormat: testPixelFormat,
-        );
-        expect(result.hasFilter, isTrue);
-        expect(result.filterComplex, contains(testBlurFilter));
-        // Watermark [0:v] should be replaced with [base] in the watermark part
-        final afterBlurFilter = result.filterComplex!.substring(
-          result.filterComplex!.indexOf(';') + 1,
-        );
-        expect(afterBlurFilter, contains('[base]'));
-        expect(afterBlurFilter, isNot(contains('[0:v]')));
-        // Watermark [1:v] should be replaced with [2:v]
-        expect(afterBlurFilter, contains('[2:v]'));
-        expect(afterBlurFilter, isNot(contains('[1:v]')));
-      });
+        'blur filter + date stamps combines chains with post-processing',
+        () {
+          final result = VideoUtils.buildFilterChain(
+            colorOverlayFilter: testBlurFilter,
+            dateStampOverlay: testDateStamp,
+            watermarkFilterPart: null,
+            watermarkInputIndex: 0,
+            needsColorOverlay: true,
+            pixelFormat: testPixelFormat,
+          );
+          expect(result.hasFilter, isTrue);
+          expect(result.hasMap, isTrue);
+          expect(result.filterComplex, contains(testBlurFilter));
+          expect(result.filterComplex, contains(testDateStamp.filterComplex));
+          expect(result.filterComplex, contains('[dsOut]format=yuv420p[vout]'));
+          expect(result.mapLabel, equals('[vout]'));
+        },
+      );
+
+      test(
+        'blur filter + watermark replaces input labels and applies post-processing',
+        () {
+          final result = VideoUtils.buildFilterChain(
+            colorOverlayFilter: testBlurFilter,
+            dateStampOverlay: null,
+            watermarkFilterPart: testWatermark,
+            watermarkInputIndex: 2,
+            needsColorOverlay: true,
+            pixelFormat: testPixelFormat,
+          );
+          expect(result.hasFilter, isTrue);
+          expect(result.filterComplex, contains(testBlurFilter));
+          // Watermark [0:v] should be replaced with [base] in the watermark part
+          final afterBlurFilter = result.filterComplex!.substring(
+            result.filterComplex!.indexOf(';') + 1,
+          );
+          expect(afterBlurFilter, contains('[base]'));
+          expect(afterBlurFilter, isNot(contains('[0:v]')));
+          // Watermark [1:v] should be replaced with [2:v]
+          expect(afterBlurFilter, contains('[2:v]'));
+          expect(afterBlurFilter, isNot(contains('[1:v]')));
+        },
+      );
 
       test('blur filter + date stamps + watermark combines everything', () {
         final result = VideoUtils.buildFilterChain(

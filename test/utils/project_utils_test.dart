@@ -71,27 +71,21 @@ void main() {
     test('handles leap year boundary', () {
       // 2024 is a leap year
       expect(
-          ProjectUtils.getTimeDiff(
-            DateTime(2024, 2, 28),
-            DateTime(2024, 2, 29),
-          ),
-          1);
+        ProjectUtils.getTimeDiff(DateTime(2024, 2, 28), DateTime(2024, 2, 29)),
+        1,
+      );
       expect(
-          ProjectUtils.getTimeDiff(
-            DateTime(2024, 2, 29),
-            DateTime(2024, 3, 1),
-          ),
-          1);
+        ProjectUtils.getTimeDiff(DateTime(2024, 2, 29), DateTime(2024, 3, 1)),
+        1,
+      );
     });
 
     test('handles non-leap year Feb 28 to Mar 1', () {
       // 2025 is not a leap year
       expect(
-          ProjectUtils.getTimeDiff(
-            DateTime(2025, 2, 28),
-            DateTime(2025, 3, 1),
-          ),
-          1);
+        ProjectUtils.getTimeDiff(DateTime(2025, 2, 28), DateTime(2025, 3, 1)),
+        1,
+      );
     });
   });
 
@@ -251,19 +245,31 @@ void main() {
     test('counts consecutive days across a spring DST offset change', () {
       final photos = [
         {
-          'timestamp':
-              DateTime.utc(2026, 3, 30, 8).millisecondsSinceEpoch.toString(),
+          'timestamp': DateTime.utc(
+            2026,
+            3,
+            30,
+            8,
+          ).millisecondsSinceEpoch.toString(),
           'captureOffsetMinutes': 120,
         },
         {
-          'timestamp': DateTime.utc(2026, 3, 29, 0, 30)
-              .millisecondsSinceEpoch
-              .toString(),
+          'timestamp': DateTime.utc(
+            2026,
+            3,
+            29,
+            0,
+            30,
+          ).millisecondsSinceEpoch.toString(),
           'captureOffsetMinutes': 60,
         },
         {
-          'timestamp':
-              DateTime.utc(2026, 3, 28, 9).millisecondsSinceEpoch.toString(),
+          'timestamp': DateTime.utc(
+            2026,
+            3,
+            28,
+            9,
+          ).millisecondsSinceEpoch.toString(),
           'captureOffsetMinutes': 60,
         },
       ];
@@ -279,8 +285,12 @@ void main() {
     test('returns 1 for a single photo taken today', () {
       final photos = [
         {
-          'timestamp':
-              DateTime.utc(2024, 6, 15, 10).millisecondsSinceEpoch.toString(),
+          'timestamp': DateTime.utc(
+            2024,
+            6,
+            15,
+            10,
+          ).millisecondsSinceEpoch.toString(),
           'captureOffsetMinutes': 120,
         },
       ];
@@ -296,8 +306,12 @@ void main() {
     test('returns 0 when latest photo is more than 1 day old', () {
       final photos = [
         {
-          'timestamp':
-              DateTime.utc(2024, 6, 10, 10).millisecondsSinceEpoch.toString(),
+          'timestamp': DateTime.utc(
+            2024,
+            6,
+            10,
+            10,
+          ).millisecondsSinceEpoch.toString(),
           'captureOffsetMinutes': 120,
         },
       ];
@@ -313,18 +327,30 @@ void main() {
     test('counts streak when latest photo is from yesterday', () {
       final photos = [
         {
-          'timestamp':
-              DateTime.utc(2024, 6, 14, 10).millisecondsSinceEpoch.toString(),
+          'timestamp': DateTime.utc(
+            2024,
+            6,
+            14,
+            10,
+          ).millisecondsSinceEpoch.toString(),
           'captureOffsetMinutes': 120,
         },
         {
-          'timestamp':
-              DateTime.utc(2024, 6, 13, 10).millisecondsSinceEpoch.toString(),
+          'timestamp': DateTime.utc(
+            2024,
+            6,
+            13,
+            10,
+          ).millisecondsSinceEpoch.toString(),
           'captureOffsetMinutes': 120,
         },
         {
-          'timestamp':
-              DateTime.utc(2024, 6, 12, 10).millisecondsSinceEpoch.toString(),
+          'timestamp': DateTime.utc(
+            2024,
+            6,
+            12,
+            10,
+          ).millisecondsSinceEpoch.toString(),
           'captureOffsetMinutes': 120,
         },
       ];
@@ -340,16 +366,28 @@ void main() {
     test('handles photos with null captureOffsetMinutes', () {
       final photos = [
         {
-          'timestamp':
-              DateTime.utc(2024, 6, 15, 10).millisecondsSinceEpoch.toString(),
+          'timestamp': DateTime.utc(
+            2024,
+            6,
+            15,
+            10,
+          ).millisecondsSinceEpoch.toString(),
         },
         {
-          'timestamp':
-              DateTime.utc(2024, 6, 14, 10).millisecondsSinceEpoch.toString(),
+          'timestamp': DateTime.utc(
+            2024,
+            6,
+            14,
+            10,
+          ).millisecondsSinceEpoch.toString(),
         },
         {
-          'timestamp':
-              DateTime.utc(2024, 6, 13, 10).millisecondsSinceEpoch.toString(),
+          'timestamp': DateTime.utc(
+            2024,
+            6,
+            13,
+            10,
+          ).millisecondsSinceEpoch.toString(),
         },
       ];
 
@@ -372,9 +410,12 @@ void main() {
         // Alternate offsets to simulate CET/CEST
         final offset = (day.month >= 4 && day.month <= 10) ? 120 : 60;
         photos.add({
-          'timestamp': DateTime.utc(day.year, day.month, day.day, 12)
-              .millisecondsSinceEpoch
-              .toString(),
+          'timestamp': DateTime.utc(
+            day.year,
+            day.month,
+            day.day,
+            12,
+          ).millisecondsSinceEpoch.toString(),
           'captureOffsetMinutes': offset,
         });
       }
@@ -399,23 +440,39 @@ void main() {
       // Photos on Jun 15, 14, 13, 11 (gap on 12th) → streak = 3
       final photos = [
         {
-          'timestamp':
-              DateTime.utc(2024, 6, 15, 10).millisecondsSinceEpoch.toString(),
+          'timestamp': DateTime.utc(
+            2024,
+            6,
+            15,
+            10,
+          ).millisecondsSinceEpoch.toString(),
           'captureOffsetMinutes': 120,
         },
         {
-          'timestamp':
-              DateTime.utc(2024, 6, 14, 10).millisecondsSinceEpoch.toString(),
+          'timestamp': DateTime.utc(
+            2024,
+            6,
+            14,
+            10,
+          ).millisecondsSinceEpoch.toString(),
           'captureOffsetMinutes': 120,
         },
         {
-          'timestamp':
-              DateTime.utc(2024, 6, 13, 10).millisecondsSinceEpoch.toString(),
+          'timestamp': DateTime.utc(
+            2024,
+            6,
+            13,
+            10,
+          ).millisecondsSinceEpoch.toString(),
           'captureOffsetMinutes': 120,
         },
         {
-          'timestamp':
-              DateTime.utc(2024, 6, 11, 10).millisecondsSinceEpoch.toString(),
+          'timestamp': DateTime.utc(
+            2024,
+            6,
+            11,
+            10,
+          ).millisecondsSinceEpoch.toString(),
           'captureOffsetMinutes': 120,
         },
       ];
@@ -432,23 +489,39 @@ void main() {
       // 3 photos on Jun 15, 1 on Jun 14 → streak = 2
       final photos = [
         {
-          'timestamp':
-              DateTime.utc(2024, 6, 15, 18).millisecondsSinceEpoch.toString(),
+          'timestamp': DateTime.utc(
+            2024,
+            6,
+            15,
+            18,
+          ).millisecondsSinceEpoch.toString(),
           'captureOffsetMinutes': 120,
         },
         {
-          'timestamp':
-              DateTime.utc(2024, 6, 15, 12).millisecondsSinceEpoch.toString(),
+          'timestamp': DateTime.utc(
+            2024,
+            6,
+            15,
+            12,
+          ).millisecondsSinceEpoch.toString(),
           'captureOffsetMinutes': 120,
         },
         {
-          'timestamp':
-              DateTime.utc(2024, 6, 15, 8).millisecondsSinceEpoch.toString(),
+          'timestamp': DateTime.utc(
+            2024,
+            6,
+            15,
+            8,
+          ).millisecondsSinceEpoch.toString(),
           'captureOffsetMinutes': 120,
         },
         {
-          'timestamp':
-              DateTime.utc(2024, 6, 14, 10).millisecondsSinceEpoch.toString(),
+          'timestamp': DateTime.utc(
+            2024,
+            6,
+            14,
+            10,
+          ).millisecondsSinceEpoch.toString(),
           'captureOffsetMinutes': 120,
         },
       ];
@@ -466,9 +539,13 @@ void main() {
       // UTC 2024-06-15 23:30 with +120 offset → capture-local = Jun 16 01:30
       final photos = [
         {
-          'timestamp': DateTime.utc(2024, 6, 15, 23, 30)
-              .millisecondsSinceEpoch
-              .toString(),
+          'timestamp': DateTime.utc(
+            2024,
+            6,
+            15,
+            23,
+            30,
+          ).millisecondsSinceEpoch.toString(),
           'captureOffsetMinutes': 120,
         },
       ];
@@ -487,9 +564,13 @@ void main() {
     test('compares capture-local photo day against the current device day', () {
       final photos = [
         {
-          'timestamp': DateTime.utc(2024, 1, 9, 23, 30)
-              .millisecondsSinceEpoch
-              .toString(),
+          'timestamp': DateTime.utc(
+            2024,
+            1,
+            9,
+            23,
+            30,
+          ).millisecondsSinceEpoch.toString(),
           'captureOffsetMinutes': 120,
         },
       ];
@@ -522,17 +603,12 @@ void main() {
 
     test('handles photo with null captureOffsetMinutes', () {
       final photos = [
-        {
-          'timestamp': DateTime.now().millisecondsSinceEpoch.toString(),
-        },
+        {'timestamp': DateTime.now().millisecondsSinceEpoch.toString()},
       ];
 
       // Without offset, falls back to device-local. A photo just taken
       // should be "today" regardless.
-      expect(
-        ProjectUtils.photoWasTakenTodayForPhotos(photos),
-        isTrue,
-      );
+      expect(ProjectUtils.photoWasTakenTodayForPhotos(photos), isTrue);
     });
   });
 

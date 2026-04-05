@@ -61,7 +61,9 @@ class GuideModeTutorialPageState extends State<GuideModeTutorialPage> {
       onClose: () => goToCamera(),
       backgroundColor: AppColors.background,
       body: Container(
-          color: AppColors.background, child: _buildGuideModeTutorialPage()),
+        color: AppColors.background,
+        child: _buildGuideModeTutorialPage(),
+      ),
     );
   }
 

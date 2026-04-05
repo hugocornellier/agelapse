@@ -30,10 +30,7 @@ class CreateProjectPage extends StatefulWidget {
           decoration: BoxDecoration(
             color: AppColors.background,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: AppColors.settingsCardBorder,
-              width: 1,
-            ),
+            border: Border.all(color: AppColors.settingsCardBorder, width: 1),
             boxShadow: [
               BoxShadow(
                 color: AppColors.overlay.withValues(alpha: 0.3),

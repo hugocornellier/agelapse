@@ -27,7 +27,7 @@ dependencies:
   ffmpeg_kit_flutter_new:
     git:
       url: https://github.com/hugocornellier/ffmpeg_kit_flutter.git
-      ref: 2d57062b1d57e3ee5539eeb42a9c16192f84e2d5
+      ref: e028e10
   file_picker: ^10.3.10
   file_selector: ^1.1.0
   flutter:

@@ -158,10 +158,12 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       } else if (_viewZoom > 1.0) {
         final isShift = HardwareKeyboard.instance.isShiftPressed;
         setState(() {
-          _viewPanOffset = _clampPanOffset(Offset(
-            _viewPanOffset.dx - (isShift ? event.scrollDelta.dy : 0),
-            _viewPanOffset.dy - (!isShift ? event.scrollDelta.dy : 0),
-          ));
+          _viewPanOffset = _clampPanOffset(
+            Offset(
+              _viewPanOffset.dx - (isShift ? event.scrollDelta.dy : 0),
+              _viewPanOffset.dy - (!isShift ? event.scrollDelta.dy : 0),
+            ),
+          );
         });
       }
     }
@@ -172,10 +174,12 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
   void _handleTrackpadPanZoom(PointerPanZoomUpdateEvent event) {
     if (_viewZoom > 1.0) {
       setState(() {
-        _viewPanOffset = _clampPanOffset(Offset(
-          _viewPanOffset.dx + event.panDelta.dx,
-          _viewPanOffset.dy + event.panDelta.dy,
-        ));
+        _viewPanOffset = _clampPanOffset(
+          Offset(
+            _viewPanOffset.dx + event.panDelta.dx,
+            _viewPanOffset.dy + event.panDelta.dy,
+          ),
+        );
       });
     }
   }
@@ -223,9 +227,11 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
     init().catchError((e, st) {
       _log('init() FAILED: $e\n$st');
       if (mounted) {
-        setState(() => _initError = e is FileSystemException
-            ? 'Could not load photo file.'
-            : 'Failed to load editor.');
+        setState(
+          () => _initError = e is FileSystemException
+              ? 'Could not load photo file.'
+              : 'Failed to load editor.',
+        );
       }
     });
   }
@@ -361,10 +367,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
           : Stack(
               children: [
                 // Main content - absorb pointer during save
-                AbsorbPointer(
-                  absorbing: isSaving,
-                  child: _buildPageScaffold(),
-                ),
+                AbsorbPointer(absorbing: isSaving, child: _buildPageScaffold()),
                 // Save overlay
                 if (isSaving) _buildSaveOverlay(),
               ],
@@ -652,10 +655,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back,
-            color: AppColors.settingsTextPrimary,
-          ),
+          icon: Icon(Icons.arrow_back, color: AppColors.settingsTextPrimary),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(

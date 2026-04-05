@@ -121,8 +121,10 @@ class OutputImageLoader {
       final stabilizedColumn = DB.instance.getStabilizedColumn(
         projectOrientation!,
       );
-      final (newOffsetX, newOffsetY) =
-          _extractOffsets(guidePhoto, stabilizedColumn);
+      final (newOffsetX, newOffsetY) = _extractOffsets(
+        guidePhoto,
+        stabilizedColumn,
+      );
 
       // Dispose old image before loading new one
       guideImage?.dispose();
@@ -321,7 +323,9 @@ class OutputImageLoader {
   }
 
   (double?, double?) _extractOffsets(
-      Map<String, dynamic> guidePhoto, String stabilizedColumn) {
+    Map<String, dynamic> guidePhoto,
+    String stabilizedColumn,
+  ) {
     final rawX = guidePhoto["${stabilizedColumn}OffsetX"];
     final rawY = guidePhoto["${stabilizedColumn}OffsetY"];
     final x = rawX is double ? rawX : double.tryParse(rawX?.toString() ?? '');
@@ -344,8 +348,10 @@ class OutputImageLoader {
         final stabilizedColumn = DB.instance.getStabilizedColumn(
           projectOrientation!,
         );
-        final (offsetXData, offsetYData) =
-            _extractOffsets(guidePhoto, stabilizedColumn);
+        final (offsetXData, offsetYData) = _extractOffsets(
+          guidePhoto,
+          stabilizedColumn,
+        );
 
         ghostImageOffsetX = offsetXData;
         ghostImageOffsetY = offsetYData;

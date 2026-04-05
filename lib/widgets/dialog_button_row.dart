@@ -95,7 +95,8 @@ class DialogButtonRow extends StatelessWidget {
                             color: actionEnabled
                                 ? effectiveActionTextColor
                                 : effectiveActionTextColor.withValues(
-                                    alpha: 0.4),
+                                    alpha: 0.4,
+                                  ),
                             fontSize: AppTypography.lg,
                             fontWeight: FontWeight.w600,
                           ),

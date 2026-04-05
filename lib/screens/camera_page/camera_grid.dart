@@ -94,9 +94,7 @@ class CameraGridOverlayState extends State<CameraGridOverlay> {
       final stabOrientation = await SettingsUtil.loadProjectOrientation(
         widget.projectId.toString(),
       );
-      final stabilizedColumn = DB.instance.getStabilizedColumn(
-        stabOrientation,
-      );
+      final stabilizedColumn = DB.instance.getStabilizedColumn(stabOrientation);
       final stabColOffsetX = "${stabilizedColumn}OffsetX";
       final stabColOffsetY = "${stabilizedColumn}OffsetY";
       final offsetXDataRaw = await DB.instance.getPhotoColumnValueByTimestamp(
@@ -267,8 +265,11 @@ class _GridPainter extends CustomPainter {
       final imageHeight = guideImage!.height.toDouble();
 
       final double baseDimension = isLandscape ? size.height : size.width;
-      final scale =
-          _calculateImageScale(baseDimension, imageWidth, imageHeight);
+      final scale = _calculateImageScale(
+        baseDimension,
+        imageWidth,
+        imageHeight,
+      );
       final scaledWidth = imageWidth * scale;
       final scaledHeight = imageHeight * scale;
       final eyeOffsetFromCenterInGhostPhoto =

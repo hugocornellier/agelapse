@@ -152,8 +152,11 @@ void main() {
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      testProjectId =
-          await DB.instance.addProject('SyncTest', 'face', timestamp);
+      testProjectId = await DB.instance.addProject(
+        'SyncTest',
+        'face',
+        timestamp,
+      );
 
       // Create raw photos directory
       final rawDir = await DirUtils.getRawPhotoDirPath(testProjectId!);
@@ -177,8 +180,11 @@ void main() {
       );
 
       // Verify all 3 files were imported
-      expect(result.filesImported, 3,
-          reason: 'Should import all 3 images from linked folder');
+      expect(
+        result.filesImported,
+        3,
+        reason: 'Should import all 3 images from linked folder',
+      );
       expect(result.errors, isEmpty);
 
       // Verify photos exist in DB
@@ -198,8 +204,11 @@ void main() {
           photo['timestamp'] as String,
           testProjectId!,
         );
-        expect(await File(rawPath).exists(), isTrue,
-            reason: 'Raw photo should exist on disk');
+        expect(
+          await File(rawPath).exists(),
+          isTrue,
+          reason: 'Raw photo should exist on disk',
+        );
       }
 
       cache.dispose();
@@ -212,8 +221,11 @@ void main() {
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      testProjectId =
-          await DB.instance.addProject('SyncSkipTest', 'face', timestamp);
+      testProjectId = await DB.instance.addProject(
+        'SyncSkipTest',
+        'face',
+        timestamp,
+      );
 
       final rawDir = await DirUtils.getRawPhotoDirPath(testProjectId!);
       await Directory(rawDir).create(recursive: true);
@@ -241,8 +253,11 @@ void main() {
         testProjectId!,
         cache,
       );
-      expect(result2.filesImported, 0,
-          reason: 'Re-sync should skip already imported files');
+      expect(
+        result2.filesImported,
+        0,
+        reason: 'Re-sync should skip already imported files',
+      );
       expect(result2.filesSkipped, 2);
 
       // DB should still have exactly 2 photos
@@ -259,8 +274,11 @@ void main() {
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      testProjectId =
-          await DB.instance.addProject('TombstoneTest', 'face', timestamp);
+      testProjectId = await DB.instance.addProject(
+        'TombstoneTest',
+        'face',
+        timestamp,
+      );
 
       final rawDir = await DirUtils.getRawPhotoDirPath(testProjectId!);
       await Directory(rawDir).create(recursive: true);
@@ -294,14 +312,8 @@ void main() {
       final photoTimestamp = photoToDelete['timestamp'] as String;
 
       // Delete the photo from DB and add tombstone
-      await DB.instance.deletePhoto(
-        int.parse(photoTimestamp),
-        testProjectId!,
-      );
-      await DB.instance.insertDeletedLinkedSource(
-        testProjectId!,
-        relativePath,
-      );
+      await DB.instance.deletePhoto(int.parse(photoTimestamp), testProjectId!);
+      await DB.instance.insertDeletedLinkedSource(testProjectId!, relativePath);
 
       // Delete the raw file too
       final rawPath = await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
@@ -324,19 +336,24 @@ void main() {
         testProjectId!,
         cache,
       );
-      expect(result2.filesImported, 0,
-          reason: 'Tombstoned file should not be re-imported');
+      expect(
+        result2.filesImported,
+        0,
+        reason: 'Tombstoned file should not be re-imported',
+      );
 
       // DB should have exactly 1 photo (the non-deleted one)
-      final remainingPhotos =
-          await DB.instance.getPhotosByProjectID(testProjectId!);
+      final remainingPhotos = await DB.instance.getPhotosByProjectID(
+        testProjectId!,
+      );
       expect(remainingPhotos.length, 1);
 
       cache.dispose();
     });
 
-    testWidgets('subdirectory paths are preserved in sourceRelativePath',
-        (tester) async {
+    testWidgets('subdirectory paths are preserved in sourceRelativePath', (
+      tester,
+    ) async {
       if (!await ensureDesktop()) return;
 
       app.main();
@@ -378,10 +395,12 @@ void main() {
 
       for (final photo in linkedPhotos) {
         final relPath = photo['sourceRelativePath'] as String;
-        expect(relPath, startsWith('$subdir/'),
-            reason:
-                'sourceRelativePath should preserve subdirectory structure, '
-                'got: $relPath');
+        expect(
+          relPath,
+          startsWith('$subdir/'),
+          reason: 'sourceRelativePath should preserve subdirectory structure, '
+              'got: $relPath',
+        );
       }
 
       // Verify re-sync matches by relative path (no duplicates)
@@ -390,8 +409,11 @@ void main() {
         testProjectId!,
         cache,
       );
-      expect(result2.filesImported, 0,
-          reason: 'Re-sync with subdirectory paths should skip existing');
+      expect(
+        result2.filesImported,
+        0,
+        reason: 'Re-sync with subdirectory paths should skip existing',
+      );
 
       cache.dispose();
     });

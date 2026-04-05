@@ -10,9 +10,7 @@ Future<bool?> showUnsavedChangesDialog(
     builder: (BuildContext context) {
       return AlertDialog(
         backgroundColor: AppColors.settingsCardBackground,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
             Icon(

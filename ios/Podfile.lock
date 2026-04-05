@@ -51,8 +51,6 @@ PODS:
   - Flutter (1.0.0)
   - flutter_avif_ios (0.0.1):
     - Flutter
-  - flutter_email_sender (0.0.1):
-    - Flutter
   - flutter_litert (0.0.1):
     - Flutter
   - flutter_local_notifications (0.0.1):
@@ -61,7 +59,7 @@ PODS:
     - Flutter
   - flutter_timezone (0.0.1):
     - Flutter
-  - heic_native (0.1.0):
+  - heic_native (0.1.1):
     - Flutter
   - integration_test (0.0.1):
     - Flutter
@@ -76,9 +74,9 @@ PODS:
     - FlutterMacOS
   - saver_gallery (0.0.1):
     - Flutter
-  - SDWebImage (5.21.6):
-    - SDWebImage/Core (= 5.21.6)
-  - SDWebImage/Core (5.21.6)
+  - SDWebImage (5.21.7):
+    - SDWebImage/Core (= 5.21.7)
+  - SDWebImage/Core (5.21.7)
   - sensors_plus (0.0.1):
     - Flutter
   - share_plus (0.0.1):
@@ -132,7 +130,6 @@ DEPENDENCIES:
   - file_selector_ios (from `.symlinks/plugins/file_selector_ios/ios`)
   - Flutter (from `Flutter`)
   - flutter_avif_ios (from `.symlinks/plugins/flutter_avif_ios/ios`)
-  - flutter_email_sender (from `.symlinks/plugins/flutter_email_sender/ios`)
   - flutter_litert (from `.symlinks/plugins/flutter_litert/ios`)
   - flutter_local_notifications (from `.symlinks/plugins/flutter_local_notifications/ios`)
   - flutter_native_splash (from `.symlinks/plugins/flutter_native_splash/ios`)
@@ -180,8 +177,6 @@ EXTERNAL SOURCES:
     :path: Flutter
   flutter_avif_ios:
     :path: ".symlinks/plugins/flutter_avif_ios/ios"
-  flutter_email_sender:
-    :path: ".symlinks/plugins/flutter_email_sender/ios"
   flutter_litert:
     :path: ".symlinks/plugins/flutter_litert/ios"
   flutter_local_notifications:
@@ -228,24 +223,23 @@ SPEC CHECKSUMS:
   DKImagePickerController: 946cec48c7873164274ecc4624d19e3da4c1ef3c
   DKPhotoGallery: b3834fecb755ee09a593d7c9e389d8b5d6deed60
   downloadsfolder: 7d5c7b5d23e3c4dded522ff2a2ef14a56846378a
-  ffmpeg_kit_flutter_new: 12426a19f10ac81186c67c6ebc4717f8f4364b7f
+  ffmpeg_kit_flutter_new: 3b1638336f0b350bf2d5edac3258dc29e6b385b9
   file_picker: a0560bc09d61de87f12d246fc47d2119e6ef37be
   file_selector_ios: ec57ec07954363dd730b642e765e58f199bb621a
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   flutter_avif_ios: 2553d2aafda56339cf924e943da89ad3f40af2dd
-  flutter_email_sender: aa1e9772696691d02cd91fea829856c11efb8e58
   flutter_litert: d2b3d84e8e00eb6a8166dc2686a64ebe8a6497fa
   flutter_local_notifications: 643a3eda1ce1c0599413ca31672536d423dee214
   flutter_native_splash: c32d145d68aeda5502d5f543ee38c192065986cf
   flutter_timezone: 7c838e17ffd4645d261e87037e5bebf6d38fe544
-  heic_native: 83fcefd4a17cf94a8c17e8934c9b446a33054399
+  heic_native: aba770fab7b6876380c394fdab71717580018b38
   integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
   media_kit_video: f3b0d035d89def15cfbbcf7dc2ae278f201e2f83
   package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499
   permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d
   photo_manager: 25fd77df14f4f0ba5ef99e2c61814dde77e2bceb
   saver_gallery: af2d0c762dafda254e0ad025ef0dabd6506cd490
-  SDWebImage: 1bb6a1b84b6fe87b972a102bdc77dd589df33477
+  SDWebImage: e9fc87c1aab89a8ab1bbd74eba378c6f53be8abf
   sensors_plus: 6a11ed0c2e1d0bd0b20b4029d3bad27d96e0c65b
   share_plus: 50da8cb520a8f0f65671c6c6a99b3617ed10a58a
   sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
@@ -257,6 +251,6 @@ SPEC CHECKSUMS:
   video_player_avfoundation: dd410b52df6d2466a42d28550e33e4146928280a
   wakelock_plus: e29112ab3ef0b318e58cfa5c32326458be66b556
 
-PODFILE CHECKSUM: a72f4b438ead00357ca690a267653a3200bbc366
+PODFILE CHECKSUM: 79d0d9d69cd3a1ff371c2ac34781fa82ea1cee51
 
 COCOAPODS: 1.16.2

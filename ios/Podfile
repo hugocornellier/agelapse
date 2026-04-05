@@ -40,16 +40,13 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
-    target.build_configurations.each do |config|
-      config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64'
-    end
   end
-  # Fix conflicting EXCLUDED_ARCHS in aggregate xcconfigs
-  installer.aggregate_targets.each do |target|
-    target.xcconfigs.each do |config_name, xcconfig|
-      xcconfig.attributes['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64'
-      xcconfig_path = target.xcconfig_path(config_name)
-      xcconfig.save_as(xcconfig_path)
+
+  # Re-sign FFmpegKit vendored frameworks (bitcode stripping leaves them unsigned)
+  ffmpeg_pod_dir = File.join(installer.sandbox.root.to_s, '..', '.symlinks', 'plugins', 'ffmpeg_kit_flutter_new', 'ios', 'Frameworks')
+  if File.directory?(ffmpeg_pod_dir)
+    Dir.glob(File.join(ffmpeg_pod_dir, '*.framework')).each do |fw|
+      system("codesign", "--force", "--sign", "-", fw)
     end
   end
 end

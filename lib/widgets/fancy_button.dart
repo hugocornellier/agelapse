@@ -54,11 +54,7 @@ class FancyButton {
               ),
             ),
           ),
-          Icon(
-            Icons.chevron_right_rounded,
-            color: chevronColor,
-            size: 22,
-          ),
+          Icon(Icons.chevron_right_rounded, color: chevronColor, size: 22),
         ],
       ),
     );

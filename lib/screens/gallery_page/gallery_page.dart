@@ -188,7 +188,9 @@ class GalleryPageState extends State<GalleryPage>
     if (parts.length == 2) {
       final w = double.tryParse(parts[0]);
       final h = double.tryParse(parts[1]);
-      if (w != null && h != null && h != 0) return w / h;
+      if (w != null && h != null && w != 0 && h != 0) {
+        return projectOrientation == 'portrait' ? h / w : w / h;
+      }
     }
     return 9 / 16;
   }
@@ -768,7 +770,12 @@ class GalleryPageState extends State<GalleryPage>
                                   setState(() => _isSelectionMode = true);
                                   break;
                                 case 'inspect':
-                                  setState(() => _isInspectionMode = true);
+                                  setState(() {
+                                    _isInspectionMode = true;
+                                    if (_tabController.index == 1) {
+                                      _tabController.animateTo(0);
+                                    }
+                                  });
                                   break;
                               }
                             },
@@ -1071,7 +1078,8 @@ class GalleryPageState extends State<GalleryPage>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('${filePaths.length} files queued for import')),
+            content: Text('${filePaths.length} files queued for import'),
+          ),
         );
       }
       return;
@@ -1137,8 +1145,10 @@ class GalleryPageState extends State<GalleryPage>
     }
 
     // Show preview dialog
-    final List<ImportPreviewItem>? result =
-        await showImportPreviewDialog(context, validPaths);
+    final List<ImportPreviewItem>? result = await showImportPreviewDialog(
+      context,
+      validPaths,
+    );
 
     if (result == null || result.isEmpty || !mounted) return;
 
@@ -1513,8 +1523,9 @@ class GalleryPageState extends State<GalleryPage>
                         iconSize: 26,
                         padding: 12,
                         iconColor: AppColors.textPrimary.withValues(alpha: 0.7),
-                        backgroundColor:
-                            AppColors.textPrimary.withValues(alpha: 0.06),
+                        backgroundColor: AppColors.textPrimary.withValues(
+                          alpha: 0.06,
+                        ),
                       ),
                       const SizedBox(height: 12),
                       Text(
@@ -1555,8 +1566,9 @@ class GalleryPageState extends State<GalleryPage>
     if (directoryPaths.isNotEmpty) {
       for (final dirPath in directoryPaths) {
         if (!mounted) return [];
-        final scanResult =
-            await GalleryUtils.collectFilesFromDirectory(dirPath);
+        final scanResult = await GalleryUtils.collectFilesFromDirectory(
+          dirPath,
+        );
         if (scanResult.wasCancelled) return [];
         filePaths.addAll(scanResult.validImagePaths);
       }
@@ -1987,8 +1999,10 @@ class GalleryPageState extends State<GalleryPage>
                               await SettingsUtil.loadExportDateStampOpacity(
                             projectIdStr,
                           );
-                          final (dateMarginH, dateMarginV) =
-                              await SettingsUtil.loadResolvedMargin(
+                          final (
+                            dateMarginH,
+                            dateMarginV,
+                          ) = await SettingsUtil.loadResolvedMargin(
                             projectIdStr,
                           );
 
@@ -2247,6 +2261,23 @@ class GalleryPageState extends State<GalleryPage>
         }
       },
       onDelete: () => _showDeleteDialog(imageFile),
+      onImageInfo: () {
+        final rawPath = widget.imageFilesStr.firstWhere(
+          (f) => path.basenameWithoutExtension(f) == timestamp,
+          orElse: () => '',
+        );
+        final stabPath = widget.stabilizedImageFilesStr.firstWhere(
+          (f) => path.basenameWithoutExtension(f) == timestamp,
+          orElse: () => '',
+        );
+        GalleryImageMenu.showImageInfo(
+          context: context,
+          timestamp: timestamp,
+          projectId: projectId,
+          rawPath: rawPath,
+          stabPath: stabPath,
+        );
+      },
     );
   }
 
