@@ -82,6 +82,17 @@ jobs:
           echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
           echo "ref=$REF" >> "$GITHUB_OUTPUT"
 
+      - name: Check release does not already exist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          if gh release view "$TAG" &>/dev/null; then
+            echo "::error::Release '$TAG' already exists. Delete it first or use a new version."
+            exit 1
+          fi
+          echo "No existing release for '$TAG' — proceeding."
+
   build-windows:
     name: Build Windows Installer
     needs: prepare

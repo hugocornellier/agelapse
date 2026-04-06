@@ -72,6 +72,29 @@ class InfoPageState extends State<InfoPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 32),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4, bottom: 12),
+                        child: Text(
+                          'BUILD',
+                          style: TextStyle(
+                            fontSize: AppTypography.sm,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4),
+                        child: Text(
+                          'Version: v2.5.0',
+                          style: TextStyle(
+                            fontSize: AppTypography.sm,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 32),
                       _buildSection(
                         title: 'Help',
                         items: [
@@ -127,7 +150,7 @@ class InfoPageState extends State<InfoPage> {
           child: Text(
             'Find a bug or have a suggestion? Email us at:',
             style: TextStyle(
-              fontSize: AppTypography.md,
+              fontSize: AppTypography.sm,
               color: AppColors.textPrimary,
             ),
           ),
@@ -220,7 +243,7 @@ class InfoPageState extends State<InfoPage> {
           child: Text(
             'Including your logs helps us fix bugs faster.',
             style: TextStyle(
-              fontSize: AppTypography.md,
+              fontSize: AppTypography.sm,
               color: AppColors.textPrimary,
             ),
           ),
