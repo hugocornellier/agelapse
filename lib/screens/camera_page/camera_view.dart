@@ -115,6 +115,7 @@ class _CameraViewState extends State<CameraView>
   bool _isDraggingVertical = false;
   bool _isDraggingHorizontal = false;
   bool showGuidePhoto = false;
+  String? _cameraError;
   double _widgetHeight = 0.0;
   final GlobalKey _widgetKey = GlobalKey();
   GridMode _gridMode = GridMode.none;
@@ -707,6 +708,18 @@ class _CameraViewState extends State<CameraView>
     if (_cameras.isEmpty ||
         _controller == null ||
         !(_controller!.value.isInitialized)) {
+      if (_cameraError != null) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              'Camera error: $_cameraError',
+              style: const TextStyle(color: Colors.white70),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        );
+      }
       return const SizedBox.shrink();
     }
 
@@ -1095,9 +1108,10 @@ class _CameraViewState extends State<CameraView>
       try {
         await _controller?.initialize();
       } catch (e) {
-        debugPrint('Camera initialization failed: $e');
+        LogService.instance.log('Camera initialization failed: $e');
         await _controller?.dispose();
         _controller = null;
+        setState(() => _cameraError = e.toString());
         return;
       }
 
@@ -1119,8 +1133,8 @@ class _CameraViewState extends State<CameraView>
         }
       }
 
-      // Windows and Linux don't need image streaming (callback is a no-op)
-      if (Platform.isWindows || Platform.isLinux) {
+      // Windows, Linux, and macOS don't need image streaming (callback is a no-op)
+      if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
         if (widget.onCameraFeedReady != null) {
           widget.onCameraFeedReady!();
         }
@@ -1152,7 +1166,9 @@ class _CameraViewState extends State<CameraView>
       if (_pictureTakingCompleter != null) {
         await _pictureTakingCompleter!.future;
       }
-      if (!Platform.isWindows && _controller?.value.isInitialized == true) {
+      if (!Platform.isWindows &&
+          !Platform.isMacOS &&
+          _controller?.value.isInitialized == true) {
         try {
           await _controller?.stopImageStream();
         } catch (_) {

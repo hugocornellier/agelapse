@@ -56,6 +56,14 @@
   <content_rating type="oars-1.1" />
 
   <releases>
+    <release version="2.5.1" date="2026-04-06">
+      <description>
+        <ul>
+          <li>Reduced FFmpeg binary size (macOS: 76MB→5.5MB, Windows: 95MB→13MB)</li>
+          <li>Minor image preview UI fix</li>
+        </ul>
+      </description>
+    </release>
     <release version="2.5.0" date="2026-02-06">
       <description>
         <ul>

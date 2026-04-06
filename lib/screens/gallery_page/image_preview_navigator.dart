@@ -537,35 +537,40 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
             color: AppColors.settingsTextSecondary,
           ),
           const SizedBox(width: 8),
-          Flexible(
-            child: FutureBuilder<Map<String, dynamic>?>(
-              future: _previewPhotoFuture,
-              builder: (context, snap) {
-                final int? off = CaptureTimezone.extractOffset(snap.data);
-                final timestamp = _currentTimestamp;
-                if (timestamp.isEmpty) {
-                  return const SizedBox.shrink();
-                }
-                return Text(
-                  Utils.formatUnixTimestampPlatformAware(
-                    int.parse(timestamp),
-                    captureOffsetMinutes: off,
+          Expanded(
+            child: Row(
+              children: [
+                Flexible(
+                  child: FutureBuilder<Map<String, dynamic>?>(
+                    future: _previewPhotoFuture,
+                    builder: (context, snap) {
+                      final int? off = CaptureTimezone.extractOffset(snap.data);
+                      final timestamp = _currentTimestamp;
+                      if (timestamp.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+                      return Text(
+                        Utils.formatUnixTimestampPlatformAware(
+                          int.parse(timestamp),
+                          captureOffsetMinutes: off,
+                        ),
+                        style: TextStyle(
+                          color: AppColors.settingsTextPrimary,
+                          fontSize: AppTypography.md,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      );
+                    },
                   ),
-                  style: TextStyle(
-                    color: AppColors.settingsTextPrimary,
-                    fontSize: AppTypography.md,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                );
-              },
+                ),
+                if (isDesktop) ...[
+                  const SizedBox(width: 12),
+                  _buildResolutionBadge(),
+                  if (_isInspectionMode && !_isRaw) _buildInspectionModeBadge(),
+                ],
+              ],
             ),
           ),
-          if (isDesktop) ...[
-            const SizedBox(width: 12),
-            _buildResolutionBadge(),
-            if (_isInspectionMode && !_isRaw) _buildInspectionModeBadge(),
-          ],
-          const Spacer(),
           _buildInfoButton(),
           const SizedBox(width: 8),
           _buildCloseButton(),

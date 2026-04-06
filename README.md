@@ -42,6 +42,14 @@ The face detection model used by AgeLapse is platform-dependent. On Mobile, Goog
 
 ## What's New / Changelog
 
+### v2.5.1 (Apr 2026)
+
+#### Improvements
+- Reduced bundled FFmpeg binary size (macOS: 76 MB → 5.5 MB, Windows: 95 MB → 13 MB)
+
+#### Bug Fixes
+- Fix image preview exit button UI issue
+
 ### v2.5.0 (Apr 2026)
 
 #### New Features
