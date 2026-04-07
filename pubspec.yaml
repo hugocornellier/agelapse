@@ -2,7 +2,7 @@ name: agelapse
 description: A powerful tool for creating stabilized aging timelapses.
 publish_to: 'none'
 
-version: 2.5.1+38
+version: 2.5.2+39
 
 environment:
   sdk: ">=3.1.0 <4.0.0"
@@ -93,6 +93,12 @@ flutter:
     # ffmpeg.exe is only needed on Windows (Android uses FFmpegKit, macOS/Linux
     # use system ffmpeg). The platforms: key ensures it's only bundled for Windows.
     - path: assets/ffmpeg/windows/ffmpeg.exe
+      platforms:
+        - windows
+    - path: assets/ffmpeg/windows/libgcc_s_seh-1.dll
+      platforms:
+        - windows
+    - path: assets/ffmpeg/windows/libwinpthread-1.dll
       platforms:
         - windows
     - path: assets/ffmpeg/windows/LICENSE

@@ -14,11 +14,13 @@ import 'video_compilation_test.dart' as video_compilation_tests;
 import 'video_codec_test.dart' as video_codec_tests;
 import 'video_playback_test.dart' as video_playback_tests;
 import 'settings_pipeline_test.dart' as settings_pipeline_tests;
+import 'ffmpeg_binary_test.dart' as ffmpeg_binary_tests;
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   test_config.isTestMode = true;
 
+  ffmpeg_binary_tests.main();
   video_compilation_tests.main();
   video_codec_tests.main();
   video_playback_tests.main();
