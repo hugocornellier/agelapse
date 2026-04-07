@@ -35,7 +35,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ needs.prepare.outputs.ref }}
+          ref: ${{ github.event.inputs.ref || github.sha }}
           fetch-depth: 0
 
       - name: Resolve version from tag and pubspec
