@@ -42,40 +42,7 @@ The face detection model used by AgeLapse is platform-dependent. On Mobile, Goog
 
 ## What's New / Changelog
 
-### v2.5.1 (Apr 2026)
-
-#### Improvements
-- Reduced bundled FFmpeg binary size (macOS: 76 MB → 5.5 MB, Windows: 95 MB → 13 MB)
-
-#### Bug Fixes
-- Fix image preview exit button UI issue
-
-### v2.5.0 (Apr 2026)
-
-#### New Features
-- Light theme (auto-reads system settings OR toggle in Settings -> Appearance)
-- Video codec selection (H.264, HEVC, ProRes 422, ProRes 422 HQ, ProRes 4444, VP9)
-- Transparent video background support with ProRes 4444 and VP9 alpha
-- Blurred video background option
-- RAW image support
-- Dog and cat project types for pet timelapses
-- Linked source folders
-- Preserve original files on import (metadata, filenames, byte for byte)
-- Date stamp font size setting
-- Inspection mode for gallery and image preview (overlay stabilization grid to verify alignment)
-
-#### Improvements
-- Consolidate app colours and theme
-- Improved import flow with preview dialog and clearer date extraction
-- Reduced Android APK size
-
-#### Bug Fixes
-- Fixes #25: bug causing .zip exports to fail on certain devices
-- Fix photos taken before 2001 sorting incorrectly
-- Fix date stamps not syncing correctly in rare cases
-- Fix layout overflow on manual stabilization page on mobile
-- Fix theme toggle failing to open
-- Fix Cmd+A not working in file picker
+### v2.6.0 (Apr 2026)
 
 For previous releases, see the [full changelog](https://agelapse.com/docs/changelog/).
 

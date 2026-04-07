@@ -1,6 +1,6 @@
 #define MyAppName "AgeLapse"
 #ifndef MyAppVersion
-  #define MyAppVersion "2.5.1"
+  #define MyAppVersion "2.6.0"
 #endif
 #define MyAppPublisher "Hugo Cornellier"
 #define MyAppExeName "agelapse.exe"

@@ -1,63 +1,78 @@
-name: Tests
+name: Dev CI
 
 on:
-  pull_request:
-    branches: [main]
   push:
-    branches: [main]
+    branches-ignore: [main]
+  pull_request:
+    branches-ignore: [main]
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform for integration test'
+        required: true
+        type: choice
+        options:
+          - macos
+          - ios
+          - android
+          - linux
+          - windows
+      test_file:
+        description: 'Test file in integration_test/ (e.g. ffmpeg_binary_test.dart)'
+        required: true
+        type: string
+      flutter_channel:
+        description: 'Flutter channel'
+        required: false
+        type: choice
+        options:
+          - stable
+          - beta
+        default: stable
 
 concurrency:
-  group: tests-${{ github.ref }}
+  group: dev-ci-${{ github.ref }}-${{ inputs.platform || 'push' }}
   cancel-in-progress: true
 
 jobs:
-  unit-tests:
-    name: Unit Tests (${{ matrix.flutter-channel }})
+  # ── Quick checks (auto on every push) ──────────────────────────────────
+  quick-checks:
+    name: Format, Analyze & Unit Tests
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        flutter-channel: [stable, beta]
     steps:
       - uses: actions/checkout@v4
 
       - uses: subosito/flutter-action@v2
         with:
-          channel: ${{ matrix.flutter-channel }}
+          channel: stable
           cache: true
 
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Run unit tests with coverage
-        run: flutter test --coverage
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed .
 
-      - name: Upload coverage to Codecov
-        if: matrix.flutter-channel == 'stable'
-        uses: codecov/codecov-action@v4
-        with:
-          files: coverage/lcov.info
-          flags: unit-tests
-          fail_ci_if_error: false
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      - name: Analyze
+        run: flutter analyze --fatal-infos .
 
+      - name: Run unit tests
+        run: flutter test
+
+  # ── Integration: macOS (manual) ────────────────────────────────────────
   integration-macos:
-    name: Integration macOS ${{ matrix.group }} (${{ matrix.flutter-channel }})
+    name: Integration macOS
+    if: github.event_name == 'workflow_dispatch' && inputs.platform == 'macos'
     runs-on: macos-15
     timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        flutter-channel: [stable, beta]
-        group: [fast, video]
     steps:
       - uses: actions/checkout@v4
 
       - uses: subosito/flutter-action@v2
         with:
-          channel: ${{ matrix.flutter-channel }}
+          channel: ${{ inputs.flutter_channel }}
           cache: true
 
       - name: Cache CocoaPods
@@ -82,19 +97,15 @@ jobs:
             sleep $((attempt * 15))
           done
 
-      # Aggregator files run all tests in a single build+launch, avoiding
-      # the per-file rebuild overhead and the "debug connection" bug.
-      - name: Run integration tests
-        run: flutter test "integration_test/desktop_${{ matrix.group }}.dart" -d macos --reporter expanded
+      - name: Run integration test
+        run: flutter test "integration_test/${{ inputs.test_file }}" -d macos --reporter expanded
 
+  # ── Integration: iOS (manual) ──────────────────────────────────────────
   integration-ios:
-    name: Integration iOS (${{ matrix.flutter-channel }})
+    name: Integration iOS
+    if: github.event_name == 'workflow_dispatch' && inputs.platform == 'ios'
     runs-on: macos-15
     timeout-minutes: 120
-    strategy:
-      fail-fast: false
-      matrix:
-        flutter-channel: [stable, beta]
     steps:
       - uses: actions/checkout@v4
 
@@ -103,7 +114,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          channel: ${{ matrix.flutter-channel }}
+          channel: ${{ inputs.flutter_channel }}
           cache: true
 
       - name: Cache CocoaPods
@@ -141,45 +152,31 @@ jobs:
           xcrun simctl bootstatus "$UDID" -b
           echo "SIMULATOR_UDID=$UDID" >> "$GITHUB_ENV"
 
-      # Pre-warm the Xcode build outside of any test timeout window.
-      # On Flutter beta the initial build can take 12-13 minutes, which
-      # exceeds the test framework's default 12-minute loading timeout.
-      # Building here first means the test run starts with a warm cache.
       - name: Prewarm Xcode build
         run: flutter build ios --simulator --debug --no-codesign
 
-      # Aggregator files run all tests in a single build+launch, avoiding
-      # the per-file Xcode rebuild overhead (~1 min × 16 files saved).
-      - name: Run fast integration tests
+      - name: Run integration test
         run: |
           set -o pipefail
-          mkdir -p test-results
-          flutter test integration_test/mobile_fast.dart -d "$SIMULATOR_UDID" --reporter expanded 2>&1 | tee test-results/fast.log
-
-      - name: Run video integration tests
-        run: |
-          set -o pipefail
-          flutter test integration_test/mobile_video.dart -d "$SIMULATOR_UDID" --reporter expanded 2>&1 | tee test-results/video.log
+          flutter test "integration_test/${{ inputs.test_file }}" -d "$SIMULATOR_UDID" --reporter expanded 2>&1 | tee test-results.log
 
       - name: Upload test logs
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: test-logs-ios-${{ matrix.flutter-channel }}
-          path: test-results/
+          name: test-logs-ios
+          path: test-results.log
 
       - name: Shutdown simulator
         if: always()
         run: xcrun simctl shutdown "$SIMULATOR_UDID" 2>/dev/null || true
 
+  # ── Integration: Android (manual) ──────────────────────────────────────
   integration-android:
-    name: Integration Android (${{ matrix.flutter-channel }})
+    name: Integration Android
+    if: github.event_name == 'workflow_dispatch' && inputs.platform == 'android'
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    strategy:
-      fail-fast: false
-      matrix:
-        flutter-channel: [stable, beta]
     steps:
       - name: Free disk space
         uses: jlumbroso/free-disk-space@v1.3.1
@@ -201,7 +198,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          channel: ${{ matrix.flutter-channel }}
+          channel: ${{ inputs.flutter_channel }}
           cache: true
 
       - name: Cache Gradle
@@ -225,10 +222,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      # Aggregator files run all tests in a single build+launch, avoiding
-      # the per-file Gradle rebuild overhead (~40s × 17 files saved).
-      - name: Run integration tests on Android emulator
-        id: android-tests
+      - name: Run integration test on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
@@ -238,21 +232,14 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
           script: |
-            flutter test integration_test/mobile_fast.dart -d emulator-5554 --reporter expanded 2>&1 | tee /tmp/test-fast.log
-            FAST_EXIT=$?
-            flutter test integration_test/mobile_video.dart -d emulator-5554 --reporter expanded 2>&1 | tee /tmp/test-video.log
-            VIDEO_EXIT=$?
-            if [ $FAST_EXIT -ne 0 ] || [ $VIDEO_EXIT -ne 0 ]; then exit 1; fi
+            flutter test "integration_test/${{ inputs.test_file }}" -d emulator-5554 --reporter expanded
 
+  # ── Integration: Linux (manual) ────────────────────────────────────────
   integration-linux:
-    name: Integration Linux ${{ matrix.group }} (${{ matrix.flutter-channel }})
+    name: Integration Linux
+    if: github.event_name == 'workflow_dispatch' && inputs.platform == 'linux'
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        flutter-channel: [stable, beta]
-        group: [fast, video]
     steps:
       - uses: actions/checkout@v4
 
@@ -263,7 +250,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          channel: ${{ matrix.flutter-channel }}
+          channel: ${{ inputs.flutter_channel }}
           cache: true
 
       - name: Cache opencv_dart native build
@@ -279,25 +266,21 @@ jobs:
       - name: Prewarm Linux build
         run: flutter build linux --debug
 
-      # Aggregator files run all tests in a single build+launch.
-      - name: Run integration tests
-        run: xvfb-run flutter test "integration_test/desktop_${{ matrix.group }}.dart" -d linux --reporter expanded
+      - name: Run integration test
+        run: xvfb-run flutter test "integration_test/${{ inputs.test_file }}" -d linux --reporter expanded
 
+  # ── Integration: Windows (manual) ──────────────────────────────────────
   integration-windows:
-    name: Integration Windows ${{ matrix.group }} (${{ matrix.flutter-channel }})
+    name: Integration Windows
+    if: github.event_name == 'workflow_dispatch' && inputs.platform == 'windows'
     runs-on: windows-latest
     timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        flutter-channel: [stable, beta]
-        group: [fast, video]
     steps:
       - uses: actions/checkout@v4
 
       - uses: subosito/flutter-action@v2
         with:
-          channel: ${{ matrix.flutter-channel }}
+          channel: ${{ inputs.flutter_channel }}
           cache: true
 
       - name: Cache opencv_dart native build
@@ -313,15 +296,12 @@ jobs:
       - name: Prewarm Windows build
         run: flutter build windows --debug
 
-      # Aggregator files run all tests in a single build+launch.
-      # Handle known libheif DLL teardown crash on Windows where the
-      # process crashes during exit after all tests pass.
-      - name: Run integration tests
+      - name: Run integration test
         shell: bash
         run: |
           TEST_OUTPUT=$(mktemp)
           EXIT_CODE=0
-          flutter test "integration_test/desktop_${{ matrix.group }}.dart" -d windows --reporter expanded 2>&1 | tee "$TEST_OUTPUT" || EXIT_CODE=$?
+          flutter test "integration_test/${{ inputs.test_file }}" -d windows --reporter expanded 2>&1 | tee "$TEST_OUTPUT" || EXIT_CODE=$?
           if [ "$EXIT_CODE" -ne 0 ]; then
             if grep -q "tests passed" "$TEST_OUTPUT" && ! grep -q "failed" "$TEST_OUTPUT"; then
               echo "::warning::Tests exited $EXIT_CODE but all tests passed (process teardown crash — ignored)"

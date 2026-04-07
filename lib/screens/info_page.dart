@@ -87,7 +87,7 @@ class InfoPageState extends State<InfoPage> {
                       Padding(
                         padding: const EdgeInsets.only(left: 4),
                         child: Text(
-                          'Version: v2.5.1',
+                          'Version: v2.6.0',
                           style: TextStyle(
                             fontSize: AppTypography.sm,
                             color: AppColors.textSecondary,

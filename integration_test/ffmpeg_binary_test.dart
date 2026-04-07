@@ -62,8 +62,7 @@ void main() {
       );
 
       expect(result.exitCode, equals(0),
-          reason:
-              'ffmpeg.exe must run on a stock Windows machine.\n'
+          reason: 'ffmpeg.exe must run on a stock Windows machine.\n'
               'Exit code: ${result.exitCode}\n'
               'stderr: ${result.stderr}');
 

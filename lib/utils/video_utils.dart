@@ -1533,7 +1533,8 @@ class VideoUtils {
             ).writeAsBytes(dllBytes.buffer.asUint8List(), flush: true);
             LogService.instance.log("[VIDEO] Extracted DLL: $dll");
           } catch (e) {
-            LogService.instance.log("[VIDEO] WARNING: Could not extract $dll: $e");
+            LogService.instance
+                .log("[VIDEO] WARNING: Could not extract $dll: $e");
           }
         }
         await File(markerPath).writeAsString('2', flush: true);

@@ -13,3 +13,7 @@ bool get isDesktop =>
 /// Whether the platform uses a custom Flutter-rendered title bar.
 bool get hasCustomTitleBar =>
     Platform.isMacOS || Platform.isLinux || Platform.isWindows;
+
+/// Whether the app is running inside a Flatpak sandbox.
+bool get isFlatpak =>
+    Platform.isLinux && File('/.flatpak-info').existsSync();
