@@ -159,7 +159,18 @@ class StabilizationService {
             projectId: projectId,
           ),
         );
-        await _tryCreateVideo(projectId);
+        final videoResult = await _tryCreateVideo(projectId);
+        if (!videoResult.succeeded) {
+          _emitProgress(
+            StabilizationProgress.error(
+              'Video compilation failed: ${videoResult.errorMessage}',
+              projectId: projectId,
+            ),
+          );
+          _state = StabilizationState.error;
+          await _cleanup();
+          return false;
+        }
         _emitProgress(StabilizationProgress.completed(projectId: projectId));
         _state = StabilizationState.completed;
         await _cleanup();
@@ -240,7 +251,18 @@ class StabilizationService {
 
       // Create video
       _currentToken?.throwIfCancelled();
-      await _tryCreateVideo(projectId);
+      final videoResult = await _tryCreateVideo(projectId);
+
+      if (!videoResult.succeeded) {
+        _emitProgress(
+          StabilizationProgress.error(
+            'Video compilation failed: ${videoResult.errorMessage}',
+            projectId: projectId,
+          ),
+        );
+        _state = StabilizationState.error;
+        return false;
+      }
 
       _emitProgress(StabilizationProgress.completed(projectId: projectId));
       _state = StabilizationState.completed;
@@ -345,6 +367,7 @@ class StabilizationService {
     Map<String, dynamic> photo,
     CancellationToken? token,
   ) async {
+    final timestamp = photo['timestamp']?.toString();
     try {
       final rawPhotoPath =
           await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
@@ -353,16 +376,48 @@ class StabilizationService {
         fileExtension: photo['fileExtension'],
       );
 
-      return await stabilizer.stabilize(
+      final result = await stabilizer.stabilize(
         rawPhotoPath,
         token,
         _handleUserRanOutOfSpace,
       );
-    } catch (e) {
+
+      // Increment stabAttempts only on a non-cancelled returned failure.
+      // - Success: the counter is reset by setPhotoStabilized inside the
+      //   save path, so pre-incrementing would be a no-op.
+      // - Cancelled: must NOT count against the 5-attempt cap. Otherwise a
+      //   user who cancels and retries the same batch five times would
+      //   permanently lock the in-flight photo out of stabilization until
+      //   manually reset.
+      // - Thrown exception: handled by the catch block below, which marks
+      //   stabFailed=1 — that already excludes the photo from
+      //   getUnstabilizedPhotos regardless of the counter.
+      if (!result.success && !result.cancelled && timestamp != null) {
+        try {
+          await DB.instance.incrementPhotoStabAttempts(
+            timestamp: timestamp,
+            projectId: _currentProjectId!,
+          );
+        } catch (e) {
+          LogService.instance
+              .log('[STAB] incrementPhotoStabAttempts threw: $e');
+        }
+      }
+
+      return result;
+    } catch (e, stackTrace) {
       if (e is CancelledException) rethrow;
       LogService.instance.log(
-        'StabilizationService: Error stabilizing photo - $e',
+        '[STAB_ERROR] projectId=$_currentProjectId photo=$timestamp phase=_stabilizePhoto error=${e.runtimeType}: $e\n$stackTrace',
       );
+      if (_currentProjectId != null && timestamp != null) {
+        try {
+          await DB.instance.setPhotoStabFailed(timestamp, _currentProjectId!);
+        } catch (markErr) {
+          LogService.instance.log(
+              '[STAB_ERROR] Failed to mark photo stabFailed in service: $markErr');
+        }
+      }
       return StabilizationResult(success: false);
     }
   }
@@ -566,7 +621,7 @@ class StabilizationService {
     }
   }
 
-  Future<void> _tryCreateVideo(int projectId) async {
+  Future<_VideoCompileResult> _tryCreateVideo(int projectId) async {
     try {
       _currentToken?.throwIfCancelled();
 
@@ -600,7 +655,7 @@ class StabilizationService {
         );
         // Mark that a new video is needed so user can compile manually
         await DB.instance.setNewVideoNeeded(projectId);
-        return;
+        return _VideoCompileResult.success();
       }
 
       if (shouldCompile) {
@@ -641,7 +696,11 @@ class StabilizationService {
         // Stop ETA tracking
         VideoUtils.stopVideoStopwatch();
 
-        if (cfg.newVideoNeeded && result) {
+        if (!result) {
+          return _VideoCompileResult.failed('VideoUtils returned false');
+        }
+
+        if (cfg.newVideoNeeded) {
           DB.instance.setNewVideoNotNeeded(projectId);
         }
 
@@ -649,11 +708,14 @@ class StabilizationService {
           'StabilizationService: Video creation result - $result',
         );
       }
+
+      return _VideoCompileResult.success();
     } catch (e) {
       if (e is CancelledException) rethrow;
       LogService.instance.log(
         'StabilizationService: Error creating video - $e',
       );
+      return _VideoCompileResult.failed(e.toString());
     }
   }
 
@@ -743,6 +805,17 @@ class _VideoConfig {
   final bool videoIsNull;
   final bool settingsHaveChanged;
   final bool newVideoNeeded;
+}
+
+class _VideoCompileResult {
+  final bool succeeded;
+  final String? errorMessage;
+
+  _VideoCompileResult._(this.succeeded, this.errorMessage);
+
+  factory _VideoCompileResult.success() => _VideoCompileResult._(true, null);
+  factory _VideoCompileResult.failed(String msg) =>
+      _VideoCompileResult._(false, msg);
 }
 
 /// Mutable holder for progress tracking across multiple stabilization batches.

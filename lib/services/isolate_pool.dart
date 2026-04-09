@@ -374,8 +374,8 @@ class IsolatePool {
 
         // Use cached source Mat if available and matching, otherwise decode
         cv.Mat srcMat;
-        bool shouldCache = srcId != null && onCacheUpdate != null;
         bool usedCache = false;
+        bool srcMatCacheHandedOff = false;
 
         if (srcId != null &&
             cachedSrcId == srcId &&
@@ -397,6 +397,7 @@ class IsolatePool {
           // shouldCache implies srcId != null, safe to use directly
           if (srcId != null && onCacheUpdate != null) {
             onCacheUpdate(srcMat, srcId);
+            srcMatCacheHandedOff = true;
           }
         } else {
           // No bytes and no cache — cannot proceed
@@ -413,64 +414,69 @@ class IsolatePool {
           srcMatForWarp = srcMat;
         }
 
-        final iw = srcMatForWarp.cols;
-        final ih = srcMatForWarp.rows;
+        cv.Mat? rotMat;
+        cv.Mat? dst;
+        try {
+          final iw = srcMatForWarp.cols;
+          final ih = srcMatForWarp.rows;
 
-        final rotMat = cv.getRotationMatrix2D(
-          cv.Point2f(iw / 2.0, ih / 2.0),
-          -rotationDegrees,
-          scaleFactor,
-        );
-
-        final offsetX = (canvasWidth - iw) / 2.0 + translateX;
-        final offsetY = (canvasHeight - ih) / 2.0 + translateY;
-        rotMat.set<double>(0, 2, rotMat.at<double>(0, 2) + offsetX);
-        rotMat.set<double>(1, 2, rotMat.at<double>(1, 2) + offsetY);
-
-        // Create border color scalar
-        // For transparent: BGRA with alpha=0
-        // For solid color: BGR with alpha=255
-        final cv.Scalar borderValue;
-        if (isTransparent) {
-          borderValue = cv.Scalar(0.0, 0.0, 0.0, 0.0); // Fully transparent
-        } else {
-          // backgroundColorBGR is non-null when not transparent (promoted by isTransparent check)
-          borderValue = cv.Scalar(
-            backgroundColorBGR[0].toDouble(),
-            backgroundColorBGR[1].toDouble(),
-            backgroundColorBGR[2].toDouble(),
-            255.0,
+          rotMat = cv.getRotationMatrix2D(
+            cv.Point2f(iw / 2.0, ih / 2.0),
+            -rotationDegrees,
+            scaleFactor,
           );
+
+          final offsetX = (canvasWidth - iw) / 2.0 + translateX;
+          final offsetY = (canvasHeight - ih) / 2.0 + translateY;
+          rotMat.set<double>(0, 2, rotMat.at<double>(0, 2) + offsetX);
+          rotMat.set<double>(1, 2, rotMat.at<double>(1, 2) + offsetY);
+
+          // Create border color scalar
+          // For transparent: BGRA with alpha=0
+          // For solid color: BGR with alpha=255
+          final cv.Scalar borderValue;
+          if (isTransparent) {
+            borderValue = cv.Scalar(0.0, 0.0, 0.0, 0.0); // Fully transparent
+          } else {
+            // backgroundColorBGR is non-null when not transparent (promoted by isTransparent check)
+            borderValue = cv.Scalar(
+              backgroundColorBGR[0].toDouble(),
+              backgroundColorBGR[1].toDouble(),
+              backgroundColorBGR[2].toDouble(),
+              255.0,
+            );
+          }
+
+          dst = cv.warpAffine(
+            srcMatForWarp,
+            rotMat,
+            (canvasWidth, canvasHeight),
+            flags: cv.INTER_CUBIC,
+            borderMode: cv.BORDER_CONSTANT,
+            borderValue: borderValue,
+          );
+
+          final pngCompression = params['pngCompression'] as int? ?? 3;
+          final (success, bytes) = cv.imencode(
+            '.png',
+            dst,
+            params: cv.VecI32.fromList(
+                [cv.IMWRITE_PNG_COMPRESSION, pngCompression]),
+          );
+
+          return success ? bytes : null;
+        } finally {
+          rotMat?.dispose();
+          dst?.dispose();
+          if (needsDisposeSrcForWarp) {
+            srcMatForWarp.dispose();
+          }
+          // Only dispose srcMat if we have sole ownership:
+          // not cached (handed off to cache) and not from cache hit.
+          if (!srcMatCacheHandedOff && !usedCache) {
+            srcMat.dispose();
+          }
         }
-
-        final dst = cv.warpAffine(
-          srcMatForWarp,
-          rotMat,
-          (canvasWidth, canvasHeight),
-          flags: cv.INTER_CUBIC,
-          borderMode: cv.BORDER_CONSTANT,
-          borderValue: borderValue,
-        );
-
-        final pngCompression = params['pngCompression'] as int? ?? 3;
-        final (success, bytes) = cv.imencode(
-          '.png',
-          dst,
-          params:
-              cv.VecI32.fromList([cv.IMWRITE_PNG_COMPRESSION, pngCompression]),
-        );
-
-        rotMat.dispose();
-        dst.dispose();
-        if (needsDisposeSrcForWarp) {
-          srcMatForWarp.dispose();
-        }
-        // Only dispose srcMat if we didn't cache it and didn't use cache
-        if (!shouldCache && !usedCache) {
-          srcMat.dispose();
-        }
-
-        return success ? bytes : null;
 
       case 'clearMatCache':
         // Clear the cached source Mat to free memory

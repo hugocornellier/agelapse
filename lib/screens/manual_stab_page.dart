@@ -46,6 +46,8 @@ class ManualStabilizationPage extends StatefulWidget {
 /// Phases of the save operation for visual feedback.
 enum _SavePhase { idle, saving, success }
 
+enum ManualStabOutcome { success, cancelled, invalidImage, saveFailed, stale }
+
 class ManualStabilizationPageState extends State<ManualStabilizationPage>
     with SingleTickerProviderStateMixin {
   String rawPhotoPath = "";
@@ -1262,7 +1264,23 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       final sc = mult * _baseScale;
 
       // Save via processRequest
-      await processRequest(tx, ty, sc, rot, save: true);
+      final outcome = await processRequest(tx, ty, sc, rot, save: true);
+      if (outcome != ManualStabOutcome.success) {
+        setState(() => _savePhase = _SavePhase.idle);
+        if (mounted) {
+          final msg = switch (outcome) {
+            ManualStabOutcome.saveFailed => 'Failed to save changes',
+            ManualStabOutcome.invalidImage =>
+              'Could not generate stabilized image',
+            ManualStabOutcome.stale => 'Save outdated — please try again',
+            _ => 'Failed to save changes',
+          };
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(msg)),
+          );
+        }
+        return;
+      }
 
       // Update saved state — parse from formatted text fields to match
       // what _checkForUnsavedChanges() will compare against
@@ -1592,7 +1610,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
     }
   }
 
-  Future<void> processRequest(
+  Future<ManualStabOutcome> processRequest(
     double? translateX,
     double? translateY,
     double? scaleFactor,
@@ -1611,7 +1629,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
     try {
       if (_rawImageBytes == null) {
         _log('processRequest ABORTED: _rawImageBytes is null');
-        return;
+        return ManualStabOutcome.invalidImage;
       }
 
       final Uint8List? imageBytesStabilized =
@@ -1629,14 +1647,14 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
         _log(
           'processRequest ABORTED: generateStabilizedImageBytesCVAsync returned null',
         );
-        return;
+        return ManualStabOutcome.invalidImage;
       }
 
       if (requestId != _currentRequestId || !mounted) {
         _log(
           'processRequest ABORTED: stale request ($requestId vs $_currentRequestId) or not mounted',
         );
-        return;
+        return ManualStabOutcome.stale;
       }
 
       if (save && _faceStabilizer != null) {
@@ -1654,10 +1672,13 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
           stabilizedPhotoPath,
         );
 
-        await DirUtils.deleteFileIfExists(stabilizedPhotoPath);
-        await DirUtils.deleteFileIfExists(stabThumbPath);
-
-        final (_, savedBytes) = await _faceStabilizer!.saveStabilizedImage(
+        // Do not pre-delete stabilizedPhotoPath / stabThumbPath here.
+        // saveBytesToPngFileInIsolate writes atomically (temp + rename), so
+        // the existing stabilized PNG is preserved if saveStabilizedImage
+        // returns (false, null). Pre-deleting would leave the user with no
+        // file when save fails (e.g. out-of-space or infinite transform
+        // guard), silently destroying their previous manual-stab work.
+        final (saveOk, savedBytes) = await _faceStabilizer!.saveStabilizedImage(
           imageBytesStabilized,
           rawPhotoPath,
           stabilizedPhotoPath,
@@ -1667,6 +1688,9 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
           rotationDegrees: rotationDegrees,
           scaleFactor: scaleFactor,
         );
+        if (!saveOk) {
+          return ManualStabOutcome.saveFailed;
+        }
         await _faceStabilizer!.createStabThumbnail(
           p.setExtension(stabilizedPhotoPath, '.png'),
           imageBytes: savedBytes,
@@ -1686,7 +1710,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
         _log(
           'processRequest ABORTED post-save: stale/unmounted/null stabilizer',
         );
-        return;
+        return ManualStabOutcome.stale;
       }
 
       final int canvasHeight = _faceStabilizer!.canvasHeight;
@@ -1706,8 +1730,10 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
         _lastMult = scaleFactor == null ? null : scaleFactor / _baseScale;
         _lastRot = rotationDegrees;
       });
+      return ManualStabOutcome.success;
     } catch (e, st) {
       _log('processRequest ERROR: $e\n$st');
+      return ManualStabOutcome.saveFailed;
     } finally {
       if (mounted && requestId == _currentRequestId) {
         setState(() {

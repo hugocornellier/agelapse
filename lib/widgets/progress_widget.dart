@@ -14,6 +14,12 @@ class ProgressWidget extends StatelessWidget {
   final String? minutesRemaining;
   final bool userRanOutOfSpace;
 
+  /// Number of photos in the current stabilization batch.
+  /// Used to decide whether to show "Estimating ETA..." (multi-photo batches,
+  /// where an ETA is meaningful) or a plain "Stabilizing..." (single-photo
+  /// batches, where there's nothing to estimate).
+  final int stabilizingBatchSize;
+
   const ProgressWidget({
     super.key,
     required this.stabilizingRunningInMain,
@@ -25,6 +31,7 @@ class ProgressWidget extends StatelessWidget {
     this.selectedIndex = -1,
     this.minutesRemaining,
     required this.userRanOutOfSpace,
+    this.stabilizingBatchSize = 0,
   });
 
   @override
@@ -35,10 +42,20 @@ class ProgressWidget extends StatelessWidget {
     final bool hasEta =
         minutesRemaining != null && minutesRemaining!.isNotEmpty;
 
-    // Only show percentage and ETA once ETA is available
-    final String stabilizingMessage = hasEta
-        ? "Stabilizing • $progressPercentAsStr • $minutesRemaining"
-        : "Stabilizing";
+    // Single-photo batches: there's no meaningful ETA to compute, so just
+    // show "Stabilizing..." for the whole (brief) duration.
+    // Multi-photo batches: show "Estimating ETA..." until the running
+    // average produces a real estimate, then swap in percent + ETA.
+    final bool isSinglePhotoBatch = stabilizingBatchSize == 1;
+    final String stabilizingMessage;
+    if (isSinglePhotoBatch) {
+      stabilizingMessage = "Stabilizing...";
+    } else if (hasEta) {
+      stabilizingMessage =
+          "Stabilizing • $progressPercentAsStr • $minutesRemaining";
+    } else {
+      stabilizingMessage = "Stabilizing • Estimating ETA...";
+    }
 
     final String compilingMessage = hasEta
         ? "Compiling video • $progressPercentAsStr • $minutesRemaining"

@@ -68,10 +68,10 @@ class GalleryPhotoOperations {
     await DirUtils.deleteFileIfExists(stabThumbPath);
 
     // Reset DB
-    await DB.instance.resetStabilizedColumnByTimestamp(
-      orientation,
-      timestamp,
-      projectId,
+    await DB.instance.resetPhotoStabilizationState(
+      timestamp: timestamp,
+      projectId: projectId,
+      orientation: orientation,
     );
 
     return timestamp;

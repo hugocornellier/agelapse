@@ -26,8 +26,8 @@ class IsolateManager {
   /// The singleton instance.
   static IsolateManager get instance => _instance;
 
-  /// Set of currently active isolates.
-  final Set<Isolate> _activeIsolates = {};
+  /// Map of currently active isolates to their receive ports.
+  final Map<Isolate, ReceivePort?> _activeIsolates = {};
 
   /// Number of currently active isolates.
   int get activeCount => _activeIsolates.length;
@@ -38,8 +38,8 @@ class IsolateManager {
   /// Register an isolate for tracking.
   ///
   /// Call this immediately after spawning an isolate.
-  void register(Isolate isolate) {
-    _activeIsolates.add(isolate);
+  void register(Isolate isolate, {ReceivePort? receivePort}) {
+    _activeIsolates[isolate] = receivePort;
   }
 
   /// Unregister an isolate from tracking.
@@ -58,9 +58,14 @@ class IsolateManager {
   void killAll() {
     if (_activeIsolates.isEmpty) return;
 
-    for (final isolate in _activeIsolates) {
+    for (final entry in _activeIsolates.entries) {
       try {
-        isolate.kill(priority: Isolate.immediate);
+        entry.value?.close();
+      } catch (_) {
+        // Ignore errors when closing receive ports
+      }
+      try {
+        entry.key.kill(priority: Isolate.immediate);
       } catch (_) {
         // Ignore errors when killing isolates
       }
@@ -69,7 +74,7 @@ class IsolateManager {
     _activeIsolates.clear();
   }
 
-  /// Clear the tracking set without killing isolates.
+  /// Clear the tracking map without killing isolates.
   ///
   /// Use this only for cleanup when you're sure isolates are already dead.
   void clear() {

@@ -1318,6 +1318,11 @@ class StabUtils {
       mat.dispose();
 
       final Directory tempDir = await getTemporaryDirectory();
+      // macOS sandboxed apps can have their Caches subdirectory pruned by the OS;
+      // writeAsBytes throws PathNotFoundException if the directory no longer exists.
+      if (!await tempDir.exists()) {
+        await tempDir.create(recursive: true);
+      }
       final String name = path.basenameWithoutExtension(filePath);
 
       final String newName = '$name$suffix';
@@ -1366,10 +1371,15 @@ class StabUtils {
       performImageProcessingInBackground,
       params,
     );
-    IsolateManager.instance.register(isolate);
+    IsolateManager.instance.register(isolate, receivePort: receivePort);
 
     try {
-      final result = await receivePort.first;
+      final result = await receivePort.first.timeout(
+        const Duration(seconds: 60),
+        onTimeout: () => throw TimeoutException(
+          'processImageInIsolate timed out after 60 seconds',
+        ),
+      );
       if (result is File) {
         return result;
       } else {

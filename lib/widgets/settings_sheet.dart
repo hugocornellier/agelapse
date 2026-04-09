@@ -1041,15 +1041,22 @@ class SettingsSheetState extends State<SettingsSheet> {
         ),
       if (!notif)
         _Section(
-          'Stabilization',
+          'Output & Stabilization',
           Icons.center_focus_strong_outlined,
           () => Column(
             children: [
               _buildStabilizationModeDropdown(),
               _buildEyeScaleButton(),
+              _buildResolutionDropdown(),
+              if (!_isCustomResolution) ...[
+                _buildProjectOrientationDropdown(),
+                _buildAspectRatioDropdown(),
+                _buildOutputResolutionDisplay(),
+              ],
+              _buildCodecDropdown(),
             ],
           ),
-          () => _settingsFuture,
+          () => Future.wait([_settingsFuture, _videoSettingsFuture]),
         ),
       if (!notif)
         _Section(
@@ -2055,13 +2062,6 @@ class SettingsSheetState extends State<SettingsSheet> {
   Widget _buildVideoSettings() {
     return Column(
       children: [
-        _buildResolutionDropdown(),
-        if (!_isCustomResolution) ...[
-          _buildProjectOrientationDropdown(),
-          _buildAspectRatioDropdown(),
-          _buildOutputResolutionDisplay(),
-        ],
-        _buildCodecDropdown(),
         _buildFramerateDropdown(framerate ?? 30),
         _buildAutoCompileVideoSwitch(),
       ],
@@ -2132,7 +2132,7 @@ class SettingsSheetState extends State<SettingsSheet> {
 
     return SettingListTile(
       title: 'Codec',
-      showDivider: true,
+      showDivider: false,
       contentWidget: isLockedTransparent
           ? Row(
               mainAxisSize: MainAxisSize.min,
@@ -3756,6 +3756,7 @@ class SettingsSheetState extends State<SettingsSheet> {
   Widget _buildEyeScaleButton() {
     return SettingListTile(
       title: 'Eye position',
+      showDivider: true,
       contentWidget: GestureDetector(
         onTap: () => Utils.navigateToScreen(
           context,

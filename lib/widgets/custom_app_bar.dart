@@ -32,6 +32,7 @@ class CustomAppBar extends StatefulWidget {
   final Future<void> Function() recompileVideoCallback;
   final SettingsCache? settingsCache;
   final String minutesRemaining;
+  final int stabilizingBatchSize;
   final bool userRanOutOfSpace;
   final Stream<StabUpdateEvent>? stabUpdateStream;
 
@@ -53,6 +54,7 @@ class CustomAppBar extends StatefulWidget {
     required this.recompileVideoCallback,
     required this.settingsCache,
     required this.minutesRemaining,
+    this.stabilizingBatchSize = 0,
     required this.userRanOutOfSpace,
     this.stabUpdateStream,
   });
@@ -323,6 +325,7 @@ class CustomAppBarState extends State<CustomAppBar> {
                 goToPage: widget.goToPage,
                 selectedIndex: widget.selectedIndex,
                 minutesRemaining: widget.minutesRemaining,
+                stabilizingBatchSize: widget.stabilizingBatchSize,
                 userRanOutOfSpace: widget.userRanOutOfSpace,
               ),
               if (!useDesktopTitleBar) _buildLegacyHeader(context),

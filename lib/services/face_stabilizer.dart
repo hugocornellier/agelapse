@@ -38,6 +38,9 @@ class StabilizationResult {
   final double? finalEyeDistance; // Final distance between eyes
   final double? goalEyeDistance; // Target eye distance
 
+  /// True when the score was estimated (fallback path, no face detected).
+  final bool isEstimated;
+
   StabilizationResult({
     required this.success,
     this.cancelled = false,
@@ -49,6 +52,7 @@ class StabilizationResult {
     this.finalEyeDeltaY,
     this.finalEyeDistance,
     this.goalEyeDistance,
+    this.isEstimated = false,
   });
 
   /// Creates a cancelled result.
@@ -86,6 +90,10 @@ class FaceStabilizer {
   late List<int>? backgroundColorBGR;
   late bool lossless;
 
+  /// Score threshold below which a stabilization result is considered successful.
+  /// Lower scores are better (0 = perfect eye alignment).
+  static const double _kStabSuccessScoreThreshold = 20.0;
+
   /// Whether this project type uses eye-based stabilization (face, cat, dog).
   bool get _isEyeBasedProject =>
       projectType == "face" || projectType == "cat" || projectType == "dog";
@@ -93,6 +101,9 @@ class FaceStabilizer {
   // Face embedding tracking for identity-based face matching
   int? _currentFaceCount;
   Float32List? _currentEmbedding;
+
+  // Set to true when _handleFallbackStabilization is used; reset each attempt.
+  bool _lastScoreWasEstimated = false;
 
   final VoidCallback userRanOutOfSpaceCallbackIn;
   final StabilizationSettings? _preloadedSettings;
@@ -206,19 +217,53 @@ class FaceStabilizer {
           targetBoundingBox: targetBoundingBox,
         );
       } else {
-        return await _stabilizeSingleAttempt(
+        final result = await _stabilizeSingleAttempt(
           rawPhotoPath,
           rawPhotoPath,
           token,
           userRanOutOfSpaceCallback,
           targetBoundingBox: targetBoundingBox,
         );
+        // Non-eye projects (pregnancy, musc) have no orientation retry, so any
+        // non-success-non-cancelled result is terminal. Mark the photo failed
+        // so the re-check loop and next-session scan do not re-pick it.
+        if (!result.success && !result.cancelled) {
+          try {
+            final String timestamp =
+                path.basenameWithoutExtension(rawPhotoPath);
+            await DB.instance.setPhotoStabFailed(timestamp, projectId);
+            unawaited(
+              _emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.stabFailed),
+            );
+          } catch (markErr) {
+            LogService.instance.log(
+              '[STAB_ERROR] Failed to mark non-eye photo stabFailed: $markErr',
+            );
+          }
+        }
+        return result;
       }
     } on CancelledException {
       LogService.instance.log("Stabilization cancelled");
       return StabilizationResult.cancelled();
-    } catch (e) {
-      LogService.instance.log("Caught error: $e");
+    } catch (e, stackTrace) {
+      LogService.instance.log(
+        '[STAB_ERROR] projectId=$projectId '
+        'photo=${path.basename(rawPhotoPath)} '
+        'phase=stabilize_entry '
+        'error=${e.runtimeType}: $e\n$stackTrace',
+      );
+      try {
+        final String timestamp = path.basenameWithoutExtension(rawPhotoPath);
+        await DB.instance.setPhotoStabFailed(timestamp, projectId);
+        unawaited(
+          _emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.stabFailed),
+        );
+      } catch (markErr) {
+        LogService.instance.log(
+          '[STAB_ERROR] Failed to mark photo stabFailed: $markErr',
+        );
+      }
       return StabilizationResult(success: false);
     } finally {
       await IsolatePool.instance.clearMatCache();
@@ -330,6 +375,7 @@ class FaceStabilizer {
     void Function() userRanOutOfSpaceCallback, {
     Rect? targetBoundingBox,
   }) async {
+    _lastScoreWasEstimated = false;
     final String srcId = path.basenameWithoutExtension(originalPath);
 
     double? rotationDegrees, scaleFactor, translateX, translateY;
@@ -445,6 +491,7 @@ class FaceStabilizer {
       finalEyeDeltaY: finalEyeDeltaY,
       finalEyeDistance: finalEyeDistance,
       goalEyeDistance: eyeDistanceGoal,
+      isEstimated: _lastScoreWasEstimated,
     );
   }
 
@@ -501,6 +548,7 @@ class FaceStabilizer {
       rotationDegrees: rotationDegrees,
       scaleFactor: scaleFactor,
     );
+    _lastScoreWasEstimated = true;
     return (success, score, null, null, null, score, null, null, savedBytes);
   }
 
@@ -1114,7 +1162,7 @@ class FaceStabilizer {
 
     // Save the best result
     Uint8List? savedBytes;
-    if (bestScore < 20) {
+    if (bestScore < _kStabSuccessScoreThreshold) {
       final (s, sb) = await saveStabilizedImage(
         bestBytes,
         rawPhotoPath,
@@ -1697,7 +1745,7 @@ class FaceStabilizer {
 
     // Save the best result
     Uint8List? savedBytes;
-    if (bestScore < 20) {
+    if (bestScore < _kStabSuccessScoreThreshold) {
       final (s, sb) = await saveStabilizedImage(
         bestBytes,
         rawPhotoPath,
@@ -1744,13 +1792,22 @@ class FaceStabilizer {
     double? rotationDegrees,
     double? scaleFactor,
   }) async {
-    // For transparent backgrounds, composite onto black background to flatten
-    // the alpha channel. For opaque backgrounds, warpAffine already produced a
-    // BGR (3-channel) PNG so no compositing is needed.
-    final bool isTransparent = backgroundColorBGR == null;
-    final Uint8List pngBytes = isTransparent
-        ? await StabUtils.compositeBlackPngBytes(imageBytes)
-        : imageBytes;
+    final tx = translateX ?? 0;
+    final ty = translateY ?? 0;
+    final rot = rotationDegrees ?? 0;
+    final sc = scaleFactor ?? 1;
+
+    if (tx.isInfinite || ty.isInfinite || rot.isInfinite || sc.isInfinite) {
+      LogService.instance.log('ABORT save: infinite transform values detected');
+      return (false, null);
+    }
+
+    // stabilizeCV already produced the correct channel format for both modes:
+    //   - transparent projects: 4-channel BGRA PNG (alpha preserved in borders)
+    //   - opaque projects:      3-channel BGR PNG (borders filled with solid color)
+    // Compositing here destroys alpha for transparent projects and breaks
+    // ProRes 4444 / VP9 transparent video export (regression fix v2.5.2).
+    final Uint8List pngBytes = imageBytes;
 
     final String result = await saveBytesToPngFileInIsolate(
       pngBytes,
@@ -1762,16 +1819,6 @@ class FaceStabilizer {
         LogService.instance.log("User is out of space...");
         userRanOutOfSpaceCallbackIn();
       }
-      return (false, null);
-    }
-
-    final tx = translateX ?? 0;
-    final ty = translateY ?? 0;
-    final rot = rotationDegrees ?? 0;
-    final sc = scaleFactor ?? 1;
-
-    if (tx.isInfinite || ty.isInfinite || rot.isInfinite || sc.isInfinite) {
-      LogService.instance.log('ABORT save: infinite transform values detected');
       return (false, null);
     }
 
@@ -1923,8 +1970,13 @@ class FaceStabilizer {
       projectId,
       projectOrientation,
     );
+    // Pass preserveAlpha explicitly so the path matches createStabThumbnail's
+    // path for the same project. Without this, auto-detect returns .jpg when
+    // the file doesn't exist yet (failure case), diverging from the .png path
+    // that createStabThumbnail emits for transparent projects.
     final String thumbnailPath = getStabThumbnailPath(
       path.setExtension(stabilizedPath, '.png'),
+      preserveAlpha: backgroundColorBGR == null,
     );
 
     ThumbnailService.instance.emit(
