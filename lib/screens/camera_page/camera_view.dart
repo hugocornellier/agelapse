@@ -123,6 +123,7 @@ class _CameraViewState extends State<CameraView>
   bool _isInfoWidgetVisible = true;
   bool isMirrored = false;
   String _orientation = '';
+  bool _shutterPressed = false;
 
   // Timer state
   int _timerDuration = 0; // 0 = off, 3 = 3s, 10 = 10s
@@ -365,7 +366,7 @@ class _CameraViewState extends State<CameraView>
     } else if (_timerDuration > 0) {
       _startCountdown();
     } else {
-      _takePicture();
+      _takePicture(optimisticFeedback: true);
     }
   }
 
@@ -427,63 +428,87 @@ class _CameraViewState extends State<CameraView>
     }
   }
 
-  Future<void> _takePicture() async {
+  Future<void> _takePicture({bool optimisticFeedback = false}) async {
     if (_controller == null || !_controller!.value.isInitialized) return;
     if (_pictureTakingCompleter != null) return; // capture already in progress
     _pictureTakingCompleter = Completer<void>();
 
-    bool captureSuccess = false;
+    // Fire flash + haptic immediately on tap, before the hardware capture.
+    // The capture virtually never fails, so the user perceives zero latency.
+    if (optimisticFeedback) {
+      _flashKey.currentState?.flash();
+      CameraUtils.triggerCaptureHaptic();
+    }
 
     try {
       final XFile image = await _controller!.takePicture();
-      final Uint8List bytes = await image.readAsBytes();
 
-      // macOS/Linux: camera_desktop mirrors at the native source — pixels in
-      // the XFile are already mirrored, so no post-processing needed.
-      // Windows/iOS/Android: no source-level mirror — apply in post-processing.
-      final bool needsPostProcessMirror =
-          isMirrored && !Platform.isMacOS && !Platform.isLinux;
-
-      captureSuccess = await CameraUtils.savePhoto(
-        image,
-        widget.projectId,
-        false,
-        null,
-        bytes: bytes,
-        applyMirroring: needsPostProcessMirror,
-        deviceOrientation: _orientation,
-        refreshSettings: widget.refreshSettings,
-      );
-
-      // Trigger visual and haptic feedback only on successful capture
-      if (captureSuccess) {
+      // If feedback wasn't fired optimistically (e.g. timer captures),
+      // fire it now after the hardware capture completes.
+      if (!optimisticFeedback) {
         _flashKey.currentState?.flash();
         CameraUtils.triggerCaptureHaptic();
       }
 
-      final bool hasTakenFirstPhoto = await SettingsUtil.hasTakenFirstPhoto(
-        widget.projectId.toString(),
-      );
-      if (!hasTakenFirstPhoto) {
-        await SettingsUtil.setHasTakenFirstPhotoToTrue(
-          widget.projectId.toString(),
-        );
-        if (!mounted) return;
-        Navigator.of(context, rootNavigator: true).push(
-          PageRouteBuilder(
-            pageBuilder: (_, __, ___) => TookFirstPhotoPage(
-              projectId: widget.projectId,
-              projectName: widget.projectName,
-              goToPage: widget.goToPage,
-            ),
-            transitionDuration: Duration.zero,
-            reverseTransitionDuration: Duration.zero,
-          ),
-        );
-      }
-    } finally {
+      // Release immediately — user can take another photo now
       _pictureTakingCompleter?.complete();
       _pictureTakingCompleter = null;
+
+      // Everything below is fire-and-forget — don't block the UI
+      try {
+        // macOS/Linux: camera_desktop mirrors at the native source — pixels in
+        // the XFile are already mirrored, so no post-processing needed.
+        // Windows/iOS/Android: no source-level mirror — apply in post-processing.
+        final bool needsPostProcessMirror =
+            isMirrored && !Platform.isMacOS && !Platform.isLinux;
+
+        final bool saved = await CameraUtils.savePhoto(
+          image,
+          widget.projectId,
+          false,
+          null,
+          applyMirroring: needsPostProcessMirror,
+          deviceOrientation: _orientation,
+          refreshSettings: widget.refreshSettings,
+        );
+
+        if (!saved) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Failed to save photo. Please try again.')),
+          );
+          return;
+        }
+
+        final bool hasTakenFirstPhoto = await SettingsUtil.hasTakenFirstPhoto(
+          widget.projectId.toString(),
+        );
+        if (!hasTakenFirstPhoto) {
+          await SettingsUtil.setHasTakenFirstPhotoToTrue(
+            widget.projectId.toString(),
+          );
+          if (!mounted) return;
+          Navigator.of(context, rootNavigator: true).push(
+            PageRouteBuilder(
+              pageBuilder: (_, __, ___) => TookFirstPhotoPage(
+                projectId: widget.projectId,
+                projectName: widget.projectName,
+                goToPage: widget.goToPage,
+              ),
+              transitionDuration: Duration.zero,
+              reverseTransitionDuration: Duration.zero,
+            ),
+          );
+        }
+      } catch (e) {
+        // Log but don't crash — save is fire-and-forget
+        LogService.instance.log('Error in capture pipeline: $e');
+      }
+    } catch (e) {
+      _pictureTakingCompleter?.complete();
+      _pictureTakingCompleter = null;
+      LogService.instance.log('Error starting capture: $e');
     }
   }
 
@@ -884,14 +909,30 @@ class _CameraViewState extends State<CameraView>
                   color: AppColors.textPrimary,
                 ),
               ),
-            // Shutter button
-            ElevatedButton(
-              style: takePhotoRoundStyle(),
-              onPressed: _onShutterPressed,
-              child: Icon(
-                _isCountingDown ? Icons.close : Icons.circle,
-                color: AppColors.textPrimary,
-                size: 70,
+            // Shutter button with instant press-down animation (Apple-style)
+            GestureDetector(
+              onTapDown: (_) => setState(() => _shutterPressed = true),
+              onTapUp: (_) {
+                setState(() => _shutterPressed = false);
+                _onShutterPressed();
+              },
+              onTapCancel: () => setState(() => _shutterPressed = false),
+              child: AnimatedScale(
+                scale: _shutterPressed ? 0.85 : 1.0,
+                duration: const Duration(milliseconds: 80),
+                curve: Curves.easeInOut,
+                child: Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.overlay.withValues(alpha: 0.5),
+                  ),
+                  child: Icon(
+                    _isCountingDown ? Icons.close : Icons.circle,
+                    color: AppColors.textPrimary,
+                    size: 70,
+                  ),
+                ),
               ),
             ),
           ],
@@ -1121,6 +1162,13 @@ class _CameraViewState extends State<CameraView>
 
       _controller?.lockCaptureOrientation(DeviceOrientation.portraitUp);
 
+      // Sync flash mode to match saved setting — prevents flash firing
+      // when UI shows it's disabled after camera reopen.
+      if (isMobile) {
+        await _controller
+            ?.setFlashMode(flashEnabled ? FlashMode.auto : FlashMode.off);
+      }
+
       // Apply mirror setting via camera_desktop on macOS/Linux.
       if (Platform.isMacOS || Platform.isLinux) {
         try {
@@ -1133,24 +1181,11 @@ class _CameraViewState extends State<CameraView>
         }
       }
 
-      // Windows, Linux, and macOS don't need image streaming (callback is a no-op)
-      if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-        if (widget.onCameraFeedReady != null) {
-          widget.onCameraFeedReady!();
-        }
-        if (widget.onCameraLensDirectionChanged != null) {
-          widget.onCameraLensDirectionChanged!(camera.lensDirection);
-        }
-      } else {
-        _controller?.startImageStream(_processCameraImage).then((value) {
-          if (!mounted) return;
-          if (widget.onCameraFeedReady != null) {
-            widget.onCameraFeedReady!();
-          }
-          if (widget.onCameraLensDirectionChanged != null) {
-            widget.onCameraLensDirectionChanged!(camera.lensDirection);
-          }
-        });
+      if (widget.onCameraFeedReady != null) {
+        widget.onCameraFeedReady!();
+      }
+      if (widget.onCameraLensDirectionChanged != null) {
+        widget.onCameraLensDirectionChanged!(camera.lensDirection);
       }
       _controller?.getMinZoomLevel().then((value) {});
       _controller?.getMaxZoomLevel().then((value) {});
@@ -1165,15 +1200,6 @@ class _CameraViewState extends State<CameraView>
     try {
       if (_pictureTakingCompleter != null) {
         await _pictureTakingCompleter!.future;
-      }
-      if (!Platform.isWindows &&
-          !Platform.isMacOS &&
-          _controller?.value.isInitialized == true) {
-        try {
-          await _controller?.stopImageStream();
-        } catch (_) {
-          // Camera may already be stopped or never started streaming.
-        }
       }
       await _controller?.dispose();
       _controller = null;
@@ -1199,8 +1225,6 @@ class _CameraViewState extends State<CameraView>
       await _controller?.setFocusPoint(point);
     }
   }
-
-  Future<void> _processCameraImage(CameraImage image) async {}
 
   Future<void> resetOffsetValues(String potentialOrientation) async {
     String customOrientation;

@@ -1489,6 +1489,10 @@ class VideoUtils {
 
   static const String _winFfmpegAssetPath = 'assets/ffmpeg/windows/ffmpeg.exe';
   static const String _winMarkerName = 'ffmpeg.version';
+  static const List<String> _winFfmpegDlls = [
+    'libgcc_s_seh-1.dll',
+    'libwinpthread-1.dll',
+  ];
 
   static Future<String> _ensureBundledFfmpeg() async {
     if (!Platform.isWindows) {
@@ -1518,7 +1522,22 @@ class VideoUtils {
         await File(
           exePath,
         ).writeAsBytes(bytes.buffer.asUint8List(), flush: true);
-        await File(markerPath).writeAsString('1', flush: true);
+        // Extract required DLLs alongside ffmpeg.exe.
+        for (final dll in _winFfmpegDlls) {
+          try {
+            final dllBytes = await rootBundle.load(
+              'assets/ffmpeg/windows/$dll',
+            );
+            await File(
+              path.join(binDir.path, dll),
+            ).writeAsBytes(dllBytes.buffer.asUint8List(), flush: true);
+            LogService.instance.log("[VIDEO] Extracted DLL: $dll");
+          } catch (e) {
+            LogService.instance
+                .log("[VIDEO] WARNING: Could not extract $dll: $e");
+          }
+        }
+        await File(markerPath).writeAsString('2', flush: true);
         LogService.instance.log(
           "[VIDEO] Bundled ffmpeg extracted successfully to: $exePath",
         );

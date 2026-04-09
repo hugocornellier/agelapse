@@ -12,6 +12,7 @@
 #include <dog_detection/dog_detection_plugin.h>
 #include <downloadsfolder/downloadsfolder_plugin_c_api.h>
 #include <face_detection_tflite/face_detection_tflite_plugin.h>
+#include <fast_thumbnail/fast_thumbnail_plugin_c_api.h>
 #include <file_selector_windows/file_selector_windows.h>
 #include <flutter_avif_windows/flutter_avif_windows_plugin.h>
 #include <flutter_timezone/flutter_timezone_plugin_c_api.h>
@@ -40,6 +41,8 @@ void RegisterPlugins(flutter::PluginRegistry* registry) {
       registry->GetRegistrarForPlugin("DownloadsfolderPluginCApi"));
   FaceDetectionTflitePluginRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("FaceDetectionTflitePlugin"));
+  FastThumbnailPluginCApiRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("FastThumbnailPluginCApi"));
   FileSelectorWindowsRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("FileSelectorWindows"));
   FlutterAvifWindowsPluginRegisterWithRegistrar(

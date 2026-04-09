@@ -83,6 +83,8 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
     if (bytes == null) {
       setState(() {
         loadingStatus = "Failed to load image.";
+        stabCompletedSuccessfully = false;
+        isLoading = false;
       });
       return;
     }
@@ -92,6 +94,8 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
     if (dims == null) {
       setState(() {
         loadingStatus = "Failed to decode image.";
+        stabCompletedSuccessfully = false;
+        isLoading = false;
       });
       return;
     }
@@ -127,6 +131,8 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
         loadingStatus = facesRaw == null
             ? "There was an error detecting faces."
             : "No faces detected in this image.";
+        stabCompletedSuccessfully = false;
+        isLoading = false;
       });
       return;
     }

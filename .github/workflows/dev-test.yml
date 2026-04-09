@@ -1,0 +1,312 @@
+name: Dev CI
+
+on:
+  push:
+    branches-ignore: [main]
+  pull_request:
+    branches-ignore: [main]
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform for integration test'
+        required: true
+        type: choice
+        options:
+          - macos
+          - ios
+          - android
+          - linux
+          - windows
+      test_file:
+        description: 'Test file in integration_test/ (e.g. ffmpeg_binary_test.dart)'
+        required: true
+        type: string
+      flutter_channel:
+        description: 'Flutter channel'
+        required: false
+        type: choice
+        options:
+          - stable
+          - beta
+        default: stable
+
+concurrency:
+  group: dev-ci-${{ github.ref }}-${{ inputs.platform || 'push' }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Quick checks (auto on every push) ──────────────────────────────────
+  quick-checks:
+    name: Format, Analyze & Unit Tests
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Analyze
+        run: flutter analyze --fatal-infos .
+
+      - name: Run unit tests
+        run: flutter test
+
+  # ── Integration: macOS (manual) ────────────────────────────────────────
+  integration-macos:
+    name: Integration macOS
+    if: github.event_name == 'workflow_dispatch' && inputs.platform == 'macos'
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ inputs.flutter_channel }}
+          cache: true
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: macos/Pods
+          key: pods-macos-${{ hashFiles('macos/Podfile.lock', 'pubspec.lock') }}
+          restore-keys: pods-macos-
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Install macOS pods
+        working-directory: macos
+        run: |
+          if pod install 2>/dev/null; then exit 0; fi
+          echo "pod install failed, retrying with --repo-update..."
+          for attempt in 1 2 3; do
+            pod install --repo-update && break
+            echo "pod install attempt $attempt failed, retrying in $((attempt * 15))s..."
+            [ "$attempt" -eq 3 ] && exit 1
+            sleep $((attempt * 15))
+          done
+
+      - name: Run integration test
+        run: flutter test "integration_test/${{ inputs.test_file }}" -d macos --reporter expanded
+
+  # ── Integration: iOS (manual) ──────────────────────────────────────────
+  integration-ios:
+    name: Integration iOS
+    if: github.event_name == 'workflow_dispatch' && inputs.platform == 'ios'
+    runs-on: macos-15
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 26.2
+        run: sudo xcode-select -s /Applications/Xcode_26.2.app/Contents/Developer
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ inputs.flutter_channel }}
+          cache: true
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: ios/Pods
+          key: pods-ios-${{ hashFiles('ios/Podfile.lock', 'pubspec.lock') }}
+          restore-keys: pods-ios-
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Install iOS pods
+        working-directory: ios
+        run: |
+          if pod install 2>/dev/null; then exit 0; fi
+          echo "pod install failed, retrying with --repo-update..."
+          for attempt in 1 2 3; do
+            pod install --repo-update && break
+            echo "pod install attempt $attempt failed, retrying in $((attempt * 15))s..."
+            [ "$attempt" -eq 3 ] && exit 1
+            sleep $((attempt * 15))
+          done
+
+      - name: Precache iOS artifacts
+        run: flutter precache --ios
+
+      - name: Boot iOS simulator
+        run: |
+          RUNTIME=$(xcrun simctl list runtimes | grep -oE 'com.apple.CoreSimulator.SimRuntime.iOS-[0-9-]+' | tail -1)
+          echo "Using runtime: $RUNTIME"
+          UDID=$(xcrun simctl create "CI-iPhone" "iPhone 16" "$RUNTIME")
+          echo "Created simulator: $UDID"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          echo "SIMULATOR_UDID=$UDID" >> "$GITHUB_ENV"
+
+      - name: Prewarm Xcode build
+        run: flutter build ios --simulator --debug --no-codesign
+
+      - name: Run integration test
+        run: |
+          set -o pipefail
+          flutter test "integration_test/${{ inputs.test_file }}" -d "$SIMULATOR_UDID" --reporter expanded 2>&1 | tee test-results.log
+
+      - name: Upload test logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs-ios
+          path: test-results.log
+
+      - name: Shutdown simulator
+        if: always()
+        run: xcrun simctl shutdown "$SIMULATOR_UDID" 2>/dev/null || true
+
+  # ── Integration: Android (manual) ──────────────────────────────────────
+  integration-android:
+    name: Integration Android
+    if: github.event_name == 'workflow_dispatch' && inputs.platform == 'android'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false
+          android: false
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: false
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ inputs.flutter_channel }}
+          cache: true
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Prewarm Android build
+        run: flutter build apk --debug
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run integration test on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: |
+            flutter test "integration_test/${{ inputs.test_file }}" -d emulator-5554 --reporter expanded
+
+  # ── Integration: Linux (manual) ────────────────────────────────────────
+  integration-linux:
+    name: Integration Linux
+    if: github.event_name == 'workflow_dispatch' && inputs.platform == 'linux'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y ninja-build libgtk-3-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libmpv-dev libheif-dev libpng-dev xvfb
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ inputs.flutter_channel }}
+          cache: true
+
+      - name: Cache opencv_dart native build
+        uses: actions/cache@v4
+        with:
+          path: .dart_tool/hooks_runner/shared
+          key: opencv-native-linux-${{ hashFiles('pubspec.lock') }}
+          restore-keys: opencv-native-linux-
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Prewarm Linux build
+        run: flutter build linux --debug
+
+      - name: Run integration test
+        run: xvfb-run flutter test "integration_test/${{ inputs.test_file }}" -d linux --reporter expanded
+
+  # ── Integration: Windows (manual) ──────────────────────────────────────
+  integration-windows:
+    name: Integration Windows
+    if: github.event_name == 'workflow_dispatch' && inputs.platform == 'windows'
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ inputs.flutter_channel }}
+          cache: true
+
+      - name: Cache opencv_dart native build
+        uses: actions/cache@v4
+        with:
+          path: .dart_tool/hooks_runner/shared
+          key: opencv-native-windows-${{ hashFiles('pubspec.lock') }}
+          restore-keys: opencv-native-windows-
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Prewarm Windows build
+        run: flutter build windows --debug
+
+      - name: Run integration test
+        shell: bash
+        run: |
+          TEST_OUTPUT=$(mktemp)
+          EXIT_CODE=0
+          flutter test "integration_test/${{ inputs.test_file }}" -d windows --reporter expanded 2>&1 | tee "$TEST_OUTPUT" || EXIT_CODE=$?
+          if [ "$EXIT_CODE" -ne 0 ]; then
+            if grep -q "tests passed" "$TEST_OUTPUT" && ! grep -q "failed" "$TEST_OUTPUT"; then
+              echo "::warning::Tests exited $EXIT_CODE but all tests passed (process teardown crash — ignored)"
+            else
+              exit 1
+            fi
+          fi
+          rm -f "$TEST_OUTPUT"

@@ -606,6 +606,9 @@ class DB {
       'sourceFilename': 'TEXT',
       'sourceRelativePath': 'TEXT',
       'sourceLocationType': 'TEXT',
+      'stabAttempts': 'INTEGER NOT NULL DEFAULT 0',
+      'stabLastError': 'TEXT',
+      'stabLastAttemptAt': 'INTEGER',
     };
 
     for (final entry in toAdd.entries) {
@@ -756,6 +759,32 @@ class DB {
     );
   }
 
+  Future<void> resetPhotoStabilizationState({
+    required String timestamp,
+    required int projectId,
+    required String orientation,
+  }) async {
+    final db = await database;
+    final String stabilizedColumn = getStabilizedColumn(orientation);
+    await db.update(
+      photoTable,
+      {stabilizedColumn: 0, 'stabFailed': 0, 'noFacesFound': 0},
+      where: _photoWhereClause,
+      whereArgs: [timestamp, projectId],
+    );
+    try {
+      await db.update(
+        photoTable,
+        {'stabAttempts': 0, 'stabLastError': null},
+        where: _photoWhereClause,
+        whereArgs: [timestamp, projectId],
+      );
+    } catch (e) {
+      LogService.instance.log(
+          '[DB] resetPhotoStabilizationState: could not reset stabAttempts/stabLastError (old schema?): $e');
+    }
+  }
+
   Future<String?> getPhotoExtensionByTimestampAndProjectId(
     String timestamp,
     int projectId,
@@ -896,15 +925,16 @@ class DB {
 
   Future<List<Map<String, dynamic>>> getUnstabilizedPhotos(
     int projectId,
-    String projectOrientation,
-  ) async {
+    String projectOrientation, {
+    int maxAttempts = 5,
+  }) async {
     final db = await database;
     final String stabilizedColumn = getStabilizedColumn(projectOrientation);
     return await db.query(
       photoTable,
       where:
-          '$stabilizedColumn = ? AND noFacesFound = ? AND stabFailed = ? AND projectID = ?',
-      whereArgs: [0, 0, 0, projectId],
+          '$stabilizedColumn = ? AND noFacesFound = ? AND stabFailed = ? AND projectID = ? AND stabAttempts < ?',
+      whereArgs: [0, 0, 0, projectId, maxAttempts],
       orderBy: '$_orderByTimestamp ASC',
     );
   }
@@ -933,6 +963,8 @@ class DB {
       "${stabilizedColumn}OffsetY": offsetY.toString(),
       "stabFailed": 0,
       "noFacesFound": 0,
+      "stabAttempts": 0,
+      "stabLastError": null,
     };
 
     if (translateX != null) {
@@ -1014,6 +1046,27 @@ class DB {
 
   Future<void> setPhotoStabFailed(String timestamp, int projectId) =>
       _setPhotoField(timestamp, projectId, 'stabFailed');
+
+  Future<void> incrementPhotoStabAttempts({
+    required String timestamp,
+    required int projectId,
+    String? errorMessage,
+  }) async {
+    try {
+      final db = await database;
+      await db.rawUpdate(
+        'UPDATE $photoTable SET stabAttempts = stabAttempts + 1, stabLastError = ?, stabLastAttemptAt = ? WHERE timestamp = ? AND projectID = ?',
+        [
+          errorMessage,
+          DateTime.now().millisecondsSinceEpoch,
+          timestamp,
+          projectId
+        ],
+      );
+    } catch (e) {
+      LogService.instance.log('[DB] incrementPhotoStabAttempts failed: $e');
+    }
+  }
 
   /// Stores face count and optional embedding for a photo.
   /// [faceCount] is the number of faces detected.
@@ -1348,6 +1401,23 @@ class DB {
       where: 'projectID = ?',
       whereArgs: [projectId],
     );
+
+    // Also clear retry-count state so previously-capped photos (stabAttempts
+    // >= maxAttempts) are eligible for stabilization again after an explicit
+    // user-triggered reset (settings change, retry, etc). Guarded with
+    // try/catch for old schemas that pre-date the stabAttempts columns.
+    try {
+      await db.update(
+        photoTable,
+        {'stabAttempts': 0, 'stabLastError': null},
+        where: 'projectID = ?',
+        whereArgs: [projectId],
+      );
+    } catch (e) {
+      LogService.instance.log(
+        '[DB] resetStabilizationStatusForProject: could not clear stabAttempts/stabLastError (old schema?): $e',
+      );
+    }
 
     final String stabilizedDirPath = await DirUtils.getStabilizedDirPath(
       projectId,

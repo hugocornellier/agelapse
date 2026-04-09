@@ -795,6 +795,7 @@ class MainNavigationState extends State<MainNavigation>
         clearRawAndStabPhotos: clearRawAndStabPhotos,
         recompileVideoCallback: _recompileVideo,
         minutesRemaining: minutesRemaining,
+        stabilizingBatchSize: _unstabilizedPhotoCount,
         userRanOutOfSpace: _userRanOutOfSpace,
         stabUpdateStream: _stabUpdateController.stream,
       );

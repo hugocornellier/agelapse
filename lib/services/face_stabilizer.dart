@@ -38,6 +38,9 @@ class StabilizationResult {
   final double? finalEyeDistance; // Final distance between eyes
   final double? goalEyeDistance; // Target eye distance
 
+  /// True when the score was estimated (fallback path, no face detected).
+  final bool isEstimated;
+
   StabilizationResult({
     required this.success,
     this.cancelled = false,
@@ -49,6 +52,7 @@ class StabilizationResult {
     this.finalEyeDeltaY,
     this.finalEyeDistance,
     this.goalEyeDistance,
+    this.isEstimated = false,
   });
 
   /// Creates a cancelled result.
@@ -86,6 +90,10 @@ class FaceStabilizer {
   late List<int>? backgroundColorBGR;
   late bool lossless;
 
+  /// Score threshold below which a stabilization result is considered successful.
+  /// Lower scores are better (0 = perfect eye alignment).
+  static const double _kStabSuccessScoreThreshold = 20.0;
+
   /// Whether this project type uses eye-based stabilization (face, cat, dog).
   bool get _isEyeBasedProject =>
       projectType == "face" || projectType == "cat" || projectType == "dog";
@@ -93,6 +101,9 @@ class FaceStabilizer {
   // Face embedding tracking for identity-based face matching
   int? _currentFaceCount;
   Float32List? _currentEmbedding;
+
+  // Set to true when _handleFallbackStabilization is used; reset each attempt.
+  bool _lastScoreWasEstimated = false;
 
   final VoidCallback userRanOutOfSpaceCallbackIn;
   final StabilizationSettings? _preloadedSettings;
@@ -206,19 +217,53 @@ class FaceStabilizer {
           targetBoundingBox: targetBoundingBox,
         );
       } else {
-        return await _stabilizeSingleAttempt(
+        final result = await _stabilizeSingleAttempt(
           rawPhotoPath,
           rawPhotoPath,
           token,
           userRanOutOfSpaceCallback,
           targetBoundingBox: targetBoundingBox,
         );
+        // Non-eye projects (pregnancy, musc) have no orientation retry, so any
+        // non-success-non-cancelled result is terminal. Mark the photo failed
+        // so the re-check loop and next-session scan do not re-pick it.
+        if (!result.success && !result.cancelled) {
+          try {
+            final String timestamp =
+                path.basenameWithoutExtension(rawPhotoPath);
+            await DB.instance.setPhotoStabFailed(timestamp, projectId);
+            unawaited(
+              _emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.stabFailed),
+            );
+          } catch (markErr) {
+            LogService.instance.log(
+              '[STAB_ERROR] Failed to mark non-eye photo stabFailed: $markErr',
+            );
+          }
+        }
+        return result;
       }
     } on CancelledException {
       LogService.instance.log("Stabilization cancelled");
       return StabilizationResult.cancelled();
-    } catch (e) {
-      LogService.instance.log("Caught error: $e");
+    } catch (e, stackTrace) {
+      LogService.instance.log(
+        '[STAB_ERROR] projectId=$projectId '
+        'photo=${path.basename(rawPhotoPath)} '
+        'phase=stabilize_entry '
+        'error=${e.runtimeType}: $e\n$stackTrace',
+      );
+      try {
+        final String timestamp = path.basenameWithoutExtension(rawPhotoPath);
+        await DB.instance.setPhotoStabFailed(timestamp, projectId);
+        unawaited(
+          _emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.stabFailed),
+        );
+      } catch (markErr) {
+        LogService.instance.log(
+          '[STAB_ERROR] Failed to mark photo stabFailed: $markErr',
+        );
+      }
       return StabilizationResult(success: false);
     } finally {
       await IsolatePool.instance.clearMatCache();
@@ -330,6 +375,7 @@ class FaceStabilizer {
     void Function() userRanOutOfSpaceCallback, {
     Rect? targetBoundingBox,
   }) async {
+    _lastScoreWasEstimated = false;
     final String srcId = path.basenameWithoutExtension(originalPath);
 
     double? rotationDegrees, scaleFactor, translateX, translateY;
@@ -408,6 +454,7 @@ class FaceStabilizer {
       double? finalScore,
       double? finalEyeDeltaY,
       double? finalEyeDistance,
+      Uint8List? savedBytes,
     ) = await _finalizeStabilization(
       originalPath,
       stabilizedPhotoPath,
@@ -427,7 +474,10 @@ class FaceStabilizer {
 
     if (result) {
       unawaited(
-        createStabThumbnail(path.setExtension(stabilizedPhotoPath, '.png')),
+        createStabThumbnail(
+          path.setExtension(stabilizedPhotoPath, '.png'),
+          imageBytes: savedBytes,
+        ),
       );
     }
 
@@ -441,11 +491,22 @@ class FaceStabilizer {
       finalEyeDeltaY: finalEyeDeltaY,
       finalEyeDistance: finalEyeDistance,
       goalEyeDistance: eyeDistanceGoal,
+      isEstimated: _lastScoreWasEstimated,
     );
   }
 
-  Future<(bool, double?, double?, double?, double?, double?, double?, double?)>
-      _handleFallbackStabilization({
+  Future<
+      (
+        bool,
+        double?,
+        double?,
+        double?,
+        double?,
+        double?,
+        double?,
+        double?,
+        Uint8List?
+      )> _handleFallbackStabilization({
     required String rawPhotoPath,
     required String stabilizedJpgPhotoPath,
     required Uint8List imageBytesStabilized,
@@ -477,7 +538,7 @@ class FaceStabilizer {
       translateY: translateY,
     );
     final score = calculateStabScore(eyesXY, goalLeftEye, goalRightEye);
-    final success = await saveStabilizedImage(
+    final (success, savedBytes) = await saveStabilizedImage(
       imageBytesStabilized,
       rawPhotoPath,
       stabilizedJpgPhotoPath,
@@ -487,12 +548,23 @@ class FaceStabilizer {
       rotationDegrees: rotationDegrees,
       scaleFactor: scaleFactor,
     );
-    return (success, score, null, null, null, score, null, null);
+    _lastScoreWasEstimated = true;
+    return (success, score, null, null, null, score, null, null, savedBytes);
   }
 
-  /// Returns (success, preScore, twoPassScore, threePassScore, fourPassScore, finalScore, finalEyeDeltaY, finalEyeDistance)
-  Future<(bool, double?, double?, double?, double?, double?, double?, double?)>
-      _finalizeStabilization(
+  /// Returns (success, preScore, twoPassScore, threePassScore, fourPassScore, finalScore, finalEyeDeltaY, finalEyeDistance, savedBytes)
+  Future<
+      (
+        bool,
+        double?,
+        double?,
+        double?,
+        double?,
+        double?,
+        double?,
+        double?,
+        Uint8List?
+      )> _finalizeStabilization(
     String rawPhotoPath,
     String stabilizedJpgPhotoPath,
     int imgWidth,
@@ -511,7 +583,7 @@ class FaceStabilizer {
         imageBytesStabilized,
         stabilizedJpgPhotoPath,
       );
-      final success = await saveStabilizedImage(
+      final (success, savedBytes) = await saveStabilizedImage(
         imageBytesStabilized,
         rawPhotoPath,
         stabilizedJpgPhotoPath,
@@ -530,6 +602,7 @@ class FaceStabilizer {
         null,
         null,
         null,
+        savedBytes,
       ); // No scores for non-eye-based projects
     }
 
@@ -594,6 +667,7 @@ class FaceStabilizer {
       double? finalScore,
       double? finalEyeDeltaY,
       double? finalEyeDistance,
+      Uint8List? savedBytes,
     ) = await _performMultiPassFix(
       stabFaces,
       eyes,
@@ -624,6 +698,7 @@ class FaceStabilizer {
       finalScore,
       finalEyeDeltaY,
       finalEyeDistance,
+      savedBytes,
     );
   }
 
@@ -672,8 +747,18 @@ class FaceStabilizer {
   ///
   /// FAST MODE: Translation-only multi-pass (up to 4 passes)
   /// SLOW MODE: Full affine refinement (rotation, scale, translation passes)
-  Future<(bool, double?, double?, double?, double?, double?, double?, double?)>
-      _performMultiPassFix(
+  Future<
+      (
+        bool,
+        double?,
+        double?,
+        double?,
+        double?,
+        double?,
+        double?,
+        double?,
+        Uint8List?
+      )> _performMultiPassFix(
     List<dynamic> stabFaces,
     List<Point<double>?> eyes,
     Point<double> goalLeftEye,
@@ -736,8 +821,18 @@ class FaceStabilizer {
   }
 
   /// FAST MODE: Translation-only multi-pass correction (up to 4 passes).
-  Future<(bool, double?, double?, double?, double?, double?, double?, double?)>
-      _performFastMultiPass(
+  Future<
+      (
+        bool,
+        double?,
+        double?,
+        double?,
+        double?,
+        double?,
+        double?,
+        double?,
+        Uint8List?
+      )> _performFastMultiPass(
     List<dynamic> stabFaces,
     List<Point<double>?> eyes,
     Point<double> goalLeftEye,
@@ -782,7 +877,7 @@ class FaceStabilizer {
       overshotRightY,
     )) {
       // No correction needed - save with first pass result
-      successfulStabilization = await saveStabilizedImage(
+      final (s, savedBytes) = await saveStabilizedImage(
         imageBytesStabilized,
         rawPhotoPath,
         stabilizedJpgPhotoPath,
@@ -792,6 +887,7 @@ class FaceStabilizer {
         rotationDegrees: rotationDegrees,
         scaleFactor: scaleFactor,
       );
+      successfulStabilization = s;
       return (
         successfulStabilization,
         firstPassScore,
@@ -801,6 +897,7 @@ class FaceStabilizer {
         firstPassScore,
         null,
         null,
+        savedBytes,
       );
     }
 
@@ -857,6 +954,8 @@ class FaceStabilizer {
       srcId: srcId,
       backgroundColorBGR: backgroundColorBGR,
       preserveBitDepth: lossless,
+      useCachedSrc: true,
+      pngCompression: 1,
     );
     if (twoPassBytes == null) {
       return (
@@ -866,6 +965,7 @@ class FaceStabilizer {
         null,
         null,
         firstPassScore,
+        null,
         null,
         null,
       );
@@ -884,6 +984,7 @@ class FaceStabilizer {
         null,
         null,
         firstPassScore,
+        null,
         null,
         null,
       );
@@ -953,6 +1054,8 @@ class FaceStabilizer {
           srcId: srcId,
           backgroundColorBGR: backgroundColorBGR,
           preserveBitDepth: lossless,
+          useCachedSrc: true,
+          pngCompression: 1,
         );
 
         if (threePassBytes != null) {
@@ -1026,6 +1129,8 @@ class FaceStabilizer {
           srcId: srcId,
           backgroundColorBGR: backgroundColorBGR,
           preserveBitDepth: lossless,
+          useCachedSrc: true,
+          pngCompression: 1,
         );
 
         if (fourPassBytes != null) {
@@ -1056,8 +1161,9 @@ class FaceStabilizer {
     }
 
     // Save the best result
-    if (bestScore < 20) {
-      successfulStabilization = await saveStabilizedImage(
+    Uint8List? savedBytes;
+    if (bestScore < _kStabSuccessScoreThreshold) {
+      final (s, sb) = await saveStabilizedImage(
         bestBytes,
         rawPhotoPath,
         stabilizedPhotoPath,
@@ -1067,6 +1173,8 @@ class FaceStabilizer {
         rotationDegrees: rotationDegrees,
         scaleFactor: scaleFactor,
       );
+      successfulStabilization = s;
+      savedBytes = sb;
     } else {
       LogService.instance.log("STAB FAILURE. STAB SCORE: $bestScore");
       await StabUtils.writeImagesBytesToJpgFile(bestBytes, stabilizedPhotoPath);
@@ -1087,6 +1195,7 @@ class FaceStabilizer {
       bestScore,
       null, // No finalEyeDeltaY in fast mode
       null, // No finalEyeDistance in fast mode
+      savedBytes,
     );
   }
 
@@ -1096,8 +1205,18 @@ class FaceStabilizer {
   /// 1. Rotation Pass: Fix eye angle (make eyes horizontal)
   /// 2. Scale Pass: Fix eye distance
   /// 3. Translation Passes: Fix eye position
-  Future<(bool, double?, double?, double?, double?, double?, double?, double?)>
-      _performSlowMultiPass(
+  Future<
+      (
+        bool,
+        double?,
+        double?,
+        double?,
+        double?,
+        double?,
+        double?,
+        double?,
+        Uint8List?
+      )> _performSlowMultiPass(
     List<dynamic> stabFaces,
     List<Point<double>?> eyes,
     Point<double> goalLeftEye,
@@ -1150,7 +1269,7 @@ class FaceStabilizer {
       overshotRightY,
     )) {
       // No correction needed - save with first pass result
-      successfulStabilization = await saveStabilizedImage(
+      final (s, savedBytes) = await saveStabilizedImage(
         imageBytesStabilized,
         rawPhotoPath,
         stabilizedJpgPhotoPath,
@@ -1160,6 +1279,7 @@ class FaceStabilizer {
         rotationDegrees: rotationDegrees,
         scaleFactor: scaleFactor,
       );
+      successfulStabilization = s;
       return (
         successfulStabilization,
         firstPassScore,
@@ -1169,6 +1289,7 @@ class FaceStabilizer {
         firstPassScore,
         initialEyeDeltaY,
         initialEyeDistance,
+        savedBytes,
       );
     }
 
@@ -1232,6 +1353,8 @@ class FaceStabilizer {
         srcId: srcId,
         backgroundColorBGR: backgroundColorBGR,
         preserveBitDepth: lossless,
+        useCachedSrc: true,
+        pngCompression: 1,
       );
 
       if (rotPassBytes == null) break;
@@ -1320,6 +1443,8 @@ class FaceStabilizer {
         srcId: srcId,
         backgroundColorBGR: backgroundColorBGR,
         preserveBitDepth: lossless,
+        useCachedSrc: true,
+        pngCompression: 1,
       );
 
       if (scalePassBytes == null) break;
@@ -1373,7 +1498,7 @@ class FaceStabilizer {
 
     if (!_areEyesValid(currentEyes)) {
       // Can't do translation passes without valid eyes, save current best and return
-      bool success = await saveStabilizedImage(
+      final (success, savedBytes) = await saveStabilizedImage(
         bestBytes,
         rawPhotoPath,
         stabilizedPhotoPath,
@@ -1392,6 +1517,7 @@ class FaceStabilizer {
         bestScore,
         null,
         null,
+        savedBytes,
       );
     }
 
@@ -1433,6 +1559,8 @@ class FaceStabilizer {
         srcId: srcId,
         backgroundColorBGR: backgroundColorBGR,
         preserveBitDepth: lossless,
+        useCachedSrc: true,
+        pngCompression: 1,
       );
 
       if (transPassBytes == null) break;
@@ -1560,6 +1688,8 @@ class FaceStabilizer {
           srcId: srcId,
           backgroundColorBGR: backgroundColorBGR,
           preserveBitDepth: lossless,
+          useCachedSrc: true,
+          pngCompression: 1,
         );
 
         if (cleanupBytes != null) {
@@ -1614,8 +1744,9 @@ class FaceStabilizer {
     }
 
     // Save the best result
-    if (bestScore < 20) {
-      successfulStabilization = await saveStabilizedImage(
+    Uint8List? savedBytes;
+    if (bestScore < _kStabSuccessScoreThreshold) {
+      final (s, sb) = await saveStabilizedImage(
         bestBytes,
         rawPhotoPath,
         stabilizedPhotoPath,
@@ -1625,6 +1756,8 @@ class FaceStabilizer {
         rotationDegrees: bestRotation,
         scaleFactor: bestScale,
       );
+      successfulStabilization = s;
+      savedBytes = sb;
     } else {
       LogService.instance.log("STAB FAILURE. STAB SCORE: $bestScore");
       await StabUtils.writeImagesBytesToJpgFile(bestBytes, stabilizedPhotoPath);
@@ -1645,10 +1778,11 @@ class FaceStabilizer {
       bestScore,
       finalEyeDeltaY,
       finalEyeDistance,
+      savedBytes,
     );
   }
 
-  Future<bool> saveStabilizedImage(
+  Future<(bool, Uint8List?)> saveStabilizedImage(
     Uint8List imageBytes,
     String rawPhotoPath,
     String stabilizedPhotoPath,
@@ -1658,12 +1792,22 @@ class FaceStabilizer {
     double? rotationDegrees,
     double? scaleFactor,
   }) async {
-    // For transparent backgrounds, preserve the alpha channel directly.
-    // For opaque backgrounds, composite onto black background.
-    final bool isTransparent = backgroundColorBGR == null;
-    final Uint8List pngBytes = isTransparent
-        ? imageBytes
-        : await StabUtils.compositeBlackPngBytes(imageBytes);
+    final tx = translateX ?? 0;
+    final ty = translateY ?? 0;
+    final rot = rotationDegrees ?? 0;
+    final sc = scaleFactor ?? 1;
+
+    if (tx.isInfinite || ty.isInfinite || rot.isInfinite || sc.isInfinite) {
+      LogService.instance.log('ABORT save: infinite transform values detected');
+      return (false, null);
+    }
+
+    // stabilizeCV already produced the correct channel format for both modes:
+    //   - transparent projects: 4-channel BGRA PNG (alpha preserved in borders)
+    //   - opaque projects:      3-channel BGR PNG (borders filled with solid color)
+    // Compositing here destroys alpha for transparent projects and breaks
+    // ProRes 4444 / VP9 transparent video export (regression fix v2.5.2).
+    final Uint8List pngBytes = imageBytes;
 
     final String result = await saveBytesToPngFileInIsolate(
       pngBytes,
@@ -1675,17 +1819,7 @@ class FaceStabilizer {
         LogService.instance.log("User is out of space...");
         userRanOutOfSpaceCallbackIn();
       }
-      return false;
-    }
-
-    final tx = translateX ?? 0;
-    final ty = translateY ?? 0;
-    final rot = rotationDegrees ?? 0;
-    final sc = scaleFactor ?? 1;
-
-    if (tx.isInfinite || ty.isInfinite || rot.isInfinite || sc.isInfinite) {
-      LogService.instance.log('ABORT save: infinite transform values detected');
-      return false;
+      return (false, null);
     }
 
     await setPhotoStabilized(
@@ -1721,7 +1855,7 @@ class FaceStabilizer {
       "FINAL TRANSFORM -> translateX: $tx, translateY: $ty, rotationDegrees: $rot, scaleFactor: $sc",
     );
 
-    return true;
+    return (true, pngBytes);
   }
 
   Future<void> _handleStabilizationFailure(
@@ -1748,7 +1882,10 @@ class FaceStabilizer {
     toDelete.add(stabilizedPngPath);
   }
 
-  Future<void> createStabThumbnail(String stabilizedPhotoPath) async {
+  Future<void> createStabThumbnail(
+    String stabilizedPhotoPath, {
+    Uint8List? imageBytes,
+  }) async {
     // Check if transparent background is enabled
     final bgColor = await SettingsUtil.loadBackgroundColor(
       projectId.toString(),
@@ -1762,7 +1899,8 @@ class FaceStabilizer {
     final String timestamp = path.basenameWithoutExtension(stabilizedPhotoPath);
     try {
       await DirUtils.createDirectoryIfNotExists(stabThumbnailPath);
-      final bytes = await CameraUtils.readBytesInIsolate(stabilizedPhotoPath);
+      final bytes = imageBytes ??
+          await CameraUtils.readBytesInIsolate(stabilizedPhotoPath);
       if (bytes == null) {
         LogService.instance.log(
           "createStabThumbnail: bytes null for $stabilizedPhotoPath",
@@ -1832,8 +1970,13 @@ class FaceStabilizer {
       projectId,
       projectOrientation,
     );
+    // Pass preserveAlpha explicitly so the path matches createStabThumbnail's
+    // path for the same project. Without this, auto-detect returns .jpg when
+    // the file doesn't exist yet (failure case), diverging from the .png path
+    // that createStabThumbnail emits for transparent projects.
     final String thumbnailPath = getStabThumbnailPath(
       path.setExtension(stabilizedPath, '.png'),
+      preserveAlpha: backgroundColorBGR == null,
     );
 
     ThumbnailService.instance.emit(

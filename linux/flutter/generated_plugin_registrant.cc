@@ -11,6 +11,7 @@
 #include <desktop_drop/desktop_drop_plugin.h>
 #include <dog_detection/dog_detection_plugin.h>
 #include <face_detection_tflite/face_detection_tflite_plugin.h>
+#include <fast_thumbnail/fast_thumbnail_plugin.h>
 #include <file_selector_linux/file_selector_plugin.h>
 #include <flutter_avif_linux/flutter_avif_linux_plugin.h>
 #include <flutter_timezone/flutter_timezone_plugin.h>
@@ -39,6 +40,9 @@ void fl_register_plugins(FlPluginRegistry* registry) {
   g_autoptr(FlPluginRegistrar) face_detection_tflite_registrar =
       fl_plugin_registry_get_registrar_for_plugin(registry, "FaceDetectionTflitePlugin");
   face_detection_tflite_plugin_register_with_registrar(face_detection_tflite_registrar);
+  g_autoptr(FlPluginRegistrar) fast_thumbnail_registrar =
+      fl_plugin_registry_get_registrar_for_plugin(registry, "FastThumbnailPlugin");
+  fast_thumbnail_plugin_register_with_registrar(fast_thumbnail_registrar);
   g_autoptr(FlPluginRegistrar) file_selector_linux_registrar =
       fl_plugin_registry_get_registrar_for_plugin(registry, "FileSelectorPlugin");
   file_selector_plugin_register_with_registrar(file_selector_linux_registrar);

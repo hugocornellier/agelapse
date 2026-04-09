@@ -2,8 +2,8 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'package:camera/camera.dart';
+import 'package:fast_thumbnail/fast_thumbnail.dart';
 import 'package:flutter/foundation.dart';
-import 'package:heic_native/heic_native.dart';
 import 'package:path/path.dart' as path;
 import 'package:saver_gallery/saver_gallery.dart';
 import 'package:vibration/vibration.dart';
@@ -59,25 +59,6 @@ class CameraUtils {
     return _executeInIsolate<Uint8List>(operation, {'filePath': filePath});
   }
 
-  static Future<String> saveImageToFileSystemInIsolate(
-    String saveToPath,
-    String xFilePath,
-  ) async {
-    Future<void> operation(Map<String, dynamic> params) async {
-      final SendPort sendPort = params['sendPort'];
-      await XFile(
-        params['xFilePath'] as String,
-      ).saveTo(params['saveToPath'] as String);
-      sendPort.send("Success");
-    }
-
-    final result = await _executeInIsolate<String>(operation, {
-      'saveToPath': saveToPath,
-      'xFilePath': xFilePath,
-    });
-    return result ?? '';
-  }
-
   static Future<String> saveImageToFileSystem(
     XFile image,
     String timestamp,
@@ -89,9 +70,7 @@ class CameraUtils {
       "$timestamp${path.extension(image.path)}",
     );
     await DirUtils.createDirectoryIfNotExists(imagePath);
-
-    await saveImageToFileSystemInIsolate(imagePath, image.path);
-
+    await image.saveTo(imagePath);
     return imagePath;
   }
 
@@ -152,14 +131,233 @@ class CameraUtils {
     String? sourceRelativePath,
     String? sourceLocationType,
   }) async {
+    // --- Pre-process outside the mutex ---
+    // CPU-intensive operations (rotation, mirroring, format decode, OpenCV
+    // thumbnail) don't touch shared state (DB, file paths). Running them
+    // before acquiring the lock keeps mutex hold time minimal (~50-100ms
+    // vs ~2-4s).
+    Uint8List? captureProcessedBytes;
+    Uint8List? captureThumbnailBytes;
+    int? captureWidth;
+    int? captureHeight;
+    String? captureImgPath;
+    String? captureExtension;
+    int? capturePhotoLength;
+
+    // Pre-processed import state (moved outside mutex for performance)
+    int? importPhotoLength;
+    ImageProcessingOutput? importProcessingOutput;
+    Uint8List? importPreDecodedBytes;
+
+    if (!import && image != null) {
+      // --- Camera capture pre-processing ---
+      captureImgPath = image.path;
+      captureExtension = path.extension(captureImgPath).toLowerCase();
+      capturePhotoLength = await image.length();
+
+      // Rotation/mirroring via OpenCV isolate (~500ms–2s for high-res).
+      final bool needsProcessing = (deviceOrientation == "Landscape Left" ||
+              deviceOrientation == "Landscape Right") ||
+          applyMirroring;
+      if (needsProcessing) {
+        final rawBytes = await File(captureImgPath).readAsBytes();
+        final input = ImageProcessingInput(
+          bytes: rawBytes,
+          rotation: deviceOrientation,
+          applyMirroring: applyMirroring,
+          extension: captureExtension,
+        );
+        final output = await processImageSafely(input);
+        if (output.success && output.processedBytes != null) {
+          captureProcessedBytes = output.processedBytes;
+          captureThumbnailBytes = output.thumbnailBytes;
+          captureWidth = output.width;
+          captureHeight = output.height;
+        }
+      }
+    } else if (import && image != null) {
+      // --- Import pre-processing (CPU-heavy, no shared state) ---
+      importPhotoLength = await image.length();
+
+      String imgPath = image.path;
+      String extension = path.extension(imgPath).toLowerCase();
+
+      // Read bytes if not already provided
+      if (bytes == null || imgPath != image.path) {
+        bytes = await CameraUtils.readBytesInIsolate(imgPath);
+      }
+
+      if (bytes != null) {
+        // Pre-decode non-native formats (HEIC, AVIF, RAW, etc.)
+        if (FormatDecodeUtils.needsConversion(extension)) {
+          final tempDir = await DirUtils.getTemporaryDirPath();
+          importPreDecodedBytes =
+              await FormatDecodeUtils.decodeToCvCompatibleBytes(
+            imgPath,
+            extension,
+            tempDir,
+          );
+        }
+
+        // Process image in isolate (decode, rotate, flip, create thumbnail)
+        final processingInput = ImageProcessingInput(
+          bytes: bytes,
+          rotation: deviceOrientation,
+          applyMirroring: applyMirroring,
+          extension: extension,
+          preDecodedBytes: importPreDecodedBytes,
+        );
+        importProcessingOutput = await processImageSafely(processingInput);
+      }
+    }
+
     return _savePhotoMutex.protect(() async {
       String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
       final String filename = path.basename(image?.path ?? 'unknown');
-      String?
-          heicPathToDelete; // Track original HEIC for cleanup after conversion
       try {
-        int? newPhotoLength = await image?.length();
+        // --- CAMERA CAPTURE FAST PATH ---
+        // Heavy processing already done above; mutex only covers fast I/O + DB.
+        if (!import) {
+          final String imgPath = captureImgPath!;
+          final String extension = captureExtension!;
+          final int? newPhotoLength = capturePhotoLength;
+          if (newPhotoLength == null) return false;
+
+          sourceLocationType ??= 'camera_capture';
+          sourceFilename ??= 'capture_$timestamp$extension';
+
+          // Write to photos_raw/ — pre-processed bytes or raw XFile copy
+          final rawPhotoDirPath = await DirUtils.getRawPhotoDirPath(projectId);
+          final rawPhotoPath = path.join(
+            rawPhotoDirPath,
+            "$timestamp$extension",
+          );
+          await DirUtils.createDirectoryIfNotExists(rawPhotoPath);
+          if (captureProcessedBytes != null) {
+            await File(rawPhotoPath).writeAsBytes(captureProcessedBytes);
+          } else {
+            await XFile(imgPath).saveTo(rawPhotoPath);
+          }
+          await _preserveModifiedTime(
+            sourcePath: originalFilePath ?? imgPath,
+            targetPath: rawPhotoPath,
+          );
+
+          // Generate thumbnail
+          final String thumbnailPath = path.join(
+            await DirUtils.getThumbnailDirPath(projectId),
+            "$timestamp.jpg",
+          );
+          await DirUtils.createDirectoryIfNotExists(thumbnailPath);
+
+          String orientation;
+          if (captureThumbnailBytes != null &&
+              captureWidth != null &&
+              captureHeight != null) {
+            // Thumbnail already created in isolate during rotation/mirroring
+            // — write bytes directly, skip disk round-trip through
+            // FastThumbnail.
+            await File(thumbnailPath).writeAsBytes(captureThumbnailBytes);
+            orientation = captureHeight > captureWidth
+                ? "portrait"
+                : captureHeight < captureWidth
+                    ? "landscape"
+                    : "square";
+          } else {
+            // No processing done (portrait, no mirror) — use native
+            // FastThumbnail which reads from disk with subsampled decode.
+            final ThumbnailResult? thumbnailResult =
+                await FastThumbnail.generate(
+              inputPath: rawPhotoPath,
+              outputPath: thumbnailPath,
+            );
+            if (thumbnailResult == null) return false;
+            orientation = thumbnailResult.originalHeight >
+                    thumbnailResult.originalWidth
+                ? "portrait"
+                : thumbnailResult.originalHeight < thumbnailResult.originalWidth
+                    ? "landscape"
+                    : "square";
+          }
+
+          final linkedPlacement = await _maybePlaceSourceInLinkedFolder(
+            projectId: projectId,
+            sourceFilePath: imgPath,
+            sourceFilename: sourceFilename!,
+            sourceRelativePath: sourceRelativePath,
+            sourceLocationType: sourceLocationType,
+          );
+          sourceRelativePath ??= linkedPlacement?.relativePath;
+          sourceFilename = linkedPlacement?.filename ?? sourceFilename;
+
+          // DB insert after files are safely on disk
+          await DB.instance.addPhoto(
+            timestamp,
+            projectId,
+            extension,
+            newPhotoLength,
+            path.basename(imgPath),
+            orientation,
+            sourceFilename: sourceFilename,
+            sourceRelativePath: sourceRelativePath,
+            sourceLocationType: sourceLocationType,
+          );
+
+          final int tsInt = int.parse(timestamp);
+          final int captureOffsetMin = DateTime.fromMillisecondsSinceEpoch(
+            tsInt,
+            isUtc: true,
+          ).toLocal().timeZoneOffset.inMinutes;
+          await DB.instance.setCaptureOffsetMinutesByTimestamp(
+            timestamp,
+            projectId,
+            captureOffsetMin,
+          );
+
+          if (refreshSettings != null) refreshSettings();
+
+          ThumbnailService.instance.emit(
+            ThumbnailEvent(
+              thumbnailPath: thumbnailPath,
+              status: ThumbnailStatus.success,
+              projectId: projectId,
+              timestamp: timestamp.toString(),
+            ),
+          );
+
+          if (await SettingsUtil.loadSaveToCameraRoll()) {
+            CameraUtils.saveImageToGallery(rawPhotoPath);
+          }
+
+          try {
+            await File(image!.path).delete();
+          } catch (_) {}
+          if (imgPath != image!.path) {
+            try {
+              await File(imgPath).delete();
+            } catch (_) {}
+          }
+
+          if (increaseSuccessfulImportCount != null) {
+            increaseSuccessfulImportCount();
+          }
+
+          LogService.instance.log('[Capture] $filename');
+          return true;
+        }
+
+        // --- IMPORT PATH ---
+        // Heavy processing (format decode, OpenCV, thumbnail creation)
+        // already done above before the mutex was acquired.
+
+        final int? newPhotoLength = importPhotoLength;
         if (newPhotoLength == null) {
+          return false;
+        }
+
+        if (bytes == null ||
+            importProcessingOutput == null ||
+            !importProcessingOutput.success) {
           return false;
         }
 
@@ -191,75 +389,19 @@ class CameraUtils {
 
         String imgPath = image!.path;
         String extension = path.extension(imgPath).toLowerCase();
-        sourceLocationType ??= import ? 'direct_import' : 'camera_capture';
+        sourceLocationType ??= 'direct_import';
 
-        // HEIC/HEIF conversion only for camera captures.
-        // Imports store the original file byte-for-byte in photos_raw/.
-        if (!import && (extension == ".heic" || extension == ".heif")) {
-          final String heicPath = imgPath;
-          final String pngPath = path.setExtension(heicPath, ".png");
-
-          final success = await HeicNative.convert(heicPath, pngPath);
-          if (!success || !await File(pngPath).exists()) {
-            return false;
-          }
-
-          heicPathToDelete = heicPath; // Mark original for cleanup
-          imgPath = pngPath;
-          extension = ".png";
-          newPhotoLength = await File(pngPath).length();
-        }
-
-        sourceFilename ??= import
-            ? path.basename(originalFilePath ?? imgPath)
-            : 'capture_$timestamp$extension';
-
-        // Only re-read if bytes weren't provided OR if conversion changed the file path
-        if (bytes == null || imgPath != image.path) {
-          bytes = await CameraUtils.readBytesInIsolate(imgPath);
-        }
-        if (bytes == null) {
-          return false;
-        }
-
-        // Pre-decode non-native formats for thumbnail generation.
-        // When importing HEIC, AVIF, RAW, etc., cv.imdecode can't handle
-        // these formats directly, so we decode to JPEG bytes as a fallback.
-        Uint8List? preDecodedBytes;
-        if (import && FormatDecodeUtils.needsConversion(extension)) {
-          final tempDir = await DirUtils.getTemporaryDirPath();
-          preDecodedBytes = await FormatDecodeUtils.decodeToCvCompatibleBytes(
-            imgPath,
-            extension,
-            tempDir,
-          );
-        }
-
-        // Process image in isolate (decode, rotate, flip, create thumbnail)
-        // This moves CPU-intensive OpenCV operations off the main thread
-        final processingInput = ImageProcessingInput(
-          bytes: bytes!,
-          rotation: deviceOrientation,
-          applyMirroring: applyMirroring,
-          extension: extension,
-          preDecodedBytes: preDecodedBytes,
-        );
-
-        final processingOutput = await processImageSafely(processingInput);
-
-        if (!processingOutput.success) {
-          return false;
-        }
+        sourceFilename ??= path.basename(originalFilePath ?? imgPath);
 
         // Write processed image if rotation/mirroring was applied
-        if (processingOutput.processedBytes != null) {
+        if (importProcessingOutput.processedBytes != null) {
           await File(
             imgPath,
-          ).writeAsBytes(processingOutput.processedBytes!, flush: true);
+          ).writeAsBytes(importProcessingOutput.processedBytes!);
         }
 
-        int importedImageWidth = processingOutput.width;
-        int importedImageHeight = processingOutput.height;
+        int importedImageWidth = importProcessingOutput.width;
+        int importedImageHeight = importProcessingOutput.height;
 
         String orientation = importedImageHeight > importedImageWidth
             ? "portrait"
@@ -291,12 +433,12 @@ class CameraUtils {
         await DirUtils.createDirectoryIfNotExists(thumbnailPath);
 
         // Write thumbnail (already created in isolate)
-        if (processingOutput.thumbnailBytes == null) {
+        if (importProcessingOutput.thumbnailBytes == null) {
           return false;
         }
         await File(
           thumbnailPath,
-        ).writeAsBytes(processingOutput.thumbnailBytes!);
+        ).writeAsBytes(importProcessingOutput.thumbnailBytes!);
 
         final linkedPlacement = await _maybePlaceSourceInLinkedFolder(
           projectId: projectId,
@@ -350,11 +492,6 @@ class CameraUtils {
 
         bytes = null;
 
-        // Save to gallery if setting is enabled
-        if (!import && await SettingsUtil.loadSaveToCameraRoll()) {
-          await CameraUtils.saveToGallery(image);
-        }
-
         if (increaseSuccessfulImportCount != null) {
           increaseSuccessfulImportCount();
         }
@@ -365,12 +502,6 @@ class CameraUtils {
         return false;
       } finally {
         bytes = null;
-
-        // Clean up original HEIC file after successful conversion (camera captures only).
-        // For imports, there's no converted file to clean up.
-        if (!import && heicPathToDelete != null) {
-          await DirUtils.deleteFileIfExists(heicPathToDelete);
-        }
       }
     });
   }

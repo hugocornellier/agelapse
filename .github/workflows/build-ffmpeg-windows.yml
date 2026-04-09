@@ -1,0 +1,140 @@
+name: Build FFmpeg (Windows)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build static ffmpeg.exe
+    runs-on: windows-latest
+    timeout-minutes: 60
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            base-devel
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-nasm
+            mingw-w64-x86_64-pkg-config
+            mingw-w64-x86_64-x264
+            mingw-w64-x86_64-x265
+            mingw-w64-x86_64-libvpx
+            mingw-w64-x86_64-zlib
+            git
+            diffutils
+            make
+
+      - name: Build ffmpeg (static, minimal)
+        run: |
+          cd /tmp
+          git clone --depth 1 -b n8.0.1 https://git.ffmpeg.org/ffmpeg.git
+          cd ffmpeg
+          ./configure \
+            --cc="gcc -static-libgcc" \
+            --cxx="g++ -static-libgcc -static-libstdc++" \
+            --prefix=/mingw64/local \
+            --enable-gpl \
+            --enable-zlib \
+            --enable-libx264 \
+            --enable-libx265 \
+            --enable-libvpx \
+            --disable-everything \
+            --disable-doc \
+            --disable-ffplay \
+            --disable-ffprobe \
+            --disable-network \
+            --disable-autodetect \
+            --enable-encoder=libx264 \
+            --enable-encoder=libx265 \
+            --enable-encoder=libvpx_vp9 \
+            --enable-encoder=prores_ks \
+            --enable-decoder=png \
+            --enable-decoder=wrapped_avframe \
+            --enable-muxer=mp4 \
+            --enable-muxer=mov \
+            --enable-muxer=webm \
+            --enable-muxer=matroska \
+            --enable-demuxer=concat \
+            --enable-demuxer=image2 \
+            --enable-demuxer=image_png_pipe \
+            --enable-filter=split \
+            --enable-filter=format \
+            --enable-filter=scale \
+            --enable-filter=crop \
+            --enable-filter=gblur \
+            --enable-filter=overlay \
+            --enable-filter=colorchannelmixer \
+            --enable-filter=color \
+            --enable-protocol=file \
+            --enable-swscale \
+            --enable-avformat \
+            --enable-avcodec \
+            --enable-avfilter \
+            --enable-indev=lavfi \
+            --pkg-config-flags=--static \
+            --extra-ldflags="-static" \
+            --extra-libs="-Wl,-Bstatic -lgcc -lgcc_eh -lwinpthread -Wl,-Bdynamic"
+          make -j$(nproc)
+          ls -lh ffmpeg.exe
+
+      - name: List DLL dependencies
+        run: |
+          echo "=== objdump -p (DLL imports) ==="
+          objdump -p /tmp/ffmpeg/ffmpeg.exe | grep "DLL Name" || true
+          echo ""
+          echo "=== ldd ==="
+          ldd /tmp/ffmpeg/ffmpeg.exe || true
+          echo ""
+          echo "=== file type ==="
+          file /tmp/ffmpeg/ffmpeg.exe
+
+      - name: Bundle required DLLs
+        run: |
+          mkdir -p /tmp/ffmpeg-bundle
+          cp /tmp/ffmpeg/ffmpeg.exe /tmp/ffmpeg-bundle/
+          # Copy the two MinGW runtime DLLs that can't be statically linked
+          cp /mingw64/bin/libgcc_s_seh-1.dll /tmp/ffmpeg-bundle/
+          cp /mingw64/bin/libwinpthread-1.dll /tmp/ffmpeg-bundle/
+          echo "=== Bundle contents ==="
+          ls -lh /tmp/ffmpeg-bundle/
+
+      - name: Verify binary runs with bundled DLLs only
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Continue"
+          $bundleDir = "D:\a\_temp\msys64\tmp\ffmpeg-bundle"
+          $exe = "$bundleDir\ffmpeg.exe"
+          Write-Host "Binary size: $((Get-Item $exe).Length / 1MB) MB"
+
+          # Run with minimal PATH + bundle dir (so it finds the DLLs next to it)
+          $env:Path = "$bundleDir;C:\Windows\System32;C:\Windows"
+          Write-Host "Running with minimal PATH + bundle dir"
+          & $exe -version
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "::error::ffmpeg.exe crashed with exit code $LASTEXITCODE"
+            exit 1
+          }
+          Write-Host "ffmpeg.exe runs successfully with bundled DLLs"
+
+      - name: Copy bundle to repo
+        run: |
+          cp /tmp/ffmpeg-bundle/ffmpeg.exe assets/ffmpeg/windows/ffmpeg.exe
+          cp /tmp/ffmpeg-bundle/libgcc_s_seh-1.dll assets/ffmpeg/windows/
+          cp /tmp/ffmpeg-bundle/libwinpthread-1.dll assets/ffmpeg/windows/
+          ls -lh assets/ffmpeg/windows/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ffmpeg-windows-bundle
+          path: assets/ffmpeg/windows/
+          retention-days: 90

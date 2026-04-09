@@ -2,7 +2,7 @@ name: agelapse
 description: A powerful tool for creating stabilized aging timelapses.
 publish_to: 'none'
 
-version: 2.5.1+38
+version: 2.5.2+40
 
 environment:
   sdk: ">=3.1.0 <4.0.0"
@@ -13,7 +13,7 @@ dependencies:
   archive: ^4.0.7
   async_zip: ^0.1.0
   camera: ^0.12.0+1
-  camera_desktop: ^1.0.8
+  camera_desktop: ^1.1.2
   chewie: ^1.13.0
   desktop_drop:
     git:
@@ -23,7 +23,7 @@ dependencies:
   exif_reader: ^4.1.0
   cat_detection: ^1.0.0
   dog_detection: ^1.0.0
-  face_detection_tflite: ^5.0.13
+  face_detection_tflite: ^5.1.0
   ffmpeg_kit_flutter_new:
     git:
       url: https://github.com/hugocornellier/ffmpeg_kit_flutter.git
@@ -40,6 +40,8 @@ dependencies:
   flutter_svg: ^2.2.4
   flutter_timezone: ^5.0.2
   font_awesome_flutter: ^11.0.0
+  fast_thumbnail:
+    path: plugins/fast_thumbnail
   heic_native: ^0.1.1
   intl: ^0.20.2
   media_kit: ^1.2.6
@@ -93,6 +95,12 @@ flutter:
     # ffmpeg.exe is only needed on Windows (Android uses FFmpegKit, macOS/Linux
     # use system ffmpeg). The platforms: key ensures it's only bundled for Windows.
     - path: assets/ffmpeg/windows/ffmpeg.exe
+      platforms:
+        - windows
+    - path: assets/ffmpeg/windows/libgcc_s_seh-1.dll
+      platforms:
+        - windows
+    - path: assets/ffmpeg/windows/libwinpthread-1.dll
       platforms:
         - windows
     - path: assets/ffmpeg/windows/LICENSE

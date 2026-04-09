@@ -152,11 +152,18 @@ enum VideoCodec {
   }
 
   /// FFmpeg encoder string for Windows/Linux (software encoding).
+  ///
+  /// Flatpak's FFmpeg runtime (org.freedesktop.Platform.ffmpeg-full) ships
+  /// libopenh264 instead of libx264, and does not include libx265.
   String get encoderDesktop {
     switch (this) {
       case VideoCodec.h264:
-        return 'libx264';
+        return isFlatpak ? 'libopenh264' : 'libx264';
       case VideoCodec.hevc:
+        if (isFlatpak) {
+          throw StateError(
+              'HEVC is not available in the Flatpak FFmpeg runtime');
+        }
         return 'libx265';
       case VideoCodec.prores422:
       case VideoCodec.prores422hq:
@@ -218,6 +225,8 @@ enum VideoCodec {
     if (Platform.isAndroid) {
       return [h264];
     }
+    // Flatpak FFmpeg lacks libx265, only offer H.264
+    if (isFlatpak) return [h264];
     // iOS, Windows, Linux: H.264 + HEVC
     return [h264, hevc];
   }

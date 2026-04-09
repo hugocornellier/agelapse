@@ -66,6 +66,7 @@ class IsolatePool {
 
   final List<_Worker> _workers = [];
   final List<IsolateTask> _taskQueue = [];
+  final Map<int, List<IsolateTask>> _stickyQueue = {};
   final Set<ReceivePort> _activeResponsePorts = {};
   bool _initialized = false;
   bool _isShuttingDown = false;
@@ -358,7 +359,7 @@ class IsolatePool {
         return dims;
 
       case 'stabilizeCV':
-        final srcBytes = params['srcBytes'] as Uint8List;
+        final srcBytes = params['srcBytes'] as Uint8List?;
         final rotationDegrees = params['rotationDegrees'] as double;
         final scaleFactor = params['scaleFactor'] as double;
         final translateX = params['translateX'] as double;
@@ -373,8 +374,8 @@ class IsolatePool {
 
         // Use cached source Mat if available and matching, otherwise decode
         cv.Mat srcMat;
-        bool shouldCache = srcId != null && onCacheUpdate != null;
         bool usedCache = false;
+        bool srcMatCacheHandedOff = false;
 
         if (srcId != null &&
             cachedSrcId == srcId &&
@@ -383,7 +384,7 @@ class IsolatePool {
           // Cache hit - reuse decoded Mat
           srcMat = cachedSrcMat;
           usedCache = true;
-        } else {
+        } else if (srcBytes != null) {
           // Cache miss - decode and optionally cache
           final decodeFlag = preserveBitDepth
               ? (cv.IMREAD_ANYDEPTH | cv.IMREAD_COLOR)
@@ -396,7 +397,11 @@ class IsolatePool {
           // shouldCache implies srcId != null, safe to use directly
           if (srcId != null && onCacheUpdate != null) {
             onCacheUpdate(srcMat, srcId);
+            srcMatCacheHandedOff = true;
           }
+        } else {
+          // No bytes and no cache — cannot proceed
+          return null;
         }
 
         // For transparent backgrounds, convert to BGRA (4 channels)
@@ -409,62 +414,69 @@ class IsolatePool {
           srcMatForWarp = srcMat;
         }
 
-        final iw = srcMatForWarp.cols;
-        final ih = srcMatForWarp.rows;
+        cv.Mat? rotMat;
+        cv.Mat? dst;
+        try {
+          final iw = srcMatForWarp.cols;
+          final ih = srcMatForWarp.rows;
 
-        final rotMat = cv.getRotationMatrix2D(
-          cv.Point2f(iw / 2.0, ih / 2.0),
-          -rotationDegrees,
-          scaleFactor,
-        );
-
-        final offsetX = (canvasWidth - iw) / 2.0 + translateX;
-        final offsetY = (canvasHeight - ih) / 2.0 + translateY;
-        rotMat.set<double>(0, 2, rotMat.at<double>(0, 2) + offsetX);
-        rotMat.set<double>(1, 2, rotMat.at<double>(1, 2) + offsetY);
-
-        // Create border color scalar
-        // For transparent: BGRA with alpha=0
-        // For solid color: BGR with alpha=255
-        final cv.Scalar borderValue;
-        if (isTransparent) {
-          borderValue = cv.Scalar(0.0, 0.0, 0.0, 0.0); // Fully transparent
-        } else {
-          // backgroundColorBGR is non-null when not transparent (promoted by isTransparent check)
-          borderValue = cv.Scalar(
-            backgroundColorBGR[0].toDouble(),
-            backgroundColorBGR[1].toDouble(),
-            backgroundColorBGR[2].toDouble(),
-            255.0,
+          rotMat = cv.getRotationMatrix2D(
+            cv.Point2f(iw / 2.0, ih / 2.0),
+            -rotationDegrees,
+            scaleFactor,
           );
+
+          final offsetX = (canvasWidth - iw) / 2.0 + translateX;
+          final offsetY = (canvasHeight - ih) / 2.0 + translateY;
+          rotMat.set<double>(0, 2, rotMat.at<double>(0, 2) + offsetX);
+          rotMat.set<double>(1, 2, rotMat.at<double>(1, 2) + offsetY);
+
+          // Create border color scalar
+          // For transparent: BGRA with alpha=0
+          // For solid color: BGR with alpha=255
+          final cv.Scalar borderValue;
+          if (isTransparent) {
+            borderValue = cv.Scalar(0.0, 0.0, 0.0, 0.0); // Fully transparent
+          } else {
+            // backgroundColorBGR is non-null when not transparent (promoted by isTransparent check)
+            borderValue = cv.Scalar(
+              backgroundColorBGR[0].toDouble(),
+              backgroundColorBGR[1].toDouble(),
+              backgroundColorBGR[2].toDouble(),
+              255.0,
+            );
+          }
+
+          dst = cv.warpAffine(
+            srcMatForWarp,
+            rotMat,
+            (canvasWidth, canvasHeight),
+            flags: cv.INTER_CUBIC,
+            borderMode: cv.BORDER_CONSTANT,
+            borderValue: borderValue,
+          );
+
+          final pngCompression = params['pngCompression'] as int? ?? 3;
+          final (success, bytes) = cv.imencode(
+            '.png',
+            dst,
+            params: cv.VecI32.fromList(
+                [cv.IMWRITE_PNG_COMPRESSION, pngCompression]),
+          );
+
+          return success ? bytes : null;
+        } finally {
+          rotMat?.dispose();
+          dst?.dispose();
+          if (needsDisposeSrcForWarp) {
+            srcMatForWarp.dispose();
+          }
+          // Only dispose srcMat if we have sole ownership:
+          // not cached (handed off to cache) and not from cache hit.
+          if (!srcMatCacheHandedOff && !usedCache) {
+            srcMat.dispose();
+          }
         }
-
-        final dst = cv.warpAffine(
-          srcMatForWarp,
-          rotMat,
-          (canvasWidth, canvasHeight),
-          flags: cv.INTER_CUBIC,
-          borderMode: cv.BORDER_CONSTANT,
-          borderValue: borderValue,
-        );
-
-        final (success, bytes) = cv.imencode(
-          '.png',
-          dst,
-          params: cv.VecI32.fromList([cv.IMWRITE_PNG_COMPRESSION, 3]),
-        );
-
-        rotMat.dispose();
-        dst.dispose();
-        if (needsDisposeSrcForWarp) {
-          srcMatForWarp.dispose();
-        }
-        // Only dispose srcMat if we didn't cache it and didn't use cache
-        if (!shouldCache && !usedCache) {
-          srcMat.dispose();
-        }
-
-        return success ? bytes : null;
 
       case 'clearMatCache':
         // Clear the cached source Mat to free memory
@@ -766,6 +778,40 @@ class IsolatePool {
     }
   }
 
+  /// Execute an operation on a worker pinned to [stickyKey].
+  ///
+  /// All calls sharing the same [stickyKey] are routed to the same worker,
+  /// which keeps the per-worker Mat cache warm across multi-pass stabilization.
+  /// The target worker is chosen deterministically via
+  /// `stickyKey.hashCode % workerCount`. If that worker is busy the task is
+  /// held in [_stickyQueue] for that specific worker instead of being picked
+  /// up by any free worker.
+  Future<T?> executeSticky<T>(
+    String stickyKey,
+    String operation,
+    Map<String, dynamic> params,
+  ) async {
+    if (!_initialized) {
+      await initialize();
+    }
+
+    if (_isShuttingDown) {
+      throw StateError('IsolatePool is shutting down');
+    }
+
+    final workerIndex = stickyKey.hashCode.abs() % _workers.length;
+    final worker = _workers[workerIndex];
+
+    if (!worker.isBusy) {
+      return await _executeOnWorker<T>(worker, operation, params);
+    } else {
+      final completer = Completer<dynamic>();
+      _stickyQueue.putIfAbsent(workerIndex, () => []);
+      _stickyQueue[workerIndex]!.add(IsolateTask(operation, params, completer));
+      return await completer.future as T?;
+    }
+  }
+
   Future<T?> _executeOnWorker<T>(
     _Worker worker,
     String operation,
@@ -807,6 +853,26 @@ class IsolatePool {
   }
 
   void _processQueue() {
+    // Drain sticky queues: for each worker that just became free, give it its
+    // pinned task first before falling through to the general queue.
+    for (int i = 0; i < _workers.length; i++) {
+      final worker = _workers[i];
+      if (worker.isBusy) continue;
+
+      final stickyList = _stickyQueue[i];
+      if (stickyList != null && stickyList.isNotEmpty) {
+        final task = stickyList.removeAt(0);
+        if (stickyList.isEmpty) _stickyQueue.remove(i);
+        _executeOnWorker(worker, task.operation, task.params).then((result) {
+          task.completer.complete(result);
+        }).catchError((e) {
+          task.completer.completeError(e);
+        });
+        // Move on — this worker is now busy again.
+        continue;
+      }
+    }
+
     if (_taskQueue.isEmpty) return;
 
     final worker = _workers.firstWhereOrNull((w) => !w.isBusy);
@@ -859,6 +925,14 @@ class IsolatePool {
       task.completer.completeError(StateError('Pool was killed'));
     }
     _taskQueue.clear();
+
+    // Fail all sticky-queued tasks
+    for (final taskList in _stickyQueue.values) {
+      for (final task in taskList) {
+        task.completer.completeError(StateError('Pool was killed'));
+      }
+    }
+    _stickyQueue.clear();
   }
 
   /// Gracefully dispose of the pool.

@@ -1,0 +1,32 @@
+name: fast_thumbnail
+description: "A Flutter plugin that generates JPEG thumbnails using native platform APIs (iOS, Android, macOS, Windows, Linux)."
+version: 0.1.0
+
+environment:
+  sdk: ^3.5.0
+  flutter: '>=3.27.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  plugin_platform_interface: ^2.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.hugocornellier.fast_thumbnail
+        pluginClass: FastThumbnailPlugin
+      ios:
+        pluginClass: FastThumbnailPlugin
+      linux:
+        pluginClass: FastThumbnailPlugin
+      macos:
+        pluginClass: FastThumbnailPlugin
+      windows:
+        pluginClass: FastThumbnailPluginCApi
