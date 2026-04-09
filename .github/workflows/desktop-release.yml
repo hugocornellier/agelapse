@@ -11,7 +11,7 @@ on:
         required: true
         default: main
       tag:
-        description: 'Release tag (e.g. agelapse-v2.6.0)'
+        description: 'Release tag (e.g. agelapse-v2.5.2)'
         required: true
       prerelease:
         description: 'Mark as pre-release'

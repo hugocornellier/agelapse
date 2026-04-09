@@ -13,6 +13,7 @@ import device_info_plus
 import dog_detection
 import downloadsfolder
 import face_detection_tflite
+import fast_thumbnail
 import file_picker
 import file_selector_macos
 import flutter_avif_macos
@@ -41,6 +42,7 @@ func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   DogDetectionPlugin.register(with: registry.registrar(forPlugin: "DogDetectionPlugin"))
   DownloadsfolderPlugin.register(with: registry.registrar(forPlugin: "DownloadsfolderPlugin"))
   FaceDetectionTflitePlugin.register(with: registry.registrar(forPlugin: "FaceDetectionTflitePlugin"))
+  FastThumbnailPlugin.register(with: registry.registrar(forPlugin: "FastThumbnailPlugin"))
   FilePickerPlugin.register(with: registry.registrar(forPlugin: "FilePickerPlugin"))
   FileSelectorPlugin.register(with: registry.registrar(forPlugin: "FileSelectorPlugin"))
   FlutterAvifPlugin.register(with: registry.registrar(forPlugin: "FlutterAvifPlugin"))

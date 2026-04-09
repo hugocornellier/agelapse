@@ -15,5 +15,4 @@ bool get hasCustomTitleBar =>
     Platform.isMacOS || Platform.isLinux || Platform.isWindows;
 
 /// Whether the app is running inside a Flatpak sandbox.
-bool get isFlatpak =>
-    Platform.isLinux && File('/.flatpak-info').existsSync();
+bool get isFlatpak => Platform.isLinux && File('/.flatpak-info').existsSync();

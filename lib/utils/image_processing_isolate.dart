@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:opencv_dart/opencv_dart.dart' as cv;
 
 import '../services/log_service.dart';
-import 'platform_utils.dart';
 
 /// Input parameters for isolated image processing.
 /// All fields must be transferable across isolate boundaries.
@@ -199,9 +198,12 @@ ImageProcessingOutput processImageIsolateEntry(ImageProcessingInput input) {
 bool get supportsIsolateProcessing {
   if (kIsWeb) return false;
 
-  // Desktop platforms - opencv_dart works in isolates
-  // Mobile platforms - needs testing, disabled for now for safety
-  return isDesktop;
+  // opencv_dart works in isolates on all native platforms.
+  // The stabilization pipeline (IsolatePool) already runs OpenCV in isolates
+  // on iOS/Android with no issues. compute() uses the same mechanism.
+  // If an isolate fails, processImageSafely() catches and falls back to
+  // main-thread processing automatically.
+  return true;
 }
 
 /// Process image safely with automatic fallback.

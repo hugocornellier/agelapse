@@ -1657,7 +1657,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
         await DirUtils.deleteFileIfExists(stabilizedPhotoPath);
         await DirUtils.deleteFileIfExists(stabThumbPath);
 
-        await _faceStabilizer!.saveStabilizedImage(
+        final (_, savedBytes) = await _faceStabilizer!.saveStabilizedImage(
           imageBytesStabilized,
           rawPhotoPath,
           stabilizedPhotoPath,
@@ -1669,6 +1669,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
         );
         await _faceStabilizer!.createStabThumbnail(
           p.setExtension(stabilizedPhotoPath, '.png'),
+          imageBytes: savedBytes,
         );
 
         // Clear caches so gallery shows updated images.

@@ -8,6 +8,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   desktop_drop
   dog_detection
   face_detection_tflite
+  fast_thumbnail
   file_selector_linux
   flutter_avif_linux
   flutter_timezone

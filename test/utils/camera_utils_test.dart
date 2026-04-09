@@ -21,10 +21,6 @@ void main() {
       expect(CameraUtils.readBytesInIsolate, isA<Function>());
     });
 
-    test('saveImageToFileSystemInIsolate method exists', () {
-      expect(CameraUtils.saveImageToFileSystemInIsolate, isA<Function>());
-    });
-
     test('saveImageToFileSystem method exists', () {
       expect(CameraUtils.saveImageToFileSystem, isA<Function>());
     });
@@ -49,8 +45,6 @@ void main() {
       expect(SettingsUtil.loadSaveToCameraRoll is Function, isTrue);
       // ignore: unnecessary_type_check
       expect(CameraUtils.readBytesInIsolate is Function, isTrue);
-      // ignore: unnecessary_type_check
-      expect(CameraUtils.saveImageToFileSystemInIsolate is Function, isTrue);
       // ignore: unnecessary_type_check
       expect(CameraUtils.saveImageToFileSystem is Function, isTrue);
       // ignore: unnecessary_type_check

@@ -76,7 +76,7 @@ class FaceLike {
 }
 
 class StabUtils {
-  static fdl.FaceDetectorIsolate? _faceDetectorIsolate;
+  static fdl.FaceDetector? _faceDetector;
 
   static final AsyncMutex _faceDetectorMutex = AsyncMutex();
 
@@ -91,12 +91,16 @@ class StabUtils {
   }
 
   static Future<void> _ensureFDLite() async {
-    _faceDetectorIsolate = await _ensureDetector<fdl.FaceDetectorIsolate>(
-      _faceDetectorIsolate,
+    _faceDetector = await _ensureDetector<fdl.FaceDetector>(
+      _faceDetector,
       (d) => d.isReady,
-      () => fdl.FaceDetectorIsolate.spawn(
-        model: fdl.FaceDetectionModel.backCamera,
-      ),
+      () async {
+        final detector = fdl.FaceDetector();
+        await detector.initialize(
+          model: fdl.FaceDetectionModel.backCamera,
+        );
+        return detector;
+      },
     );
   }
 
@@ -300,7 +304,7 @@ class StabUtils {
         await _ensureFDLite();
 
         // Face detection runs entirely in background isolate - UI never blocked
-        final facesDetected = await _faceDetectorIsolate!.detectFaces(
+        final facesDetected = await _faceDetector!.detectFaces(
           bytes,
           mode: fdl.FaceDetectionMode.full,
         );
@@ -316,7 +320,7 @@ class StabUtils {
         );
         // Force reinit of face detector on next call - handles stale native state
         // after hot restart or other isolate lifecycle issues
-        _faceDetectorIsolate = null;
+        _faceDetector = null;
         return (<FaceLike>[], <fdl.Face>[]);
       }
     });
@@ -341,7 +345,7 @@ class StabUtils {
         await _ensureFDLite();
 
         // Face detection runs entirely in background isolate - UI never blocked
-        final facesDetected = await _faceDetectorIsolate!.detectFaces(
+        final facesDetected = await _faceDetector!.detectFaces(
           bytes,
           mode: fdl.FaceDetectionMode.full,
         );
@@ -383,7 +387,7 @@ class StabUtils {
         return filtered.isNotEmpty ? filtered : faces;
       } catch (e) {
         LogService.instance.log("Error caught while fetching faces: $e");
-        _faceDetectorIsolate = null; // Force reinit on next call
+        _faceDetector = null; // Force reinit on next call
         return [];
       }
     });
@@ -402,14 +406,14 @@ class StabUtils {
       try {
         await _ensureFDLite();
 
-        final faces = await _faceDetectorIsolate!.detectFaces(
+        final faces = await _faceDetector!.detectFaces(
           bytes,
           mode: fdl.FaceDetectionMode.fast,
         );
 
         if (faces.isEmpty) return null;
 
-        final embedding = await _faceDetectorIsolate!.getFaceEmbedding(
+        final embedding = await _faceDetector!.getFaceEmbedding(
           faces.first,
           bytes,
         );
@@ -417,7 +421,7 @@ class StabUtils {
         return embedding;
       } catch (e) {
         LogService.instance.log("Error extracting face embedding: $e");
-        _faceDetectorIsolate = null; // Force reinit on next call
+        _faceDetector = null; // Force reinit on next call
         return null;
       }
     });
@@ -433,14 +437,14 @@ class StabUtils {
       try {
         await _ensureFDLite();
 
-        final faces = await _faceDetectorIsolate!.detectFaces(
+        final faces = await _faceDetector!.detectFaces(
           bytes,
           mode: fdl.FaceDetectionMode.fast,
         );
 
         if (faces.isEmpty) return [];
 
-        final embeddings = await _faceDetectorIsolate!.getFaceEmbeddings(
+        final embeddings = await _faceDetector!.getFaceEmbeddings(
           faces,
           bytes,
         );
@@ -448,7 +452,7 @@ class StabUtils {
         return embeddings;
       } catch (e) {
         LogService.instance.log("Error extracting face embeddings: $e");
-        _faceDetectorIsolate = null; // Force reinit on next call
+        _faceDetector = null; // Force reinit on next call
         return [];
       }
     });
@@ -477,7 +481,7 @@ class StabUtils {
             "Using ${faces.length} pre-detected faces for embedding matching",
           );
         } else {
-          faces = await _faceDetectorIsolate!.detectFaces(
+          faces = await _faceDetector!.detectFaces(
             imageBytes,
             mode: fdl.FaceDetectionMode.fast,
           );
@@ -490,7 +494,7 @@ class StabUtils {
         double bestSimilarity = -1.0;
 
         for (int i = 0; i < faces.length; i++) {
-          final embedding = await _faceDetectorIsolate!.getFaceEmbedding(
+          final embedding = await _faceDetector!.getFaceEmbedding(
             faces[i],
             imageBytes,
           );
@@ -517,7 +521,7 @@ class StabUtils {
         return bestIndex;
       } catch (e) {
         LogService.instance.log("Error in embedding-based face selection: $e");
-        _faceDetectorIsolate = null; // Force reinit on next call
+        _faceDetector = null; // Force reinit on next call
         return 0; // Fallback to first face
       }
     });
@@ -1686,12 +1690,13 @@ class StabUtils {
     String? srcId,
     List<int>? backgroundColorBGR,
     bool preserveBitDepth = false,
+    bool useCachedSrc = false,
+    int pngCompression = 3,
   }) async {
     token?.throwIfCancelled();
 
     if (IsolatePool.instance.isInitialized) {
-      return await IsolatePool.instance.execute<Uint8List>('stabilizeCV', {
-        'srcBytes': srcBytes,
+      final params = <String, dynamic>{
         'rotationDegrees': rotationDegrees,
         'scaleFactor': scaleFactor,
         'translateX': translateX,
@@ -1701,7 +1706,24 @@ class StabUtils {
         'srcId': srcId,
         'backgroundColorBGR': backgroundColorBGR,
         'preserveBitDepth': preserveBitDepth,
-      });
+        'pngCompression': pngCompression,
+      };
+      // When useCachedSrc is true and sticky routing guarantees the same
+      // worker, skip sending the large srcBytes across the isolate boundary.
+      // The worker will use its cached Mat instead.
+      if (!useCachedSrc) {
+        params['srcBytes'] = srcBytes;
+      }
+      // Use sticky routing when srcId is available so all passes for the same
+      // source image hit the same worker, maximizing Mat cache hits.
+      if (srcId != null) {
+        return await IsolatePool.instance
+            .executeSticky<Uint8List>(srcId, 'stabilizeCV', params);
+      }
+      return await IsolatePool.instance.execute<Uint8List>(
+        'stabilizeCV',
+        params,
+      );
     }
 
     // Fallback to individual isolate if pool not initialized

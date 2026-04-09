@@ -42,7 +42,7 @@ The face detection model used by AgeLapse is platform-dependent. On Mobile, Goog
 
 ## What's New / Changelog
 
-### v2.6.0 (Apr 2026)
+### v2.5.2 (Apr 2026)
 
 For previous releases, see the [full changelog](https://agelapse.com/docs/changelog/).
 

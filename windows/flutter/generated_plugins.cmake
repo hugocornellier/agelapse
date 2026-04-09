@@ -9,6 +9,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   dog_detection
   downloadsfolder
   face_detection_tflite
+  fast_thumbnail
   file_selector_windows
   flutter_avif_windows
   flutter_timezone

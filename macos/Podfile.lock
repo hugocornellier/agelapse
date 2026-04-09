@@ -1,7 +1,7 @@
 PODS:
   - animal_detection (1.0.0):
     - FlutterMacOS
-  - camera_desktop (0.1.0):
+  - camera_desktop (1.1.2):
     - FlutterMacOS
   - cat_detection (0.0.1):
     - FlutterMacOS
@@ -14,6 +14,8 @@ PODS:
   - downloadsfolder (0.0.1):
     - FlutterMacOS
   - face_detection_tflite (0.0.1):
+    - FlutterMacOS
+  - fast_thumbnail (0.1.0):
     - FlutterMacOS
   - file_picker (0.0.1):
     - FlutterMacOS
@@ -90,6 +92,7 @@ DEPENDENCIES:
   - dog_detection (from `Flutter/ephemeral/.symlinks/plugins/dog_detection/macos`)
   - downloadsfolder (from `Flutter/ephemeral/.symlinks/plugins/downloadsfolder/macos`)
   - face_detection_tflite (from `Flutter/ephemeral/.symlinks/plugins/face_detection_tflite/macos`)
+  - fast_thumbnail (from `Flutter/ephemeral/.symlinks/plugins/fast_thumbnail/macos`)
   - file_picker (from `Flutter/ephemeral/.symlinks/plugins/file_picker/macos`)
   - file_selector_macos (from `Flutter/ephemeral/.symlinks/plugins/file_selector_macos/macos`)
   - flutter_avif_macos (from `Flutter/ephemeral/.symlinks/plugins/flutter_avif_macos/macos`)
@@ -132,6 +135,8 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/downloadsfolder/macos
   face_detection_tflite:
     :path: Flutter/ephemeral/.symlinks/plugins/face_detection_tflite/macos
+  fast_thumbnail:
+    :path: Flutter/ephemeral/.symlinks/plugins/fast_thumbnail/macos
   file_picker:
     :path: Flutter/ephemeral/.symlinks/plugins/file_picker/macos
   file_selector_macos:
@@ -175,13 +180,14 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   animal_detection: d0d5bfcbc4954c5c8fb78b3d943e23220b3bfc5d
-  camera_desktop: a004fbc4af601b913417413333c0c14000ea9a3f
+  camera_desktop: a3e0776e9fdd78bd8f032186cffecd3e3b4ef159
   cat_detection: 64e964585ce66f3bfb3bf279d7fd618791c4de6f
   desktop_drop: 10a3e6a7fa9dbe350541f2574092fecfa345a07b
   device_info_plus: 4fb280989f669696856f8b129e4a5e3cd6c48f76
   dog_detection: 0d925f3c2a10622197b1ba9d217add35023f92e4
   downloadsfolder: 9a9a5fb6eee0abe38756e788bb248d1c21490a6e
   face_detection_tflite: b72f8e81cf75089b1a153d6d827a60862127f28d
+  fast_thumbnail: 2417991edd04c434d5d80b415b70136f0ec49dfc
   file_picker: 7584aae6fa07a041af2b36a2655122d42f578c1a
   file_selector_macos: 9e9e068e90ebee155097d00e89ae91edb2374db7
   flutter_avif_macos: 9ed61d67adfbd6964eccb59971020fb55c31fc11

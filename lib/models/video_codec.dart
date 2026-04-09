@@ -161,7 +161,8 @@ enum VideoCodec {
         return isFlatpak ? 'libopenh264' : 'libx264';
       case VideoCodec.hevc:
         if (isFlatpak) {
-          throw StateError('HEVC is not available in the Flatpak FFmpeg runtime');
+          throw StateError(
+              'HEVC is not available in the Flatpak FFmpeg runtime');
         }
         return 'libx265';
       case VideoCodec.prores422:
