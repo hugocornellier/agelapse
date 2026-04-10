@@ -58,15 +58,17 @@ void main() {
       String orientation,
       int width,
       int height,
-      int frameCount,
-    ) async {
+      int frameCount, {
+      List<int>? timestamps,
+    }) async {
       final stabDir = await DirUtils.getStabilizedDirPath(projectId);
       final orientationDir = Directory(p.join(stabDir, orientation));
       await orientationDir.create(recursive: true);
 
       // Generate simple colored frames
       for (int i = 0; i < frameCount; i++) {
-        final timestamp = 1000000000 + (i * 1000);
+        final timestamp =
+            timestamps != null ? timestamps[i] : 1000000000 + (i * 1000);
         final framePath = p.join(orientationDir.path, '$timestamp.png');
 
         // Create a simple colored image
@@ -329,6 +331,77 @@ void main() {
         await videoFile.exists(),
         isTrue,
         reason: 'Video output file should exist',
+      );
+    });
+
+    testWidgets('compiles video with date stamp overlay', (tester) async {
+      app.main();
+      await tester.pumpAndSettle(const Duration(seconds: 2));
+
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      testProjectId = await DB.instance.addProject(
+        'Video Test DateStamp',
+        'face',
+        timestamp,
+      );
+
+      final pid = testProjectId.toString();
+      await DB.instance.setSettingByTitle('video_resolution', '1080p', pid);
+      await DB.instance.setSettingByTitle(
+        'project_orientation',
+        'landscape',
+        pid,
+      );
+      await DB.instance.setSettingByTitle(
+        'export_date_stamp_enabled',
+        'true',
+        pid,
+      );
+
+      // Timestamps on different days to produce unique date stamp PNGs.
+      const frameCount = 3;
+      final dateStampTimestamps = [
+        DateTime(2024, 1, 15, 12, 0, 0).millisecondsSinceEpoch,
+        DateTime(2024, 6, 15, 12, 0, 0).millisecondsSinceEpoch,
+        DateTime(2024, 11, 15, 12, 0, 0).millisecondsSinceEpoch,
+      ];
+
+      await setupTestFrames(
+        testProjectId!,
+        'landscape',
+        1920,
+        1080,
+        frameCount,
+        timestamps: dateStampTimestamps,
+      );
+
+      final success = await VideoUtils.createTimelapseFromProjectId(
+        testProjectId!,
+        null,
+      );
+
+      expect(
+        success,
+        isTrue,
+        reason: 'Video compilation with date stamp overlay should succeed',
+      );
+
+      final videoPath = await DirUtils.getVideoOutputPath(
+        testProjectId!,
+        'landscape',
+      );
+      final videoFile = File(videoPath);
+      expect(
+        await videoFile.exists(),
+        isTrue,
+        reason: 'Video output file should exist',
+      );
+
+      final videoSize = await videoFile.length();
+      expect(
+        videoSize,
+        greaterThan(1000),
+        reason: 'Video file should have reasonable size',
       );
     });
 

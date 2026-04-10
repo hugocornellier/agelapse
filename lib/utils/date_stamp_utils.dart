@@ -771,6 +771,9 @@ Examples
       // Calculate image dimensions (text + padding)
       final imageWidth = (textPainter.width + paddingH * 2).ceil();
       final imageHeight = (textPainter.height + paddingV * 2).ceil();
+      LogService.instance.log(
+        "[DATE_STAMP] renderDateStampImage: '$dateText' -> ${imageWidth}x$imageHeight, fontSize=${(videoHeight * sizePercent / 100).clamp(12.0, 200.0).toStringAsFixed(1)}",
+      );
 
       // Create a picture recorder to draw on
       final recorder = ui.PictureRecorder();
@@ -793,6 +796,9 @@ Examples
       // Convert to image
       final picture = recorder.endRecording();
       final image = await picture.toImage(imageWidth, imageHeight);
+      picture.dispose();
+      LogService.instance
+          .log("[DATE_STAMP] picture.toImage completed for '$dateText'");
 
       return image;
     } catch (e) {
@@ -811,18 +817,27 @@ Examples
     required int sizePercent,
     String? fontFamily,
   }) async {
+    ui.Image? image;
     try {
-      final image = await renderDateStampImage(
+      image = await renderDateStampImage(
         dateText: dateText,
         videoHeight: videoHeight,
         sizePercent: sizePercent,
         fontFamily: fontFamily,
       );
-      if (image == null) return false;
+      if (image == null) {
+        LogService.instance.log(
+            "[DATE_STAMP] renderDateStampPng: image is null for '$dateText'");
+        return false;
+      }
 
       // Encode to PNG
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) return false;
+      if (byteData == null) {
+        LogService.instance.log(
+            "[DATE_STAMP] renderDateStampPng: toByteData returned null for '$dateText'");
+        return false;
+      }
 
       // Write to file
       final file = File(outputPath);
@@ -832,6 +847,8 @@ Examples
     } catch (e) {
       LogService.instance.log("[DATE_STAMP] renderDateStampPng failed: $e");
       return false;
+    } finally {
+      image?.dispose();
     }
   }
 
@@ -853,6 +870,10 @@ Examples
         '$baseTempDir/date_stamps_${DateTime.now().millisecondsSinceEpoch}',
       );
       await tempDir.create(recursive: true);
+      LogService.instance.log(
+        "[DATE_STAMP] generateDateStampAssets: ${uniqueDates.length} dates, "
+        "videoHeight=$videoHeight, size=$sizePercent, tempDir=${tempDir.path}",
+      );
 
       final Map<String, String> dateToPath = {};
 
@@ -869,9 +890,17 @@ Examples
         tasks.add((dateText: dateText, outputPath: outputPath));
       }
 
-      const batchSize = 20;
+      // Limit concurrency on mobile to reduce GPU/raster-thread pressure.
+      // picture.toImage() + toByteData() are GPU ops; 20 in parallel can
+      // exhaust Impeller's texture memory on real Android devices.
+      final int batchSize = Platform.isAndroid || Platform.isIOS ? 4 : 20;
       for (int start = 0; start < tasks.length; start += batchSize) {
         final end = (start + batchSize).clamp(0, tasks.length);
+        LogService.instance.log(
+          "[DATE_STAMP] Rendering batch ${start ~/ batchSize + 1}: "
+          "PNGs ${start + 1}–$end of ${tasks.length}",
+        );
+        await LogService.instance.flush();
         final batch = tasks.sublist(start, end);
         final results = await Future.wait(
           batch.map(
@@ -894,11 +923,18 @@ Examples
         for (final entry in results) {
           if (entry != null) dateToPath[entry.key] = entry.value;
         }
+        LogService.instance.log(
+          "[DATE_STAMP] Batch complete. Running total: ${dateToPath.length} PNGs",
+        );
+        await LogService.instance.flush();
       }
 
       LogService.instance.log(
         "[DATE_STAMP] Generated ${dateToPath.length}/${uniqueDates.length} date stamp PNGs",
       );
+
+      // Flush so PNG generation progress survives a crash during FFmpeg execution.
+      await LogService.instance.flush();
 
       return (dateToPath: dateToPath, tempDir: tempDir.path);
     } catch (e) {

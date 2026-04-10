@@ -76,7 +76,29 @@ class LogService {
 
     // Always write to file if initialized
     if (_initialized && _sink != null) {
-      _sink!.writeln(formattedMessage);
+      try {
+        _sink!.writeln(formattedMessage);
+      } catch (_) {
+        // Ignore write errors during concurrent flush
+      }
+    }
+  }
+
+  bool _flushing = false;
+
+  /// Flush buffered log output to disk immediately.
+  /// Call before crash-prone native operations so logs survive process death.
+  /// Safe to call from sync contexts (fire-and-forget) — skips if already
+  /// flushing to avoid "StreamSink is bound to a stream" errors.
+  Future<void> flush() async {
+    if (_flushing || _sink == null) return;
+    _flushing = true;
+    try {
+      await _sink!.flush();
+    } catch (_) {
+      // Ignore flush errors (e.g. concurrent write/flush race)
+    } finally {
+      _flushing = false;
     }
   }
 
