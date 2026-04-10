@@ -19,6 +19,7 @@ icon: "linux/packaging/deb/agelapse.png"
 dependencies:
   - ffmpeg
   - libmpv2 | libmpv1
+  - libturbojpeg | libturbojpeg0
 
 generic_name: "Timelapse Creator"
 categories:
