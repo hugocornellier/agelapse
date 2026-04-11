@@ -34,16 +34,11 @@ class DateStampOverlayInfo {
   final String? tempDir; // font temp dir if bundled font was extracted
   final String outputMapLabel;
 
-  /// Map of frame filename (e.g. "1606486869000") to formatted date text.
-  /// Used by _buildConcatListFromDir to embed file_packet_meta.
-  final Map<String, String>? frameDateMap;
-
   DateStampOverlayInfo({
     required this.filterComplex,
     this.pngInputPaths = const [],
     this.tempDir,
     required this.outputMapLabel,
-    this.frameDateMap,
   });
 }
 
@@ -371,30 +366,56 @@ class VideoUtils {
       projectId,
     );
 
-    // Build frameDateMap: filename (without extension) → formatted date text
-    final Map<String, String> frameDateMap = {};
+    // Build list of dates for each frame
+    final List<String> frameDates = [];
     for (final filePath in files) {
       final filename = path.basenameWithoutExtension(filePath);
       final timestampMs = int.tryParse(filename);
-      if (timestampMs == null) continue;
+      if (timestampMs == null) {
+        frameDates.add('');
+        continue;
+      }
       final int? offsetMinutes = captureOffsetMap[filename];
       final dateText = DateStampUtils.formatTimestamp(
         timestampMs,
         dateFormat,
         captureOffsetMinutes: offsetMinutes,
       );
-      if (dateText.isNotEmpty) {
-        frameDateMap[filename] = dateText;
+      frameDates.add(dateText);
+    }
+
+    // Group consecutive frames with the same date to minimize filter count
+    final List<({String date, int startFrame, int endFrame})> dateRanges = [];
+    String? currentDate;
+    int rangeStart = 0;
+    for (int i = 0; i < frameDates.length; i++) {
+      if (frameDates[i] != currentDate) {
+        if (currentDate != null && currentDate.isNotEmpty) {
+          dateRanges.add(
+            (date: currentDate, startFrame: rangeStart, endFrame: i - 1),
+          );
+        }
+        currentDate = frameDates[i];
+        rangeStart = i;
       }
+    }
+    if (currentDate != null && currentDate.isNotEmpty) {
+      dateRanges.add(
+        (
+          date: currentDate,
+          startFrame: rangeStart,
+          endFrame: frameDates.length - 1
+        ),
+      );
     }
 
     LogService.instance.log(
-      "[VIDEO] Date stamp frameDateMap: ${frameDateMap.length} entries",
+      "[VIDEO] Date stamp: ${dateRanges.length} date ranges from ${frameDates.length} frames",
     );
 
-    if (frameDateMap.isEmpty) {
+    if (dateRanges.isEmpty) {
       LogService.instance.log(
-        "[VIDEO] No date entries generated, skipping date stamp overlay",
+        "[VIDEO] No date ranges generated, skipping date stamp overlay",
       );
       return null;
     }
@@ -456,12 +477,32 @@ class VideoUtils {
     final escapedFontPath =
         fontFilePath.replaceAll('\\', '/').replaceAll(':', '\\\\:');
 
-    // Build single drawtext filter string.
-    // text='%{metadata\:agelapse_date}' — the \: is FFmpeg's escaping of ':'
-    // inside a filter option value. In Dart we write '\\:' to produce '\:'.
-    final drawtextFilter = '[$videoInputLabel]drawtext='
+    // Build chained drawtext filters — one per date range with enable expressions.
+    // Each drawtext renders text for its time window. This uses zero extra inputs
+    // (unlike the old overlay approach) while correctly showing per-frame dates.
+    final filterParts = <String>[];
+    String currentLabel = videoInputLabel;
+
+    for (int i = 0; i < dateRanges.length; i++) {
+      final range = dateRanges[i];
+      final double startTime = range.startFrame / fps;
+      final double endTime = (range.endFrame + 1) / fps;
+      final enableExpr =
+          "gte(t\\,${startTime.toStringAsFixed(6)})*lt(t\\,${endTime.toStringAsFixed(6)})";
+
+      // Escape the date text for FFmpeg filter option parsing.
+      // Colons, single quotes, backslashes, and semicolons must be escaped.
+      final escapedText = range.date
+          .replaceAll('\\', '\\\\\\\\')
+          .replaceAll("'", "'\\\\\\''")
+          .replaceAll(':', '\\\\:')
+          .replaceAll(';', '\\\\;');
+
+      final nextLabel = 'dt$i';
+      filterParts.add(
+        '[$currentLabel]drawtext='
         "fontfile='$escapedFontPath'"
-        ':text=\'%{metadata\\:agelapse_date}\''
+        ":text='$escapedText'"
         ':fontsize=$fontSize'
         ':fontcolor=white'
         ':shadowcolor=black@0.54'
@@ -472,21 +513,27 @@ class VideoUtils {
         ':boxborderw=4'
         ':x=$xExpr'
         ':y=$yExpr'
-        '[dated]';
+        ":enable='$enableExpr'"
+        '[$nextLabel]',
+      );
+      currentLabel = nextLabel;
+    }
+
+    final filterComplex = filterParts.join(';');
 
     LogService.instance.log(
-      "[VIDEO] Date stamp using drawtext filter (${frameDateMap.length} frames, font=$resolvedFont, size=$fontSize)",
+      "[VIDEO] Date stamp using ${dateRanges.length} chained drawtext filters "
+      "(font=$resolvedFont, size=$fontSize)",
     );
     LogService.instance.log(
-      "[VIDEO] _generateDateStampOverlay complete. Filter length: ${drawtextFilter.length} chars",
+      "[VIDEO] _generateDateStampOverlay complete. Filter length: ${filterComplex.length} chars",
     );
 
     return DateStampOverlayInfo(
-      filterComplex: drawtextFilter,
+      filterComplex: filterComplex,
       pngInputPaths: const [],
       tempDir: fontTempDir,
-      outputMapLabel: 'dated',
-      frameDateMap: frameDateMap,
+      outputMapLabel: currentLabel,
     );
   }
 
@@ -1148,7 +1195,7 @@ class VideoUtils {
         inputIndexOffset: needsColorOverlay ? 1 : 0,
       );
       LogService.instance.log(
-        "[VIDEO] Date stamp overlay: ${dateStampOverlay != null ? 'drawtext (${dateStampOverlay.frameDateMap?.length ?? 0} frames)' : 'disabled'}",
+        "[VIDEO] Date stamp overlay: ${dateStampOverlay != null ? 'drawtext enabled' : 'disabled'}",
       );
 
       // Input index offset: 0 normally, 1 when color overlay is present
@@ -1218,7 +1265,6 @@ class VideoUtils {
         framerate,
         projectId: projectId,
         orientation: projectOrientation,
-        frameDateMap: dateStampOverlay?.frameDateMap,
       );
       LogService.instance.log("[VIDEO] Concat list: $listPath");
 
@@ -1305,7 +1351,6 @@ class VideoUtils {
       LogService.instance.log('[VIDEO] DEBUG full command=$ffmpegCommand');
       LogService.instance.log(
         "[VIDEO] Command stats: ${ffmpegCommand.length} chars, "
-        "drawtext frames=${dateStampOverlay?.frameDateMap?.length ?? 0}, "
         "filter_complex=${filterResult.filterComplex?.length ?? 0} chars",
       );
 
@@ -1757,7 +1802,6 @@ class VideoUtils {
     int fps, {
     int? projectId,
     String? orientation,
-    Map<String, String>? frameDateMap,
   }) async {
     if (fps <= 0) {
       throw ArgumentError('fps must be positive, got $fps');
@@ -1869,15 +1913,6 @@ class VideoUtils {
       final norm = fp.replaceAll(r'\', '/');
       final esc = norm.replaceAll("'", r"'\''");
       sb.writeln("file '$esc'");
-      if (frameDateMap != null) {
-        final filename = path.basenameWithoutExtension(fp);
-        final dateText = frameDateMap[filename];
-        if (dateText != null && dateText.isNotEmpty) {
-          // Escape single quotes for FFmpeg concat format
-          final escapedDate = dateText.replaceAll("'", "'\\''");
-          sb.writeln("file_packet_meta agelapse_date $escapedDate");
-        }
-      }
       sb.writeln('duration $perFrame');
     }
     sb.writeln('duration $perFrame');
@@ -1935,7 +1970,7 @@ class VideoUtils {
     LogService.instance.log("[VIDEO] fps: $fps");
     if (dateStampOverlay != null) {
       LogService.instance.log(
-        "[VIDEO] Date stamp overlay enabled (drawtext, ${dateStampOverlay.frameDateMap?.length ?? 0} frames)",
+        "[VIDEO] Date stamp overlay enabled (drawtext)",
       );
     }
 
@@ -1947,7 +1982,6 @@ class VideoUtils {
       fps,
       projectId: projectId,
       orientation: orientation,
-      frameDateMap: dateStampOverlay?.frameDateMap,
     );
 
     // Get resolution setting
