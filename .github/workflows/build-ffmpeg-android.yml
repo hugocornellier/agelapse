@@ -10,7 +10,7 @@ jobs:
     timeout-minutes: 120
 
     env:
-      FFMPEG_VERSION: "n8.0.1"
+      FFMPEG_VERSION: "n6.1.2"
       NDK_VERSION: "27.2.12479018"
       API_LEVEL: "24"
       # ABIs to build (matching current AAR)
@@ -37,6 +37,14 @@ jobs:
       - name: Clone FFmpeg source
         run: |
           git clone --depth 1 -b $FFMPEG_VERSION https://git.ffmpeg.org/ffmpeg.git /tmp/ffmpeg-src
+
+      - name: Patch FFmpeg thread-local log level
+        run: |
+          # Make av_log_level thread-local so concurrent FFmpeg sessions
+          # (as used by FFmpegKit's multi-session API) don't share log level state.
+          sed -i 's/static int av_log_level/__thread int av_log_level/g' /tmp/ffmpeg-src/libavutil/log.c
+          echo "=== Patched log.c ==="
+          grep -n 'av_log_level' /tmp/ffmpeg-src/libavutil/log.c | head -5
 
       - name: Build freetype and harfbuzz for each ABI
         run: |
@@ -224,6 +232,7 @@ jobs:
               --enable-avformat \
               --enable-avcodec \
               --enable-avfilter \
+              --enable-avdevice \
               --disable-everything \
               --disable-doc \
               --disable-programs \
@@ -274,10 +283,33 @@ jobs:
             echo "libavfilter size: $(du -h /tmp/ffmpeg-out-${ABI}/lib/libavfilter.so | cut -f1)"
           done
 
+      - name: Clone and patch arthenica ffmpeg-kit v6 wrapper source
+        run: |
+          git clone --depth 1 -b v6.0.LTS https://github.com/arthenica/ffmpeg-kit.git /tmp/ffmpeg-kit-src
+
+          WRAPPER_SRC="/tmp/ffmpeg-kit-src/android/ffmpeg-kit-android-lib/src/main/cpp"
+
+          # Rename JNI symbols from arthenica -> antonkarpenko across all source files.
+          # The JNI class path strings appear in ffmpegkit.c and ffmpegkit_abidetect.c,
+          # but we apply to all .c and .h files to be thorough.
+          find "${WRAPPER_SRC}" \( -name '*.c' -o -name '*.h' \) \
+            -exec sed -i 's/arthenica/antonkarpenko/g' {} +
+
+          # Disable SAF (Storage Access Framework) protocol — not needed for AgeLapse
+          # and av_set_saf_open/av_set_saf_close are FFmpegKit-specific patches not
+          # present in vanilla FFmpeg 6.
+          sed -i 's| av_set_saf|//av_set_saf|g' "${WRAPPER_SRC}/ffmpegkit.c"
+
+          echo "=== Patched wrapper source files ==="
+          echo "Remaining 'arthenica' refs (should be 0):"
+          grep -r 'arthenica' "${WRAPPER_SRC}" || echo "  none"
+          echo "SAF calls in ffmpegkit.c (should be commented out):"
+          grep -n 'av_set_saf' "${WRAPPER_SRC}/ffmpegkit.c" | head -5
+
       - name: Build FFmpegKit wrapper for each ABI
         run: |
-          # Clone the ffmpeg-kit source to get the native wrapper code
-          git clone --depth 1 -b v6.0.LTS https://github.com/arthenica/ffmpeg-kit.git /tmp/ffmpeg-kit-src
+          WRAPPER_SRC="/tmp/ffmpeg-kit-src/android/ffmpeg-kit-android-lib/src/main/cpp"
+          BUILD_DATE=$(date +%Y%m%d)
 
           for ABI in $ABIS; do
             echo "=== Building FFmpegKit wrapper for $ABI ==="
@@ -295,32 +327,35 @@ jobs:
             OUT_DIR="/tmp/ffmpegkit-out-${ABI}"
             mkdir -p $OUT_DIR
 
-            # Compile FFmpegKit wrapper (the C code that bridges Java/JNI to FFmpeg)
-            WRAPPER_SRC="/tmp/ffmpeg-kit-src/android/ffmpeg-kit-android-lib/src/main/cpp"
+            # Collect all .c files from the wrapper cpp directory (~20 files),
+            # excluding ffmpegkit_abidetect.c which is built as its own separate .so.
+            WRAPPER_C_FILES=$(find "${WRAPPER_SRC}" -name '*.c' ! -name 'ffmpegkit_abidetect.c' | sort | tr '\n' ' ')
+            echo "Wrapper .c files: $(echo $WRAPPER_C_FILES | wc -w) files"
+
+            # Build libffmpegkit.so — the JNI bridge between Java and FFmpeg 6
             $CC -shared -o $OUT_DIR/libffmpegkit.so \
               -I${FFMPEG_PREFIX}/include \
               -I${WRAPPER_SRC} \
               -L${FFMPEG_PREFIX}/lib \
               -fPIC \
-              ${WRAPPER_SRC}/ffmpegkit.c \
-              ${WRAPPER_SRC}/ffprobekit.c \
-              ${WRAPPER_SRC}/fftools_cmdutils.c \
-              ${WRAPPER_SRC}/fftools_ffmpeg.c \
-              ${WRAPPER_SRC}/fftools_ffmpeg_demux.c \
-              ${WRAPPER_SRC}/fftools_ffmpeg_filter.c \
-              ${WRAPPER_SRC}/fftools_ffmpeg_hw.c \
-              ${WRAPPER_SRC}/fftools_ffmpeg_mux.c \
-              ${WRAPPER_SRC}/fftools_ffmpeg_mux_init.c \
-              ${WRAPPER_SRC}/fftools_ffmpeg_opt.c \
-              ${WRAPPER_SRC}/fftools_objpool.c \
-              ${WRAPPER_SRC}/fftools_opt_common.c \
-              ${WRAPPER_SRC}/fftools_sync_queue.c \
-              ${WRAPPER_SRC}/fftools_thread_queue.c \
-              -lavfilter -lavformat -lavcodec -lswscale -lswresample -lavutil \
-              -lm -lz -llog -landroid \
-              2>&1 || echo "::warning::FFmpegKit wrapper build failed for $ABI — will use pre-built"
+              -DFFMPEG_KIT_BUILD_DATE=${BUILD_DATE} \
+              -DFFMPEG_KIT_LTS \
+              $WRAPPER_C_FILES \
+              -lavfilter -lavformat -lavcodec -lavdevice \
+              -lswscale -lswresample -lavutil \
+              -lm -lz -llog -landroid
 
-            ls -lh $OUT_DIR/ 2>/dev/null
+            # Build ffmpegkit_abidetect.so (loaded first by NativeLoader.java to
+            # detect the ABI before loading the remaining libraries)
+            $CC -shared -o $OUT_DIR/libffmpegkit_abidetect.so \
+              -I${WRAPPER_SRC} \
+              -fPIC \
+              -DFFMPEG_KIT_BUILD_DATE=${BUILD_DATE} \
+              -DFFMPEG_KIT_LTS \
+              "${WRAPPER_SRC}/ffmpegkit_abidetect.c" \
+              -llog
+
+            ls -lh $OUT_DIR/
           done
 
       - name: Package AAR
@@ -328,67 +363,71 @@ jobs:
           AAR_DIR="/tmp/ffmpeg-kit-aar"
           mkdir -p $AAR_DIR
 
-          # Extract classes.jar and manifest from the original AAR
-          ORIG_AAR="$HOME/.gradle/caches/modules-2/files-2.1/com.antonkarpenko/ffmpeg-kit-full-gpl/2.1.0/91b69cd12cad8966bc96c5b6fcaec1c04ff329f6/ffmpeg-kit-full-gpl-2.1.0.aar"
+          # Download the original AAR to extract classes.jar and AndroidManifest.xml.
+          # The Java bindings (classes.jar) come from com.antonkarpenko:ffmpeg-kit-full-gpl:2.1.0
+          # but we replace all native .so files with our minimal FFmpeg 6 builds.
+          ORIG_AAR="/tmp/original.aar"
+          echo "Downloading original AAR for Java bindings..."
+          curl -fL -o "$ORIG_AAR" \
+            "https://repo1.maven.org/maven2/com/antonkarpenko/ffmpeg-kit-full-gpl/2.1.0/ffmpeg-kit-full-gpl-2.1.0.aar"
 
-          # If original AAR not in cache, download it
-          if [ ! -f "$ORIG_AAR" ]; then
-            echo "Original AAR not in cache, downloading..."
-            curl -L -o /tmp/original.aar \
-              "https://repo1.maven.org/maven2/com/antonkarpenko/ffmpeg-kit-full-gpl/2.1.0/ffmpeg-kit-full-gpl-2.1.0.aar" \
-              2>/dev/null || true
-            ORIG_AAR="/tmp/original.aar"
-          fi
-
-          # Extract Java bindings and manifest
+          # Extract Java bindings and manifest (no native libs — we supply our own)
           cd $AAR_DIR
-          unzip -o "$ORIG_AAR" classes.jar AndroidManifest.xml META-INF/* R.txt 2>/dev/null || true
+          unzip -o "$ORIG_AAR" classes.jar AndroidManifest.xml R.txt 2>/dev/null || true
+          unzip -o "$ORIG_AAR" "META-INF/*" 2>/dev/null || true
 
-          # Copy our minimal .so files
+          TOOLCHAIN="$NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64"
+          STRIP="${TOOLCHAIN}/bin/llvm-strip"
+
           for ABI in $ABIS; do
+            echo "=== Packaging $ABI ==="
             mkdir -p jni/$ABI
 
             FFMPEG_PREFIX="/tmp/ffmpeg-out-${ABI}"
-            TOOLCHAIN="$NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64"
-            STRIP="${TOOLCHAIN}/bin/llvm-strip"
+            WRAPPER_OUT="/tmp/ffmpegkit-out-${ABI}"
 
-            # Copy FFmpeg shared libs
-            for lib in libavcodec libavfilter libavformat libavutil libswresample libswscale; do
-              SO=$(find $FFMPEG_PREFIX/lib -name "${lib}.so*" -not -type l | head -1)
+            # Copy all 7 FFmpeg shared libs (NativeLoader.java hard-loads all 7)
+            for lib in libavutil libswscale libswresample libavcodec libavformat libavfilter libavdevice; do
+              SO=$(find $FFMPEG_PREFIX/lib -name "${lib}.so" -not -type l | head -1)
+              if [ -z "$SO" ]; then
+                SO=$(find $FFMPEG_PREFIX/lib -name "${lib}.so.*" -not -type l | head -1)
+              fi
               if [ -n "$SO" ]; then
                 cp "$SO" jni/$ABI/${lib}.so
                 $STRIP --strip-unneeded jni/$ABI/${lib}.so
+              else
+                echo "::error::Missing $lib for $ABI"
+                exit 1
               fi
             done
 
-            # Copy FFmpegKit wrapper
-            WRAPPER="/tmp/ffmpegkit-out-${ABI}/libffmpegkit.so"
-            if [ -f "$WRAPPER" ]; then
-              cp "$WRAPPER" jni/$ABI/
-              $STRIP --strip-unneeded jni/$ABI/libffmpegkit.so
-            else
-              # Fall back to original AAR's wrapper
-              unzip -o "$ORIG_AAR" "jni/$ABI/libffmpegkit.so" "jni/$ABI/libffmpegkit_abidetect.so" -d $AAR_DIR 2>/dev/null || true
-            fi
+            # Copy the JNI wrapper libs built from arthenica v6 source
+            cp "$WRAPPER_OUT/libffmpegkit.so" jni/$ABI/
+            $STRIP --strip-unneeded jni/$ABI/libffmpegkit.so
 
-            # Copy libc++_shared.so from NDK
+            cp "$WRAPPER_OUT/libffmpegkit_abidetect.so" jni/$ABI/
+            $STRIP --strip-unneeded jni/$ABI/libffmpegkit_abidetect.so
+
+            # Copy libc++_shared.so from NDK (required by clang-compiled .so files)
             NDK_LIBCXX=$(find $NDK_HOME -name "libc++_shared.so" -path "*/$ABI/*" | head -1)
             if [ -n "$NDK_LIBCXX" ]; then
               cp "$NDK_LIBCXX" jni/$ABI/
+            else
+              echo "::warning::libc++_shared.so not found for $ABI"
             fi
 
-            echo "=== $ABI ==="
+            echo "  libs: $(ls jni/$ABI/*.so | wc -l) .so files"
             ls -lh jni/$ABI/
           done
 
-          # Create AAR
+          # Create AAR (zip of classes.jar + AndroidManifest.xml + jni/)
           zip -r /tmp/ffmpeg-kit-minimal-gpl.aar . -x ".*"
           ls -lh /tmp/ffmpeg-kit-minimal-gpl.aar
 
           echo ""
-          echo "=== Size comparison ==="
-          echo "Original: $(du -h "$ORIG_AAR" | cut -f1)"
-          echo "Minimal:  $(du -h /tmp/ffmpeg-kit-minimal-gpl.aar | cut -f1)"
+          echo "=== Size comparison (FFmpeg 6 minimal vs full-gpl original) ==="
+          echo "Original (FFmpeg full-gpl): $(du -h "$ORIG_AAR" | cut -f1)"
+          echo "Minimal  (FFmpeg 6 + arthenica wrapper): $(du -h /tmp/ffmpeg-kit-minimal-gpl.aar | cut -f1)"
 
       - name: Upload AAR artifact
         uses: actions/upload-artifact@v4
