@@ -70,6 +70,17 @@ void main() {
       expect(stdout, contains('ffmpeg version'),
           reason: 'ffmpeg -version should print version info');
 
+      // Verify drawtext filter is available
+      final filterResult = await Process.run(
+        exePath,
+        ['-filters'],
+        environment: {'PATH': minimalPath},
+      );
+      final filterOutput = filterResult.stdout as String;
+      expect(filterOutput, contains('drawtext'),
+          reason: 'ffmpeg must have drawtext filter compiled in.\n'
+              'Available filters: ${filterOutput.length > 500 ? filterOutput.substring(0, 500) : filterOutput}');
+
       // Cleanup.
       await testBinDir.delete(recursive: true);
     });

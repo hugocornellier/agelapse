@@ -473,9 +473,12 @@ class VideoUtils {
     }
 
     // Escape font path for FFmpeg filter option parsing:
-    // convert Windows backslashes to forward slashes, then escape colons.
+    // 1. Convert Windows backslashes to forward slashes
+    // 2. Escape colons with \: (colon is FFmpeg's filter option separator)
+    // 3. Escape single quotes
+    // In Dart: '\\:' produces the string \: which FFmpeg interprets as literal colon.
     final escapedFontPath =
-        fontFilePath.replaceAll('\\', '/').replaceAll(':', '\\\\:');
+        fontFilePath.replaceAll('\\', '/').replaceAll(':', '\\:');
 
     // Build chained drawtext filters — one per date range with enable expressions.
     // Each drawtext renders text for its time window. This uses zero extra inputs
