@@ -33,6 +33,44 @@ jobs:
             git
             diffutils
             make
+            mingw-w64-x86_64-cmake
+
+      - name: Build freetype and harfbuzz from source
+        run: |
+          cd /tmp
+
+          # Download sources
+          curl -L -o freetype.tar.xz https://download.savannah.gnu.org/releases/freetype/freetype-2.13.3.tar.xz
+          curl -L -o harfbuzz.tar.xz https://github.com/harfbuzz/harfbuzz/releases/download/14.1.0/harfbuzz-14.1.0.tar.xz
+          tar xf freetype.tar.xz
+          tar xf harfbuzz.tar.xz
+
+          # Build freetype (static, no harfbuzz to break circular dep)
+          cd /tmp/freetype-2.13.3
+          ./configure \
+            --prefix=/tmp/deps \
+            --enable-static --disable-shared \
+            --with-zlib=no --with-bzip2=no --with-png=no --with-harfbuzz=no --with-brotli=no
+          make -j$(nproc) && make install
+
+          # Build harfbuzz (static, minimal)
+          cd /tmp/harfbuzz-14.1.0
+          cmake -B build -G "MSYS Makefiles" \
+            -DCMAKE_INSTALL_PREFIX=/tmp/deps \
+            -DCMAKE_PREFIX_PATH=/tmp/deps \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DHB_HAVE_FREETYPE=ON \
+            -DHB_HAVE_GLIB=OFF \
+            -DHB_HAVE_GOBJECT=OFF \
+            -DHB_HAVE_ICU=OFF \
+            -DHB_HAVE_CAIRO=OFF \
+            -DHB_BUILD_SUBSET=OFF
+          cmake --build build -j$(nproc)
+          cmake --install build
+
+          echo "=== Verify ==="
+          PKG_CONFIG_PATH=/tmp/deps/lib/pkgconfig pkg-config --modversion freetype2 harfbuzz
+          PKG_CONFIG_PATH=/tmp/deps/lib/pkgconfig pkg-config --static --libs freetype2 harfbuzz
 
       - name: Build freetype and harfbuzz from source
         run: |
@@ -99,7 +137,6 @@ jobs:
             --enable-decoder=wrapped_avframe \
             --enable-muxer=mp4 \
             --enable-muxer=webm \
-            --enable-muxer=matroska \
             --enable-demuxer=concat \
             --enable-demuxer=image2 \
             --enable-demuxer=image_png_pipe \
