@@ -1,0 +1,226 @@
+name: Build FFmpeg (macOS)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build universal ffmpeg binary
+    runs-on: macos-15
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: brew install nasm pkg-config cmake
+
+      - name: Download sources
+        run: |
+          cd /tmp
+          curl -L -o freetype.tar.xz https://download.savannah.gnu.org/releases/freetype/freetype-2.13.3.tar.xz
+          curl -L -o harfbuzz.tar.xz https://github.com/harfbuzz/harfbuzz/releases/download/14.1.0/harfbuzz-14.1.0.tar.xz
+          tar xf freetype.tar.xz
+          tar xf harfbuzz.tar.xz
+
+      - name: Build dependencies (arm64)
+        run: |
+          # Build freetype (arm64, no harfbuzz to break circular dep)
+          cd /tmp/freetype-2.13.3
+          mkdir build-arm64 && cd build-arm64
+          ../configure \
+            --host=aarch64-apple-darwin \
+            CC="/usr/bin/clang -arch arm64" \
+            --prefix=/tmp/deps-arm64 \
+            --enable-static --disable-shared \
+            --with-zlib=no --with-bzip2=no --with-png=no --with-harfbuzz=no --with-brotli=no
+          make -j$(sysctl -n hw.ncpu) && make install
+
+          # Build harfbuzz (arm64, minimal — no glib, no freetype funcs)
+          cd /tmp/harfbuzz-14.1.0
+          cmake -B build-arm64 \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_INSTALL_PREFIX=/tmp/deps-arm64 \
+            -DCMAKE_PREFIX_PATH=/tmp/deps-arm64 \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DHB_HAVE_FREETYPE=ON \
+            -DHB_HAVE_GLIB=OFF \
+            -DHB_HAVE_GOBJECT=OFF \
+            -DHB_HAVE_ICU=OFF \
+            -DHB_HAVE_CAIRO=OFF \
+            -DHB_BUILD_SUBSET=OFF
+          cmake --build build-arm64 -j$(sysctl -n hw.ncpu)
+          cmake --install build-arm64
+
+          echo "=== arm64 deps ==="
+          ls /tmp/deps-arm64/lib/*.a
+          PKG_CONFIG_PATH=/tmp/deps-arm64/lib/pkgconfig pkg-config --modversion freetype2 harfbuzz
+
+      - name: Build dependencies (x86_64)
+        run: |
+          # Build freetype (x86_64)
+          cd /tmp/freetype-2.13.3
+          mkdir build-x86 && cd build-x86
+          ../configure \
+            --host=x86_64-apple-darwin \
+            CC="/usr/bin/clang -arch x86_64" \
+            --prefix=/tmp/deps-x86 \
+            --enable-static --disable-shared \
+            --with-zlib=no --with-bzip2=no --with-png=no --with-harfbuzz=no --with-brotli=no
+          make -j$(sysctl -n hw.ncpu) && make install
+
+          # Build harfbuzz (x86_64)
+          cd /tmp/harfbuzz-14.1.0
+          cmake -B build-x86 \
+            -DCMAKE_OSX_ARCHITECTURES=x86_64 \
+            -DCMAKE_INSTALL_PREFIX=/tmp/deps-x86 \
+            -DCMAKE_PREFIX_PATH=/tmp/deps-x86 \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DHB_HAVE_FREETYPE=ON \
+            -DHB_HAVE_GLIB=OFF \
+            -DHB_HAVE_GOBJECT=OFF \
+            -DHB_HAVE_ICU=OFF \
+            -DHB_HAVE_CAIRO=OFF \
+            -DHB_BUILD_SUBSET=OFF
+          cmake --build build-x86 -j$(sysctl -n hw.ncpu)
+          cmake --install build-x86
+
+      - name: Build ffmpeg (arm64)
+        run: |
+          cd /tmp
+          git clone --depth 1 -b n8.0.1 https://git.ffmpeg.org/ffmpeg.git ffmpeg-arm64
+          cd ffmpeg-arm64
+          export PKG_CONFIG_PATH=/tmp/deps-arm64/lib/pkgconfig
+          ./configure \
+            --cc=/usr/bin/clang \
+            --arch=arm64 \
+            --enable-cross-compile \
+            --target-os=darwin \
+            --extra-cflags='-arch arm64' \
+            --extra-ldflags='-arch arm64 -L/tmp/deps-arm64/lib' \
+            --extra-libs='-lc++' \
+            --enable-gpl \
+            --enable-zlib \
+            --disable-everything \
+            --disable-doc \
+            --disable-ffplay \
+            --disable-ffprobe \
+            --disable-network \
+            --disable-autodetect \
+            --enable-encoder=h264_videotoolbox \
+            --enable-encoder=hevc_videotoolbox \
+            --enable-encoder=prores_ks \
+            --enable-videotoolbox \
+            --enable-decoder=png \
+            --enable-decoder=wrapped_avframe \
+            --enable-muxer=mp4 \
+            --enable-muxer=mov \
+            --enable-demuxer=concat \
+            --enable-demuxer=image2 \
+            --enable-demuxer=image_png_pipe \
+            --enable-indev=lavfi \
+            --enable-filter=split \
+            --enable-filter=format \
+            --enable-filter=scale \
+            --enable-filter=crop \
+            --enable-filter=gblur \
+            --enable-filter=overlay \
+            --enable-filter=colorchannelmixer \
+            --enable-filter=color \
+            --enable-filter=drawtext \
+            --enable-libfreetype \
+            --enable-libharfbuzz \
+            --enable-protocol=file \
+            --enable-swscale \
+            --enable-avformat \
+            --enable-avcodec \
+            --enable-avfilter \
+            --pkg-config-flags=--static
+          make -j$(sysctl -n hw.ncpu)
+          ls -lh ffmpeg
+
+      - name: Build ffmpeg (x86_64)
+        run: |
+          cd /tmp
+          git clone --depth 1 -b n8.0.1 https://git.ffmpeg.org/ffmpeg.git ffmpeg-x86
+          cd ffmpeg-x86
+          export PKG_CONFIG_PATH=/tmp/deps-x86/lib/pkgconfig
+          ./configure \
+            --cc=/usr/bin/clang \
+            --arch=x86_64 \
+            --enable-cross-compile \
+            --target-os=darwin \
+            --extra-cflags='-arch x86_64' \
+            --extra-ldflags='-arch x86_64 -L/tmp/deps-x86/lib' \
+            --extra-libs='-lc++' \
+            --enable-gpl \
+            --enable-zlib \
+            --disable-everything \
+            --disable-doc \
+            --disable-ffplay \
+            --disable-ffprobe \
+            --disable-network \
+            --disable-autodetect \
+            --enable-encoder=h264_videotoolbox \
+            --enable-encoder=hevc_videotoolbox \
+            --enable-encoder=prores_ks \
+            --enable-videotoolbox \
+            --enable-decoder=png \
+            --enable-decoder=wrapped_avframe \
+            --enable-muxer=mp4 \
+            --enable-muxer=mov \
+            --enable-demuxer=concat \
+            --enable-demuxer=image2 \
+            --enable-demuxer=image_png_pipe \
+            --enable-indev=lavfi \
+            --enable-filter=split \
+            --enable-filter=format \
+            --enable-filter=scale \
+            --enable-filter=crop \
+            --enable-filter=gblur \
+            --enable-filter=overlay \
+            --enable-filter=colorchannelmixer \
+            --enable-filter=color \
+            --enable-filter=drawtext \
+            --enable-libfreetype \
+            --enable-libharfbuzz \
+            --enable-protocol=file \
+            --enable-swscale \
+            --enable-avformat \
+            --enable-avcodec \
+            --enable-avfilter \
+            --pkg-config-flags=--static
+          make -j$(sysctl -n hw.ncpu)
+          ls -lh ffmpeg
+
+      - name: Create universal binary
+        run: |
+          lipo -create \
+            /tmp/ffmpeg-arm64/ffmpeg \
+            /tmp/ffmpeg-x86/ffmpeg \
+            -output /tmp/ffmpeg-universal
+          lipo -info /tmp/ffmpeg-universal
+          chmod 755 /tmp/ffmpeg-universal
+          ls -lh /tmp/ffmpeg-universal
+
+      - name: Verify binary
+        run: |
+          /tmp/ffmpeg-universal -version
+          echo "=== Checking drawtext filter ==="
+          /tmp/ffmpeg-universal -filters 2>&1 | grep -E "^\s+T.*drawtext" || {
+            echo "::error::drawtext filter not found!"
+            exit 1
+          }
+          echo "drawtext filter confirmed"
+
+      - name: Copy to repo
+        run: |
+          cp /tmp/ffmpeg-universal assets/ffmpeg/mac/ffmpeg
+          ls -lh assets/ffmpeg/mac/ffmpeg
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ffmpeg-macos-universal
+          path: assets/ffmpeg/mac/ffmpeg
+          retention-days: 90

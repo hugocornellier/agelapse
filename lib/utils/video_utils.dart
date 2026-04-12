@@ -33,12 +33,14 @@ class DateStampOverlayInfo {
   final List<String> pngInputPaths; // empty for drawtext mode
   final String? tempDir; // font temp dir if bundled font was extracted
   final String outputMapLabel;
+  final String? fontDir; // parent dir of font file (for Windows working dir)
 
   DateStampOverlayInfo({
     required this.filterComplex,
     this.pngInputPaths = const [],
     this.tempDir,
     required this.outputMapLabel,
+    this.fontDir,
   });
 }
 
@@ -472,14 +474,22 @@ class VideoUtils {
         yExpr = 'H-th-$marginV';
     }
 
-    // Escape font path for FFmpeg filter option parsing:
-    // convert Windows backslashes to forward slashes, then escape colons.
-    final escapedFontPath =
-        fontFilePath.replaceAll('\\', '/').replaceAll(':', '\\\\:');
+    // Escape font path for FFmpeg drawtext filter (unquoted value).
+    // On Windows, the drive letter colon (C:) cannot be reliably escaped
+    // across FFmpeg builds, so we use a relative path from the font's
+    // parent directory (set as FFmpeg's working directory via fontDir).
+    // On other platforms, forward slashes work as-is.
+    final escapedFontPath = Platform.isWindows
+        ? path.basename(fontFilePath)
+        : fontFilePath.replaceAll('\\', '/');
 
     // Build chained drawtext filters — one per date range with enable expressions.
     // Each drawtext renders text for its time window. This uses zero extra inputs
     // (unlike the old overlay approach) while correctly showing per-frame dates.
+    //
+    // Values are unquoted with \, and \: escaping for special characters.
+    // Single-quote quoting is broken in FFmpeg's MinGW/Windows builds, so we
+    // avoid it entirely.
     final filterParts = <String>[];
     String currentLabel = videoInputLabel;
 
@@ -490,19 +500,21 @@ class VideoUtils {
       final enableExpr =
           "gte(t\\,${startTime.toStringAsFixed(6)})*lt(t\\,${endTime.toStringAsFixed(6)})";
 
-      // Escape the date text for FFmpeg filter option parsing.
-      // Colons, single quotes, backslashes, and semicolons must be escaped.
+      // Escape date text for unquoted FFmpeg filter value.
+      // \, escapes commas (filter separator), \: escapes colons (option separator),
+      // \; escapes semicolons (chain separator), \' escapes single quotes.
       final escapedText = range.date
-          .replaceAll('\\', '\\\\\\\\')
-          .replaceAll("'", "'\\\\\\''")
-          .replaceAll(':', '\\\\:')
-          .replaceAll(';', '\\\\;');
+          .replaceAll('\\', '\\\\')
+          .replaceAll(',', '\\,')
+          .replaceAll(':', '\\:')
+          .replaceAll(';', '\\;')
+          .replaceAll("'", "\\'");
 
       final nextLabel = 'dt$i';
       filterParts.add(
         '[$currentLabel]drawtext='
-        "fontfile='$escapedFontPath'"
-        ":text='$escapedText'"
+        'fontfile=$escapedFontPath'
+        ':text=$escapedText'
         ':fontsize=$fontSize'
         ':fontcolor=white'
         ':shadowcolor=black@0.54'
@@ -513,7 +525,7 @@ class VideoUtils {
         ':boxborderw=4'
         ':x=$xExpr'
         ':y=$yExpr'
-        ":enable='$enableExpr'"
+        ':enable=$enableExpr'
         '[$nextLabel]',
       );
       currentLabel = nextLabel;
@@ -534,6 +546,7 @@ class VideoUtils {
       pngInputPaths: const [],
       tempDir: fontTempDir,
       outputMapLabel: currentLabel,
+      fontDir: Platform.isWindows ? path.dirname(fontFilePath) : null,
     );
   }
 
@@ -2156,7 +2169,16 @@ class VideoUtils {
     LogService.instance.log("[VIDEO] Starting ffmpeg process...");
 
     try {
-      final proc = await Process.start(ffmpegExe, args, runInShell: false);
+      // On Windows, set working directory to the font's parent dir so the
+      // drawtext filter can find the font via relative path (avoids the
+      // unescapable colon in Windows drive letters like C:).
+      final String? workDir = dateStampOverlay?.fontDir;
+      final proc = await Process.start(
+        ffmpegExe,
+        args,
+        runInShell: false,
+        workingDirectory: workDir,
+      );
       FFmpegProcessManager.instance.registerProcess(proc);
       LogService.instance.log(
         "[VIDEO] ffmpeg process started with PID: ${proc.pid}",
