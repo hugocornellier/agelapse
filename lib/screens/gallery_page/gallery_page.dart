@@ -1085,29 +1085,33 @@ class GalleryPageState extends State<GalleryPage>
       return;
     }
 
-    // Check for directories and expand them
+    await _expandAndShowImport(filePaths);
+
+    // Check queue for more files
+    await _processQueuedFiles();
+  }
+
+  /// Expand directories in the file list and show import preview.
+  Future<void> _expandAndShowImport(List<String> paths) async {
     setState(() => preparingImport = true);
     await Future.delayed(Duration.zero);
 
-    final bool hasDirectories = await compute(_checkForDirectories, filePaths);
+    final bool hasDirectories = await compute(_checkForDirectories, paths);
 
     List<String> allFilePaths;
     if (hasDirectories) {
-      allFilePaths = await _expandDirectories(filePaths);
+      allFilePaths = await _expandDirectories(paths);
       if (allFilePaths.isEmpty) {
         if (mounted) setState(() => preparingImport = false);
         return;
       }
     } else {
-      allFilePaths = filePaths;
+      allFilePaths = paths;
     }
 
     if (mounted) setState(() => preparingImport = false);
 
     await _showImportPreview(allFilePaths);
-
-    // Check queue for more files
-    await _processQueuedFiles();
   }
 
   /// Process any queued files from GlobalDropService.
@@ -1411,29 +1415,7 @@ class GalleryPageState extends State<GalleryPage>
         final List<String> itemPaths =
             details.files.map((f) => f.path).toList();
 
-        // Check for directories
-        setState(() => preparingImport = true);
-        await Future.delayed(Duration.zero);
-
-        final bool hasDirectories = await compute(
-          _checkForDirectories,
-          itemPaths,
-        );
-
-        List<String> allFilePaths;
-        if (hasDirectories) {
-          allFilePaths = await _expandDirectories(itemPaths);
-          if (allFilePaths.isEmpty) {
-            if (mounted) setState(() => preparingImport = false);
-            return;
-          }
-        } else {
-          allFilePaths = itemPaths;
-        }
-
-        if (mounted) setState(() => preparingImport = false);
-
-        await _showImportPreview(allFilePaths);
+        await _expandAndShowImport(itemPaths);
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),

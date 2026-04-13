@@ -478,6 +478,135 @@ class IsolatePool {
           }
         }
 
+      case 'stabilizeCVRaw':
+        final rawSrcBytes = params['srcBytes'] as Uint8List?;
+        final rawRotationDegrees = params['rotationDegrees'] as double;
+        final rawScaleFactor = params['scaleFactor'] as double;
+        final rawTranslateX = params['translateX'] as double;
+        final rawTranslateY = params['translateY'] as double;
+        final rawCanvasWidth = params['canvasWidth'] as int;
+        final rawCanvasHeight = params['canvasHeight'] as int;
+        final rawSrcId = params['srcId'] as String?;
+        final rawBackgroundColorBGR =
+            params['backgroundColorBGR'] as List<int>?;
+        final rawPreserveBitDepth =
+            params['preserveBitDepth'] as bool? ?? false;
+        final rawIsTransparent = rawBackgroundColorBGR == null;
+
+        cv.Mat rawSrcMat;
+        bool rawUsedCache = false;
+        bool rawSrcMatCacheHandedOff = false;
+
+        if (rawSrcId != null &&
+            cachedSrcId == rawSrcId &&
+            cachedSrcMat != null &&
+            !cachedSrcMat.isEmpty) {
+          rawSrcMat = cachedSrcMat;
+          rawUsedCache = true;
+        } else if (rawSrcBytes != null) {
+          final rawDecodeFlag = rawPreserveBitDepth
+              ? (cv.IMREAD_ANYDEPTH | cv.IMREAD_COLOR)
+              : cv.IMREAD_COLOR;
+          rawSrcMat = cv.imdecode(rawSrcBytes, rawDecodeFlag);
+          if (rawSrcMat.isEmpty) {
+            rawSrcMat.dispose();
+            return null;
+          }
+          if (rawSrcId != null && onCacheUpdate != null) {
+            onCacheUpdate(rawSrcMat, rawSrcId);
+            rawSrcMatCacheHandedOff = true;
+          }
+        } else {
+          return null;
+        }
+
+        cv.Mat rawSrcMatForWarp;
+        bool rawNeedsDisposeSrcForWarp = false;
+        if (rawIsTransparent) {
+          rawSrcMatForWarp = cv.cvtColor(rawSrcMat, cv.COLOR_BGR2BGRA);
+          rawNeedsDisposeSrcForWarp = true;
+        } else {
+          rawSrcMatForWarp = rawSrcMat;
+        }
+
+        cv.Mat? rawRotMat;
+        cv.Mat? rawDst;
+        try {
+          final rawIw = rawSrcMatForWarp.cols;
+          final rawIh = rawSrcMatForWarp.rows;
+
+          rawRotMat = cv.getRotationMatrix2D(
+            cv.Point2f(rawIw / 2.0, rawIh / 2.0),
+            -rawRotationDegrees,
+            rawScaleFactor,
+          );
+
+          final rawOffsetX = (rawCanvasWidth - rawIw) / 2.0 + rawTranslateX;
+          final rawOffsetY = (rawCanvasHeight - rawIh) / 2.0 + rawTranslateY;
+          rawRotMat.set<double>(0, 2, rawRotMat.at<double>(0, 2) + rawOffsetX);
+          rawRotMat.set<double>(1, 2, rawRotMat.at<double>(1, 2) + rawOffsetY);
+
+          final cv.Scalar rawBorderValue;
+          if (rawIsTransparent) {
+            rawBorderValue = cv.Scalar(0.0, 0.0, 0.0, 0.0);
+          } else {
+            rawBorderValue = cv.Scalar(
+              rawBackgroundColorBGR[0].toDouble(),
+              rawBackgroundColorBGR[1].toDouble(),
+              rawBackgroundColorBGR[2].toDouble(),
+              255.0,
+            );
+          }
+
+          rawDst = cv.warpAffine(
+            rawSrcMatForWarp,
+            rawRotMat,
+            (rawCanvasWidth, rawCanvasHeight),
+            flags: cv.INTER_CUBIC,
+            borderMode: cv.BORDER_CONSTANT,
+            borderValue: rawBorderValue,
+          );
+
+          // Return raw Mat data instead of encoding to PNG.
+          // Wrap in TransferableTypedData for zero-copy isolate transfer.
+          final rawData = Uint8List.fromList(rawDst.data);
+          return {
+            'data': TransferableTypedData.fromList([rawData]),
+            'width': rawDst.cols,
+            'height': rawDst.rows,
+            'matType': rawDst.type.value,
+          };
+        } finally {
+          rawRotMat?.dispose();
+          rawDst?.dispose();
+          if (rawNeedsDisposeSrcForWarp) {
+            rawSrcMatForWarp.dispose();
+          }
+          if (!rawSrcMatCacheHandedOff && !rawUsedCache) {
+            rawSrcMat.dispose();
+          }
+        }
+
+      case 'encodeRawToPng':
+        final encData = params['data'] as Uint8List;
+        final encWidth = params['width'] as int;
+        final encHeight = params['height'] as int;
+        final encMatType = params['matType'] as int;
+        final encCompression = params['pngCompression'] as int? ?? 3;
+        final encMat = cv.Mat.fromList(
+            encHeight, encWidth, cv.MatType(encMatType), encData);
+        try {
+          final (encSuccess, encPngBytes) = cv.imencode(
+            '.png',
+            encMat,
+            params: cv.VecI32.fromList(
+                [cv.IMWRITE_PNG_COMPRESSION, encCompression]),
+          );
+          return encSuccess ? encPngBytes : null;
+        } finally {
+          encMat.dispose();
+        }
+
       case 'clearMatCache':
         // Clear the cached source Mat to free memory
         onCacheClear?.call();

@@ -1680,6 +1680,45 @@ class StabUtils {
     }
   }
 
+  /// Detect faces from raw Mat bytes (avoids PNG encode/decode overhead).
+  ///
+  /// Uses [FaceDetector.detectFacesFromMatBytes] which transfers the raw
+  /// pixels via zero-copy [TransferableTypedData] and reconstructs the Mat
+  /// inside the face-detection background isolate — nothing blocks the UI.
+  static Future<List<FaceLike>?> getFacesFromRawMatBytes(
+    Uint8List data,
+    int width,
+    int height,
+    int matType, {
+    bool filterByFaceSize = true,
+  }) async {
+    return await _faceDetectorMutex.protect(() async {
+      try {
+        await _ensureFDLite();
+        final facesDetected = await _faceDetector!.detectFacesFromMatBytes(
+          data,
+          width: width,
+          height: height,
+          matType: matType,
+          mode: fdl.FaceDetectionMode.full,
+        );
+        if (facesDetected.isEmpty) {
+          return <FaceLike>[];
+        }
+        return _convertFaces(
+          facesDetected,
+          filterByFaceSize: filterByFaceSize,
+        ).$1;
+      } catch (e) {
+        LogService.instance.log(
+          "Error caught while fetching faces from raw mat bytes: $e",
+        );
+        _faceDetector = null;
+        return null;
+      }
+    });
+  }
+
   /// Async version that runs CV stabilization in an isolate to avoid blocking UI.
   /// Uses persistent isolate pool to avoid spawn/kill overhead.
   ///
@@ -1762,5 +1801,90 @@ class StabUtils {
       IsolateManager.instance.unregister(isolate);
       isolate.kill(priority: Isolate.immediate);
     }
+  }
+
+  /// Like [generateStabilizedImageBytesCVAsync] but returns raw Mat bytes
+  /// instead of encoding to PNG. Passes 2-4 use this to skip the PNG
+  /// encode/decode cycle for intermediate face detection.
+  ///
+  /// Returns a Map with keys: 'data' (Uint8List), 'width', 'height', 'matType'.
+  /// Returns null on failure.
+  static Future<Map<String, dynamic>?> generateStabilizedRawCVAsync(
+    Uint8List srcBytes,
+    double rotationDegrees,
+    double scaleFactor,
+    double translateX,
+    double translateY,
+    int canvasWidth,
+    int canvasHeight, {
+    CancellationToken? token,
+    String? srcId,
+    List<int>? backgroundColorBGR,
+    bool preserveBitDepth = false,
+    bool useCachedSrc = false,
+  }) async {
+    token?.throwIfCancelled();
+
+    if (IsolatePool.instance.isInitialized) {
+      final params = <String, dynamic>{
+        'rotationDegrees': rotationDegrees,
+        'scaleFactor': scaleFactor,
+        'translateX': translateX,
+        'translateY': translateY,
+        'canvasWidth': canvasWidth,
+        'canvasHeight': canvasHeight,
+        'srcId': srcId,
+        'backgroundColorBGR': backgroundColorBGR,
+        'preserveBitDepth': preserveBitDepth,
+      };
+      if (!useCachedSrc) {
+        params['srcBytes'] = srcBytes;
+      }
+      final Map<String, dynamic>? result;
+      if (srcId != null) {
+        result = await IsolatePool.instance.executeSticky<Map<String, dynamic>>(
+            srcId, 'stabilizeCVRaw', params);
+      } else {
+        result = await IsolatePool.instance.execute<Map<String, dynamic>>(
+          'stabilizeCVRaw',
+          params,
+        );
+      }
+      // Materialize zero-copy TransferableTypedData into a plain Uint8List
+      // so downstream code sees a normal Map<String, dynamic>.
+      if (result != null && result['data'] is TransferableTypedData) {
+        result['data'] = (result['data'] as TransferableTypedData)
+            .materialize()
+            .asUint8List();
+      }
+      return result;
+    }
+
+    // Pool not initialized — not supported for raw path; return null
+    return null;
+  }
+
+  /// Encodes raw Mat bytes to PNG. Used to persist the best pass result
+  /// after skipping PNG encoding in intermediate passes.
+  static Future<Uint8List?> encodeRawToPngAsync(
+    Uint8List data,
+    int width,
+    int height,
+    int matType, {
+    int pngCompression = 3,
+  }) async {
+    if (IsolatePool.instance.isInitialized) {
+      return await IsolatePool.instance.execute<Uint8List>(
+        'encodeRawToPng',
+        {
+          'data': data,
+          'width': width,
+          'height': height,
+          'matType': matType,
+          'pngCompression': pngCompression,
+        },
+      );
+    }
+    return null;
   }
 }

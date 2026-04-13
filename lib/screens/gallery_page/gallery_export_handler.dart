@@ -428,13 +428,15 @@ class GalleryExportHandler {
           .toList();
 
       // Sort by modification time, newest first
-      files.sort((a, b) {
+      final modTimes = <File, DateTime>{};
+      for (final f in files) {
         try {
-          return b.lastModifiedSync().compareTo(a.lastModifiedSync());
+          modTimes[f] = f.lastModifiedSync();
         } catch (_) {
-          return 0;
+          modTimes[f] = DateTime(0);
         }
-      });
+      }
+      files.sort((a, b) => modTimes[b]!.compareTo(modTimes[a]!));
 
       // Delete all but the newest (which will be replaced by current export)
       for (int i = 1; i < files.length; i++) {

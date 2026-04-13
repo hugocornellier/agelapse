@@ -36,7 +36,6 @@ Map<String, dynamic> createMockSettingsMap({
   String aspectRatio = '16:9',
   String resolution = '1080p',
   bool watermarkEnabled = false,
-  String stabilizationMode = 'slow',
   double eyeOffsetX = 0.065,
   double eyeOffsetY = 0.421875,
 }) {
@@ -50,7 +49,6 @@ Map<String, dynamic> createMockSettingsMap({
     'aspectRatio': aspectRatio,
     'resolution': resolution,
     'watermarkEnabled': watermarkEnabled,
-    'stabilizationMode': stabilizationMode,
     'eyeOffsetX': eyeOffsetX,
     'eyeOffsetY': eyeOffsetY,
   };

@@ -1272,7 +1272,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
             ManualStabOutcome.saveFailed => 'Failed to save changes',
             ManualStabOutcome.invalidImage =>
               'Could not generate stabilized image',
-            ManualStabOutcome.stale => 'Save outdated — please try again',
+            ManualStabOutcome.stale => 'Save outdated, please try again',
             _ => 'Failed to save changes',
           };
           ScaffoldMessenger.of(context).showSnackBar(

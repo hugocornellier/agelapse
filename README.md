@@ -62,9 +62,9 @@ For previous releases, see the [full changelog](https://agelapse.com/docs/change
 
 ## Resources
 
-- **Documentation** - https://agelapse.com/docs/intro/
-- **Demo Video** - [https://www.youtube.com/watch?v=vMOWSAHdwhA](https://www.youtube.com/watch?v=vMOWSAHdwhA)
-- **Contact** - For suggestions, feature requests or bug reports: 
+- **Documentation:** https://agelapse.com/docs/intro/
+- **Demo Video:** [https://www.youtube.com/watch?v=vMOWSAHdwhA](https://www.youtube.com/watch?v=vMOWSAHdwhA)
+- **Contact:** For suggestions, feature requests or bug reports: 
   - Email **agelapse@gmail.com**, or open an [issue](https://github.com/hugocornellier/agelapse/issues) on GitHub.
 
 ## Contributions

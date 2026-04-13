@@ -30,6 +30,8 @@ PODS:
   - flutter_timezone (0.1.0):
     - FlutterMacOS
   - FlutterMacOS (1.0.0)
+  - hand_detection (0.0.1):
+    - FlutterMacOS
   - heic_native (0.1.1):
     - FlutterMacOS
   - media_kit_video (0.0.1):
@@ -100,6 +102,7 @@ DEPENDENCIES:
   - flutter_local_notifications (from `Flutter/ephemeral/.symlinks/plugins/flutter_local_notifications/macos`)
   - flutter_timezone (from `Flutter/ephemeral/.symlinks/plugins/flutter_timezone/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
+  - hand_detection (from `Flutter/ephemeral/.symlinks/plugins/hand_detection/macos`)
   - heic_native (from `Flutter/ephemeral/.symlinks/plugins/heic_native/macos`)
   - media_kit_video (from `Flutter/ephemeral/.symlinks/plugins/media_kit_video/macos`)
   - package_info_plus (from `Flutter/ephemeral/.symlinks/plugins/package_info_plus/macos`)
@@ -151,6 +154,8 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/flutter_timezone/macos
   FlutterMacOS:
     :path: Flutter/ephemeral
+  hand_detection:
+    :path: Flutter/ephemeral/.symlinks/plugins/hand_detection/macos
   heic_native:
     :path: Flutter/ephemeral/.symlinks/plugins/heic_native/macos
   media_kit_video:
@@ -195,6 +200,7 @@ SPEC CHECKSUMS:
   flutter_local_notifications: 1fc7ffb10a83d6a2eeeeddb152d43f1944b0aad0
   flutter_timezone: d272288c69082ad571630e0d17140b3d6b93dc0c
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
+  hand_detection: 8ffa633b83d63ce6b005c6c26436209b4384b1c6
   heic_native: 4366bb8e1c4f41b5d61116396e6919a5ebb2df83
   media_kit_video: 28d7d27611c7769a2464eb7621c37386a61dcc9a
   package_info_plus: f0052d280d17aa382b932f399edf32507174e870

@@ -378,6 +378,7 @@ class StabilizedThumbnailState extends State<StabilizedThumbnail>
     return Image.file(
       File(widget.stabilizedImagePath),
       fit: BoxFit.cover,
+      cacheWidth: 500,
       width: double.infinity,
       height: double.infinity,
       errorBuilder: (context, error, stack) =>

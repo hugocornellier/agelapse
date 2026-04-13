@@ -113,7 +113,6 @@ class CreatePageState extends State<CreatePage>
 
   // Video metadata for info display
   String _projectOrientation = 'portrait';
-  String _stabilizationMode = 'face';
   VideoCodec _effectiveCodec = VideoCodec.h264;
 
   @override
@@ -406,7 +405,6 @@ class CreatePageState extends State<CreatePage>
       SettingsUtil.loadVideoResolution(projectIdStr),
       SettingsUtil.loadAspectRatio(projectIdStr),
       SettingsUtil.loadFramerate(projectIdStr),
-      SettingsUtil.loadStabilizationMode(),
     ]);
 
     final configuredResolution = metadata[0] as String;
@@ -421,7 +419,6 @@ class CreatePageState extends State<CreatePage>
     aspectRatio = configuredAspectRatio;
     _configuredVideoAspectRatio = configuredVideoAspectRatio;
     videoFps = metadata[2] as int;
-    _stabilizationMode = metadata[3] as String;
 
     bool playerReady = true;
 
@@ -1119,10 +1116,6 @@ class CreatePageState extends State<CreatePage>
         label: 'Orientation',
         value: _capitalizeFirstLetter(_projectOrientation),
       ),
-      _VideoInfoChip(
-        label: 'Stabilization',
-        value: _capitalizeFirstLetter(_stabilizationMode),
-      ),
     ];
 
     // Compact mode: show button that opens popup
@@ -1308,10 +1301,6 @@ class CreatePageState extends State<CreatePage>
       _VideoInfoChip(
         label: 'Orientation',
         value: _capitalizeFirstLetter(_projectOrientation),
-      ),
-      _VideoInfoChip(
-        label: 'Stabilization',
-        value: _capitalizeFirstLetter(_stabilizationMode),
       ),
     ];
 
@@ -1548,7 +1537,7 @@ class CreatePageState extends State<CreatePage>
       const SizedBox(height: 8),
       Text(
         '${_effectiveCodec.displayName} videos cannot be previewed on this device. '
-        'Your video was compiled successfully — use Export to save it.',
+        'Your video was compiled successfully, use Export to save it.',
         style: TextStyle(
           fontSize: AppTypography.md,
           color: AppColors.settingsTextSecondary,

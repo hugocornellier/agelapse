@@ -436,7 +436,7 @@ class DateStampUtils {
     try {
       return DateFormat(format).format(DateTime.now());
     } catch (e) {
-      return '—';
+      return '';
     }
   }
 

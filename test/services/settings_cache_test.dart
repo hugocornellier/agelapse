@@ -24,7 +24,6 @@ void main() {
         aspectRatio: '9:16',
         resolution: '1080p',
         watermarkEnabled: false,
-        stabilizationMode: 'auto',
         image: null,
         eyeOffsetX: 0.5,
         eyeOffsetY: 0.5,
@@ -55,7 +54,6 @@ void main() {
         aspectRatio: '16:9',
         resolution: '4K',
         watermarkEnabled: true,
-        stabilizationMode: 'manual',
         image: null,
         eyeOffsetX: 0.3,
         eyeOffsetY: 0.4,
@@ -93,7 +91,6 @@ void main() {
         aspectRatio: '9:16',
         resolution: '1080p',
         watermarkEnabled: false,
-        stabilizationMode: 'auto',
         image: null,
         eyeOffsetX: 0.123,
         eyeOffsetY: 0.456,
@@ -127,7 +124,6 @@ void main() {
         aspectRatio: '1:1',
         resolution: '720p',
         watermarkEnabled: false,
-        stabilizationMode: 'none',
         image: null,
         eyeOffsetX: 0.5,
         eyeOffsetY: 0.5,
@@ -140,7 +136,6 @@ void main() {
       expect(cache.projectOrientation, 'square');
       expect(cache.aspectRatio, '1:1');
       expect(cache.resolution, '720p');
-      expect(cache.stabilizationMode, 'none');
     });
 
     test('SettingsCache allows nullable isLightTheme', () {
@@ -162,7 +157,6 @@ void main() {
         aspectRatio: '9:16',
         resolution: '1080p',
         watermarkEnabled: false,
-        stabilizationMode: 'auto',
         image: null,
         eyeOffsetX: 0.5,
         eyeOffsetY: 0.5,
@@ -194,7 +188,6 @@ void main() {
         aspectRatio: '9:16',
         resolution: '1080p',
         watermarkEnabled: false,
-        stabilizationMode: 'auto',
         image: null,
         eyeOffsetX: 0.5,
         eyeOffsetY: 0.5,
@@ -225,7 +218,6 @@ void main() {
         aspectRatio: '9:16',
         resolution: '1080p',
         watermarkEnabled: false,
-        stabilizationMode: 'auto',
         image: null,
         eyeOffsetX: 0.5,
         eyeOffsetY: 0.5,
@@ -268,7 +260,6 @@ void main() {
         aspectRatio: '9:16',
         resolution: '1080p',
         watermarkEnabled: false,
-        stabilizationMode: 'auto',
         image: null,
         eyeOffsetX: 0.5,
         eyeOffsetY: 0.5,
@@ -299,7 +290,6 @@ void main() {
         aspectRatio: '9:16',
         resolution: '1080p',
         watermarkEnabled: false,
-        stabilizationMode: 'auto',
         image: null,
         eyeOffsetX: 0.5,
         eyeOffsetY: 0.5,
@@ -330,7 +320,6 @@ void main() {
         aspectRatio: '9:16',
         resolution: '1080p',
         watermarkEnabled: false,
-        stabilizationMode: 'auto',
         image: null,
         eyeOffsetX: 0.5,
         eyeOffsetY: 0.5,
@@ -361,7 +350,6 @@ void main() {
         aspectRatio: '9:16',
         resolution: '1080p',
         watermarkEnabled: false,
-        stabilizationMode: 'auto',
         image: null,
         eyeOffsetX: -0.5,
         eyeOffsetY: -0.3,

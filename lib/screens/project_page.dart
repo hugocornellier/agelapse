@@ -542,10 +542,6 @@ class ProjectPageState extends State<ProjectPage> {
         value: _capitalizeFirstLetter(cache.projectOrientation),
       ),
       _OutputChip(
-        label: "Stabilization",
-        value: _capitalizeFirstLetter(cache.stabilizationMode),
-      ),
-      _OutputChip(
         label: "Watermark",
         value: cache.watermarkEnabled ? "On" : "Off",
       ),
@@ -848,7 +844,6 @@ class SpecialCard extends StatelessWidget {
   final String aspectRatio;
   final String resolution;
   final bool watermarkEnabled;
-  final String stabilizationMode;
   final int framerate;
 
   const SpecialCard({
@@ -857,7 +852,6 @@ class SpecialCard extends StatelessWidget {
     required this.aspectRatio,
     required this.resolution,
     required this.watermarkEnabled,
-    required this.stabilizationMode,
     required this.framerate,
   });
 
@@ -873,10 +867,6 @@ class SpecialCard extends StatelessWidget {
         ),
         _buildSettingsRow("Resolution", resolution),
         _buildSettingsRow("Aspect ratio", aspectRatio),
-        _buildSettingsRow(
-          "Stabilization",
-          _capitalizeFirstLetter(stabilizationMode),
-        ),
         _buildSettingsRow(
           "Watermark",
           watermarkEnabled ? "Yes" : "No",

@@ -125,7 +125,7 @@ class NotificationUtil {
 
     await _flutterLocalNotificationsPlugin.zonedSchedule(
       id: projectId,
-      title: 'AgeLapse - $projectName',
+      title: 'AgeLapse: $projectName',
       body: '$projectName: Don\'t forget to take your photo!',
       scheduledDate: scheduledDate,
       notificationDetails: platformDetails,

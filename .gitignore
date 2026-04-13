@@ -3,6 +3,7 @@
 *.pyc
 *.swp
 .DS_Store
+.claude/commands/
 .atom/
 .build/
 .buildlog/
@@ -33,3 +34,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+STABILIZATION_OPTIMIZATION_PLAN.md
+__MACOSX/
+**/__MACOSX/

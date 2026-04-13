@@ -73,7 +73,7 @@ Future<void> _main() async {
         size: startSize,
         minimumSize: minSize,
         center: true,
-        title: 'AgeLapse v2.5.2',
+        title: 'AgeLapse v2.5.2 Pre-Release (C)',
         titleBarStyle: hasCustomTitleBar ? TitleBarStyle.hidden : null,
       );
 

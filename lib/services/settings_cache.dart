@@ -24,7 +24,6 @@ class SettingsCache {
   String aspectRatio;
   String resolution;
   bool watermarkEnabled;
-  String stabilizationMode;
   ui.Image? image;
   double eyeOffsetX;
   double eyeOffsetY;
@@ -58,7 +57,6 @@ class SettingsCache {
     required this.aspectRatio,
     required this.resolution,
     required this.watermarkEnabled,
-    required this.stabilizationMode,
     required this.image,
     required this.eyeOffsetX,
     required this.eyeOffsetY,
@@ -95,7 +93,6 @@ class SettingsCache {
       SettingsUtil.loadAspectRatio(projectId.toString()),
       SettingsUtil.loadVideoResolution(projectId.toString()),
       SettingsUtil.loadWatermarkSetting(projectId.toString()),
-      SettingsUtil.loadStabilizationMode(),
       ProjectUtils.loadSvgImage(
         'assets/images/person-grey.svg',
         width: 400,
@@ -124,8 +121,8 @@ class SettingsCache {
       hasViewedFirstVideo: settings[3] as bool? ?? false,
       hasOpenedNotifications: settings[4] as bool? ?? false,
       hasTakenMoreThanOnePhoto: photoCount > 1,
-      hasSeenGuideModeTut: settings[16] as bool? ?? false,
-      hasTakenFirstPhoto: settings[17] as bool? ?? false,
+      hasSeenGuideModeTut: settings[15] as bool? ?? false,
+      hasTakenFirstPhoto: settings[16] as bool? ?? false,
       streak: streak ?? 0,
       photoCount: photoCount,
       firstPhotoDate: firstPhotoTimestamp != null
@@ -145,24 +142,23 @@ class SettingsCache {
       aspectRatio: settings[9] as String,
       resolution: settings[10] as String,
       watermarkEnabled: settings[11] as bool,
-      stabilizationMode: settings[12] as String,
-      image: settings[13] as ui.Image,
-      eyeOffsetX: double.tryParse(settings[14] as String) ?? 0.065,
-      eyeOffsetY: double.tryParse(settings[15] as String) ?? 0.421875,
-      galleryDateLabelsEnabled: settings[18] as bool? ?? false,
-      exportDateStampEnabled: settings[19] as bool? ?? false,
-      linkedSourceEnabled: (settings[20] as LinkedSourceConfig).enabled,
-      linkedSourceMode: (settings[20] as LinkedSourceConfig).mode,
-      linkedSourceDisplayPath: (settings[20] as LinkedSourceConfig).displayPath,
-      linkedSourceRootPath: (settings[20] as LinkedSourceConfig).rootPath,
-      linkedSourceTreeUri: (settings[20] as LinkedSourceConfig).treeUri,
-      linkedSourceBookmark: (settings[20] as LinkedSourceConfig).bookmark,
+      image: settings[12] as ui.Image,
+      eyeOffsetX: double.tryParse(settings[13] as String) ?? 0.065,
+      eyeOffsetY: double.tryParse(settings[14] as String) ?? 0.421875,
+      galleryDateLabelsEnabled: settings[17] as bool? ?? false,
+      exportDateStampEnabled: settings[18] as bool? ?? false,
+      linkedSourceEnabled: (settings[19] as LinkedSourceConfig).enabled,
+      linkedSourceMode: (settings[19] as LinkedSourceConfig).mode,
+      linkedSourceDisplayPath: (settings[19] as LinkedSourceConfig).displayPath,
+      linkedSourceRootPath: (settings[19] as LinkedSourceConfig).rootPath,
+      linkedSourceTreeUri: (settings[19] as LinkedSourceConfig).treeUri,
+      linkedSourceBookmark: (settings[19] as LinkedSourceConfig).bookmark,
       linkedSourceManagedByApp:
-          (settings[20] as LinkedSourceConfig).managedByApp,
+          (settings[19] as LinkedSourceConfig).managedByApp,
       linkedSourceLastScanStartedAt:
-          (settings[20] as LinkedSourceConfig).lastScanStartedAt,
+          (settings[19] as LinkedSourceConfig).lastScanStartedAt,
       linkedSourceLastScanCompletedAt:
-          (settings[20] as LinkedSourceConfig).lastScanCompletedAt,
+          (settings[19] as LinkedSourceConfig).lastScanCompletedAt,
     );
   }
 
@@ -187,7 +183,6 @@ class SettingsCache {
       aspectRatio: defaults['aspect_ratio']!,
       resolution: defaults['video_resolution']!,
       watermarkEnabled: defaults['enable_watermark'] == 'true',
-      stabilizationMode: defaults['stabilization_mode']!,
       image: await ProjectUtils.loadSvgImage(
         'assets/images/person-grey.svg',
         width: 400,

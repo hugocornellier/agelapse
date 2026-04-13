@@ -13,6 +13,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   file_selector_windows
   flutter_avif_windows
   flutter_timezone
+  hand_detection
   heic_native
   media_kit_libs_windows_video
   media_kit_video

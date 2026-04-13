@@ -11,7 +11,6 @@ import 'isolate_pool.dart';
 import 'log_service.dart';
 import 'stabilization_settings.dart';
 import 'thumbnail_service.dart';
-import '../models/stabilization_mode.dart';
 import 'package:pose_detection/pose_detection.dart' as pose;
 import 'package:path/path.dart' as path;
 import '../utils/camera_utils.dart';
@@ -86,7 +85,6 @@ class FaceStabilizer {
   pose.PoseDetector? _poseDetector;
   late double eyeOffsetX;
   late double eyeOffsetY;
-  late StabilizationMode stabilizationMode;
   late List<int>? backgroundColorBGR;
   late bool lossless;
 
@@ -154,9 +152,6 @@ class FaceStabilizer {
     resolution = settings.resolution;
     aspectRatio = settings.aspectRatio;
     aspectRatioDecimal = settings.aspectRatioDecimal;
-    stabilizationMode = StabilizationMode.fromString(
-      settings.stabilizationMode,
-    );
     eyeOffsetX = settings.eyeOffsetX;
     eyeOffsetY = settings.eyeOffsetY;
     backgroundColorBGR = settings.backgroundColorBGR;
@@ -777,177 +772,44 @@ class FaceStabilizer {
     CancellationToken? token,
     String srcId,
   ) async {
-    if (stabilizationMode == StabilizationMode.fast) {
-      return _performFastMultiPass(
-        stabFaces,
-        eyes,
-        goalLeftEye,
-        goalRightEye,
-        translateX,
-        translateY,
-        rotationDegrees,
-        scaleFactor,
-        imageBytesStabilized,
-        rawPhotoPath,
-        stabilizedJpgPhotoPath,
-        toDelete,
-        imgWidth,
-        imgHeight,
-        srcBytes,
-        token,
-        srcId,
-      );
-    } else {
-      return _performSlowMultiPass(
-        stabFaces,
-        eyes,
-        goalLeftEye,
-        goalRightEye,
-        translateX,
-        translateY,
-        rotationDegrees,
-        scaleFactor,
-        imageBytesStabilized,
-        rawPhotoPath,
-        stabilizedJpgPhotoPath,
-        toDelete,
-        imgWidth,
-        imgHeight,
-        srcBytes,
-        token,
-        srcId,
-      );
-    }
-  }
-
-  /// FAST MODE: Translation-only multi-pass correction (up to 4 passes).
-  Future<
-      (
-        bool,
-        double?,
-        double?,
-        double?,
-        double?,
-        double?,
-        double?,
-        double?,
-        Uint8List?
-      )> _performFastMultiPass(
-    List<dynamic> stabFaces,
-    List<Point<double>?> eyes,
-    Point<double> goalLeftEye,
-    Point<double> goalRightEye,
-    double translateX,
-    double translateY,
-    double rotationDegrees,
-    double scaleFactor,
-    Uint8List imageBytesStabilized,
-    String rawPhotoPath,
-    String stabilizedJpgPhotoPath,
-    List<String> toDelete,
-    int imgWidth,
-    int imgHeight,
-    Uint8List srcBytes,
-    CancellationToken? token,
-    String srcId,
-  ) async {
-    bool successfulStabilization = false;
-
-    final double firstPassScore = calculateStabScore(
+    return _performSlowMultiPass(
+      stabFaces,
       eyes,
       goalLeftEye,
       goalRightEye,
-    );
-    final (
-      double overshotLeftX,
-      double overshotLeftY,
-      double overshotRightX,
-      double overshotRightY,
-    ) = _calculateOvershots(
-      eyes,
-      goalLeftEye,
-      goalRightEye,
-    );
-
-    if (!correctionIsNeeded(
-      firstPassScore,
-      overshotLeftX,
-      overshotRightX,
-      overshotLeftY,
-      overshotRightY,
-    )) {
-      // No correction needed - save with first pass result
-      final (s, savedBytes) = await saveStabilizedImage(
-        imageBytesStabilized,
-        rawPhotoPath,
-        stabilizedJpgPhotoPath,
-        firstPassScore,
-        translateX: translateX,
-        translateY: translateY,
-        rotationDegrees: rotationDegrees,
-        scaleFactor: scaleFactor,
-      );
-      successfulStabilization = s;
-      return (
-        successfulStabilization,
-        firstPassScore,
-        null,
-        null,
-        null,
-        firstPassScore,
-        null,
-        null,
-        savedBytes,
-      );
-    }
-
-    final String stabilizedPhotoPath = await StabUtils.getStabilizedImagePath(
-      rawPhotoPath,
-      projectId,
-      projectOrientation,
-    );
-
-    // Track best result across all passes
-    Uint8List bestBytes = imageBytesStabilized;
-    double bestScore = firstPassScore;
-    double bestTX = translateX;
-    double bestTY = translateY;
-
-    // Track which buffer is currently best (for memory recycling)
-    // 0 = imageBytesStabilized, 1 = twoPass, 2 = threePass, 3 = fourPass
-    int bestPassIndex = 0;
-
-    // Track scores and state for each pass
-    double? twoPassScore, threePassScore, fourPassScore;
-    bool usedTwoPass = false, usedThreePass = false, usedFourPass = false;
-    List<Point<double>?>? currentEyes = eyes;
-    double currentTX = translateX;
-    double currentTY = translateY;
-
-    // === TWO-PASS ===
-    token?.throwIfCancelled();
-    LogService.instance.log(
-      "Attempting two-pass correction. First-pass score = $firstPassScore...",
-    );
-
-    var (double ovLX, double ovLY, double ovRX, double ovRY) =
-        _calculateOvershots(currentEyes, goalLeftEye, goalRightEye);
-    final (double twoPassTX, double twoPassTY) = _calculateNewTranslations(
-      currentTX,
-      currentTY,
-      ovLX,
-      ovRX,
-      ovLY,
-      ovRY,
-    );
-
-    Uint8List? twoPassBytes =
-        await StabUtils.generateStabilizedImageBytesCVAsync(
-      srcBytes,
+      translateX,
+      translateY,
       rotationDegrees,
       scaleFactor,
-      twoPassTX,
-      twoPassTY,
+      imageBytesStabilized,
+      rawPhotoPath,
+      stabilizedJpgPhotoPath,
+      toDelete,
+      imgWidth,
+      imgHeight,
+      srcBytes,
+      token,
+      srcId,
+    );
+  }
+
+  /// Generate a stabilized image with cached source, returning raw Mat bytes
+  /// instead of a PNG to avoid encode/decode overhead for intermediate passes.
+  Future<Map<String, dynamic>?> _generateCachedPassRaw({
+    required Uint8List srcBytes,
+    required double rotation,
+    required double scale,
+    required double tx,
+    required double ty,
+    required CancellationToken? token,
+    required String srcId,
+  }) {
+    return StabUtils.generateStabilizedRawCVAsync(
+      srcBytes,
+      rotation,
+      scale,
+      tx,
+      ty,
       canvasWidth,
       canvasHeight,
       token: token,
@@ -955,247 +817,6 @@ class FaceStabilizer {
       backgroundColorBGR: backgroundColorBGR,
       preserveBitDepth: lossless,
       useCachedSrc: true,
-      pngCompression: 1,
-    );
-    if (twoPassBytes == null) {
-      return (
-        false,
-        firstPassScore,
-        null,
-        null,
-        null,
-        firstPassScore,
-        null,
-        null,
-        null,
-      );
-    }
-
-    final twoPassFaces = await _detectFaces(
-      twoPassBytes,
-      filterByFaceSize: false,
-      imageWidth: canvasWidth,
-    );
-    if (twoPassFaces == null) {
-      return (
-        false,
-        firstPassScore,
-        null,
-        null,
-        null,
-        firstPassScore,
-        null,
-        null,
-        null,
-      );
-    }
-
-    List<Point<double>?> twoPassEyes = await _filterAndCenterEyesAsync(
-      twoPassFaces,
-    );
-
-    if (_areEyesValid(twoPassEyes)) {
-      twoPassScore = calculateStabScore(twoPassEyes, goalLeftEye, goalRightEye);
-      if (twoPassScore < bestScore) {
-        usedTwoPass = true;
-        bestBytes = twoPassBytes;
-        bestScore = twoPassScore;
-        bestTX = twoPassTX;
-        bestTY = twoPassTY;
-        currentEyes = twoPassEyes;
-        currentTX = twoPassTX;
-        currentTY = twoPassTY;
-        bestPassIndex = 1;
-      } else {
-        // Two-pass not better, release its memory
-        twoPassBytes = null;
-      }
-    } else {
-      // Couldn't detect eyes, release memory
-      twoPassBytes = null;
-    }
-
-    // === THREE-PASS (only if two-pass improved) ===
-    if (usedTwoPass && _areEyesValid(currentEyes)) {
-      token?.throwIfCancelled();
-      (ovLX, ovLY, ovRX, ovRY) = _calculateOvershots(
-        currentEyes,
-        goalLeftEye,
-        goalRightEye,
-      );
-
-      if (correctionIsNeeded(bestScore, ovLX, ovRX, ovLY, ovRY)) {
-        LogService.instance.log(
-          "Attempting three-pass correction. Two-pass score = $twoPassScore...",
-        );
-
-        final (
-          double threePassTX,
-          double threePassTY,
-        ) = _calculateNewTranslations(
-          currentTX,
-          currentTY,
-          ovLX,
-          ovRX,
-          ovLY,
-          ovRY,
-        );
-
-        Uint8List? threePassBytes =
-            await StabUtils.generateStabilizedImageBytesCVAsync(
-          srcBytes,
-          rotationDegrees,
-          scaleFactor,
-          threePassTX,
-          threePassTY,
-          canvasWidth,
-          canvasHeight,
-          token: token,
-          srcId: srcId,
-          backgroundColorBGR: backgroundColorBGR,
-          preserveBitDepth: lossless,
-          useCachedSrc: true,
-          pngCompression: 1,
-        );
-
-        if (threePassBytes != null) {
-          final threePassEyes = await _detectAndFilterEyes(threePassBytes);
-
-          if (threePassEyes != null) {
-            threePassScore = calculateStabScore(
-              threePassEyes,
-              goalLeftEye,
-              goalRightEye,
-            );
-            if (threePassScore < bestScore) {
-              usedThreePass = true;
-              // Release previous best if it was twoPass
-              if (bestPassIndex == 1) twoPassBytes = null;
-              bestBytes = threePassBytes;
-              bestScore = threePassScore;
-              bestTX = threePassTX;
-              bestTY = threePassTY;
-              currentEyes = threePassEyes;
-              currentTX = threePassTX;
-              currentTY = threePassTY;
-              bestPassIndex = 2;
-            } else {
-              // Three-pass not better, release its memory
-              threePassBytes = null;
-            }
-          } else {
-            threePassBytes = null;
-          }
-        }
-      }
-    }
-
-    // === FOUR-PASS (only if three-pass improved) ===
-    if (usedThreePass && _areEyesValid(currentEyes)) {
-      token?.throwIfCancelled();
-      (ovLX, ovLY, ovRX, ovRY) = _calculateOvershots(
-        currentEyes,
-        goalLeftEye,
-        goalRightEye,
-      );
-
-      if (correctionIsNeeded(bestScore, ovLX, ovRX, ovLY, ovRY)) {
-        LogService.instance.log(
-          "Attempting four-pass correction. Three-pass score = $threePassScore...",
-        );
-
-        final (
-          double fourPassTX,
-          double fourPassTY,
-        ) = _calculateNewTranslations(
-          currentTX,
-          currentTY,
-          ovLX,
-          ovRX,
-          ovLY,
-          ovRY,
-        );
-
-        Uint8List? fourPassBytes =
-            await StabUtils.generateStabilizedImageBytesCVAsync(
-          srcBytes,
-          rotationDegrees,
-          scaleFactor,
-          fourPassTX,
-          fourPassTY,
-          canvasWidth,
-          canvasHeight,
-          token: token,
-          srcId: srcId,
-          backgroundColorBGR: backgroundColorBGR,
-          preserveBitDepth: lossless,
-          useCachedSrc: true,
-          pngCompression: 1,
-        );
-
-        if (fourPassBytes != null) {
-          final fourPassEyes = await _detectAndFilterEyes(fourPassBytes);
-
-          if (fourPassEyes != null) {
-            fourPassScore = calculateStabScore(
-              fourPassEyes,
-              goalLeftEye,
-              goalRightEye,
-            );
-            if (fourPassScore < bestScore) {
-              usedFourPass = true;
-              bestBytes = fourPassBytes;
-              bestScore = fourPassScore;
-              bestTX = fourPassTX;
-              bestTY = fourPassTY;
-              bestPassIndex = 3;
-            } else {
-              // Four-pass not better, release its memory
-              fourPassBytes = null;
-            }
-          } else {
-            fourPassBytes = null;
-          }
-        }
-      }
-    }
-
-    // Save the best result
-    Uint8List? savedBytes;
-    if (bestScore < _kStabSuccessScoreThreshold) {
-      final (s, sb) = await saveStabilizedImage(
-        bestBytes,
-        rawPhotoPath,
-        stabilizedPhotoPath,
-        bestScore,
-        translateX: bestTX,
-        translateY: bestTY,
-        rotationDegrees: rotationDegrees,
-        scaleFactor: scaleFactor,
-      );
-      successfulStabilization = s;
-      savedBytes = sb;
-    } else {
-      LogService.instance.log("STAB FAILURE. STAB SCORE: $bestScore");
-      await StabUtils.writeImagesBytesToJpgFile(bestBytes, stabilizedPhotoPath);
-      await _handleStabilizationFailure(
-        rawPhotoPath,
-        stabilizedPhotoPath,
-        toDelete,
-      );
-      successfulStabilization = false;
-    }
-
-    return (
-      successfulStabilization,
-      firstPassScore,
-      usedTwoPass ? twoPassScore : null,
-      usedThreePass ? threePassScore : null,
-      usedFourPass ? fourPassScore : null,
-      bestScore,
-      null, // No finalEyeDeltaY in fast mode
-      null, // No finalEyeDistance in fast mode
-      savedBytes,
     );
   }
 
@@ -1307,8 +928,8 @@ class FaceStabilizer {
     double bestRotation = rotationDegrees;
     double bestScale = scaleFactor;
 
-    // Track previous pass bytes for memory recycling
-    Uint8List? previousPassBytes;
+    // Track raw Mat data when best pass is not the initial PNG (pass 1)
+    Map<String, dynamic>? bestRaw;
 
     // Track scores for each pass type
     double? rotationPassScore, scalePassScore, translationPassScore;
@@ -1340,29 +961,22 @@ class FaceStabilizer {
 
       if (rotTX == null || rotTY == null) break;
 
-      Uint8List? rotPassBytes =
-          await StabUtils.generateStabilizedImageBytesCVAsync(
-        srcBytes,
-        newRotation,
-        bestScale,
-        rotTX,
-        rotTY,
-        canvasWidth,
-        canvasHeight,
+      Map<String, dynamic>? rotPassRaw = await _generateCachedPassRaw(
+        srcBytes: srcBytes,
+        rotation: newRotation,
+        scale: bestScale,
+        tx: rotTX,
+        ty: rotTY,
         token: token,
         srcId: srcId,
-        backgroundColorBGR: backgroundColorBGR,
-        preserveBitDepth: lossless,
-        useCachedSrc: true,
-        pngCompression: 1,
       );
 
-      if (rotPassBytes == null) break;
+      if (rotPassRaw == null) break;
 
-      final rotPassEyes = await _detectAndFilterEyes(rotPassBytes);
+      final rotPassEyes = await _detectAndFilterEyesFromRaw(rotPassRaw);
 
       if (rotPassEyes == null) {
-        rotPassBytes = null;
+        rotPassRaw = null;
         break;
       }
 
@@ -1375,13 +989,7 @@ class FaceStabilizer {
 
       if (newEyeDeltaY.abs() < eyeDeltaY.abs()) {
         rotPassCount++;
-        // Release previous best bytes (unless it's the original input)
-        previousPassBytes = _updatePreviousPassBytes(
-          previousPassBytes,
-          bestBytes,
-          imageBytesStabilized,
-        );
-        bestBytes = rotPassBytes;
+        bestRaw = rotPassRaw;
         bestScore = rotationPassScore;
         bestTX = rotTX;
         bestTY = rotTY;
@@ -1390,7 +998,7 @@ class FaceStabilizer {
         eyeDeltaY = newEyeDeltaY;
       } else {
         // This pass didn't improve, release its memory
-        rotPassBytes = null;
+        rotPassRaw = null;
         break;
       }
     }
@@ -1430,29 +1038,22 @@ class FaceStabilizer {
 
       if (scaleTX == null || scaleTY == null) break;
 
-      Uint8List? scalePassBytes =
-          await StabUtils.generateStabilizedImageBytesCVAsync(
-        srcBytes,
-        bestRotation,
-        newScale,
-        scaleTX,
-        scaleTY,
-        canvasWidth,
-        canvasHeight,
+      Map<String, dynamic>? scalePassRaw = await _generateCachedPassRaw(
+        srcBytes: srcBytes,
+        rotation: bestRotation,
+        scale: newScale,
+        tx: scaleTX,
+        ty: scaleTY,
         token: token,
         srcId: srcId,
-        backgroundColorBGR: backgroundColorBGR,
-        preserveBitDepth: lossless,
-        useCachedSrc: true,
-        pngCompression: 1,
       );
 
-      if (scalePassBytes == null) break;
+      if (scalePassRaw == null) break;
 
-      final scalePassEyes = await _detectAndFilterEyes(scalePassBytes);
+      final scalePassEyes = await _detectAndFilterEyesFromRaw(scalePassRaw);
 
       if (scalePassEyes == null) {
-        scalePassBytes = null;
+        scalePassRaw = null;
         break;
       }
 
@@ -1466,13 +1067,7 @@ class FaceStabilizer {
 
       if (newScaleError < scaleError) {
         scalePassCount++;
-        // Release previous best bytes (unless it's the original input)
-        previousPassBytes = _updatePreviousPassBytes(
-          previousPassBytes,
-          bestBytes,
-          imageBytesStabilized,
-        );
-        bestBytes = scalePassBytes;
+        bestRaw = scalePassRaw;
         bestScore = scalePassScore;
         bestTX = scaleTX;
         bestTY = scaleTY;
@@ -1482,7 +1077,7 @@ class FaceStabilizer {
         scaleError = newScaleError;
       } else {
         // This pass didn't improve, release its memory
-        scalePassBytes = null;
+        scalePassRaw = null;
         break;
       }
     }
@@ -1498,8 +1093,22 @@ class FaceStabilizer {
 
     if (!_areEyesValid(currentEyes)) {
       // Can't do translation passes without valid eyes, save current best and return
+      final Uint8List saveBytesNoTrans;
+      final capturedRawNoTrans = bestRaw;
+      if (capturedRawNoTrans != null) {
+        final encoded = await StabUtils.encodeRawToPngAsync(
+          capturedRawNoTrans['data'] as Uint8List,
+          capturedRawNoTrans['width'] as int,
+          capturedRawNoTrans['height'] as int,
+          capturedRawNoTrans['matType'] as int,
+          pngCompression: 1,
+        );
+        saveBytesNoTrans = encoded ?? bestBytes;
+      } else {
+        saveBytesNoTrans = bestBytes;
+      }
       final (success, savedBytes) = await saveStabilizedImage(
-        bestBytes,
+        saveBytesNoTrans,
         rawPhotoPath,
         stabilizedPhotoPath,
         bestScore,
@@ -1546,29 +1155,22 @@ class FaceStabilizer {
         ovRY,
       );
 
-      Uint8List? transPassBytes =
-          await StabUtils.generateStabilizedImageBytesCVAsync(
-        srcBytes,
-        bestRotation,
-        bestScale,
-        transTX,
-        transTY,
-        canvasWidth,
-        canvasHeight,
+      Map<String, dynamic>? transPassRaw = await _generateCachedPassRaw(
+        srcBytes: srcBytes,
+        rotation: bestRotation,
+        scale: bestScale,
+        tx: transTX,
+        ty: transTY,
         token: token,
         srcId: srcId,
-        backgroundColorBGR: backgroundColorBGR,
-        preserveBitDepth: lossless,
-        useCachedSrc: true,
-        pngCompression: 1,
       );
 
-      if (transPassBytes == null) break;
+      if (transPassRaw == null) break;
 
-      final transPassEyes = await _detectAndFilterEyes(transPassBytes);
+      final transPassEyes = await _detectAndFilterEyesFromRaw(transPassRaw);
 
       if (transPassEyes == null) {
-        transPassBytes = null;
+        transPassRaw = null;
         break;
       }
 
@@ -1582,13 +1184,7 @@ class FaceStabilizer {
 
       if (passScore < bestScore) {
         transPassCount++;
-        // Release previous best bytes (unless it's the original input)
-        previousPassBytes = _updatePreviousPassBytes(
-          previousPassBytes,
-          bestBytes,
-          imageBytesStabilized,
-        );
-        bestBytes = transPassBytes;
+        bestRaw = transPassRaw;
         bestScore = passScore;
         bestTX = transTX;
         bestTY = transTY;
@@ -1608,7 +1204,7 @@ class FaceStabilizer {
         if (improvement > 0 && improvement < convergenceThreshold) break;
       } else {
         // This pass didn't improve, release its memory
-        transPassBytes = null;
+        transPassRaw = null;
         currentTX = transTX;
         currentTY = transTY;
         (ovLX, ovLY, ovRX, ovRY) = _calculateOvershots(
@@ -1675,25 +1271,18 @@ class FaceStabilizer {
       );
 
       if (cleanupTX != null && cleanupTY != null) {
-        Uint8List? cleanupBytes =
-            await StabUtils.generateStabilizedImageBytesCVAsync(
-          srcBytes,
-          cleanupRotation,
-          cleanupScale,
-          cleanupTX,
-          cleanupTY,
-          canvasWidth,
-          canvasHeight,
+        Map<String, dynamic>? cleanupRaw = await _generateCachedPassRaw(
+          srcBytes: srcBytes,
+          rotation: cleanupRotation,
+          scale: cleanupScale,
+          tx: cleanupTX,
+          ty: cleanupTY,
           token: token,
           srcId: srcId,
-          backgroundColorBGR: backgroundColorBGR,
-          preserveBitDepth: lossless,
-          useCachedSrc: true,
-          pngCompression: 1,
         );
 
-        if (cleanupBytes != null) {
-          final cleanupEyes = await _detectAndFilterEyes(cleanupBytes);
+        if (cleanupRaw != null) {
+          final cleanupEyes = await _detectAndFilterEyesFromRaw(cleanupRaw);
 
           if (cleanupEyes != null) {
             double cleanupScore = calculateStabScore(
@@ -1706,28 +1295,19 @@ class FaceStabilizer {
               LogService.instance.log(
                 "Cleanup: ${bestScore.toStringAsFixed(2)}→${cleanupScore.toStringAsFixed(2)}",
               );
-              // Release previous best bytes (unless it's the original input)
-              if (previousPassBytes != null) {
-                previousPassBytes = null;
-              }
-              if (bestBytes != imageBytesStabilized) {
-                previousPassBytes = bestBytes;
-              }
-              bestBytes = cleanupBytes;
+              bestRaw = cleanupRaw;
               bestScore = cleanupScore;
               bestTX = cleanupTX;
               bestTY = cleanupTY;
               bestRotation = cleanupRotation;
               bestScale = cleanupScale;
               currentEyes = cleanupEyes;
-              // Release previous pass bytes now that we've switched
-              previousPassBytes = null;
             } else {
               // Cleanup didn't improve, release its memory
-              cleanupBytes = null;
+              cleanupRaw = null;
             }
           } else {
-            cleanupBytes = null;
+            cleanupRaw = null;
           }
         }
       }
@@ -1743,11 +1323,27 @@ class FaceStabilizer {
       );
     }
 
+    // Resolve bytes to save: encode raw if best pass was not the initial PNG
+    final Uint8List bytesToSave;
+    final capturedRawSlow = bestRaw;
+    if (capturedRawSlow != null) {
+      final encoded = await StabUtils.encodeRawToPngAsync(
+        capturedRawSlow['data'] as Uint8List,
+        capturedRawSlow['width'] as int,
+        capturedRawSlow['height'] as int,
+        capturedRawSlow['matType'] as int,
+        pngCompression: 1,
+      );
+      bytesToSave = encoded ?? bestBytes;
+    } else {
+      bytesToSave = bestBytes;
+    }
+
     // Save the best result
     Uint8List? savedBytes;
     if (bestScore < _kStabSuccessScoreThreshold) {
       final (s, sb) = await saveStabilizedImage(
-        bestBytes,
+        bytesToSave,
         rawPhotoPath,
         stabilizedPhotoPath,
         bestScore,
@@ -1760,7 +1356,8 @@ class FaceStabilizer {
       savedBytes = sb;
     } else {
       LogService.instance.log("STAB FAILURE. STAB SCORE: $bestScore");
-      await StabUtils.writeImagesBytesToJpgFile(bestBytes, stabilizedPhotoPath);
+      await StabUtils.writeImagesBytesToJpgFile(
+          bytesToSave, stabilizedPhotoPath);
       await _handleStabilizationFailure(
         rawPhotoPath,
         stabilizedPhotoPath,
@@ -2672,12 +2269,44 @@ class FaceStabilizer {
     );
   }
 
-  /// Detects faces in [bytes] and returns filtered/centered eye positions.
-  /// Returns null if face detection fails (null faces list) or if valid eye
-  /// positions cannot be extracted from the detected faces.
-  Future<List<Point<double>?>?> _detectAndFilterEyes(Uint8List bytes) async {
-    final faces = await _detectFaces(
-      bytes,
+  /// Detects faces from raw Mat bytes without PNG encode/decode overhead.
+  Future<List<FaceLike>?> _detectFacesFromRaw(
+    Map<String, dynamic> rawData, {
+    bool filterByFaceSize = true,
+    int? imageWidth,
+  }) async {
+    final data = rawData['data'] as Uint8List;
+    final width = rawData['width'] as int;
+    final height = rawData['height'] as int;
+    final matType = rawData['matType'] as int;
+
+    // Cat/dog detectors don't support Mat input — fall back to PNG
+    if (projectType == 'cat' || projectType == 'dog') {
+      final pngBytes =
+          await StabUtils.encodeRawToPngAsync(data, width, height, matType);
+      if (pngBytes == null) return null;
+      return _detectFaces(
+        pngBytes,
+        filterByFaceSize: filterByFaceSize,
+        imageWidth: imageWidth,
+      );
+    }
+
+    return StabUtils.getFacesFromRawMatBytes(
+      data,
+      width,
+      height,
+      matType,
+      filterByFaceSize: filterByFaceSize,
+    );
+  }
+
+  /// Like [_detectAndFilterEyes] but from raw Mat bytes.
+  Future<List<Point<double>?>?> _detectAndFilterEyesFromRaw(
+    Map<String, dynamic> rawData,
+  ) async {
+    final faces = await _detectFacesFromRaw(
+      rawData,
       filterByFaceSize: false,
       imageWidth: canvasWidth,
     );
@@ -2915,13 +2544,4 @@ class FaceStabilizer {
       pow(eyes[1]!.x - eyes[0]!.x, 2) + pow(eyes[1]!.y - eyes[0]!.y, 2),
     );
   }
-
-  /// Updates previousPassBytes when a new best is found in refinement passes.
-  /// Returns the updated [previousPassBytes] value.
-  Uint8List? _updatePreviousPassBytes(
-    Uint8List? previousPassBytes,
-    Uint8List? bestBytes,
-    Uint8List? imageBytesStabilized,
-  ) =>
-      identical(bestBytes, imageBytesStabilized) ? null : bestBytes;
 }

@@ -268,13 +268,6 @@ class SettingsUtil {
     );
   }
 
-  static Future<String> loadStabilizationMode() async =>
-      _loadStringSetting('stabilization_mode', null, 'slow');
-
-  static Future<void> saveStabilizationMode(String mode) async {
-    await DB.instance.setSettingByTitle('stabilization_mode', mode);
-  }
-
   // ==================== Background Color ====================
 
   /// Default background color for stabilization (black)

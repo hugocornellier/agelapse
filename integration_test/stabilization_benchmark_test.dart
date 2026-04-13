@@ -52,10 +52,7 @@ void main() {
 
     /// Creates a fresh project with raw face photos ready for stabilization.
     /// Returns the project ID.
-    Future<int> createBenchmarkProject(
-      String name,
-      String stabMode,
-    ) async {
+    Future<int> createBenchmarkProject(String name) async {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final projectId = await DB.instance.addProject(name, 'face', timestamp);
       final pid = projectId.toString();
@@ -66,9 +63,6 @@ void main() {
       await DB.instance.setSettingByTitle('video_resolution', '1080p', pid);
       await DB.instance.setSettingByTitle('aspect_ratio', '16:9', pid);
       await DB.instance.setSettingByTitle('background_color', '#000000', pid);
-
-      // Global setting
-      await DB.instance.setSettingByTitle('stabilization_mode', stabMode);
 
       // Create raw photos directory and copy fixtures
       final rawDir = await DirUtils.getRawPhotoDirPath(projectId);
@@ -122,7 +116,6 @@ void main() {
     /// Returns list of (photoTimestamp, elapsedMs, success, score).
     Future<List<Map<String, dynamic>>> runStabilizationRound(
       int projectId,
-      String stabMode,
     ) async {
       final results = <Map<String, dynamic>>[];
 
@@ -201,15 +194,9 @@ void main() {
 
       for (int round = 0; round < rounds; round++) {
         // Create fresh project each round (photos must be unstabilized)
-        testProjectId = await createBenchmarkProject(
-          'SlowBench_R$round',
-          'slow',
-        );
+        testProjectId = await createBenchmarkProject('SlowBench_R$round');
 
-        final roundResults = await runStabilizationRound(
-          testProjectId!,
-          'slow',
-        );
+        final roundResults = await runStabilizationRound(testProjectId!);
         allRoundResults.add(roundResults);
 
         // Print per-round results
@@ -277,92 +264,6 @@ void main() {
       debugPrint('');
 
       // At least some photos should succeed
-      expect(successCount, greaterThan(0));
-    });
-
-    // ── FAST MODE benchmark ─────────────────────────────────────────────
-
-    testWidgets('benchmark: fast mode ($rounds rounds)', (tester) async {
-      if (!fixturesReady) {
-        markTestSkipped('Fixtures not loaded');
-        return;
-      }
-
-      final allRoundResults = <List<Map<String, dynamic>>>[];
-
-      for (int round = 0; round < rounds; round++) {
-        testProjectId = await createBenchmarkProject(
-          'FastBench_R$round',
-          'fast',
-        );
-
-        final roundResults = await runStabilizationRound(
-          testProjectId!,
-          'fast',
-        );
-        allRoundResults.add(roundResults);
-
-        final roundTotalMs = roundResults.fold<int>(
-            0, (sum, r) => sum + (r['elapsedMs'] as int));
-        final roundAvgMs = roundTotalMs / roundResults.length;
-
-        debugPrint(
-          '  [FAST] Round ${round + 1}/$rounds: '
-          '${roundResults.length} photos, '
-          'total=${roundTotalMs}ms, '
-          'avg=${roundAvgMs.toStringAsFixed(0)}ms/photo',
-        );
-
-        for (final r in roundResults) {
-          final score = r['score'] as double?;
-          debugPrint(
-            '    photo ${r['timestamp']}: '
-            '${r['elapsedMs']}ms, '
-            'success=${r['success']}, '
-            'score=${score?.toStringAsFixed(2) ?? 'n/a'}',
-          );
-        }
-
-        await cleanupProject(testProjectId!);
-        testProjectId = null;
-        await IsolatePool.instance.clearMatCache();
-      }
-
-      // Aggregate
-      final allTimes = allRoundResults
-          .expand((r) => r)
-          .map((r) => r['elapsedMs'] as int)
-          .toList();
-      final totalPhotos = allTimes.length;
-      final grandTotalMs = allTimes.fold<int>(0, (a, b) => a + b);
-      final grandAvgMs = grandTotalMs / totalPhotos;
-      allTimes.sort();
-      final medianMs = allTimes[allTimes.length ~/ 2];
-      final minMs = allTimes.first;
-      final maxMs = allTimes.last;
-
-      final successCount = allRoundResults
-          .expand((r) => r)
-          .where((r) => r['success'] == true)
-          .length;
-
-      debugPrint('');
-      debugPrint('═══════════════════════════════════════════════');
-      debugPrint('  FAST MODE BENCHMARK RESULTS');
-      debugPrint('═══════════════════════════════════════════════');
-      debugPrint('  Rounds: $rounds');
-      debugPrint('  Photos per round: ${faceDays.length}');
-      debugPrint('  Total stabilizations: $totalPhotos');
-      debugPrint('  Successful: $successCount/$totalPhotos');
-      debugPrint('  ─────────────────────────────────────────');
-      debugPrint('  Avg:    ${grandAvgMs.toStringAsFixed(0)} ms/photo');
-      debugPrint('  Median: $medianMs ms/photo');
-      debugPrint('  Min:    $minMs ms/photo');
-      debugPrint('  Max:    $maxMs ms/photo');
-      debugPrint('  Total:  ${grandTotalMs}ms');
-      debugPrint('═══════════════════════════════════════════════');
-      debugPrint('');
-
       expect(successCount, greaterThan(0));
     });
   });

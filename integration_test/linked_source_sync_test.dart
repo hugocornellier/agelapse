@@ -50,7 +50,6 @@ void main() {
       aspectRatio: '9:16',
       resolution: '1080p',
       watermarkEnabled: false,
-      stabilizationMode: 'off',
       image: null,
       eyeOffsetX: 0.0,
       eyeOffsetY: 0.0,

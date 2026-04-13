@@ -10,7 +10,6 @@ void main() {
           resolution: '1080p',
           aspectRatio: '9:16',
           aspectRatioDecimal: 0.5625,
-          stabilizationMode: 'face',
           eyeOffsetX: 0.5,
           eyeOffsetY: 0.35,
           projectType: 'face',
@@ -22,7 +21,6 @@ void main() {
         expect(settings.resolution, equals('1080p'));
         expect(settings.aspectRatio, equals('9:16'));
         expect(settings.aspectRatioDecimal, equals(0.5625));
-        expect(settings.stabilizationMode, equals('face'));
         expect(settings.eyeOffsetX, equals(0.5));
         expect(settings.eyeOffsetY, equals(0.35));
         expect(settings.projectType, equals('face'));
@@ -35,7 +33,6 @@ void main() {
           resolution: '4K',
           aspectRatio: '16:9',
           aspectRatioDecimal: 1.7778,
-          stabilizationMode: 'object',
           eyeOffsetX: 0.0,
           eyeOffsetY: 0.0,
           projectType: 'object',
@@ -55,7 +52,6 @@ void main() {
           resolution: '720p',
           aspectRatio: '9:16',
           aspectRatioDecimal: 0.5625,
-          stabilizationMode: 'face',
           eyeOffsetX: 0.5,
           eyeOffsetY: 0.35,
           projectType: 'face',
@@ -74,7 +70,6 @@ void main() {
           resolution: '1080p',
           aspectRatio: '9:16',
           aspectRatioDecimal: 0.5625,
-          stabilizationMode: 'face',
           eyeOffsetX: -0.1,
           eyeOffsetY: -0.05,
           projectType: 'face',
@@ -94,7 +89,6 @@ void main() {
           resolution: '1080p',
           aspectRatio: '9:16',
           aspectRatioDecimal: 0.5625,
-          stabilizationMode: 'face',
           eyeOffsetX: 0.5,
           eyeOffsetY: 0.35,
           projectType: 'face',
@@ -107,7 +101,6 @@ void main() {
           resolution: '1080p',
           aspectRatio: '9:16',
           aspectRatioDecimal: 0.5625,
-          stabilizationMode: 'face',
           eyeOffsetX: 0.5,
           eyeOffsetY: 0.35,
           projectType: 'face',
@@ -130,7 +123,6 @@ void main() {
             resolution: res,
             aspectRatio: '9:16',
             aspectRatioDecimal: 0.5625,
-            stabilizationMode: 'face',
             eyeOffsetX: 0.5,
             eyeOffsetY: 0.35,
             projectType: 'face',
@@ -157,7 +149,6 @@ void main() {
             resolution: '1080p',
             aspectRatio: entry.key,
             aspectRatioDecimal: entry.value,
-            stabilizationMode: 'face',
             eyeOffsetX: 0.5,
             eyeOffsetY: 0.35,
             projectType: 'face',
@@ -170,40 +161,6 @@ void main() {
       });
     });
 
-    group('stabilization modes', () {
-      test('supports face stabilization mode', () {
-        const settings = StabilizationSettings(
-          projectOrientation: 'portrait',
-          resolution: '1080p',
-          aspectRatio: '9:16',
-          aspectRatioDecimal: 0.5625,
-          stabilizationMode: 'face',
-          eyeOffsetX: 0.5,
-          eyeOffsetY: 0.35,
-          projectType: 'face',
-          backgroundColorBGR: [0, 0, 0],
-          lossless: false,
-        );
-        expect(settings.stabilizationMode, equals('face'));
-      });
-
-      test('supports object stabilization mode', () {
-        const settings = StabilizationSettings(
-          projectOrientation: 'portrait',
-          resolution: '1080p',
-          aspectRatio: '9:16',
-          aspectRatioDecimal: 0.5625,
-          stabilizationMode: 'object',
-          eyeOffsetX: 0.5,
-          eyeOffsetY: 0.5,
-          projectType: 'object',
-          backgroundColorBGR: [0, 0, 0],
-          lossless: false,
-        );
-        expect(settings.stabilizationMode, equals('object'));
-      });
-    });
-
     group('background color BGR format', () {
       test('black is [0, 0, 0]', () {
         const settings = StabilizationSettings(
@@ -211,7 +168,6 @@ void main() {
           resolution: '1080p',
           aspectRatio: '9:16',
           aspectRatioDecimal: 0.5625,
-          stabilizationMode: 'face',
           eyeOffsetX: 0.5,
           eyeOffsetY: 0.35,
           projectType: 'face',
@@ -227,7 +183,6 @@ void main() {
           resolution: '1080p',
           aspectRatio: '9:16',
           aspectRatioDecimal: 0.5625,
-          stabilizationMode: 'face',
           eyeOffsetX: 0.5,
           eyeOffsetY: 0.35,
           projectType: 'face',
@@ -243,7 +198,6 @@ void main() {
           resolution: '1080p',
           aspectRatio: '9:16',
           aspectRatioDecimal: 0.5625,
-          stabilizationMode: 'face',
           eyeOffsetX: 0.5,
           eyeOffsetY: 0.35,
           projectType: 'face',
@@ -259,7 +213,6 @@ void main() {
           resolution: '1080p',
           aspectRatio: '9:16',
           aspectRatioDecimal: 0.5625,
-          stabilizationMode: 'face',
           eyeOffsetX: 0.5,
           eyeOffsetY: 0.35,
           projectType: 'face',

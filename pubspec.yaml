@@ -23,11 +23,10 @@ dependencies:
   exif_reader: ^4.1.0
   cat_detection: ^1.0.0
   dog_detection: ^1.0.0
-  face_detection_tflite: ^5.1.0
+  face_detection_tflite: ^5.1.2
+  hand_detection: ^2.0.6
   ffmpeg_kit_flutter_new:
-    git:
-      url: https://github.com/hugocornellier/ffmpeg_kit_flutter.git
-      ref: e028e10
+    path: plugins/ffmpeg_kit_flutter_new
   file_picker: ^10.3.10
   file_selector: ^1.1.0
   flutter:

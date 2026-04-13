@@ -90,6 +90,7 @@ class SettingsSheetState extends State<SettingsSheet> {
   final _projectSettingsCompleter = Completer<void>();
   final _dateStampSettingsCompleter = Completer<void>();
   final Future<void> _defaultSettingsFuture = Future<void>.value();
+  late final Future<void> _outputStabFuture;
 
   Future<Map<String, bool>> get _settingsFuture => _settingsCompleter.future;
   Future<void> get _notificationInitialization => _notificationCompleter.future;
@@ -126,7 +127,6 @@ class SettingsSheetState extends State<SettingsSheet> {
       ''; // The initial WxH when entering custom mode
   int gridCount = 4;
   int _gridModeIndex = 0;
-  String _stabilizationMode = 'slow';
   String _galleryGridMode = 'auto';
   String _backgroundColor = '#000000';
 
@@ -184,6 +184,7 @@ class SettingsSheetState extends State<SettingsSheet> {
   @override
   void initState() {
     super.initState();
+    _outputStabFuture = Future.wait([_settingsFuture, _videoSettingsFuture]);
     // Listen for changes to custom resolution fields
     _customWidthController.addListener(_onCustomResolutionFieldChanged);
     _customHeightController.addListener(_onCustomResolutionFieldChanged);
@@ -263,13 +264,11 @@ class SettingsSheetState extends State<SettingsSheet> {
         SettingsUtil.loadDailyNotificationTime(widget.projectId.toString()),
         SettingsUtil.loadGridModeIndex(widget.projectId.toString()),
         SettingsUtil.loadCameraMirror(widget.projectId.toString()),
-        SettingsUtil.loadStabilizationMode(),
       ]);
 
       notificationsEnabled = results[2] as bool;
       dailyNotificationTime = results[3] as String;
       _gridModeIndex = results[4] as int;
-      _stabilizationMode = results[6] as String;
 
       if (dailyNotificationTime == "not set") {
         _selectedTime = const TimeOfDay(hour: 17, minute: 0);
@@ -824,16 +823,42 @@ class SettingsSheetState extends State<SettingsSheet> {
 
   /// Handle font selection, including importing custom fonts.
   Future<void> _handleGalleryFontSelection(String? value) async {
+    final affectsExport = _exportDateStampEnabled &&
+        _exportDateStampFont == DateStampUtils.fontSameAsGallery;
+    await _handleFontSelection(
+      value: value,
+      settingKey: 'gallery_date_stamp_font',
+      stateSetter: (font) => _galleryDateStampFont = font,
+      alwaysRecompile: false,
+      needsRecompile: affectsExport,
+    );
+  }
+
+  /// Handle export font selection, including importing custom fonts.
+  Future<void> _handleExportFontSelection(String? value) async {
+    await _handleFontSelection(
+      value: value,
+      settingKey: 'export_date_stamp_font',
+      stateSetter: (font) => _exportDateStampFont = font,
+      alwaysRecompile: true,
+      needsRecompile: true,
+    );
+  }
+
+  /// Unified font selection handler for gallery and export date stamps.
+  Future<void> _handleFontSelection({
+    required String? value,
+    required String settingKey,
+    required void Function(String) stateSetter,
+    required bool alwaysRecompile,
+    required bool needsRecompile,
+  }) async {
     if (value == null) return;
 
-    // Check if user wants to import a custom font
     if (value == DateStampUtils.fontCustomMarker) {
       final familyName = await _importCustomFont();
       if (familyName != null && mounted) {
-        // Use the newly imported font
-        final affectsExport = _exportDateStampEnabled &&
-            _exportDateStampFont == DateStampUtils.fontSameAsGallery;
-        if (affectsExport) {
+        if (needsRecompile) {
           final shouldProceed = await ConfirmActionDialog.showRecompileVideo(
             context,
             'font',
@@ -842,19 +867,16 @@ class SettingsSheetState extends State<SettingsSheet> {
         }
 
         await _saveFontSetting(
-          'gallery_date_stamp_font',
+          settingKey,
           familyName,
-          () => _galleryDateStampFont = familyName,
-          recompile: affectsExport,
+          () => stateSetter(familyName),
+          recompile: needsRecompile,
         );
       }
       return;
     }
 
-    // Regular font selection
-    final affectsExport = _exportDateStampEnabled &&
-        _exportDateStampFont == DateStampUtils.fontSameAsGallery;
-    if (affectsExport) {
+    if (needsRecompile) {
       final shouldProceed = await ConfirmActionDialog.showRecompileVideo(
         context,
         'font',
@@ -863,49 +885,10 @@ class SettingsSheetState extends State<SettingsSheet> {
     }
 
     await _saveFontSetting(
-      'gallery_date_stamp_font',
+      settingKey,
       value,
-      () => _galleryDateStampFont = value,
-      recompile: affectsExport,
-    );
-  }
-
-  /// Handle export font selection, including importing custom fonts.
-  Future<void> _handleExportFontSelection(String? value) async {
-    if (value == null) return;
-
-    // Check if user wants to import a custom font
-    if (value == DateStampUtils.fontCustomMarker) {
-      final familyName = await _importCustomFont();
-      if (familyName != null && mounted) {
-        final shouldProceed = await ConfirmActionDialog.showRecompileVideo(
-          context,
-          'font',
-        );
-        if (!shouldProceed) return;
-
-        await _saveFontSetting(
-          'export_date_stamp_font',
-          familyName,
-          () => _exportDateStampFont = familyName,
-          recompile: true,
-        );
-      }
-      return;
-    }
-
-    // Regular font selection
-    final shouldProceed = await ConfirmActionDialog.showRecompileVideo(
-      context,
-      'font',
-    );
-    if (!shouldProceed) return;
-
-    await _saveFontSetting(
-      'export_date_stamp_font',
-      value,
-      () => _exportDateStampFont = value,
-      recompile: true,
+      () => stateSetter(value),
+      recompile: needsRecompile,
     );
   }
 
@@ -1045,7 +1028,6 @@ class SettingsSheetState extends State<SettingsSheet> {
           Icons.center_focus_strong_outlined,
           () => Column(
             children: [
-              _buildStabilizationModeDropdown(),
               _buildEyeScaleButton(),
               _buildResolutionDropdown(),
               if (!_isCustomResolution) ...[
@@ -1056,7 +1038,7 @@ class SettingsSheetState extends State<SettingsSheet> {
               _buildCodecDropdown(),
             ],
           ),
-          () => Future.wait([_settingsFuture, _videoSettingsFuture]),
+          () => _outputStabFuture,
         ),
       if (!notif)
         _Section(
@@ -2031,7 +2013,7 @@ class SettingsSheetState extends State<SettingsSheet> {
           showInfo: true,
           infoContent:
               'When enabled, stabilized frames preserve source bit depth (up to 16-bit). '
-              'This only benefits RAW/DNG imports — standard JPEG/HEIC photos are always 8-bit regardless.\n\n'
+              'This only benefits RAW/DNG imports: standard JPEG/HEIC photos are always 8-bit regardless.\n\n'
               'Lossless 16-bit frames are roughly double the file size of 8-bit frames.',
           onChanged: (bool value) async {
             final bool shouldProceed = await Utils.showConfirmChangeDialog(
@@ -3662,41 +3644,6 @@ class SettingsSheetState extends State<SettingsSheet> {
 
       await resetStabStatusAndRestartStabilization();
     }
-  }
-
-  Widget _buildStabilizationModeDropdown() {
-    return SettingListTile(
-      title: 'Stabilization mode',
-      showDivider: true,
-      contentWidget: CustomDropdownButton<String>(
-        value: _stabilizationMode,
-        items: const [
-          DropdownMenuItem<String>(value: "fast", child: Text("Fast")),
-          DropdownMenuItem<String>(value: "slow", child: Text("Slow")),
-        ],
-        onChanged: (String? value) async {
-          if (value != null && value != _stabilizationMode) {
-            bool shouldProceed = await Utils.showConfirmChangeDialog(
-              context,
-              "stabilization mode",
-            );
-
-            if (shouldProceed) {
-              setState(() => _stabilizationMode = value);
-
-              await widget.cancelStabCallback();
-              await SettingsUtil.saveStabilizationMode(value);
-              await widget.refreshSettings();
-
-              await resetStabStatusAndRestartStabilization();
-            }
-          }
-        },
-      ),
-      infoContent: 'Fast: Quicker, but less accurate.\n'
-          'Slow: More accurate, but takes longer.',
-      showInfo: true,
-    );
   }
 
   Widget _buildAspectRatioDropdown() {

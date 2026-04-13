@@ -669,7 +669,9 @@ class VideoUtils {
     String filePath,
   ) async {
     try {
-      final bytes = await File(filePath).readAsBytes();
+      final raf = await File(filePath).open();
+      final bytes = await raf.read(25);
+      await raf.close();
       if (bytes.length < 25) return null;
       // Verify PNG signature (first 4 bytes of the 8-byte signature)
       if (bytes[0] != 0x89 ||
@@ -965,8 +967,10 @@ class VideoUtils {
         LogService.instance.log("[VIDEO] Using optimal framerate: $framerate");
       }
 
-      if (Platform.isWindows || Platform.isLinux) {
-        LogService.instance.log("[VIDEO] Using Windows/Linux encoding path");
+      if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+        final String platformName =
+            Platform.isMacOS ? 'macOS' : 'Windows/Linux';
+        LogService.instance.log("[VIDEO] Using $platformName encoding path");
         try {
           final String framesDir = path.join(
             stabilizedDirPath,
@@ -983,9 +987,6 @@ class VideoUtils {
           }
           final (videoWidth, videoHeight) = (frameInfo.width, frameInfo.height);
 
-          // Generate date stamp overlay with PNG assets (if enabled)
-          // When color overlay is present, video input shifts to index 1
-          // and date stamp PNGs shift by +1.
           // Input index offset: 0 normally, 1 when color overlay is present
           final int idxOffset = needsColorOverlay ? 1 : 0;
 
@@ -1012,17 +1013,28 @@ class VideoUtils {
                 )
               : (filterPart: null, filePath: null);
 
-          final String ffmpegExeWin = await _resolveFfmpegPath();
-          final exeFileWin = File(ffmpegExeWin);
-          if (!ffmpegExeWin.contains(path.separator) ||
-              !await exeFileWin.exists()) {
-            LogService.instance.log(
-              "[VIDEO] WARNING: ffmpeg path '$ffmpegExeWin' may not exist as a file (might be a PATH command)",
+          // Platform-specific ffmpeg path resolution
+          final String ffmpegExe;
+          if (Platform.isMacOS) {
+            final exeDir = path.dirname(Platform.resolvedExecutable);
+            final resourcesDir = path.normalize(
+              path.join(exeDir, '..', 'Resources'),
             );
+            ffmpegExe = path.join(resourcesDir, 'ffmpeg');
+          } else {
+            ffmpegExe = await _resolveFfmpegPath();
+            final exeFile = File(ffmpegExe);
+            if (!ffmpegExe.contains(path.separator) ||
+                !await exeFile.exists()) {
+              LogService.instance.log(
+                "[VIDEO] WARNING: ffmpeg path '$ffmpegExe' may not exist as a file (might be a PATH command)",
+              );
+            }
           }
+
           final bool ok = await _encodeDesktop(
-            ffmpegExe: ffmpegExeWin,
-            isMacOS: false,
+            ffmpegExe: ffmpegExe,
+            isMacOS: Platform.isMacOS,
             framesDir: framesDir,
             outputPath: videoOutputPath,
             fps: framerate,
@@ -1064,106 +1076,8 @@ class VideoUtils {
           return ok;
         } catch (e, stackTrace) {
           LogService.instance.log(
-            "[VIDEO] ERROR in Windows/Linux encoding: $e",
+            "[VIDEO] ERROR in $platformName encoding: $e",
           );
-          LogService.instance.log("[VIDEO] Stack trace: $stackTrace");
-          return false;
-        }
-      }
-
-      if (Platform.isMacOS) {
-        LogService.instance.log("[VIDEO] Using macOS encoding path");
-        try {
-          final String framesDir = path.join(
-            stabilizedDirPath,
-            projectOrientation,
-          );
-
-          // Get frame dimensions and bit depth for date stamp overlay
-          final frameInfo = await _getFrameInfo(framesDir);
-          if (frameInfo == null) {
-            LogService.instance.log(
-              "[VIDEO] ERROR: Could not get frame dimensions",
-            );
-            return false;
-          }
-          final (videoWidth, videoHeight) = (frameInfo.width, frameInfo.height);
-
-          // Input index offset: 0 normally, 1 when color overlay is present
-          final int idxOffset = needsColorOverlay ? 1 : 0;
-
-          final dateStampOverlay = await _generateDateStampOverlay(
-            projectId: projectId,
-            framesDir: framesDir,
-            orientation: projectOrientation,
-            videoWidth: videoWidth,
-            videoHeight: videoHeight,
-            fps: framerate,
-            videoInputLabel: needsBackgroundComposite ? 'base' : '0',
-            inputIndexOffset: idxOffset,
-          );
-
-          // Load watermark settings
-          final wmSettingsMac = await _loadWatermarkSettings(projectId);
-          int wmInputIndex =
-              1 + idxOffset + (dateStampOverlay?.pngInputPaths.length ?? 0);
-          final wmMac = wmSettingsMac.enabled
-              ? await _resolveWatermark(
-                  projectId,
-                  wmSettingsMac.pos,
-                  wmSettingsMac.filePath,
-                )
-              : (filterPart: null, filePath: null);
-
-          final exeDirMac = path.dirname(Platform.resolvedExecutable);
-          final resourcesDirMac = path.normalize(
-            path.join(exeDirMac, '..', 'Resources'),
-          );
-          final ffmpegExeMac = path.join(resourcesDirMac, 'ffmpeg');
-          final bool ok = await _encodeDesktop(
-            ffmpegExe: ffmpegExeMac,
-            isMacOS: true,
-            framesDir: framesDir,
-            outputPath: videoOutputPath,
-            fps: framerate,
-            projectId: projectId,
-            orientation: projectOrientation,
-            onLog: (line) => LogService.instance.log("[FFMPEG] $line"),
-            onProgress: setCurrentFrame,
-            dateStampOverlay: dateStampOverlay,
-            effectiveCodec: effectiveCodec,
-            videoHasAlpha: videoHasAlpha,
-            needsColorOverlay: needsColorOverlay,
-            needsBlurOverlay: needsBlurOverlay,
-            videoBg: videoBg,
-            videoWidth: videoWidth,
-            videoHeight: videoHeight,
-            watermarkFilterPart: wmMac.filterPart,
-            watermarkFilePath: wmMac.filePath,
-            watermarkInputIndex: wmInputIndex,
-            knownHighBitDepth: frameInfo.highBitDepth,
-          );
-
-          await _cleanupDateStampTemp(dateStampOverlay);
-          LogService.instance.log("[VIDEO] _encodeDesktop returned: $ok");
-          if (ok) {
-            final String resolution = await SettingsUtil.loadVideoResolution(
-              projectId.toString(),
-            );
-            await DB.instance.addVideo(
-              projectId,
-              resolution,
-              wmSettingsMac.enabled.toString(),
-              wmSettingsMac.pos,
-              totalPhotoCount,
-              framerate,
-            );
-            LogService.instance.log("[VIDEO] Video record added to database");
-          }
-
-          return ok;
-        } catch (e, stackTrace) {
-          LogService.instance.log("[VIDEO] ERROR in macOS encoding: $e");
           LogService.instance.log("[VIDEO] Stack trace: $stackTrace");
           return false;
         }
@@ -1205,12 +1119,9 @@ class VideoUtils {
       final int idxOffset = needsColorOverlay ? 1 : 0;
 
       // Build input arguments (video frames + date stamp PNGs + watermark)
-      String dateStampInputs = "";
-      if (dateStampOverlay != null) {
-        for (final pngPath in dateStampOverlay.pngInputPaths) {
-          dateStampInputs += "-i \"$pngPath\" ";
-        }
-      }
+      final dateStampInputs = dateStampOverlay != null
+          ? '${dateStampOverlay.pngInputPaths.map((p) => '-i "$p"').join(' ')} '
+          : "";
 
       // Build watermark input
       String watermarkInput = "";
@@ -1521,9 +1432,8 @@ class VideoUtils {
     Function(int currentFrame)? setCurrentFrame,
   ) {
     final RegExp frameRegex = RegExp(r'frame=\s*(\d+)');
-    final match = frameRegex.allMatches(output).isNotEmpty
-        ? frameRegex.allMatches(output).last
-        : null;
+    final matches = frameRegex.allMatches(output);
+    final match = matches.isNotEmpty ? matches.last : null;
     if (match == null) return;
 
     final int videoFrame = int.parse(match.group(1)!);

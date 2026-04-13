@@ -9,7 +9,6 @@ class StabilizationSettings {
   final String resolution;
   final String aspectRatio;
   final double aspectRatioDecimal;
-  final String stabilizationMode;
   final double eyeOffsetX;
   final double eyeOffsetY;
   final String projectType;
@@ -25,7 +24,6 @@ class StabilizationSettings {
     required this.resolution,
     required this.aspectRatio,
     required this.aspectRatioDecimal,
-    required this.stabilizationMode,
     required this.eyeOffsetX,
     required this.eyeOffsetY,
     required this.projectType,
@@ -42,7 +40,6 @@ class StabilizationSettings {
       SettingsUtil.loadProjectOrientation(projectId.toString()),
       SettingsUtil.loadVideoResolution(projectId.toString()),
       SettingsUtil.loadAspectRatio(projectId.toString()),
-      SettingsUtil.loadStabilizationMode(),
       SettingsUtil.loadOffsetXCurrentOrientation(projectId.toString()),
       SettingsUtil.loadOffsetYCurrentOrientation(projectId.toString()),
       DB.instance.getProjectTypeByProjectId(projectId),
@@ -51,8 +48,8 @@ class StabilizationSettings {
     ]);
 
     final aspectRatio = results[2] as String;
-    final projectType = results[6] as String?;
-    final bgColorHex = results[7] as String;
+    final projectType = results[5] as String?;
+    final bgColorHex = results[6] as String;
 
     return StabilizationSettings(
       projectOrientation: results[0] as String,
@@ -60,12 +57,11 @@ class StabilizationSettings {
       aspectRatio: aspectRatio,
       aspectRatioDecimal:
           StabUtils.getAspectRatioAsDecimal(aspectRatio) ?? (16 / 9),
-      stabilizationMode: results[3] as String,
-      eyeOffsetX: double.parse(results[4] as String),
-      eyeOffsetY: double.parse(results[5] as String),
+      eyeOffsetX: double.parse(results[3] as String),
+      eyeOffsetY: double.parse(results[4] as String),
       projectType: projectType?.toLowerCase() ?? 'face',
       backgroundColorBGR: _hexToBGR(bgColorHex),
-      lossless: results[8] as bool,
+      lossless: results[7] as bool,
     );
   }
 

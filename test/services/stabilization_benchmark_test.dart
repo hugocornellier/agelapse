@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:agelapse/services/stabilization_benchmark.dart';
-import 'package:agelapse/models/stabilization_mode.dart';
 
 void main() {
   group('StabilizationBenchmark', () {
@@ -41,7 +40,7 @@ void main() {
       });
 
       test('stores mode on first result', () {
-        benchmark.addResult(finalScore: 0.5, mode: StabilizationMode.fast);
+        benchmark.addResult(finalScore: 0.5);
         final map = benchmark.toMap();
         expect(map['count'], equals(1));
       });
@@ -79,7 +78,6 @@ void main() {
           finalEyeDeltaY: 2.0,
           finalEyeDistance: 100.0,
           goalEyeDistance: 95.0,
-          mode: StabilizationMode.fast,
         );
         benchmark.addResult(finalScore: 0.3);
 
@@ -246,7 +244,6 @@ void main() {
           finalEyeDeltaY: 2.0,
           finalEyeDistance: 100.0,
           goalEyeDistance: 95.0,
-          mode: StabilizationMode.fast,
         );
         expect(() => benchmark.logSummary(), returnsNormally);
       });

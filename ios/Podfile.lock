@@ -38,6 +38,8 @@ PODS:
     - SwiftyGif
   - downloadsfolder (0.0.1):
     - Flutter
+  - fast_thumbnail (0.1.0):
+    - Flutter
   - ffmpeg_kit_flutter_new (1.0.0):
     - ffmpeg_kit_flutter_new/full-gpl (= 1.0.0)
     - Flutter
@@ -125,6 +127,7 @@ DEPENDENCIES:
   - camera_avfoundation (from `.symlinks/plugins/camera_avfoundation/ios`)
   - device_info_plus (from `.symlinks/plugins/device_info_plus/ios`)
   - downloadsfolder (from `.symlinks/plugins/downloadsfolder/ios`)
+  - fast_thumbnail (from `.symlinks/plugins/fast_thumbnail/ios`)
   - ffmpeg_kit_flutter_new (from `.symlinks/plugins/ffmpeg_kit_flutter_new/ios`)
   - file_picker (from `.symlinks/plugins/file_picker/ios`)
   - file_selector_ios (from `.symlinks/plugins/file_selector_ios/ios`)
@@ -167,6 +170,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/device_info_plus/ios"
   downloadsfolder:
     :path: ".symlinks/plugins/downloadsfolder/ios"
+  fast_thumbnail:
+    :path: ".symlinks/plugins/fast_thumbnail/ios"
   ffmpeg_kit_flutter_new:
     :path: ".symlinks/plugins/ffmpeg_kit_flutter_new/ios"
   file_picker:
@@ -223,6 +228,7 @@ SPEC CHECKSUMS:
   DKImagePickerController: 946cec48c7873164274ecc4624d19e3da4c1ef3c
   DKPhotoGallery: b3834fecb755ee09a593d7c9e389d8b5d6deed60
   downloadsfolder: 7d5c7b5d23e3c4dded522ff2a2ef14a56846378a
+  fast_thumbnail: 76e71ca044ae63ff54a47084ee6bc2ccecc9a0e1
   ffmpeg_kit_flutter_new: 3b1638336f0b350bf2d5edac3258dc29e6b385b9
   file_picker: a0560bc09d61de87f12d246fc47d2119e6ef37be
   file_selector_ios: ec57ec07954363dd730b642e765e58f199bb621a

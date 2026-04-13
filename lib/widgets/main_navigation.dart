@@ -709,7 +709,7 @@ class MainNavigationState extends State<MainNavigation>
   void _showQueuedFilesSnackbar(int count) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$count files queued - will import after current batch'),
+        content: Text('$count files queued, will import after current batch'),
         duration: const Duration(seconds: 3),
       ),
     );

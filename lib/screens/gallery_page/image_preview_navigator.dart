@@ -1044,7 +1044,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
             : null,
         tooltip: isStabilizedView
             ? 'Inspection Mode'
-            : 'Inspection Mode — Available on Stabilized view only',
+            : 'Inspection Mode: Available on Stabilized view only',
       ),
     );
   }
