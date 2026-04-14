@@ -483,7 +483,7 @@ class SettingsSheetState extends State<SettingsSheet> {
 
     try {
       // Open file picker for TTF/OTF files
-      final result = await FilePicker.pickFiles(
+      final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['ttf', 'otf'],
         dialogTitle: 'Select a font file (TTF or OTF)',
@@ -1978,7 +1978,7 @@ class SettingsSheetState extends State<SettingsSheet> {
   }
 
   Future<String?> _pickLinkedSourceFolder() async {
-    final selectedPath = await FilePicker.getDirectoryPath();
+    final selectedPath = await FilePicker.platform.getDirectoryPath();
     if (selectedPath == null || selectedPath.trim().isEmpty) return null;
 
     final projectDirPath = await DirUtils.getProjectDirPath(widget.projectId);
@@ -4557,7 +4557,7 @@ class ImagePickerWidgetState extends State<ImagePickerWidget> {
   }
 
   Future<void> _pickImage() async {
-    FilePickerResult? result = await FilePicker.pickFiles(
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.image,
       allowMultiple: false,
     );
