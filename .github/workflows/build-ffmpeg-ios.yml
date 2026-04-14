@@ -1,0 +1,385 @@
+name: Build FFmpeg (iOS)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build minimal FFmpeg iOS frameworks
+    runs-on: macos-15
+    timeout-minutes: 120
+
+    env:
+      FFMPEG_VERSION: "n6.1.2"
+      MIN_IOS_VERSION: "14.0"
+      # arm64 = device (platform 2: iPhoneOS)
+      # x86_64 = simulator (platform 7: iPhoneSimulator)
+      # Apple Silicon simulators run x86_64 via Rosetta (EXCLUDED_ARCHS=arm64 in xcconfig).
+      ARCHS: "arm64 x86_64"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: brew install nasm pkg-config cmake
+
+      - name: Download sources
+        run: |
+          cd /tmp
+          curl -L -o freetype.tar.xz https://download.savannah.gnu.org/releases/freetype/freetype-2.13.3.tar.xz
+          curl -L -o harfbuzz.tar.xz https://github.com/harfbuzz/harfbuzz/releases/download/14.1.0/harfbuzz-14.1.0.tar.xz
+          tar xf freetype.tar.xz
+          tar xf harfbuzz.tar.xz
+
+      - name: Clone FFmpeg source
+        run: git clone --depth 1 -b $FFMPEG_VERSION https://git.ffmpeg.org/ffmpeg.git /tmp/ffmpeg-src
+
+      - name: Patch FFmpeg thread-local log level
+        run: |
+          sed -i '' 's/static int av_log_level/__thread int av_log_level/g' /tmp/ffmpeg-src/libavutil/log.c
+          echo "=== Patched log.c ==="
+          grep -n 'av_log_level' /tmp/ffmpeg-src/libavutil/log.c | head -5
+
+      - name: Clone FFmpegKit wrapper source
+        run: |
+          git clone --depth 1 -b v6.0.LTS https://github.com/arthenica/ffmpeg-kit.git /tmp/ffmpeg-kit-src
+          APPLE_SRC="/tmp/ffmpeg-kit-src/apple/src"
+          echo "=== Wrapper source files ==="
+          echo "ObjC: $(find "$APPLE_SRC" -name '*.m' | wc -l) files"
+          echo "C:    $(find "$APPLE_SRC" -name '*.c' | wc -l) files"
+          echo "H:    $(find "$APPLE_SRC" -name '*.h' | wc -l) files"
+
+      - name: Build freetype and harfbuzz for each architecture
+        run: |
+          NCPU=$(sysctl -n hw.ncpu)
+          for ARCH in $ARCHS; do
+            echo "=========================================="
+            echo "=== Building deps for $ARCH ==="
+            echo "=========================================="
+            PREFIX="/tmp/deps-${ARCH}"
+            if [ "$ARCH" = "arm64" ]; then
+              SDK="iphoneos"; HOST="aarch64-apple-darwin"; MIN_VER_FLAG="-miphoneos-version-min=${MIN_IOS_VERSION}"
+            else
+              SDK="iphonesimulator"; HOST="x86_64-apple-darwin"; MIN_VER_FLAG="-miphonesimulator-version-min=${MIN_IOS_VERSION}"
+            fi
+            SDK_PATH=$(xcrun --sdk $SDK --show-sdk-path)
+            CC_FLAGS="-arch ${ARCH} ${MIN_VER_FLAG} -isysroot ${SDK_PATH}"
+
+            cd /tmp/freetype-2.13.3
+            rm -rf build-${ARCH} && mkdir build-${ARCH} && cd build-${ARCH}
+            CC="/usr/bin/clang ${CC_FLAGS}" ../configure \
+              --host=$HOST --prefix=$PREFIX \
+              --enable-static --disable-shared \
+              --with-zlib=no --with-bzip2=no --with-png=no --with-harfbuzz=no --with-brotli=no
+            make -j$NCPU && make install
+
+            cd /tmp/harfbuzz-14.1.0
+            rm -rf build-${ARCH}
+            cmake -B build-${ARCH} \
+              -DCMAKE_OSX_ARCHITECTURES=$ARCH -DCMAKE_OSX_SYSROOT=$SDK_PATH \
+              -DCMAKE_OSX_DEPLOYMENT_TARGET=$MIN_IOS_VERSION -DCMAKE_SYSTEM_NAME=iOS \
+              -DCMAKE_INSTALL_PREFIX=$PREFIX -DCMAKE_PREFIX_PATH=$PREFIX \
+              -DCMAKE_FIND_ROOT_PATH=$PREFIX \
+              -DFREETYPE_LIBRARY=$PREFIX/lib/libfreetype.a \
+              -DFREETYPE_INCLUDE_DIRS=$PREFIX/include/freetype2 \
+              -DBUILD_SHARED_LIBS=OFF -DHB_HAVE_FREETYPE=ON \
+              -DHB_HAVE_GLIB=OFF -DHB_HAVE_GOBJECT=OFF -DHB_HAVE_ICU=OFF \
+              -DHB_HAVE_CAIRO=OFF -DHB_HAVE_CORETEXT=OFF -DHB_BUILD_SUBSET=OFF
+            cmake --build build-${ARCH} -j$NCPU
+            cmake --install build-${ARCH}
+            echo "=== ${ARCH} deps done ==="
+          done
+
+      - name: Build FFmpeg shared libraries for each architecture
+        run: |
+          NCPU=$(sysctl -n hw.ncpu)
+          for ARCH in $ARCHS; do
+            echo "=========================================="
+            echo "=== Building FFmpeg for $ARCH ==="
+            echo "=========================================="
+            PREFIX="/tmp/ffmpeg-out-${ARCH}"
+            DEPS="/tmp/deps-${ARCH}"
+            if [ "$ARCH" = "arm64" ]; then
+              SDK="iphoneos"; MIN_VER_FLAG="-miphoneos-version-min=${MIN_IOS_VERSION}"
+            else
+              SDK="iphonesimulator"; MIN_VER_FLAG="-miphonesimulator-version-min=${MIN_IOS_VERSION}"
+            fi
+            SDK_PATH=$(xcrun --sdk $SDK --show-sdk-path)
+
+            cd /tmp/ffmpeg-src
+            make distclean 2>/dev/null || true
+
+            PKG_CONFIG_PATH="${DEPS}/lib/pkgconfig" \
+            PKG_CONFIG_LIBDIR="${DEPS}/lib/pkgconfig" \
+            ./configure \
+              --prefix=$PREFIX \
+              --cc=/usr/bin/clang \
+              --arch=$ARCH \
+              --enable-cross-compile \
+              --target-os=darwin \
+              --extra-cflags="-arch ${ARCH} ${MIN_VER_FLAG} -isysroot ${SDK_PATH} -I${DEPS}/include" \
+              --extra-ldflags="-arch ${ARCH} ${MIN_VER_FLAG} -isysroot ${SDK_PATH} -L${DEPS}/lib" \
+              --extra-libs='-lc++' \
+              --enable-shared \
+              --disable-static \
+              --enable-pic \
+              --enable-gpl \
+              --enable-pthreads \
+              --enable-zlib \
+              --enable-swscale \
+              --enable-avformat \
+              --enable-avcodec \
+              --enable-avfilter \
+              --enable-avdevice \
+              --disable-everything \
+              --disable-doc \
+              --disable-programs \
+              --disable-autodetect \
+              --enable-encoder=h264_videotoolbox \
+              --enable-encoder=hevc_videotoolbox \
+              --enable-encoder=prores_ks \
+              --enable-videotoolbox \
+              --enable-decoder=png \
+              --enable-decoder=wrapped_avframe \
+              --enable-muxer=mp4 \
+              --enable-muxer=mov \
+              --enable-demuxer=concat \
+              --enable-demuxer=image2 \
+              --enable-demuxer=image_png_pipe \
+              --enable-indev=lavfi \
+              --enable-filter=split \
+              --enable-filter=format \
+              --enable-filter=scale \
+              --enable-filter=crop \
+              --enable-filter=gblur \
+              --enable-filter=overlay \
+              --enable-filter=colorchannelmixer \
+              --enable-filter=color \
+              --enable-filter=drawtext \
+              --enable-libfreetype \
+              --enable-libharfbuzz \
+              --enable-protocol=file \
+              --pkg-config-flags=--static
+
+            make -j$NCPU
+            make install
+
+            # Save per-arch config headers for the wrapper build
+            mkdir -p /tmp/ffmpeg-config-${ARCH}
+            cp config.h config_components.h /tmp/ffmpeg-config-${ARCH}/ 2>/dev/null || true
+            cp libavutil/avconfig.h libavutil/ffversion.h /tmp/ffmpeg-config-${ARCH}/ 2>/dev/null || true
+
+            echo "=== ${ARCH} libraries ==="
+            ls -lh $PREFIX/lib/*.dylib
+          done
+
+      - name: Build FFmpegKit wrapper for each architecture
+        run: |
+          APPLE_SRC="/tmp/ffmpeg-kit-src/apple/src"
+          BUILD_DATE=$(date +%Y%m%d)
+          NCPU=$(sysctl -n hw.ncpu)
+
+          for ARCH in $ARCHS; do
+            echo "=== Building FFmpegKit wrapper for $ARCH ==="
+            FFMPEG_PREFIX="/tmp/ffmpeg-out-${ARCH}"
+            FFMPEG_CONFIG="/tmp/ffmpeg-config-${ARCH}"
+            OUT_DIR="/tmp/ffmpegkit-out-${ARCH}"
+            mkdir -p $OUT_DIR
+
+            if [ "$ARCH" = "arm64" ]; then
+              SDK="iphoneos"; MIN_VER_FLAG="-miphoneos-version-min=${MIN_IOS_VERSION}"
+            else
+              SDK="iphonesimulator"; MIN_VER_FLAG="-miphonesimulator-version-min=${MIN_IOS_VERSION}"
+            fi
+            SDK_PATH=$(xcrun --sdk $SDK --show-sdk-path)
+
+            # Collect all .m and .c source files
+            WRAPPER_FILES=$(find "${APPLE_SRC}" \( -name '*.m' -o -name '*.c' \) | sort | tr '\n' ' ')
+            echo "Source files: $(echo $WRAPPER_FILES | wc -w) files"
+
+            xcrun -sdk $SDK clang \
+              -dynamiclib \
+              -arch $ARCH \
+              ${MIN_VER_FLAG} \
+              -isysroot $SDK_PATH \
+              -install_name @rpath/ffmpegkit.framework/ffmpegkit \
+              -I${FFMPEG_CONFIG} \
+              -I${FFMPEG_PREFIX}/include \
+              -I/tmp/ffmpeg-src \
+              -I${APPLE_SRC} \
+              -L${FFMPEG_PREFIX}/lib \
+              -framework Foundation \
+              -framework CoreMedia \
+              -framework CoreVideo \
+              -framework CoreFoundation \
+              -framework AudioToolbox \
+              -framework VideoToolbox \
+              -fobjc-arc \
+              -fPIC \
+              -Wno-implicit-function-declaration \
+              -Wno-deprecated-declarations \
+              -Wno-shorten-64-to-32 \
+              -DFFMPEG_KIT_BUILD_DATE=${BUILD_DATE} \
+              -DFFMPEG_KIT_LTS \
+              $WRAPPER_FILES \
+              -lavfilter -lavformat -lavcodec -lavdevice \
+              -lswscale -lswresample -lavutil \
+              -lz -liconv -lbz2 \
+              -o $OUT_DIR/ffmpegkit
+
+            echo "  $(ls -lh $OUT_DIR/ffmpegkit | awk '{print $5}') ffmpegkit"
+          done
+
+      - name: Create fat frameworks
+        run: |
+          OUT="/tmp/frameworks"
+          FFMPEG_LIBS="libavutil libswscale libswresample libavcodec libavformat libavfilter libavdevice"
+
+          for LIB in $FFMPEG_LIBS; do
+            echo "=== Creating ${LIB}.framework ==="
+            FW_DIR="${OUT}/${LIB}.framework"
+            mkdir -p "${FW_DIR}/Headers"
+
+            ARM64_DYLIB=$(find /tmp/ffmpeg-out-arm64/lib -name "${LIB}*.dylib" -not -type l | head -1)
+            X86_DYLIB=$(find /tmp/ffmpeg-out-x86_64/lib -name "${LIB}*.dylib" -not -type l | head -1)
+
+            lipo -create "$ARM64_DYLIB" "$X86_DYLIB" -output "${FW_DIR}/${LIB}"
+            install_name_tool -id "@rpath/${LIB}.framework/${LIB}" "${FW_DIR}/${LIB}"
+
+            for DEP in $FFMPEG_LIBS; do
+              otool -L "${FW_DIR}/${LIB}" | grep "${DEP}\." | grep -v "@rpath/${DEP}.framework" | awk '{print $1}' | sort -u | while read -r CURRENT; do
+                [ -n "$CURRENT" ] && install_name_tool -change "$CURRENT" "@rpath/${DEP}.framework/${DEP}" "${FW_DIR}/${LIB}"
+              done
+            done
+
+            HEADER_NAME=$(echo $LIB | sed 's/^lib//')
+            cp /tmp/ffmpeg-out-arm64/include/${HEADER_NAME}/*.h "${FW_DIR}/Headers/" 2>/dev/null || true
+
+            python3 -c "
+          import plistlib, sys
+          data = dict(
+            CFBundleDevelopmentRegion='en',
+            CFBundleExecutable=sys.argv[1],
+            CFBundleIdentifier='com.antonkarpenko.ffmpegkit.' + sys.argv[1],
+            CFBundleInfoDictionaryVersion='6.0',
+            CFBundleName=sys.argv[1],
+            CFBundlePackageType='FMWK',
+            CFBundleShortVersionString='8.0',
+            CFBundleVersion='8.0.1',
+            CFBundleSignature='????',
+            MinimumOSVersion=sys.argv[2],
+            CFBundleSupportedPlatforms=['iPhoneOS', 'iPhoneSimulator'],
+            NSPrincipalClass='',
+          )
+          with open(sys.argv[3], 'wb') as f:
+            plistlib.dump(data, f, fmt=plistlib.FMT_XML)
+          " "${LIB}" "${MIN_IOS_VERSION}" "${FW_DIR}/Info.plist"
+
+            chmod 755 "${FW_DIR}/${LIB}"
+          done
+
+          # --- Build ffmpegkit.framework from compiled wrapper ---
+          echo "=== Creating ffmpegkit.framework ==="
+          FW_DIR="${OUT}/ffmpegkit.framework"
+          mkdir -p "${FW_DIR}/Headers" "${FW_DIR}/Modules"
+
+          lipo -create \
+            /tmp/ffmpegkit-out-arm64/ffmpegkit \
+            /tmp/ffmpegkit-out-x86_64/ffmpegkit \
+            -output "${FW_DIR}/ffmpegkit"
+          install_name_tool -id "@rpath/ffmpegkit.framework/ffmpegkit" "${FW_DIR}/ffmpegkit"
+
+          for DEP in $FFMPEG_LIBS; do
+            otool -L "${FW_DIR}/ffmpegkit" | grep "${DEP}\." | grep -v "@rpath/${DEP}.framework" | awk '{print $1}' | sort -u | while read -r CURRENT; do
+              [ -n "$CURRENT" ] && install_name_tool -change "$CURRENT" "@rpath/${DEP}.framework/${DEP}" "${FW_DIR}/ffmpegkit"
+            done
+          done
+
+          APPLE_SRC="/tmp/ffmpeg-kit-src/apple/src"
+          cp ${APPLE_SRC}/*.h "${FW_DIR}/Headers/" 2>/dev/null || true
+
+          python3 -c "
+          headers = [
+            'AbstractSession', 'ArchDetect', 'AtomicLong', 'Chapter',
+            'FFmpegKit', 'FFmpegKitConfig', 'FFmpegSession', 'FFmpegSessionCompleteCallback',
+            'FFprobeKit', 'FFprobeSession', 'FFprobeSessionCompleteCallback',
+            'Level', 'Log', 'LogCallback', 'LogRedirectionStrategy',
+            'MediaInformation', 'MediaInformationJsonParser',
+            'MediaInformationSession', 'MediaInformationSessionCompleteCallback',
+            'Packages', 'ReturnCode', 'Session', 'SessionState',
+            'Statistics', 'StatisticsCallback', 'StreamInformation', 'ffmpegkit_exception',
+          ]
+          lines = ['framework module ffmpegkit {', '']
+          for h in headers:
+            lines.append(f'  header \"{h}.h\"')
+          lines += ['', '  export *', '}', '']
+          import sys
+          with open(sys.argv[1], 'w') as f:
+            f.write('\n'.join(lines))
+          " "${FW_DIR}/Modules/module.modulemap"
+
+          python3 -c "
+          import plistlib, sys
+          data = dict(
+            CFBundleDevelopmentRegion='en',
+            CFBundleExecutable='ffmpegkit',
+            CFBundleIdentifier='com.antonkarpenko.ffmpegkit.FFmpegKit',
+            CFBundleInfoDictionaryVersion='6.0',
+            CFBundleName='ffmpegkit',
+            CFBundlePackageType='FMWK',
+            CFBundleShortVersionString='6.0',
+            CFBundleVersion='6.0',
+            CFBundleSignature='????',
+            MinimumOSVersion=sys.argv[1],
+            CFBundleSupportedPlatforms=['iPhoneOS', 'iPhoneSimulator'],
+            NSPrincipalClass='',
+          )
+          with open(sys.argv[2], 'wb') as f:
+            plistlib.dump(data, f, fmt=plistlib.FMT_XML)
+          " "${MIN_IOS_VERSION}" "${FW_DIR}/Info.plist"
+
+          chmod 755 "${FW_DIR}/ffmpegkit"
+
+      - name: Verify frameworks
+        run: |
+          OUT="/tmp/frameworks"
+          echo "=== Framework sizes ==="
+          du -sh ${OUT}/*.framework
+          echo ""
+          echo "Total: $(du -sh ${OUT} | cut -f1)"
+          echo ""
+          echo "=== Architecture verification ==="
+          for fw in ${OUT}/*.framework; do
+            NAME=$(basename $fw .framework)
+            BINARY="${fw}/${NAME}"
+            [ -f "$BINARY" ] && echo "${NAME}: $(lipo -info "$BINARY" 2>&1 | sed 's/.*: //')"
+          done
+          echo ""
+          echo "=== Install name verification ==="
+          echo "--- ffmpegkit ---"
+          otool -L ${OUT}/ffmpegkit.framework/ffmpegkit | head -15
+          echo ""
+          echo "--- libavcodec ---"
+          otool -L ${OUT}/libavcodec.framework/libavcodec | head -15
+          echo ""
+          echo "=== Bad refs check ==="
+          BAD=0
+          for fw in ${OUT}/*.framework; do
+            NAME=$(basename $fw .framework)
+            C=$(otool -L "$fw/$NAME" 2>/dev/null | grep -c "/tmp/ffmpeg-out" || true)
+            [ "$C" -gt 0 ] && echo "  $NAME: $C bad refs" && BAD=$((BAD+C))
+          done
+          [ "$BAD" -eq 0 ] && echo "  All clean"
+
+      - name: Package as ZIP
+        run: |
+          cd /tmp/frameworks
+          zip -r /tmp/ffmpeg-kit-ios-minimal.zip *.framework
+          ls -lh /tmp/ffmpeg-kit-ios-minimal.zip
+
+      - name: Upload frameworks artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ffmpeg-kit-minimal-ios-frameworks
+          path: /tmp/ffmpeg-kit-ios-minimal.zip
+          retention-days: 90

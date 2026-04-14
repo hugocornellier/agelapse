@@ -400,6 +400,8 @@ class DB {
     // Video codec and background
     'video_codec': 'h264',
     'video_background': 'TRANSPARENT',
+    'blur_zoom': '3.0',
+    'blur_strength': '1.0',
     // Camera timer
     'camera_timer_duration': '0',
     // Lossless storage (preserves source bit depth for RAW/DNG imports)

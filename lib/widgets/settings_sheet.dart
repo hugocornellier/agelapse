@@ -43,6 +43,7 @@ class _Section {
   final _SectionBuilder builder;
   final Future<dynamic> Function() futureGetter;
   final bool isDangerZone;
+  final bool isCustomLayout;
 
   const _Section(
     this.title,
@@ -50,6 +51,7 @@ class _Section {
     this.builder,
     this.futureGetter, {
     this.isDangerZone = false,
+    this.isCustomLayout = false,
   });
 }
 
@@ -134,6 +136,30 @@ class SettingsSheetState extends State<SettingsSheet> {
   VideoCodec _videoCodec = VideoCodec.h264;
   VideoBackground _videoBackground = const VideoBackground.transparent();
 
+  // Blur zoom settings
+  static const Map<String, double> _blurZoomPresets = {
+    'Low': 1.5,
+    'Medium': 2.0,
+    'High': 3.0,
+  };
+  double _blurZoom = SettingsUtil.fallbackBlurZoom;
+  bool _isCustomBlurZoom = false;
+  final TextEditingController _blurZoomController = TextEditingController();
+  final FocusNode _blurZoomFocusNode = FocusNode();
+  String? _blurZoomError;
+
+  // Blur strength settings
+  static const Map<String, double> _blurStrengthPresets = {
+    'Light': 0.5,
+    'Medium': 1.0,
+    'Heavy': 2.0,
+  };
+  double _blurStrength = SettingsUtil.fallbackBlurStrength;
+  bool _isCustomBlurStrength = false;
+  final TextEditingController _blurStrengthController = TextEditingController();
+  final FocusNode _blurStrengthFocusNode = FocusNode();
+  String? _blurStrengthError;
+
   // Lossless storage
   bool _losslessStorage = false;
 
@@ -188,6 +214,8 @@ class SettingsSheetState extends State<SettingsSheet> {
     // Listen for changes to custom resolution fields
     _customWidthController.addListener(_onCustomResolutionFieldChanged);
     _customHeightController.addListener(_onCustomResolutionFieldChanged);
+    _blurZoomFocusNode.addListener(_onBlurZoomFocusChanged);
+    _blurStrengthFocusNode.addListener(_onBlurStrengthFocusChanged);
     // Defer initialization until after the first frame to allow
     // the modal animation to start smoothly
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -215,6 +243,12 @@ class SettingsSheetState extends State<SettingsSheet> {
     _exportCustomFormatController.dispose();
     _customMarginHController.dispose();
     _customMarginVController.dispose();
+    _blurZoomFocusNode.removeListener(_onBlurZoomFocusChanged);
+    _blurZoomController.dispose();
+    _blurZoomFocusNode.dispose();
+    _blurStrengthFocusNode.removeListener(_onBlurStrengthFocusChanged);
+    _blurStrengthController.dispose();
+    _blurStrengthFocusNode.dispose();
     super.dispose();
   }
 
@@ -304,6 +338,8 @@ class SettingsSheetState extends State<SettingsSheet> {
       SettingsUtil.loadVideoCodec(projectIdStr),
       SettingsUtil.loadVideoBackground(projectIdStr),
       SettingsUtil.loadLosslessStorage(projectIdStr),
+      SettingsUtil.loadBlurZoom(projectIdStr),
+      SettingsUtil.loadBlurStrength(projectIdStr),
     ]);
 
     resolution = results[0] as String;
@@ -317,6 +353,16 @@ class SettingsSheetState extends State<SettingsSheet> {
     _videoCodec = results[6] as VideoCodec;
     _videoBackground = results[7] as VideoBackground;
     _losslessStorage = results[8] as bool;
+    _blurZoom = results[9] as double;
+    _isCustomBlurZoom = !_blurZoomPresets.containsValue(_blurZoom);
+    if (_isCustomBlurZoom) {
+      _blurZoomController.text = _blurZoom.toString();
+    }
+    _blurStrength = results[10] as double;
+    _isCustomBlurStrength = !_blurStrengthPresets.containsValue(_blurStrength);
+    if (_isCustomBlurStrength) {
+      _blurStrengthController.text = _blurStrength.toString();
+    }
 
     // Detect if resolution is custom (not a preset)
     _isCustomResolution = !_presetResolutions.contains(resolution);
@@ -437,7 +483,7 @@ class SettingsSheetState extends State<SettingsSheet> {
 
     try {
       // Open file picker for TTF/OTF files
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['ttf', 'otf'],
         dialogTitle: 'Select a font file (TTF or OTF)',
@@ -1015,14 +1061,72 @@ class SettingsSheetState extends State<SettingsSheet> {
     final video = widget.onlyShowVideoSettings;
     final notif = widget.onlyShowNotificationSettings;
     return [
-      if (!video && !notif)
+      if (!notif && isDesktop)
         _Section(
-          'Projects',
-          Icons.folder_outlined,
-          _buildProjectSettings,
-          () => _projectSettingsFuture,
+          'Output & Video',
+          Icons.center_focus_strong_outlined,
+          () => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SectionHeader(
+                title: 'Output',
+                icon: Icons.center_focus_strong_outlined,
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.settingsCardBackground,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: AppColors.settingsCardBorder,
+                    width: 1,
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    children: [
+                      _buildEyeScaleButton(),
+                      _buildResolutionDropdown(),
+                      if (!_isCustomResolution) ...[
+                        _buildProjectOrientationDropdown(),
+                        _buildAspectRatioDropdown(),
+                        _buildOutputResolutionDisplay(),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              SectionHeader(
+                title: 'Video',
+                icon: Icons.movie_outlined,
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.settingsCardBackground,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: AppColors.settingsCardBorder,
+                    width: 1,
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    children: [
+                      _buildCodecDropdown(),
+                      _buildFramerateDropdown(framerate ?? 30),
+                      _buildAutoCompileVideoSwitch(),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          () => _outputStabFuture,
+          isCustomLayout: true,
         ),
-      if (!notif)
+      if (!notif && !isDesktop)
         _Section(
           'Output & Stabilization',
           Icons.center_focus_strong_outlined,
@@ -1040,12 +1144,19 @@ class SettingsSheetState extends State<SettingsSheet> {
           ),
           () => _outputStabFuture,
         ),
-      if (!notif)
+      if (!notif && !isDesktop)
         _Section(
           'Video',
           Icons.movie_outlined,
           _buildVideoSettings,
           () => _videoSettingsFuture,
+        ),
+      if (!video && !notif)
+        _Section(
+          'Projects',
+          Icons.folder_outlined,
+          _buildProjectSettings,
+          () => _projectSettingsFuture,
         ),
       if (!notif)
         _Section(
@@ -1353,6 +1464,44 @@ class SettingsSheetState extends State<SettingsSheet> {
               ),
             ),
           ],
+        ),
+      );
+    }
+
+    if (section.isCustomLayout) {
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: FutureBuilder<void>(
+          future: section.futureGetter(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Padding(
+                padding: const EdgeInsets.all(24),
+                child: Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.settingsAccent,
+                    ),
+                  ),
+                ),
+              );
+            } else if (snapshot.hasError) {
+              return Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  'Error loading settings',
+                  style: TextStyle(
+                    color: AppColors.danger,
+                    fontSize: AppTypography.md,
+                  ),
+                ),
+              );
+            }
+            return section.builder();
+          },
         ),
       );
     }
@@ -1829,7 +1978,7 @@ class SettingsSheetState extends State<SettingsSheet> {
   }
 
   Future<String?> _pickLinkedSourceFolder() async {
-    final selectedPath = await FilePicker.platform.getDirectoryPath();
+    final selectedPath = await FilePicker.getDirectoryPath();
     if (selectedPath == null || selectedPath.trim().isEmpty) return null;
 
     final projectDirPath = await DirUtils.getProjectDirPath(widget.projectId);
@@ -3757,7 +3906,7 @@ class SettingsSheetState extends State<SettingsSheet> {
       children: [
         SettingListTile(
           title: 'Background mode',
-          showDivider: mode == 'solid',
+          showDivider: mode == 'solid' || mode == 'blurred',
           showInfo: true,
           infoContent:
               'Solid colour: Fills areas not covered by the stabilized image with a solid colour.\n\n'
@@ -3912,8 +4061,326 @@ class SettingsSheetState extends State<SettingsSheet> {
                 'during stabilization.',
             showInfo: true,
           ),
+        if (mode == 'blurred')
+          SettingListTile(
+            title: 'Blur zoom',
+            showDivider: true,
+            showInfo: true,
+            infoContent:
+                'Controls how much the background image is zoomed in before '
+                'blurring. Lower values show more of the original image for '
+                'smoother colour transitions. Higher values crop in more.',
+            contentWidget: _isCustomBlurZoom
+                ? _buildCustomBlurZoomInput()
+                : _buildBlurZoomDropdown(),
+          ),
+        if (mode == 'blurred')
+          SettingListTile(
+            title: 'Blur strength',
+            showDivider: false,
+            showInfo: true,
+            infoContent:
+                'Controls how strongly the background is blurred. Light gives '
+                'a subtle defocus, heavy gives a frosted-glass effect. The '
+                'strength scales with resolution so it looks consistent across '
+                'different output sizes.',
+            contentWidget: _isCustomBlurStrength
+                ? _buildCustomBlurStrengthInput()
+                : _buildBlurStrengthDropdown(),
+          ),
       ],
     );
+  }
+
+  String _blurZoomDropdownValue() {
+    if (_isCustomBlurZoom) return 'Custom';
+    for (final entry in _blurZoomPresets.entries) {
+      if (entry.value == _blurZoom) return entry.key;
+    }
+    return 'Custom';
+  }
+
+  Widget _buildBlurZoomDropdown() {
+    return CustomDropdownButton<String>(
+      value: _blurZoomDropdownValue(),
+      items: [
+        ..._blurZoomPresets.keys.map(
+          (label) => DropdownMenuItem(value: label, child: Text(label)),
+        ),
+        const DropdownMenuItem(value: 'Custom', child: Text('Custom')),
+      ],
+      onChanged: (String? newValue) async {
+        if (newValue == null) return;
+        if (newValue == 'Custom') {
+          setState(() {
+            _isCustomBlurZoom = true;
+            _blurZoomController.text = _blurZoom.toString();
+            _blurZoomError = null;
+          });
+          _blurZoomFocusNode.requestFocus();
+          return;
+        }
+        final zoom = _blurZoomPresets[newValue]!;
+        if (zoom == _blurZoom) return;
+
+        final shouldProceed =
+            await ConfirmActionDialog.showRecompileVideoSetting(
+          context,
+          'blur zoom',
+        );
+        if (!shouldProceed || !mounted) return;
+
+        setState(() {
+          _blurZoom = zoom;
+          _isCustomBlurZoom = false;
+        });
+        await SettingsUtil.saveBlurZoom(
+          widget.projectId.toString(),
+          zoom,
+        );
+        await widget.recompileVideoCallback();
+      },
+    );
+  }
+
+  Widget _buildCustomBlurZoomInput() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 75,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: settingsDropdownDecoration(),
+            child: TextField(
+              focusNode: _blurZoomFocusNode,
+              controller: _blurZoomController,
+              style: TextStyle(
+                fontSize: AppTypography.md,
+                color: AppColors.settingsTextPrimary,
+              ),
+              decoration: InputDecoration(
+                hintText: '1.1–4.0',
+                hintStyle: TextStyle(
+                  color: AppColors.settingsTextTertiary,
+                  fontSize: AppTypography.md,
+                ),
+                errorText: _blurZoomError,
+                contentPadding: EdgeInsets.zero,
+                border: InputBorder.none,
+                isDense: true,
+              ),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              textInputAction: TextInputAction.done,
+              onChanged: (value) {
+                final v = double.tryParse(value);
+                setState(() {
+                  if (value.isEmpty) {
+                    _blurZoomError = null;
+                  } else if (v == null) {
+                    _blurZoomError = 'Invalid number';
+                  } else if (v < 1.1 || v > 4.0) {
+                    _blurZoomError = '1.1–4.0';
+                  } else {
+                    _blurZoomError = null;
+                  }
+                });
+              },
+              onSubmitted: (_) => _commitCustomBlurZoom(),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _isCustomBlurZoom = !_blurZoomPresets.containsValue(_blurZoom);
+            });
+          },
+          child: Icon(
+            Icons.close,
+            size: 18,
+            color: AppColors.settingsTextSecondary,
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _onBlurZoomFocusChanged() {
+    if (!_blurZoomFocusNode.hasFocus && _isCustomBlurZoom) {
+      _commitCustomBlurZoom();
+    }
+  }
+
+  Future<void> _commitCustomBlurZoom() async {
+    final v = double.tryParse(_blurZoomController.text);
+    if (v == null || v < 1.1 || v > 4.0) return;
+    if (v == _blurZoom) return;
+
+    final shouldProceed = await ConfirmActionDialog.showRecompileVideoSetting(
+      context,
+      'blur zoom',
+    );
+    if (!shouldProceed || !mounted) return;
+
+    setState(() {
+      _blurZoom = v;
+      _isCustomBlurZoom = !_blurZoomPresets.containsValue(v);
+    });
+    await SettingsUtil.saveBlurZoom(
+      widget.projectId.toString(),
+      v,
+    );
+    await widget.recompileVideoCallback();
+  }
+
+  // ==================== Blur Strength ====================
+
+  String _blurStrengthDropdownValue() {
+    if (_isCustomBlurStrength) return 'Custom';
+    for (final entry in _blurStrengthPresets.entries) {
+      if (entry.value == _blurStrength) return entry.key;
+    }
+    return 'Custom';
+  }
+
+  Widget _buildBlurStrengthDropdown() {
+    return CustomDropdownButton<String>(
+      value: _blurStrengthDropdownValue(),
+      items: [
+        ..._blurStrengthPresets.keys.map(
+          (label) => DropdownMenuItem(value: label, child: Text(label)),
+        ),
+        const DropdownMenuItem(value: 'Custom', child: Text('Custom')),
+      ],
+      onChanged: (String? newValue) async {
+        if (newValue == null) return;
+        if (newValue == 'Custom') {
+          setState(() {
+            _isCustomBlurStrength = true;
+            _blurStrengthController.text = _blurStrength.toString();
+            _blurStrengthError = null;
+          });
+          _blurStrengthFocusNode.requestFocus();
+          return;
+        }
+        final strength = _blurStrengthPresets[newValue]!;
+        if (strength == _blurStrength) return;
+
+        final shouldProceed =
+            await ConfirmActionDialog.showRecompileVideoSetting(
+          context,
+          'blur strength',
+        );
+        if (!shouldProceed || !mounted) return;
+
+        setState(() {
+          _blurStrength = strength;
+          _isCustomBlurStrength = false;
+        });
+        await SettingsUtil.saveBlurStrength(
+          widget.projectId.toString(),
+          strength,
+        );
+        await widget.recompileVideoCallback();
+      },
+    );
+  }
+
+  Widget _buildCustomBlurStrengthInput() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 75,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: settingsDropdownDecoration(),
+            child: TextField(
+              focusNode: _blurStrengthFocusNode,
+              controller: _blurStrengthController,
+              style: TextStyle(
+                fontSize: AppTypography.md,
+                color: AppColors.settingsTextPrimary,
+              ),
+              decoration: InputDecoration(
+                hintText: '0.1–3.0',
+                hintStyle: TextStyle(
+                  color: AppColors.settingsTextTertiary,
+                  fontSize: AppTypography.md,
+                ),
+                errorText: _blurStrengthError,
+                contentPadding: EdgeInsets.zero,
+                border: InputBorder.none,
+                isDense: true,
+              ),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              textInputAction: TextInputAction.done,
+              onChanged: (value) {
+                final v = double.tryParse(value);
+                setState(() {
+                  if (value.isEmpty) {
+                    _blurStrengthError = null;
+                  } else if (v == null) {
+                    _blurStrengthError = 'Invalid number';
+                  } else if (v < 0.1 || v > 3.0) {
+                    _blurStrengthError = '0.1–3.0';
+                  } else {
+                    _blurStrengthError = null;
+                  }
+                });
+              },
+              onSubmitted: (_) => _commitCustomBlurStrength(),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _isCustomBlurStrength =
+                  !_blurStrengthPresets.containsValue(_blurStrength);
+            });
+          },
+          child: Icon(
+            Icons.close,
+            size: 18,
+            color: AppColors.settingsTextSecondary,
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _onBlurStrengthFocusChanged() {
+    if (!_blurStrengthFocusNode.hasFocus && _isCustomBlurStrength) {
+      _commitCustomBlurStrength();
+    }
+  }
+
+  Future<void> _commitCustomBlurStrength() async {
+    final v = double.tryParse(_blurStrengthController.text);
+    if (v == null || v < 0.1 || v > 3.0) return;
+    if (v == _blurStrength) return;
+
+    final shouldProceed = await ConfirmActionDialog.showRecompileVideoSetting(
+      context,
+      'blur strength',
+    );
+    if (!shouldProceed || !mounted) return;
+
+    setState(() {
+      _blurStrength = v;
+      _isCustomBlurStrength = !_blurStrengthPresets.containsValue(v);
+    });
+    await SettingsUtil.saveBlurStrength(
+      widget.projectId.toString(),
+      v,
+    );
+    await widget.recompileVideoCallback();
   }
 
   /// Converts a hex string like '#FF0000' to a Flutter Color.
@@ -4090,7 +4557,7 @@ class ImagePickerWidgetState extends State<ImagePickerWidget> {
   }
 
   Future<void> _pickImage() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
+    FilePickerResult? result = await FilePicker.pickFiles(
       type: FileType.image,
       allowMultiple: false,
     );

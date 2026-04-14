@@ -16,16 +16,17 @@
 	<string>FMWK</string>
 	<key>CFBundleShortVersionString</key>
 	<string>6.0</string>
-	<key>CFBundleVersion</key>
-	<string>6.0</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
-	<key>MinimumOSVersion</key>
-	<string>12.1</string>
 	<key>CFBundleSupportedPlatforms</key>
 	<array>
 		<string>iPhoneOS</string>
+		<string>iPhoneSimulator</string>
 	</array>
+	<key>CFBundleVersion</key>
+	<string>6.0</string>
+	<key>MinimumOSVersion</key>
+	<string>14.0</string>
 	<key>NSPrincipalClass</key>
 	<string></string>
 </dict>
