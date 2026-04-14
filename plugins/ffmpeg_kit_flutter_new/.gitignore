@@ -35,3 +35,6 @@ build/
 
 # FVM Version Cache
 .fvm/
+
+# Xcode code signing artifacts (re-generated locally, not meant to be tracked)
+ios/Frameworks/**/_CodeSignature/

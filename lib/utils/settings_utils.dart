@@ -380,6 +380,12 @@ class SettingsUtil {
   /// Default video background setting value.
   static const String fallbackVideoBackground = 'TRANSPARENT';
 
+  /// Default blur zoom factor (3x matches the original hardcoded value).
+  static const double fallbackBlurZoom = 3.0;
+
+  /// Default blur strength multiplier (1.0 = resolution-aware auto sigma).
+  static const double fallbackBlurStrength = 1.0;
+
   /// Load video background setting (per-project).
   /// Only relevant when stabilized PNGs have alpha channel.
   static Future<VideoBackground> loadVideoBackground(String projectId) async {
@@ -402,6 +408,39 @@ class SettingsUtil {
     await DB.instance.setSettingByTitle(
       'video_background',
       videoBg.toDbValue(),
+      projectId,
+    );
+  }
+
+  // ==================== Blur Zoom ====================
+
+  /// Load blur zoom factor (per-project).
+  static Future<double> loadBlurZoom(String projectId) =>
+      _loadDoubleSetting('blur_zoom', projectId, fallbackBlurZoom);
+
+  /// Save blur zoom factor (per-project).
+  static Future<void> saveBlurZoom(String projectId, double zoom) async {
+    await DB.instance.setSettingByTitle(
+      'blur_zoom',
+      zoom.toString(),
+      projectId,
+    );
+  }
+
+  // ==================== Blur Strength ====================
+
+  /// Load blur strength multiplier (per-project).
+  static Future<double> loadBlurStrength(String projectId) =>
+      _loadDoubleSetting('blur_strength', projectId, fallbackBlurStrength);
+
+  /// Save blur strength multiplier (per-project).
+  static Future<void> saveBlurStrength(
+    String projectId,
+    double strength,
+  ) async {
+    await DB.instance.setSettingByTitle(
+      'blur_strength',
+      strength.toString(),
       projectId,
     );
   }

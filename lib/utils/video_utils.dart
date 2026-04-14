@@ -71,21 +71,26 @@ class VideoUtils {
   static int outputFps(int inputFps) =>
       inputFps > _minOutputFps ? inputFps : _minOutputFps;
 
-  /// Calculates Gaussian blur sigma based on video height.
-  /// Produces ~20 at 1080p, ~40 at 4K, clamped to [10, 50].
+  /// Calculates Gaussian blur sigma based on video height and optional
+  /// [strength] multiplier.  Produces ~20 at 1080p, ~40 at 4K with the
+  /// default strength of 1.0.  Clamped to [1, 100].
   @visibleForTesting
-  static int blurSigma(int videoHeight) =>
-      (videoHeight / 54).round().clamp(10, 50);
+  static int blurSigma(int videoHeight, {double strength = 1.0}) =>
+      (videoHeight / 54 * strength).round().clamp(1, 100);
 
   /// Builds the FFmpeg filter for blurred background.
-  /// Splits input, scales up the background copy 3x (pushing transparent black
-  /// edges off-screen), crops back to original size, blurs, then overlays
-  /// the original frame (with alpha) on top.
+  /// Splits input, scales up the background copy by [blurZoom]x (pushing
+  /// transparent black edges off-screen), crops back to original size, blurs,
+  /// then overlays the original frame (with alpha) on top.
   @visibleForTesting
-  static String buildBlurFilter(int videoHeight) {
-    final sigma = blurSigma(videoHeight);
+  static String buildBlurFilter(
+    int videoHeight, {
+    double blurZoom = 3.0,
+    double blurStrength = 1.0,
+  }) {
+    final sigma = blurSigma(videoHeight, strength: blurStrength);
     return '[0:v]split=2[orig][bg];'
-        '[bg]format=rgb24,scale=iw*3:ih*3,crop=iw/3:ih/3,gblur=sigma=$sigma[blurred];'
+        '[bg]format=rgb24,scale=iw*$blurZoom:ih*$blurZoom,crop=iw/$blurZoom:ih/$blurZoom,gblur=sigma=$sigma[blurred];'
         '[blurred][orig]overlay=0:0[base]';
   }
 
@@ -1149,7 +1154,17 @@ class VideoUtils {
         backgroundFilter =
             "[0:v][1:v]overlay=shortest=1,format=${effectiveCodec.pixelFormat}[base]";
       } else if (needsBlurOverlay) {
-        backgroundFilter = buildBlurFilter(videoHeight);
+        final blurZoom = await SettingsUtil.loadBlurZoom(
+          projectId.toString(),
+        );
+        final blurStrength = await SettingsUtil.loadBlurStrength(
+          projectId.toString(),
+        );
+        backgroundFilter = buildBlurFilter(
+          videoHeight,
+          blurZoom: blurZoom,
+          blurStrength: blurStrength,
+        );
       }
 
       // Build combined filter chain
@@ -1235,10 +1250,11 @@ class VideoUtils {
 
       // For transparent videos with alpha output, ensure alpha channel is
       // preserved through the filter pipeline.
-      if (videoHasAlpha) {
-        if (filterArgs.isEmpty) {
-          filterArgs = '-vf "format=$pixFmt"';
-        }
+      // For all videos: always include a format filter when no filter_complex
+      // is present — FFmpeg 6's concat demuxer can hit "Error reinitializing
+      // filters" without one when frame metadata varies between segments.
+      if (filterArgs.isEmpty) {
+        filterArgs = '-vf "format=$pixFmt"';
       }
 
       // Build the color source input (before concat) when needed
@@ -1964,7 +1980,17 @@ class VideoUtils {
       backgroundFilterStr =
           '[0:v][1:v]overlay=shortest=1,format=${codec.pixelFormat}[base]';
     } else if (needsBlurOverlay && videoHeight != null) {
-      backgroundFilterStr = buildBlurFilter(videoHeight);
+      final blurZoom = await SettingsUtil.loadBlurZoom(
+        projectId.toString(),
+      );
+      final blurStrength = await SettingsUtil.loadBlurStrength(
+        projectId.toString(),
+      );
+      backgroundFilterStr = buildBlurFilter(
+        videoHeight,
+        blurZoom: blurZoom,
+        blurStrength: blurStrength,
+      );
     } else {
       backgroundFilterStr = null;
     }
