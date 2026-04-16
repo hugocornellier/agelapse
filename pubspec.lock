@@ -5,10 +5,10 @@ packages:
     dependency: transitive
     description:
       name: animal_detection
-      sha256: f988cf4ef5a3f769d351aa6e947d3825ce537053edf4677ce74b112161c688d4
+      sha256: c8a233c47d2d8636259e0ee2d46694c7d55fe7fac7698033eeee59840bba2136
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.0"
+    version: "1.0.2"
   animated_bottom_navigation_bar:
     dependency: "direct main"
     description:
@@ -109,10 +109,10 @@ packages:
     dependency: transitive
     description:
       name: camera_platform_interface
-      sha256: "98cfc9357e04bad617671b4c1f78a597f25f08003089dd94050709ae54effc63"
+      sha256: "7ac852d77699acee79f0d438b793feee26721841e50973576419ff5c6d95e9b7"
       url: "https://pub.dev"
     source: hosted
-    version: "2.12.0"
+    version: "2.13.0"
   camera_web:
     dependency: transitive
     description:
@@ -125,10 +125,10 @@ packages:
     dependency: "direct main"
     description:
       name: cat_detection
-      sha256: eb303e2a3c0baa03acba6ef88be371107690fdc2d79cf25236f18ad7589f5a92
+      sha256: "155691dd1e65c5e33bd0c90cec6dbd0ad73ffb99022c2ef7b0bf068f8174fc56"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.0"
+    version: "1.0.2"
   change_case:
     dependency: transitive
     description:
@@ -157,10 +157,10 @@ packages:
     dependency: "direct main"
     description:
       name: chewie
-      sha256: "44bcfc5f0dfd1de290c87c9d86a61308b3282a70b63435d5557cfd60f54a69ca"
+      sha256: "53dadd2c5b6748742d7744072b38a417ad22691ca55715850300ee793dc7cb27"
       url: "https://pub.dev"
     source: hosted
-    version: "1.13.0"
+    version: "1.13.1"
   cli_util:
     dependency: transitive
     description:
@@ -294,10 +294,10 @@ packages:
     dependency: "direct main"
     description:
       name: dog_detection
-      sha256: "1a1048d24f6bb46cc963e2a1b2583bea1fc7ef95a994560cd74a57affc738ba6"
+      sha256: "4f09749643fe1caf0423e44b1dbbcd5683da8bab4272b3c03dea51f64f8f1ce4"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.0"
+    version: "1.0.2"
   downloadsfolder:
     dependency: "direct main"
     description:
@@ -350,10 +350,10 @@ packages:
     dependency: "direct main"
     description:
       name: face_detection_tflite
-      sha256: "1093cc529f8b3b03f622e4b76fb6ca7bc7b6603d5a66154ffc91e161cd2367c3"
+      sha256: f324ddd913480c22d65a1d38e61233d80fb826e04d6b8299094c59ea43b37667
       url: "https://pub.dev"
     source: hosted
-    version: "5.1.2"
+    version: "5.1.4"
   fake_async:
     dependency: transitive
     description:
@@ -494,12 +494,11 @@ packages:
     source: hosted
     version: "3.1.0"
   flutter_avif_android:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: flutter_avif_android
-      sha256: "1da135ea0d74225fae3154f954f9ba4cf7aa5e56b30d9851fcfc0ddecab9d8c5"
-      url: "https://pub.dev"
-    source: hosted
+      path: "plugins/flutter_avif_android"
+      relative: true
+    source: path
     version: "3.1.0"
   flutter_avif_ios:
     dependency: transitive
@@ -590,10 +589,10 @@ packages:
     dependency: transitive
     description:
       name: flutter_litert
-      sha256: e36841c446bb4eb576e30df71a84563b7c5ce146af98ae88d7ad5f29793c8c81
+      sha256: "937598ee62a3ff3ed999a1c710f9c0cd9f7b3782b522530c8f03442ce82fac16"
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.11"
+    version: "2.0.13"
   flutter_local_notifications:
     dependency: "direct main"
     description:
@@ -698,10 +697,10 @@ packages:
     dependency: "direct main"
     description:
       name: hand_detection
-      sha256: "2e4bc6d7a47faea38aa3862482c35bf14b2c6fe87fcdae991a04d2f1e3a51ecb"
+      sha256: "21dadf74f0aa9ff15b70c4db206e67f6e4dda477f11da25204d21c434d0b03cb"
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.6"
+    version: "2.0.8"
   heic_native:
     dependency: "direct main"
     description:
@@ -1151,10 +1150,10 @@ packages:
     dependency: "direct main"
     description:
       name: pose_detection
-      sha256: "23a63ea67357a8a54a40b5ffa627b159ac6ed1799ea6b2d71b0e67abc120ecd4"
+      sha256: "3400fc677e6f35c072fa50dbb259f413d60a7c2cee1d2e16a4488a5cd3274e96"
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.7"
+    version: "2.0.9"
   posix:
     dependency: transitive
     description:
@@ -1700,26 +1699,26 @@ packages:
     dependency: transitive
     description:
       name: vm_service
-      sha256: "45caa6c5917fa127b5dbcfbd1fa60b14e583afdc08bfc96dda38886ca252eb60"
+      sha256: "046d3928e16fa4dc46e8350415661755ab759d9fc97fc21b5ab295f71e4f0499"
       url: "https://pub.dev"
     source: hosted
-    version: "15.0.2"
+    version: "15.1.0"
   wakelock_plus:
     dependency: "direct main"
     description:
       name: wakelock_plus
-      sha256: "8b12256f616346910c519a35606fb69b1fe0737c06b6a447c6df43888b097f39"
+      sha256: ddf3db70eaa10c37558ff817519b85d527dbd21034fd5d8e1c2e85f31588f1c1
       url: "https://pub.dev"
     source: hosted
-    version: "1.5.1"
+    version: "1.5.2"
   wakelock_plus_platform_interface:
     dependency: transitive
     description:
       name: wakelock_plus_platform_interface
-      sha256: "24b84143787220a403491c2e5de0877fbbb87baf3f0b18a2a988973863db4b03"
+      sha256: "14b2e5b9e35c2631e656913c47adecdd71633ae92896a27a64c8f1fcfabc21cc"
       url: "https://pub.dev"
     source: hosted
-    version: "1.4.0"
+    version: "1.5.0"
   web:
     dependency: transitive
     description:
@@ -1802,4 +1801,4 @@ packages:
     version: "3.1.3"
 sdks:
   dart: ">=3.11.0 <4.0.0"
-  flutter: ">=3.38.4"
+  flutter: ">=3.41.0"

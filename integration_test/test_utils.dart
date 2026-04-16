@@ -1,7 +1,46 @@
 import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+
+/// Waits for the app to be fully ready after [app.main()] is called.
+///
+/// Two-phase:
+///   1. Poll every 500 ms until a [Scaffold] appears (runApp has fired).
+///      On warm runners this takes ~3-5 s; on cold/loaded CI runners up to ~8 s.
+///      A fixed pump was the cause of recurring cold-cache Windows/Linux/macOS
+///      flakes.
+///   2. Try to settle the tree so that navigation widgets and buttons are fully
+///      rendered before the test proceeds.  Uses a 5 s timeout so it does not
+///      hang on the FlashingBox animation (which keeps the tree permanently
+///      dirty); if it times out the exception is caught and we fall back to two
+///      short fixed pumps.
+Future<void> pumpUntilAppReady(
+  WidgetTester tester, {
+  int maxSeconds = 15,
+}) async {
+  // Phase 1: wait until runApp has been called.
+  for (int i = 0; i < maxSeconds * 2; i++) {
+    await tester.pump(const Duration(milliseconds: 500));
+    if (find.byType(Scaffold).evaluate().isNotEmpty) break;
+  }
+
+  // Phase 2: settle so that content (buttons, nav icons) finishes rendering.
+  try {
+    await tester.pumpAndSettle(
+      const Duration(milliseconds: 100),
+      EnginePhase.sendSemanticsUpdate,
+      const Duration(seconds: 5),
+    );
+  } catch (_) {
+    // Continuous animation (e.g. FlashingBox) kept the tree dirty — pump a
+    // couple more frames and move on.
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
+  }
+}
 
 /// Cache for extracted fixture files on mobile platforms
 final Map<String, String> _fixtureCache = {};

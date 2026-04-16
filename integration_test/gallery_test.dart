@@ -132,9 +132,7 @@ void main() {
       await createTestPhotos(testProjectId!, 3);
 
       app.main();
-      // Use pump(Duration) not pumpAndSettle — FlashingBox animation may be active
-      await tester.pump(const Duration(seconds: 2));
-      await tester.pump(const Duration(seconds: 3));
+      await pumpUntilAppReady(tester);
 
       // Navigate to gallery tab (collections icon)
       final galleryIcon = find.byIcon(Icons.collections);
@@ -177,8 +175,7 @@ void main() {
       await createTestPhotos(testProjectId!, 3);
 
       app.main();
-      await tester.pump(const Duration(seconds: 2));
-      await tester.pump(const Duration(seconds: 3));
+      await pumpUntilAppReady(tester);
 
       // Navigate to gallery tab
       final galleryIcon = find.byIcon(Icons.collections);
@@ -258,8 +255,7 @@ void main() {
       await createTestPhotos(testProjectId!, 5);
 
       app.main();
-      await tester.pump(const Duration(seconds: 2));
-      await tester.pump(const Duration(seconds: 3));
+      await pumpUntilAppReady(tester);
 
       final galleryIcon = find.byIcon(Icons.collections);
       if (galleryIcon.evaluate().isEmpty) return;
@@ -305,7 +301,7 @@ void main() {
       tester,
     ) async {
       app.main();
-      await tester.pump(const Duration(seconds: 2));
+      await pumpUntilAppReady(tester);
 
       final ts = DateTime.now().millisecondsSinceEpoch;
       testProjectId = await DB.instance.addProject(
@@ -383,7 +379,7 @@ void main() {
       'Test E: bulk delete via deleteImage leaves no files or DB records',
       (tester) async {
         app.main();
-        await tester.pump(const Duration(seconds: 2));
+        await pumpUntilAppReady(tester);
 
         final ts = DateTime.now().millisecondsSinceEpoch;
         testProjectId = await DB.instance.addProject(
@@ -452,7 +448,7 @@ void main() {
       'Test F: deleting photo from project A does not affect project B',
       (tester) async {
         app.main();
-        await tester.pump(const Duration(seconds: 2));
+        await pumpUntilAppReady(tester);
 
         final ts = DateTime.now().millisecondsSinceEpoch;
         testProjectId = await DB.instance.addProject(

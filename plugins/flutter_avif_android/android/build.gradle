@@ -1,0 +1,50 @@
+group 'com.teknorota.flutter_avif'
+version '1.0'
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.1.2'
+    }
+}
+
+rootProject.allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+apply plugin: 'com.android.library'
+
+android {
+
+    if (project.android.hasProperty("namespace")) {
+        namespace = "com.teknorota.flutter_avif"
+    }
+
+    compileSdkVersion 31
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+
+    defaultConfig {
+        minSdkVersion 16
+    }
+}
+
+// Flutter beta currently wires Kotlin tasks in this package with JVM 17 by
+// default, while Java compilation stays on 11. Keep them aligned.
+tasks.matching { it.name.toLowerCase().contains("kotlin") }.configureEach {
+    if (hasProperty("kotlinOptions")) {
+        kotlinOptions {
+            jvmTarget = JavaVersion.VERSION_11.toString()
+        }
+    }
+}

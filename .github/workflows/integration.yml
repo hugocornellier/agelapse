@@ -231,11 +231,10 @@ jobs:
         id: android-tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
+          api-level: 29
           arch: x86_64
-          target: google_apis
-          profile: pixel_6
-          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          target: default
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -memory 2048
           disable-animations: true
           script: |
             flutter test integration_test/mobile_fast.dart -d emulator-5554 --reporter expanded 2>&1 | tee /tmp/test-fast.log

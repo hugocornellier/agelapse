@@ -27,11 +27,18 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        ndk {
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+        }
     }
 
     packaging {
         jniLibs {
-            pickFirsts += setOf("**/libc++_shared.so")
+            pickFirsts += setOf(
+                "**/armeabi-v7a/libc++_shared.so",
+                "**/arm64-v8a/libc++_shared.so",
+            )
+            excludes += setOf("**/x86/*.so", "**/x86_64/*.so")
         }
     }
 
@@ -61,11 +68,11 @@ android {
 
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "17"
     }
 }
 
@@ -135,4 +142,3 @@ afterEvaluate {
         }
     }
 }
-

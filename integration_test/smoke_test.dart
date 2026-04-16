@@ -5,6 +5,8 @@ import 'package:agelapse/main.dart' as app;
 import 'package:agelapse/services/database_helper.dart';
 import 'package:agelapse/utils/test_mode.dart' as test_config;
 
+import 'test_utils.dart';
+
 /// Smoke test suite that validates the critical app path works on all platforms.
 ///
 /// This test ensures:
@@ -29,11 +31,7 @@ void main() {
 
       // Launch the app
       app.main();
-
-      // Give the app more time to initialize, especially on mobile
-      // The async main() needs time to complete before runApp is called
-      await tester.pump(const Duration(seconds: 2));
-      await tester.pumpAndSettle(const Duration(seconds: 5));
+      await pumpUntilAppReady(tester);
 
       // Verify app launched - should show some kind of app structure
       // On mobile, the app may take longer to initialize
@@ -62,8 +60,7 @@ void main() {
       await _clearTestData();
 
       app.main();
-      await tester.pump(const Duration(seconds: 2));
-      await tester.pumpAndSettle(const Duration(seconds: 5));
+      await pumpUntilAppReady(tester);
 
       // Step 1: On fresh install, tap "CREATE PROJECT" or "CREATE FIRST PROJECT"
       final createProjectButton = find.text('CREATE PROJECT');
@@ -93,8 +90,7 @@ void main() {
       await _clearTestData();
 
       app.main();
-      await tester.pump(const Duration(seconds: 2));
-      await tester.pumpAndSettle(const Duration(seconds: 5));
+      await pumpUntilAppReady(tester);
 
       // Navigate through the fresh install flow
       // Step 1: CREATE PROJECT / CREATE FIRST PROJECT
@@ -139,12 +135,7 @@ void main() {
       await _ensureProjectExists(setAsDefault: true);
 
       app.main();
-      await tester.pump(const Duration(seconds: 2));
-      await tester.pumpAndSettle(const Duration(seconds: 5));
-
-      // Give extra time for navigation to load
-      await tester.pump(const Duration(seconds: 2));
-      await tester.pumpAndSettle(const Duration(seconds: 3));
+      await pumpUntilAppReady(tester);
 
       // With a default project, should go directly to main navigation
       // Look for any of the bottom navigation icons
@@ -186,10 +177,7 @@ void main() {
       await _ensureProjectExists(setAsDefault: true);
 
       app.main();
-      await tester.pump(const Duration(seconds: 2));
-      await tester.pumpAndSettle(const Duration(seconds: 5));
-      await tester.pump(const Duration(seconds: 2));
-      await tester.pumpAndSettle(const Duration(seconds: 3));
+      await pumpUntilAppReady(tester);
 
       // Test tapping each tab icon that exists
       final tabIcons = [
@@ -235,10 +223,7 @@ void main() {
       await _ensureProjectExists(setAsDefault: true);
 
       app.main();
-      await tester.pump(const Duration(seconds: 2));
-      await tester.pumpAndSettle(const Duration(seconds: 5));
-      await tester.pump(const Duration(seconds: 2));
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      await pumpUntilAppReady(tester);
 
       // Navigate to gallery tab
       final galleryIcon = find.byIcon(Icons.collections);
@@ -264,8 +249,7 @@ void main() {
       await _ensureProjectExists(setAsDefault: true);
 
       app.main();
-      await tester.pump(const Duration(seconds: 2));
-      await tester.pumpAndSettle(const Duration(seconds: 5));
+      await pumpUntilAppReady(tester);
       await tester.pump(const Duration(seconds: 2));
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
@@ -293,8 +277,7 @@ void main() {
       await _ensureProjectExists(setAsDefault: true);
 
       app.main();
-      await tester.pump(const Duration(seconds: 2));
-      await tester.pumpAndSettle(const Duration(seconds: 5));
+      await pumpUntilAppReady(tester);
       await tester.pump(const Duration(seconds: 2));
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
