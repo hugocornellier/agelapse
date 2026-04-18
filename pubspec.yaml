@@ -21,10 +21,10 @@ dependencies:
   device_info_plus: ^12.4.0
   downloadsfolder: ^1.2.0
   exif_reader: ^4.1.0
-  cat_detection: ^1.0.2
-  dog_detection: ^1.0.2
-  face_detection_tflite: ^5.1.4
-  hand_detection: ^2.0.8
+  cat_detection: ^1.0.3
+  dog_detection: ^1.0.3
+  face_detection_tflite: ^6.0.0
+  hand_detection: ^2.0.9
   ffmpeg_kit_flutter_new:
     path: plugins/ffmpeg_kit_flutter_new
   file_picker: ^10.3.10
@@ -53,7 +53,7 @@ dependencies:
   path: ^1.9.1
   path_provider: ^2.1.5
   permission_handler: ^12.0.1
-  pose_detection: ^2.0.9
+  pose_detection: ^2.0.10
   provider: ^6.1.5
   saver_gallery: ^4.1.0
   sensors_plus: ^7.0.0
