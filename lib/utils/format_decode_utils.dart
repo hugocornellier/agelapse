@@ -104,95 +104,37 @@ class FormatDecodeUtils {
   }
 
   /// Decode TIFF to PNG bytes on Apple platforms where cv.imdecode crashes.
-  ///
-  /// - macOS: `sips` command
-  /// - iOS: `sips` is unavailable; uses Flutter's image decoder via [GalleryUtils]
+  /// Uses Flutter's in-process image codec (ImageIO-backed on Apple), which
+  /// works under the macOS App Sandbox — unlike subprocess-based `sips`, which
+  /// is denied by the sandbox in release/notarized builds.
   static Future<Uint8List?> _decodeTiff(
     String inputPath,
     String tempDir,
   ) async {
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final tempPngPath = path.join(tempDir, '_fmt_decode_$timestamp.png');
-
-    try {
-      if (Platform.isMacOS) {
-        final result = await Process.run('sips', [
-          '-s',
-          'format',
-          'png',
-          inputPath,
-          '--out',
-          tempPngPath,
-        ]);
-        if (result.exitCode != 0 || !await File(tempPngPath).exists()) {
-          LogService.instance.log(
-            '[FormatDecode] sips TIFF conversion failed '
-            '(exit ${result.exitCode})',
-          );
-          return null;
-        }
-      } else {
-        // iOS: use Flutter's image codec which handles TIFF natively
-        final result = await _decodeWithFlutterCodec(
-          await File(inputPath).readAsBytes(),
-        );
-        if (result == null) {
-          LogService.instance.log(
-            '[FormatDecode] Flutter codec TIFF→PNG returned null',
-          );
-        }
-        return result;
-      }
-
-      return _readAndCleanup(tempPngPath);
-    } catch (e) {
-      LogService.instance.log('[FormatDecode] TIFF decode error: $e');
-      _tryDelete(tempPngPath);
-      return null;
-    }
+    return _decodeAppleViaFlutterCodec(inputPath, 'TIFF');
   }
 
   /// Decode JPEG 2000 to PNG bytes on Apple platforms where cv.imdecode crashes.
-  ///
-  /// Same approach as TIFF — sips on macOS, Flutter codec on iOS.
+  /// Same in-process path as TIFF — see [_decodeTiff].
   static Future<Uint8List?> _decodeJp2(String inputPath, String tempDir) async {
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final tempPngPath = path.join(tempDir, '_fmt_decode_$timestamp.png');
+    return _decodeAppleViaFlutterCodec(inputPath, 'JP2');
+  }
 
+  static Future<Uint8List?> _decodeAppleViaFlutterCodec(
+    String inputPath,
+    String formatLabel,
+  ) async {
     try {
-      if (Platform.isMacOS) {
-        final result = await Process.run('sips', [
-          '-s',
-          'format',
-          'png',
-          inputPath,
-          '--out',
-          tempPngPath,
-        ]);
-        if (result.exitCode != 0 || !await File(tempPngPath).exists()) {
-          LogService.instance.log(
-            '[FormatDecode] sips JP2 conversion failed '
-            '(exit ${result.exitCode})',
-          );
-          return null;
-        }
-      } else {
-        // iOS: use Flutter's image codec which handles JP2
-        final result = await _decodeWithFlutterCodec(
-          await File(inputPath).readAsBytes(),
+      final bytes = await File(inputPath).readAsBytes();
+      final result = await _decodeWithFlutterCodec(bytes);
+      if (result == null) {
+        LogService.instance.log(
+          '[FormatDecode] Flutter codec $formatLabel→PNG returned null',
         );
-        if (result == null) {
-          LogService.instance.log(
-            '[FormatDecode] Flutter codec JP2→PNG returned null',
-          );
-        }
-        return result;
       }
-
-      return _readAndCleanup(tempPngPath);
+      return result;
     } catch (e) {
-      LogService.instance.log('[FormatDecode] JP2 decode error: $e');
-      _tryDelete(tempPngPath);
+      LogService.instance.log('[FormatDecode] $formatLabel decode error: $e');
       return null;
     }
   }

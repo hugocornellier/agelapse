@@ -76,13 +76,21 @@ ImageProcessingOutput processImageIsolateEntry(ImageProcessingInput input) {
     if (input.preDecodedBytes != null) {
       rawImage = cv.imdecode(input.preDecodedBytes!, cv.IMREAD_COLOR);
       if (rawImage.isEmpty) {
+        LogService.instance.log(
+          '[ImageProc] isEmpty branch taken (preDecoded path), ext=${input.extension}, preDecodedBytes=${input.preDecodedBytes!.length}',
+        );
         rawImage.dispose();
+        rawImage = null;
         return const ImageProcessingOutput.failure('Failed to decode image');
       }
     } else {
       rawImage = cv.imdecode(input.bytes, cv.IMREAD_COLOR);
       if (rawImage.isEmpty) {
+        LogService.instance.log(
+          '[ImageProc] isEmpty branch taken (direct path), ext=${input.extension}, bytes=${input.bytes.length}',
+        );
         rawImage.dispose();
+        rawImage = null;
         return const ImageProcessingOutput.failure('Failed to decode image');
       }
     }
