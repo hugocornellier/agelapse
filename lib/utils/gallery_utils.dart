@@ -216,44 +216,77 @@ class GalleryUtils {
     String avifFilePath,
     String pngFilePath,
   ) async {
+    final bytes = await decodeAvifToPngBytes(avifFilePath);
+    if (bytes == null) return false;
     try {
-      final File avifFile = File(avifFilePath);
-      if (!await avifFile.exists()) {
-        return false;
-      }
-
-      final avifBytes = await avifFile.readAsBytes();
-      final List<AvifFrameInfo> frames = await decodeAvif(avifBytes);
-
-      if (frames.isEmpty) {
-        return false;
-      }
-
-      final ui.Image image = frames.first.image;
-
-      // Convert dart:ui Image to PNG bytes
-      final ByteData? byteData = await image.toByteData(
-        format: ui.ImageByteFormat.png,
-      );
-      if (byteData == null) {
-        return false;
-      }
-
-      final Uint8List pngBytes = byteData.buffer.asUint8List();
-
-      // Write PNG to file
       final pngFile = File(pngFilePath);
-      await pngFile.writeAsBytes(pngBytes);
-
-      // Dispose frames to free memory
-      for (final frame in frames) {
-        frame.image.dispose();
-      }
-
+      await pngFile.parent.create(recursive: true);
+      await pngFile.writeAsBytes(bytes);
       return true;
-    } catch (_) {
+    } catch (e) {
+      LogService.instance.log('[AVIF] Failed to write PNG output: $e');
       return false;
     }
+  }
+
+  /// Decode an AVIF file to in-memory PNG bytes. Tries flutter_avif first,
+  /// falls back to Flutter's image codec (ImageIO on Apple) if that fails.
+  /// Returns null if both decoders reject the file.
+  static Future<Uint8List?> decodeAvifToPngBytes(String avifFilePath) async {
+    final File avifFile = File(avifFilePath);
+    if (!await avifFile.exists()) {
+      LogService.instance.log(
+        '[AVIF] Source file does not exist: $avifFilePath',
+      );
+      return null;
+    }
+
+    final Uint8List avifBytes;
+    try {
+      avifBytes = await avifFile.readAsBytes();
+    } catch (e) {
+      LogService.instance.log('[AVIF] Failed to read source file: $e');
+      return null;
+    }
+
+    try {
+      final List<AvifFrameInfo> frames = await decodeAvif(avifBytes);
+      if (frames.isNotEmpty) {
+        final ui.Image image = frames.first.image;
+        final ByteData? byteData = await image.toByteData(
+          format: ui.ImageByteFormat.png,
+        );
+        for (final frame in frames) {
+          frame.image.dispose();
+        }
+        if (byteData != null) {
+          return byteData.buffer.asUint8List();
+        }
+        LogService.instance.log('[AVIF] flutter_avif produced null PNG bytes');
+      } else {
+        LogService.instance.log('[AVIF] flutter_avif returned no frames');
+      }
+    } catch (e) {
+      LogService.instance.log('[AVIF] flutter_avif decode failed: $e');
+    }
+
+    try {
+      final codec = await ui.instantiateImageCodec(avifBytes);
+      final frame = await codec.getNextFrame();
+      final byteData = await frame.image.toByteData(
+        format: ui.ImageByteFormat.png,
+      );
+      codec.dispose();
+      frame.image.dispose();
+      if (byteData != null) {
+        return byteData.buffer.asUint8List();
+      }
+      LogService.instance.log('[AVIF] Flutter codec produced null PNG bytes');
+    } catch (e) {
+      LogService.instance.log('[AVIF] Flutter codec fallback failed: $e');
+    }
+
+    return null;
   }
 
   static Duration? parseOffset(String offsetStr) {

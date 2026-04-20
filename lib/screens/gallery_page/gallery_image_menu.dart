@@ -291,7 +291,12 @@ class GalleryImageMenu {
                     if (originalFilename.isNotEmpty)
                       _infoRow(
                         'Original file',
-                        '$originalFilename$fileExtension',
+                        fileExtension.isNotEmpty &&
+                                !originalFilename.toLowerCase().endsWith(
+                                      fileExtension.toLowerCase(),
+                                    )
+                            ? '$originalFilename$fileExtension'
+                            : originalFilename,
                       ),
                     const SizedBox(height: 16),
                     _infoSectionHeader('Raw'),
