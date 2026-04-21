@@ -10,24 +10,24 @@ environment:
 
 dependencies:
   animated_bottom_navigation_bar: ^1.4.0
-  archive: ^4.0.7
+  archive: ^4.0.9
   async_zip: ^0.1.0
   camera: ^0.12.0+1
-  camera_desktop: ^1.1.2
-  chewie: ^1.13.0
+  camera_desktop: ^1.1.3
+  chewie: ^1.13.1
   desktop_drop:
     git:
       url: https://github.com/hugocornellier/desktop_drop_custom.git
   device_info_plus: ^12.4.0
   downloadsfolder: ^1.2.0
   exif_reader: ^4.1.0
-  cat_detection: ^1.0.3
-  dog_detection: ^1.0.3
-  face_detection_tflite: ^6.0.0
-  hand_detection: ^2.0.9
+  cat_detection: ^1.0.4
+  dog_detection: ^1.0.4
+  face_detection_tflite: ^6.1.0
+  hand_detection: ^2.1.0
   ffmpeg_kit_flutter_new:
     path: plugins/ffmpeg_kit_flutter_new
-  file_picker: ^10.3.10
+  file_picker: ^11.0.2
   file_selector: ^1.1.0
   flutter:
     sdk: flutter
@@ -53,9 +53,9 @@ dependencies:
   path: ^1.9.1
   path_provider: ^2.1.5
   permission_handler: ^12.0.1
-  pose_detection: ^2.0.10
+  pose_detection: ^2.1.0
   provider: ^6.1.5
-  saver_gallery: ^4.1.0
+  saver_gallery: ^4.1.1
   sensors_plus: ^7.0.0
   share_plus: ^12.0.2
   smooth_page_indicator: ^2.0.1
@@ -64,7 +64,7 @@ dependencies:
   sqlite3_flutter_libs: ^0.5.42
   timezone: ^0.11.0
   url_launcher: ^6.3.2
-  vibration: ^3.1.5
+  vibration: ^3.1.8
   video_player: ^2.11.1
   video_player_media_kit: ^2.0.0
   video_player_win: ^3.2.2

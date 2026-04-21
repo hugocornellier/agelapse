@@ -483,7 +483,7 @@ class SettingsSheetState extends State<SettingsSheet> {
 
     try {
       // Open file picker for TTF/OTF files
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['ttf', 'otf'],
         dialogTitle: 'Select a font file (TTF or OTF)',
@@ -1978,7 +1978,7 @@ class SettingsSheetState extends State<SettingsSheet> {
   }
 
   Future<String?> _pickLinkedSourceFolder() async {
-    final selectedPath = await FilePicker.platform.getDirectoryPath();
+    final selectedPath = await FilePicker.getDirectoryPath();
     if (selectedPath == null || selectedPath.trim().isEmpty) return null;
 
     final projectDirPath = await DirUtils.getProjectDirPath(widget.projectId);
@@ -2171,16 +2171,18 @@ class SettingsSheetState extends State<SettingsSheet> {
             );
 
             if (shouldProceed && mounted) {
-              setState(() => _losslessStorage = value);
+              await _applySettingWithRestart('RAW photo support', () async {
+                setState(() => _losslessStorage = value);
 
-              await widget.cancelStabCallback();
-              await SettingsUtil.setLosslessStorage(
-                widget.projectId.toString(),
-                value,
-              );
-              await widget.refreshSettings();
+                await widget.cancelStabCallback();
+                await SettingsUtil.setLosslessStorage(
+                  widget.projectId.toString(),
+                  value,
+                );
+                await widget.refreshSettings();
 
-              await resetStabStatusAndRestartStabilization();
+                await resetStabStatusAndRestartStabilization();
+              });
             } else if (mounted) {
               setState(() {}); // Revert switch visual state
             }
@@ -3460,15 +3462,17 @@ class SettingsSheetState extends State<SettingsSheet> {
               "project orientation",
             );
             if (shouldProceed) {
-              await widget.cancelStabCallback();
+              await _applySettingWithRestart('orientation', () async {
+                await widget.cancelStabCallback();
 
-              setState(() => projectOrientation = value);
-              await _saveProjectSetting(
-                'project_orientation',
-                value.toLowerCase(),
-              );
+                setState(() => projectOrientation = value);
+                await _saveProjectSetting(
+                  'project_orientation',
+                  value.toLowerCase(),
+                );
 
-              await resetStabStatusAndRestartStabilization();
+                await resetStabStatusAndRestartStabilization();
+              });
             }
           }
         },
@@ -3505,7 +3509,37 @@ class SettingsSheetState extends State<SettingsSheet> {
     ThumbnailService.instance.clearAllCache();
 
     widget.clearRawAndStabPhotos();
-    widget.stabCallback();
+
+    // stabCallback() resolves only when the entire new run finishes (minutes),
+    // so we don't await it. We do attach a catchError so a throw in the
+    // restart chain surfaces in logs instead of vanishing as an unhandled
+    // Future — that silent failure is what forced users to navigate to a
+    // different tab to retrigger stabilization after a settings change.
+    unawaited(
+      widget.stabCallback().catchError((Object e, StackTrace st) {
+        LogService.instance.log('Settings-flow restart failed: $e\n$st');
+      }),
+    );
+  }
+
+  /// Runs a setting-change body that cancels the current stabilization,
+  /// persists the new setting, and restarts stabilization — under a shared
+  /// try/catch so any DB/file/cancel error is logged and surfaced via
+  /// snackbar instead of crashing the UI.
+  Future<void> _applySettingWithRestart(
+    String changeLabel,
+    Future<void> Function() body,
+  ) async {
+    try {
+      await body();
+    } catch (e, st) {
+      LogService.instance.log('Settings change "$changeLabel" failed: $e\n$st');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to apply $changeLabel: $e')),
+        );
+      }
+    }
   }
 
   Widget _buildResolutionDropdown() {
@@ -3551,16 +3585,18 @@ class SettingsSheetState extends State<SettingsSheet> {
                 );
 
                 if (shouldProceed) {
-                  setState(() {
-                    resolution = value;
-                    _isCustomResolution = false;
-                    _customResolutionError = null;
+                  await _applySettingWithRestart('resolution', () async {
+                    setState(() {
+                      resolution = value;
+                      _isCustomResolution = false;
+                      _customResolutionError = null;
+                    });
+
+                    await widget.cancelStabCallback();
+                    await _saveProjectSetting('video_resolution', value);
+
+                    await resetStabStatusAndRestartStabilization();
                   });
-
-                  await widget.cancelStabCallback();
-                  await _saveProjectSetting('video_resolution', value);
-
-                  await resetStabStatusAndRestartStabilization();
                 }
               }
             },
@@ -3781,17 +3817,19 @@ class SettingsSheetState extends State<SettingsSheet> {
     );
 
     if (shouldProceed) {
-      setState(() {
-        resolution = newResolution;
-        _customResolutionBaseline = newResolution;
-        _customResolutionError = null;
-        _customResolutionModified = false;
+      await _applySettingWithRestart('custom resolution', () async {
+        setState(() {
+          resolution = newResolution;
+          _customResolutionBaseline = newResolution;
+          _customResolutionError = null;
+          _customResolutionModified = false;
+        });
+
+        await widget.cancelStabCallback();
+        await _saveProjectSetting('video_resolution', newResolution);
+
+        await resetStabStatusAndRestartStabilization();
       });
-
-      await widget.cancelStabCallback();
-      await _saveProjectSetting('video_resolution', newResolution);
-
-      await resetStabStatusAndRestartStabilization();
     }
   }
 
@@ -3813,32 +3851,34 @@ class SettingsSheetState extends State<SettingsSheet> {
             );
 
             if (shouldProceed) {
-              LogService.instance.log(
-                '[SettingsSheet] Aspect ratio changing to: $value',
-              );
-              setState(() => aspectRatio = value);
-              await DB.instance.setSettingByTitle(
-                'aspect_ratio',
-                value,
-                widget.projectId.toString(),
-              );
-              LogService.instance.log(
-                '[SettingsSheet] DB updated, cancelling stab...',
-              );
+              await _applySettingWithRestart('aspect ratio', () async {
+                LogService.instance.log(
+                  '[SettingsSheet] Aspect ratio changing to: $value',
+                );
+                setState(() => aspectRatio = value);
+                await DB.instance.setSettingByTitle(
+                  'aspect_ratio',
+                  value,
+                  widget.projectId.toString(),
+                );
+                LogService.instance.log(
+                  '[SettingsSheet] DB updated, cancelling stab...',
+                );
 
-              await widget.cancelStabCallback();
-              LogService.instance.log(
-                '[SettingsSheet] Stab cancelled, refreshing settings...',
-              );
-              await widget.refreshSettings();
-              LogService.instance.log(
-                '[SettingsSheet] Settings refreshed, restarting stabilization...',
-              );
+                await widget.cancelStabCallback();
+                LogService.instance.log(
+                  '[SettingsSheet] Stab cancelled, refreshing settings...',
+                );
+                await widget.refreshSettings();
+                LogService.instance.log(
+                  '[SettingsSheet] Settings refreshed, restarting stabilization...',
+                );
 
-              await resetStabStatusAndRestartStabilization();
-              LogService.instance.log(
-                '[SettingsSheet] Stabilization restarted',
-              );
+                await resetStabStatusAndRestartStabilization();
+                LogService.instance.log(
+                  '[SettingsSheet] Stabilization restarted',
+                );
+              });
             }
           }
         },
@@ -3946,44 +3986,48 @@ class SettingsSheetState extends State<SettingsSheet> {
                   return;
                 }
 
-                setState(() {
-                  if (newValue == 'solid') {
-                    _backgroundColor = SettingsUtil.fallbackBackgroundColor;
-                    _videoBackground = const VideoBackground.transparent();
-                  } else if (newValue == 'transparent') {
-                    _backgroundColor = SettingsUtil.transparentBackgroundValue;
-                    _videoBackground = const VideoBackground.transparent();
-                    _videoCodec = VideoCodec.defaultCodec(
-                      isTransparentVideo: true,
-                    );
-                  } else {
-                    _backgroundColor = SettingsUtil.transparentBackgroundValue;
-                    _videoBackground = const VideoBackground.blurred();
-                    if (!VideoCodec.availableCodecs(
-                      isTransparentVideo: false,
-                    ).contains(_videoCodec)) {
+                await _applySettingWithRestart('background mode', () async {
+                  setState(() {
+                    if (newValue == 'solid') {
+                      _backgroundColor = SettingsUtil.fallbackBackgroundColor;
+                      _videoBackground = const VideoBackground.transparent();
+                    } else if (newValue == 'transparent') {
+                      _backgroundColor =
+                          SettingsUtil.transparentBackgroundValue;
+                      _videoBackground = const VideoBackground.transparent();
                       _videoCodec = VideoCodec.defaultCodec(
-                        isTransparentVideo: false,
+                        isTransparentVideo: true,
                       );
+                    } else {
+                      _backgroundColor =
+                          SettingsUtil.transparentBackgroundValue;
+                      _videoBackground = const VideoBackground.blurred();
+                      if (!VideoCodec.availableCodecs(
+                        isTransparentVideo: false,
+                      ).contains(_videoCodec)) {
+                        _videoCodec = VideoCodec.defaultCodec(
+                          isTransparentVideo: false,
+                        );
+                      }
                     }
-                  }
-                });
+                  });
 
-                await widget.cancelStabCallback();
-                await SettingsUtil.saveBackgroundColor(
-                  widget.projectId.toString(),
-                  _backgroundColor,
-                );
-                await SettingsUtil.saveVideoBackground(
-                  widget.projectId.toString(),
-                  _videoBackground,
-                );
-                await SettingsUtil.saveVideoCodec(
-                  widget.projectId.toString(),
-                  _videoCodec,
-                );
-                await widget.refreshSettings();
-                await resetStabStatusAndRestartStabilization();
+                  await widget.cancelStabCallback();
+                  await SettingsUtil.saveBackgroundColor(
+                    widget.projectId.toString(),
+                    _backgroundColor,
+                  );
+                  await SettingsUtil.saveVideoBackground(
+                    widget.projectId.toString(),
+                    _videoBackground,
+                  );
+                  await SettingsUtil.saveVideoCodec(
+                    widget.projectId.toString(),
+                    _videoCodec,
+                  );
+                  await widget.refreshSettings();
+                  await resetStabStatusAndRestartStabilization();
+                });
               } else {
                 // Transparent ↔ blurred: video-only recompile.
                 final shouldProceed =
@@ -4420,16 +4464,18 @@ class SettingsSheetState extends State<SettingsSheet> {
         );
 
         if (shouldProceed && mounted) {
-          setState(() => _backgroundColor = newHex);
+          await _applySettingWithRestart('background colour', () async {
+            setState(() => _backgroundColor = newHex);
 
-          await widget.cancelStabCallback();
-          await SettingsUtil.saveBackgroundColor(
-            widget.projectId.toString(),
-            newHex,
-          );
-          await widget.refreshSettings();
+            await widget.cancelStabCallback();
+            await SettingsUtil.saveBackgroundColor(
+              widget.projectId.toString(),
+              newHex,
+            );
+            await widget.refreshSettings();
 
-          await resetStabStatusAndRestartStabilization();
+            await resetStabStatusAndRestartStabilization();
+          });
         }
       }
     }
@@ -4557,7 +4603,7 @@ class ImagePickerWidgetState extends State<ImagePickerWidget> {
   }
 
   Future<void> _pickImage() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
+    FilePickerResult? result = await FilePicker.pickFiles(
       type: FileType.image,
       allowMultiple: false,
     );

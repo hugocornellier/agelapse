@@ -61,6 +61,14 @@ class StabilizationService {
   FaceStabilizer? _currentStabilizer;
   StabilizationSettings? _currentSettings;
 
+  /// Monotonic generation counter identifying the current run.
+  ///
+  /// Bumped at the start of every [startStabilization]. Late callbacks from
+  /// prior runs (e.g. [_cleanup] resuming after an async dispose) compare
+  /// against this before mutating shared state so they can't clobber a
+  /// newer run's fields.
+  int _currentGen = 0;
+
   // Progress tracking
   int _currentPhoto = 0;
   int _totalPhotos = 0;
@@ -106,6 +114,11 @@ class StabilizationService {
       await cancelAndWait();
     }
 
+    // Capture our generation before touching any shared field. A prior run's
+    // [_cleanup] that is still parked on an async await must compare against
+    // this before nulling shared state.
+    final myGen = ++_currentGen;
+
     userRanOutOfSpaceCallback = onUserRanOutOfSpace;
     _currentProjectId = projectId;
     _currentToken = CancellationToken();
@@ -134,7 +147,7 @@ class StabilizationService {
         await DB.instance.setNewVideoNeeded(projectId);
         _emitProgress(StabilizationProgress.completed(projectId: projectId));
         _state = StabilizationState.completed;
-        await _cleanup();
+        await _cleanup(myGen);
         return true;
       }
 
@@ -168,12 +181,12 @@ class StabilizationService {
             ),
           );
           _state = StabilizationState.error;
-          await _cleanup();
+          await _cleanup(myGen);
           return false;
         }
         _emitProgress(StabilizationProgress.completed(projectId: projectId));
         _state = StabilizationState.completed;
-        await _cleanup();
+        await _cleanup(myGen);
       }
       return true;
     }
@@ -280,7 +293,7 @@ class StabilizationService {
       _state = StabilizationState.error;
       return false;
     } finally {
-      await _cleanup();
+      await _cleanup(myGen);
     }
   }
 
@@ -747,15 +760,25 @@ class StabilizationService {
     _benchmark.reset();
   }
 
-  Future<void> _cleanup() async {
+  /// Release resources held by the run identified by [myGen].
+  ///
+  /// Each call captures its run's generation at [startStabilization] entry
+  /// and passes it here. The checks against [_currentGen] make this safe to
+  /// resume after async awaits: if a newer run has taken over, we bail out
+  /// instead of clobbering its fresh [_currentStabilizer] / [_currentToken] /
+  /// [_currentSettings], or emitting a stale [StabilizationProgress.idle].
+  Future<void> _cleanup(int myGen) async {
     await _currentStabilizer?.dispose();
+    if (myGen != _currentGen) return;
     _currentStabilizer = null;
     _currentToken = null;
     _currentSettings = null;
     await WakelockPlus.disable();
+    if (myGen != _currentGen) return;
 
     // Reset to idle after a short delay to allow UI to update
     await Future.delayed(const Duration(milliseconds: 100));
+    if (myGen != _currentGen) return;
     if (_state == StabilizationState.completed ||
         _state == StabilizationState.cancelled ||
         _state == StabilizationState.error) {

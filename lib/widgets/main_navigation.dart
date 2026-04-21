@@ -504,14 +504,14 @@ class MainNavigationState extends State<MainNavigation>
     setState(() => _showFlashingCircle = false);
   }
 
-  /// Cancel stabilization INSTANTLY.
+  /// Cancel stabilization and wait for the run to fully stop.
   ///
-  /// This method returns immediately after initiating cancellation.
-  /// The service kills all active isolates and FFmpeg processes.
-  /// UI updates come via the progress stream (shows "Cancelling..." state).
+  /// Uses [StabilizationService.cancelAndWait] so the returned Future only
+  /// resolves once state has reached a terminal value (or the 2s safety
+  /// timeout elapses). Settings flows rely on this being a real barrier
+  /// before they reset DB/files and start a new run.
   Future<void> _cancelStabilizationProcess() async {
-    await StabilizationService.instance.cancel();
-    // No waiting needed - state updates come via stream
+    await StabilizationService.instance.cancelAndWait();
   }
 
   /// Trigger video recompilation immediately.
