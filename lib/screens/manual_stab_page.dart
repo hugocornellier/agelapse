@@ -1691,6 +1691,17 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
         if (!saveOk) {
           return ManualStabOutcome.saveFailed;
         }
+        try {
+          final fingerprint = await StabUtils.computeRawPhotoFingerprint(
+            rawPhotoPath,
+          );
+          await DB.instance.clearTransformCacheForFingerprint(
+            widget.projectId,
+            fingerprint,
+          );
+        } catch (e) {
+          _log('manual save transform-cache clear failed: $e');
+        }
         await _faceStabilizer!.createStabThumbnail(
           p.setExtension(stabilizedPhotoPath, '.png'),
           imageBytes: savedBytes,

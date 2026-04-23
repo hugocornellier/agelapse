@@ -16,6 +16,7 @@ import 'dir_utils.dart';
 import 'format_decode_utils.dart';
 import 'image_processing_isolate.dart';
 import 'linked_source_utils.dart';
+import 'photo_fingerprint.dart';
 import 'settings_utils.dart';
 
 class CameraUtils {
@@ -148,6 +149,7 @@ class CameraUtils {
     int? importPhotoLength;
     ImageProcessingOutput? importProcessingOutput;
     Uint8List? importPreDecodedBytes;
+    String? importFingerprint;
 
     if (!import && image != null) {
       // --- Camera capture pre-processing ---
@@ -181,6 +183,14 @@ class CameraUtils {
 
       String imgPath = image.path;
       String extension = path.extension(imgPath).toLowerCase();
+
+      // Content-based dedup fingerprinting is file-local and can run before
+      // the serialized save/DB section.
+      try {
+        importFingerprint = await PhotoFingerprint.compute(imgPath);
+      } catch (e) {
+        LogService.instance.log('[Import] fingerprint error: $e');
+      }
 
       // Read bytes if not already provided
       if (bytes == null || imgPath != image.path) {
@@ -290,8 +300,15 @@ class CameraUtils {
           sourceRelativePath ??= linkedPlacement?.relativePath;
           sourceFilename = linkedPlacement?.filename ?? sourceFilename;
 
+          String? captureFingerprint;
+          try {
+            captureFingerprint = await PhotoFingerprint.compute(rawPhotoPath);
+          } catch (e) {
+            LogService.instance.log('[Capture] fingerprint error: $e');
+          }
+
           // DB insert after files are safely on disk
-          await DB.instance.addPhoto(
+          final inserted = await DB.instance.addPhoto(
             timestamp,
             projectId,
             extension,
@@ -301,7 +318,9 @@ class CameraUtils {
             sourceFilename: sourceFilename,
             sourceRelativePath: sourceRelativePath,
             sourceLocationType: sourceLocationType,
+            fingerprint: captureFingerprint,
           );
+          if (!inserted) return false;
 
           final int tsInt = int.parse(timestamp);
           final int captureOffsetMin = DateTime.fromMillisecondsSinceEpoch(
@@ -361,6 +380,24 @@ class CameraUtils {
           return false;
         }
 
+        // Content-based dedup: fingerprint the *source* file (before we
+        // potentially rewrite it with processed bytes below). Catches EXIF-less
+        // imports and size-collision false positives that the legacy
+        // timestamp+size check would miss.
+        if (importFingerprint != null) {
+          final match = await DB.instance.findPhotoByFingerprint(
+            projectId,
+            importFingerprint,
+          );
+          if (match != null) {
+            LogService.instance.log(
+              '[Import] duplicate by fingerprint — skipping '
+              '(matched timestamp=${match['timestamp']})',
+            );
+            return false;
+          }
+        }
+
         if (imageTimestampFromExif != null) {
           timestamp = imageTimestampFromExif.toString();
           bool photoExists = await DB.instance.doesPhotoExistByTimestamp(
@@ -374,7 +411,14 @@ class CameraUtils {
               projectId,
             ))
                     .first;
-            if (newPhotoLength == existingPhoto['imageLength']) {
+            final existingFingerprint = existingPhoto['fingerprint'] as String?;
+            final bothFingerprinted =
+                importFingerprint != null && existingFingerprint != null;
+            if (bothFingerprinted) {
+              if (importFingerprint == existingFingerprint) {
+                return false; // Duplicate
+              }
+            } else if (newPhotoLength == existingPhoto['imageLength']) {
               return false; // Duplicate
             }
 
@@ -451,7 +495,7 @@ class CameraUtils {
         sourceFilename = linkedPlacement?.filename ?? sourceFilename;
 
         // DB insert after files are safely on disk
-        await DB.instance.addPhoto(
+        final inserted = await DB.instance.addPhoto(
           timestamp,
           projectId,
           extension,
@@ -461,7 +505,9 @@ class CameraUtils {
           sourceFilename: sourceFilename,
           sourceRelativePath: sourceRelativePath,
           sourceLocationType: sourceLocationType,
+          fingerprint: importFingerprint,
         );
+        if (!inserted) return false;
 
         // Set capture timezone offset so streak/date calculations stay
         // correct across DST transitions instead of falling back to

@@ -416,5 +416,74 @@ void main() {
 
       cache.dispose();
     });
+
+    testWidgets(
+      'duplicate bytes at new relative path do not rewrite existing source path',
+      (tester) async {
+        if (!await ensureDesktop()) return;
+
+        app.main();
+        await tester.pumpAndSettle(const Duration(seconds: 2));
+
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        testProjectId = await DB.instance.addProject(
+          'DuplicateLinkedPathTest',
+          'face',
+          timestamp,
+        );
+
+        final rawDir = await DirUtils.getRawPhotoDirPath(testProjectId!);
+        await Directory(rawDir).create(recursive: true);
+
+        final copiedPaths = await setUpLinkedFolder(imageCount: 1);
+        expect(copiedPaths.length, 1);
+
+        await LinkedSourceUtils.persistDesktopFolderSelection(
+          testProjectId!,
+          tempLinkedDir!.path,
+        );
+
+        final cache = buildCache(tempLinkedDir!.path);
+        final result1 = await ProjectFolderSyncService.instance.runStartupSync(
+          testProjectId!,
+          cache,
+        );
+        expect(result1.filesImported, 1);
+
+        final linkedPhotos1 = await DB.instance.getPhotosBySourceLocationType(
+          testProjectId!,
+          'external_linked',
+        );
+        expect(linkedPhotos1.length, 1);
+        final originalRelativePath =
+            linkedPhotos1.first['sourceRelativePath'] as String;
+
+        final dupDir = Directory(p.join(tempLinkedDir!.path, 'duplicates'));
+        await dupDir.create(recursive: true);
+        await File(copiedPaths.first).copy(p.join(dupDir.path, 'copy.jpg'));
+
+        await ProjectFolderSyncService.instance.stopWatching();
+        final result2 = await ProjectFolderSyncService.instance.runStartupSync(
+          testProjectId!,
+          cache,
+        );
+
+        expect(result2.filesImported, 0);
+        expect(result2.errors, isEmpty);
+
+        final linkedPhotos2 = await DB.instance.getPhotosBySourceLocationType(
+          testProjectId!,
+          'external_linked',
+        );
+        expect(linkedPhotos2.length, 1);
+        expect(
+          linkedPhotos2.first['sourceRelativePath'],
+          originalRelativePath,
+          reason: 'Duplicate linked files must not move source metadata',
+        );
+
+        cache.dispose();
+      },
+    );
   });
 }

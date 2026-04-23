@@ -8,6 +8,7 @@ import 'package:path/path.dart' as path;
 import '../utils/dir_utils.dart';
 import '../utils/gallery_utils.dart';
 import '../utils/linked_source_utils.dart';
+import '../utils/photo_fingerprint.dart';
 import 'database_helper.dart';
 import 'log_service.dart';
 import 'settings_cache.dart';
@@ -279,10 +280,9 @@ class ProjectFolderSyncService {
         } else {
           // Import failed — likely a duplicate. Try to backfill source metadata
           // on the existing photo so sync recognizes it on future runs.
-          final fileSize = await File(candidate.filePath).length();
           final backfilled = await _tryBackfillSourceInfo(
             projectId,
-            fileSize,
+            candidate.filePath,
             candidate.filename,
             candidate.relativePath,
           );
@@ -360,24 +360,58 @@ class ProjectFolderSyncService {
   }
 
   /// Try to find an existing photo (imported before sync was enabled) that
-  /// matches this file by size, and backfill its source metadata so future
-  /// syncs skip it instead of reporting a failure.
+  /// matches this file and backfill its source metadata so future syncs skip
+  /// it instead of reporting a failure.
+  ///
+  /// Prefers content-based matching via fingerprint; falls back to the legacy
+  /// size-only match for rows that pre-date the fingerprint column. When the
+  /// size-only fallback resolves a row, the fingerprint is also backfilled
+  /// so the next sync takes the fast path.
   Future<bool> _tryBackfillSourceInfo(
     int projectId,
-    int fileSize,
+    String filePath,
     String filename,
     String relativePath,
   ) async {
     try {
-      final matches = await DB.instance.getPhotosByImageLength(
-        projectId,
-        fileSize,
-        whereSourceRelativePathIsNull: true,
-      );
-      if (matches.length != 1) return false;
+      String? fingerprint;
+      try {
+        fingerprint = await PhotoFingerprint.compute(filePath);
+      } catch (e) {
+        LogService.instance.log(
+          'Backfill fingerprint error for $relativePath: $e',
+        );
+      }
 
-      final timestamp = matches.first['timestamp'] as String?;
-      if (timestamp == null) return false;
+      String? timestamp;
+      if (fingerprint != null) {
+        final match =
+            await DB.instance.findPhotoByFingerprint(projectId, fingerprint);
+        if (match != null) {
+          final existingSourcePath = match['sourceRelativePath'] as String?;
+          if (existingSourcePath != null && existingSourcePath.isNotEmpty) {
+            return true;
+          }
+          timestamp = match['timestamp'] as String?;
+        }
+      }
+
+      if (timestamp == null) {
+        final fileSize = await File(filePath).length();
+        final matches = await DB.instance.getPhotosByImageLength(
+          projectId,
+          fileSize,
+          whereSourceRelativePathIsNull: true,
+        );
+        if (matches.length != 1) return false;
+        timestamp = matches.first['timestamp'] as String?;
+        if (timestamp == null) return false;
+
+        if (fingerprint != null) {
+          await DB.instance
+              .backfillPhotoFingerprint(timestamp, projectId, fingerprint);
+        }
+      }
 
       await DB.instance.updatePhotoSourceInfo(
         timestamp,

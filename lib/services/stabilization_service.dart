@@ -441,6 +441,8 @@ class StabilizationService {
     _ProgressState progressState,
     int projectId,
   ) async {
+    FaceStabilizer.resetCacheCounters();
+
     for (final photo in photos) {
       _currentToken?.throwIfCancelled();
 
@@ -495,6 +497,17 @@ class StabilizationService {
         ),
       );
     }
+
+    final totalPhotos = photos.length;
+    final hits = FaceStabilizer.cacheHits;
+    final misses = FaceStabilizer.cacheMisses;
+    final sentinelHits = FaceStabilizer.noFacesSentinelHits;
+    final savedSec = FaceStabilizer.estimatedTimeSavedMs ~/ 1000;
+    final pct = totalPhotos > 0 ? (hits * 100 ~/ totalPhotos) : 0;
+    LogService.instance.log(
+      '[cache] run summary: $hits/$totalPhotos hits ($pct%),'
+      ' $misses misses, $sentinelHits no_faces sentinels, saved ~${savedSec}s',
+    );
   }
 
   Future<void> _finalCheck(FaceStabilizer stabilizer, int projectId) async {

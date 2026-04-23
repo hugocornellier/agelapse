@@ -22,6 +22,7 @@ import '../../services/isolate_pool.dart';
 import '../../services/log_service.dart';
 import '../camera_utils.dart';
 import '../dir_utils.dart';
+import '../photo_fingerprint.dart';
 import '../settings_utils.dart';
 
 class FaceLike {
@@ -536,6 +537,14 @@ class StabUtils {
   static Float32List bytesToEmbedding(Uint8List bytes) {
     return bytes.buffer.asFloat32List();
   }
+
+  static String get faceModelVersion => fdl.FaceDetector.modelVersion;
+
+  /// Thin pass-through to [PhotoFingerprint.compute]. Kept here so existing
+  /// callers keep working; new code may use [PhotoFingerprint.compute]
+  /// directly.
+  static Future<String> computeRawPhotoFingerprint(String filePath) =>
+      PhotoFingerprint.compute(filePath);
 
   // ============================================================
   // Cat/Dog Face Detection → FaceLike conversion

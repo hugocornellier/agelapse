@@ -12,6 +12,7 @@ import 'date_stamp_utils.dart';
 import 'dir_utils.dart';
 import 'project_utils.dart';
 import 'settings_utils.dart';
+import 'stabilizer_utils/stabilizer_utils.dart';
 
 /// Shared photo operations used by gallery_page.dart and image_preview_navigator.dart.
 /// Consolidates duplicate implementations for photo manipulation.
@@ -66,6 +67,20 @@ class GalleryPhotoOperations {
     // Delete files
     await DirUtils.deleteFileIfExists(stabilizedImagePath);
     await DirUtils.deleteFileIfExists(stabThumbPath);
+
+    try {
+      final fingerprint = await StabUtils.computeRawPhotoFingerprint(
+        rawPhotoPath,
+      );
+      await DB.instance.clearTransformCacheForFingerprint(
+        projectId,
+        fingerprint,
+      );
+    } catch (e) {
+      LogService.instance.log(
+        '[transform-cache] $timestamp: retry clear failed: $e',
+      );
+    }
 
     // Reset DB
     await DB.instance.resetPhotoStabilizationState(

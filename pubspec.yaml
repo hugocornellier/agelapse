@@ -22,9 +22,10 @@ dependencies:
   downloadsfolder: ^1.2.0
   exif_reader: ^4.1.0
   cat_detection: ^1.0.4
+  crypto: ^3.0.0
   dog_detection: ^1.0.4
   face_detection_tflite: ^6.1.0
-  hand_detection: ^2.1.0
+  hand_detection: ^2.1.1
   ffmpeg_kit_flutter_new:
     path: plugins/ffmpeg_kit_flutter_new
   file_picker: ^11.0.2

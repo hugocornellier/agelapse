@@ -326,13 +326,14 @@ void main() {
         );
 
         final fixturePath = await getSampleFacePathAsync(1);
-        // Copy fixture three times: two identical copies for the exact-duplicate
-        // test, and one modified copy (different file size) for the timestamp-
-        // increment test.
+        // Copy fixture four times: two identical copies for the exact-duplicate
+        // test, one modified copy with a different size, and one same-size copy
+        // with different content for fingerprint-vs-size duplicate handling.
         final tempDir = await Directory.systemTemp.createTemp('import_test_d_');
         final copy1 = p.join(tempDir.path, 'copy1.jpg');
         final copy2 = p.join(tempDir.path, 'copy2.jpg');
         final copy3 = p.join(tempDir.path, 'copy3.jpg');
+        final copy4 = p.join(tempDir.path, 'copy4.jpg');
         await File(fixturePath).copy(copy1);
         await File(fixturePath).copy(copy2);
         // Make copy3 a different size by appending a null byte — same EXIF
@@ -340,6 +341,11 @@ void main() {
         // increment the timestamp by 1ms and accept the import.
         final originalBytes = await File(fixturePath).readAsBytes();
         await File(copy3).writeAsBytes([...originalBytes, 0x00]);
+        final sameSizeDifferentBytes = List<int>.from(originalBytes);
+        final mutationIndex = sameSizeDifferentBytes.length ~/ 2;
+        sameSizeDifferentBytes[mutationIndex] =
+            sameSizeDifferentBytes[mutationIndex] ^ 0x01;
+        await File(copy4).writeAsBytes(sameSizeDifferentBytes);
 
         final notifier = ValueNotifier<String>('');
         try {
@@ -429,6 +435,42 @@ void main() {
             timestamps[1],
             firstTimestamp + 1,
             reason: 'Second record timestamp should be firstTimestamp + 1ms',
+          );
+
+          // ── Phase 3: same-size different fingerprint gets timestamp+2 ─────
+
+          final fourth = await GalleryUtils.importXFile(
+            XFile(copy4),
+            testProjectId!,
+            notifier,
+            timestamp: firstTimestamp,
+          );
+          expect(
+            fourth,
+            isTrue,
+            reason:
+                'Same-size file with different fingerprint should be accepted',
+          );
+
+          await tester.pump(const Duration(seconds: 3));
+
+          final photosAfterFourth = await DB.instance.getPhotosByProjectID(
+            testProjectId!,
+          );
+          expect(
+            photosAfterFourth.length,
+            3,
+            reason: 'DB should have 3 records after same-size distinct import',
+          );
+
+          final finalTimestamps = photosAfterFourth
+              .map((r) => int.parse(r['timestamp'] as String))
+              .toList()
+            ..sort();
+          expect(
+            finalTimestamps[2],
+            firstTimestamp + 2,
+            reason: 'Third record timestamp should be firstTimestamp + 2ms',
           );
         } finally {
           notifier.dispose();

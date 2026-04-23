@@ -1,3 +1,6 @@
+import 'dart:io';
+import 'dart:math' as math;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -57,33 +60,67 @@ class _ImportPreviewDialogState extends State<ImportPreviewDialog> {
 
   @override
   void dispose() {
+    _isCancelled = true;
     _scrollController.dispose();
     super.dispose();
   }
 
   Future<void> _processFiles() async {
-    for (final filePath in widget.filePaths) {
-      if (_isCancelled) break;
+    final items = await _extractPreviewItems();
 
-      final item = await GalleryUtils.extractDateForPreview(filePath);
-
-      if (_isCancelled) break;
-
-      if (mounted) {
-        setState(() {
-          _items.add(item);
-          _processedCount++;
-        });
-      }
-    }
-
-    if (!_isCancelled && mounted) {
+    if (!_isCancelled && mounted && items != null) {
       setState(() {
+        _items
+          ..clear()
+          ..addAll(items);
         _items.sort((a, b) => a.displayDate.compareTo(b.displayDate));
         _originalItems = List.of(_items);
         _isProcessing = false;
       });
     }
+  }
+
+  Future<List<ImportPreviewItem>?> _extractPreviewItems() async {
+    final filePaths = widget.filePaths;
+    final results = List<ImportPreviewItem?>.filled(filePaths.length, null);
+    final workerCount = _previewWorkerCount(filePaths.length);
+    int nextIndex = 0;
+
+    Future<void> worker() async {
+      while (!_isCancelled) {
+        final index = nextIndex;
+        if (index >= filePaths.length) return;
+        nextIndex++;
+
+        final item = await GalleryUtils.extractDateForPreview(
+          filePaths[index],
+        );
+        if (_isCancelled) return;
+
+        results[index] = item;
+        if (mounted) {
+          setState(() {
+            _processedCount++;
+          });
+        }
+      }
+    }
+
+    await Future.wait(List.generate(workerCount, (_) => worker()));
+    if (_isCancelled) return null;
+    return results.whereType<ImportPreviewItem>().toList();
+  }
+
+  int _previewWorkerCount(int fileCount) {
+    if (fileCount <= 1) return fileCount;
+
+    final processorCount = Platform.numberOfProcessors;
+    final halfProcessors = math.max(1, processorCount ~/ 2);
+    final baseDesktopWorkers = math.min(8, math.max(2, halfProcessors));
+    final targetCount = isDesktop
+        ? math.min(12, (baseDesktopWorkers * 1.5).ceil())
+        : math.min(2, halfProcessors);
+    return math.min(fileCount, targetCount);
   }
 
   @override

@@ -210,7 +210,7 @@ packages:
     source: hosted
     version: "0.3.5+2"
   crypto:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: crypto
       sha256: c8ea0233063ba03258fbcf2ca4d6dadfefe14f02fab57702265467a19f27fadf
@@ -697,10 +697,10 @@ packages:
     dependency: "direct main"
     description:
       name: hand_detection
-      sha256: ecebe3a09a25eee8cc487930c1c41e64361fcd8f6af9b8d64c9eb554371e6c94
+      sha256: ca00f4f831e8bdb30a5c6ff2e7a26ffccbba43f72c428c78ada5a478c1167000
       url: "https://pub.dev"
     source: hosted
-    version: "2.1.0"
+    version: "2.1.1"
   heic_native:
     dependency: "direct main"
     description:

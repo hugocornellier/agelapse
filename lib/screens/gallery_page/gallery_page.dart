@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -147,6 +148,7 @@ class GalleryPageState extends State<GalleryPage>
   int? dropReceivedCount; // Set when drop received, before onDragDone fires
   bool isDraggingOver =
       false; // True when user is dragging files over drop zone
+  bool _importSheetDropHandling = false;
   bool imagePreviewIsOpen = false;
   VoidCallback? closeImagePreviewCallback;
   ValueNotifier<String> activeProcessingDateNotifier = ValueNotifier<String>(
@@ -1172,22 +1174,52 @@ class GalleryPageState extends State<GalleryPage>
 
     GalleryUtils.startImportBatch(result.length);
 
-    for (final item in result) {
-      if (!mounted) break;
-      await GalleryUtils.processPickedFile(
-        File(item.filePath),
-        projectId,
-        activeProcessingDateNotifier,
-        onImagesLoaded: _loadImages,
-        setProgressInMain: widget.setProgressInMain,
-        increaseSuccessfulImportCount: increaseSuccessfulImportCount,
-        increasePhotosImported: increasePhotosImported,
-        overrideTimestamp: item.timestampMs,
-      );
-    }
+    await _processImportItems(result);
 
     widget.setImportingInMain(false);
     await _handleImportCompletion();
+  }
+
+  Future<void> _processImportItems(List<ImportPreviewItem> items) async {
+    final workerCount = _importWorkerCount(items.length);
+    int nextIndex = 0;
+
+    Future<void> worker() async {
+      while (mounted) {
+        final index = nextIndex;
+        if (index >= items.length) return;
+        nextIndex++;
+
+        await _processImportItem(items[index]);
+      }
+    }
+
+    await Future.wait(List.generate(workerCount, (_) => worker()));
+  }
+
+  Future<void> _processImportItem(ImportPreviewItem item) async {
+    await GalleryUtils.processPickedFile(
+      File(item.filePath),
+      projectId,
+      activeProcessingDateNotifier,
+      onImagesLoaded: _loadImages,
+      setProgressInMain: widget.setProgressInMain,
+      increaseSuccessfulImportCount: increaseSuccessfulImportCount,
+      increasePhotosImported: increasePhotosImported,
+      overrideTimestamp: item.timestampMs,
+    );
+  }
+
+  int _importWorkerCount(int fileCount) {
+    if (fileCount <= 1) return fileCount;
+
+    final processorCount = Platform.numberOfProcessors;
+    final halfProcessors = math.max(1, processorCount ~/ 2);
+    final baseDesktopWorkers = math.min(6, math.max(2, halfProcessors));
+    final targetCount = isDesktop
+        ? math.min(8, (baseDesktopWorkers * 1.5).ceil())
+        : math.min(2, halfProcessors);
+    return math.min(fileCount, targetCount);
   }
 
   void _showImportCompleteDialog(int imported, int skipped) {
@@ -1332,6 +1364,8 @@ class GalleryPageState extends State<GalleryPage>
 
     // Notify that import sheet is opening (disables global drop overlay)
     widget.setImportSheetOpen(true);
+    GlobalDropService.instance
+        .setImportSheetDropHandler(_handleImportSheetDrop);
 
     bool isDateInfoExpanded = false;
 
@@ -1350,17 +1384,8 @@ class GalleryPageState extends State<GalleryPage>
               if (isDesktop) ...[
                 const SizedBox(height: 16),
                 _buildDesktopDropZoneWithState(
-                  setModalState: setModalState,
                   isDraggingOver: isDraggingOver,
                   dropReceivedCount: dropReceivedCount,
-                  onDraggingChanged: (value) {
-                    isDraggingOver = value;
-                    setModalState(() {});
-                  },
-                  onDropReceivedCountChanged: (value) {
-                    dropReceivedCount = value;
-                    setModalState(() {});
-                  },
                 ),
               ],
               const SizedBox(height: 16),
@@ -1372,7 +1397,7 @@ class GalleryPageState extends State<GalleryPage>
                 },
               ),
             ];
-            return ConstrainedBox(
+            final sheet = ConstrainedBox(
               constraints: BoxConstraints(
                 maxHeight: MediaQuery.of(context).size.height * 0.85,
               ),
@@ -1382,153 +1407,165 @@ class GalleryPageState extends State<GalleryPage>
                 modalContent,
               ),
             );
+
+            if (!isDesktop) return sheet;
+
+            return DropTarget(
+              onDragEntered: (_) {
+                isDraggingOver = true;
+                setModalState(() {});
+              },
+              onDragExited: (_) {
+                isDraggingOver = false;
+                dropReceivedCount = null;
+                setModalState(() {});
+              },
+              onDropReceived: (details) {
+                dropReceivedCount = details.itemCount;
+                setModalState(() {});
+              },
+              child: sheet,
+            );
           },
         );
       },
     ).whenComplete(() {
       // Always reset when sheet closes (success, error, ESC, back, etc.)
+      GlobalDropService.instance.setImportSheetDropHandler(null);
       widget.setImportSheetOpen(false);
     });
   }
 
+  Future<void> _handleImportSheetDrop(List<String> itemPaths) async {
+    if (_importSheetDropHandling) return;
+    _importSheetDropHandling = true;
+
+    try {
+      if (isImporting) return;
+      if (!mounted) return;
+
+      Navigator.of(context).pop(); // Close the import bottom sheet
+      await _expandAndShowImport(itemPaths);
+    } finally {
+      _importSheetDropHandling = false;
+    }
+  }
+
   Widget _buildDesktopDropZoneWithState({
-    required StateSetter setModalState,
     required bool isDraggingOver,
     required int? dropReceivedCount,
-    required void Function(bool) onDraggingChanged,
-    required void Function(int?) onDropReceivedCountChanged,
   }) {
-    return DropTarget(
-      onDragEntered: (details) {
-        onDraggingChanged(true);
-      },
-      onDragExited: (details) {
-        onDraggingChanged(false);
-      },
-      onDragDone: (details) async {
-        onDraggingChanged(false);
-        onDropReceivedCountChanged(null);
-
-        if (isImporting) return;
-        Navigator.of(context).pop(); // Close the import bottom sheet
-
-        final List<String> itemPaths =
-            details.files.map((f) => f.path).toList();
-
-        await _expandAndShowImport(itemPaths);
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 28.0, horizontal: 16.0),
-        decoration: BoxDecoration(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 28.0, horizontal: 16.0),
+      decoration: BoxDecoration(
+        color: isDraggingOver
+            ? AppColors.info.withValues(alpha: 0.15)
+            : AppColors.textPrimary.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
           color: isDraggingOver
-              ? AppColors.info.withValues(alpha: 0.15)
-              : AppColors.textPrimary.withValues(alpha: 0.03),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isDraggingOver
-                ? AppColors.info.withValues(alpha: 0.5)
-                : AppColors.textPrimary.withValues(alpha: 0.12),
-            width: isDraggingOver ? 2.0 : 1.5,
-            strokeAlign: BorderSide.strokeAlignInside,
-          ),
+              ? AppColors.info.withValues(alpha: 0.5)
+              : AppColors.textPrimary.withValues(alpha: 0.12),
+          width: isDraggingOver ? 2.0 : 1.5,
+          strokeAlign: BorderSide.strokeAlignInside,
         ),
-        child: dropReceivedCount != null
-            ? Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: 26,
-                    height: 26,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        AppColors.textPrimary.withValues(alpha: 0.7),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Preparing import...',
-                    style: TextStyle(
-                      color: AppColors.textPrimary.withValues(alpha: 0.7),
-                      fontSize: AppTypography.md,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '$dropReceivedCount items',
-                    style: TextStyle(
-                      color: AppColors.textPrimary.withValues(alpha: 0.4),
-                      fontSize: AppTypography.sm,
-                    ),
-                  ),
-                ],
-              )
-            : isDraggingOver
-                ? Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconBadge(
-                        icon: Icons.file_download_outlined,
-                        iconSize: 26,
-                        padding: 12,
-                        iconColor: AppColors.info.withValues(alpha: 0.9),
-                        backgroundColor: AppColors.info.withValues(alpha: 0.2),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Release to import',
-                        style: TextStyle(
-                          color: AppColors.info.withValues(alpha: 0.9),
-                          fontSize: AppTypography.md,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'drop files to begin',
-                        style: TextStyle(
-                          color: AppColors.info.withValues(alpha: 0.6),
-                          fontSize: AppTypography.sm,
-                        ),
-                      ),
-                    ],
-                  )
-                : Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconBadge(
-                        icon: Icons.upload_file_outlined,
-                        iconSize: 26,
-                        padding: 12,
-                        iconColor: AppColors.textPrimary.withValues(alpha: 0.7),
-                        backgroundColor: AppColors.textPrimary.withValues(
-                          alpha: 0.06,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Drop files or folders here',
-                        style: TextStyle(
-                          color: AppColors.textPrimary.withValues(alpha: 0.7),
-                          fontSize: AppTypography.md,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'images and folders supported',
-                        style: TextStyle(
-                          color: AppColors.textPrimary.withValues(alpha: 0.4),
-                          fontSize: AppTypography.sm,
-                        ),
-                      ),
-                    ],
-                  ),
       ),
+      child: dropReceivedCount != null
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 26,
+                  height: 26,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppColors.textPrimary.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Preparing import...',
+                  style: TextStyle(
+                    color: AppColors.textPrimary.withValues(alpha: 0.7),
+                    fontSize: AppTypography.md,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$dropReceivedCount items',
+                  style: TextStyle(
+                    color: AppColors.textPrimary.withValues(alpha: 0.4),
+                    fontSize: AppTypography.sm,
+                  ),
+                ),
+              ],
+            )
+          : isDraggingOver
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconBadge(
+                      icon: Icons.file_download_outlined,
+                      iconSize: 26,
+                      padding: 12,
+                      iconColor: AppColors.info.withValues(alpha: 0.9),
+                      backgroundColor: AppColors.info.withValues(alpha: 0.2),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Release to import',
+                      style: TextStyle(
+                        color: AppColors.info.withValues(alpha: 0.9),
+                        fontSize: AppTypography.md,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'drop files to begin',
+                      style: TextStyle(
+                        color: AppColors.info.withValues(alpha: 0.6),
+                        fontSize: AppTypography.sm,
+                      ),
+                    ),
+                  ],
+                )
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconBadge(
+                      icon: Icons.upload_file_outlined,
+                      iconSize: 26,
+                      padding: 12,
+                      iconColor: AppColors.textPrimary.withValues(alpha: 0.7),
+                      backgroundColor: AppColors.textPrimary.withValues(
+                        alpha: 0.06,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Drop files or folders here',
+                      style: TextStyle(
+                        color: AppColors.textPrimary.withValues(alpha: 0.7),
+                        fontSize: AppTypography.md,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'images and folders supported',
+                      style: TextStyle(
+                        color: AppColors.textPrimary.withValues(alpha: 0.4),
+                        fontSize: AppTypography.sm,
+                      ),
+                    ),
+                  ],
+                ),
     );
   }
 

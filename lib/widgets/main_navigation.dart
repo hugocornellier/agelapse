@@ -662,6 +662,16 @@ class MainNavigationState extends State<MainNavigation>
 
     final paths = details.files.map((f) => f.path).toList();
 
+    if (!_isImporting && GlobalDropService.instance.importSheetOpen) {
+      final handled = await GlobalDropService.instance.handleImportSheetDrop(
+        paths,
+      );
+      if (!handled) {
+        _showErrorSnackbar('Import dialog is not ready for dropped files');
+      }
+      return;
+    }
+
     // EARLY VALIDATION: Check for empty drops
     if (paths.isEmpty) {
       _showErrorSnackbar('No files to import');
@@ -681,8 +691,7 @@ class MainNavigationState extends State<MainNavigation>
       return;
     }
 
-    // QUEUE if importing OR import sheet open
-    if (_isImporting || GlobalDropService.instance.importSheetOpen) {
+    if (_isImporting) {
       final queued = GlobalDropService.instance.queueFiles(
         validPaths,
         widget.projectId,

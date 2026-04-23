@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -470,6 +471,98 @@ void main() {
         );
         expect(result == null || result.isEmpty, isTrue);
       });
+    });
+  });
+
+  group('StabUtils fingerprint', () {
+    late Directory tempDir;
+
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('stab_fp_test_');
+    });
+
+    tearDown(() async {
+      await tempDir.delete(recursive: true);
+    });
+
+    test('fingerprint is deterministic for the same file', () async {
+      final file = File('${tempDir.path}/sample.jpg');
+      await file.writeAsBytes([1, 2, 3, 4, 5]);
+
+      final fp1 = await StabUtils.computeRawPhotoFingerprint(file.path);
+      final fp2 = await StabUtils.computeRawPhotoFingerprint(file.path);
+
+      expect(fp1, equals(fp2));
+    });
+
+    test('fingerprint changes when file content changes', () async {
+      final fileA = File('${tempDir.path}/a.jpg');
+      final fileB = File('${tempDir.path}/b.jpg');
+      await fileA.writeAsBytes([1, 2, 3]);
+      await fileB.writeAsBytes([4, 5, 6]);
+
+      final fpA = await StabUtils.computeRawPhotoFingerprint(fileA.path);
+      final fpB = await StabUtils.computeRawPhotoFingerprint(fileB.path);
+
+      expect(fpA, isNot(equals(fpB)));
+    });
+
+    test('fingerprint format is {size}:{64-hex-chars}', () async {
+      final file = File('${tempDir.path}/fmt.jpg');
+      await file.writeAsBytes(List.generate(100, (i) => i));
+
+      final fp = await StabUtils.computeRawPhotoFingerprint(file.path);
+      final parts = fp.split(':');
+
+      expect(parts.length, 2);
+      expect(int.tryParse(parts[0]), isNotNull, reason: 'size is an int');
+      expect(parts[1].length, 64);
+      expect(RegExp(r'^[0-9a-f]{64}$').hasMatch(parts[1]), isTrue);
+    });
+
+    test('fingerprint is stable across mtime changes (same bytes)', () async {
+      // Content-only by design: legitimate operations like cloud-backup
+      // restores and rsync change mtime without changing bytes, and must
+      // not invalidate the fingerprint. If this test fails someone added
+      // mtime back to the format — don't.
+      final file = File('${tempDir.path}/mtime.jpg');
+      await file.writeAsBytes([1, 2, 3, 4, 5]);
+      final fp1 = await StabUtils.computeRawPhotoFingerprint(file.path);
+
+      final later = DateTime.now().add(const Duration(seconds: 5));
+      await file.setLastModified(later);
+      final fp2 = await StabUtils.computeRawPhotoFingerprint(file.path);
+
+      expect(fp1, equals(fp2));
+    });
+
+    test('fingerprint hashes bytes between matching head and tail', () async {
+      const int chunkBytes = 4096;
+      final bytes = List<int>.generate(chunkBytes * 3, (i) => 0);
+      final fileA = File('${tempDir.path}/middleA.bin');
+      final fileB = File('${tempDir.path}/middleB.bin');
+      await fileA.writeAsBytes(bytes);
+      final mutated = List<int>.from(bytes);
+      mutated[chunkBytes + 10] = 99; // head and tail remain identical
+      await fileB.writeAsBytes(mutated);
+      // Align mtimes so the difference must come from bytes.
+      final t = DateTime.now();
+      await fileA.setLastModified(t);
+      await fileB.setLastModified(t);
+
+      final fpA = await StabUtils.computeRawPhotoFingerprint(fileA.path);
+      final fpB = await StabUtils.computeRawPhotoFingerprint(fileB.path);
+
+      expect(fpA, isNot(equals(fpB)));
+    });
+
+    test('throws ArgumentError for missing file', () async {
+      expect(
+        () => StabUtils.computeRawPhotoFingerprint(
+          '${tempDir.path}/nonexistent.jpg',
+        ),
+        throwsArgumentError,
+      );
     });
   });
 }

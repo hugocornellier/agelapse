@@ -1,7 +1,12 @@
 import 'dart:io';
+import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:flutter/material.dart';
+
+import '../models/face_detection_cache_result.dart';
 import '../models/setting_model.dart';
+import '../models/transform_cache_entry.dart';
 import 'database_import_ffi.dart';
 import 'package:path/path.dart';
 
@@ -26,6 +31,8 @@ class DB {
   static const String videoTable = "Videos";
   static const String customFontTable = "CustomFonts";
   static const String deletedLinkedSourcesTable = "DeletedLinkedSources";
+  static const String faceDetectionCacheTable = "FaceDetectionCache";
+  static const String transformCacheTable = "TransformCache";
 
   static const String _photoWhereClause = 'timestamp = ? AND projectID = ?';
   static const String _orderByTimestamp = 'CAST(timestamp AS INTEGER)';
@@ -73,6 +80,7 @@ class DB {
           "fileExtension TEXT NOT NULL, "
           "originalFilename TEXT NOT NULL, "
           "imageLength INTEGER NOT NULL, "
+          "fingerprint TEXT, "
           "originalOrientation TEXT, "
           "stabilizedPortrait INTEGER NOT NULL, "
           "stabilizedPortraitAspectRatio TEXT, "
@@ -129,6 +137,60 @@ class DB {
           "deletedAt INTEGER NOT NULL, "
           "UNIQUE(projectID, sourceRelativePath)"
           ");",
+      faceDetectionCacheTable: "CREATE TABLE $faceDetectionCacheTable("
+          "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+          "timestamp TEXT NOT NULL, "
+          "projectID INTEGER NOT NULL, "
+          "orientation TEXT NOT NULL, "
+          "faceIndex INTEGER NOT NULL, "
+          "selectedFaceIndex INTEGER, "
+          "boundingBoxLeft REAL, "
+          "boundingBoxTop REAL, "
+          "boundingBoxRight REAL, "
+          "boundingBoxBottom REAL, "
+          "leftEyeX REAL, "
+          "leftEyeY REAL, "
+          "rightEyeX REAL, "
+          "rightEyeY REAL, "
+          "modelVersion TEXT NOT NULL, "
+          "fingerprint TEXT NOT NULL, "
+          "UNIQUE(timestamp, projectID, orientation, faceIndex)"
+          ");",
+      transformCacheTable: "CREATE TABLE $transformCacheTable("
+          "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+          "cacheKey TEXT NOT NULL UNIQUE, "
+          "projectID INTEGER NOT NULL, "
+          "fingerprint TEXT NOT NULL, "
+          "projectType TEXT NOT NULL, "
+          "modelVersion TEXT NOT NULL, "
+          "transformAlgorithmVersion TEXT NOT NULL, "
+          "settingsHash TEXT NOT NULL, "
+          "scope TEXT NOT NULL, "
+          "sourceOrientation TEXT NOT NULL, "
+          "selectedFaceIndex INTEGER, "
+          "faceCount INTEGER, "
+          "sourceWidth INTEGER, "
+          "sourceHeight INTEGER, "
+          "canvasWidth INTEGER NOT NULL, "
+          "canvasHeight INTEGER NOT NULL, "
+          "translateX REAL NOT NULL, "
+          "translateY REAL NOT NULL, "
+          "rotationDegrees REAL NOT NULL, "
+          "scaleFactor REAL NOT NULL, "
+          "finalScore REAL, "
+          "finalEyeDeltaY REAL, "
+          "finalEyeDistance REAL, "
+          "goalEyeDistance REAL, "
+          "preScore REAL, "
+          "rotationPassScore REAL, "
+          "scalePassScore REAL, "
+          "translationPassScore REAL, "
+          "isEstimated INTEGER NOT NULL DEFAULT 0, "
+          "exampleTimestamp TEXT, "
+          "createdAt INTEGER NOT NULL, "
+          "updatedAt INTEGER NOT NULL, "
+          "hitCount INTEGER NOT NULL DEFAULT 0"
+          ");",
     };
 
     for (MapEntry<String, String> entry in tablesToCreate.entries) {
@@ -138,6 +200,7 @@ class DB {
     }
 
     await _ensurePhotoTransformColumns();
+    await _ensureFaceDetectionCacheColumns();
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_photos_project_ts ON $photoTable(projectID, timestamp);',
     );
@@ -152,6 +215,31 @@ class DB {
     );
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_photos_source_path ON $photoTable(projectID, sourceRelativePath) WHERE sourceRelativePath IS NOT NULL;',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_photos_fingerprint '
+      'ON $photoTable(projectID, fingerprint) WHERE fingerprint IS NOT NULL;',
+    );
+
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_face_cache_lookup '
+      'ON $faceDetectionCacheTable(timestamp, projectID, modelVersion, fingerprint);',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_transform_cache_lookup '
+      'ON $transformCacheTable(cacheKey);',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_transform_cache_project '
+      'ON $transformCacheTable(projectID);',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_transform_cache_fingerprint '
+      'ON $transformCacheTable(projectID, fingerprint);',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_transform_cache_settings '
+      'ON $transformCacheTable(projectID, settingsHash);',
     );
 
     // Deduplicate existing setting rows (keep lowest id per title+projectID)
@@ -289,6 +377,16 @@ class DB {
         );
         await txn.delete(
           deletedLinkedSourcesTable,
+          where: 'projectID = ?',
+          whereArgs: [projectId],
+        );
+        await txn.delete(
+          faceDetectionCacheTable,
+          where: 'projectID = ?',
+          whereArgs: [projectId],
+        );
+        await txn.delete(
+          transformCacheTable,
           where: 'projectID = ?',
           whereArgs: [projectId],
         );
@@ -547,7 +645,7 @@ class DB {
      │                      │
      └──────────────────────┘ */
 
-  Future<void> addPhoto(
+  Future<bool> addPhoto(
     String timestamp,
     int projectID,
     String fileExtension,
@@ -557,9 +655,10 @@ class DB {
     String? sourceFilename,
     String? sourceRelativePath,
     String? sourceLocationType,
+    String? fingerprint,
   }) async {
     final db = await database;
-    await db.transaction((txn) async {
+    return db.transaction((txn) async {
       final existing = await txn.query(
         photoTable,
         columns: ['timestamp'],
@@ -567,7 +666,7 @@ class DB {
         whereArgs: [timestamp, projectID],
         limit: 1,
       );
-      if (existing.isNotEmpty) return;
+      if (existing.isNotEmpty) return false;
 
       await txn.insert(photoTable, {
         'timestamp': timestamp,
@@ -584,8 +683,46 @@ class DB {
         'sourceFilename': sourceFilename,
         'sourceRelativePath': sourceRelativePath,
         'sourceLocationType': sourceLocationType,
+        'fingerprint': fingerprint,
       });
+      return true;
     });
+  }
+
+  /// Looks up a photo in [projectId] whose stored `fingerprint` exactly matches
+  /// [fingerprint]. Returns `null` when no row matches, including when no rows
+  /// carry a fingerprint (legacy / pre-migration). Callers MUST treat a
+  /// non-null return as a confirmed duplicate of the source file — the
+  /// fingerprint comparison is the whole check.
+  Future<Map<String, dynamic>?> findPhotoByFingerprint(
+    int projectId,
+    String fingerprint,
+  ) async {
+    final db = await database;
+    final rows = await db.query(
+      photoTable,
+      where: 'projectID = ? AND fingerprint = ?',
+      whereArgs: [projectId, fingerprint],
+      limit: 1,
+    );
+    return rows.isEmpty ? null : rows.first;
+  }
+
+  /// Sets `fingerprint` on the row identified by (timestamp, projectId),
+  /// intended for opportunistic backfill of legacy rows that predate the
+  /// column. Does not overwrite an existing non-null fingerprint.
+  Future<void> backfillPhotoFingerprint(
+    String timestamp,
+    int projectId,
+    String fingerprint,
+  ) async {
+    final db = await database;
+    await db.update(
+      photoTable,
+      {'fingerprint': fingerprint},
+      where: '$_photoWhereClause AND fingerprint IS NULL',
+      whereArgs: [timestamp, projectId],
+    );
   }
 
   Future<void> _ensurePhotoTransformColumns() async {
@@ -611,6 +748,7 @@ class DB {
       'stabAttempts': 'INTEGER NOT NULL DEFAULT 0',
       'stabLastError': 'TEXT',
       'stabLastAttemptAt': 'INTEGER',
+      'fingerprint': 'TEXT',
     };
 
     for (final entry in toAdd.entries) {
@@ -619,6 +757,20 @@ class DB {
           'ALTER TABLE $photoTable ADD COLUMN ${entry.key} ${entry.value};',
         );
       }
+    }
+  }
+
+  Future<void> _ensureFaceDetectionCacheColumns() async {
+    final db = await database;
+    final cols = await db.rawQuery(
+      'PRAGMA table_info($faceDetectionCacheTable)',
+    );
+    bool has(String name) => cols.any((c) => c['name'] == name);
+
+    if (!has('selectedFaceIndex')) {
+      await db.execute(
+        'ALTER TABLE $faceDetectionCacheTable ADD COLUMN selectedFaceIndex INTEGER;',
+      );
     }
   }
 
@@ -783,7 +935,8 @@ class DB {
       );
     } catch (e) {
       LogService.instance.log(
-          '[DB] resetPhotoStabilizationState: could not reset stabAttempts/stabLastError (old schema?): $e');
+        '[DB] resetPhotoStabilizationState: could not reset stabAttempts/stabLastError (old schema?): $e',
+      );
     }
   }
 
@@ -1062,7 +1215,7 @@ class DB {
           errorMessage,
           DateTime.now().millisecondsSinceEpoch,
           timestamp,
-          projectId
+          projectId,
         ],
       );
     } catch (e) {
@@ -1610,6 +1763,263 @@ class DB {
       limit: 1,
     );
     return results.isNotEmpty;
+  }
+
+  /* ┌──────────────────────────────┐
+     │                              │
+     │   Face Detection Cache       │
+     │                              │
+     └──────────────────────────────┘ */
+
+  Future<FaceDetectionCacheResult?> getFaceDetectionCache(
+    String timestamp,
+    int projectId,
+    String modelVersion,
+    String fingerprint,
+  ) async {
+    final db = await database;
+    final rows = await db.query(
+      faceDetectionCacheTable,
+      where:
+          'timestamp = ? AND projectID = ? AND modelVersion = ? AND fingerprint = ?',
+      whereArgs: [timestamp, projectId, modelVersion, fingerprint],
+      orderBy: 'faceIndex ASC',
+    );
+    if (rows.isEmpty) return null;
+
+    final orientation = rows.first['orientation'] as String;
+
+    if (orientation == 'no_faces') {
+      return const FaceDetectionCacheResult(orientation: 'no_faces', faces: []);
+    }
+
+    final selectedFaceIndex = rows.first['selectedFaceIndex'] as int?;
+    final entries = rows.map((row) {
+      final left = row['boundingBoxLeft'] as double;
+      final top = row['boundingBoxTop'] as double;
+      final right = row['boundingBoxRight'] as double;
+      final bottom = row['boundingBoxBottom'] as double;
+      final leftEyeX = row['leftEyeX'] as double?;
+      final leftEyeY = row['leftEyeY'] as double?;
+      final rightEyeX = row['rightEyeX'] as double?;
+      final rightEyeY = row['rightEyeY'] as double?;
+      return CachedFace(
+        boundingBox: Rect.fromLTRB(left, top, right, bottom),
+        leftEye: leftEyeX != null && leftEyeY != null
+            ? Point<double>(leftEyeX, leftEyeY)
+            : null,
+        rightEye: rightEyeX != null && rightEyeY != null
+            ? Point<double>(rightEyeX, rightEyeY)
+            : null,
+      );
+    }).toList();
+
+    return FaceDetectionCacheResult(
+      orientation: orientation,
+      faces: entries,
+      selectedFaceIndex: selectedFaceIndex,
+    );
+  }
+
+  /// Persists a successful detection's faces under [orientation] (one of
+  /// 'original', 'flipped', 'ccw', 'cw'). Replaces any existing entry for
+  /// (timestamp, projectId). For the "no faces found" result, use
+  /// [writeNoFacesSentinel] instead.
+  Future<void> writeFaceDetectionCache(
+    String timestamp,
+    int projectId,
+    String orientation,
+    List<Map<String, Object?>> faceRows,
+    String modelVersion,
+    String fingerprint, {
+    int? selectedFaceIndex,
+  }) async {
+    if (orientation == 'no_faces') {
+      throw ArgumentError(
+        'writeFaceDetectionCache: use writeNoFacesSentinel for no_faces',
+      );
+    }
+    if (faceRows.isEmpty) {
+      throw ArgumentError(
+        'writeFaceDetectionCache: faceRows must be non-empty',
+      );
+    }
+    if (selectedFaceIndex != null &&
+        (selectedFaceIndex < 0 || selectedFaceIndex >= faceRows.length)) {
+      throw ArgumentError(
+        'writeFaceDetectionCache: selectedFaceIndex out of range',
+      );
+    }
+
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete(
+        faceDetectionCacheTable,
+        where: 'timestamp = ? AND projectID = ?',
+        whereArgs: [timestamp, projectId],
+      );
+
+      for (int i = 0; i < faceRows.length; i++) {
+        final face = faceRows[i];
+        await txn.insert(
+            faceDetectionCacheTable,
+            {
+              'timestamp': timestamp,
+              'projectID': projectId,
+              'orientation': orientation,
+              'faceIndex': i,
+              'selectedFaceIndex': selectedFaceIndex,
+              'boundingBoxLeft': face['boundingBoxLeft'],
+              'boundingBoxTop': face['boundingBoxTop'],
+              'boundingBoxRight': face['boundingBoxRight'],
+              'boundingBoxBottom': face['boundingBoxBottom'],
+              'leftEyeX': face['leftEyeX'],
+              'leftEyeY': face['leftEyeY'],
+              'rightEyeX': face['rightEyeX'],
+              'rightEyeY': face['rightEyeY'],
+              'modelVersion': modelVersion,
+              'fingerprint': fingerprint,
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+    });
+  }
+
+  /// Records that no faces were found across any orientation. Replaces any
+  /// existing entry for (timestamp, projectId).
+  Future<void> writeNoFacesSentinel(
+    String timestamp,
+    int projectId,
+    String modelVersion,
+    String fingerprint,
+  ) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete(
+        faceDetectionCacheTable,
+        where: 'timestamp = ? AND projectID = ?',
+        whereArgs: [timestamp, projectId],
+      );
+      await txn.insert(
+          faceDetectionCacheTable,
+          {
+            'timestamp': timestamp,
+            'projectID': projectId,
+            'orientation': 'no_faces',
+            'faceIndex': -1,
+            'selectedFaceIndex': null,
+            'boundingBoxLeft': null,
+            'boundingBoxTop': null,
+            'boundingBoxRight': null,
+            'boundingBoxBottom': null,
+            'leftEyeX': null,
+            'leftEyeY': null,
+            'rightEyeX': null,
+            'rightEyeY': null,
+            'modelVersion': modelVersion,
+            'fingerprint': fingerprint,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace);
+    });
+  }
+
+  Future<void> clearFaceDetectionCacheForProject(int projectId) async {
+    final db = await database;
+    await db.delete(
+      faceDetectionCacheTable,
+      where: 'projectID = ?',
+      whereArgs: [projectId],
+    );
+  }
+
+  /* ┌──────────────────────────────┐
+     │                              │
+     │      Transform Cache         │
+     │                              │
+     └──────────────────────────────┘ */
+
+  Future<TransformCacheEntry?> getTransformCache(String cacheKey) =>
+      _querySingle(
+          transformCacheTable,
+          'cacheKey = ?',
+          [
+            cacheKey,
+          ],
+          TransformCacheEntry.fromMap);
+
+  Future<void> writeTransformCache(TransformCacheEntry entry) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      final existing = await txn.query(
+        transformCacheTable,
+        columns: ['id', 'createdAt', 'hitCount'],
+        where: 'cacheKey = ?',
+        whereArgs: [entry.cacheKey],
+        limit: 1,
+      );
+
+      if (existing.isEmpty) {
+        await txn.insert(transformCacheTable, entry.toMap());
+        return;
+      }
+
+      final row = existing.first;
+      final map = entry
+          .copyWith(
+            id: row['id'] as int?,
+            createdAt: row['createdAt'] as int?,
+            hitCount: row['hitCount'] as int?,
+          )
+          .toMap();
+      await txn.update(
+        transformCacheTable,
+        map,
+        where: 'id = ?',
+        whereArgs: [row['id']],
+      );
+    });
+  }
+
+  Future<void> incrementTransformCacheHit(int id) async {
+    final db = await database;
+    await db.rawUpdate(
+      'UPDATE $transformCacheTable '
+      'SET hitCount = hitCount + 1, updatedAt = ? '
+      'WHERE id = ?',
+      [DateTime.now().millisecondsSinceEpoch, id],
+    );
+  }
+
+  Future<void> clearTransformCacheForProject(int projectId) async {
+    final db = await database;
+    await db.delete(
+      transformCacheTable,
+      where: 'projectID = ?',
+      whereArgs: [projectId],
+    );
+  }
+
+  Future<void> clearTransformCacheForFingerprint(
+    int projectId,
+    String fingerprint, {
+    String? settingsHash,
+    String scope = 'auto',
+  }) async {
+    final db = await database;
+    final where = StringBuffer(
+      'projectID = ? AND fingerprint = ? AND scope = ?',
+    );
+    final whereArgs = <Object?>[projectId, fingerprint, scope];
+    if (settingsHash != null) {
+      where.write(' AND settingsHash = ?');
+      whereArgs.add(settingsHash);
+    }
+
+    await db.delete(
+      transformCacheTable,
+      where: where.toString(),
+      whereArgs: whereArgs,
+    );
   }
 }
 

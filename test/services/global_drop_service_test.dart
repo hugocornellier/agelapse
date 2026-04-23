@@ -39,6 +39,7 @@ void main() {
         service.onDragExit();
       }
       service.setImportSheetOpen(false);
+      service.setImportSheetDropHandler(null);
     });
 
     group('singleton', () {
@@ -121,6 +122,54 @@ void main() {
         service.setImportSheetOpen(true);
         service.setImportSheetOpen(false);
         expect(service.importSheetOpen, isFalse);
+      });
+
+      test('clears registered drop handler when closed', () {
+        service.setImportSheetOpen(true);
+        service.setImportSheetDropHandler((paths) async {});
+
+        service.setImportSheetOpen(false);
+
+        expect(service.hasImportSheetDropHandler, isFalse);
+      });
+    });
+
+    group('importSheetDropHandler', () {
+      test('does not handle drops while import sheet is closed', () async {
+        var called = false;
+        service.setImportSheetDropHandler((paths) async {
+          called = true;
+        });
+
+        final handled = await service.handleImportSheetDrop(['/test.jpg']);
+
+        expect(handled, isFalse);
+        expect(called, isFalse);
+      });
+
+      test('does not handle drops without a registered handler', () async {
+        service.setImportSheetOpen(true);
+
+        final handled = await service.handleImportSheetDrop(['/test.jpg']);
+
+        expect(handled, isFalse);
+      });
+
+      test('routes drops to the registered import sheet handler', () async {
+        service.setImportSheetOpen(true);
+        List<String>? receivedPaths;
+        service.setImportSheetDropHandler((paths) async {
+          receivedPaths = paths;
+        });
+
+        final handled = await service.handleImportSheetDrop([
+          '/path/to/file1.jpg',
+          '/path/to/file2.jpg',
+        ]);
+
+        expect(handled, isTrue);
+        expect(receivedPaths,
+            equals(['/path/to/file1.jpg', '/path/to/file2.jpg']));
       });
     });
 

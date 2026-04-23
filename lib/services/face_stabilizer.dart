@@ -18,7 +18,9 @@ import '../utils/dir_utils.dart';
 import '../utils/format_decode_utils.dart';
 import '../utils/settings_utils.dart';
 import '../utils/stabilizer_utils/stabilizer_utils.dart';
+import '../utils/transform_cache_key.dart';
 import '../utils/video_utils.dart';
+import '../models/transform_cache_entry.dart';
 import 'database_helper.dart';
 
 class StabilizationResult {
@@ -36,6 +38,10 @@ class StabilizationResult {
       finalEyeDeltaY; // Final vertical difference between eyes (rotation error)
   final double? finalEyeDistance; // Final distance between eyes
   final double? goalEyeDistance; // Target eye distance
+  final double? translateX;
+  final double? translateY;
+  final double? rotationDegrees;
+  final double? scaleFactor;
 
   /// True when the score was estimated (fallback path, no face detected).
   final bool isEstimated;
@@ -51,12 +57,48 @@ class StabilizationResult {
     this.finalEyeDeltaY,
     this.finalEyeDistance,
     this.goalEyeDistance,
+    this.translateX,
+    this.translateY,
+    this.rotationDegrees,
+    this.scaleFactor,
     this.isEstimated = false,
   });
 
   /// Creates a cancelled result.
   factory StabilizationResult.cancelled() =>
       StabilizationResult(success: false, cancelled: true);
+}
+
+class _FinalizedStabilizationResult {
+  final bool success;
+  final double? preScore;
+  final double? twoPassScore;
+  final double? threePassScore;
+  final double? fourPassScore;
+  final double? finalScore;
+  final double? finalEyeDeltaY;
+  final double? finalEyeDistance;
+  final double translateX;
+  final double translateY;
+  final double rotationDegrees;
+  final double scaleFactor;
+  final Uint8List? savedBytes;
+
+  const _FinalizedStabilizationResult({
+    required this.success,
+    this.preScore,
+    this.twoPassScore,
+    this.threePassScore,
+    this.fourPassScore,
+    this.finalScore,
+    this.finalEyeDeltaY,
+    this.finalEyeDistance,
+    required this.translateX,
+    required this.translateY,
+    required this.rotationDegrees,
+    required this.scaleFactor,
+    this.savedBytes,
+  });
 }
 
 class FaceStabilizer {
@@ -92,6 +134,35 @@ class FaceStabilizer {
   /// Lower scores are better (0 = perfect eye alignment).
   static const double _kStabSuccessScoreThreshold = 20.0;
 
+  /// Set to false to disable cache read/write globally (e.g. in tests).
+  @visibleForTesting
+  static bool faceDetectionCacheEnabled = true;
+
+  // Per-batch cache counters. Reset by StabilizationService before each batch;
+  // read at end of batch to emit the summary log line.
+  //
+  // [estimatedTimeSavedMs] uses heuristic per-orientation costs (150/300/450/600
+  // ms for original/flipped/ccw/cw hits, 600 ms for no_faces sentinels). These
+  // numbers are unmeasured approximations for the summary log's "saved ~Xs"
+  // readout; do not treat them as calibrated metrics.
+  static int cacheHits = 0;
+  static int cacheMisses = 0;
+  static int noFacesSentinelHits = 0;
+  static int estimatedTimeSavedMs = 0;
+  static int transformCacheHits = 0;
+  static int transformCacheMisses = 0;
+  static int transformCacheRenderFailures = 0;
+
+  static void resetCacheCounters() {
+    cacheHits = 0;
+    cacheMisses = 0;
+    noFacesSentinelHits = 0;
+    estimatedTimeSavedMs = 0;
+    transformCacheHits = 0;
+    transformCacheMisses = 0;
+    transformCacheRenderFailures = 0;
+  }
+
   /// Whether this project type uses eye-based stabilization (face, cat, dog).
   bool get _isEyeBasedProject =>
       projectType == "face" || projectType == "cat" || projectType == "dog";
@@ -99,6 +170,7 @@ class FaceStabilizer {
   // Face embedding tracking for identity-based face matching
   int? _currentFaceCount;
   Float32List? _currentEmbedding;
+  int? _currentSelectedFaceIndex;
 
   // Set to true when _handleFallbackStabilization is used; reset each attempt.
   bool _lastScoreWasEstimated = false;
@@ -264,6 +336,8 @@ class FaceStabilizer {
       await IsolatePool.instance.clearMatCache();
       _lastCvBytes = null;
       _lastRawFaces = null;
+      _lastDetectedFaceLikes = null;
+      _currentSelectedFaceIndex = null;
     }
   }
 
@@ -298,6 +372,133 @@ class FaceStabilizer {
     return null;
   }
 
+  /// Looks up a cached detection for [originalPath] and, on hit, stabilizes
+  /// directly using the cached faces and winning orientation. Returns the
+  /// stabilization result on hit, or `null` when there was no usable cache
+  /// entry (so the caller falls through to the retry loop).
+  ///
+  /// Side effects: increments [cacheHits]/[noFacesSentinelHits], registers any
+  /// transformed temp file in [tempFiles], and on `no_faces` sentinels marks
+  /// the photo via `setPhotoNoFacesFound` and emits a thumbnail-failure event.
+  Future<StabilizationResult?> _tryCachedAttempt(
+    String originalPath,
+    String timestamp,
+    String fingerprint,
+    Uint8List? preDecodedBytes,
+    CancellationToken? token,
+    void Function() userRanOutOfSpaceCallback,
+    List<String> tempFiles,
+  ) async {
+    final cached = await DB.instance.getFaceDetectionCache(
+      timestamp,
+      projectId,
+      StabUtils.faceModelVersion,
+      fingerprint,
+    );
+    if (cached == null) return null;
+
+    if (cached.isNoFaces) {
+      LogService.instance.log(
+        '[cache] $timestamp: HIT no_faces (skipped 4 orientation attempts)',
+      );
+      noFacesSentinelHits++;
+      cacheHits++;
+      estimatedTimeSavedMs += 600;
+      await DB.instance.setPhotoNoFacesFound(timestamp, projectId);
+      unawaited(
+        _emitThumbnailFailure(originalPath, ThumbnailStatus.noFacesFound),
+      );
+      return StabilizationResult(success: false);
+    }
+
+    final List<FaceLike> preloaded = cached.faces
+        .map(
+          (f) => FaceLike(
+            boundingBox: f.boundingBox,
+            leftEye: f.leftEye,
+            rightEye: f.rightEye,
+          ),
+        )
+        .toList();
+
+    if (projectType == 'face' &&
+        preloaded.length > 1 &&
+        !_isValidSelectedFaceIndex(
+          cached.selectedFaceIndex,
+          preloaded.length,
+        )) {
+      LogService.instance.log(
+        '[cache] $timestamp: multi-face HIT missing selected face index, '
+        'ignoring cache',
+      );
+      return null;
+    }
+
+    if (cached.orientation == 'original') {
+      LogService.instance.log(
+        '[cache] $timestamp: HIT orientation=original'
+        ' faces=${preloaded.length} (skipped detection)',
+      );
+      cacheHits++;
+      estimatedTimeSavedMs += 150;
+      return await _stabilizeSingleAttempt(
+        originalPath,
+        originalPath,
+        token,
+        userRanOutOfSpaceCallback,
+        preloadedFaces: preloaded,
+        preselectedFaceIndex: cached.selectedFaceIndex,
+      );
+    }
+
+    final Future<File> Function(String, {Uint8List? preDecodedBytes})
+        transformFn;
+    final int hitTimeSavedMs;
+    switch (cached.orientation) {
+      case 'flipped':
+        transformFn = StabUtils.flipImageHorizontally;
+        hitTimeSavedMs = 300;
+      case 'ccw':
+        transformFn = StabUtils.rotateImageCounterClockwise;
+        hitTimeSavedMs = 450;
+      case 'cw':
+        transformFn = StabUtils.rotateImageClockwise;
+        hitTimeSavedMs = 600;
+      default:
+        LogService.instance.log(
+          '[cache] $timestamp: unknown cached orientation'
+          ' "${cached.orientation}", ignoring cache',
+        );
+        return null;
+    }
+
+    LogService.instance.log(
+      '[cache] $timestamp: HIT orientation=${cached.orientation}'
+      ' faces=${preloaded.length} (skipped detection + retries)',
+    );
+    cacheHits++;
+    estimatedTimeSavedMs += hitTimeSavedMs;
+    final File transformed = await transformFn(
+      originalPath,
+      preDecodedBytes: preDecodedBytes,
+    );
+    tempFiles.add(transformed.path);
+    return await _stabilizeSingleAttempt(
+      transformed.path,
+      originalPath,
+      token,
+      userRanOutOfSpaceCallback,
+      preloadedFaces: preloaded,
+      preselectedFaceIndex: cached.selectedFaceIndex,
+    );
+  }
+
+  bool _isValidSelectedFaceIndex(int? selectedFaceIndex, int faceCount) {
+    return selectedFaceIndex != null &&
+        selectedFaceIndex >= 0 &&
+        selectedFaceIndex < faceCount;
+  }
+
   Future<StabilizationResult> _stabilizeWithOrientationRetry(
     String originalPath,
     CancellationToken? token,
@@ -311,8 +512,58 @@ class FaceStabilizer {
             ? await FormatDecodeUtils.loadCvCompatibleBytes(originalPath)
             : null;
 
+    final String timestamp = path.basenameWithoutExtension(originalPath);
     final tempFiles = <String>[];
+
+    // Reset per-photo detection state so stale values from the prior photo
+    // never leak into cache write or embedding matching for this photo.
+    _lastRawFaces = null;
+    _lastCvBytes = null;
+    _lastDetectedFaceLikes = null;
+    _currentFaceCount = null;
+    _currentEmbedding = null;
+    _currentSelectedFaceIndex = null;
+
+    // ── Cache read/write (skipped when targetBoundingBox is set: bbox coords
+    // are orientation-specific and don't survive transforms) ──────────────────
+    final bool cacheEnabled =
+        faceDetectionCacheEnabled && targetBoundingBox == null;
+
+    String? fingerprint;
+    if (cacheEnabled) {
+      try {
+        fingerprint = await StabUtils.computeRawPhotoFingerprint(originalPath);
+      } catch (e) {
+        LogService.instance.log('[cache] $timestamp: fingerprint error: $e');
+      }
+    }
+
     try {
+      if (cacheEnabled && fingerprint != null) {
+        final transformCachedResult = await _tryTransformCacheAttempt(
+          originalPath,
+          timestamp,
+          fingerprint,
+          preDecodedBytes,
+          token,
+          tempFiles,
+        );
+        if (transformCachedResult != null) return transformCachedResult;
+
+        final cachedResult = await _tryCachedAttempt(
+          originalPath,
+          timestamp,
+          fingerprint,
+          preDecodedBytes,
+          token,
+          userRanOutOfSpaceCallback,
+          tempFiles,
+        );
+        if (cachedResult != null) return cachedResult;
+      }
+
+      // ── Normal orientation-retry loop (cache miss or cache disabled) ────────
+      cacheMisses++;
       // Attempt 1: original image — pass targetBoundingBox (it references original coords)
       token?.throwIfCancelled();
       final result1 = await _stabilizeSingleAttempt(
@@ -322,31 +573,92 @@ class FaceStabilizer {
         userRanOutOfSpaceCallback,
         targetBoundingBox: targetBoundingBox,
       );
-      if (result1.success) return result1;
+      if (result1.success) {
+        if (targetBoundingBox != null) {
+          await _clearTransformCacheForFingerprint(
+            timestamp: timestamp,
+            originalPath: originalPath,
+            reason: 'target-face save',
+          );
+        }
+        if (cacheEnabled && fingerprint != null) {
+          await _writeFacesToCache(
+            timestamp,
+            fingerprint,
+            'original',
+          );
+          await _writeTransformToCache(
+            timestamp: timestamp,
+            fingerprint: fingerprint,
+            sourceOrientation: 'original',
+            result: result1,
+          );
+        }
+        return result1;
+      }
       if (result1.cancelled) return result1;
 
       // Attempts 2–4: transformed variants (bounding box not meaningful after transform)
-      for (final transformFn in [
+      final orientationNames = ['flipped', 'ccw', 'cw'];
+      final transformFns = [
         StabUtils.flipImageHorizontally,
         StabUtils.rotateImageCounterClockwise,
         StabUtils.rotateImageClockwise,
-      ]) {
+      ];
+      for (int i = 0; i < transformFns.length; i++) {
         final r = await _tryTransformedAttempt(
           originalPath,
           token,
           userRanOutOfSpaceCallback,
           preDecodedBytes,
           tempFiles,
-          transformFn,
+          transformFns[i],
         );
-        if (r != null) return r;
+        if (r != null) {
+          if (r.cancelled) return r;
+          if (r.success && targetBoundingBox != null) {
+            await _clearTransformCacheForFingerprint(
+              timestamp: timestamp,
+              originalPath: originalPath,
+              reason: 'target-face save',
+            );
+          }
+          if (r.success && cacheEnabled && fingerprint != null) {
+            await _writeFacesToCache(
+              timestamp,
+              fingerprint,
+              orientationNames[i],
+            );
+            await _writeTransformToCache(
+              timestamp: timestamp,
+              fingerprint: fingerprint,
+              sourceOrientation: orientationNames[i],
+              result: r,
+            );
+          }
+          return r;
+        }
       }
 
-      // All orientations failed
-      await DB.instance.setPhotoNoFacesFound(
-        path.basenameWithoutExtension(originalPath),
-        projectId,
-      );
+      // All orientations failed — write no_faces sentinel
+      if (cacheEnabled && fingerprint != null) {
+        try {
+          await DB.instance.writeNoFacesSentinel(
+            timestamp,
+            projectId,
+            StabUtils.faceModelVersion,
+            fingerprint,
+          );
+          LogService.instance.log(
+            '[cache] $timestamp: MISS → no_faces (wrote sentinel)',
+          );
+        } catch (e) {
+          LogService.instance
+              .log('[cache] $timestamp: write sentinel error: $e');
+        }
+      }
+
+      await DB.instance.setPhotoNoFacesFound(timestamp, projectId);
       unawaited(
         _emitThumbnailFailure(originalPath, ThumbnailStatus.noFacesFound),
       );
@@ -360,6 +672,392 @@ class FaceStabilizer {
     }
   }
 
+  /// Converts [_lastDetectedFaceLikes] to the row format expected by
+  /// [DB.instance.writeFaceDetectionCache] and writes to cache. No-op if
+  /// no faces are recorded (writeFaceDetectionCache rejects empty lists).
+  Future<void> _writeFacesToCache(
+    String timestamp,
+    String fingerprint,
+    String orientation,
+  ) async {
+    try {
+      final faces = _lastDetectedFaceLikes;
+      if (faces == null || faces.isEmpty) {
+        LogService.instance.log(
+          '[cache] $timestamp: skip write — detected faces unavailable',
+        );
+        return;
+      }
+      int? selectedFaceIndex = _currentSelectedFaceIndex;
+      if (!_isValidSelectedFaceIndex(selectedFaceIndex, faces.length)) {
+        selectedFaceIndex = faces.length == 1 ? 0 : null;
+      }
+      final faceRows = faces.map((face) {
+        return <String, Object?>{
+          'boundingBoxLeft': face.boundingBox.left,
+          'boundingBoxTop': face.boundingBox.top,
+          'boundingBoxRight': face.boundingBox.right,
+          'boundingBoxBottom': face.boundingBox.bottom,
+          'leftEyeX': face.leftEye?.x,
+          'leftEyeY': face.leftEye?.y,
+          'rightEyeX': face.rightEye?.x,
+          'rightEyeY': face.rightEye?.y,
+        };
+      }).toList();
+      await DB.instance.writeFaceDetectionCache(
+        timestamp,
+        projectId,
+        orientation,
+        faceRows,
+        StabUtils.faceModelVersion,
+        fingerprint,
+        selectedFaceIndex: selectedFaceIndex,
+      );
+      LogService.instance.log(
+        '[cache] $timestamp: MISS → orientation=$orientation'
+        ' faces=${faceRows.length} selected=$selectedFaceIndex'
+        ' (wrote to cache)',
+      );
+    } catch (e) {
+      LogService.instance.log('[cache] $timestamp: write cache error: $e');
+    }
+  }
+
+  Future<StabilizationResult?> _tryTransformCacheAttempt(
+    String originalPath,
+    String timestamp,
+    String fingerprint,
+    Uint8List? preDecodedBytes,
+    CancellationToken? token,
+    List<String> tempFiles,
+  ) async {
+    if (!_supportsTransformCache) return null;
+
+    final settingsHash = _buildTransformSettingsHash();
+    final cacheKey = _buildTransformCacheKey(
+      fingerprint: fingerprint,
+      settingsHash: settingsHash,
+    );
+    final hit = await DB.instance.getTransformCache(cacheKey);
+    if (hit == null) {
+      transformCacheMisses++;
+      return null;
+    }
+
+    if (!_isValidTransformCacheHit(hit)) {
+      transformCacheMisses++;
+      LogService.instance.log(
+        '[transform-cache] $timestamp: invalid hit, ignoring cache',
+      );
+      return null;
+    }
+
+    try {
+      token?.throwIfCancelled();
+      final baseBytes = preDecodedBytes ??
+          await FormatDecodeUtils.loadCvCompatibleBytes(originalPath);
+      if (baseBytes == null) {
+        transformCacheRenderFailures++;
+        return null;
+      }
+
+      token?.throwIfCancelled();
+      final orientedBytes = await _loadTransformCacheSourceBytes(
+        originalPath: originalPath,
+        originalBytes: baseBytes,
+        sourceOrientation: hit.sourceOrientation,
+        tempFiles: tempFiles,
+      );
+      if (orientedBytes == null) {
+        transformCacheRenderFailures++;
+        return null;
+      }
+
+      token?.throwIfCancelled();
+      final srcId = '$timestamp:${hit.sourceOrientation}:transform-cache';
+      final imageBytesStabilized =
+          await StabUtils.generateStabilizedImageBytesCVAsync(
+        orientedBytes,
+        hit.rotationDegrees,
+        hit.scaleFactor,
+        hit.translateX,
+        hit.translateY,
+        canvasWidth,
+        canvasHeight,
+        token: token,
+        srcId: srcId,
+        backgroundColorBGR: backgroundColorBGR,
+        preserveBitDepth: lossless,
+      );
+      if (imageBytesStabilized == null) {
+        transformCacheRenderFailures++;
+        return null;
+      }
+
+      final stabilizedPhotoPath = await StabUtils.getStabilizedImagePath(
+        originalPath,
+        projectId,
+        projectOrientation,
+      );
+
+      token?.throwIfCancelled();
+      final (success, savedBytes) = await saveStabilizedImage(
+        imageBytesStabilized,
+        originalPath,
+        stabilizedPhotoPath,
+        hit.finalScore ?? 0.0,
+        translateX: hit.translateX,
+        translateY: hit.translateY,
+        rotationDegrees: hit.rotationDegrees,
+        scaleFactor: hit.scaleFactor,
+      );
+      if (!success) {
+        transformCacheRenderFailures++;
+        return StabilizationResult(success: false);
+      }
+
+      unawaited(
+        createStabThumbnail(
+          path.setExtension(stabilizedPhotoPath, '.png'),
+          imageBytes: savedBytes,
+        ),
+      );
+
+      if (hit.id != null) {
+        await DB.instance.incrementTransformCacheHit(hit.id!);
+      }
+      transformCacheHits++;
+      LogService.instance.log(
+        '[transform-cache] $timestamp: HIT orientation=${hit.sourceOrientation} '
+        '(rendered final transform)',
+      );
+
+      return StabilizationResult(
+        success: true,
+        preScore: hit.preScore,
+        twoPassScore: hit.rotationPassScore,
+        threePassScore: hit.scalePassScore,
+        fourPassScore: hit.translationPassScore,
+        finalScore: hit.finalScore,
+        finalEyeDeltaY: hit.finalEyeDeltaY,
+        finalEyeDistance: hit.finalEyeDistance,
+        goalEyeDistance: hit.goalEyeDistance,
+        translateX: hit.translateX,
+        translateY: hit.translateY,
+        rotationDegrees: hit.rotationDegrees,
+        scaleFactor: hit.scaleFactor,
+      );
+    } on CancelledException {
+      rethrow;
+    } catch (e) {
+      transformCacheRenderFailures++;
+      LogService.instance.log(
+        '[transform-cache] $timestamp: render error: $e',
+      );
+      return null;
+    }
+  }
+
+  bool _isValidTransformCacheHit(TransformCacheEntry hit) {
+    // A stored transform is only identity-safe when it came from a single-face
+    // photo. For multi-face photos, the transform depends on which face was
+    // selected, and that selection can change as embedding references change.
+    if (hit.faceCount != 1) return false;
+    if (hit.projectId != projectId) return false;
+    if (hit.projectType != projectType) return false;
+    if (hit.modelVersion != StabUtils.faceModelVersion) return false;
+    if (hit.transformAlgorithmVersion !=
+        TransformCacheKey.transformAlgorithmVersion) {
+      return false;
+    }
+    if (hit.scope != TransformCacheKey.defaultScope) return false;
+    if (hit.canvasWidth != canvasWidth || hit.canvasHeight != canvasHeight) {
+      return false;
+    }
+    if (hit.isEstimated) return false;
+    if (!const {'original', 'flipped', 'ccw', 'cw'}
+        .contains(hit.sourceOrientation)) {
+      return false;
+    }
+    return hit.translateX.isFinite &&
+        hit.translateY.isFinite &&
+        hit.rotationDegrees.isFinite &&
+        hit.scaleFactor.isFinite;
+  }
+
+  Future<Uint8List?> _loadTransformCacheSourceBytes({
+    required String originalPath,
+    required Uint8List originalBytes,
+    required String sourceOrientation,
+    required List<String> tempFiles,
+  }) async {
+    if (sourceOrientation == 'original') return originalBytes;
+
+    final Future<File> Function(String, {Uint8List? preDecodedBytes})
+        transformFn;
+    switch (sourceOrientation) {
+      case 'flipped':
+        transformFn = StabUtils.flipImageHorizontally;
+      case 'ccw':
+        transformFn = StabUtils.rotateImageCounterClockwise;
+      case 'cw':
+        transformFn = StabUtils.rotateImageClockwise;
+      default:
+        return null;
+    }
+
+    final transformed = await transformFn(
+      originalPath,
+      preDecodedBytes: originalBytes,
+    );
+    tempFiles.add(transformed.path);
+    return transformed.readAsBytes();
+  }
+
+  bool get _supportsTransformCache => projectType == 'face';
+
+  String _buildTransformSettingsHash() {
+    return TransformCacheKey.buildSettingsHash(
+      settings: StabilizationSettings(
+        projectOrientation: projectOrientation!,
+        resolution: resolution,
+        aspectRatio: aspectRatio,
+        aspectRatioDecimal: aspectRatioDecimal ??
+            StabUtils.getAspectRatioAsDecimal(aspectRatio) ??
+            (16 / 9),
+        eyeOffsetX: eyeOffsetX,
+        eyeOffsetY: eyeOffsetY,
+        projectType: projectType,
+        backgroundColorBGR: backgroundColorBGR,
+        lossless: lossless,
+      ),
+      canvasWidth: canvasWidth,
+      canvasHeight: canvasHeight,
+    );
+  }
+
+  String _buildTransformCacheKey({
+    required String fingerprint,
+    required String settingsHash,
+  }) {
+    return TransformCacheKey.buildCacheKey(
+      projectId: projectId,
+      fingerprint: fingerprint,
+      projectType: projectType,
+      modelVersion: StabUtils.faceModelVersion,
+      settingsHash: settingsHash,
+    );
+  }
+
+  bool _hasFiniteTransform(StabilizationResult result) {
+    final values = [
+      result.translateX,
+      result.translateY,
+      result.rotationDegrees,
+      result.scaleFactor,
+    ];
+    return values.every((value) => value != null && value.isFinite);
+  }
+
+  Future<void> _writeTransformToCache({
+    required String timestamp,
+    required String fingerprint,
+    required String sourceOrientation,
+    required StabilizationResult result,
+  }) async {
+    if (!_supportsTransformCache) return;
+    if (!result.success || result.cancelled || result.isEstimated) return;
+    if (!_hasFiniteTransform(result)) return;
+    if (!const {'original', 'flipped', 'ccw', 'cw'}
+        .contains(sourceOrientation)) {
+      return;
+    }
+
+    try {
+      final settingsHash = _buildTransformSettingsHash();
+      final cacheKey = _buildTransformCacheKey(
+        fingerprint: fingerprint,
+        settingsHash: settingsHash,
+      );
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final faceCount = _currentFaceCount;
+      int? selectedFaceIndex = _currentSelectedFaceIndex;
+      if (faceCount != null) {
+        if (!_isValidSelectedFaceIndex(selectedFaceIndex, faceCount)) {
+          selectedFaceIndex = faceCount == 1 ? 0 : null;
+        }
+      } else {
+        selectedFaceIndex = null;
+      }
+
+      await DB.instance.writeTransformCache(
+        TransformCacheEntry(
+          cacheKey: cacheKey,
+          projectId: projectId,
+          fingerprint: fingerprint,
+          projectType: projectType,
+          modelVersion: StabUtils.faceModelVersion,
+          transformAlgorithmVersion:
+              TransformCacheKey.transformAlgorithmVersion,
+          settingsHash: settingsHash,
+          scope: TransformCacheKey.defaultScope,
+          sourceOrientation: sourceOrientation,
+          selectedFaceIndex: selectedFaceIndex,
+          faceCount: faceCount,
+          canvasWidth: canvasWidth,
+          canvasHeight: canvasHeight,
+          translateX: result.translateX!,
+          translateY: result.translateY!,
+          rotationDegrees: result.rotationDegrees!,
+          scaleFactor: result.scaleFactor!,
+          finalScore: result.finalScore,
+          finalEyeDeltaY: result.finalEyeDeltaY,
+          finalEyeDistance: result.finalEyeDistance,
+          goalEyeDistance: result.goalEyeDistance,
+          preScore: result.preScore,
+          rotationPassScore: result.twoPassScore,
+          scalePassScore: result.threePassScore,
+          translationPassScore: result.fourPassScore,
+          exampleTimestamp: timestamp,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      LogService.instance.log(
+        '[transform-cache] $timestamp: MISS -> orientation=$sourceOrientation '
+        'selected=$selectedFaceIndex (wrote transform)',
+      );
+    } catch (e) {
+      LogService.instance.log(
+        '[transform-cache] $timestamp: write transform error: $e',
+      );
+    }
+  }
+
+  Future<void> _clearTransformCacheForFingerprint({
+    required String timestamp,
+    required String originalPath,
+    required String reason,
+  }) async {
+    try {
+      final fingerprint = await StabUtils.computeRawPhotoFingerprint(
+        originalPath,
+      );
+      await DB.instance.clearTransformCacheForFingerprint(
+        projectId,
+        fingerprint,
+      );
+      LogService.instance.log(
+        '[transform-cache] $timestamp: cleared automatic transforms '
+        'after $reason',
+      );
+    } catch (e) {
+      LogService.instance.log(
+        '[transform-cache] $timestamp: clear after $reason failed: $e',
+      );
+    }
+  }
+
   /// Processes a single image attempt. [inputPath] is the image to process
   /// (may be flipped/rotated). [originalPath] is the canonical source path
   /// used for output naming and DB lookups.
@@ -369,6 +1067,8 @@ class FaceStabilizer {
     CancellationToken? token,
     void Function() userRanOutOfSpaceCallback, {
     Rect? targetBoundingBox,
+    List<FaceLike>? preloadedFaces,
+    int? preselectedFaceIndex,
   }) async {
     _lastScoreWasEstimated = false;
     final String srcId = path.basenameWithoutExtension(originalPath);
@@ -397,6 +1097,8 @@ class FaceStabilizer {
       targetBoundingBox,
       userRanOutOfSpaceCallback,
       cvBytes: srcBytes,
+      preloadedFaces: preloadedFaces,
+      preselectedFaceIndex: preselectedFaceIndex,
     );
     if (rotationDegrees == null || scaleFactor == null) {
       return StabilizationResult(success: false);
@@ -440,17 +1142,7 @@ class FaceStabilizer {
     );
 
     token?.throwIfCancelled();
-    final (
-      bool result,
-      double? preScore,
-      double? twoPassScore,
-      double? threePassScore,
-      double? fourPassScore,
-      double? finalScore,
-      double? finalEyeDeltaY,
-      double? finalEyeDistance,
-      Uint8List? savedBytes,
-    ) = await _finalizeStabilization(
+    final finalized = await _finalizeStabilization(
       originalPath,
       stabilizedPhotoPath,
       imgWidth,
@@ -465,43 +1157,36 @@ class FaceStabilizer {
       srcId,
     );
 
-    LogService.instance.log("Result => '$result'");
+    LogService.instance.log("Result => '${finalized.success}'");
 
-    if (result) {
+    if (finalized.success) {
       unawaited(
         createStabThumbnail(
           path.setExtension(stabilizedPhotoPath, '.png'),
-          imageBytes: savedBytes,
+          imageBytes: finalized.savedBytes,
         ),
       );
     }
 
     return StabilizationResult(
-      success: result,
-      preScore: preScore,
-      twoPassScore: twoPassScore,
-      threePassScore: threePassScore,
-      fourPassScore: fourPassScore,
-      finalScore: finalScore,
-      finalEyeDeltaY: finalEyeDeltaY,
-      finalEyeDistance: finalEyeDistance,
+      success: finalized.success,
+      preScore: finalized.preScore,
+      twoPassScore: finalized.twoPassScore,
+      threePassScore: finalized.threePassScore,
+      fourPassScore: finalized.fourPassScore,
+      finalScore: finalized.finalScore,
+      finalEyeDeltaY: finalized.finalEyeDeltaY,
+      finalEyeDistance: finalized.finalEyeDistance,
       goalEyeDistance: eyeDistanceGoal,
+      translateX: finalized.translateX,
+      translateY: finalized.translateY,
+      rotationDegrees: finalized.rotationDegrees,
+      scaleFactor: finalized.scaleFactor,
       isEstimated: _lastScoreWasEstimated,
     );
   }
 
-  Future<
-      (
-        bool,
-        double?,
-        double?,
-        double?,
-        double?,
-        double?,
-        double?,
-        double?,
-        Uint8List?
-      )> _handleFallbackStabilization({
+  Future<_FinalizedStabilizationResult> _handleFallbackStabilization({
     required String rawPhotoPath,
     required String stabilizedJpgPhotoPath,
     required Uint8List imageBytesStabilized,
@@ -544,22 +1229,20 @@ class FaceStabilizer {
       scaleFactor: scaleFactor,
     );
     _lastScoreWasEstimated = true;
-    return (success, score, null, null, null, score, null, null, savedBytes);
+    return _FinalizedStabilizationResult(
+      success: success,
+      preScore: score,
+      finalScore: score,
+      translateX: translateX,
+      translateY: translateY,
+      rotationDegrees: rotationDegrees,
+      scaleFactor: scaleFactor,
+      savedBytes: savedBytes,
+    );
   }
 
-  /// Returns (success, preScore, twoPassScore, threePassScore, fourPassScore, finalScore, finalEyeDeltaY, finalEyeDistance, savedBytes)
-  Future<
-      (
-        bool,
-        double?,
-        double?,
-        double?,
-        double?,
-        double?,
-        double?,
-        double?,
-        Uint8List?
-      )> _finalizeStabilization(
+  /// Returns the final saved result and the transform used to generate it.
+  Future<_FinalizedStabilizationResult> _finalizeStabilization(
     String rawPhotoPath,
     String stabilizedJpgPhotoPath,
     int imgWidth,
@@ -588,16 +1271,13 @@ class FaceStabilizer {
         rotationDegrees: rotationDegrees,
         scaleFactor: scaleFactor,
       );
-      return (
-        success,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        savedBytes,
+      return _FinalizedStabilizationResult(
+        success: success,
+        translateX: translateX,
+        translateY: translateY,
+        rotationDegrees: rotationDegrees,
+        scaleFactor: scaleFactor,
+        savedBytes: savedBytes,
       ); // No scores for non-eye-based projects
     }
 
@@ -653,17 +1333,7 @@ class FaceStabilizer {
 
     List<String> toDelete = [stabilizedJpgPhotoPath];
 
-    final (
-      bool successfulStabilization,
-      double? preScore,
-      double? twoPassScore,
-      double? threePassScore,
-      double? fourPassScore,
-      double? finalScore,
-      double? finalEyeDeltaY,
-      double? finalEyeDistance,
-      Uint8List? savedBytes,
-    ) = await _performMultiPassFix(
+    final result = await _performMultiPassFix(
       stabFaces,
       eyes,
       goalLeftEye,
@@ -684,17 +1354,7 @@ class FaceStabilizer {
     );
 
     await DirUtils.tryDeleteFiles(toDelete);
-    return (
-      successfulStabilization,
-      preScore,
-      twoPassScore,
-      threePassScore,
-      fourPassScore,
-      finalScore,
-      finalEyeDeltaY,
-      finalEyeDistance,
-      savedBytes,
-    );
+    return result;
   }
 
   List<Point<double>> _estimatedEyesAfterTransform(
@@ -737,23 +1397,11 @@ class FaceStabilizer {
     return [Point(ax, ay), Point(bx, by)];
   }
 
-  /// Returns (success, preScore, twoPassScore, threePassScore, fourPassScore, finalScore, finalEyeDeltaY, finalEyeDistance)
-  /// Scores are null if that pass was not attempted
+  /// Scores are null if that pass was not attempted.
   ///
   /// FAST MODE: Translation-only multi-pass (up to 4 passes)
   /// SLOW MODE: Full affine refinement (rotation, scale, translation passes)
-  Future<
-      (
-        bool,
-        double?,
-        double?,
-        double?,
-        double?,
-        double?,
-        double?,
-        double?,
-        Uint8List?
-      )> _performMultiPassFix(
+  Future<_FinalizedStabilizationResult> _performMultiPassFix(
     List<dynamic> stabFaces,
     List<Point<double>?> eyes,
     Point<double> goalLeftEye,
@@ -826,18 +1474,7 @@ class FaceStabilizer {
   /// 1. Rotation Pass: Fix eye angle (make eyes horizontal)
   /// 2. Scale Pass: Fix eye distance
   /// 3. Translation Passes: Fix eye position
-  Future<
-      (
-        bool,
-        double?,
-        double?,
-        double?,
-        double?,
-        double?,
-        double?,
-        double?,
-        Uint8List?
-      )> _performSlowMultiPass(
+  Future<_FinalizedStabilizationResult> _performSlowMultiPass(
     List<dynamic> stabFaces,
     List<Point<double>?> eyes,
     Point<double> goalLeftEye,
@@ -901,16 +1538,17 @@ class FaceStabilizer {
         scaleFactor: scaleFactor,
       );
       successfulStabilization = s;
-      return (
-        successfulStabilization,
-        firstPassScore,
-        null,
-        null,
-        null,
-        firstPassScore,
-        initialEyeDeltaY,
-        initialEyeDistance,
-        savedBytes,
+      return _FinalizedStabilizationResult(
+        success: successfulStabilization,
+        preScore: firstPassScore,
+        finalScore: firstPassScore,
+        finalEyeDeltaY: initialEyeDeltaY,
+        finalEyeDistance: initialEyeDistance,
+        translateX: translateX,
+        translateY: translateY,
+        rotationDegrees: rotationDegrees,
+        scaleFactor: scaleFactor,
+        savedBytes: savedBytes,
       );
     }
 
@@ -1117,16 +1755,17 @@ class FaceStabilizer {
         rotationDegrees: bestRotation,
         scaleFactor: bestScale,
       );
-      return (
-        success,
-        firstPassScore,
-        rotationPassScore,
-        scalePassScore,
-        null,
-        bestScore,
-        null,
-        null,
-        savedBytes,
+      return _FinalizedStabilizationResult(
+        success: success,
+        preScore: firstPassScore,
+        twoPassScore: rotationPassScore,
+        threePassScore: scalePassScore,
+        finalScore: bestScore,
+        translateX: bestTX,
+        translateY: bestTY,
+        rotationDegrees: bestRotation,
+        scaleFactor: bestScale,
+        savedBytes: savedBytes,
       );
     }
 
@@ -1366,16 +2005,20 @@ class FaceStabilizer {
       successfulStabilization = false;
     }
 
-    return (
-      successfulStabilization,
-      firstPassScore,
-      rotationPassScore,
-      scalePassScore,
-      translationPassScore,
-      bestScore,
-      finalEyeDeltaY,
-      finalEyeDistance,
-      savedBytes,
+    return _FinalizedStabilizationResult(
+      success: successfulStabilization,
+      preScore: firstPassScore,
+      twoPassScore: rotationPassScore,
+      threePassScore: scalePassScore,
+      fourPassScore: translationPassScore,
+      finalScore: bestScore,
+      finalEyeDeltaY: finalEyeDeltaY,
+      finalEyeDistance: finalEyeDistance,
+      translateX: bestTX,
+      translateY: bestTY,
+      rotationDegrees: bestRotation,
+      scaleFactor: bestScale,
+      savedBytes: savedBytes,
     );
   }
 
@@ -1593,6 +2236,8 @@ class FaceStabilizer {
     Rect? targetBoundingBox,
     userRanOutOfSpaceCallback, {
     Uint8List? cvBytes,
+    List<FaceLike>? preloadedFaces,
+    int? preselectedFaceIndex,
   }) async {
     try {
       if (projectType == "face") {
@@ -1603,6 +2248,8 @@ class FaceStabilizer {
           targetBoundingBox,
           userRanOutOfSpaceCallback,
           cvBytes: cvBytes,
+          preloadedFaces: preloadedFaces,
+          preselectedFaceIndex: preselectedFaceIndex,
         );
       } else if (projectType == "cat" || projectType == "dog") {
         return await _calculateRotationAngleAndScaleAnimal(
@@ -1612,6 +2259,7 @@ class FaceStabilizer {
           targetBoundingBox,
           userRanOutOfSpaceCallback,
           cvBytes: cvBytes,
+          preloadedFaces: preloadedFaces,
         );
       } else if (projectType == "pregnancy") {
         final Uint8List? bytes = cvBytes ??
@@ -1646,7 +2294,7 @@ class FaceStabilizer {
     Rect? targetBoundingBox,
     String noFacesLogMessage, {
     Uint8List? cvBytes,
-    List<dynamic>? preloadedFaces,
+    List<FaceLike>? preloadedFaces,
     required Future<List<Point<double>?>> Function(
       List<dynamic> facesToUse,
       List<Point<double>?> eyes,
@@ -1708,6 +2356,7 @@ class FaceStabilizer {
     Rect? targetBoundingBox,
     userRanOutOfSpaceCallback, {
     Uint8List? cvBytes,
+    List<FaceLike>? preloadedFaces,
   }) async {
     return _calculateRotationAngleAndScaleEye(
       rawPhotoPath,
@@ -1716,6 +2365,7 @@ class FaceStabilizer {
       targetBoundingBox,
       "No $projectType faces found.",
       cvBytes: cvBytes,
+      preloadedFaces: preloadedFaces,
       selectEyes: (facesToUse, eyes) async {
         // No embedding support for cat/dog — always use centermost
         LogService.instance.log(
@@ -1733,30 +2383,52 @@ class FaceStabilizer {
     Rect? targetBoundingBox,
     userRanOutOfSpaceCallback, {
     Uint8List? cvBytes,
+    List<FaceLike>? preloadedFaces,
+    int? preselectedFaceIndex,
   }) async {
     // Reset face tracking for this photo
     _currentFaceCount = null;
     _currentEmbedding = null;
+    _currentSelectedFaceIndex = null;
 
-    // Load faces up front to track count and extract embedding before delegating.
-    final bool noFaceSizeFilter = targetBoundingBox != null;
-    final faces = await getFacesFromRawPhotoPath(
-      rawPhotoPath,
-      imgWidth,
-      filterByFaceSize: !noFaceSizeFilter,
-      cvBytes: cvBytes,
-    );
-    if (faces == null || faces.isEmpty) {
-      LogService.instance.log("No faces found.");
-      return (null, null);
-    }
+    final List<FaceLike> faces;
+    if (preloadedFaces != null) {
+      if (preloadedFaces.isEmpty) {
+        LogService.instance.log("No faces found (preloaded empty).");
+        return (null, null);
+      }
+      faces = preloadedFaces;
+      _currentFaceCount = faces.length;
+      if (_isValidSelectedFaceIndex(preselectedFaceIndex, faces.length)) {
+        _currentSelectedFaceIndex = preselectedFaceIndex;
+      } else if (faces.length == 1) {
+        _currentSelectedFaceIndex = 0;
+      }
+    } else {
+      // Load faces up front to track count and extract embedding before delegating.
+      final bool noFaceSizeFilter = targetBoundingBox != null;
+      final detected = await getFacesFromRawPhotoPath(
+        rawPhotoPath,
+        imgWidth,
+        filterByFaceSize: !noFaceSizeFilter,
+        cvBytes: cvBytes,
+      );
+      if (detected == null || detected.isEmpty) {
+        LogService.instance.log("No faces found.");
+        return (null, null);
+      }
+      // Both cat/dog and face detection paths produce FaceLike instances;
+      // getFacesFromRawPhotoPath's List<dynamic> return type is historical.
+      faces = detected.cast<FaceLike>();
 
-    // Track face count for embedding storage
-    _currentFaceCount = faces.length;
+      // Track face count for embedding storage
+      _currentFaceCount = faces.length;
 
-    // For single-face photos, extract embedding for future reference
-    if (faces.length == 1) {
-      await _extractAndStoreEmbedding(rawPhotoPath);
+      // For single-face photos, extract embedding for future reference
+      if (faces.length == 1) {
+        _currentSelectedFaceIndex = 0;
+        await _extractAndStoreEmbedding(rawPhotoPath);
+      }
     }
 
     return _calculateRotationAngleAndScaleEye(
@@ -1767,6 +2439,23 @@ class FaceStabilizer {
       "No faces found.",
       preloadedFaces: faces,
       selectEyes: (facesToUse, eyes) async {
+        if (_isValidSelectedFaceIndex(
+          preselectedFaceIndex,
+          facesToUse.length,
+        )) {
+          final selectedEyes = _eyesForFaceIndex(
+            eyes,
+            preselectedFaceIndex!,
+          );
+          if (selectedEyes != null) {
+            _currentSelectedFaceIndex = preselectedFaceIndex;
+            LogService.instance.log(
+              "Using cached selected face at index $preselectedFaceIndex",
+            );
+            return selectedEyes;
+          }
+        }
+
         // Multiple faces detected - try embedding-based selection first
         final int? embeddingPickedIdx = await _tryPickFaceByEmbedding(
           rawPhotoPath,
@@ -1781,10 +2470,11 @@ class FaceStabilizer {
           final int li = 2 * embeddingPickedIdx;
           final int ri = li + 1;
           if (ri < eyes.length && eyes[li] != null && eyes[ri] != null) {
+            _currentSelectedFaceIndex = embeddingPickedIdx;
             return [eyes[li]!, eyes[ri]!];
           } else {
             // Fallback to centermost if eyes extraction failed for matched face
-            return getCentermostEyesAsync(
+            return _selectCentermostEyesAndRememberIndex(
               eyes,
               facesToUse,
               imgWidth,
@@ -1796,7 +2486,12 @@ class FaceStabilizer {
           LogService.instance.log(
             "No embedding reference found, using centermost face",
           );
-          return getCentermostEyesAsync(eyes, facesToUse, imgWidth, imgHeight);
+          return _selectCentermostEyesAndRememberIndex(
+            eyes,
+            facesToUse,
+            imgWidth,
+            imgHeight,
+          );
         }
       },
     );
@@ -1936,6 +2631,91 @@ class FaceStabilizer {
         (list[1] as num).toDouble(),
       );
     }).toList();
+  }
+
+  List<Point<double>>? _eyesForFaceIndex(
+    List<Point<double>?> eyes,
+    int faceIndex,
+  ) {
+    final int li = 2 * faceIndex;
+    final int ri = li + 1;
+    if (faceIndex < 0 || ri >= eyes.length) return null;
+
+    final leftEye = eyes[li];
+    final rightEye = eyes[ri];
+    if (leftEye == null || rightEye == null) return null;
+
+    return [leftEye, rightEye];
+  }
+
+  Future<List<Point<double>>> _selectCentermostEyesAndRememberIndex(
+    List<Point<double>?> eyes,
+    List<dynamic> faces,
+    int imgWidth,
+    int imgHeight,
+  ) async {
+    final int? selectedFaceIndex = _pickCentermostFaceIndex(
+      eyes,
+      faces,
+      imgWidth,
+      imgHeight,
+    );
+    if (selectedFaceIndex != null) {
+      final selectedEyes = _eyesForFaceIndex(eyes, selectedFaceIndex);
+      if (selectedEyes != null) {
+        _currentSelectedFaceIndex = selectedFaceIndex;
+        return selectedEyes;
+      }
+    }
+
+    return getCentermostEyesAsync(eyes, faces, imgWidth, imgHeight);
+  }
+
+  int? _pickCentermostFaceIndex(
+    List<Point<double>?> eyes,
+    List<dynamic> faces,
+    int imgWidth,
+    int imgHeight,
+  ) {
+    double smallestDistance = double.infinity;
+    int? selectedFaceIndex;
+
+    final double marginPx = max(4.0, imgWidth * 0.01);
+    bool touchesEdge(Rect bbox) {
+      return bbox.left <= marginPx ||
+          bbox.top <= marginPx ||
+          bbox.right >= imgWidth - marginPx ||
+          bbox.bottom >= imgHeight - marginPx;
+    }
+
+    final int pairCount = eyes.length ~/ 2;
+    final int limit = faces.length < pairCount ? faces.length : pairCount;
+
+    for (var i = 0; i < limit; i++) {
+      final face = faces[i] as FaceLike;
+      if (face.leftEye == null || face.rightEye == null) continue;
+      if (touchesEdge(face.boundingBox)) continue;
+
+      final selectedEyes = _eyesForFaceIndex(eyes, i);
+      if (selectedEyes == null) continue;
+
+      final double distance = (selectedEyes[0].x - imgWidth ~/ 2).abs() +
+          (selectedEyes[1].x - imgWidth ~/ 2).abs();
+
+      if (distance < smallestDistance) {
+        smallestDistance = distance;
+        selectedFaceIndex = i;
+      }
+    }
+
+    if (selectedFaceIndex == null &&
+        eyes.length >= 2 &&
+        eyes[0] != null &&
+        eyes[1] != null) {
+      selectedFaceIndex = 0;
+    }
+
+    return selectedFaceIndex;
   }
 
   /// Isolate-backed version of getCentermostEyes.
@@ -2253,6 +3033,7 @@ class FaceStabilizer {
 
   Uint8List? _lastCvBytes;
   List<dynamic>? _lastRawFaces;
+  List<FaceLike>? _lastDetectedFaceLikes;
 
   /// Dispatches face detection to the correct detector based on project type.
   /// Used by multi-pass refinement to re-detect faces in stabilized images.
@@ -2335,6 +3116,7 @@ class FaceStabilizer {
         imageWidth: width,
       );
       _lastRawFaces = null;
+      _lastDetectedFaceLikes = faces;
       return faces;
     }
 
@@ -2346,6 +3128,7 @@ class FaceStabilizer {
 
     if (result == null) return null;
     _lastRawFaces = result.$2;
+    _lastDetectedFaceLikes = result.$1;
 
     return result.$1;
   }

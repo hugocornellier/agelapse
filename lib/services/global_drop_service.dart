@@ -1,5 +1,7 @@
 import 'dart:async';
 
+typedef ImportSheetDropHandler = Future<void> Function(List<String> filePaths);
+
 /// Item queued for import with project context.
 class QueuedDropItem {
   final String path;
@@ -52,6 +54,7 @@ class GlobalDropService {
   // State - THIS IS THE SINGLE SOURCE OF TRUTH
   bool _isDragging = false;
   bool _importSheetOpen = false;
+  ImportSheetDropHandler? _importSheetDropHandler;
 
   // Queue with project context and limits
   static const int _maxQueueSize = 1000;
@@ -63,6 +66,9 @@ class GlobalDropService {
   /// Whether the import sheet is currently open.
   bool get importSheetOpen => _importSheetOpen;
 
+  /// Whether an import sheet drop handler is currently registered.
+  bool get hasImportSheetDropHandler => _importSheetDropHandler != null;
+
   /// Number of files currently queued.
   int get queuedCount => _queuedItems.length;
 
@@ -72,6 +78,23 @@ class GlobalDropService {
   /// Set whether the import sheet is open (disables global overlay).
   void setImportSheetOpen(bool isOpen) {
     _importSheetOpen = isOpen;
+    if (!isOpen) {
+      _importSheetDropHandler = null;
+    }
+  }
+
+  /// Register the active import sheet as the owner for global drops.
+  void setImportSheetDropHandler(ImportSheetDropHandler? handler) {
+    _importSheetDropHandler = handler;
+  }
+
+  /// Route a global drop to the active import sheet, if one owns drops.
+  Future<bool> handleImportSheetDrop(List<String> filePaths) async {
+    final handler = _importSheetDropHandler;
+    if (!_importSheetOpen || handler == null) return false;
+
+    await handler(filePaths);
+    return true;
   }
 
   /// Called when drag enters app window.
