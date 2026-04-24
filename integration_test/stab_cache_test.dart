@@ -440,12 +440,11 @@ void main() {
       expect(cached.rotationDegrees, closeTo(1.25, 1e-9));
       expect(cached.scaleFactor, closeTo(1.1, 1e-9));
       expect(cached.isEstimated, isFalse);
-      expect(cached.hitCount, 0);
     });
 
-    testWidgets('writeTransformCache upserts by cacheKey and preserves hits', (
-      tester,
-    ) async {
+    testWidgets(
+        'writeTransformCache upserts by cacheKey and preserves id/createdAt',
+        (tester) async {
       app.main();
       await tester.pump(const Duration(seconds: 2));
 
@@ -454,7 +453,6 @@ void main() {
 
       final first = await DB.instance.getTransformCache(entry.cacheKey);
       expect(first, isNotNull);
-      await DB.instance.incrementTransformCacheHit(first!.id!);
 
       final replacement = entry.copyWith(
         translateX: 22.0,
@@ -467,9 +465,8 @@ void main() {
 
       final cached = await DB.instance.getTransformCache(entry.cacheKey);
       expect(cached, isNotNull);
-      expect(cached!.id, first.id);
+      expect(cached!.id, first!.id);
       expect(cached.createdAt, first.createdAt);
-      expect(cached.hitCount, 1);
       expect(cached.translateX, closeTo(22.0, 1e-9));
       expect(cached.translateY, closeTo(33.0, 1e-9));
       expect(cached.rotationDegrees, closeTo(-2.0, 1e-9));
@@ -726,7 +723,7 @@ void main() {
           final cached = await DB.instance.getFaceDetectionCache(
             ts,
             projectId!,
-            StabUtils.faceModelVersion,
+            StabUtils.detectorModelVersionForProjectType('face'),
             fingerprint,
           );
           expect(
@@ -881,7 +878,7 @@ void main() {
           projectId: projectId!,
           fingerprint: fingerprint,
           projectType: settings.projectType,
-          modelVersion: StabUtils.faceModelVersion,
+          modelVersion: StabUtils.detectorModelVersionForProjectType('face'),
           settingsHash: settingsHash,
         );
 
@@ -891,7 +888,7 @@ void main() {
             projectId: projectId!,
             fingerprint: fingerprint,
             projectType: settings.projectType,
-            modelVersion: StabUtils.faceModelVersion,
+            modelVersion: StabUtils.detectorModelVersionForProjectType('face'),
             transformAlgorithmVersion:
                 TransformCacheKey.transformAlgorithmVersion,
             settingsHash: settingsHash,
@@ -976,7 +973,7 @@ void main() {
         final cached = await DB.instance.getFaceDetectionCache(
           ts,
           projectId!,
-          StabUtils.faceModelVersion,
+          StabUtils.detectorModelVersionForProjectType('face'),
           fingerprint,
         );
         expect(

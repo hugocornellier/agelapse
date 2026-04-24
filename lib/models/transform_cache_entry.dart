@@ -31,7 +31,6 @@ class TransformCacheEntry {
   final String? exampleTimestamp;
   final int createdAt;
   final int updatedAt;
-  final int hitCount;
 
   const TransformCacheEntry({
     this.id,
@@ -66,7 +65,6 @@ class TransformCacheEntry {
     this.exampleTimestamp,
     required this.createdAt,
     required this.updatedAt,
-    this.hitCount = 0,
   });
 
   Map<String, Object?> toMap({bool includeId = false}) {
@@ -103,7 +101,6 @@ class TransformCacheEntry {
       'exampleTimestamp': exampleTimestamp,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
-      'hitCount': hitCount,
     };
   }
 
@@ -141,7 +138,6 @@ class TransformCacheEntry {
       exampleTimestamp: map['exampleTimestamp'] as String?,
       createdAt: map['createdAt'] as int,
       updatedAt: map['updatedAt'] as int,
-      hitCount: map['hitCount'] as int,
     );
   }
 
@@ -178,7 +174,6 @@ class TransformCacheEntry {
     String? exampleTimestamp,
     int? createdAt,
     int? updatedAt,
-    int? hitCount,
   }) {
     return TransformCacheEntry(
       id: id ?? this.id,
@@ -214,7 +209,6 @@ class TransformCacheEntry {
       exampleTimestamp: exampleTimestamp ?? this.exampleTimestamp,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      hitCount: hitCount ?? this.hitCount,
     );
   }
 }

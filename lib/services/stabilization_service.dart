@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -18,6 +19,7 @@ import 'stabilization_state.dart';
 import '../models/video_background.dart';
 import '../models/video_codec.dart';
 import '../utils/dir_utils.dart';
+import '../utils/platform_utils.dart';
 import '../utils/settings_utils.dart';
 import '../utils/stabilizer_utils/stabilizer_utils.dart';
 import '../utils/video_utils.dart';
@@ -393,6 +395,7 @@ class StabilizationService {
         rawPhotoPath,
         token,
         _handleUserRanOutOfSpace,
+        knownFingerprint: photo['fingerprint'] as String?,
       );
 
       // Increment stabAttempts only on a non-cancelled returned failure.
@@ -443,7 +446,16 @@ class StabilizationService {
   ) async {
     FaceStabilizer.resetCacheCounters();
 
-    for (final photo in photos) {
+    // Phase 1: parallel transform-cache fast path. Cache-hit renders don't
+    // touch per-photo FaceStabilizer state (detection is bypassed), so we can
+    // run several at once and saturate the warp isolate pool. Anything that
+    // misses falls through to the serial slow path in phase 2.
+    final List<Map<String, dynamic>> remaining =
+        await _runFastPathPhase(photos, stopwatch, progressState, projectId);
+
+    // Phase 2: serial slow path for misses — detection mutates shared state,
+    // so this must stay sequential.
+    for (final photo in remaining) {
       _currentToken?.throwIfCancelled();
 
       LogService.instance.log(
@@ -461,41 +473,10 @@ class StabilizationService {
       }
 
       if (result.success) {
-        _successfullyStabilized++;
-        _benchmark.addResult(
-          finalScore: result.finalScore,
-          finalEyeDeltaY: result.finalEyeDeltaY,
-          finalEyeDistance: result.finalEyeDistance,
-          goalEyeDistance: result.goalEyeDistance,
-        );
+        _recordPhotoSuccess(result);
       }
 
-      _currentPhoto++;
-      progressState.photosDone++;
-
-      final avgTimePerPhoto =
-          stopwatch.elapsedMilliseconds / progressState.photosDone;
-      final remainingPhotos = _totalPhotos - progressState.photosDone;
-      final estimatedTimeRemaining = avgTimePerPhoto * remainingPhotos;
-      _eta = _formatDuration(estimatedTimeRemaining.toInt());
-
-      final completed = _stabilizedAtStart + _successfullyStabilized;
-      var pct = progressState.totalPhotoCount > 0
-          ? (completed * 100.0 / progressState.totalPhotoCount)
-          : 0.0;
-      if (pct >= 100) pct = 99.9;
-      if (pct < 0) pct = 0.0;
-
-      _emitProgress(
-        StabilizationProgress.stabilizing(
-          currentPhoto: _currentPhoto,
-          totalPhotos: _totalPhotos,
-          progressPercent: pct,
-          eta: _eta,
-          projectId: projectId,
-          lastStabilizedTimestamp: photo['timestamp']?.toString(),
-        ),
-      );
+      _advanceProgress(photo, stopwatch, progressState, projectId);
     }
 
     final totalPhotos = photos.length;
@@ -508,6 +489,137 @@ class StabilizationService {
       '[cache] run summary: $hits/$totalPhotos hits ($pct%),'
       ' $misses misses, $sentinelHits no_faces sentinels, saved ~${savedSec}s',
     );
+  }
+
+  Future<List<Map<String, dynamic>>> _runFastPathPhase(
+    List<Map<String, dynamic>> photos,
+    Stopwatch stopwatch,
+    _ProgressState progressState,
+    int projectId,
+  ) async {
+    final workerCount = _fastPathWorkerCount(photos.length);
+    if (workerCount <= 1) {
+      return photos;
+    }
+
+    // Track misses by original index so phase 2 processes them in the caller's
+    // order (the timelapse's natural timestamp order) instead of whatever
+    // non-deterministic order the workers produced.
+    final missedByIndex = List<Map<String, dynamic>?>.filled(
+      photos.length,
+      null,
+      growable: false,
+    );
+    int nextIndex = 0;
+
+    Future<void> worker() async {
+      while (true) {
+        _currentToken?.throwIfCancelled();
+        // nextIndex++ is atomic across workers in Dart's single-threaded
+        // event loop — the two statements run uninterrupted before any await.
+        final i = nextIndex;
+        if (i >= photos.length) return;
+        nextIndex++;
+
+        final photo = photos[i];
+        final hit = await _tryFastPathForPhoto(photo);
+        if (hit != null && hit.success) {
+          _recordPhotoSuccess(hit);
+          _advanceProgress(photo, stopwatch, progressState, projectId);
+        } else {
+          missedByIndex[i] = photo;
+        }
+      }
+    }
+
+    await Future.wait(List.generate(workerCount, (_) => worker()));
+    return [
+      for (final photo in missedByIndex)
+        if (photo != null) photo,
+    ];
+  }
+
+  Future<StabilizationResult?> _tryFastPathForPhoto(
+    Map<String, dynamic> photo,
+  ) async {
+    final timestamp = photo['timestamp']?.toString();
+    try {
+      final rawPhotoPath =
+          await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
+        photo['timestamp'],
+        _currentProjectId!,
+        fileExtension: photo['fileExtension'],
+      );
+      return await _currentStabilizer!.tryTransformCacheFastPath(
+        rawPhotoPath,
+        _currentToken,
+        knownFingerprint: photo['fingerprint'] as String?,
+      );
+    } on CancelledException {
+      rethrow;
+    } catch (e, stackTrace) {
+      // Swallow errors — the photo will fall through to the serial slow path
+      // where exceptions are logged and stabFailed is set as appropriate.
+      LogService.instance.log(
+        '[STAB] fast path error for timestamp=$timestamp: ${e.runtimeType}: $e\n$stackTrace',
+      );
+      return null;
+    }
+  }
+
+  void _recordPhotoSuccess(StabilizationResult result) {
+    _successfullyStabilized++;
+    _benchmark.addResult(
+      finalScore: result.finalScore,
+      finalEyeDeltaY: result.finalEyeDeltaY,
+      finalEyeDistance: result.finalEyeDistance,
+      goalEyeDistance: result.goalEyeDistance,
+    );
+  }
+
+  void _advanceProgress(
+    Map<String, dynamic> photo,
+    Stopwatch stopwatch,
+    _ProgressState progressState,
+    int projectId,
+  ) {
+    _currentPhoto++;
+    progressState.photosDone++;
+
+    final avgTimePerPhoto = progressState.photosDone > 0
+        ? stopwatch.elapsedMilliseconds / progressState.photosDone
+        : 0;
+    final remainingPhotos = _totalPhotos - progressState.photosDone;
+    final estimatedTimeRemaining = avgTimePerPhoto * remainingPhotos;
+    _eta = _formatDuration(estimatedTimeRemaining.toInt());
+
+    final completed = _stabilizedAtStart + _successfullyStabilized;
+    var pct = progressState.totalPhotoCount > 0
+        ? (completed * 100.0 / progressState.totalPhotoCount)
+        : 0.0;
+    if (pct >= 100) pct = 99.9;
+    if (pct < 0) pct = 0.0;
+
+    _emitProgress(
+      StabilizationProgress.stabilizing(
+        currentPhoto: _currentPhoto,
+        totalPhotos: _totalPhotos,
+        progressPercent: pct,
+        eta: _eta,
+        projectId: projectId,
+        lastStabilizedTimestamp: photo['timestamp']?.toString(),
+      ),
+    );
+  }
+
+  /// Worker count for the parallel transform-cache fast path. Capped at the
+  /// isolate pool's worker count so warp dispatches don't queue up waiting
+  /// for free isolates. Mobile stays serial to avoid contention on a smaller
+  /// CPU/memory budget.
+  int _fastPathWorkerCount(int photoCount) {
+    if (photoCount <= 1) return photoCount;
+    if (!isDesktop) return 1;
+    return math.min(photoCount, IsolatePool.workerCount);
   }
 
   Future<void> _finalCheck(FaceStabilizer stabilizer, int projectId) async {
@@ -554,6 +666,7 @@ class StabilizationService {
         rawPhotoPath,
         _currentToken,
         _handleUserRanOutOfSpace,
+        knownFingerprint: photo['fingerprint'] as String?,
       );
 
       if (result.success) {

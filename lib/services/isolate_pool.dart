@@ -57,7 +57,7 @@ class IsolatePool {
 
   /// Number of worker isolates to maintain.
   /// Desktop: 4 workers, Mobile: 2 workers.
-  static int get _workerCount {
+  static int get workerCount {
     if (isDesktop) {
       return 4;
     }
@@ -88,11 +88,11 @@ class IsolatePool {
 
     final gen = _generation;
     LogService.instance.log(
-      'IsolatePool: Initializing with $_workerCount workers',
+      'IsolatePool: Initializing with $workerCount workers',
     );
 
     final workers = <_Worker>[];
-    for (int i = 0; i < _workerCount; i++) {
+    for (int i = 0; i < workerCount; i++) {
       final worker = await _spawnWorker();
       // killAll() was called while we were spawning — discard everything.
       if (gen != _generation) {

@@ -474,6 +474,32 @@ void main() {
     });
   });
 
+  group('StabUtils detector model versions', () {
+    test('returns detector-specific cache keys for supported project types',
+        () {
+      final face = StabUtils.detectorModelVersionForProjectType('face');
+      final cat = StabUtils.detectorModelVersionForProjectType('cat');
+      final dog = StabUtils.detectorModelVersionForProjectType('dog');
+      final pose = StabUtils.detectorModelVersionForProjectType('pregnancy');
+      final hand = StabUtils.detectorModelVersionForProjectType('hand');
+
+      expect(face, StabUtils.faceModelVersion);
+      expect(cat, contains('cat_detection:'));
+      expect(dog, contains('dog_detection:'));
+      expect(pose, contains('pose_detection:'));
+      expect(hand, contains('hand_detection:'));
+
+      expect({face, cat, dog, pose, hand}.length, 5);
+    });
+
+    test('unknown project types fall back to face detector version', () {
+      expect(
+        StabUtils.detectorModelVersionForProjectType('unknown'),
+        StabUtils.faceModelVersion,
+      );
+    });
+  });
+
   group('StabUtils fingerprint', () {
     late Directory tempDir;
 

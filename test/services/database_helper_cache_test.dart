@@ -152,7 +152,6 @@ void main() {
         exampleTimestamp: '1700000000000',
         createdAt: 100,
         updatedAt: 200,
-        hitCount: 3,
       );
 
       final map = entry.toMap(includeId: true);
@@ -167,7 +166,6 @@ void main() {
       expect(roundTrip.scaleFactor, 1.2);
       expect(roundTrip.finalScore, 0.98);
       expect(roundTrip.isEstimated, isFalse);
-      expect(roundTrip.hitCount, 3);
     });
 
     test('table name is TransformCache', () {

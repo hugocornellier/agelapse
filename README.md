@@ -4,7 +4,7 @@
   <a href="https://agelapse.com/docs/support-and-feedback/" style="text-decoration:none; font-weight:bold;">SUPPORT</a>
 </p>
 
-<p align="center">
+<p align="center"> 
 <a href="https://github.com/hugocornellier/agelapse/actions/workflows/build.yml"><img src="https://github.com/hugocornellier/agelapse/actions/workflows/build.yml/badge.svg" alt="CI"></a>
 <a href="https://github.com/hugocornellier/agelapse/actions/workflows/integration.yml"><img src="https://github.com/hugocornellier/agelapse/actions/workflows/integration.yml/badge.svg" alt="Tests"></a>
 </p>

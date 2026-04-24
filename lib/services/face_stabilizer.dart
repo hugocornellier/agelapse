@@ -172,6 +172,11 @@ class FaceStabilizer {
   Float32List? _currentEmbedding;
   int? _currentSelectedFaceIndex;
 
+  // Cached transform-cache settings hash. Invariant for the life of a
+  // stabilizer instance (all inputs are set once in [initializeProjectSettings]
+  // and don't change per-photo). Computed lazily on first use.
+  String? _transformSettingsHashCache;
+
   // Set to true when _handleFallbackStabilization is used; reset each attempt.
   bool _lastScoreWasEstimated = false;
 
@@ -271,6 +276,7 @@ class FaceStabilizer {
     CancellationToken? token,
     void Function() userRanOutOfSpaceCallback, {
     Rect? targetBoundingBox,
+    String? knownFingerprint,
   }) async {
     try {
       token?.throwIfCancelled();
@@ -282,6 +288,7 @@ class FaceStabilizer {
           token,
           userRanOutOfSpaceCallback,
           targetBoundingBox: targetBoundingBox,
+          knownFingerprint: knownFingerprint,
         );
       } else {
         final result = await _stabilizeSingleAttempt(
@@ -392,7 +399,7 @@ class FaceStabilizer {
     final cached = await DB.instance.getFaceDetectionCache(
       timestamp,
       projectId,
-      StabUtils.faceModelVersion,
+      StabUtils.detectorModelVersionForProjectType(projectType),
       fingerprint,
     );
     if (cached == null) return null;
@@ -499,11 +506,75 @@ class FaceStabilizer {
         selectedFaceIndex < faceCount;
   }
 
+  /// Concurrency-safe transform-cache fast path.
+  ///
+  /// Returns a successful [StabilizationResult] when the transform cache has a
+  /// valid entry for this photo (the warp runs and the stabilized output is
+  /// saved). Returns `null` on a cache miss or any ineligibility (unsupported
+  /// project type, missing fingerprint, invalid hit, render failure).
+  ///
+  /// Unlike [stabilize], this method does **not** read or write the per-photo
+  /// instance fields on [FaceStabilizer] (`_lastRawFaces`, `_currentFaceCount`,
+  /// `_currentEmbedding`, etc.), so multiple calls may run concurrently on a
+  /// shared instance. Callers MUST fall through to [stabilize] on a null
+  /// result — the slow path is the one that runs detection and mutates state.
+  Future<StabilizationResult?> tryTransformCacheFastPath(
+    String rawPhotoPath,
+    CancellationToken? token, {
+    String? knownFingerprint,
+  }) async {
+    if (!faceDetectionCacheEnabled) return null;
+    await _ensureReady();
+    if (!_supportsTransformCache) return null;
+
+    token?.throwIfCancelled();
+
+    final timestamp = path.basenameWithoutExtension(rawPhotoPath);
+
+    String? fingerprint = knownFingerprint;
+    if (fingerprint == null || fingerprint.isEmpty) {
+      try {
+        fingerprint = await StabUtils.computeRawPhotoFingerprint(rawPhotoPath);
+      } catch (_) {
+        return null;
+      }
+    }
+
+    // Don't pre-decode here: on a miss, the bytes get discarded and phase 2
+    // re-decodes. _tryTransformCacheAttempt already decodes on hit when the
+    // pre-decoded bytes are null, so passing null costs nothing on hits.
+    final tempFiles = <String>[];
+    try {
+      return await _tryTransformCacheAttempt(
+        rawPhotoPath,
+        timestamp,
+        fingerprint,
+        null,
+        token,
+        tempFiles,
+      );
+    } on CancelledException {
+      rethrow;
+    } catch (e) {
+      LogService.instance.log(
+        '[transform-cache] $timestamp: fast path error: $e',
+      );
+      return null;
+    } finally {
+      for (final p in tempFiles) {
+        try {
+          await File(p).delete();
+        } catch (_) {}
+      }
+    }
+  }
+
   Future<StabilizationResult> _stabilizeWithOrientationRetry(
     String originalPath,
     CancellationToken? token,
     void Function() userRanOutOfSpaceCallback, {
     Rect? targetBoundingBox,
+    String? knownFingerprint,
   }) async {
     // Pre-decode on main thread so the isolate receives cv-compatible bytes
     // (avoids crash for TIFF/JP2 on Apple where cv.imdecode segfaults).
@@ -531,10 +602,32 @@ class FaceStabilizer {
 
     String? fingerprint;
     if (cacheEnabled) {
-      try {
-        fingerprint = await StabUtils.computeRawPhotoFingerprint(originalPath);
-      } catch (e) {
-        LogService.instance.log('[cache] $timestamp: fingerprint error: $e');
+      // Prefer the caller-supplied fingerprint (already stored on the photo
+      // row) to skip re-streaming the source file through SHA-256.
+      if (knownFingerprint != null && knownFingerprint.isNotEmpty) {
+        fingerprint = knownFingerprint;
+      } else {
+        try {
+          fingerprint =
+              await StabUtils.computeRawPhotoFingerprint(originalPath);
+        } catch (e) {
+          LogService.instance.log('[cache] $timestamp: fingerprint error: $e');
+        }
+        if (fingerprint != null) {
+          // Opportunistically backfill the photos row so the next run takes
+          // the fast path. Best-effort — never fail stabilization on this.
+          try {
+            await DB.instance.backfillPhotoFingerprint(
+              timestamp,
+              projectId,
+              fingerprint,
+            );
+          } catch (e) {
+            LogService.instance.log(
+              '[cache] $timestamp: fingerprint backfill error: $e',
+            );
+          }
+        }
       }
     }
 
@@ -646,7 +739,7 @@ class FaceStabilizer {
           await DB.instance.writeNoFacesSentinel(
             timestamp,
             projectId,
-            StabUtils.faceModelVersion,
+            StabUtils.detectorModelVersionForProjectType(projectType),
             fingerprint,
           );
           LogService.instance.log(
@@ -709,7 +802,7 @@ class FaceStabilizer {
         projectId,
         orientation,
         faceRows,
-        StabUtils.faceModelVersion,
+        StabUtils.detectorModelVersionForProjectType(projectType),
         fingerprint,
         selectedFaceIndex: selectedFaceIndex,
       );
@@ -823,9 +916,6 @@ class FaceStabilizer {
         ),
       );
 
-      if (hit.id != null) {
-        await DB.instance.incrementTransformCacheHit(hit.id!);
-      }
       transformCacheHits++;
       LogService.instance.log(
         '[transform-cache] $timestamp: HIT orientation=${hit.sourceOrientation} '
@@ -865,7 +955,10 @@ class FaceStabilizer {
     if (hit.faceCount != 1) return false;
     if (hit.projectId != projectId) return false;
     if (hit.projectType != projectType) return false;
-    if (hit.modelVersion != StabUtils.faceModelVersion) return false;
+    if (hit.modelVersion !=
+        StabUtils.detectorModelVersionForProjectType(projectType)) {
+      return false;
+    }
     if (hit.transformAlgorithmVersion !=
         TransformCacheKey.transformAlgorithmVersion) {
       return false;
@@ -917,7 +1010,7 @@ class FaceStabilizer {
   bool get _supportsTransformCache => projectType == 'face';
 
   String _buildTransformSettingsHash() {
-    return TransformCacheKey.buildSettingsHash(
+    return _transformSettingsHashCache ??= TransformCacheKey.buildSettingsHash(
       settings: StabilizationSettings(
         projectOrientation: projectOrientation!,
         resolution: resolution,
@@ -944,7 +1037,7 @@ class FaceStabilizer {
       projectId: projectId,
       fingerprint: fingerprint,
       projectType: projectType,
-      modelVersion: StabUtils.faceModelVersion,
+      modelVersion: StabUtils.detectorModelVersionForProjectType(projectType),
       settingsHash: settingsHash,
     );
   }
@@ -996,7 +1089,9 @@ class FaceStabilizer {
           projectId: projectId,
           fingerprint: fingerprint,
           projectType: projectType,
-          modelVersion: StabUtils.faceModelVersion,
+          modelVersion: StabUtils.detectorModelVersionForProjectType(
+            projectType,
+          ),
           transformAlgorithmVersion:
               TransformCacheKey.transformAlgorithmVersion,
           settingsHash: settingsHash,

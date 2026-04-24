@@ -125,10 +125,10 @@ packages:
     dependency: "direct main"
     description:
       name: cat_detection
-      sha256: "387bbb4e2a63494abca10c3705a57bfc0b0e83e354902629b1842bc0423e9c61"
+      sha256: "0aaca1757f600bb98fe0ce286d43114925249dc3c8e6b81451de614f74dab515"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.4"
+    version: "1.0.5"
   change_case:
     dependency: transitive
     description:
@@ -294,10 +294,10 @@ packages:
     dependency: "direct main"
     description:
       name: dog_detection
-      sha256: "4d1f2d542e55cb6ca4ac14e0fab46b76753f1eae8ca8205e54965eb1611929ec"
+      sha256: b210ff893886279fffbed675c0af9211acf32aff313a3418e44cf73a037c023a
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.4"
+    version: "1.0.5"
   downloadsfolder:
     dependency: "direct main"
     description:
@@ -697,10 +697,10 @@ packages:
     dependency: "direct main"
     description:
       name: hand_detection
-      sha256: ca00f4f831e8bdb30a5c6ff2e7a26ffccbba43f72c428c78ada5a478c1167000
+      sha256: "9c6c0bd7b8a1fd0f3393bd5a62da676584921e1b1de0389babc0307e01b8396b"
       url: "https://pub.dev"
     source: hosted
-    version: "2.1.1"
+    version: "2.1.2"
   heic_native:
     dependency: "direct main"
     description:
@@ -1150,10 +1150,10 @@ packages:
     dependency: "direct main"
     description:
       name: pose_detection
-      sha256: f7f622f2d57d8e29307c1f86bb34c2d45f70846e1197d9619a497f2beba4edbe
+      sha256: "06aa04fdff68df1edda8425ab950ea37f4590ac02a5fd28377faaf0ce88f556b"
       url: "https://pub.dev"
     source: hosted
-    version: "2.1.0"
+    version: "2.1.1"
   posix:
     dependency: transitive
     description:

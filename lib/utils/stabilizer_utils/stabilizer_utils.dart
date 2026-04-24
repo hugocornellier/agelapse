@@ -12,7 +12,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:cat_detection/cat_detection.dart' as cat;
 import 'package:dog_detection/dog_detection.dart' as dog;
 import 'package:face_detection_tflite/face_detection_tflite.dart' as fdl;
+import 'package:hand_detection/hand_detection.dart' as hand;
 import 'package:opencv_dart/opencv_dart.dart' as cv;
+import 'package:pose_detection/pose_detection.dart' as pose;
 
 import '../../services/async_mutex.dart';
 import '../../services/cancellation_token.dart';
@@ -539,6 +541,35 @@ class StabUtils {
   }
 
   static String get faceModelVersion => fdl.FaceDetector.modelVersion;
+
+  static String detectorModelVersionForProjectType(String projectType) {
+    switch (projectType.toLowerCase()) {
+      case 'cat':
+        return cat.CatDetector.modelVersionFor(
+          mode: cat.CatDetectionMode.full,
+          poseModel: cat.AnimalPoseModel.rtmpose,
+          landmarkModel: cat.CatLandmarkModel.full,
+        );
+      case 'dog':
+        return dog.DogDetector.modelVersionFor(
+          mode: dog.DogDetectionMode.full,
+          poseModel: dog.AnimalPoseModel.rtmpose,
+          landmarkModel: dog.DogLandmarkModel.full,
+        );
+      case 'hand':
+        return hand.HandDetector.modelVersion;
+      case 'pregnancy':
+      case 'muscle':
+      case 'pose':
+        return pose.PoseDetector.modelVersionFor(
+          mode: pose.PoseMode.boxesAndLandmarks,
+          landmarkModel: pose.PoseLandmarkModel.heavy,
+        );
+      case 'face':
+      default:
+        return faceModelVersion;
+    }
+  }
 
   /// Thin pass-through to [PhotoFingerprint.compute]. Kept here so existing
   /// callers keep working; new code may use [PhotoFingerprint.compute]

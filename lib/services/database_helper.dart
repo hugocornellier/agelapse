@@ -188,8 +188,7 @@ class DB {
           "isEstimated INTEGER NOT NULL DEFAULT 0, "
           "exampleTimestamp TEXT, "
           "createdAt INTEGER NOT NULL, "
-          "updatedAt INTEGER NOT NULL, "
-          "hitCount INTEGER NOT NULL DEFAULT 0"
+          "updatedAt INTEGER NOT NULL"
           ");",
     };
 
@@ -201,6 +200,7 @@ class DB {
 
     await _ensurePhotoTransformColumns();
     await _ensureFaceDetectionCacheColumns();
+    await _dropLegacyTransformCacheHitCount();
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_photos_project_ts ON $photoTable(projectID, timestamp);',
     );
@@ -225,10 +225,9 @@ class DB {
       'CREATE INDEX IF NOT EXISTS idx_face_cache_lookup '
       'ON $faceDetectionCacheTable(timestamp, projectID, modelVersion, fingerprint);',
     );
-    await db.execute(
-      'CREATE INDEX IF NOT EXISTS idx_transform_cache_lookup '
-      'ON $transformCacheTable(cacheKey);',
-    );
+    // cacheKey lookups use the auto-index from `UNIQUE` on the column. Drop
+    // the redundant explicit index if an older DB still has it.
+    await db.execute('DROP INDEX IF EXISTS idx_transform_cache_lookup;');
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_transform_cache_project '
       'ON $transformCacheTable(projectID);',
@@ -770,6 +769,25 @@ class DB {
     if (!has('selectedFaceIndex')) {
       await db.execute(
         'ALTER TABLE $faceDetectionCacheTable ADD COLUMN selectedFaceIndex INTEGER;',
+      );
+    }
+  }
+
+  Future<void> _dropLegacyTransformCacheHitCount() async {
+    final db = await database;
+    final cols = await db.rawQuery(
+      'PRAGMA table_info($transformCacheTable)',
+    );
+    if (!cols.any((c) => c['name'] == 'hitCount')) return;
+    try {
+      await db.execute(
+        'ALTER TABLE $transformCacheTable DROP COLUMN hitCount;',
+      );
+    } catch (e) {
+      // SQLite < 3.35 lacks DROP COLUMN. The column is unused and defaults
+      // to 0, so leaving it in place is harmless.
+      LogService.instance.log(
+        '[DB] Could not drop legacy hitCount column: $e',
       );
     }
   }
@@ -1952,7 +1970,7 @@ class DB {
     await db.transaction((txn) async {
       final existing = await txn.query(
         transformCacheTable,
-        columns: ['id', 'createdAt', 'hitCount'],
+        columns: ['id', 'createdAt'],
         where: 'cacheKey = ?',
         whereArgs: [entry.cacheKey],
         limit: 1,
@@ -1968,7 +1986,6 @@ class DB {
           .copyWith(
             id: row['id'] as int?,
             createdAt: row['createdAt'] as int?,
-            hitCount: row['hitCount'] as int?,
           )
           .toMap();
       await txn.update(
@@ -1978,16 +1995,6 @@ class DB {
         whereArgs: [row['id']],
       );
     });
-  }
-
-  Future<void> incrementTransformCacheHit(int id) async {
-    final db = await database;
-    await db.rawUpdate(
-      'UPDATE $transformCacheTable '
-      'SET hitCount = hitCount + 1, updatedAt = ? '
-      'WHERE id = ?',
-      [DateTime.now().millisecondsSinceEpoch, id],
-    );
   }
 
   Future<void> clearTransformCacheForProject(int projectId) async {
