@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// Paranoid regression guard for the v2.5.2 transparent-video alpha fix.
+/// Paranoid regression guard for the v2.6.0 transparent-video alpha fix.
 ///
 /// Before this fix, `saveStabilizedImage` composited transparent-project
 /// stabilized PNGs onto black, destroying the alpha channel and silently
@@ -44,7 +44,7 @@ void main() {
       reason: 'REGRESSION: saveStabilizedImage must not call '
           'compositeBlackPngBytes. Compositing a transparent BGRA PNG onto '
           'black destroys the alpha channel, which silently breaks ProRes '
-          '4444 / VP9 transparent video export. See v2.5.2 fix for details.',
+          '4444 / VP9 transparent video export. See v2.6.0 fix for details.',
     );
   });
 }

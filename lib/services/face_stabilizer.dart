@@ -235,7 +235,8 @@ class FaceStabilizer {
     lossless = settings.lossless;
 
     if (!_isEyeBasedProject) {
-      final poseDetector = pose.PoseDetector(
+      final poseDetector = pose.PoseDetector();
+      await poseDetector.initialize(
         mode: pose.PoseMode.boxesAndLandmarks,
         landmarkModel: pose.PoseLandmarkModel.heavy,
         // pose_detection >= 2.0.3 defaults to Metal on iOS, which shifts results.
@@ -243,7 +244,6 @@ class FaceStabilizer {
             ? pose.PerformanceConfig.disabled
             : const pose.PerformanceConfig(),
       );
-      await poseDetector.initialize();
       _poseDetector = poseDetector;
     }
 
@@ -2141,7 +2141,7 @@ class FaceStabilizer {
     //   - transparent projects: 4-channel BGRA PNG (alpha preserved in borders)
     //   - opaque projects:      3-channel BGR PNG (borders filled with solid color)
     // Compositing here destroys alpha for transparent projects and breaks
-    // ProRes 4444 / VP9 transparent video export (regression fix v2.5.2).
+    // ProRes 4444 / VP9 transparent video export (regression fix v2.6.0).
     final Uint8List pngBytes = imageBytes;
 
     final String result = await saveBytesToPngFileInIsolate(

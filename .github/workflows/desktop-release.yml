@@ -11,7 +11,7 @@ on:
         required: true
         default: main
       tag:
-        description: 'Release tag (e.g. agelapse-v2.5.2)'
+        description: 'Release tag (e.g. agelapse-v2.6.0)'
         required: true
       prerelease:
         description: 'Mark as pre-release'
@@ -189,6 +189,11 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Prefetch mimalloc tarball
+        uses: ./.github/actions/prefetch-mimalloc
+        with:
+          build-mode: release
 
       - name: Build Linux release
         run: flutter build linux --release --build-name=${{ needs.prepare.outputs.version }} --build-number=${{ needs.prepare.outputs.build_number }}

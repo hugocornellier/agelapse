@@ -263,6 +263,11 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Prefetch mimalloc tarball
+        uses: ./.github/actions/prefetch-mimalloc
+        with:
+          build-mode: debug
+
       - name: Prewarm Linux build
         run: flutter build linux --debug
 

@@ -53,6 +53,7 @@ void main() {
         accent: Colors.blue,
         accentDark: Colors.blue.shade800,
         accentDarker: Colors.blue.shade900,
+        onAccent: Colors.white,
         overlay: Colors.black,
         disabled: Colors.grey,
         guideCorner: Colors.brown,

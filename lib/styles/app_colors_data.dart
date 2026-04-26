@@ -48,6 +48,7 @@ class AppColorsData extends ThemeExtension<AppColorsData> {
     required this.accent,
     required this.accentDark,
     required this.accentDarker,
+    required this.onAccent,
     required this.overlay,
     required this.disabled,
     required this.guideCorner,
@@ -70,6 +71,11 @@ class AppColorsData extends ThemeExtension<AppColorsData> {
   final Color accent;
   final Color accentDark;
   final Color accentDarker;
+
+  /// Foreground color for content on top of `accent*` backgrounds.
+  /// Stays white in both themes — both accent shades are dark-blue enough
+  /// for white text/icons to meet contrast requirements.
+  final Color onAccent;
   final Color overlay;
   final Color disabled;
   final Color guideCorner;
@@ -95,6 +101,7 @@ class AppColorsData extends ThemeExtension<AppColorsData> {
         accent: Color(0xFF0277BD),
         accentDark: Color(0xFF01579B),
         accentDarker: Color(0xFF014377),
+        onAccent: Color(0xFFFFFFFF),
         overlay: Color(0xFF000000),
         disabled: Color(0xFF9E9E9E),
         guideCorner: Color(0xFFB45309),
@@ -119,6 +126,7 @@ class AppColorsData extends ThemeExtension<AppColorsData> {
         accent: Color(0xFF4A9ECC),
         accentDark: Color(0xFF3285AF),
         accentDarker: Color(0xFF206588),
+        onAccent: Color(0xFFFFFFFF),
         overlay: Color(0xFF000000),
         disabled: Color(0xFF5A5A5A),
         guideCorner: Color(0xFF924904),
@@ -143,6 +151,7 @@ class AppColorsData extends ThemeExtension<AppColorsData> {
     Color? accent,
     Color? accentDark,
     Color? accentDarker,
+    Color? onAccent,
     Color? overlay,
     Color? disabled,
     Color? guideCorner,
@@ -165,6 +174,7 @@ class AppColorsData extends ThemeExtension<AppColorsData> {
       accent: accent ?? this.accent,
       accentDark: accentDark ?? this.accentDark,
       accentDarker: accentDarker ?? this.accentDarker,
+      onAccent: onAccent ?? this.onAccent,
       overlay: overlay ?? this.overlay,
       disabled: disabled ?? this.disabled,
       guideCorner: guideCorner ?? this.guideCorner,
@@ -192,6 +202,7 @@ class AppColorsData extends ThemeExtension<AppColorsData> {
       accent: Color.lerp(accent, other.accent, t)!,
       accentDark: Color.lerp(accentDark, other.accentDark, t)!,
       accentDarker: Color.lerp(accentDarker, other.accentDarker, t)!,
+      onAccent: Color.lerp(onAccent, other.onAccent, t)!,
       overlay: Color.lerp(overlay, other.overlay, t)!,
       disabled: Color.lerp(disabled, other.disabled, t)!,
       guideCorner: Color.lerp(guideCorner, other.guideCorner, t)!,

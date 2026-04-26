@@ -29,7 +29,7 @@ class OnboardingActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bgColor = backgroundColor ?? AppColors.accentDark;
-    final fgColor = textColor ?? AppColors.textPrimary;
+    final fgColor = textColor ?? AppColors.onAccent;
 
     return FractionallySizedBox(
       widthFactor: widthFactor,

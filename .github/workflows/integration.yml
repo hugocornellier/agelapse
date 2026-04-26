@@ -26,6 +26,7 @@ jobs:
         with:
           channel: ${{ matrix.flutter-channel }}
           cache: true
+          cache-key: 'flutter-:os:-:channel:-:version:-:arch:-tests-unit-:hash:'
 
       - name: Install dependencies
         run: flutter pub get
@@ -59,6 +60,7 @@ jobs:
         with:
           channel: ${{ matrix.flutter-channel }}
           cache: true
+          cache-key: 'flutter-:os:-:channel:-:version:-:arch:-tests-macos-${{ matrix.group }}-:hash:'
 
       - name: Cache CocoaPods
         uses: actions/cache@v4
@@ -105,6 +107,7 @@ jobs:
         with:
           channel: ${{ matrix.flutter-channel }}
           cache: true
+          cache-key: 'flutter-:os:-:channel:-:version:-:arch:-tests-ios-:hash:'
 
       - name: Cache CocoaPods
         uses: actions/cache@v4
@@ -203,6 +206,7 @@ jobs:
         with:
           channel: ${{ matrix.flutter-channel }}
           cache: true
+          cache-key: 'flutter-:os:-:channel:-:version:-:arch:-tests-android-:hash:'
 
       - name: Cache Gradle
         uses: actions/cache@v4
@@ -264,16 +268,22 @@ jobs:
         with:
           channel: ${{ matrix.flutter-channel }}
           cache: true
+          cache-key: 'flutter-:os:-:channel:-:version:-:arch:-tests-linux-${{ matrix.group }}-:hash:'
 
       - name: Cache opencv_dart native build
         uses: actions/cache@v4
         with:
           path: .dart_tool/hooks_runner/shared
-          key: opencv-native-linux-${{ hashFiles('pubspec.lock') }}
-          restore-keys: opencv-native-linux-
+          key: opencv-native-linux-tests-${{ matrix.flutter-channel }}-${{ matrix.group }}-${{ hashFiles('pubspec.lock') }}
+          restore-keys: opencv-native-linux-tests-${{ matrix.flutter-channel }}-${{ matrix.group }}-
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Prefetch mimalloc tarball
+        uses: ./.github/actions/prefetch-mimalloc
+        with:
+          build-mode: debug
 
       - name: Prewarm Linux build
         run: flutter build linux --debug
@@ -298,13 +308,14 @@ jobs:
         with:
           channel: ${{ matrix.flutter-channel }}
           cache: true
+          cache-key: 'flutter-:os:-:channel:-:version:-:arch:-tests-windows-${{ matrix.group }}-:hash:'
 
       - name: Cache opencv_dart native build
         uses: actions/cache@v4
         with:
           path: .dart_tool/hooks_runner/shared
-          key: opencv-native-windows-${{ hashFiles('pubspec.lock') }}
-          restore-keys: opencv-native-windows-
+          key: opencv-native-windows-tests-${{ matrix.flutter-channel }}-${{ matrix.group }}-${{ hashFiles('pubspec.lock') }}
+          restore-keys: opencv-native-windows-tests-${{ matrix.flutter-channel }}-${{ matrix.group }}-
 
       - name: Install dependencies
         run: flutter pub get

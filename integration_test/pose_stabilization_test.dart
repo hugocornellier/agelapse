@@ -38,11 +38,11 @@ void main() {
     }
 
     if (!detectorInitialized) {
-      detector = PoseDetector(
+      detector = PoseDetector();
+      await detector.initialize(
         mode: PoseMode.boxesAndLandmarks,
         landmarkModel: PoseLandmarkModel.lite,
       );
-      await detector.initialize();
       detectorInitialized = true;
     }
 

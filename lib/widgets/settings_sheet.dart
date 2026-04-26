@@ -4113,7 +4113,8 @@ class SettingsSheetState extends State<SettingsSheet> {
             infoContent:
                 'Controls how much the background image is zoomed in before '
                 'blurring. Lower values show more of the original image for '
-                'smoother colour transitions. Higher values crop in more.',
+                'smoother colour transitions. Higher values crop in more. '
+                'Custom values must be between 1.1 and 4.0.',
             contentWidget: _isCustomBlurZoom
                 ? _buildCustomBlurZoomInput()
                 : _buildBlurZoomDropdown(),

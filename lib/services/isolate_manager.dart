@@ -58,7 +58,13 @@ class IsolateManager {
   void killAll() {
     if (_activeIsolates.isEmpty) return;
 
-    for (final entry in _activeIsolates.entries) {
+    // Snapshot + clear before iterating so concurrent unregister() calls
+    // (triggered when killed isolates' awaiters run their finally blocks)
+    // can't mutate the map mid-iteration.
+    final snapshot = List.of(_activeIsolates.entries);
+    _activeIsolates.clear();
+
+    for (final entry in snapshot) {
       try {
         entry.value?.close();
       } catch (_) {
@@ -70,8 +76,6 @@ class IsolateManager {
         // Ignore errors when killing isolates
       }
     }
-
-    _activeIsolates.clear();
   }
 
   /// Clear the tracking map without killing isolates.

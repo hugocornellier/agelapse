@@ -118,6 +118,7 @@ class AppColors {
   static Color get accent => _current.accent;
   static Color get accentDark => _current.accentDark;
   static Color get accentDarker => _current.accentDarker;
+  static Color get onAccent => _current.onAccent;
   static Color get overlay => _current.overlay;
   static Color get disabled => _current.disabled;
   static Color get guideCorner => _current.guideCorner;

@@ -977,15 +977,14 @@ class CreatePageState extends State<CreatePage>
       builder: (context, constraints) {
         final aspectRatio = _getVideoAspectRatio();
 
-        // Fixed heights for top and bottom sections
-        const topRowHeight = 50.0;
+        // Fixed heights for bottom section
         const normalBottomRowHeight = 140.0;
         const compactBottomRowHeight = 56.0;
 
         // First pass: estimate if we'll need compact mode
         final maxWidth = constraints.maxWidth - 32;
         final estimatedVideoHeight =
-            constraints.maxHeight - topRowHeight - normalBottomRowHeight - 16;
+            constraints.maxHeight - normalBottomRowHeight - 16;
         final estimatedWidth = estimatedVideoHeight * aspectRatio;
         final useCompactInfo = estimatedWidth.clamp(200.0, maxWidth) < 680;
 
@@ -994,11 +993,14 @@ class CreatePageState extends State<CreatePage>
             useCompactInfo ? compactBottomRowHeight : normalBottomRowHeight;
         final verticalPadding = useCompactInfo ? 8.0 : 24.0;
 
+        // Top spacer matches the breathing room beneath the export button.
+        final topSpacing = useCompactInfo ? 16.0 : 32.0;
+
         // Calculate video dimensions based on available space
         final availableVideoHeight = constraints.maxHeight -
-            topRowHeight -
             bottomRowHeight -
-            verticalPadding;
+            verticalPadding -
+            topSpacing;
         final videoWidthFromHeight = availableVideoHeight * aspectRatio;
 
         // Content width matches video width, clamped to screen bounds
@@ -1010,49 +1012,9 @@ class CreatePageState extends State<CreatePage>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Top row (fixed): Title
-                SizedBox(
-                  height: topRowHeight,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                widget.projectName,
-                                style: TextStyle(
-                                  fontSize: AppTypography.xl,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textPrimary,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            Text(
-                              ' · ${photoCount ?? 0} photos',
-                              style: TextStyle(
-                                fontSize: AppTypography.md,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: _enterFullscreen,
-                        icon: Icon(
-                          Icons.fullscreen,
-                          color: AppColors.textSecondary,
-                          size: 28,
-                        ),
-                        tooltip: 'Fullscreen',
-                      ),
-                    ],
-                  ),
-                ),
+                SizedBox(height: topSpacing),
 
-                // Middle row: Video player sized by aspect ratio
+                // Video player sized by aspect ratio
                 AspectRatio(
                   aspectRatio: aspectRatio,
                   child: _buildVideoContainer(),
@@ -1074,14 +1036,31 @@ class CreatePageState extends State<CreatePage>
                             ],
                           ),
                         )
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 20),
-                            _buildVideoInfoSection(compact: false),
-                            const SizedBox(height: 16),
-                            _buildExportButton(compact: false),
-                          ],
+                      : Padding(
+                          padding: const EdgeInsets.only(top: 20),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: _buildVideoInfoSection(compact: false),
+                              ),
+                              const SizedBox(width: 16),
+                              SizedBox(
+                                width: 280,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildSectionHeader(
+                                      'EXPORT',
+                                      Icons.ios_share,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _buildExportButton(compact: false),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                 ),
               ],
@@ -1096,10 +1075,9 @@ class CreatePageState extends State<CreatePage>
     return Container(
       decoration: BoxDecoration(
         color: AppColors.overlay,
-        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.surfaceElevated, width: 1),
       ),
-      clipBehavior: Clip.antiAlias,
+      clipBehavior: Clip.hardEdge,
       child: _useMediaKit
           ? _buildMediaKitVideoPlayer()
           : _buildChewieVideoPlayer(),
@@ -1108,6 +1086,7 @@ class CreatePageState extends State<CreatePage>
 
   Widget _buildVideoInfoSection({bool compact = false}) {
     final infoChips = [
+      _VideoInfoChip(label: 'Photos', value: '${photoCount ?? 0}'),
       _VideoInfoChip(label: 'Resolution', value: resolution),
       _VideoInfoChip(label: 'Codec', value: _effectiveCodec.displayName),
       _VideoInfoChip(label: 'Framerate', value: '${videoFps ?? 30} FPS'),
@@ -1162,26 +1141,7 @@ class CreatePageState extends State<CreatePage>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Section Header
-        Row(
-          children: [
-            Icon(
-              Icons.movie_outlined,
-              size: 16,
-              color: AppColors.textSecondary,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              'VIDEO INFO',
-              style: TextStyle(
-                fontSize: AppTypography.xs,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
-                letterSpacing: 1.2,
-              ),
-            ),
-          ],
-        ),
+        _buildSectionHeader('VIDEO INFO', Icons.movie_outlined),
         const SizedBox(height: 8),
 
         // Info Chips
@@ -1190,6 +1150,24 @@ class CreatePageState extends State<CreatePage>
           runSpacing: 6,
           children:
               infoChips.map((chip) => _buildInfoChipWidget(chip)).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader(String text, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: AppColors.textSecondary),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: AppTypography.xs,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary,
+            letterSpacing: 1.2,
+          ),
         ),
       ],
     );
@@ -1294,6 +1272,7 @@ class CreatePageState extends State<CreatePage>
 
   Widget _buildCompactInfoButton() {
     final infoChips = [
+      _VideoInfoChip(label: 'Photos', value: '${photoCount ?? 0}'),
       _VideoInfoChip(label: 'Resolution', value: resolution),
       _VideoInfoChip(label: 'Codec', value: _effectiveCodec.displayName),
       _VideoInfoChip(label: 'Framerate', value: '${videoFps ?? 30} FPS'),
@@ -1347,7 +1326,7 @@ class CreatePageState extends State<CreatePage>
         ),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.accentDark,
-          foregroundColor: AppColors.textPrimary,
+          foregroundColor: AppColors.onAccent,
           padding: EdgeInsets.symmetric(
             vertical: 12,
             horizontal: compact ? 12 : 20,
@@ -1586,7 +1565,7 @@ class CreatePageState extends State<CreatePage>
               label: const Text('Open Gallery'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.accentDark,
-                foregroundColor: AppColors.textPrimary,
+                foregroundColor: AppColors.onAccent,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 24,
                   vertical: 12,

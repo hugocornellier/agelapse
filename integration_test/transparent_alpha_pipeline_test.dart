@@ -21,7 +21,7 @@ import 'test_utils.dart';
 /// Integration test: transparent project stabilization must preserve alpha,
 /// and the compiled video must retain a real alpha channel.
 ///
-/// Regression test for the v2.5.2 bug where `saveStabilizedImage` composited
+/// Regression test for the v2.6.0 bug where `saveStabilizedImage` composited
 /// BGRA PNGs onto black before writing to disk, destroying the alpha channel
 /// and silently breaking ProRes 4444 / VP9 transparent video export.
 ///
@@ -168,7 +168,7 @@ void main() {
 
         // ── 5. Run the real stabilization pipeline ─────────────────────
         // This is the critical path — stabilize() calls saveStabilizedImage,
-        // which is where the v2.5.2 regression lived.
+        // which is where the v2.6.0 regression lived.
         final settings = await StabilizationSettings.load(testProjectId!);
         final stabilizer =
             FaceStabilizer(testProjectId!, () {}, settings: settings);
@@ -216,7 +216,7 @@ void main() {
               'REGRESSION: stabilized PNG for a transparent project must have '
               '4 channels (BGRA). Got ${decoded.numChannels} channels. '
               'This means saveStabilizedImage composited the PNG onto black, '
-              'destroying the alpha channel. See v2.5.2 fix.',
+              'destroying the alpha channel. See v2.6.0 fix.',
         );
 
         // At least one warpAffine border pixel must have alpha < 255.

@@ -28,54 +28,37 @@
 
 **AgeLapse** automates the process of aligning face pictures and creating stabilized aging time-lapses, i.e. "photo-a-day" videos. The application runs natively on desktop (MacOS, Windows, Linux) and on mobile (iOS and Android).
 
-## Installation
+### Installation
 
 Download AgeLapse: [https://agelapse.com](https://agelapse.com)
 
-**Mobile Import Note:** To easily import a large number of photos into the mobile version, create a .zip file containing all files.
-
-## How Does It Work? 
+### How Does It Work? 
 
 AgeLapse takes a raw photo, detects a set of landmarks on the person (eyes for face), and applies affine transformations (scale, rotate, translate) so that those anchors land on fixed “goal” coordinates inside a fixed-size canvas.
 
-The face detection model used by AgeLapse is platform-dependent. On Mobile, Google MLKit is used. On MacOS, Apple Vision is used.
-
 ## What's New / Changelog
 
-### v2.5.1 (Apr 2026)
-
-#### Improvements
-- Reduced bundled FFmpeg binary size (macOS: 76 MB → 5.5 MB, Windows: 95 MB → 13 MB)
-
-#### Bug Fixes
-- Fix image preview exit button UI issue
-
-### v2.5.0 (Apr 2026)
+### v2.6.0 (Apr 2026)
 
 #### New Features
-- Light theme (auto-reads system settings OR toggle in Settings -> Appearance)
-- Video codec selection (H.264, HEVC, ProRes 422, ProRes 422 HQ, ProRes 4444, VP9)
-- Transparent video background support with ProRes 4444 and VP9 alpha
-- Blurred video background option
-- RAW image support
-- Dog and cat project types for pet timelapses
-- Linked source folders
-- Preserve original files on import (metadata, filenames, byte for byte)
-- Date stamp font size setting
-- Inspection mode for gallery and image preview (overlay stabilization grid to verify alignment)
+- Background blur zoom setting
 
 #### Improvements
-- Consolidate app colours and theme
-- Improved import flow with preview dialog and clearer date extraction
-- Reduced Android APK size
+- Major performance improvements across all platforms: 
+  - ~1.5x faster stabilization
+  - ~2-3x faster photo import 
+- Smoother, more responsive camera
+- Reduced Android binary size (~500MB -> ~350MB) by debloating and stripping FFmpeg binary to a minimal version
 
 #### Bug Fixes
-- Fixes #25: bug causing .zip exports to fail on certain devices
-- Fix photos taken before 2001 sorting incorrectly
-- Fix date stamps not syncing correctly in rare cases
-- Fix layout overflow on manual stabilization page on mobile
-- Fix theme toggle failing to open
-- Fix Cmd+A not working in file picker
+- Fix macOS release crash importing TIFF, JP2, and AVIF files
+- Fix Android JVM compatibility issues
+- Fix duplicated file extension in gallery preview info dialog
+- Fix bug affecting changing settings during active stabilization
+- Date stamps:
+  - Fix date stamp crash when compiling with hundreds of photos
+  - Fix FFmpeg drawtext font path escaping on Windows
+  - Fix drawtext date stamps not rendering (chained enable expressions)
 
 For previous releases, see the [full changelog](https://agelapse.com/docs/changelog/).
 

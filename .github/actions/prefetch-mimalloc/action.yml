@@ -1,0 +1,58 @@
+name: Prefetch mimalloc tarball
+description: >-
+  Pre-fetches the mimalloc tarball that media_kit_libs_linux downloads via
+  CMake file(DOWNLOAD), to avoid flaky transient failures. Cached by content
+  (version + MD5), so the cache never goes stale.
+inputs:
+  build-mode:
+    description: 'Flutter build mode (debug, profile, release)'
+    required: false
+    default: 'debug'
+runs:
+  using: composite
+  steps:
+    - name: Restore mimalloc tarball cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/mimalloc-prefetch
+        key: mimalloc-2.1.2-5179c8f5cf1237d2300e2d8559a7bc55
+
+    - name: Fetch mimalloc tarball if missing
+      shell: bash
+      run: |
+        set -euo pipefail
+        CACHE_DIR="$HOME/.cache/mimalloc-prefetch"
+        TARBALL="$CACHE_DIR/mimalloc-2.1.2.tar.gz"
+        EXPECTED_MD5="5179c8f5cf1237d2300e2d8559a7bc55"
+        URL="https://github.com/microsoft/mimalloc/archive/refs/tags/v2.1.2.tar.gz"
+        mkdir -p "$CACHE_DIR"
+        verify() {
+          [ -f "$TARBALL" ] && [ "$(md5sum "$TARBALL" | awk '{print $1}')" = "$EXPECTED_MD5" ]
+        }
+        if verify; then
+          echo "mimalloc tarball restored from cache."
+          exit 0
+        fi
+        rm -f "$TARBALL"
+        for attempt in 1 2 3 4 5; do
+          echo "Download attempt $attempt: $URL"
+          if curl -fLsS --retry 5 --retry-delay 2 --retry-all-errors -o "$TARBALL" "$URL" && verify; then
+            echo "mimalloc tarball downloaded and verified."
+            exit 0
+          fi
+          rm -f "$TARBALL"
+          sleep $((attempt * 3))
+        done
+        echo "::error::Failed to fetch mimalloc-2.1.2.tar.gz with matching MD5 after 5 attempts"
+        exit 1
+
+    - name: Place mimalloc tarball into Flutter build dir
+      shell: bash
+      env:
+        BUILD_MODE: ${{ inputs.build-mode }}
+      run: |
+        set -euo pipefail
+        DEST_DIR="build/linux/x64/${BUILD_MODE}"
+        mkdir -p "$DEST_DIR"
+        cp "$HOME/.cache/mimalloc-prefetch/mimalloc-2.1.2.tar.gz" "$DEST_DIR/mimalloc-2.1.2.tar.gz"
+        echo "Placed mimalloc tarball at $DEST_DIR/mimalloc-2.1.2.tar.gz"

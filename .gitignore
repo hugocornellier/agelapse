@@ -4,6 +4,7 @@
 *.swp
 .DS_Store
 .claude/commands/
+.claude/scheduled_tasks.lock
 .atom/
 .build/
 .buildlog/
