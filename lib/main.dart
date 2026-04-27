@@ -6,8 +6,10 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:window_manager/window_manager.dart';
 
+import 'dart:async';
 import 'dart:io' show Platform;
 
 import '../services/custom_font_manager.dart';
@@ -22,6 +24,7 @@ import '../theme/theme.dart';
 import '../services/database_import_ffi.dart';
 import '../utils/dir_utils.dart';
 import '../utils/platform_utils.dart';
+import '../utils/project_utils.dart';
 import '../screens/create_project_page.dart';
 import '../utils/test_mode.dart' as test_config;
 import 'constants/window_constants.dart';
@@ -51,6 +54,9 @@ Future<void> _main() async {
 
   if (isDesktop) {
     await DB.instance.createTablesIfNotExist();
+    // Purge expired Recently Deleted photos. Best-effort — must never block
+    // startup, so failures are swallowed inside the helper.
+    unawaited(ProjectUtils.purgeExpiredDeletedImages());
     // Initialize custom fonts after database is ready
     await CustomFontManager.instance.initialize();
     // Window manager setup must only run once per process. In aggregator test
@@ -69,11 +75,20 @@ Future<void> _main() async {
       final Size minSize =
           hasProjects ? kWindowMinSizeDefault : kWindowMinSizeWelcome;
 
+      String windowTitle = 'AgeLapse';
+      try {
+        final pkgInfo = await PackageInfo.fromPlatform();
+        windowTitle = 'AgeLapse v${pkgInfo.version}';
+      } catch (_) {
+        // Fall back to plain "AgeLapse" if package_info isn't available
+        // (e.g. in some test harness configurations).
+      }
+
       final options = WindowOptions(
         size: startSize,
         minimumSize: minSize,
         center: true,
-        title: 'AgeLapse v2.6.0',
+        title: windowTitle,
         titleBarStyle: hasCustomTitleBar ? TitleBarStyle.hidden : null,
       );
 
@@ -115,6 +130,9 @@ Future<void> _initializeApp() async {
   }
 
   await Future.wait(futures);
+
+  // Purge expired Recently Deleted photos in the background — never block UI.
+  unawaited(ProjectUtils.purgeExpiredDeletedImages());
 
   // Initialize custom fonts after database is ready
   await CustomFontManager.instance.initialize();

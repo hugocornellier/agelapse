@@ -232,7 +232,7 @@ class GalleryPhotoOperations {
         completedRenames.add(rename);
       }
 
-      final oldPhotoRecord = await DB.instance.getPhotoByTimestamp(
+      final oldPhotoRecord = await DB.instance.getActivePhotoByTimestamp(
         oldTimestamp,
         projectId,
       );
@@ -322,7 +322,7 @@ class GalleryPhotoOperations {
     required String timestamp,
     required int projectId,
   }) async {
-    final photoRecord = await DB.instance.getPhotoByTimestamp(
+    final photoRecord = await DB.instance.getActivePhotoByTimestamp(
       timestamp,
       projectId,
     );

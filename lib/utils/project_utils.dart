@@ -93,9 +93,49 @@ class ProjectUtils {
 
   static Future<void> deleteFile(File file) async => await file.delete();
 
+  /// The relative path to write/remove as a linked-source tombstone for
+  /// [originalInfo], or `null` when no tombstone is needed (non-linked source,
+  /// missing path, or empty/whitespace path). Centralizes the
+  /// `external_linked` + non-empty-path rule shared by [deleteImage],
+  /// [restoreImage], and the rollback in [restoreImage].
+  static String? _linkedSourceTombstonePath(
+    Map<String, dynamic>? originalInfo,
+  ) {
+    if (originalInfo?['sourceLocationType'] != 'external_linked') return null;
+    final raw = originalInfo?['sourceRelativePath'] as String?;
+    if (raw == null || raw.trim().isEmpty) return null;
+    return raw;
+  }
+
+  /// Soft-deletes a photo: it disappears from the gallery and video pipeline
+  /// but its row, files, and caches are kept so the user can restore it from
+  /// Recently Deleted. Files are purged when the retention window expires
+  /// (see [purgeExpiredDeletedImages]) or when the user picks
+  /// "Delete Forever".
+  ///
+  /// **Source-file behaviour by type:**
+  /// - `external_linked`: a tombstone is written to [deletedLinkedSourcesTable]
+  ///   before the soft-delete so the sync service will not reimport the file.
+  ///   The tombstone is removed again by [restoreImage] if the user restores.
+  /// - `direct_import`: the external source file is NOT deleted at soft-delete
+  ///   time. Deletion is deferred to [permanentlyDeleteImage]. If the user
+  ///   re-imports the same file via the picker before the retention window
+  ///   expires, the importer creates a fresh row (the soft-deleted row stays in
+  ///   Recently Deleted until it ages out; fingerprint dedup is intentionally
+  ///   skipped for picker imports to avoid confusing the user).
+  ///
+  /// The legacy hard-delete is preserved as [permanentlyDeleteImage] for
+  /// callers that explicitly want it.
   static Future<bool> deleteImage(File image, int projectId) async {
-    // Query original file info BEFORE deleting from DB
     final String timestamp = path.basenameWithoutExtension(image.path);
+    final int? parsedTs = int.tryParse(timestamp);
+    if (parsedTs == null) {
+      LogService.instance.log(
+        "Failed to soft-delete: non-numeric timestamp in path ${image.path}",
+      );
+      return false;
+    }
+
     Map<String, dynamic>? originalInfo;
     try {
       originalInfo = await DB.instance.getOriginalInfoByTimestamp(
@@ -104,32 +144,252 @@ class ProjectUtils {
       );
     } catch (_) {}
 
-    // Delete from database FIRST - this is the source of truth.
-    // If DB deletion fails, return false so the image stays in the gallery
-    // and the user can retry the deletion.
+    final String? linkedTombstonePath = _linkedSourceTombstonePath(
+      originalInfo,
+    );
+
+    // Soft-delete and (for external_linked) tombstone insert are atomic in
+    // [DB.softDeletePhoto] so the sync service can never observe a hidden
+    // photo with a missing tombstone.
     try {
-      final int rowsDeleted = await deletePhotoFromDatabaseAndReturnCount(
-        image.path,
+      final int rows = await DB.instance.softDeletePhoto(
+        parsedTs,
         projectId,
+        linkedSourceRelativePath: linkedTombstonePath,
       );
-      if (rowsDeleted == 0) {
+      if (rows == 0) {
         LogService.instance.log(
-          "Failed to delete image from database (no rows affected): ${image.path}",
+          "softDeletePhoto affected 0 rows: ${image.path}",
         );
         return false;
       }
     } catch (e) {
       LogService.instance.log(
-        "Failed to delete image from database: ${image.path}, Error: $e",
+        "Failed to soft-delete image: ${image.path}, Error: $e",
       );
       return false;
     }
 
-    // DB deletion succeeded. Now try to delete files.
-    // If file deletion fails, that's OK - orphaned files will be cleaned up
-    // during video export when we validate against the database.
+    final rowId = originalInfo?['id'];
+    if (rowId != null) {
+      try {
+        final guideSetting = await DB.instance.getSettingValueByTitle(
+          'selected_guide_photo',
+          projectId.toString(),
+        );
+        final guideId = int.tryParse(guideSetting);
+        if (guideId != null && guideId == rowId) {
+          await DB.instance.setSettingByTitle(
+            'selected_guide_photo',
+            'not set',
+            projectId.toString(),
+          );
+        }
+      } catch (e) {
+        LogService.instance.log(
+          "Failed to reset guide photo on soft-delete (non-fatal): $e",
+        );
+      }
+    }
 
-    // Delete raw thumbnail
+    // Mark the project's video stale so a subsequent stab/recompile cycle
+    // rebuilds without the deleted frame. UI callers gate recompile on
+    // `remaining >= 2`; the model layer must always set the flag so the
+    // 2→1 transition (or any non-recompiling caller) doesn't leave a stale
+    // video on disk.
+    try {
+      await DB.instance.setNewVideoNeeded(projectId);
+    } catch (_) {}
+
+    return true;
+  }
+
+  /// Restores a previously soft-deleted photo back to the active gallery.
+  /// Invalidates any cached transform so the next video compile picks up
+  /// the current settings, and marks the project's video as stale.
+  ///
+  /// Flips the soft-delete flag first, then verifies the raw file exists on
+  /// disk. If the file is missing the DB update is rolled back via
+  /// softDeletePhoto and [RestoreOutcome.rawFileMissing] is returned so
+  /// callers can surface the error.
+  ///
+  /// [timestamp] is the photo's timestamp (ms-since-epoch as string).
+  static Future<RestoreOutcome> restoreImage(
+    String timestamp,
+    int projectId,
+  ) async {
+    final int? parsedTs = int.tryParse(timestamp);
+    if (parsedTs == null) return RestoreOutcome.dbFailure;
+
+    Map<String, dynamic>? originalInfo;
+    try {
+      originalInfo = await DB.instance.getOriginalInfoByTimestamp(
+        timestamp,
+        projectId,
+      );
+    } catch (_) {}
+
+    final String? fileExtension = originalInfo?['fileExtension'] as String?;
+    final String? linkedTombstonePath = _linkedSourceTombstonePath(
+      originalInfo,
+    );
+    final int? originalDeletedAt = originalInfo?['deletedAt'] as int?;
+
+    try {
+      final int rows = await DB.instance.restorePhotoFromTrash(
+        parsedTs,
+        projectId,
+        linkedSourceRelativePath: linkedTombstonePath,
+      );
+      if (rows == 0) return RestoreOutcome.rowNotTrashed;
+    } catch (e) {
+      LogService.instance.log(
+        "Failed to restore photo $timestamp in project $projectId: $e",
+      );
+      return RestoreOutcome.dbFailure;
+    }
+
+    if (fileExtension != null && fileExtension.isNotEmpty) {
+      try {
+        final String rawPath =
+            await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
+          timestamp,
+          projectId,
+          fileExtension: fileExtension,
+        );
+        if (!await File(rawPath).exists()) {
+          LogService.instance.log(
+            "restoreImage: raw file missing after restore for $timestamp "
+            "(project=$projectId path=$rawPath); rolling back",
+          );
+          try {
+            await DB.instance.softDeletePhoto(
+              parsedTs,
+              projectId,
+              linkedSourceRelativePath: linkedTombstonePath,
+              deletedAt: originalDeletedAt,
+            );
+          } catch (e) {
+            LogService.instance.log(
+              "restoreImage: rollback softDelete also failed: $e",
+            );
+          }
+          return RestoreOutcome.rawFileMissing;
+        }
+      } catch (e) {
+        LogService.instance.log(
+          "restoreImage: post-update file-existence check failed for $timestamp: $e",
+        );
+        // Fall through — same rationale as before: don't block on path-resolution oddities.
+      }
+    }
+
+    // Invalidate transform cache so the photo re-stabilizes against current
+    // settings. Face-detection cache is intentionally left intact (faces
+    // don't change with settings; saves an expensive ML pass).
+    try {
+      final fingerprint = await DB.instance.getPhotoColumnValueByTimestamp(
+        timestamp,
+        'fingerprint',
+        projectId,
+      ) as String?;
+      if (fingerprint != null && fingerprint.isNotEmpty) {
+        await DB.instance
+            .clearTransformCacheForFingerprint(projectId, fingerprint);
+      }
+    } catch (e) {
+      LogService.instance.log(
+        "Failed to clear transform cache on restore (non-fatal): $e",
+      );
+    }
+
+    try {
+      await DB.instance.setNewVideoNeeded(projectId);
+    } catch (_) {}
+
+    return RestoreOutcome.success;
+  }
+
+  /// Permanently removes a photo: hard-deletes the row and cascades file
+  /// cleanup (raw, stabilized, thumbnails). Used by "Delete Forever" in the
+  /// Recently Deleted screen and by the launch-time purge.
+  ///
+  /// Returns one of [PermDeleteOutcome]. The previous `bool` return type
+  /// (always `true` on file-delete failure) silently leaked sensitive photo
+  /// bytes when a file was locked or unlinkable.
+  ///
+  /// [imagePath] is the raw photo file path; it is used to derive the
+  /// timestamp and stabilized companion paths even if the file no longer
+  /// exists on disk.
+  static Future<PermDeleteOutcome> permanentlyDeleteImage(
+    File image,
+    int projectId,
+  ) async {
+    final String timestamp = path.basenameWithoutExtension(image.path);
+    final int? parsedTs = int.tryParse(timestamp);
+    if (parsedTs == null) {
+      LogService.instance.log(
+        "permanentlyDeleteImage: non-numeric timestamp ${image.path}",
+      );
+      return PermDeleteOutcome.dbFailure;
+    }
+
+    Map<String, dynamic>? originalInfo;
+    try {
+      originalInfo = await DB.instance.getOriginalInfoByTimestamp(
+        timestamp,
+        projectId,
+      );
+    } catch (_) {}
+
+    // Hard-delete only if the row is currently soft-deleted. Defends against
+    // a stale "Delete Forever" tap (UI snapshot vs. concurrent restore) and
+    // against a future caller wiring this method to an active photo.
+    try {
+      final int rowsDeleted =
+          await DB.instance.hardDeletePhotoIfTrashed(parsedTs, projectId);
+      if (rowsDeleted == 0) {
+        LogService.instance.log(
+          "permanentlyDeleteImage: no trashed row for ${image.path} "
+          "(restored or already purged) — aborting file cleanup",
+        );
+        return PermDeleteOutcome.rowAlreadyGone;
+      }
+    } catch (e) {
+      LogService.instance.log(
+        "permanentlyDeleteImage DB failure: ${image.path}, Error: $e",
+      );
+      return PermDeleteOutcome.dbFailure;
+    }
+
+    // Cache cleanup. Done after the row is gone so we never clear caches for
+    // a photo that survived the delete guard above.
+    final fingerprint = originalInfo?['fingerprint'] as String?;
+    try {
+      await DB.instance.clearFaceDetectionCacheForPhoto(timestamp, projectId);
+    } catch (e) {
+      LogService.instance.log(
+        "Failed to clear face-detection cache (non-fatal): $e",
+      );
+    }
+    if (fingerprint != null && fingerprint.isNotEmpty) {
+      try {
+        await DB.instance
+            .clearTransformCacheForFingerprint(projectId, fingerprint);
+      } catch (e) {
+        LogService.instance.log(
+          "Failed to clear transform cache (non-fatal): $e",
+        );
+      }
+    }
+
+    // DB row is gone. Now delete the on-disk files. We track raw + source
+    // file deletion explicitly because those hold the user's photo bytes —
+    // silently failing them is a privacy regression on a "Delete Forever"
+    // action. Thumbnail/stabilized leftovers are recoverable garbage and
+    // do NOT taint the outcome (they get cleaned up during video export).
+    bool sensitiveFilesAllGone = true;
+
     try {
       final String thumbnailDir = await DirUtils.getThumbnailDirPath(projectId);
       final String rawThumbPath = path.join(thumbnailDir, '$timestamp.jpg');
@@ -148,7 +408,6 @@ class ProjectUtils {
       );
     }
 
-    // Delete stabilized thumbnails (both orientations)
     try {
       final String stabDirPath = await DirUtils.getStabilizedDirPath(projectId);
       for (final orientation in DirUtils.orientations) {
@@ -169,17 +428,25 @@ class ProjectUtils {
     }
 
     try {
-      await deleteFile(image);
+      if (await image.exists()) {
+        await deleteFile(image);
+        if (await image.exists()) {
+          sensitiveFilesAllGone = false;
+          LogService.instance.log(
+            "Raw image still on disk after delete: ${image.path}",
+          );
+        }
+      }
     } catch (e) {
+      sensitiveFilesAllGone = false;
       LogService.instance.log(
-        "Failed to delete raw image file (will be cleaned up later): ${image.path}, Error: $e",
+        "Failed to delete raw image file: ${image.path}, Error: $e",
       );
     }
 
     final sourceLocationType = originalInfo?['sourceLocationType'] as String?;
     final sourceRelativePath = originalInfo?['sourceRelativePath'] as String?;
 
-    // For direct_import photos with a known source path, delete the source file.
     if (sourceLocationType == 'direct_import' &&
         sourceRelativePath != null &&
         sourceRelativePath.trim().isNotEmpty) {
@@ -194,18 +461,45 @@ class ProjectUtils {
               "Blocked external file deletion outside linked root: $externalPath",
             );
           } else {
-            try {
-              final File externalFile = File(externalPath);
-              if (await externalFile.exists()) {
-                await externalFile.delete();
+            // Another active row in *this project* may still reference this
+            // file (rare — happens after a re-import + timestamp bump). Skip
+            // the file delete in that case so we don't orphan the surviving
+            // row. Cross-project ref-counting was removed because two projects
+            // can be linked to *different* external roots that happen to
+            // share the same relative path — counting those would falsely
+            // block deletion.
+            final int otherRefs =
+                await DB.instance.countActivePhotosBySourceRelativePath(
+              projectId,
+              sourceRelativePath,
+            );
+            if (otherRefs > 0) {
+              LogService.instance.log(
+                "Skipping linked source delete; $otherRefs active row(s) "
+                "still reference $sourceRelativePath",
+              );
+            } else {
+              try {
+                final File externalFile = File(externalPath);
+                if (await externalFile.exists()) {
+                  await externalFile.delete();
+                  if (await externalFile.exists()) {
+                    sensitiveFilesAllGone = false;
+                    LogService.instance.log(
+                      "Linked source file still on disk after delete: $externalPath",
+                    );
+                  } else {
+                    LogService.instance.log(
+                      "Deleted linked source file: $externalPath",
+                    );
+                  }
+                }
+              } catch (e) {
+                sensitiveFilesAllGone = false;
                 LogService.instance.log(
-                  "Deleted linked source file: $externalPath",
+                  "Failed to delete linked source file $externalPath: $e",
                 );
               }
-            } catch (e) {
-              LogService.instance.log(
-                "Failed to delete linked source file $externalPath: $e",
-              );
             }
           }
         }
@@ -216,15 +510,14 @@ class ProjectUtils {
       }
     }
 
-    // For external_linked photos, record a tombstone so the sync service
-    // does not reimport this file the next time the folder is scanned.
-    if (sourceLocationType == 'external_linked' &&
-        sourceRelativePath != null &&
-        sourceRelativePath.trim().isNotEmpty) {
+    final String? linkedTombstonePath = _linkedSourceTombstonePath(
+      originalInfo,
+    );
+    if (linkedTombstonePath != null) {
       try {
         await DB.instance.insertDeletedLinkedSource(
           projectId,
-          sourceRelativePath,
+          linkedTombstonePath,
         );
       } catch (e) {
         LogService.instance.log(
@@ -233,7 +526,80 @@ class ProjectUtils {
       }
     }
 
-    return true;
+    try {
+      await DB.instance.setNewVideoNeeded(projectId);
+    } catch (_) {}
+
+    return sensitiveFilesAllGone
+        ? PermDeleteOutcome.success
+        : PermDeleteOutcome.filesPartiallyRemain;
+  }
+
+  /// Deletes any soft-deleted photos older than [retentionDays] across every
+  /// project. Called once at app launch — the only "scheduler" that works
+  /// uniformly across iOS/Android/macOS/Windows/Linux without OS-specific
+  /// background-task wiring.
+  ///
+  /// Returns the number of photos permanently removed.
+  static Future<int> purgeExpiredDeletedImages({
+    int retentionDays = DB.recentlyDeletedRetentionDays,
+  }) async {
+    final int cutoff = DateTime.now()
+        .subtract(Duration(days: retentionDays))
+        .millisecondsSinceEpoch;
+
+    List<Map<String, dynamic>> expired;
+    try {
+      expired = await DB.instance.getExpiredDeletedPhotos(cutoff);
+    } catch (e) {
+      LogService.instance.log('purgeExpiredDeletedImages: query failed: $e');
+      return 0;
+    }
+    if (expired.isEmpty) return 0;
+
+    int purged = 0;
+    int leftoverFiles = 0;
+    for (final row in expired) {
+      final String? timestamp = row['timestamp'] as String?;
+      final int? projectId = row['projectID'] as int?;
+      final String? fileExtension = row['fileExtension'] as String?;
+      if (timestamp == null || projectId == null || fileExtension == null) {
+        continue;
+      }
+      try {
+        final String rawPath =
+            await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
+          timestamp,
+          projectId,
+          fileExtension: fileExtension,
+        );
+        final outcome = await permanentlyDeleteImage(File(rawPath), projectId);
+        if (outcome == PermDeleteOutcome.success ||
+            outcome == PermDeleteOutcome.filesPartiallyRemain) {
+          // The DB row is gone in both cases. The purge counts both as
+          // "purged" because we won't see this row again next launch.
+          purged++;
+          if (outcome == PermDeleteOutcome.filesPartiallyRemain) {
+            leftoverFiles++;
+          }
+        }
+      } catch (e) {
+        LogService.instance.log(
+          'purgeExpiredDeletedImages: failed for ts=$timestamp project=$projectId: $e',
+        );
+      }
+    }
+
+    if (purged > 0) {
+      final tail = leftoverFiles > 0
+          ? ' ($leftoverFiles photo(s) left bytes on disk — see prior logs)'
+          : '';
+      LogService.instance.log(
+        'purgeExpiredDeletedImages: hard-deleted $purged photos '
+        '(retention=${retentionDays}d)$tail',
+      );
+    }
+    return purged;
   }
 
   static Future<ui.Image> loadImage(String assetPath) async {
@@ -467,4 +833,26 @@ class ProjectUtils {
 
   static DateTime _dateOnlyUtc(DateTime dateTime) =>
       DateTime.utc(dateTime.year, dateTime.month, dateTime.day);
+}
+
+/// Outcome of [ProjectUtils.restoreImage]. Distinguishes the "row no longer
+/// trashed" case (already restored elsewhere) from the "raw file missing on
+/// disk" case (the photo's bytes are gone, so restoring would resurrect a
+/// broken row). UI callers should surface [rawFileMissing] to the user.
+///
+/// [success] also covers the no-op case (already active) — that is
+/// indistinguishable from a successful restore in the storage layer.
+enum RestoreOutcome { success, rowNotTrashed, rawFileMissing, dbFailure }
+
+/// Outcome of [ProjectUtils.permanentlyDeleteImage]. The DB row is the source
+/// of truth, so [success] / [filesPartiallyRemain] both mean the row is gone;
+/// the difference is whether every on-disk file was successfully removed.
+/// UI callers should treat [filesPartiallyRemain] as a partial failure and
+/// surface it (the user explicitly asked for "Delete Forever" — files
+/// silently lingering is a privacy violation).
+enum PermDeleteOutcome {
+  success,
+  filesPartiallyRemain,
+  rowAlreadyGone,
+  dbFailure
 }

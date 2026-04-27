@@ -34,8 +34,23 @@ class DB {
   static const String faceDetectionCacheTable = "FaceDetectionCache";
   static const String transformCacheTable = "TransformCache";
 
+  /// Read-only SQL view exposing only active (non-soft-deleted) rows in
+  /// [photoTable]. Every read query against photos that should hide trashed
+  /// rows targets this view instead of [photoTable] — so forgetting the
+  /// `deletedAt IS NULL` predicate is no longer possible at the call site.
+  ///
+  /// Writes (INSERT / UPDATE / DELETE) and trash-management reads
+  /// (`deletedAt IS NOT NULL`) stay on [photoTable] directly. SQLite views
+  /// are read-only by default, so any accidental write attempt fails loudly
+  /// at the storage layer rather than silently corrupting state.
+  static const String photoActiveView = "photos_active";
+
   static const String _photoWhereClause = 'timestamp = ? AND projectID = ?';
   static const String _orderByTimestamp = 'CAST(timestamp AS INTEGER)';
+
+  /// Default retention window for soft-deleted photos before permanent
+  /// purge (mirrors iOS Photos "Recently Deleted").
+  static const int recentlyDeletedRetentionDays = 30;
 
   DB._internal();
 
@@ -96,7 +111,8 @@ class DB {
           "noFacesFound INTEGER NOT NULL, "
           "favorite INTEGER NOT NULL, "
           "captureOffsetMinutes INTEGER, "
-          "tempPath TEXT"
+          "tempPath TEXT, "
+          "deletedAt INTEGER"
           ");",
       settingTable: "CREATE TABLE $settingTable("
           "id INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -205,6 +221,18 @@ class DB {
       'CREATE INDEX IF NOT EXISTS idx_photos_project_ts ON $photoTable(projectID, timestamp);',
     );
     await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_photos_project_deleted '
+      'ON $photoTable(projectID, deletedAt);',
+    );
+    // Partial index used by the launch-time global purge, which filters by
+    // deletedAt without a leading projectID (so the composite above can't
+    // serve it). The partial predicate keeps the index tiny — it only stores
+    // rows currently in Recently Deleted.
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_photos_deleted_at '
+      'ON $photoTable(deletedAt) WHERE deletedAt IS NOT NULL;',
+    );
+    await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_photos_project_orientation ON $photoTable(projectID, originalOrientation);',
     );
     await db.execute(
@@ -219,6 +247,15 @@ class DB {
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_photos_fingerprint '
       'ON $photoTable(projectID, fingerprint) WHERE fingerprint IS NOT NULL;',
+    );
+
+    // Active-photos view. SQLite flattens this trivial WHERE-only view into
+    // the outer query so the underlying indexes on [photoTable] are still
+    // selected (verify with `EXPLAIN QUERY PLAN` if a future change adds
+    // aggregates / GROUP BY / DISTINCT — those would defeat flattening).
+    await db.execute(
+      'CREATE VIEW IF NOT EXISTS $photoActiveView AS '
+      'SELECT * FROM $photoTable WHERE deletedAt IS NULL;',
     );
 
     await db.execute(
@@ -575,6 +612,22 @@ class DB {
     return results.isNotEmpty ? results.first : null;
   }
 
+  /// Active-only variant of [getPhotoById]. Returns `null` when the row is
+  /// soft-deleted, mirroring how the gallery and stabilizer should see it.
+  Future<Map<String, dynamic>?> getActivePhotoById(
+    String id,
+    int projectId,
+  ) async {
+    final db = await database;
+    final results = await db.query(
+      photoActiveView,
+      where: 'id = ? AND projectID = ?',
+      whereArgs: [id, projectId],
+      limit: 1,
+    );
+    return results.isNotEmpty ? results.first : null;
+  }
+
   String getNotifDefault() {
     final DateTime fivePM = NotificationUtil.getFivePMLocalTime();
     return fivePM.millisecondsSinceEpoch.toString();
@@ -688,18 +741,24 @@ class DB {
     });
   }
 
-  /// Looks up a photo in [projectId] whose stored `fingerprint` exactly matches
-  /// [fingerprint]. Returns `null` when no row matches, including when no rows
-  /// carry a fingerprint (legacy / pre-migration). Callers MUST treat a
+  /// Looks up an *active* photo in [projectId] whose stored `fingerprint`
+  /// exactly matches [fingerprint]. Returns `null` when no row matches,
+  /// including when no rows carry a fingerprint (legacy / pre-migration) and
+  /// when the only matching row is soft-deleted. Callers MUST treat a
   /// non-null return as a confirmed duplicate of the source file — the
   /// fingerprint comparison is the whole check.
+  ///
+  /// Soft-deleted rows are intentionally excluded so re-importing a file the
+  /// user previously trashed creates a fresh active row, leaving the trashed
+  /// row in Recently Deleted to age out. This matches the contract documented
+  /// on [ProjectUtils.deleteImage] for `direct_import` re-imports.
   Future<Map<String, dynamic>?> findPhotoByFingerprint(
     int projectId,
     String fingerprint,
   ) async {
     final db = await database;
     final rows = await db.query(
-      photoTable,
+      photoActiveView,
       where: 'projectID = ? AND fingerprint = ?',
       whereArgs: [projectId, fingerprint],
       limit: 1,
@@ -748,6 +807,10 @@ class DB {
       'stabLastError': 'TEXT',
       'stabLastAttemptAt': 'INTEGER',
       'fingerprint': 'TEXT',
+      // Soft-delete: NULL = active, INTEGER = ms-since-epoch when deleted.
+      // Filtered out of all user-facing queries; purged after
+      // [recentlyDeletedRetentionDays] (or per-setting override).
+      'deletedAt': 'INTEGER',
     };
 
     for (final entry in toAdd.entries) {
@@ -844,12 +907,211 @@ class DB {
     );
   }
 
+  /// Hard-deletes a photo row. Used by the project-folder sync service
+  /// (when an external linked file vanishes) and by [permanentlyDeletePhoto]
+  /// after the recently-deleted retention window expires.
   Future<int> deletePhoto(int timestamp, int projectId) async {
     final db = await database;
     return await db.delete(
       photoTable,
       where: _photoWhereClause,
       whereArgs: [timestamp, projectId],
+    );
+  }
+
+  /// Hard-deletes a photo row only if it is currently soft-deleted. Used by
+  /// "Delete Forever" and the launch-time purge to guarantee that a row that
+  /// has been restored (e.g. via another route) cannot be obliterated by a
+  /// stale UI snapshot or a race with the purge.
+  Future<int> hardDeletePhotoIfTrashed(int timestamp, int projectId) async {
+    final db = await database;
+    return await db.delete(
+      photoTable,
+      where: '$_photoWhereClause AND deletedAt IS NOT NULL',
+      whereArgs: [timestamp, projectId],
+    );
+  }
+
+  /// Counts active rows in [projectId] that reference [sourceRelativePath].
+  ///
+  /// Scoped per-project so two projects linked to *different* external roots
+  /// that happen to contain the same relative path (e.g. `IMG_001.jpg` in
+  /// each) don't false-positive each other and block source-file deletion.
+  /// Same-project ref-counting still catches the case where a single project
+  /// has multiple rows pointing at one file (rare, but possible via
+  /// re-import + timestamp bump).
+  Future<int> countActivePhotosBySourceRelativePath(
+    int projectId,
+    String sourceRelativePath,
+  ) async {
+    final db = await database;
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM $photoActiveView '
+      'WHERE projectID = ? AND sourceRelativePath = ?',
+      [projectId, sourceRelativePath],
+    );
+    return result.first['count'] as int? ?? 0;
+  }
+
+  /// Removes face-detection cache rows for the given (timestamp, project)
+  /// across all model versions / orientations / face indices. Called from
+  /// [permanentlyDeleteImage] so caches don't outlive the photo row.
+  Future<int> clearFaceDetectionCacheForPhoto(
+    String timestamp,
+    int projectId,
+  ) async {
+    final db = await database;
+    return await db.delete(
+      faceDetectionCacheTable,
+      where: 'timestamp = ? AND projectID = ?',
+      whereArgs: [timestamp, projectId],
+    );
+  }
+
+  /// Marks a photo as deleted without removing the row. The photo is hidden
+  /// from all user-facing queries and from the video pipeline, but its files,
+  /// face-detection cache, and transform cache remain so a fast restore is
+  /// possible. Returns the number of rows affected.
+  ///
+  /// If [linkedSourceRelativePath] is non-null and non-empty, the linked-
+  /// source tombstone is inserted in the *same transaction* so the sync
+  /// service can never observe a state where the photo is hidden but the
+  /// tombstone is missing (which would re-import the file on the next pass).
+  ///
+  /// [deletedAt] overrides the timestamp written to both the photo row and the
+  /// tombstone. The rollback path in restoreImage passes the original value so
+  /// the 30-day retention timer is preserved rather than reset.
+  Future<int> softDeletePhoto(
+    int timestamp,
+    int projectId, {
+    String? linkedSourceRelativePath,
+    int? deletedAt,
+  }) async {
+    final db = await database;
+    final int effectiveDeletedAt =
+        deletedAt ?? DateTime.now().millisecondsSinceEpoch;
+    int rows = 0;
+    await db.transaction((txn) async {
+      rows = await txn.update(
+        photoTable,
+        {'deletedAt': effectiveDeletedAt},
+        // 'deletedAt IS NULL' guard ensures the UPDATE is idempotent — a
+        // soft-delete on an already-trashed row is a no-op and won't reset
+        // the retention timer. SQLite views are read-only so this UPDATE
+        // can't go through [photoActiveView].
+        where: '$_photoWhereClause AND deletedAt IS NULL',
+        whereArgs: [timestamp, projectId],
+      );
+      if (rows > 0 &&
+          linkedSourceRelativePath != null &&
+          linkedSourceRelativePath.trim().isNotEmpty) {
+        await txn.insert(
+          deletedLinkedSourcesTable,
+          {
+            'projectID': projectId,
+            'sourceRelativePath': linkedSourceRelativePath,
+            'deletedAt': effectiveDeletedAt,
+          },
+          // Ignore (not replace) so a stale tombstone from a prior failed flow keeps
+          // its original deletedAt — replacing would reset retention and delay the
+          // launch-time purge.
+          conflictAlgorithm: ConflictAlgorithm.ignore,
+        );
+      }
+    });
+    return rows;
+  }
+
+  /// Clears the [deletedAt] flag, returning the photo to the active gallery.
+  ///
+  /// If [linkedSourceRelativePath] is non-null and non-empty, the linked-
+  /// source tombstone is removed in the *same transaction* so the sync
+  /// service can't see a restored row that's still tombstoned (which would
+  /// silently block any future re-add of the file).
+  Future<int> restorePhotoFromTrash(
+    int timestamp,
+    int projectId, {
+    String? linkedSourceRelativePath,
+  }) async {
+    final db = await database;
+    int rows = 0;
+    await db.transaction((txn) async {
+      rows = await txn.update(
+        photoTable,
+        {'deletedAt': null},
+        where: '$_photoWhereClause AND deletedAt IS NOT NULL',
+        whereArgs: [timestamp, projectId],
+      );
+      if (rows > 0 &&
+          linkedSourceRelativePath != null &&
+          linkedSourceRelativePath.trim().isNotEmpty) {
+        await txn.delete(
+          deletedLinkedSourcesTable,
+          where: 'projectID = ? AND sourceRelativePath = ?',
+          whereArgs: [projectId, linkedSourceRelativePath],
+        );
+      }
+    });
+    return rows;
+  }
+
+  /// Returns soft-deleted photos for a project, newest-deleted first.
+  ///
+  /// Selects only the columns needed by the Recently Deleted page and the
+  /// launch-time purge. In particular `faceEmbedding` (BLOB), the manual
+  /// stabilization offsets, and the bounding-box columns are excluded so a
+  /// project with thousands of trashed rows doesn't pull tens of MB into
+  /// memory.
+  Future<List<Map<String, dynamic>>> getRecentlyDeletedPhotosByProjectID(
+    int projectId,
+  ) async {
+    final db = await database;
+    return await db.query(
+      photoTable,
+      columns: _recentlyDeletedColumns,
+      where: 'projectID = ? AND deletedAt IS NOT NULL',
+      whereArgs: [projectId],
+      orderBy: 'deletedAt DESC',
+    );
+  }
+
+  static const List<String> _recentlyDeletedColumns = <String>[
+    'id',
+    'timestamp',
+    'projectID',
+    'fileExtension',
+    'deletedAt',
+    'sourceLocationType',
+    'sourceRelativePath',
+    'sourceFilename',
+    'originalFilename',
+    'fingerprint',
+  ];
+
+  Future<int> getRecentlyDeletedCountByProjectID(int projectId) async {
+    final db = await database;
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM $photoTable '
+      'WHERE projectID = ? AND deletedAt IS NOT NULL',
+      [projectId],
+    );
+    return result.first['count'] as int? ?? 0;
+  }
+
+  /// Returns all photos whose [deletedAt] is older than the given cutoff
+  /// (ms since epoch), across every project. Used by the launch-time purge.
+  /// Selects only the columns the purge actually needs (timestamp, projectID,
+  /// fileExtension) so a long-running install with many expired rows doesn't
+  /// pull face-embedding BLOBs into memory.
+  Future<List<Map<String, dynamic>>> getExpiredDeletedPhotos(
+    int cutoffEpochMs,
+  ) async {
+    final db = await database;
+    return await db.query(
+      photoTable,
+      columns: const ['timestamp', 'projectID', 'fileExtension'],
+      where: 'deletedAt IS NOT NULL AND deletedAt < ?',
+      whereArgs: [cutoffEpochMs],
     );
   }
 
@@ -896,7 +1158,7 @@ class DB {
         COUNT(*) AS totalCount,
         SUM(CASE WHEN originalOrientation = 'portrait' THEN 1 ELSE 0 END) AS portraitCount,
         SUM(CASE WHEN originalOrientation = 'landscape' THEN 1 ELSE 0 END) AS landscapeCount
-      FROM $photoTable
+      FROM $photoActiveView
       WHERE projectID = ? AND originalOrientation IS NOT NULL
     ''',
       [projectId],
@@ -980,12 +1242,16 @@ class DB {
         [timestamp, projectId],
         (r) => r,
         columns: [
+          'id',
           'timestamp',
           'fileExtension',
           'originalFilename',
           'sourceFilename',
           'sourceRelativePath',
           'sourceLocationType',
+          // Needed by permanentlyDeleteImage to clear the transform cache.
+          'fingerprint',
+          'deletedAt',
         ],
       );
 
@@ -1034,7 +1300,7 @@ class DB {
     int projectId,
   ) =>
       _querySingle(
-          photoTable,
+          photoActiveView,
           'sourceRelativePath = ? AND projectID = ?',
           [
             relativePath,
@@ -1048,7 +1314,7 @@ class DB {
   ) async {
     final db = await database;
     return db.query(
-      photoTable,
+      photoActiveView,
       where: 'projectID = ? AND sourceLocationType = ?',
       whereArgs: [projectId, sourceLocationType],
     );
@@ -1090,7 +1356,7 @@ class DB {
       where.write(' AND sourceRelativePath IS NULL');
     }
     return db.query(
-      photoTable,
+      photoActiveView,
       where: where.toString(),
       whereArgs: [projectId, imageLength],
     );
@@ -1104,7 +1370,7 @@ class DB {
     final db = await database;
     final String stabilizedColumn = getStabilizedColumn(projectOrientation);
     return await db.query(
-      photoTable,
+      photoActiveView,
       where:
           '$stabilizedColumn = ? AND noFacesFound = ? AND stabFailed = ? AND projectID = ? AND stabAttempts < ?',
       whereArgs: [0, 0, 0, projectId, maxAttempts],
@@ -1192,7 +1458,7 @@ class DB {
     );
     final String stabilizedColumn = getStabilizedColumn(projectOrientation);
     return await db.query(
-      photoTable,
+      photoActiveView,
       where:
           '$stabilizedColumn = ? AND projectID = ? AND ${stabilizedColumn}OffsetX = ?',
       whereArgs: [1, projectId, offsetX.toString()],
@@ -1275,7 +1541,7 @@ class DB {
     final results = await db.rawQuery(
       '''
       SELECT timestamp, faceEmbedding
-      FROM $photoTable
+      FROM $photoActiveView
       WHERE projectID = ?
         AND faceCount = 1
         AND faceEmbedding IS NOT NULL
@@ -1317,6 +1583,9 @@ class DB {
     );
   }
 
+  /// Includes soft-deleted rows. The (timestamp, projectID) pair is also the
+  /// raw-file slot identifier on disk, so importers and renamers need to know
+  /// whether the slot is taken regardless of trash state.
   Future<bool> doesPhotoExistByTimestamp(
     String timestamp,
     int projectId,
@@ -1329,10 +1598,10 @@ class DB {
       whereArgs: [timestamp, projectId],
       limit: 1,
     );
-
     return results.isNotEmpty;
   }
 
+  /// Includes soft-deleted rows (see [doesPhotoExistByTimestamp]).
   Future<List<Map<String, dynamic>>> getPhotosByTimestamp(
     String timestamp,
     int projectId,
@@ -1345,21 +1614,37 @@ class DB {
     );
   }
 
+  /// Includes soft-deleted rows. Use [getActivePhotoByTimestamp] from
+  /// gallery / preview / stabilizer code paths that should never see trashed
+  /// rows.
   Future<Map<String, dynamic>?> getPhotoByTimestamp(
     String timestamp,
     int projectId,
   ) async {
-    List<Map<String, dynamic>> photos = await getPhotosByTimestamp(
-      timestamp,
-      projectId,
-    );
+    final photos = await getPhotosByTimestamp(timestamp, projectId);
     return photos.firstOrNull;
+  }
+
+  /// Active-only variant of [getPhotoByTimestamp]. Returns `null` when the
+  /// row is soft-deleted.
+  Future<Map<String, dynamic>?> getActivePhotoByTimestamp(
+    String timestamp,
+    int projectId,
+  ) async {
+    final db = await database;
+    final results = await db.query(
+      photoActiveView,
+      where: _photoWhereClause,
+      whereArgs: [timestamp, projectId],
+      limit: 1,
+    );
+    return results.isEmpty ? null : results.first;
   }
 
   Future<List<Map<String, dynamic>>> getPhotosByProjectID(int projectID) async {
     final db = await database;
     return await db.query(
-      photoTable,
+      photoActiveView,
       where: 'projectID = ?',
       whereArgs: [projectID],
     );
@@ -1396,7 +1681,7 @@ class DB {
   Future<int> getPhotoCountByProjectID(int projectId) async {
     final db = await database;
     final result = await db.rawQuery(
-      'SELECT COUNT(*) as count FROM $photoTable WHERE projectID = ?',
+      'SELECT COUNT(*) as count FROM $photoActiveView WHERE projectID = ?',
       [projectId],
     );
     return result.first['count'] as int? ?? 0;
@@ -1406,7 +1691,7 @@ class DB {
     final db = await database;
 
     final List<Map<String, dynamic>> photos = await db.query(
-      photoTable,
+      photoActiveView,
       columns: ['timestamp', 'fileExtension'],
       where: 'projectID = ?',
       whereArgs: [projectId],
@@ -1434,7 +1719,7 @@ class DB {
     final db = await database;
     final String stabilizedColumn = getStabilizedColumn(projectOrientation);
     return await db.query(
-      photoTable,
+      photoActiveView,
       where: '$stabilizedColumn = ? AND projectID = ?',
       whereArgs: [1, projectId],
     );
@@ -1450,7 +1735,7 @@ class DB {
     final db = await database;
     final String stabilizedColumn = getStabilizedColumn(projectOrientation);
     return await db.query(
-      photoTable,
+      photoActiveView,
       where:
           '$stabilizedColumn = ? AND projectID = ? AND ${stabilizedColumn}OffsetX != ?',
       whereArgs: [1, projectId, currentOffsetX],
@@ -1465,7 +1750,7 @@ class DB {
     final String stabilizedColumn = getStabilizedColumn(projectOrientation);
 
     return await db.query(
-      photoTable,
+      photoActiveView,
       columns: ['timestamp', 'fileExtension'],
       where:
           '($stabilizedColumn = ? OR stabFailed = ? OR noFacesFound = ?) AND projectID = ?',
@@ -1519,7 +1804,8 @@ class DB {
     final String stabilizedColumn = getStabilizedColumn(projectOrientation);
 
     final result = await db.rawQuery(
-      'SELECT COUNT(*) FROM $photoTable WHERE $stabilizedColumn = 1 AND projectID = ?',
+      'SELECT COUNT(*) FROM $photoActiveView '
+      'WHERE $stabilizedColumn = 1 AND projectID = ?',
       [projectId],
     );
 
@@ -1542,7 +1828,7 @@ class DB {
   ) async {
     final db = await database;
     return await db.query(
-      photoTable,
+      photoActiveView,
       where: 'projectID = ?',
       whereArgs: [projectID],
       orderBy: '$_orderByTimestamp DESC',
@@ -1601,7 +1887,7 @@ class DB {
 
   Future<String?> getEarliestPhotoTimestamp(int projectId) =>
       _queryFirstByOrder(
-        photoTable,
+        photoActiveView,
         'projectID = ?',
         [projectId],
         '$_orderByTimestamp ASC',
@@ -1609,7 +1895,7 @@ class DB {
       );
 
   Future<String?> getLatestPhotoTimestamp(int projectId) => _queryFirstByOrder(
-        photoTable,
+        photoActiveView,
         'projectID = ?',
         [projectId],
         '$_orderByTimestamp DESC',
@@ -1781,6 +2067,20 @@ class DB {
       limit: 1,
     );
     return results.isNotEmpty;
+  }
+
+  /// Removes the tombstone for a linked source that has been restored, allowing
+  /// the sync service to reimport it if it reappears.
+  Future<void> deleteLinkedSourceTombstone(
+    int projectId,
+    String sourceRelativePath,
+  ) async {
+    final db = await database;
+    await db.delete(
+      deletedLinkedSourcesTable,
+      where: 'projectID = ? AND sourceRelativePath = ?',
+      whereArgs: [projectId, sourceRelativePath],
+    );
   }
 
   /* ┌──────────────────────────────┐

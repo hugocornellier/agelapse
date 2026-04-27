@@ -91,7 +91,10 @@ class ThumbnailStatusHelper {
     // 4. Check DB for failure flags (optional)
     if (checkDbFlags) {
       final String timestamp = path.basenameWithoutExtension(thumbnailPath);
-      final photo = await DB.instance.getPhotoByTimestamp(timestamp, projectId);
+      final photo = await DB.instance.getActivePhotoByTimestamp(
+        timestamp,
+        projectId,
+      );
       if (photo != null) {
         if (photo['noFacesFound'] == 1) {
           return ThumbnailCheckResult(

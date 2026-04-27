@@ -1541,7 +1541,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
 
   Future<void> _loadSavedTransformAndBootPreview() async {
     final String timestamp = p.basenameWithoutExtension(rawPhotoPath);
-    final Map<String, dynamic>? row = await DB.instance.getPhotoByTimestamp(
+    final Map<String, dynamic>? row =
+        await DB.instance.getActivePhotoByTimestamp(
       timestamp,
       widget.projectId,
     );

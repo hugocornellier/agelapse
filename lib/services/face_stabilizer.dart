@@ -2137,6 +2137,38 @@ class FaceStabilizer {
       return (false, null);
     }
 
+    // Race guard: the stabilization batch snapshots its work list at the
+    // start, so a photo that the user soft-deleted (or permanently deleted)
+    // mid-batch can still arrive here. Re-check the row state before we
+    // commit any bytes to disk — otherwise we'd resurrect a stabilized PNG
+    // for a photo that's already in (or past) Recently Deleted, leaving an
+    // orphaned file the user can't see or recover from.
+    final String timestampForCheck =
+        path.basenameWithoutExtension(rawPhotoPath);
+    if (int.tryParse(timestampForCheck) != null) {
+      try {
+        final row = await DB.instance.getActivePhotoByTimestamp(
+          timestampForCheck,
+          projectId,
+        );
+        if (row == null) {
+          LogService.instance.log(
+            "saveStabilizedImage: $timestampForCheck no longer active "
+            "(deleted mid-batch); skipping write",
+          );
+          return (false, null);
+        }
+      } catch (e) {
+        // A DB read failure shouldn't block stabilization — fall through and
+        // accept the (rare) risk of an orphan file over losing the result.
+        LogService.instance.log(
+          "saveStabilizedImage: row-state recheck failed for "
+          "$timestampForCheck: $e",
+        );
+      }
+    }
+    // else: non-timestamp basename — skip recheck and proceed to write
+
     // stabilizeCV already produced the correct channel format for both modes:
     //   - transparent projects: 4-channel BGRA PNG (alpha preserved in borders)
     //   - opaque projects:      3-channel BGR PNG (borders filled with solid color)

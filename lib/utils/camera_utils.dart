@@ -400,6 +400,10 @@ class CameraUtils {
 
         if (imageTimestampFromExif != null) {
           timestamp = imageTimestampFromExif.toString();
+          // doesPhotoExistByTimestamp / getPhotosByTimestamp include trashed
+          // rows because the (timestamp, projectID) pair is the raw-file
+          // slot identifier on disk; a soft-deleted file at raw/{ts}.{ext}
+          // still occupies that slot.
           bool photoExists = await DB.instance.doesPhotoExistByTimestamp(
             timestamp,
             projectId,
@@ -411,15 +415,24 @@ class CameraUtils {
               projectId,
             ))
                     .first;
-            final existingFingerprint = existingPhoto['fingerprint'] as String?;
-            final bothFingerprinted =
-                importFingerprint != null && existingFingerprint != null;
-            if (bothFingerprinted) {
-              if (importFingerprint == existingFingerprint) {
+            final bool existingIsTrashed = existingPhoto['deletedAt'] != null;
+            // Only dedup against ACTIVE rows. A soft-deleted match at this
+            // slot must not block the import — that would be a silent failure
+            // for a user re-importing a file they previously trashed. Bump
+            // the timestamp instead, so the new row gets its own files and
+            // the old soft-deleted row ages out of Recently Deleted.
+            if (!existingIsTrashed) {
+              final existingFingerprint =
+                  existingPhoto['fingerprint'] as String?;
+              final bothFingerprinted =
+                  importFingerprint != null && existingFingerprint != null;
+              if (bothFingerprinted) {
+                if (importFingerprint == existingFingerprint) {
+                  return false; // Duplicate
+                }
+              } else if (newPhotoLength == existingPhoto['imageLength']) {
                 return false; // Duplicate
               }
-            } else if (newPhotoLength == existingPhoto['imageLength']) {
-              return false; // Duplicate
             }
 
             final int timestampPlusPlus = int.parse(timestamp) + 1;

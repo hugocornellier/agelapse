@@ -207,7 +207,7 @@ class GalleryImageMenu {
       context: context,
       builder: (context) => FutureBuilder<List<dynamic>>(
         future: Future.wait([
-          DB.instance.getPhotoByTimestamp(timestamp, projectId),
+          DB.instance.getActivePhotoByTimestamp(timestamp, projectId),
           rawPath.isNotEmpty ? dimsFn(rawPath) : Future.value(const Size(0, 0)),
           stabPath.isNotEmpty
               ? dimsFn(stabPath)

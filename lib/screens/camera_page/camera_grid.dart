@@ -68,7 +68,7 @@ class CameraGridOverlayState extends State<CameraGridOverlay> {
           guidePhoto = stabPhotos.first;
           timestamp = guidePhoto['timestamp'].toString();
         } else {
-          final guidePhotoRecord = await DB.instance.getPhotoById(
+          final guidePhotoRecord = await DB.instance.getActivePhotoById(
             selectedGuidePhoto,
             widget.projectId,
           );

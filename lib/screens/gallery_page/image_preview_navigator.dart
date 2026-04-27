@@ -369,7 +369,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
 
   void _loadPhotoMetadata() {
     if (_currentTimestamp.isNotEmpty) {
-      _previewPhotoFuture = DB.instance.getPhotoByTimestamp(
+      _previewPhotoFuture = DB.instance.getActivePhotoByTimestamp(
         _currentTimestamp,
         widget.projectId,
       );
@@ -1123,7 +1123,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
       // the stored source filename when available.
       if (_isRaw) {
         final timestamp = path.basenameWithoutExtension(_currentImagePath);
-        photoData = await DB.instance.getPhotoByTimestamp(
+        photoData = await DB.instance.getActivePhotoByTimestamp(
           timestamp,
           widget.projectId,
         );
@@ -1511,6 +1511,16 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     File imageFile, {
     required bool triggerRecompile,
   }) async {
+    // Capture the deleted timestamp BEFORE the delete so we can navigate
+    // against a locally filtered list. `widget.loadImages()` triggers a
+    // parent setState but does NOT synchronously update this widget's
+    // props — `_currentList` (proxied to widget.rawImageFiles) would still
+    // contain the deleted entry until the next frame, and because soft-
+    // delete leaves the file on disk we'd briefly render the trashed photo.
+    final String deletedTimestamp = path.basenameWithoutExtension(
+      imageFile.path,
+    );
+
     final success = await GalleryPhotoOperations.deletePhoto(
       imageFile: imageFile,
       projectId: widget.projectId,
@@ -1533,11 +1543,20 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
       await widget.recompileVideoCallback();
     }
 
-    // Navigate to adjacent or close if no images left
-    if (_currentList.isEmpty) {
+    // Navigate against a list that's been locally filtered to exclude the
+    // just-deleted entry. The parent rebuild will replace these props on
+    // the next frame, but our navigation decision must not depend on that
+    // timing.
+    final List<String> filteredList = _currentList
+        .where(
+          (p) => path.basenameWithoutExtension(p) != deletedTimestamp,
+        )
+        .toList(growable: false);
+
+    if (filteredList.isEmpty) {
       if (mounted) Navigator.of(context).pop();
     } else {
-      final newIndex = _currentIndex.clamp(0, _currentList.length - 1);
+      final newIndex = _currentIndex.clamp(0, filteredList.length - 1);
       setState(() => _currentIndex = newIndex);
       _pageController.jumpToPage(newIndex);
     }

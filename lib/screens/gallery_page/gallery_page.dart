@@ -36,6 +36,7 @@ import '../../widgets/info_dialog.dart';
 import '../../widgets/confirm_action_dialog.dart';
 import '../../widgets/icon_badge.dart';
 import '../manual_stab_page.dart';
+import '../recently_deleted_page.dart';
 import '../stab_on_diff_face.dart';
 import 'gallery_widgets.dart';
 import 'gallery_bottom_sheets.dart';
@@ -176,6 +177,7 @@ class GalleryPageState extends State<GalleryPage>
   bool _stickyBottomEnabled = true;
   bool _isAutoScrolling = false;
   bool _isSelectionMode = false;
+  int _recentlyDeletedCount = 0;
   Set<String> _selectedPhotos = {};
   bool _isInspectionMode = false;
   int _imageRefreshKey = 0;
@@ -497,6 +499,8 @@ class GalleryPageState extends State<GalleryPage>
       onShowInfoDialog: () => showInfoDialog(context),
     );
 
+    unawaited(_refreshRecentlyDeletedCount());
+
     // Also guard scroll operation against stale requests
     if (thisRequestId != _loadImagesRequestId) return;
 
@@ -554,6 +558,17 @@ class GalleryPageState extends State<GalleryPage>
         _retryingPhotoTimestamps.remove(timestamp);
       });
       // For retries, the path is already in the list - just rebuild to show new thumbnail
+      return;
+    }
+
+    // The stabilization run snapshots its work list at the start, so a photo
+    // soft-deleted mid-run can still produce a stab event. Re-check the row
+    // state before adding it back to the visible gallery.
+    final currentRow = await DB.instance.getActivePhotoByTimestamp(
+      timestamp,
+      projectId,
+    );
+    if (currentRow == null) {
       return;
     }
 
@@ -779,6 +794,9 @@ class GalleryPageState extends State<GalleryPage>
                                     }
                                   });
                                   break;
+                                case 'recently_deleted':
+                                  _openRecentlyDeleted();
+                                  break;
                               }
                             },
                             itemBuilder: (context) => [
@@ -807,6 +825,15 @@ class GalleryPageState extends State<GalleryPage>
                                   label: 'Inspect',
                                 ),
                               ],
+                              const PopupMenuDivider(height: 1),
+                              _buildModernMenuItem(
+                                value: 'recently_deleted',
+                                icon: Icons.delete_outline_rounded,
+                                label: 'Recently Deleted',
+                                trailingBadge: _recentlyDeletedCount > 0
+                                    ? _recentlyDeletedCount.toString()
+                                    : null,
+                              ),
                             ],
                           ),
                         ),
@@ -1294,6 +1321,7 @@ class GalleryPageState extends State<GalleryPage>
     required String value,
     required IconData icon,
     required String label,
+    String? trailingBadge,
   }) {
     return PopupMenuItem<String>(
       value: value,
@@ -1309,17 +1337,75 @@ class GalleryPageState extends State<GalleryPage>
             child: Icon(icon, color: AppColors.textPrimary, size: 18),
           ),
           const SizedBox(width: 12),
-          Text(
-            label,
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: AppTypography.md,
-              fontWeight: FontWeight.w500,
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: AppTypography.md,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
+          if (trailingBadge != null) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.danger.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                trailingBadge,
+                style: TextStyle(
+                  color: AppColors.danger,
+                  fontSize: AppTypography.sm,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  Future<void> _refreshRecentlyDeletedCount() async {
+    try {
+      final c = await DB.instance.getRecentlyDeletedCountByProjectID(projectId);
+      if (!mounted) return;
+      if (c != _recentlyDeletedCount) {
+        setState(() => _recentlyDeletedCount = c);
+      }
+    } catch (e) {
+      LogService.instance.log('refreshRecentlyDeletedCount failed: $e');
+    }
+  }
+
+  Future<void> _openRecentlyDeleted() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => RecentlyDeletedPage(
+          projectId: projectId,
+          projectName: widget.projectName,
+          // Restore changes the active photo set → reload + recompile.
+          onRestored: () async {
+            await _loadImages();
+            await widget.recompileVideoCallback();
+          },
+          // Permanent-delete of an already-soft-deleted row doesn't change
+          // the active set; recompiling would be wasted work. Just refresh
+          // the gallery's badge.
+          onPurged: () async {
+            await _refreshRecentlyDeletedCount();
+          },
+        ),
+      ),
+    );
+    // On pop, refresh badge + reload once. The page's own callbacks reloaded
+    // already if anything changed; this is the catch-all for the case where
+    // the user backed out without acting.
+    await _refreshRecentlyDeletedCount();
   }
 
   void _showImportOptionsBottomSheet(BuildContext context) {
@@ -2249,7 +2335,7 @@ class GalleryPageState extends State<GalleryPage>
         });
       },
       onSetGuidePhoto: () async {
-        final photoRecord = await DB.instance.getPhotoByTimestamp(
+        final photoRecord = await DB.instance.getActivePhotoByTimestamp(
           timestamp,
           projectId,
         );

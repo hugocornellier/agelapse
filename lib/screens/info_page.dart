@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/log_service.dart';
@@ -28,6 +29,26 @@ class InfoPage extends StatefulWidget {
 class InfoPageState extends State<InfoPage> {
   bool _emailCopied = false;
   bool _emailHovered = false;
+  String? _versionLabel;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (!mounted) return;
+      setState(() =>
+          _versionLabel = 'Version: v${info.version}+${info.buildNumber}');
+    } catch (e) {
+      LogService.instance.log('InfoPage: failed to read package info: $e');
+      if (!mounted) return;
+      setState(() => _versionLabel = 'Version: unavailable');
+    }
+  }
 
   Future<void> _openDocumentation() async {
     final uri = Uri.parse('https://agelapse.com/docs/intro/');
@@ -87,7 +108,7 @@ class InfoPageState extends State<InfoPage> {
                       Padding(
                         padding: const EdgeInsets.only(left: 4),
                         child: Text(
-                          'Version: v2.6.0',
+                          _versionLabel ?? 'Version: …',
                           style: TextStyle(
                             fontSize: AppTypography.sm,
                             color: AppColors.textSecondary,

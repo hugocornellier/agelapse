@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/database_helper.dart';
 import '../styles/styles.dart';
 import 'dialog_title_row.dart';
 
@@ -128,23 +129,8 @@ class ConfirmActionDialog extends StatelessWidget {
   static Future<bool> showDeleteRecompile(
     BuildContext context, {
     required int photoCount,
-  }) async {
-    final bool isSingle = photoCount == 1;
-    final String photoText = isSingle ? 'this photo' : '$photoCount photos';
-    final String description =
-        'Are you sure you want to delete $photoText? This cannot be undone.';
-
-    return await _show(
-      context,
-      title: 'Delete ${isSingle ? 'Photo' : 'Photos'}?',
-      description: description,
-      warningIcon: Icons.movie_outlined,
-      warningText:
-          'Your video will be recompiled without the deleted ${isSingle ? 'photo' : 'photos'}.',
-      titleIcon: Icons.delete_outline_rounded,
-      confirmText: 'Delete',
-    );
-  }
+  }) =>
+      _showDelete(context, photoCount: photoCount, includeVideoWarning: true);
 
   /// Shows a simple confirmation dialog for photo deletion without video warning.
   ///
@@ -153,16 +139,30 @@ class ConfirmActionDialog extends StatelessWidget {
   static Future<bool> showDeleteSimple(
     BuildContext context, {
     required int photoCount,
+  }) =>
+      _showDelete(context, photoCount: photoCount, includeVideoWarning: false);
+
+  /// Shared body for [showDeleteRecompile] / [showDeleteSimple]. The only
+  /// difference between the two is whether a video-recompile warning is shown.
+  static Future<bool> _showDelete(
+    BuildContext context, {
+    required int photoCount,
+    required bool includeVideoWarning,
   }) async {
     final bool isSingle = photoCount == 1;
     final String photoText = isSingle ? 'this photo' : '$photoCount photos';
-    final String description =
-        'Are you sure you want to delete $photoText? This cannot be undone.';
+    final String description = 'Move $photoText to Recently Deleted? '
+        'You can restore from there for the next '
+        '${DB.recentlyDeletedRetentionDays} days.';
 
     return await _show(
       context,
-      title: 'Delete ${isSingle ? 'Photo' : 'Photos'}?',
+      title: isSingle ? 'Delete Photo?' : 'Delete Photos?',
       description: description,
+      warningIcon: includeVideoWarning ? Icons.movie_outlined : null,
+      warningText: includeVideoWarning
+          ? 'Your video will be recompiled without the deleted ${isSingle ? 'photo' : 'photos'}.'
+          : null,
       titleIcon: Icons.delete_outline_rounded,
       confirmText: 'Delete',
     );
