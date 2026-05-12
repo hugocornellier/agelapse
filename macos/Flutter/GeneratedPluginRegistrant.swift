@@ -22,6 +22,7 @@ import flutter_timezone
 import hand_detection
 import heic_native
 import media_kit_video
+import object_detection
 import package_info_plus
 import photo_manager
 import pose_detection
@@ -52,6 +53,7 @@ func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   HandDetectionPlugin.register(with: registry.registrar(forPlugin: "HandDetectionPlugin"))
   HeicNativePlugin.register(with: registry.registrar(forPlugin: "HeicNativePlugin"))
   MediaKitVideoPlugin.register(with: registry.registrar(forPlugin: "MediaKitVideoPlugin"))
+  ObjectDetectionPlugin.register(with: registry.registrar(forPlugin: "ObjectDetectionPlugin"))
   FPPPackageInfoPlusPlugin.register(with: registry.registrar(forPlugin: "FPPPackageInfoPlusPlugin"))
   PhotoManagerPlugin.register(with: registry.registrar(forPlugin: "PhotoManagerPlugin"))
   PoseDetectionPlugin.register(with: registry.registrar(forPlugin: "PoseDetectionPlugin"))

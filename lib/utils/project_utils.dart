@@ -374,8 +374,11 @@ class ProjectUtils {
     }
     if (fingerprint != null && fingerprint.isNotEmpty) {
       try {
-        await DB.instance
-            .clearTransformCacheForFingerprint(projectId, fingerprint);
+        await DB.instance.clearTransformCacheForFingerprint(
+          projectId,
+          fingerprint,
+          scope: null,
+        );
       } catch (e) {
         LogService.instance.log(
           "Failed to clear transform cache (non-fatal): $e",

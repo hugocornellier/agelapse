@@ -38,15 +38,28 @@ AgeLapse takes a raw photo, detects a set of landmarks on the person (eyes for f
 
 ## What's New / Changelog
 
+### v2.7.0 (May 2026)
+
+#### New Features
+- Recently Deleted
+  - Deleted photos remain in Recently Deleted for 30 days before being purged.
+  - Restore or permanently delete individual photos, selected photos, or the entire trash.
+
+#### Improvements
+- Manual stabilization edits are saved and re-used 
+
+#### Bug Fixes
+- Fix re-importing a previously deleted photo being blocked by duplicate fingerprint checks.
+
 ### v2.6.0 (Apr 2026)
 
 #### New Features
 - Background blur zoom setting
 
 #### Improvements
-- Major performance improvements across all platforms: 
+- Major performance improvements across all platforms:
   - ~1.5x faster stabilization
-  - ~2-3x faster photo import 
+  - ~2-3x faster photo import
 - Smoother, more responsive camera
 - Reduced Android binary size (~500MB -> ~350MB) by debloating and stripping FFmpeg binary to a minimal version
 

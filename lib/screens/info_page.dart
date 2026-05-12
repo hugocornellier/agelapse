@@ -6,6 +6,25 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/log_service.dart';
 import '../styles/styles.dart';
 
+// Apple bundle versions are numeric, so the pre-release channel is tracked here.
+const bool kIsPreReleaseBuild = true;
+
+String formatInfoVersionLabel(
+  PackageInfo info, {
+  bool forcePreRelease = false,
+}) {
+  final versionWithoutBuild = info.version.split('+').first;
+  final preReleaseIndex = versionWithoutBuild.indexOf('-');
+  final hasPreReleaseSuffix = preReleaseIndex != -1;
+  final isPreRelease = hasPreReleaseSuffix || forcePreRelease;
+  final displayVersion = hasPreReleaseSuffix
+      ? versionWithoutBuild.substring(0, preReleaseIndex)
+      : versionWithoutBuild;
+  final preReleaseLabel = isPreRelease ? ' (Pre-Release)' : '';
+
+  return 'Version: $displayVersion$preReleaseLabel';
+}
+
 class InfoPage extends StatefulWidget {
   final int projectId;
   final String projectName;
@@ -41,8 +60,12 @@ class InfoPageState extends State<InfoPage> {
     try {
       final info = await PackageInfo.fromPlatform();
       if (!mounted) return;
-      setState(() =>
-          _versionLabel = 'Version: v${info.version}+${info.buildNumber}');
+      setState(
+        () => _versionLabel = formatInfoVersionLabel(
+          info,
+          forcePreRelease: kIsPreReleaseBuild,
+        ),
+      );
     } catch (e) {
       LogService.instance.log('InfoPage: failed to read package info: $e');
       if (!mounted) return;

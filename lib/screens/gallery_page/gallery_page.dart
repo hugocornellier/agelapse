@@ -23,6 +23,7 @@ import '../../utils/gallery_photo_operations.dart';
 import '../../utils/gallery_utils.dart';
 import '../../utils/platform_utils.dart';
 import '../../utils/settings_utils.dart';
+import '../../utils/stabilizer_utils/stabilizer_utils.dart';
 import '../../utils/date_stamp_utils.dart';
 import '../../utils/capture_timezone.dart';
 import '../../utils/utils.dart';
@@ -2291,6 +2292,21 @@ class GalleryPageState extends State<GalleryPage>
     }
     if (await stabThumbFile.exists()) {
       await stabThumbFile.delete();
+    }
+
+    try {
+      final fingerprint = await StabUtils.computeRawPhotoFingerprint(
+        rawPhotoPath,
+      );
+      await DB.instance.clearTransformCacheForFingerprint(
+        widget.projectId,
+        fingerprint,
+        scope: null,
+      );
+    } catch (e) {
+      LogService.instance.log(
+        '[transform-cache] $timestamp: retry clear failed: $e',
+      );
     }
 
     // Reset DB

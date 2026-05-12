@@ -75,6 +75,7 @@ class GalleryPhotoOperations {
       await DB.instance.clearTransformCacheForFingerprint(
         projectId,
         fingerprint,
+        scope: null,
       );
     } catch (e) {
       LogService.instance.log(

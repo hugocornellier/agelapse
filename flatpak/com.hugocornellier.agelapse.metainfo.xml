@@ -56,6 +56,13 @@
   <content_rating type="oars-1.1" />
 
   <releases>
+    <release version="2.7.0-pre" date="2026-05-09">
+      <description>
+        <ul>
+          <li>Recently deleted photos can be restored or permanently deleted.</li>
+        </ul>
+      </description>
+    </release>
     <release version="2.6.0" date="2026-04-25">
       <description>
         <ul>

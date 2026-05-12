@@ -124,6 +124,13 @@ jobs:
           key: pods-ios-${{ hashFiles('ios/Podfile.lock', 'pubspec.lock') }}
           restore-keys: pods-ios-
 
+      - name: Cache opencv_dart native build
+        uses: actions/cache@v4
+        with:
+          path: .dart_tool/hooks_runner/shared
+          key: opencv-native-ios-${{ inputs.flutter_channel }}-xcode26.2-${{ hashFiles('pubspec.lock') }}
+          restore-keys: opencv-native-ios-${{ inputs.flutter_channel }}-xcode26.2-
+
       - name: Install dependencies
         run: flutter pub get
 
@@ -153,7 +160,13 @@ jobs:
           echo "SIMULATOR_UDID=$UDID" >> "$GITHUB_ENV"
 
       - name: Prewarm Xcode build
-        run: flutter build ios --simulator --debug --no-codesign
+        run: |
+          for attempt in 1 2 3; do
+            flutter build ios --simulator --debug --no-codesign && exit 0
+            echo "flutter build ios attempt $attempt failed, retrying in $((attempt * 30))s..."
+            [ "$attempt" -eq 3 ] && exit 1
+            sleep $((attempt * 30))
+          done
 
       - name: Run integration test
         run: |

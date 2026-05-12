@@ -10,6 +10,7 @@ class TransformCacheKey {
 
   static const int schemaVersion = 1;
   static const String defaultScope = 'auto';
+  static const String manualScope = 'manual';
   static const String transformAlgorithmVersion =
       'face_stabilizer_transform_v1';
 
@@ -56,6 +57,24 @@ class TransformCacheKey {
       'interpolation': 'INTER_CUBIC',
       'borderMode': 'BORDER_CONSTANT',
       'stabilizationMode': 'slow',
+    });
+  }
+
+  /// Hash of the four settings that must match for a manual transform to be
+  /// reusable across resolution changes: aspect ratio, eye offsets, and
+  /// orientation. If any of these differ the cache key changes → miss.
+  static String buildManualReuseHash({
+    required String aspectRatio,
+    required double eyeOffsetX,
+    required double eyeOffsetY,
+    required String projectOrientation,
+  }) {
+    return _sha256OfCanonicalJson({
+      'schemaVersion': schemaVersion,
+      'aspectRatio': aspectRatio,
+      'eyeOffsetX': _canonicalDouble(eyeOffsetX),
+      'eyeOffsetY': _canonicalDouble(eyeOffsetY),
+      'projectOrientation': projectOrientation,
     });
   }
 

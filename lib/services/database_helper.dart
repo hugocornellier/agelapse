@@ -2310,13 +2310,17 @@ class DB {
     int projectId,
     String fingerprint, {
     String? settingsHash,
-    String scope = 'auto',
+    // Pass null to clear all scopes (auto + manual). Defaults to 'auto' so
+    // existing callers that intentionally preserve manual overrides are unaffected.
+    String? scope = 'auto',
   }) async {
     final db = await database;
-    final where = StringBuffer(
-      'projectID = ? AND fingerprint = ? AND scope = ?',
-    );
-    final whereArgs = <Object?>[projectId, fingerprint, scope];
+    final where = StringBuffer('projectID = ? AND fingerprint = ?');
+    final whereArgs = <Object?>[projectId, fingerprint];
+    if (scope != null) {
+      where.write(' AND scope = ?');
+      whereArgs.add(scope);
+    }
     if (settingsHash != null) {
       where.write(' AND settingsHash = ?');
       whereArgs.add(settingsHash);

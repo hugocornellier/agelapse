@@ -668,11 +668,18 @@ class FaceStabilizer {
       );
       if (result1.success) {
         if (targetBoundingBox != null) {
-          await _clearTransformCacheForFingerprint(
+          final manualFingerprint = await _clearTransformCacheForFingerprint(
             timestamp: timestamp,
             originalPath: originalPath,
             reason: 'target-face save',
           );
+          if (manualFingerprint != null) {
+            // Persist the selected face index to the detection cache so that
+            // re-stabilization at any resolution always picks the correct face.
+            // No transform cache entry here — the algorithm should re-run fresh
+            // at the actual canvas size rather than scaling a stored transform.
+            await _writeFacesToCache(timestamp, manualFingerprint, 'original');
+          }
         }
         if (cacheEnabled && fingerprint != null) {
           await _writeFacesToCache(
@@ -826,26 +833,62 @@ class FaceStabilizer {
   ) async {
     if (!_supportsTransformCache) return null;
 
-    final settingsHash = _buildTransformSettingsHash();
-    final cacheKey = _buildTransformCacheKey(
-      fingerprint: fingerprint,
-      settingsHash: settingsHash,
-    );
-    final hit = await DB.instance.getTransformCache(cacheKey);
+    // Manual override takes precedence — survives settings changes.
+    TransformCacheEntry? hit;
+    final manualCacheKey =
+        _buildManualTransformCacheKey(fingerprint: fingerprint);
+    final manualHit = await DB.instance.getTransformCache(manualCacheKey);
+    if (manualHit != null && _isValidTransformCacheHit(manualHit)) {
+      hit = manualHit;
+    } else {
+      final settingsHash = _buildTransformSettingsHash();
+      final autoCacheKey = _buildTransformCacheKey(
+        fingerprint: fingerprint,
+        settingsHash: settingsHash,
+      );
+      final autoHit = await DB.instance.getTransformCache(autoCacheKey);
+      if (autoHit != null && _isValidTransformCacheHit(autoHit)) {
+        hit = autoHit;
+      }
+    }
+
     if (hit == null) {
       transformCacheMisses++;
       return null;
     }
 
-    if (!_isValidTransformCacheHit(hit)) {
-      transformCacheMisses++;
-      LogService.instance.log(
-        '[transform-cache] $timestamp: invalid hit, ignoring cache',
-      );
-      return null;
-    }
-
     try {
+      // For manual entries stored at a different canvas size, scale the
+      // pixel-space values — but only when both dimensions changed by the same
+      // factor (pure resolution change). Custom resolutions can change width
+      // and height independently, which would corrupt the transform.
+      final double canvasScale;
+      if (hit.scope == TransformCacheKey.manualScope &&
+          (hit.canvasWidth != canvasWidth ||
+              hit.canvasHeight != canvasHeight)) {
+        final double wScale = canvasWidth / hit.canvasWidth;
+        final double hScale = canvasHeight / hit.canvasHeight;
+        const double tolerance = 0.001;
+        canvasScale = (wScale - hScale).abs() < tolerance ? wScale : double.nan;
+      } else {
+        canvasScale = 1.0;
+      }
+      if (canvasScale.isNaN) {
+        // Non-proportional canvas change (e.g. custom resolution with different
+        // aspect ratio). The stored transform cannot be rescaled safely.
+        transformCacheMisses++;
+        LogService.instance.log(
+          '[transform-cache] $timestamp: manual HIT rejected '
+          '— non-proportional canvas change '
+          '(${hit.canvasWidth}x${hit.canvasHeight} → '
+          '${canvasWidth}x$canvasHeight)',
+        );
+        return null;
+      }
+      final double renderTx = hit.translateX * canvasScale;
+      final double renderTy = hit.translateY * canvasScale;
+      final double renderSf = hit.scaleFactor * canvasScale;
+
       token?.throwIfCancelled();
       final baseBytes = preDecodedBytes ??
           await FormatDecodeUtils.loadCvCompatibleBytes(originalPath);
@@ -872,9 +915,9 @@ class FaceStabilizer {
           await StabUtils.generateStabilizedImageBytesCVAsync(
         orientedBytes,
         hit.rotationDegrees,
-        hit.scaleFactor,
-        hit.translateX,
-        hit.translateY,
+        renderSf,
+        renderTx,
+        renderTy,
         canvasWidth,
         canvasHeight,
         token: token,
@@ -899,10 +942,10 @@ class FaceStabilizer {
         originalPath,
         stabilizedPhotoPath,
         hit.finalScore ?? 0.0,
-        translateX: hit.translateX,
-        translateY: hit.translateY,
+        translateX: renderTx,
+        translateY: renderTy,
         rotationDegrees: hit.rotationDegrees,
-        scaleFactor: hit.scaleFactor,
+        scaleFactor: renderSf,
       );
       if (!success) {
         transformCacheRenderFailures++;
@@ -918,8 +961,8 @@ class FaceStabilizer {
 
       transformCacheHits++;
       LogService.instance.log(
-        '[transform-cache] $timestamp: HIT orientation=${hit.sourceOrientation} '
-        '(rendered final transform)',
+        '[transform-cache] $timestamp: HIT scope=${hit.scope} '
+        'orientation=${hit.sourceOrientation} (rendered final transform)',
       );
 
       return StabilizationResult(
@@ -932,10 +975,10 @@ class FaceStabilizer {
         finalEyeDeltaY: hit.finalEyeDeltaY,
         finalEyeDistance: hit.finalEyeDistance,
         goalEyeDistance: hit.goalEyeDistance,
-        translateX: hit.translateX,
-        translateY: hit.translateY,
+        translateX: renderTx,
+        translateY: renderTy,
         rotationDegrees: hit.rotationDegrees,
-        scaleFactor: hit.scaleFactor,
+        scaleFactor: renderSf,
       );
     } on CancelledException {
       rethrow;
@@ -949,10 +992,23 @@ class FaceStabilizer {
   }
 
   bool _isValidTransformCacheHit(TransformCacheEntry hit) {
-    // A stored transform is only identity-safe when it came from a single-face
-    // photo. For multi-face photos, the transform depends on which face was
-    // selected, and that selection can change as embedding references change.
-    if (hit.faceCount != 1) return false;
+    final isManual = hit.scope == TransformCacheKey.manualScope;
+
+    if (!isManual) {
+      // Auto entries: reject multi-face photos because the selected face can
+      // shift as new embedding references are added.
+      if (hit.faceCount != 1) return false;
+      if (hit.scope != TransformCacheKey.defaultScope) return false;
+      // Auto entries must match canvas exactly (settingsHash already encodes dims).
+      if (hit.canvasWidth != canvasWidth || hit.canvasHeight != canvasHeight) {
+        return false;
+      }
+    }
+    // Manual entries: canvas dims may differ when only resolution changed.
+    // The reuse hash (baked into the cache key) already validated aspect ratio,
+    // eye offsets, and orientation — so a proportional rescale at render time
+    // is safe. No canvas-dim check here.
+
     if (hit.projectId != projectId) return false;
     if (hit.projectType != projectType) return false;
     if (hit.modelVersion !=
@@ -961,10 +1017,6 @@ class FaceStabilizer {
     }
     if (hit.transformAlgorithmVersion !=
         TransformCacheKey.transformAlgorithmVersion) {
-      return false;
-    }
-    if (hit.scope != TransformCacheKey.defaultScope) return false;
-    if (hit.canvasWidth != canvasWidth || hit.canvasHeight != canvasHeight) {
       return false;
     }
     if (hit.isEstimated) return false;
@@ -1042,6 +1094,28 @@ class FaceStabilizer {
     );
   }
 
+  // Manual entries key on the 4 reuse-invariants (aspect ratio, eye offsets,
+  // orientation) instead of the full settings hash. This makes the key stable
+  // across pure resolution changes while still invalidating when the user
+  // changes any of those four settings.
+  String _buildManualTransformCacheKey({required String fingerprint}) {
+    return TransformCacheKey.buildCacheKey(
+      projectId: projectId,
+      fingerprint: fingerprint,
+      projectType: projectType,
+      modelVersion: StabUtils.detectorModelVersionForProjectType(projectType),
+      settingsHash: _buildManualReuseHash(),
+      scope: TransformCacheKey.manualScope,
+    );
+  }
+
+  String _buildManualReuseHash() => TransformCacheKey.buildManualReuseHash(
+        aspectRatio: aspectRatio,
+        eyeOffsetX: eyeOffsetX,
+        eyeOffsetY: eyeOffsetY,
+        projectOrientation: projectOrientation!,
+      );
+
   bool _hasFiniteTransform(StabilizationResult result) {
     final values = [
       result.translateX,
@@ -1057,6 +1131,7 @@ class FaceStabilizer {
     required String fingerprint,
     required String sourceOrientation,
     required StabilizationResult result,
+    bool isManual = false,
   }) async {
     if (!_supportsTransformCache) return;
     if (!result.success || result.cancelled || result.isEstimated) return;
@@ -1067,11 +1142,21 @@ class FaceStabilizer {
     }
 
     try {
-      final settingsHash = _buildTransformSettingsHash();
-      final cacheKey = _buildTransformCacheKey(
-        fingerprint: fingerprint,
-        settingsHash: settingsHash,
-      );
+      final String scope;
+      final String settingsHash;
+      final String cacheKey;
+      if (isManual) {
+        scope = TransformCacheKey.manualScope;
+        settingsHash = _buildManualReuseHash();
+        cacheKey = _buildManualTransformCacheKey(fingerprint: fingerprint);
+      } else {
+        scope = TransformCacheKey.defaultScope;
+        settingsHash = _buildTransformSettingsHash();
+        cacheKey = _buildTransformCacheKey(
+          fingerprint: fingerprint,
+          settingsHash: settingsHash,
+        );
+      }
       final now = DateTime.now().millisecondsSinceEpoch;
       final faceCount = _currentFaceCount;
       int? selectedFaceIndex = _currentSelectedFaceIndex;
@@ -1095,7 +1180,7 @@ class FaceStabilizer {
           transformAlgorithmVersion:
               TransformCacheKey.transformAlgorithmVersion,
           settingsHash: settingsHash,
-          scope: TransformCacheKey.defaultScope,
+          scope: scope,
           sourceOrientation: sourceOrientation,
           selectedFaceIndex: selectedFaceIndex,
           faceCount: faceCount,
@@ -1119,8 +1204,9 @@ class FaceStabilizer {
         ),
       );
       LogService.instance.log(
-        '[transform-cache] $timestamp: MISS -> orientation=$sourceOrientation '
-        'selected=$selectedFaceIndex (wrote transform)',
+        '[transform-cache] $timestamp: MISS -> scope=$scope '
+        'orientation=$sourceOrientation selected=$selectedFaceIndex '
+        '(wrote transform)',
       );
     } catch (e) {
       LogService.instance.log(
@@ -1129,7 +1215,80 @@ class FaceStabilizer {
     }
   }
 
-  Future<void> _clearTransformCacheForFingerprint({
+  /// Called by the manual stabilization page after the user saves a hand-tuned
+  /// transform. Clears any auto transform cache entry for this photo and writes
+  /// a scope='manual' entry so the user's work survives future re-stabilization
+  /// triggered by settings changes.
+  Future<void> persistManualTransform({
+    required String rawPhotoPath,
+    required String timestamp,
+    required double translateX,
+    required double translateY,
+    required double rotationDegrees,
+    required double scaleFactor,
+  }) async {
+    if (!_supportsTransformCache) return;
+    try {
+      final fingerprint =
+          await StabUtils.computeRawPhotoFingerprint(rawPhotoPath);
+      final cacheKey = _buildManualTransformCacheKey(fingerprint: fingerprint);
+      final now = DateTime.now().millisecondsSinceEpoch;
+      // Write the manual entry first. If this throws, nothing has been cleared
+      // yet and the previous cache state is fully preserved.
+      await DB.instance.writeTransformCache(
+        TransformCacheEntry(
+          cacheKey: cacheKey,
+          projectId: projectId,
+          fingerprint: fingerprint,
+          projectType: projectType,
+          modelVersion:
+              StabUtils.detectorModelVersionForProjectType(projectType),
+          transformAlgorithmVersion:
+              TransformCacheKey.transformAlgorithmVersion,
+          settingsHash: _buildManualReuseHash(),
+          scope: TransformCacheKey.manualScope,
+          sourceOrientation: 'original',
+          selectedFaceIndex: null,
+          faceCount: null,
+          canvasWidth: canvasWidth,
+          canvasHeight: canvasHeight,
+          translateX: translateX,
+          translateY: translateY,
+          rotationDegrees: rotationDegrees,
+          scaleFactor: scaleFactor,
+          finalScore: null,
+          finalEyeDeltaY: null,
+          finalEyeDistance: null,
+          goalEyeDistance: null,
+          preScore: null,
+          rotationPassScore: null,
+          scalePassScore: null,
+          translationPassScore: null,
+          exampleTimestamp: timestamp,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      // Write succeeded — now remove the stale auto entry. If this throws,
+      // both entries exist but the manual entry takes precedence in
+      // _tryTransformCacheAttempt, so the state is still correct.
+      await DB.instance.clearTransformCacheForFingerprint(
+        projectId,
+        fingerprint,
+        scope: TransformCacheKey.defaultScope,
+      );
+      LogService.instance.log(
+        '[transform-cache] $timestamp: wrote manual override '
+        'tx=$translateX ty=$translateY rot=$rotationDegrees sc=$scaleFactor',
+      );
+    } catch (e) {
+      LogService.instance.log(
+        '[transform-cache] $timestamp: persistManualTransform failed: $e',
+      );
+    }
+  }
+
+  Future<String?> _clearTransformCacheForFingerprint({
     required String timestamp,
     required String originalPath,
     required String reason,
@@ -1138,18 +1297,23 @@ class FaceStabilizer {
       final fingerprint = await StabUtils.computeRawPhotoFingerprint(
         originalPath,
       );
+      // Clear all scopes (auto + manual) so a prior manual-slider override
+      // cannot shadow a new face selection via stab-on-diff-face.
       await DB.instance.clearTransformCacheForFingerprint(
         projectId,
         fingerprint,
+        scope: null,
       );
       LogService.instance.log(
-        '[transform-cache] $timestamp: cleared automatic transforms '
+        '[transform-cache] $timestamp: cleared all transform cache entries '
         'after $reason',
       );
+      return fingerprint;
     } catch (e) {
       LogService.instance.log(
         '[transform-cache] $timestamp: clear after $reason failed: $e',
       );
+      return null;
     }
   }
 
@@ -2450,6 +2614,7 @@ class FaceStabilizer {
       final idx = await _pickFaceIndexByBoxAsync(faces, targetBoundingBox);
       if (idx != -1) {
         facesToUse = [faces[idx]];
+        _currentSelectedFaceIndex = idx;
       }
     }
 
