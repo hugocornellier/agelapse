@@ -13,10 +13,10 @@ import 'package:path_provider/path_provider.dart';
 ///      A fixed pump was the cause of recurring cold-cache Windows/Linux/macOS
 ///      flakes.
 ///   2. Try to settle the tree so that navigation widgets and buttons are fully
-///      rendered before the test proceeds.  Uses a 5 s timeout so it does not
-///      hang on the FlashingBox animation (which keeps the tree permanently
-///      dirty); if it times out the exception is caught and we fall back to two
-///      short fixed pumps.
+///      rendered before the test proceeds.  This deliberately uses bounded
+///      fixed pumps instead of pumpAndSettle: hosted desktop runners can keep
+///      animations/platform messages active indefinitely, and macOS CI has
+///      wedged inside settle while the app UI was already usable.
 Future<void> pumpUntilAppReady(
   WidgetTester tester, {
   int maxSeconds = 15,
@@ -27,18 +27,24 @@ Future<void> pumpUntilAppReady(
     if (find.byType(Scaffold).evaluate().isNotEmpty) break;
   }
 
-  // Phase 2: settle so that content (buttons, nav icons) finishes rendering.
-  try {
-    await tester.pumpAndSettle(
-      const Duration(milliseconds: 100),
-      EnginePhase.sendSemanticsUpdate,
-      const Duration(seconds: 5),
-    );
-  } catch (_) {
-    // Continuous animation (e.g. FlashingBox) kept the tree dirty — pump a
-    // couple more frames and move on.
-    await tester.pump(const Duration(seconds: 1));
-    await tester.pump(const Duration(seconds: 1));
+  // Phase 2: give post-frame work, navigation, and async builders a bounded
+  // chance to render without waiting for the entire tree to become idle.
+  for (int i = 0; i < 10; i++) {
+    await tester.pump(const Duration(milliseconds: 200));
+  }
+}
+
+/// Advances test time for a bounded duration without waiting for all scheduled
+/// frames to settle. Desktop runners can keep platform/menu/media work active
+/// indefinitely, so smoke tests should prefer this over pumpAndSettle.
+Future<void> pumpFor(
+  WidgetTester tester,
+  Duration duration, {
+  Duration step = const Duration(milliseconds: 200),
+}) async {
+  final int pumps = (duration.inMilliseconds / step.inMilliseconds).ceil();
+  for (int i = 0; i < pumps; i++) {
+    await tester.pump(step);
   }
 }
 

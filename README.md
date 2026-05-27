@@ -1,7 +1,7 @@
 <p align="center" style="font-size:16px; font-family:Arial, sans-serif;">
-  <a href="https://agelapse.com" style="text-decoration:none; font-weight:bold;">DOWNLOAD</a> |
-  <a href="https://agelapse.com/docs/intro/" style="text-decoration:none; font-weight:bold;">DOCS</a> |
-  <a href="https://agelapse.com/docs/support-and-feedback/" style="text-decoration:none; font-weight:bold;">SUPPORT</a>
+  <a href="https://agelapse.com" style="text-decoration:none; font-weight:bold;">DOWNLOAD</a> •
+  <a href="https://agelapse.com/docs/intro/" style="text-decoration:none; font-weight:bold;">DOCS</a> •
+  <a href="https://agelapse.com/docs/support-and-feedback/" style="text-decoration:none; font-weight:bold;">CONTACT</a>
 </p>
 
 <p align="center"> 

@@ -12,7 +12,7 @@ runs:
   using: composite
   steps:
     - name: Restore mimalloc tarball cache
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.cache/mimalloc-prefetch
         key: mimalloc-2.1.2-5179c8f5cf1237d2300e2d8559a7bc55

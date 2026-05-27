@@ -10,11 +10,15 @@ let package = Package(
     products: [
         .library(name: "fast_thumbnail", targets: ["fast_thumbnail"])
     ],
-    dependencies: [],
+    dependencies: [
+        .package(name: "FlutterFramework", path: "../FlutterFramework")
+    ],
     targets: [
         .target(
             name: "fast_thumbnail",
-            dependencies: []
+            dependencies: [
+                .product(name: "FlutterFramework", package: "FlutterFramework")
+            ]
         )
     ]
 )

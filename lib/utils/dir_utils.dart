@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import '../models/video_codec.dart';
 import '../utils/platform_utils.dart';
 import '../utils/settings_utils.dart';
+import '../utils/test_mode.dart' as test_config;
 import '../utils/utils.dart';
 
 import '../services/database_helper.dart';
@@ -205,6 +206,16 @@ class DirUtils {
 
   static Future<String> getAppDocumentsDirPath() async {
     if (isDesktop) {
+      if (test_config.isTestMode) {
+        final appRoot = Directory(
+          path.join(Directory.systemTemp.path, 'agelapse_test_$pid'),
+        );
+        if (!await appRoot.exists()) {
+          await appRoot.create(recursive: true);
+        }
+        return appRoot.path;
+      }
+
       final supportDir = await getApplicationSupportDirectory();
       final appRoot = Directory(path.join(supportDir.path, 'AgeLapse'));
       if (!await appRoot.exists()) {

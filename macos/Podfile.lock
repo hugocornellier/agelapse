@@ -1,19 +1,11 @@
 PODS:
-  - animal_detection (1.0.0):
-    - FlutterMacOS
-  - camera_desktop (1.1.2):
-    - FlutterMacOS
-  - cat_detection (0.0.1):
+  - camera_desktop (1.1.6):
     - FlutterMacOS
   - desktop_drop (0.0.1):
     - FlutterMacOS
   - device_info_plus (0.0.1):
     - FlutterMacOS
-  - dog_detection (0.0.1):
-    - FlutterMacOS
   - downloadsfolder (0.0.1):
-    - FlutterMacOS
-  - face_detection_tflite (6.2.5):
     - FlutterMacOS
   - fast_thumbnail (0.1.0):
     - FlutterMacOS
@@ -23,27 +15,21 @@ PODS:
     - FlutterMacOS
   - flutter_avif_macos (0.0.1):
     - FlutterMacOS
-  - flutter_litert (0.0.1):
+  - flutter_litert (2.5.8):
     - FlutterMacOS
   - flutter_local_notifications (0.0.1):
     - FlutterMacOS
   - flutter_timezone (0.1.0):
     - FlutterMacOS
   - FlutterMacOS (1.0.0)
-  - hand_detection (2.2.0):
-    - FlutterMacOS
   - heic_native (0.1.1):
     - FlutterMacOS
   - media_kit_video (0.0.1):
-    - FlutterMacOS
-  - object_detection (0.0.1):
     - FlutterMacOS
   - package_info_plus (0.0.1):
     - FlutterMacOS
   - photo_manager (3.9.0):
     - Flutter
-    - FlutterMacOS
-  - pose_detection (3.0.0):
     - FlutterMacOS
   - screen_retriever_macos (0.0.1):
     - FlutterMacOS
@@ -88,14 +74,10 @@ PODS:
     - FlutterMacOS
 
 DEPENDENCIES:
-  - animal_detection (from `Flutter/ephemeral/.symlinks/plugins/animal_detection/macos`)
   - camera_desktop (from `Flutter/ephemeral/.symlinks/plugins/camera_desktop/macos`)
-  - cat_detection (from `Flutter/ephemeral/.symlinks/plugins/cat_detection/macos`)
   - desktop_drop (from `Flutter/ephemeral/.symlinks/plugins/desktop_drop/macos`)
   - device_info_plus (from `Flutter/ephemeral/.symlinks/plugins/device_info_plus/macos`)
-  - dog_detection (from `Flutter/ephemeral/.symlinks/plugins/dog_detection/macos`)
   - downloadsfolder (from `Flutter/ephemeral/.symlinks/plugins/downloadsfolder/macos`)
-  - face_detection_tflite (from `Flutter/ephemeral/.symlinks/plugins/face_detection_tflite/macos`)
   - fast_thumbnail (from `Flutter/ephemeral/.symlinks/plugins/fast_thumbnail/macos`)
   - file_picker (from `Flutter/ephemeral/.symlinks/plugins/file_picker/macos`)
   - file_selector_macos (from `Flutter/ephemeral/.symlinks/plugins/file_selector_macos/macos`)
@@ -104,13 +86,10 @@ DEPENDENCIES:
   - flutter_local_notifications (from `Flutter/ephemeral/.symlinks/plugins/flutter_local_notifications/macos`)
   - flutter_timezone (from `Flutter/ephemeral/.symlinks/plugins/flutter_timezone/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
-  - hand_detection (from `Flutter/ephemeral/.symlinks/plugins/hand_detection/macos`)
   - heic_native (from `Flutter/ephemeral/.symlinks/plugins/heic_native/macos`)
   - media_kit_video (from `Flutter/ephemeral/.symlinks/plugins/media_kit_video/macos`)
-  - object_detection (from `Flutter/ephemeral/.symlinks/plugins/object_detection/macos`)
   - package_info_plus (from `Flutter/ephemeral/.symlinks/plugins/package_info_plus/macos`)
   - photo_manager (from `Flutter/ephemeral/.symlinks/plugins/photo_manager/darwin`)
-  - pose_detection (from `Flutter/ephemeral/.symlinks/plugins/pose_detection/macos`)
   - screen_retriever_macos (from `Flutter/ephemeral/.symlinks/plugins/screen_retriever_macos/macos`)
   - share_plus (from `Flutter/ephemeral/.symlinks/plugins/share_plus/macos`)
   - sqflite_darwin (from `Flutter/ephemeral/.symlinks/plugins/sqflite_darwin/darwin`)
@@ -125,22 +104,14 @@ SPEC REPOS:
     - sqlite3
 
 EXTERNAL SOURCES:
-  animal_detection:
-    :path: Flutter/ephemeral/.symlinks/plugins/animal_detection/macos
   camera_desktop:
     :path: Flutter/ephemeral/.symlinks/plugins/camera_desktop/macos
-  cat_detection:
-    :path: Flutter/ephemeral/.symlinks/plugins/cat_detection/macos
   desktop_drop:
     :path: Flutter/ephemeral/.symlinks/plugins/desktop_drop/macos
   device_info_plus:
     :path: Flutter/ephemeral/.symlinks/plugins/device_info_plus/macos
-  dog_detection:
-    :path: Flutter/ephemeral/.symlinks/plugins/dog_detection/macos
   downloadsfolder:
     :path: Flutter/ephemeral/.symlinks/plugins/downloadsfolder/macos
-  face_detection_tflite:
-    :path: Flutter/ephemeral/.symlinks/plugins/face_detection_tflite/macos
   fast_thumbnail:
     :path: Flutter/ephemeral/.symlinks/plugins/fast_thumbnail/macos
   file_picker:
@@ -157,20 +128,14 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/flutter_timezone/macos
   FlutterMacOS:
     :path: Flutter/ephemeral
-  hand_detection:
-    :path: Flutter/ephemeral/.symlinks/plugins/hand_detection/macos
   heic_native:
     :path: Flutter/ephemeral/.symlinks/plugins/heic_native/macos
   media_kit_video:
     :path: Flutter/ephemeral/.symlinks/plugins/media_kit_video/macos
-  object_detection:
-    :path: Flutter/ephemeral/.symlinks/plugins/object_detection/macos
   package_info_plus:
     :path: Flutter/ephemeral/.symlinks/plugins/package_info_plus/macos
   photo_manager:
     :path: Flutter/ephemeral/.symlinks/plugins/photo_manager/darwin
-  pose_detection:
-    :path: Flutter/ephemeral/.symlinks/plugins/pose_detection/macos
   screen_retriever_macos:
     :path: Flutter/ephemeral/.symlinks/plugins/screen_retriever_macos/macos
   share_plus:
@@ -189,29 +154,22 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/window_manager/macos
 
 SPEC CHECKSUMS:
-  animal_detection: d0d5bfcbc4954c5c8fb78b3d943e23220b3bfc5d
-  camera_desktop: a3e0776e9fdd78bd8f032186cffecd3e3b4ef159
-  cat_detection: 64e964585ce66f3bfb3bf279d7fd618791c4de6f
+  camera_desktop: 8bda5f29f5704d67733654371d536aac7f742219
   desktop_drop: 10a3e6a7fa9dbe350541f2574092fecfa345a07b
   device_info_plus: 4fb280989f669696856f8b129e4a5e3cd6c48f76
-  dog_detection: 0d925f3c2a10622197b1ba9d217add35023f92e4
   downloadsfolder: 9a9a5fb6eee0abe38756e788bb248d1c21490a6e
-  face_detection_tflite: 9f787746e700bb1c8462c8cdd254ecc25c9560ce
   fast_thumbnail: 2417991edd04c434d5d80b415b70136f0ec49dfc
   file_picker: 7584aae6fa07a041af2b36a2655122d42f578c1a
   file_selector_macos: 9e9e068e90ebee155097d00e89ae91edb2374db7
   flutter_avif_macos: 9ed61d67adfbd6964eccb59971020fb55c31fc11
-  flutter_litert: 1bbe6e8757c574ab66044233b98353f34eaa7e29
+  flutter_litert: ce663d62d83878f8659145d428526e9219ee0934
   flutter_local_notifications: 1fc7ffb10a83d6a2eeeeddb152d43f1944b0aad0
   flutter_timezone: d272288c69082ad571630e0d17140b3d6b93dc0c
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
-  hand_detection: 5ba3335fce2a5ef7fb3e26b8ef6b5c80ce6a0642
   heic_native: 4366bb8e1c4f41b5d61116396e6919a5ebb2df83
   media_kit_video: 28d7d27611c7769a2464eb7621c37386a61dcc9a
-  object_detection: f0ef29203f18ae579b3da0ad8d906d8dd27f98e2
   package_info_plus: f0052d280d17aa382b932f399edf32507174e870
   photo_manager: 25fd77df14f4f0ba5ef99e2c61814dde77e2bceb
-  pose_detection: 54940a055b6c0e9b1a14112f8572804f45a63e6c
   screen_retriever_macos: 452e51764a9e1cdb74b3c541238795849f21557f
   share_plus: 510bf0af1a42cd602274b4629920c9649c52f4cc
   sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0

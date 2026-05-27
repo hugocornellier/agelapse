@@ -33,7 +33,7 @@ jobs:
       prerelease: ${{ steps.version.outputs.prerelease }}
       ref: ${{ steps.version.outputs.ref }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ github.event.inputs.ref || github.sha }}
           fetch-depth: 0
@@ -101,7 +101,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ needs.prepare.outputs.ref }}
           persist-credentials: false
@@ -112,7 +112,7 @@ jobs:
           cache: true
 
       - name: Cache opencv_dart native build
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .dart_tool/hooks_runner/shared
           key: opencv-native-windows-release-${{ hashFiles('pubspec.lock') }}
@@ -149,7 +149,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ needs.prepare.outputs.ref }}
           persist-credentials: false
@@ -181,7 +181,7 @@ jobs:
           cache: true
 
       - name: Cache opencv_dart native build
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .dart_tool/hooks_runner/shared
           key: opencv-native-linux-release-${{ hashFiles('pubspec.lock') }}
@@ -244,7 +244,7 @@ jobs:
           sudo flatpak install -y flathub org.freedesktop.Platform.ffmpeg-full//24.08
 
       - name: Cache Flatpak builder
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: flatpak/.flatpak-builder
           key: flatpak-builder-${{ hashFiles('flatpak/com.hugocornellier.agelapse.yaml') }}
@@ -279,7 +279,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ needs.prepare.outputs.ref }}
 

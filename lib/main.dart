@@ -39,7 +39,9 @@ bool _windowManagerInitialized = false;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await LogService.instance.initialize();
+  if (!test_config.isTestMode) {
+    await LogService.instance.initialize();
+  }
   await _main();
 }
 
@@ -47,8 +49,12 @@ Future<void> _main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   initDatabase();
 
-  // Clean up orphaned temp files from previous sessions
-  await DirUtils.clearStabilizationTempFiles();
+  // Clean up orphaned temp files from previous sessions. Skip this in
+  // integration tests: it is nonessential startup work and can touch plugin
+  // filesystem paths before the first test frame on hosted desktop runners.
+  if (!test_config.isTestMode) {
+    await DirUtils.clearStabilizationTempFiles();
+  }
 
   VideoPlayerMediaKit.ensureInitialized(linux: true);
 
@@ -57,11 +63,16 @@ Future<void> _main() async {
     // Purge expired Recently Deleted photos. Best-effort — must never block
     // startup, so failures are swallowed inside the helper.
     unawaited(ProjectUtils.purgeExpiredDeletedImages());
-    // Initialize custom fonts after database is ready
-    await CustomFontManager.instance.initialize();
+    // Initialize custom fonts after database is ready. Tests do not exercise
+    // installed custom fonts, and skipping this avoids extra filesystem/font
+    // loader work before runApp on desktop CI.
+    if (!test_config.isTestMode) {
+      await CustomFontManager.instance.initialize();
+    }
     // Window manager setup must only run once per process. In aggregator test
-    // runs, main() is called multiple times — repeated waitUntilReadyToShow
-    // calls hang because the window is already initialized.
+    // runs, main() is called multiple times. The first macOS launch still needs
+    // waitUntilReadyToShow so the hosted runner creates a usable native window
+    // before widget tests start pumping frames.
     if (!_windowManagerInitialized) {
       _windowManagerInitialized = true;
       await windowManager.ensureInitialized();
@@ -267,7 +278,7 @@ class AgeLapse extends StatelessWidget {
       ),
     );
 
-    if (!isDesktop) return materialApp;
+    if (!isDesktop || test_config.isTestMode) return materialApp;
 
     const editMenuChannel = MethodChannel('agelapse.macos.edit_menu');
 

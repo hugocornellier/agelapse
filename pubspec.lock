@@ -5,10 +5,10 @@ packages:
     dependency: transitive
     description:
       name: animal_detection
-      sha256: "8baea6f73091c98e8900da7c36695fa574fa0987a3b01a2bdeb70ff83f951c86"
+      sha256: a933738214b98dadcd2a089afb23e648f0df74620062c8971a4c01bcd4e2b90f
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.9"
+    version: "1.1.1"
   animated_bottom_navigation_bar:
     dependency: "direct main"
     description:
@@ -101,10 +101,10 @@ packages:
     dependency: "direct main"
     description:
       name: camera_desktop
-      sha256: "581ac6bb7259146f9ec6b6e358e72a94c554c8ee80977f5677861c529925c4fd"
+      sha256: "9eccef7941761a482475368766583d9242abcbd1d43226206d5a913361a74600"
       url: "https://pub.dev"
     source: hosted
-    version: "1.1.3"
+    version: "1.1.6"
   camera_platform_interface:
     dependency: transitive
     description:
@@ -125,10 +125,10 @@ packages:
     dependency: "direct main"
     description:
       name: cat_detection
-      sha256: "7ab5c64d3a257413ec459177dab42f1df2d431e7e393df9216965189ad163d77"
+      sha256: "4750a338bfdad5ce76881692f9663d9ecfc80f1d73dd6f7a0c419dab661e94af"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.10"
+    version: "1.1.1"
   change_case:
     dependency: transitive
     description:
@@ -294,10 +294,10 @@ packages:
     dependency: "direct main"
     description:
       name: dog_detection
-      sha256: c8c5b4f2e454b83ec42c74f4d98d3c339e34f1bab0b7d1a300d433ec3b25c53b
+      sha256: a119ce168c7eba540f0e7f1e2ad410e646af92b6788d792be70c7a2aa1caea37
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.10"
+    version: "1.1.1"
   downloadsfolder:
     dependency: "direct main"
     description:
@@ -350,10 +350,10 @@ packages:
     dependency: "direct main"
     description:
       name: face_detection_tflite
-      sha256: bfdf9506e3809d61aafe781b900bbeffc77e38a854fe9783b22465f58a608dda
+      sha256: af0354891a32a3eea59a1a70c92033cc8a0937fc1270f1124d479f4f1719960e
       url: "https://pub.dev"
     source: hosted
-    version: "6.2.5"
+    version: "6.2.9"
   fake_async:
     dependency: transitive
     description:
@@ -589,10 +589,10 @@ packages:
     dependency: transitive
     description:
       name: flutter_litert
-      sha256: e5779d130af155a4aaa518e3e5e94696bfc62ec0dbeb238ddafe065b4bca778c
+      sha256: "90ca1c324328ca793c2e7cd5e2c2648f6676ee27012f757717a37a9660373ac2"
       url: "https://pub.dev"
     source: hosted
-    version: "2.5.2"
+    version: "2.5.8"
   flutter_local_notifications:
     dependency: "direct main"
     description:
@@ -697,18 +697,18 @@ packages:
     dependency: "direct main"
     description:
       name: hand_detection
-      sha256: b9156eb60261f02a99be54f13126a5f4dcc01e5f0dd6275c24ddaf20ee007ea1
+      sha256: "7612e304a532153c155c911f64fd6b91bea5e51e1f2113ccd798e53a600f6ff2"
       url: "https://pub.dev"
     source: hosted
-    version: "3.0.3"
+    version: "3.0.7"
   heic_native:
     dependency: "direct main"
     description:
       name: heic_native
-      sha256: "07b55697fcc0620c6579014a2ed5e3b4d88e4ebfa58b512d9c6e78d7c69b506b"
+      sha256: b9a0f516a05326353ca74a235d9ca9c54963b0e32cd7c515f9a94325ec4906fd
       url: "https://pub.dev"
     source: hosted
-    version: "0.1.1"
+    version: "1.0.0"
   hooks:
     dependency: transitive
     description:
@@ -958,10 +958,10 @@ packages:
     dependency: "direct main"
     description:
       name: object_detection
-      sha256: "8effc9021b818c585785875f11975eb57adb1fc1c248c56aeebed256de7760a9"
+      sha256: ed7ab46f09c2d142533013524f073d6cd036540a2c7129f82c1d5e806ddb252f
       url: "https://pub.dev"
     source: hosted
-    version: "0.0.4"
+    version: "0.0.8"
   objective_c:
     dependency: transitive
     description:
@@ -1158,10 +1158,10 @@ packages:
     dependency: "direct main"
     description:
       name: pose_detection
-      sha256: c7f2a36b9c2d9590d7e936b5df00abba4122f014b99325779d7d66f31802df27
+      sha256: ed1e61cb08265c2c1c44d9558705a48aa1b86bc18ccbfeb0260529ed08f2f4f9
       url: "https://pub.dev"
     source: hosted
-    version: "3.1.1"
+    version: "3.1.5"
   posix:
     dependency: transitive
     description:

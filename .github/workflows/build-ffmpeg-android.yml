@@ -17,7 +17,7 @@ jobs:
       ABIS: "arm64-v8a armeabi-v7a x86_64"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install build dependencies
         run: |
