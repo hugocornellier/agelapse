@@ -1376,22 +1376,50 @@ class FaceStabilizer {
     if (projectType == "musc") translateY = 0;
 
     token?.throwIfCancelled();
-    Uint8List? imageBytesStabilized =
-        await StabUtils.generateStabilizedImageBytesCVAsync(
-      srcBytes,
-      rotationDegrees,
-      scaleFactor,
-      translateX,
-      translateY,
-      canvasWidth,
-      canvasHeight,
-      token: token,
-      srcId: srcId,
-      backgroundColorBGR: backgroundColorBGR,
-      preserveBitDepth: lossless,
-    );
-    if (imageBytesStabilized == null) {
-      return StabilizationResult(success: false);
+    // Face projects generate the initial pass as raw Mat bytes (like the
+    // refinement passes) so the warp output skips a PNG encode/decode
+    // round-trip on its way to face detection; PNG encoding happens only when
+    // bytes are saved. Cat/dog detectors can't consume raw Mats, and non-eye
+    // projects save immediately, so both keep the PNG path.
+    Uint8List? imageBytesStabilized;
+    Map<String, dynamic>? initialRaw;
+    final bool useRawInitialPass =
+        projectType == "face" && IsolatePool.instance.isInitialized;
+    if (useRawInitialPass) {
+      initialRaw = await StabUtils.generateStabilizedRawCVAsync(
+        srcBytes,
+        rotationDegrees,
+        scaleFactor,
+        translateX,
+        translateY,
+        canvasWidth,
+        canvasHeight,
+        token: token,
+        srcId: srcId,
+        backgroundColorBGR: backgroundColorBGR,
+        preserveBitDepth: lossless,
+      );
+      if (initialRaw == null) {
+        return StabilizationResult(success: false);
+      }
+    } else {
+      imageBytesStabilized =
+          await StabUtils.generateStabilizedImageBytesCVAsync(
+        srcBytes,
+        rotationDegrees,
+        scaleFactor,
+        translateX,
+        translateY,
+        canvasWidth,
+        canvasHeight,
+        token: token,
+        srcId: srcId,
+        backgroundColorBGR: backgroundColorBGR,
+        preserveBitDepth: lossless,
+      );
+      if (imageBytesStabilized == null) {
+        return StabilizationResult(success: false);
+      }
     }
 
     final String stabilizedPhotoPath = await StabUtils.getStabilizedImagePath(
@@ -1411,6 +1439,7 @@ class FaceStabilizer {
       rotationDegrees,
       scaleFactor,
       imageBytesStabilized,
+      initialRaw,
       srcBytes,
       token,
       srcId,
@@ -1501,6 +1530,11 @@ class FaceStabilizer {
   }
 
   /// Returns the final saved result and the transform used to generate it.
+  ///
+  /// Exactly one of [imageBytesStabilized] (PNG bytes) and [initialRaw]
+  /// (raw Mat data map from [StabUtils.generateStabilizedRawCVAsync]) is
+  /// non-null. The raw form is used by face projects to skip PNG round-trips;
+  /// it is encoded to PNG lazily, only when bytes need to be saved.
   Future<_FinalizedStabilizationResult> _finalizeStabilization(
     String rawPhotoPath,
     String stabilizedJpgPhotoPath,
@@ -1510,14 +1544,15 @@ class FaceStabilizer {
     double translateY,
     double rotationDegrees,
     double scaleFactor,
-    Uint8List imageBytesStabilized,
+    Uint8List? imageBytesStabilized,
+    Map<String, dynamic>? initialRaw,
     Uint8List srcBytes,
     CancellationToken? token,
     String srcId,
   ) async {
     if (!_isEyeBasedProject) {
       await StabUtils.writeImagesBytesToJpgFile(
-        imageBytesStabilized,
+        imageBytesStabilized!,
         stabilizedJpgPhotoPath,
       );
       final (success, savedBytes) = await saveStabilizedImage(
@@ -1543,18 +1578,58 @@ class FaceStabilizer {
     final Point<double> goalLeftEye = Point(leftEyeXGoal, bothEyesYGoal);
     final Point<double> goalRightEye = Point(rightEyeXGoal, bothEyesYGoal);
 
+    // Resolves the initial stabilized image as PNG bytes for code paths that
+    // save it directly. Lazy: in the raw flow the encode only runs when one of
+    // those paths is actually taken.
+    Future<Uint8List?> resolveInitialPngBytes() async {
+      if (imageBytesStabilized != null) return imageBytesStabilized;
+      return StabUtils.encodeRawToPngAsync(
+        initialRaw!['data'] as Uint8List,
+        initialRaw['width'] as int,
+        initialRaw['height'] as int,
+        initialRaw['matType'] as int,
+      );
+    }
+
+    _FinalizedStabilizationResult encodeFailure() {
+      LogService.instance.log(
+        "PNG encode of initial pass failed; aborting attempt",
+      );
+      return _FinalizedStabilizationResult(
+        success: false,
+        translateX: translateX,
+        translateY: translateY,
+        rotationDegrees: rotationDegrees,
+        scaleFactor: scaleFactor,
+      );
+    }
+
     // Detect faces directly from bytes using face_detection_tflite (works on all platforms)
-    final stabFaces = await _detectFaces(
-      imageBytesStabilized,
-      filterByFaceSize: false,
-      imageWidth: canvasWidth,
-    );
+    final List<FaceLike>? stabFaces;
+    if (initialRaw != null) {
+      // Map a detector error (null) to an empty list for parity with the PNG
+      // path, which cannot distinguish error from no-faces either.
+      stabFaces = await _detectFacesFromRaw(
+            initialRaw,
+            filterByFaceSize: false,
+            imageWidth: canvasWidth,
+          ) ??
+          <FaceLike>[];
+    } else {
+      stabFaces = await _detectFaces(
+        imageBytesStabilized!,
+        filterByFaceSize: false,
+        imageWidth: canvasWidth,
+      );
+    }
 
     if (stabFaces == null || stabFaces.isEmpty) {
+      final Uint8List? initialPng = await resolveInitialPngBytes();
+      if (initialPng == null) return encodeFailure();
       return _handleFallbackStabilization(
         rawPhotoPath: rawPhotoPath,
         stabilizedJpgPhotoPath: stabilizedJpgPhotoPath,
-        imageBytesStabilized: imageBytesStabilized,
+        imageBytesStabilized: initialPng,
         imgWidth: imgWidth,
         imgHeight: imgHeight,
         scaleFactor: scaleFactor,
@@ -1570,10 +1645,12 @@ class FaceStabilizer {
     List<Point<double>?> eyes = await _filterAndCenterEyesAsync(stabFaces);
 
     if (!_areEyesValid(eyes)) {
+      final Uint8List? initialPng = await resolveInitialPngBytes();
+      if (initialPng == null) return encodeFailure();
       return _handleFallbackStabilization(
         rawPhotoPath: rawPhotoPath,
         stabilizedJpgPhotoPath: stabilizedJpgPhotoPath,
-        imageBytesStabilized: imageBytesStabilized,
+        imageBytesStabilized: initialPng,
         imgWidth: imgWidth,
         imgHeight: imgHeight,
         scaleFactor: scaleFactor,
@@ -1602,6 +1679,7 @@ class FaceStabilizer {
       rotationDegrees,
       scaleFactor,
       imageBytesStabilized,
+      initialRaw,
       rawPhotoPath,
       stabilizedJpgPhotoPath,
       toDelete,
@@ -1669,7 +1747,8 @@ class FaceStabilizer {
     double translateY,
     double rotationDegrees,
     double scaleFactor,
-    Uint8List imageBytesStabilized,
+    Uint8List? imageBytesStabilized,
+    Map<String, dynamic>? initialRaw,
     String rawPhotoPath,
     String stabilizedJpgPhotoPath,
     List<String> toDelete,
@@ -1689,6 +1768,7 @@ class FaceStabilizer {
       rotationDegrees,
       scaleFactor,
       imageBytesStabilized,
+      initialRaw,
       rawPhotoPath,
       stabilizedJpgPhotoPath,
       toDelete,
@@ -1742,7 +1822,8 @@ class FaceStabilizer {
     double translateY,
     double rotationDegrees,
     double scaleFactor,
-    Uint8List imageBytesStabilized,
+    Uint8List? imageBytesStabilized,
+    Map<String, dynamic>? initialRaw,
     String rawPhotoPath,
     String stabilizedJpgPhotoPath,
     List<String> toDelete,
@@ -1753,6 +1834,20 @@ class FaceStabilizer {
     String srcId,
   ) async {
     bool successfulStabilization = false;
+
+    // Encodes a raw pass result to PNG. The initial pass encodes at
+    // compression 3 (matching the PNG bytes the non-raw flow produces) so
+    // saved artifacts are identical either way; refinement passes keep
+    // compression 1 as before.
+    Future<Uint8List?> encodeRaw(Map<String, dynamic> raw) {
+      return StabUtils.encodeRawToPngAsync(
+        raw['data'] as Uint8List,
+        raw['width'] as int,
+        raw['height'] as int,
+        raw['matType'] as int,
+        pngCompression: identical(raw, initialRaw) ? 3 : 1,
+      );
+    }
 
     final double firstPassScore = calculateStabScore(
       eyes,
@@ -1786,8 +1881,24 @@ class FaceStabilizer {
       overshotRightY,
     )) {
       // No correction needed - save with first pass result
+      final Uint8List? initialBytes =
+          imageBytesStabilized ?? await encodeRaw(initialRaw!);
+      if (initialBytes == null) {
+        LogService.instance.log(
+          "PNG encode of initial pass failed; aborting attempt",
+        );
+        return _FinalizedStabilizationResult(
+          success: false,
+          preScore: firstPassScore,
+          finalScore: firstPassScore,
+          translateX: translateX,
+          translateY: translateY,
+          rotationDegrees: rotationDegrees,
+          scaleFactor: scaleFactor,
+        );
+      }
       final (s, savedBytes) = await saveStabilizedImage(
-        imageBytesStabilized,
+        initialBytes,
         rawPhotoPath,
         stabilizedJpgPhotoPath,
         firstPassScore,
@@ -1818,15 +1929,16 @@ class FaceStabilizer {
     );
 
     // Track best result across all passes
-    Uint8List bestBytes = imageBytesStabilized;
+    Uint8List? bestBytes = imageBytesStabilized;
     double bestScore = firstPassScore;
     double bestTX = translateX;
     double bestTY = translateY;
     double bestRotation = rotationDegrees;
     double bestScale = scaleFactor;
 
-    // Track raw Mat data when best pass is not the initial PNG (pass 1)
-    Map<String, dynamic>? bestRaw;
+    // Track raw Mat data when the best pass exists in raw form. In the raw
+    // flow this starts as the initial pass itself (bestBytes is null there).
+    Map<String, dynamic>? bestRaw = initialRaw;
 
     // Track scores for each pass type
     double? rotationPassScore, scalePassScore, translationPassScore;
@@ -1990,19 +2102,29 @@ class FaceStabilizer {
 
     if (!_areEyesValid(currentEyes)) {
       // Can't do translation passes without valid eyes, save current best and return
-      final Uint8List saveBytesNoTrans;
+      final Uint8List? saveBytesNoTrans;
       final capturedRawNoTrans = bestRaw;
       if (capturedRawNoTrans != null) {
-        final encoded = await StabUtils.encodeRawToPngAsync(
-          capturedRawNoTrans['data'] as Uint8List,
-          capturedRawNoTrans['width'] as int,
-          capturedRawNoTrans['height'] as int,
-          capturedRawNoTrans['matType'] as int,
-          pngCompression: 1,
-        );
+        final encoded = await encodeRaw(capturedRawNoTrans);
         saveBytesNoTrans = encoded ?? bestBytes;
       } else {
         saveBytesNoTrans = bestBytes;
+      }
+      if (saveBytesNoTrans == null) {
+        LogService.instance.log(
+          "PNG encode of best pass failed; aborting attempt",
+        );
+        return _FinalizedStabilizationResult(
+          success: false,
+          preScore: firstPassScore,
+          twoPassScore: rotationPassScore,
+          threePassScore: scalePassScore,
+          finalScore: bestScore,
+          translateX: bestTX,
+          translateY: bestTY,
+          rotationDegrees: bestRotation,
+          scaleFactor: bestScale,
+        );
       }
       final (success, savedBytes) = await saveStabilizedImage(
         saveBytesNoTrans,
@@ -2221,20 +2343,31 @@ class FaceStabilizer {
       );
     }
 
-    // Resolve bytes to save: encode raw if best pass was not the initial PNG
-    final Uint8List bytesToSave;
+    // Resolve bytes to save: encode raw if the best pass exists in raw form
+    final Uint8List? bytesToSave;
     final capturedRawSlow = bestRaw;
     if (capturedRawSlow != null) {
-      final encoded = await StabUtils.encodeRawToPngAsync(
-        capturedRawSlow['data'] as Uint8List,
-        capturedRawSlow['width'] as int,
-        capturedRawSlow['height'] as int,
-        capturedRawSlow['matType'] as int,
-        pngCompression: 1,
-      );
+      final encoded = await encodeRaw(capturedRawSlow);
       bytesToSave = encoded ?? bestBytes;
     } else {
       bytesToSave = bestBytes;
+    }
+    if (bytesToSave == null) {
+      LogService.instance.log(
+        "PNG encode of best pass failed; aborting attempt",
+      );
+      return _FinalizedStabilizationResult(
+        success: false,
+        preScore: firstPassScore,
+        twoPassScore: rotationPassScore,
+        threePassScore: scalePassScore,
+        fourPassScore: translationPassScore,
+        finalScore: bestScore,
+        translateX: bestTX,
+        translateY: bestTY,
+        rotationDegrees: bestRotation,
+        scaleFactor: bestScale,
+      );
     }
 
     // Save the best result
@@ -2853,9 +2986,20 @@ class FaceStabilizer {
           await FormatDecodeUtils.loadCvCompatibleBytes(rawPhotoPath);
       if (imageBytes == null) return;
 
-      final Float32List? embedding = await StabUtils.getFaceEmbeddingFromBytes(
-        imageBytes,
-      );
+      // Reuse the face detected for this photo when available — running the
+      // embedding model directly skips the redundant detection pass inside
+      // getFaceEmbeddingFromBytes (and aligns on the same face the
+      // stabilization itself used).
+      final List<dynamic>? rawFaces = _lastRawFaces;
+      final Float32List? embedding;
+      if (rawFaces != null && rawFaces.isNotEmpty) {
+        embedding = await StabUtils.getFaceEmbeddingForFace(
+          rawFaces.first,
+          imageBytes,
+        );
+      } else {
+        embedding = await StabUtils.getFaceEmbeddingFromBytes(imageBytes);
+      }
 
       if (embedding != null) {
         _currentEmbedding = embedding;
@@ -2872,7 +3016,9 @@ class FaceStabilizer {
   // ISOLATE-BACKED COORDINATE PROCESSING METHODS
   // ============================================================
 
-  /// Isolate-backed version of _filterAndCenterEyes.
+  /// Filters faces to valid eye pairs and selects the centermost when
+  /// multiple remain. Runs inline: the math is microseconds of arithmetic on
+  /// a handful of coordinates, far cheaper than an isolate round-trip.
   Future<List<Point<double>?>> _filterAndCenterEyesAsync(
     List<dynamic> stabFaces,
   ) async {
@@ -2880,15 +3026,14 @@ class FaceStabilizer {
 
     final facesData = stabFaces.map((f) => (f as FaceLike).toMap()).toList();
 
-    final result = await IsolatePool.instance
-        .execute<List<dynamic>>('filterAndCenterEyes', {
+    final List<dynamic> result = IsolatePool.filterAndCenterEyesSync({
       'faces': facesData,
       'imgWidth': canvasWidth,
       'imgHeight': canvasHeight,
       'eyeDistanceGoal': eyeDistanceGoal,
     });
 
-    if (result == null || result.isEmpty) return [];
+    if (result.isEmpty) return [];
 
     return result.map((e) {
       if (e == null) return null;
@@ -2900,7 +3045,8 @@ class FaceStabilizer {
     }).toList();
   }
 
-  /// Isolate-backed version of getEyesFromFaces.
+  /// Extracts eye coordinates from faces. Runs inline (see
+  /// [_filterAndCenterEyesAsync]).
   Future<List<Point<double>?>> getEyesFromFacesAsync(
     List<dynamic> faces,
   ) async {
@@ -2908,12 +3054,9 @@ class FaceStabilizer {
 
     final facesData = faces.map((f) => (f as FaceLike).toMap()).toList();
 
-    final result = await IsolatePool.instance.execute<List<dynamic>>(
-      'getEyesFromFaces',
+    final List<dynamic> result = IsolatePool.getEyesFromFacesSync(
       {'faces': facesData},
     );
-
-    if (result == null) return [];
 
     return result.map((e) {
       if (e == null) return null;
@@ -3010,7 +3153,8 @@ class FaceStabilizer {
     return selectedFaceIndex;
   }
 
-  /// Isolate-backed version of getCentermostEyes.
+  /// Selects the centermost eye pair across faces. Runs inline (see
+  /// [_filterAndCenterEyesAsync]).
   Future<List<Point<double>>> getCentermostEyesAsync(
     List<Point<double>?> eyes,
     List<dynamic> faces,
@@ -3022,8 +3166,7 @@ class FaceStabilizer {
     final eyesData = eyes.map((e) => e != null ? [e.x, e.y] : null).toList();
     final facesData = faces.map((f) => (f as FaceLike).toMap()).toList();
 
-    final result = await IsolatePool.instance.execute<List<dynamic>>(
-      'getCentermostEyes',
+    final List<dynamic> result = IsolatePool.getCentermostEyesSync(
       {
         'eyes': eyesData,
         'faces': facesData,
@@ -3032,7 +3175,7 @@ class FaceStabilizer {
       },
     );
 
-    if (result == null || result.isEmpty) return [];
+    if (result.isEmpty) return [];
 
     return result.map((e) {
       final list = e as List;
@@ -3043,7 +3186,8 @@ class FaceStabilizer {
     }).toList();
   }
 
-  /// Isolate-backed version of _pickFaceIndexByBox.
+  /// Picks the face index best matching a target box. Runs inline (see
+  /// [_filterAndCenterEyesAsync]).
   Future<int> _pickFaceIndexByBoxAsync(
     List<dynamic> faces,
     Rect targetBox,
@@ -3052,8 +3196,7 @@ class FaceStabilizer {
 
     final facesData = faces.map((f) => (f as FaceLike).toMap()).toList();
 
-    final result = await IsolatePool.instance.execute<int>(
-      'pickFaceIndexByBox',
+    return IsolatePool.pickFaceIndexByBoxSync(
       {
         'faces': facesData,
         'targetBox': [
@@ -3064,8 +3207,6 @@ class FaceStabilizer {
         ],
       },
     );
-
-    return result ?? -1;
   }
 
   /// Runs the pose detector and returns the first detected pose, or null if none found.

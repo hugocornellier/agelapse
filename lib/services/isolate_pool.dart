@@ -568,10 +568,12 @@ class IsolatePool {
           );
 
           // Return raw Mat data instead of encoding to PNG.
-          // Wrap in TransferableTypedData for zero-copy isolate transfer.
-          final rawData = Uint8List.fromList(rawDst.data);
+          // TransferableTypedData.fromList copies straight out of the native
+          // Mat view (Mat.data is zero-copy), so no intermediate Dart-heap
+          // copy is needed; the Mat outlives this expression — dispose runs
+          // in the finally below.
           return {
-            'data': TransferableTypedData.fromList([rawData]),
+            'data': TransferableTypedData.fromList([rawDst.data]),
             'width': rawDst.cols,
             'height': rawDst.rows,
             'matType': rawDst.type.value,
@@ -613,16 +615,16 @@ class IsolatePool {
         return 'Cache cleared';
 
       case 'filterAndCenterEyes':
-        return _filterAndCenterEyesIsolate(params);
+        return filterAndCenterEyesSync(params);
 
       case 'getEyesFromFaces':
-        return _getEyesFromFacesIsolate(params);
+        return getEyesFromFacesSync(params);
 
       case 'getCentermostEyes':
-        return _getCentermostEyesIsolate(params);
+        return getCentermostEyesSync(params);
 
       case 'pickFaceIndexByBox':
-        return _pickFaceIndexByBoxIsolate(params);
+        return pickFaceIndexByBoxSync(params);
 
       default:
         throw UnsupportedError('Unknown operation: $operation');
@@ -634,7 +636,7 @@ class IsolatePool {
   // ============================================================
 
   /// Isolate implementation: Extract eye coordinates from serialized faces.
-  static List<List<double>?> _getEyesFromFacesIsolate(
+  static List<List<double>?> getEyesFromFacesSync(
     Map<String, dynamic> params,
   ) {
     final facesData = params['faces'] as List;
@@ -687,7 +689,7 @@ class IsolatePool {
   }
 
   /// Isolate implementation: Get centermost eyes from multiple faces.
-  static List<List<double>> _getCentermostEyesIsolate(
+  static List<List<double>> getCentermostEyesSync(
     Map<String, dynamic> params,
   ) {
     final eyesData = params['eyes'] as List;
@@ -768,7 +770,7 @@ class IsolatePool {
   }
 
   /// Isolate implementation: Filter eyes and get centermost if multiple faces.
-  static List<List<double>?> _filterAndCenterEyesIsolate(
+  static List<List<double>?> filterAndCenterEyesSync(
     Map<String, dynamic> params,
   ) {
     final facesData = params['faces'] as List;
@@ -777,7 +779,7 @@ class IsolatePool {
     final eyeDistanceGoal = (params['eyeDistanceGoal'] as num).toDouble();
 
     // Get all eyes from faces
-    final allEyes = _getEyesFromFacesIsolate({'faces': facesData});
+    final allEyes = getEyesFromFacesSync({'faces': facesData});
 
     final List<List<double>> validPairs = [];
     final List<Map<String, dynamic>> validFaces = [];
@@ -801,7 +803,7 @@ class IsolatePool {
 
     // If multiple valid faces, get centermost
     if (validFaces.length > 1 && validPairs.length > 2) {
-      return _getCentermostEyesIsolate({
+      return getCentermostEyesSync({
         'eyes': validPairs,
         'faces': validFaces,
         'imgWidth': imgWidth,
@@ -813,7 +815,7 @@ class IsolatePool {
   }
 
   /// Isolate implementation: Pick face index by bounding box IoU.
-  static int _pickFaceIndexByBoxIsolate(Map<String, dynamic> params) {
+  static int pickFaceIndexByBoxSync(Map<String, dynamic> params) {
     final facesData = params['faces'] as List;
     final targetBbox = params['targetBox'] as List;
     final targetLeft = (targetBbox[0] as num).toDouble();

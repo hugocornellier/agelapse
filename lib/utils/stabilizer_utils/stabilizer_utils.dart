@@ -430,6 +430,27 @@ class StabUtils {
     });
   }
 
+  /// Gets the face embedding for a single already-detected face, skipping the
+  /// redundant detection pass that [getFaceEmbeddingFromBytes] performs.
+  /// [face] must be an `fdl.Face` from a prior detection on [bytes].
+  /// Returns null if embedding extraction fails.
+  static Future<Float32List?> getFaceEmbeddingForFace(
+    fdl.Face face,
+    Uint8List bytes,
+  ) async {
+    // Serialize access to the face detector to prevent race conditions
+    return await _faceDetectorMutex.protect(() async {
+      try {
+        await _ensureFDLite();
+        return await _faceDetector!.getFaceEmbedding(face, bytes);
+      } catch (e) {
+        LogService.instance.log("Error extracting face embedding: $e");
+        _faceDetector = null; // Force reinit on next call
+        return null;
+      }
+    });
+  }
+
   /// Gets face embeddings for all detected faces in the image.
   /// Returns a list of embeddings (may contain nulls for faces where extraction failed).
   static Future<List<Float32List?>> getFaceEmbeddingsFromBytes(

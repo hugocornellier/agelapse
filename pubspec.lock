@@ -5,10 +5,10 @@ packages:
     dependency: transitive
     description:
       name: animal_detection
-      sha256: a933738214b98dadcd2a089afb23e648f0df74620062c8971a4c01bcd4e2b90f
+      sha256: b901159c0ecda3a608b460394b24c5b52dfd1195e7739a11d8176414de1bbf2c
       url: "https://pub.dev"
     source: hosted
-    version: "1.1.1"
+    version: "1.2.1"
   animated_bottom_navigation_bar:
     dependency: "direct main"
     description:
@@ -101,10 +101,10 @@ packages:
     dependency: "direct main"
     description:
       name: camera_desktop
-      sha256: "9eccef7941761a482475368766583d9242abcbd1d43226206d5a913361a74600"
+      sha256: bf5709484dc3ec4607ff93c497d86f76c0c10ee41705b10ae20060b409ee1d47
       url: "https://pub.dev"
     source: hosted
-    version: "1.1.6"
+    version: "1.1.7"
   camera_platform_interface:
     dependency: transitive
     description:
@@ -125,10 +125,10 @@ packages:
     dependency: "direct main"
     description:
       name: cat_detection
-      sha256: "4750a338bfdad5ce76881692f9663d9ecfc80f1d73dd6f7a0c419dab661e94af"
+      sha256: b25d2ea4f5e49f951af8b8d35ab2b7f58403ec1fcbc8b469ae253de968727246
       url: "https://pub.dev"
     source: hosted
-    version: "1.1.1"
+    version: "1.2.1"
   change_case:
     dependency: transitive
     description:
@@ -294,10 +294,10 @@ packages:
     dependency: "direct main"
     description:
       name: dog_detection
-      sha256: a119ce168c7eba540f0e7f1e2ad410e646af92b6788d792be70c7a2aa1caea37
+      sha256: "1c0c9726ad7619e815f3e1b2e08fb38c11dc13323b3fbc0f5906131300e2ab4b"
       url: "https://pub.dev"
     source: hosted
-    version: "1.1.1"
+    version: "1.2.1"
   downloadsfolder:
     dependency: "direct main"
     description:
@@ -350,10 +350,10 @@ packages:
     dependency: "direct main"
     description:
       name: face_detection_tflite
-      sha256: af0354891a32a3eea59a1a70c92033cc8a0937fc1270f1124d479f4f1719960e
+      sha256: d842782ff6d2efdfdc6fd09b223cc9c072360d80cff4a4850686e0ef2314ecb6
       url: "https://pub.dev"
     source: hosted
-    version: "6.2.9"
+    version: "6.3.1"
   fake_async:
     dependency: transitive
     description:
@@ -589,10 +589,10 @@ packages:
     dependency: transitive
     description:
       name: flutter_litert
-      sha256: "90ca1c324328ca793c2e7cd5e2c2648f6676ee27012f757717a37a9660373ac2"
+      sha256: e114b391ee8c600fe6d7489d0a0d6610166ec7982e5bf5eae6b968c0c1c18462
       url: "https://pub.dev"
     source: hosted
-    version: "2.5.8"
+    version: "2.8.3"
   flutter_local_notifications:
     dependency: "direct main"
     description:
@@ -697,18 +697,18 @@ packages:
     dependency: "direct main"
     description:
       name: hand_detection
-      sha256: "7612e304a532153c155c911f64fd6b91bea5e51e1f2113ccd798e53a600f6ff2"
+      sha256: "7c5a38bca057d3db3ee7aed0083e536580dca990eaeedb2d85caa232dfc1f94e"
       url: "https://pub.dev"
     source: hosted
-    version: "3.0.7"
+    version: "3.1.1"
   heic_native:
     dependency: "direct main"
     description:
       name: heic_native
-      sha256: b9a0f516a05326353ca74a235d9ca9c54963b0e32cd7c515f9a94325ec4906fd
+      sha256: b45998a2770edcd3190678c9788beb48db8e25270e6182c487115510228bd547
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.0"
+    version: "1.0.1"
   hooks:
     dependency: transitive
     description:
@@ -910,10 +910,10 @@ packages:
     dependency: transitive
     description:
       name: meta
-      sha256: "23f08335362185a5ea2ad3a4e597f1375e78bce8a040df5c600c8d3552ef2394"
+      sha256: "1741988757a65eb6b36abe716829688cf01910bbf91c34354ff7ec1c3de2b349"
       url: "https://pub.dev"
     source: hosted
-    version: "1.17.0"
+    version: "1.18.0"
   mime:
     dependency: "direct main"
     description:
@@ -958,10 +958,10 @@ packages:
     dependency: "direct main"
     description:
       name: object_detection
-      sha256: ed7ab46f09c2d142533013524f073d6cd036540a2c7129f82c1d5e806ddb252f
+      sha256: "6f4e9ecb14ea273e88aa5cdced0066fe73d5c32e731329e96c9c2d43ad7e2655"
       url: "https://pub.dev"
     source: hosted
-    version: "0.0.8"
+    version: "0.1.1"
   objective_c:
     dependency: transitive
     description:
@@ -1158,10 +1158,10 @@ packages:
     dependency: "direct main"
     description:
       name: pose_detection
-      sha256: ed1e61cb08265c2c1c44d9558705a48aa1b86bc18ccbfeb0260529ed08f2f4f9
+      sha256: "442ff78989dafa54cef6247a4ce1fd263d1b243cf093667a8512f1d2efa08dd4"
       url: "https://pub.dev"
     source: hosted
-    version: "3.1.5"
+    version: "3.2.1"
   posix:
     dependency: transitive
     description:
@@ -1475,10 +1475,10 @@ packages:
     dependency: transitive
     description:
       name: test_api
-      sha256: "8161c84903fd860b26bfdefb7963b3f0b68fee7adea0f59ef805ecca346f0c7a"
+      sha256: "949a932224383300f01be9221c39180316445ecb8e7547f70a41a35bf421fb9e"
       url: "https://pub.dev"
     source: hosted
-    version: "0.7.10"
+    version: "0.7.11"
   time:
     dependency: transitive
     description:
