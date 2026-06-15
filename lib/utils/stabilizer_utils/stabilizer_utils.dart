@@ -307,7 +307,7 @@ class StabUtils {
         await _ensureFDLite();
 
         // Face detection runs entirely in background isolate; UI never blocked
-        final facesDetected = await _faceDetector!.detectFaces(
+        final facesDetected = await _faceDetector!.detectFacesFromBytes(
           bytes,
           mode: fdl.FaceDetectionMode.full,
         );
@@ -348,7 +348,7 @@ class StabUtils {
         await _ensureFDLite();
 
         // Face detection runs entirely in background isolate; UI never blocked
-        final facesDetected = await _faceDetector!.detectFaces(
+        final facesDetected = await _faceDetector!.detectFacesFromBytes(
           bytes,
           mode: fdl.FaceDetectionMode.full,
         );
@@ -409,7 +409,7 @@ class StabUtils {
       try {
         await _ensureFDLite();
 
-        final faces = await _faceDetector!.detectFaces(
+        final faces = await _faceDetector!.detectFacesFromBytes(
           bytes,
           mode: fdl.FaceDetectionMode.fast,
         );
@@ -461,7 +461,7 @@ class StabUtils {
       try {
         await _ensureFDLite();
 
-        final faces = await _faceDetector!.detectFaces(
+        final faces = await _faceDetector!.detectFacesFromBytes(
           bytes,
           mode: fdl.FaceDetectionMode.fast,
         );
@@ -505,7 +505,7 @@ class StabUtils {
             "Using ${faces.length} pre-detected faces for embedding matching",
           );
         } else {
-          faces = await _faceDetector!.detectFaces(
+          faces = await _faceDetector!.detectFacesFromBytes(
             imageBytes,
             mode: fdl.FaceDetectionMode.fast,
           );

@@ -25,6 +25,13 @@ set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_RELEASE}")
 
 add_definitions(-DUNICODE -D_UNICODE)
 
+# MSVC 14.51+ (VS 2026 toolchain on hosted runners) turns the deprecated
+# <experimental/coroutine> header into a hard static_assert (STL1011). Some
+# plugins (permission_handler_windows, flutter_local_notifications_windows)
+# still include it via C++/WinRT, so silence it globally for all subdirectory
+# targets, including the plugins added below.
+add_compile_definitions(_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)
+
 function(APPLY_STANDARD_SETTINGS TARGET)
   target_compile_features(${TARGET} PUBLIC cxx_std_17)
   target_compile_options(${TARGET} PRIVATE /W4 /WX /wd"4100")
