@@ -30,11 +30,11 @@ class ThumbnailStatusHelper {
   /// - [ThumbnailCheckResult] with status and thumbnailExists flag if found
   /// - null if no status found (still loading)
   ///
-  /// [thumbnailPath] - Path to the thumbnail file
-  /// [projectId] - Project ID for DB lookups
-  /// [stabilizedImagePath] - Optional path to full image for fallback check
-  /// [verifyFileSize] - If true, verifies file has content for success status
-  /// [checkDbFlags] - If true, checks DB for noFacesFound/stabFailed flags
+  /// [thumbnailPath]: Path to the thumbnail file
+  /// [projectId]: Project ID for DB lookups
+  /// [stabilizedImagePath]: Optional path to full image for fallback check
+  /// [verifyFileSize]: If true, verifies file has content for success status
+  /// [checkDbFlags]: If true, checks DB for noFacesFound/stabFailed flags
   static Future<ThumbnailCheckResult?> checkInitialStatus({
     required String thumbnailPath,
     required int projectId,
@@ -56,7 +56,7 @@ class ThumbnailStatusHelper {
         }
         // Thumbnail doesn't exist, fall through to check full image
       } else {
-        // Non-success status or no verification needed - trust the cache
+        // Non-success status or no verification needed; trust the cache
         return ThumbnailCheckResult(
           status: cachedStatus,
           thumbnailExists: false,
@@ -80,7 +80,7 @@ class ThumbnailStatusHelper {
     if (stabilizedImagePath != null) {
       final stabFile = File(stabilizedImagePath);
       if (await stabFile.exists() && await stabFile.length() > 0) {
-        // Thumbnail missing but full image exists - treat as success
+        // Thumbnail missing but full image exists; treat as success
         return ThumbnailCheckResult(
           status: ThumbnailStatus.success,
           thumbnailExists: false,
@@ -111,15 +111,15 @@ class ThumbnailStatusHelper {
       }
     }
 
-    // 5. No status found - caller should stay in loading state
+    // 5. No status found; caller should stay in loading state
     return null;
   }
 
   /// Creates a stream subscription for thumbnail events.
   /// Returns the subscription so the caller can cancel it in dispose().
   ///
-  /// [thumbnailPath] - Path to listen for
-  /// [onEvent] - Callback when an event for this path is received
+  /// [thumbnailPath]: Path to listen for
+  /// [onEvent]: Callback when an event for this path is received
   static StreamSubscription<ThumbnailEvent> subscribeToStream({
     required String thumbnailPath,
     required void Function(ThumbnailEvent event) onEvent,
@@ -354,7 +354,7 @@ class StabilizedThumbnailState extends State<StabilizedThumbnail>
       );
     }
 
-    // Success state - show thumbnail if it exists, otherwise fall back to full image
+    // Success state: show thumbnail if it exists, otherwise fall back to full image
     if (_status == ThumbnailStatus.success) {
       if (_fileExists) {
         return Image.file(
@@ -373,7 +373,7 @@ class StabilizedThumbnailState extends State<StabilizedThumbnail>
       }
     }
 
-    // Still loading or unknown state - show loading indicator
+    // Still loading or unknown state; show loading indicator
     return const FlashingBox();
   }
 
@@ -570,7 +570,7 @@ class RawThumbnailState extends State<RawThumbnail>
 
   @override
   Future<void> checkInitialThumbnailStatus(String pathAtStart) async {
-    // Raw thumbnails don't check DB flags - only cache and file existence
+    // Raw thumbnails don't check DB flags; only cache and file existence
     final result = await ThumbnailStatusHelper.checkInitialStatus(
       thumbnailPath: widget.thumbnailPath,
       projectId: widget.projectId,

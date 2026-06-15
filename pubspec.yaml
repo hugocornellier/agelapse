@@ -13,7 +13,7 @@ dependencies:
   archive: ^4.0.9
   async_zip: ^0.1.0
   camera: ^0.12.0+1
-  camera_desktop: ^1.2.0
+  camera_desktop: ^1.2.1
   chewie: ^1.13.1
   desktop_drop:
     git:

@@ -215,7 +215,7 @@ void main() {
       }
     });
 
-    // ─── Test C: BMP with no date info (Tier 3 — file modified) ──────────
+    // ─── Test C: BMP with no date info (Tier 3, file modified) ───────────
 
     testWidgets(
       'Test C: BMP with no date cue falls back to file modified date (Tier 3)',
@@ -336,7 +336,7 @@ void main() {
         final copy4 = p.join(tempDir.path, 'copy4.jpg');
         await File(fixturePath).copy(copy1);
         await File(fixturePath).copy(copy2);
-        // Make copy3 a different size by appending a null byte — same EXIF
+        // Make copy3 a different size by appending a null byte; same EXIF
         // timestamp but different imageLength, so the duplicate loop should
         // increment the timestamp by 1ms and accept the import.
         final originalBytes = await File(fixturePath).readAsBytes();
@@ -374,7 +374,7 @@ void main() {
             photosAfterFirst.first['timestamp'] as String,
           );
 
-          // Second import — copy2 has same EXIF timestamp + same file size → rejected
+          // Second import: copy2 has same EXIF timestamp + same file size → rejected
           final second = await GalleryUtils.importXFile(
             XFile(copy2),
             testProjectId!,

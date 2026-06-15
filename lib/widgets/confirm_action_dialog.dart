@@ -7,8 +7,8 @@ import 'dialog_title_row.dart';
 /// A reusable confirmation dialog widget for destructive or significant actions.
 ///
 /// Provides factory methods for common confirmation scenarios:
-/// - [showReStabilization] - When settings change requires re-stabilizing photos
-/// - [showRecompileVideo] - When settings change requires recompiling video only
+/// - [showReStabilization]: When settings change requires re-stabilizing photos
+/// - [showRecompileVideo]: When settings change requires recompiling video only
 class ConfirmActionDialog extends StatelessWidget {
   final String title;
   final String description;
@@ -31,7 +31,7 @@ class ConfirmActionDialog extends StatelessWidget {
     this.accentColor,
   });
 
-  // Color getters - dynamic for theme support
+  // Color getters: dynamic for theme support
   static Color get _dangerColor => AppColors.danger;
   static Color get _cardBackground => AppColors.surface;
   static Color get _textSecondary => AppColors.textSecondary;
@@ -93,8 +93,8 @@ class ConfirmActionDialog extends StatelessWidget {
 
   /// Shows a confirmation dialog for date changes that affect the video.
   ///
-  /// [orderChanged] - true if the photo sequence will change
-  /// [dateStampChanged] - true if only the date stamp text will change (no reorder)
+  /// [orderChanged]: true if the photo sequence will change
+  /// [dateStampChanged]: true if only the date stamp text will change (no reorder)
   static Future<bool> showDateChangeRecompile(
     BuildContext context, {
     required bool orderChanged,
@@ -124,7 +124,7 @@ class ConfirmActionDialog extends StatelessWidget {
 
   /// Shows a confirmation dialog for photo deletion that will trigger video recompilation.
   ///
-  /// [photoCount] - number of photos being deleted (1 for single, >1 for batch)
+  /// [photoCount]: number of photos being deleted (1 for single, >1 for batch)
   /// Use this when remaining photos >= 2 (video can still be compiled).
   static Future<bool> showDeleteRecompile(
     BuildContext context, {
@@ -134,7 +134,7 @@ class ConfirmActionDialog extends StatelessWidget {
 
   /// Shows a simple confirmation dialog for photo deletion without video warning.
   ///
-  /// [photoCount] - number of photos being deleted (1 for single, >1 for batch)
+  /// [photoCount]: number of photos being deleted (1 for single, >1 for batch)
   /// Use this when remaining photos < 2 (no video to recompile).
   static Future<bool> showDeleteSimple(
     BuildContext context, {
@@ -170,7 +170,7 @@ class ConfirmActionDialog extends StatelessWidget {
 
   /// Shows a simple non-destructive confirmation dialog.
   ///
-  /// Use for confirmations that don't require the danger styling — e.g.,
+  /// Use for confirmations that don't require the danger styling, e.g.,
   /// "Do you want to stabilize on this face?".
   static Future<bool> showSimpleConfirmation(
     BuildContext context, {

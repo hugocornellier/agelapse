@@ -288,7 +288,7 @@ class StabilizationService {
       _state = StabilizationState.cancelled;
       return false;
     } catch (e) {
-      LogService.instance.log('StabilizationService: Error - $e');
+      LogService.instance.log('StabilizationService: Error: $e');
       _emitProgress(
         StabilizationProgress.error(e.toString(), projectId: projectId),
       );
@@ -307,7 +307,7 @@ class StabilizationService {
   /// 3. Kills all active isolates (instant termination)
   /// 4. Kills any active FFmpeg process (instant termination)
   ///
-  /// The method returns immediately - cleanup happens asynchronously.
+  /// The method returns immediately; cleanup happens asynchronously.
   Future<void> cancel() async {
     if (_state == StabilizationState.idle ||
         _state == StabilizationState.completed ||
@@ -406,7 +406,7 @@ class StabilizationService {
       //   permanently lock the in-flight photo out of stabilization until
       //   manually reset.
       // - Thrown exception: handled by the catch block below, which marks
-      //   stabFailed=1 — that already excludes the photo from
+      //   stabFailed=1: that already excludes the photo from
       //   getUnstabilizedPhotos regardless of the counter.
       if (!result.success && !result.cancelled && timestamp != null) {
         try {
@@ -453,7 +453,7 @@ class StabilizationService {
     final List<Map<String, dynamic>> remaining =
         await _runFastPathPhase(photos, stopwatch, progressState, projectId);
 
-    // Phase 2: serial slow path for misses — detection mutates shared state,
+    // Phase 2: serial slow path for misses; detection mutates shared state,
     // so this must stay sequential.
     for (final photo in remaining) {
       _currentToken?.throwIfCancelled();
@@ -516,7 +516,7 @@ class StabilizationService {
       while (true) {
         _currentToken?.throwIfCancelled();
         // nextIndex++ is atomic across workers in Dart's single-threaded
-        // event loop — the two statements run uninterrupted before any await.
+        // event loop; the two statements run uninterrupted before any await.
         final i = nextIndex;
         if (i >= photos.length) return;
         nextIndex++;
@@ -558,7 +558,7 @@ class StabilizationService {
     } on CancelledException {
       rethrow;
     } catch (e, stackTrace) {
-      // Swallow errors — the photo will fall through to the serial slow path
+      // Swallow errors; the photo will fall through to the serial slow path
       // where exceptions are logged and stabFailed is set as appropriate.
       LogService.instance.log(
         '[STAB] fast path error for timestamp=$timestamp: ${e.runtimeType}: $e\n$stackTrace',
@@ -675,7 +675,7 @@ class StabilizationService {
     } catch (e) {
       if (e is CancelledException) rethrow;
       LogService.instance.log(
-        'StabilizationService: Error re-stabilizing photo - $e',
+        'StabilizationService: Error re-stabilizing photo: $e',
       );
     }
   }
@@ -743,7 +743,7 @@ class StabilizationService {
               cfg.stabPhotoCount > 1);
 
       LogService.instance.log(
-        'StabilizationService: _checkIfVideoNeeded - '
+        'StabilizationService: _checkIfVideoNeeded: '
         'newestVideo=${cfg.newestVideo != null}, videoFileExists=${cfg.videoFileExists}, '
         'videoIsNull=${cfg.videoIsNull}, settingsChanged=${cfg.settingsHaveChanged}, '
         'newVideoNeeded=${cfg.newVideoNeeded}, stabPhotoCount=${cfg.stabPhotoCount}, '
@@ -753,7 +753,7 @@ class StabilizationService {
       return result;
     } catch (e) {
       LogService.instance.log(
-        'StabilizationService: Error checking if video needed - $e',
+        'StabilizationService: Error checking if video needed: $e',
       );
       return false;
     }
@@ -780,7 +780,7 @@ class StabilizationService {
               cfg.stabPhotoCount > 1);
 
       LogService.instance.log(
-        'StabilizationService: _tryCreateVideo - '
+        'StabilizationService: _tryCreateVideo: '
         'videoFileExists=${cfg.videoFileExists}, videoIsNull=${cfg.videoIsNull}, '
         'settingsChanged=${cfg.settingsHaveChanged}, newPhotosStabilized=$newPhotosStabilized, '
         'newVideoNeeded=${cfg.newVideoNeeded}, shouldCompile=$shouldCompile',
@@ -843,7 +843,7 @@ class StabilizationService {
         }
 
         LogService.instance.log(
-          'StabilizationService: Video creation result - $result',
+          'StabilizationService: Video creation result: $result',
         );
       }
 
@@ -851,7 +851,7 @@ class StabilizationService {
     } catch (e) {
       if (e is CancelledException) rethrow;
       LogService.instance.log(
-        'StabilizationService: Error creating video - $e',
+        'StabilizationService: Error creating video: $e',
       );
       return _VideoCompileResult.failed(e.toString());
     }
@@ -872,7 +872,7 @@ class StabilizationService {
       _progressController.add(progress);
     } else {
       LogService.instance.log(
-        'StabilizationService: WARNING - progressController is closed, cannot emit ${progress.state.name}',
+        'StabilizationService: WARNING: progressController is closed, cannot emit ${progress.state.name}',
       );
     }
   }

@@ -105,7 +105,7 @@ class FormatDecodeUtils {
 
   /// Decode TIFF to PNG bytes on Apple platforms where cv.imdecode crashes.
   /// Uses Flutter's in-process image codec (ImageIO-backed on Apple), which
-  /// works under the macOS App Sandbox — unlike subprocess-based `sips`, which
+  /// works under the macOS App Sandbox, unlike subprocess-based `sips`, which
   /// is denied by the sandbox in release/notarized builds.
   static Future<Uint8List?> _decodeTiff(
     String inputPath,
@@ -115,7 +115,7 @@ class FormatDecodeUtils {
   }
 
   /// Decode JPEG 2000 to PNG bytes on Apple platforms where cv.imdecode crashes.
-  /// Same in-process path as TIFF — see [_decodeTiff].
+  /// Same in-process path as TIFF, see [_decodeTiff].
   static Future<Uint8List?> _decodeJp2(String inputPath, String tempDir) async {
     return _decodeAppleViaFlutterCodec(inputPath, 'JP2');
   }

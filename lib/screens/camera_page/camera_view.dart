@@ -359,7 +359,7 @@ class _CameraViewState extends State<CameraView>
     );
   }
 
-  /// Handle shutter button press - either start countdown or take photo
+  /// Handle shutter button press: either start countdown or take photo
   void _onShutterPressed() {
     if (_isCountingDown) {
       _cancelCountdown();
@@ -387,7 +387,7 @@ class _CameraViewState extends State<CameraView>
         return;
       }
       if (_countdownValue <= 1) {
-        // Countdown complete - take the photo
+        // Countdown complete; take the photo
         _cancelCountdown();
         _takePicture();
       } else {
@@ -450,15 +450,15 @@ class _CameraViewState extends State<CameraView>
         CameraUtils.triggerCaptureHaptic();
       }
 
-      // Release immediately — user can take another photo now
+      // Release immediately; user can take another photo now
       _pictureTakingCompleter?.complete();
       _pictureTakingCompleter = null;
 
-      // Everything below is fire-and-forget — don't block the UI
+      // Everything below is fire-and-forget; don't block the UI
       try {
-        // macOS/Linux: camera_desktop mirrors at the native source — pixels in
+        // macOS/Linux: camera_desktop mirrors at the native source; pixels in
         // the XFile are already mirrored, so no post-processing needed.
-        // Windows/iOS/Android: no source-level mirror — apply in post-processing.
+        // Windows/iOS/Android: no source-level mirror; apply in post-processing.
         final bool needsPostProcessMirror =
             isMirrored && !Platform.isMacOS && !Platform.isLinux;
 
@@ -502,7 +502,7 @@ class _CameraViewState extends State<CameraView>
           );
         }
       } catch (e) {
-        // Log but don't crash — save is fire-and-forget
+        // Log but don't crash; save is fire-and-forget
         LogService.instance.log('Error in capture pipeline: $e');
       }
     } catch (e) {
@@ -566,7 +566,7 @@ class _CameraViewState extends State<CameraView>
       widget.projectId.toString(),
     );
 
-    // On macOS/Linux, toggle mirror at the native source — no restart needed.
+    // On macOS/Linux, toggle mirror at the native source; no restart needed.
     if (Platform.isMacOS || Platform.isLinux) {
       if (_controller != null) {
         CameraDesktopPlugin().setMirror(_controller!.cameraId, isMirrored);
@@ -751,7 +751,7 @@ class _CameraViewState extends State<CameraView>
     final camera = _controller!.value;
     final size = MediaQuery.of(context).size;
 
-    // Mobile: use "cover" logic - fill screen, crop edges
+    // Mobile: use "cover" logic, fill screen, crop edges
     double scale = size.aspectRatio * camera.aspectRatio;
     if (scale < 1) scale = 1 / scale;
 
@@ -779,7 +779,7 @@ class _CameraViewState extends State<CameraView>
                           ),
                         )
                       : (Platform.isMacOS || Platform.isLinux)
-                          // macOS/Linux: camera_desktop mirrors at source — no Dart flip needed.
+                          // macOS/Linux: camera_desktop mirrors at source; no Dart flip needed.
                           ? AspectRatio(
                               aspectRatio: camera.aspectRatio,
                               child: CameraPreview(_controller!, child: null),
@@ -1162,7 +1162,7 @@ class _CameraViewState extends State<CameraView>
 
       _controller?.lockCaptureOrientation(DeviceOrientation.portraitUp);
 
-      // Sync flash mode to match saved setting — prevents flash firing
+      // Sync flash mode to match saved setting; prevents flash firing
       // when UI shows it's disabled after camera reopen.
       if (isMobile) {
         await _controller
@@ -1177,7 +1177,7 @@ class _CameraViewState extends State<CameraView>
             isMirrored,
           );
         } catch (e) {
-          // Non-fatal — continue with default mirror state.
+          // Non-fatal; continue with default mirror state.
         }
       }
 

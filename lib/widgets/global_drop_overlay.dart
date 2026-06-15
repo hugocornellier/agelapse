@@ -63,7 +63,7 @@ class GlobalDropOverlay extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                // Subtitle - clarify global scope
+                // Subtitle: clarify global scope
                 Text(
                   'Release anywhere in window to add photos',
                   textAlign: TextAlign.center,

@@ -19,7 +19,7 @@ class CountdownOverlay extends StatelessWidget {
     final screenSize = MediaQuery.of(context).size;
     final shortestSide = screenSize.shortestSide;
 
-    // Smaller size - doesn't block the face/camera view
+    // Smaller size, doesn't block the face/camera view
     final circleSize = (shortestSide * 0.18).clamp(64.0, 100.0);
     final fontSize = (circleSize * 0.55).clamp(32.0, 56.0);
     final borderWidth = (circleSize * 0.04).clamp(2.0, 4.0);

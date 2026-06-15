@@ -88,7 +88,7 @@ class LogService {
 
   /// Flush buffered log output to disk immediately.
   /// Call before crash-prone native operations so logs survive process death.
-  /// Safe to call from sync contexts (fire-and-forget) — skips if already
+  /// Safe to call from sync contexts (fire-and-forget); skips if already
   /// flushing to avoid "StreamSink is bound to a stream" errors.
   Future<void> flush() async {
     if (_flushing || _sink == null) return;

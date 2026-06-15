@@ -17,10 +17,10 @@ import 'video_playback_test.dart' as video_playback_tests;
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  // Enable test mode - uses isolated test database and skips window operations
+  // Enable test mode: uses isolated test database and skips window operations
   test_config.isTestMode = true;
 
-  // Core smoke tests - validates critical app paths
+  // Core smoke tests: validates critical app paths
   smoke_tests.main();
 
   // Basic app launch tests

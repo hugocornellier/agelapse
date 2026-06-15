@@ -14,16 +14,16 @@ import '../../utils/utils.dart';
 class GalleryImageMenu {
   /// Shows the image options menu dialog.
   ///
-  /// [context] - Build context for showing dialog
-  /// [imageFile] - The image file being acted upon
-  /// [onChangeDate] - Callback when "Change Date" is tapped
-  /// [onStabDiffFace] - Callback when "Stabilize on Other Faces" is tapped
-  /// [onRetryStab] - Callback when "Retry Stabilization" is tapped
-  /// [onSetGuidePhoto] - Callback when "Set as Guide Photo" is tapped
-  /// [onManualStab] - Callback when "Manual Stabilization" is tapped
-  /// [onDelete] - Callback when "Delete Image" is tapped
-  /// [onImageInfo] - Callback when "Image Info" is tapped (optional)
-  /// [useAppColors] - If true, uses AppColors styling (image_preview_navigator style)
+  /// [context]: Build context for showing dialog
+  /// [imageFile]: The image file being acted upon
+  /// [onChangeDate]: Callback when "Change Date" is tapped
+  /// [onStabDiffFace]: Callback when "Stabilize on Other Faces" is tapped
+  /// [onRetryStab]: Callback when "Retry Stabilization" is tapped
+  /// [onSetGuidePhoto]: Callback when "Set as Guide Photo" is tapped
+  /// [onManualStab]: Callback when "Manual Stabilization" is tapped
+  /// [onDelete]: Callback when "Delete Image" is tapped
+  /// [onImageInfo]: Callback when "Image Info" is tapped (optional)
+  /// [useAppColors]: If true, uses AppColors styling (image_preview_navigator style)
   static Future<void> show({
     required BuildContext context,
     required File imageFile,
@@ -182,13 +182,13 @@ class GalleryImageMenu {
 
   /// Shows the Image Info dialog with raw and stabilized dimensions.
   ///
-  /// [timestamp] - The photo timestamp (filename without extension)
-  /// [projectId] - The project ID
-  /// [rawPath] - Full path to the raw image (can be empty)
-  /// [stabPath] - Full path to the stabilized image (can be empty)
-  /// [isInspectionMode] - Whether inspection mode is active
-  /// [isRaw] - Whether currently viewing raw
-  /// [getDimensions] - Optional callback to get cached dimensions; falls back to file-based extraction
+  /// [timestamp]: The photo timestamp (filename without extension)
+  /// [projectId]: The project ID
+  /// [rawPath]: Full path to the raw image (can be empty)
+  /// [stabPath]: Full path to the stabilized image (can be empty)
+  /// [isInspectionMode]: Whether inspection mode is active
+  /// [isRaw]: Whether currently viewing raw
+  /// [getDimensions]: Optional callback to get cached dimensions; falls back to file-based extraction
   static void showImageInfo({
     required BuildContext context,
     required String timestamp,

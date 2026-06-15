@@ -114,7 +114,7 @@ class ProjectPageState extends State<ProjectPage> {
       final aspectRatioChanged = oldCache.aspectRatio != newCache.aspectRatio;
 
       if (orientationChanged || aspectRatioChanged) {
-        // Settings changed - reset preview to placeholder and reload
+        // Settings changed; reset preview to placeholder and reload
         _handleSettingsChange();
       } else {
         // Check if only eye offsets changed (no need to reset guide image)
@@ -127,7 +127,7 @@ class ProjectPageState extends State<ProjectPage> {
           setState(() {});
         }
 
-        // Reload date stamp settings — properties like margin, size,
+        // Reload date stamp settings; properties like margin, size,
         // position, opacity aren't tracked in the cache, so always
         // refresh when any settings change occurs.
         _reloadDateStampSettings();
@@ -426,7 +426,7 @@ class ProjectPageState extends State<ProjectPage> {
         final isLandscape =
             widget.settingsCache!.projectOrientation == "landscape";
 
-        // Calculate preview size - max 400px wide for portrait, 500px for landscape
+        // Calculate preview size: max 400px wide for portrait, 500px for landscape
         final maxPreviewWidth = isLandscape ? 500.0 : 320.0;
         final previewWidth = availableWidth.clamp(200.0, maxPreviewWidth);
         final aspectRatioValue = outputImageLoader.getDisplayAspectRatio();

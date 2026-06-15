@@ -16,9 +16,9 @@ class ExportNamingUtils {
 
   /// Generates a standardized export filename.
   ///
-  /// [projectName] - The project name (will be sanitized)
-  /// [extension] - File extension without dot (e.g., 'mp4', 'zip')
-  /// [timestamp] - Optional custom timestamp; defaults to current time
+  /// [projectName]: The project name (will be sanitized)
+  /// [extension]: File extension without dot (e.g., 'mp4', 'zip')
+  /// [timestamp]: Optional custom timestamp; defaults to current time
   ///
   /// Returns filename in format: {SanitizedName}_AgeLapse_{YYYY-MM-DD}_{HHmmss}.{ext}
   static String generateExportFilename({

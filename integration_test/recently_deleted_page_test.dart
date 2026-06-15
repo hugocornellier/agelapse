@@ -230,7 +230,7 @@ void main() {
         expect(restoredCallbacks, equals(0),
             reason:
                 'onRestored must NOT fire on permanent delete (no recompile '
-                'needed — saves a video pass)');
+                'needed, saves a video pass)');
       },
     );
 
@@ -259,13 +259,13 @@ void main() {
         await tester.tap(find.text('Delete Forever'));
         await tester.pumpAndSettle();
 
-        // Cancel button — ConfirmActionDialog uses "Cancel".
+        // Cancel button: ConfirmActionDialog uses "Cancel".
         final cancelFinder = find.widgetWithText(TextButton, 'Cancel');
         if (cancelFinder.evaluate().isNotEmpty) {
           await tester.tap(cancelFinder.first);
           await tester.pumpAndSettle();
         } else {
-          // Older dialog may use a different label — just dismiss via barrier.
+          // Older dialog may use a different label; just dismiss via barrier.
           await tester.tapAt(const Offset(10, 10));
           await tester.pumpAndSettle();
         }
@@ -420,7 +420,7 @@ void main() {
         await tester.tap(find.text('Restore'));
         await tester.pumpAndSettle(const Duration(seconds: 2));
 
-        // Row stays trashed — no broken active row was resurrected.
+        // Row stays trashed; no broken active row was resurrected.
         final stillTrashed = await DB.instance
             .getRecentlyDeletedPhotosByProjectID(testProjectId!);
         expect(stillTrashed.length, 1,

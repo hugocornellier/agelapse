@@ -517,7 +517,7 @@ class FaceStabilizer {
   /// instance fields on [FaceStabilizer] (`_lastRawFaces`, `_currentFaceCount`,
   /// `_currentEmbedding`, etc.), so multiple calls may run concurrently on a
   /// shared instance. Callers MUST fall through to [stabilize] on a null
-  /// result — the slow path is the one that runs detection and mutates state.
+  /// result; the slow path is the one that runs detection and mutates state.
   Future<StabilizationResult?> tryTransformCacheFastPath(
     String rawPhotoPath,
     CancellationToken? token, {
@@ -615,7 +615,7 @@ class FaceStabilizer {
         }
         if (fingerprint != null) {
           // Opportunistically backfill the photos row so the next run takes
-          // the fast path. Best-effort — never fail stabilization on this.
+          // the fast path. Best-effort, never fail stabilization on this.
           try {
             await DB.instance.backfillPhotoFingerprint(
               timestamp,
@@ -657,7 +657,7 @@ class FaceStabilizer {
 
       // ── Normal orientation-retry loop (cache miss or cache disabled) ────────
       cacheMisses++;
-      // Attempt 1: original image — pass targetBoundingBox (it references original coords)
+      // Attempt 1: original image, pass targetBoundingBox (it references original coords)
       token?.throwIfCancelled();
       final result1 = await _stabilizeSingleAttempt(
         originalPath,
@@ -676,7 +676,7 @@ class FaceStabilizer {
           if (manualFingerprint != null) {
             // Persist the selected face index to the detection cache so that
             // re-stabilization at any resolution always picks the correct face.
-            // No transform cache entry here — the algorithm should re-run fresh
+            // No transform cache entry here; the algorithm should re-run fresh
             // at the actual canvas size rather than scaling a stored transform.
             await _writeFacesToCache(timestamp, manualFingerprint, 'original');
           }
@@ -698,7 +698,7 @@ class FaceStabilizer {
       }
       if (result1.cancelled) return result1;
 
-      // Attempts 2–4: transformed variants (bounding box not meaningful after transform)
+      // Attempts 2-4: transformed variants (bounding box not meaningful after transform)
       final orientationNames = ['flipped', 'ccw', 'cw'];
       final transformFns = [
         StabUtils.flipImageHorizontally,
@@ -740,7 +740,7 @@ class FaceStabilizer {
         }
       }
 
-      // All orientations failed — write no_faces sentinel
+      // All orientations failed: write no_faces sentinel
       if (cacheEnabled && fingerprint != null) {
         try {
           await DB.instance.writeNoFacesSentinel(
@@ -784,7 +784,7 @@ class FaceStabilizer {
       final faces = _lastDetectedFaceLikes;
       if (faces == null || faces.isEmpty) {
         LogService.instance.log(
-          '[cache] $timestamp: skip write — detected faces unavailable',
+          '[cache] $timestamp: skip write, detected faces unavailable',
         );
         return;
       }
@@ -833,7 +833,7 @@ class FaceStabilizer {
   ) async {
     if (!_supportsTransformCache) return null;
 
-    // Manual override takes precedence — survives settings changes.
+    // Manual override takes precedence; survives settings changes.
     TransformCacheEntry? hit;
     final manualCacheKey =
         _buildManualTransformCacheKey(fingerprint: fingerprint);
@@ -859,7 +859,7 @@ class FaceStabilizer {
 
     try {
       // For manual entries stored at a different canvas size, scale the
-      // pixel-space values — but only when both dimensions changed by the same
+      // pixel-space values, but only when both dimensions changed by the same
       // factor (pure resolution change). Custom resolutions can change width
       // and height independently, which would corrupt the transform.
       final double canvasScale;
@@ -878,8 +878,8 @@ class FaceStabilizer {
         // aspect ratio). The stored transform cannot be rescaled safely.
         transformCacheMisses++;
         LogService.instance.log(
-          '[transform-cache] $timestamp: manual HIT rejected '
-          '— non-proportional canvas change '
+          '[transform-cache] $timestamp: manual HIT rejected, '
+          'non-proportional canvas change '
           '(${hit.canvasWidth}x${hit.canvasHeight} → '
           '${canvasWidth}x$canvasHeight)',
         );
@@ -1006,7 +1006,7 @@ class FaceStabilizer {
     }
     // Manual entries: canvas dims may differ when only resolution changed.
     // The reuse hash (baked into the cache key) already validated aspect ratio,
-    // eye offsets, and orientation — so a proportional rescale at render time
+    // eye offsets, and orientation; so a proportional rescale at render time
     // is safe. No canvas-dim check here.
 
     if (hit.projectId != projectId) return false;
@@ -1269,7 +1269,7 @@ class FaceStabilizer {
           updatedAt: now,
         ),
       );
-      // Write succeeded — now remove the stale auto entry. If this throws,
+      // Write succeeded; now remove the stale auto entry. If this throws,
       // both entries exist but the manual entry takes precedence in
       // _tryTransformCacheAttempt, so the state is still correct.
       await DB.instance.clearTransformCacheForFingerprint(
@@ -1880,7 +1880,7 @@ class FaceStabilizer {
       overshotLeftY,
       overshotRightY,
     )) {
-      // No correction needed - save with first pass result
+      // No correction needed; save with first pass result
       final Uint8List? initialBytes =
           imageBytesStabilized ?? await encodeRaw(initialRaw!);
       if (initialBytes == null) {
@@ -2437,7 +2437,7 @@ class FaceStabilizer {
     // Race guard: the stabilization batch snapshots its work list at the
     // start, so a photo that the user soft-deleted (or permanently deleted)
     // mid-batch can still arrive here. Re-check the row state before we
-    // commit any bytes to disk — otherwise we'd resurrect a stabilized PNG
+    // commit any bytes to disk; otherwise we'd resurrect a stabilized PNG
     // for a photo that's already in (or past) Recently Deleted, leaving an
     // orphaned file the user can't see or recover from.
     final String timestampForCheck =
@@ -2456,7 +2456,7 @@ class FaceStabilizer {
           return (false, null);
         }
       } catch (e) {
-        // A DB read failure shouldn't block stabilization — fall through and
+        // A DB read failure shouldn't block stabilization; fall through and
         // accept the (rare) risk of an orphan file over losing the result.
         LogService.instance.log(
           "saveStabilizedImage: row-state recheck failed for "
@@ -2464,7 +2464,7 @@ class FaceStabilizer {
         );
       }
     }
-    // else: non-timestamp basename — skip recheck and proceed to write
+    // else: non-timestamp basename, skip recheck and proceed to write
 
     // stabilizeCV already produced the correct channel format for both modes:
     //   - transparent projects: 4-channel BGRA PNG (alpha preserved in borders)
@@ -2569,7 +2569,7 @@ class FaceStabilizer {
         LogService.instance.log(
           "createStabThumbnail: bytes null for $stabilizedPhotoPath",
         );
-        // Still emit success - widget will fall back to full image
+        // Still emit success; widget will fall back to full image
         ThumbnailService.instance.emit(
           ThumbnailEvent(
             thumbnailPath: stabThumbnailPath,
@@ -2595,7 +2595,7 @@ class FaceStabilizer {
       );
     } catch (e) {
       LogService.instance.log("createStabThumbnail error (non-fatal): $e");
-      // Still emit success so widget doesn't stay stuck - it will fall back to full image
+      // Still emit success so widget doesn't stay stuck; it will fall back to full image
       ThumbnailService.instance.emit(
         ThumbnailEvent(
           thumbnailPath: stabThumbnailPath,
@@ -2792,7 +2792,7 @@ class FaceStabilizer {
       cvBytes: cvBytes,
       preloadedFaces: preloadedFaces,
       selectEyes: (facesToUse, eyes) async {
-        // No embedding support for cat/dog — always use centermost
+        // No embedding support for cat/dog: always use centermost
         LogService.instance.log(
           "Multiple ${projectType}s detected, using centermost",
         );
@@ -2881,14 +2881,14 @@ class FaceStabilizer {
           }
         }
 
-        // Multiple faces detected - try embedding-based selection first
+        // Multiple faces detected; try embedding-based selection first
         final int? embeddingPickedIdx = await _tryPickFaceByEmbedding(
           rawPhotoPath,
           facesToUse.length,
         );
 
         if (embeddingPickedIdx != null && embeddingPickedIdx >= 0) {
-          // Embedding match found - use that face
+          // Embedding match found; use that face
           LogService.instance.log(
             "Using embedding-matched face at index $embeddingPickedIdx",
           );
@@ -2907,7 +2907,7 @@ class FaceStabilizer {
             );
           }
         } else {
-          // No embedding reference found - fallback to centermost
+          // No embedding reference found; fallback to centermost
           LogService.instance.log(
             "No embedding reference found, using centermost face",
           );
@@ -2986,7 +2986,7 @@ class FaceStabilizer {
           await FormatDecodeUtils.loadCvCompatibleBytes(rawPhotoPath);
       if (imageBytes == null) return;
 
-      // Reuse the face detected for this photo when available — running the
+      // Reuse the face detected for this photo when available, running the
       // embedding model directly skips the redundant detection pass inside
       // getFaceEmbeddingFromBytes (and aligns on the same face the
       // stabilization itself used).
@@ -3494,7 +3494,7 @@ class FaceStabilizer {
     final height = rawData['height'] as int;
     final matType = rawData['matType'] as int;
 
-    // Cat/dog detectors don't support Mat input — fall back to PNG
+    // Cat/dog detectors don't support Mat input: fall back to PNG
     if (projectType == 'cat' || projectType == 'dog') {
       final pngBytes =
           await StabUtils.encodeRawToPngAsync(data, width, height, matType);
@@ -3618,7 +3618,7 @@ class FaceStabilizer {
     await DB.instance.setPhotoStabilized(
       timestamp,
       projectId,
-      projectOrientation!, // Use cached value - initialized in initializeProjectSettings()
+      projectOrientation!, // Use cached value; initialized in initializeProjectSettings()
       aspectRatio,
       resolution,
       eyeOffsetX,

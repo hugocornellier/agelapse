@@ -300,7 +300,7 @@ void main() {
       expect(
         hypotenuse,
         greaterThan(0),
-        reason: 'Nose-to-ankle distance is zero — cannot compute scale',
+        reason: 'Nose-to-ankle distance is zero; cannot compute scale',
       );
 
       // Rotation should be computable (non-NaN)
@@ -438,7 +438,7 @@ void main() {
       expect(
         hypotenuse,
         greaterThan(0),
-        reason: 'Hip-to-hip distance is zero — cannot compute scale',
+        reason: 'Hip-to-hip distance is zero; cannot compute scale',
       );
 
       // Rotation should be computable

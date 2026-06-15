@@ -25,16 +25,16 @@ ButtonStyle takePhotoRoundStyle() {
 /// Usage: `fontSize: AppTypography.md` or `style: AppTypography.bodyMedium`
 class AppTypography {
   // Font size scale (these remain const)
-  static const double xs = 11; // Extra small - captions, badges
-  static const double sm = 12; // Small - secondary text, metadata
-  static const double md = 14; // Medium - body text (default)
-  static const double lg = 16; // Large - emphasized body, buttons
-  static const double xl = 18; // Extra large - subheadings
-  static const double xxl = 20; // 2XL - section headers
-  static const double xxxl = 24; // 3XL - page titles
-  static const double display = 28; // Display - hero text, large titles
+  static const double xs = 11; // Extra small: captions, badges
+  static const double sm = 12; // Small: secondary text, metadata
+  static const double md = 14; // Medium: body text (default)
+  static const double lg = 16; // Large: emphasized body, buttons
+  static const double xl = 18; // Extra large: subheadings
+  static const double xxl = 20; // 2XL: section headers
+  static const double xxxl = 24; // 3XL: page titles
+  static const double display = 28; // Display: hero text, large titles
 
-  // Pre-built text styles - GETTERS for dynamic theme colors
+  // Pre-built text styles: GETTERS for dynamic theme colors
   static TextStyle get caption =>
       TextStyle(fontSize: xs, color: AppColors.textSecondary);
 
@@ -82,7 +82,7 @@ BoxDecoration settingsDropdownDecoration() => BoxDecoration(
     );
 
 /// Global accessor for current theme colors.
-/// Synced via MaterialApp.builder - always reflects current theme.
+/// Synced via MaterialApp.builder; always reflects current theme.
 ///
 /// IMPORTANT: All fields are GETTERS, not const/static final.
 /// This ensures theme changes are reflected immediately.
@@ -101,7 +101,7 @@ class AppColors {
     }
   }
 
-  // Core color getters - delegate to _current (no caching!)
+  // Core color getters: delegate to _current (no caching!)
   static Color get background => _current.background;
   static Color get backgroundDark => _current.backgroundDark;
   static Color get surface => _current.surface;

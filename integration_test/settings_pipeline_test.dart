@@ -20,7 +20,7 @@ import 'test_utils.dart';
 ///
 /// Verifies that settings written to the DB are read correctly during video
 /// compilation. Key insight: settings are always re-read from DB at compile
-/// time — no stale cache exists.
+/// time; no stale cache exists.
 ///
 /// Run with: `flutter test integration_test/settings_pipeline_test.dart -d macos`
 void main() {
@@ -309,7 +309,7 @@ void main() {
         reason: '1080p video file should have content',
       );
 
-      // Change to 4K — add 4K frames, recompile
+      // Change to 4K, add 4K frames, recompile
       // (We can't truly test 4K output dimensions without ffprobe, but we can
       // verify the compilation succeeds and the output changes.)
       await DB.instance.setSettingByTitle('video_resolution', '4K', pid);
@@ -325,7 +325,7 @@ void main() {
         'landscape',
         codec: VideoCodec.h264,
       );
-      // 4K compilation succeeded — verify output exists and has content.
+      // 4K compilation succeeded; verify output exists and has content.
       // Note: solid-color test frames may compress to identical sizes across
       // resolutions, so we only assert existence, not size difference.
       final size4k = await File(videoPath4k).length();
@@ -418,7 +418,7 @@ void main() {
         expect(frA, 14, reason: 'Project A framerate should be 14');
         expect(frB, 24, reason: 'Project B framerate should be 24');
 
-        // Compile project A — only needs to skip VideoToolbox on CI for HEVC
+        // Compile project A, only needs to skip VideoToolbox on CI for HEVC
         // but A uses H.264 so always runs
         final successA = await VideoUtils.createTimelapseFromProjectId(
           testProjectId!,
@@ -430,11 +430,11 @@ void main() {
           reason: 'Project A compilation should succeed',
         );
 
-        // Compile project B — skip if HEVC VideoToolbox unavailable on CI
+        // Compile project B; skip if HEVC VideoToolbox unavailable on CI
         if (hevcAvailable &&
             (Platform.isMacOS || Platform.isIOS) &&
             Platform.environment['CI'] == 'true') {
-          // HEVC VideoToolbox unavailable on CI runners — skip B compilation
+          // HEVC VideoToolbox unavailable on CI runners, skip B compilation
         } else {
           final successB = await VideoUtils.createTimelapseFromProjectId(
             projectBId,

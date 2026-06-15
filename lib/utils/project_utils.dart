@@ -75,7 +75,7 @@ class ProjectUtils {
       await NotificationUtil.cancelNotification(projectId);
     }
 
-    // 5. Delete project directory and all files (now safe - stabilization stopped)
+    // 5. Delete project directory and all files (now safe; stabilization stopped)
     // Done AFTER DB deletion so if this fails, at least DB is clean.
     // Orphaned files are less problematic than orphaned DB records.
     final String projectDirPath = await DirUtils.getProjectDirPath(projectId);
@@ -280,7 +280,7 @@ class ProjectUtils {
         LogService.instance.log(
           "restoreImage: post-update file-existence check failed for $timestamp: $e",
         );
-        // Fall through — same rationale as before: don't block on path-resolution oddities.
+        // Fall through, same rationale as before: don't block on path-resolution oddities.
       }
     }
 
@@ -351,7 +351,7 @@ class ProjectUtils {
       if (rowsDeleted == 0) {
         LogService.instance.log(
           "permanentlyDeleteImage: no trashed row for ${image.path} "
-          "(restored or already purged) — aborting file cleanup",
+          "(restored or already purged), aborting file cleanup",
         );
         return PermDeleteOutcome.rowAlreadyGone;
       }
@@ -387,7 +387,7 @@ class ProjectUtils {
     }
 
     // DB row is gone. Now delete the on-disk files. We track raw + source
-    // file deletion explicitly because those hold the user's photo bytes —
+    // file deletion explicitly because those hold the user's photo bytes;
     // silently failing them is a privacy regression on a "Delete Forever"
     // action. Thumbnail/stabilized leftovers are recoverable garbage and
     // do NOT taint the outcome (they get cleaned up during video export).
@@ -465,11 +465,11 @@ class ProjectUtils {
             );
           } else {
             // Another active row in *this project* may still reference this
-            // file (rare — happens after a re-import + timestamp bump). Skip
+            // file (rare, happens after a re-import + timestamp bump). Skip
             // the file delete in that case so we don't orphan the surviving
             // row. Cross-project ref-counting was removed because two projects
             // can be linked to *different* external roots that happen to
-            // share the same relative path — counting those would falsely
+            // share the same relative path; counting those would falsely
             // block deletion.
             final int otherRefs =
                 await DB.instance.countActivePhotosBySourceRelativePath(
@@ -539,7 +539,7 @@ class ProjectUtils {
   }
 
   /// Deletes any soft-deleted photos older than [retentionDays] across every
-  /// project. Called once at app launch — the only "scheduler" that works
+  /// project. Called once at app launch; the only "scheduler" that works
   /// uniformly across iOS/Android/macOS/Windows/Linux without OS-specific
   /// background-task wiring.
   ///
@@ -595,7 +595,7 @@ class ProjectUtils {
 
     if (purged > 0) {
       final tail = leftoverFiles > 0
-          ? ' ($leftoverFiles photo(s) left bytes on disk — see prior logs)'
+          ? ' ($leftoverFiles photo(s) left bytes on disk, see prior logs)'
           : '';
       LogService.instance.log(
         'purgeExpiredDeletedImages: hard-deleted $purged photos '
@@ -683,7 +683,7 @@ class ProjectUtils {
   /// PRECONDITION: [photos] must be sorted by timestamp descending
   /// (as returned by [DB.getPhotosByProjectIDNewestFirst]).
   ///
-  /// Complexity: O(n) time, O(unique_days) space - avoids O(d log d) sort
+  /// Complexity: O(n) time, O(unique_days) space; avoids O(d log d) sort
   /// by preserving encounter order from pre-sorted input.
   static List<String> getUniquePhotoDates(List<Map<String, dynamic>> photos) {
     final uniqueDays = _getUniquePhotoDays(photos);
@@ -712,7 +712,7 @@ class ProjectUtils {
   static List<DateTime> _getUniquePhotoDays(List<Map<String, dynamic>> photos) {
     if (photos.isEmpty) return [];
 
-    // Debug assertion to catch misuse - validates descending timestamp order
+    // Debug assertion to catch misuse; validates descending timestamp order
     assert(() {
       for (int i = 1; i < photos.length; i++) {
         final prev = _parsePhotoTimestamp(photos[i - 1]);
@@ -843,7 +843,7 @@ class ProjectUtils {
 /// disk" case (the photo's bytes are gone, so restoring would resurrect a
 /// broken row). UI callers should surface [rawFileMissing] to the user.
 ///
-/// [success] also covers the no-op case (already active) — that is
+/// [success] also covers the no-op case (already active): that is
 /// indistinguishable from a successful restore in the storage layer.
 enum RestoreOutcome { success, rowNotTrashed, rawFileMissing, dbFailure }
 
@@ -851,7 +851,7 @@ enum RestoreOutcome { success, rowNotTrashed, rawFileMissing, dbFailure }
 /// of truth, so [success] / [filesPartiallyRemain] both mean the row is gone;
 /// the difference is whether every on-disk file was successfully removed.
 /// UI callers should treat [filesPartiallyRemain] as a partial failure and
-/// surface it (the user explicitly asked for "Delete Forever" — files
+/// surface it (the user explicitly asked for "Delete Forever"; files
 /// silently lingering is a privacy violation).
 enum PermDeleteOutcome {
   success,

@@ -364,7 +364,7 @@ void main() {
         // Since DB throws in unit tests, we verify the guard logic via availableCodecs.
         final available = VideoCodec.availableCodecs(isTransparentVideo: false);
 
-        // h264 is always available — baseline check
+        // h264 is always available; baseline check
         expect(available, contains(VideoCodec.h264));
         if (!Platform.isAndroid) {
           expect(available, contains(VideoCodec.hevc));

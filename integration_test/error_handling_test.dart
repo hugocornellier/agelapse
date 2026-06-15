@@ -115,7 +115,7 @@ void main() {
           'portrait',
         );
 
-        // Should still work - second insert is ignored
+        // Should still work; second insert is ignored
         final photos = await DB.instance.getPhotosByProjectID(projectId);
         expect(photos.length, 1);
       });

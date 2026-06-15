@@ -695,7 +695,7 @@ void main() {
 
         final settings = await StabilizationSettings.load(projectId!);
 
-        // Pass 1: cache disabled — collect baseline stab values
+        // Pass 1: cache disabled, collect baseline stab values
         FaceStabilizer.faceDetectionCacheEnabled = false;
         var stabilizer = FaceStabilizer(projectId!, () {}, settings: settings);
         for (final path in rawPaths) {
@@ -707,7 +707,7 @@ void main() {
         // Reset stab flags (no cache to clear since it was disabled)
         await resetStabilizedFlags(projectId!, clearCache: false);
 
-        // Pass 2: cache enabled — populates cache rows
+        // Pass 2: cache enabled, populates cache rows
         FaceStabilizer.faceDetectionCacheEnabled = true;
         stabilizer = FaceStabilizer(projectId!, () {}, settings: settings);
         for (final path in rawPaths) {

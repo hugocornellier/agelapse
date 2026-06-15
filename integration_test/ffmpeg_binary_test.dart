@@ -47,7 +47,7 @@ void main() {
           await File(p.join(testBinDir.path, dll))
               .writeAsBytes(dllBytes.buffer.asUint8List(), flush: true);
         } catch (_) {
-          // DLL not bundled — binary should be fully static.
+          // DLL not bundled; binary should be fully static.
         }
       }
 
@@ -136,7 +136,7 @@ void main() {
         "file '$escapedFramePath'\nduration 0.1\n",
       );
 
-      // Use just the filename (relative path) — working dir is set to font dir
+      // Use just the filename (relative path); working dir is set to font dir
       final escapedFontPath = p.basename(fontPath);
       final filterComplex = '[0]drawtext='
           'fontfile=$escapedFontPath'

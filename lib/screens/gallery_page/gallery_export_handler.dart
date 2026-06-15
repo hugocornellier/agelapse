@@ -475,7 +475,7 @@ class GalleryExportHandler {
       final fileName = path.basename(zipPath);
       LogService.instance.log('[EXPORT] Saving to Downloads: $fileName');
 
-      // Use downloadsfolder package - uses MediaStore on API 29+
+      // Use downloadsfolder package; uses MediaStore on API 29+
       final success = await copyFileIntoDownloadFolder(zipPath, fileName);
 
       if (success == true) {

@@ -322,7 +322,7 @@ jobs:
           flutter test "integration_test/${{ inputs.test_file }}" -d windows --reporter expanded 2>&1 | tee "$TEST_OUTPUT" || EXIT_CODE=$?
           if [ "$EXIT_CODE" -ne 0 ]; then
             if grep -q "tests passed" "$TEST_OUTPUT" && ! grep -q "failed" "$TEST_OUTPUT"; then
-              echo "::warning::Tests exited $EXIT_CODE but all tests passed (process teardown crash — ignored)"
+              echo "::warning::Tests exited $EXIT_CODE but all tests passed (process teardown crash, ignored)"
             else
               exit 1
             fi

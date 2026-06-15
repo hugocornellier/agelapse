@@ -60,7 +60,7 @@ Future<void> _main() async {
 
   if (isDesktop) {
     await DB.instance.createTablesIfNotExist();
-    // Purge expired Recently Deleted photos. Best-effort — must never block
+    // Purge expired Recently Deleted photos. Best-effort, must never block
     // startup, so failures are swallowed inside the helper.
     unawaited(ProjectUtils.purgeExpiredDeletedImages());
     // Initialize custom fonts after database is ready. Tests do not exercise
@@ -142,7 +142,7 @@ Future<void> _initializeApp() async {
 
   await Future.wait(futures);
 
-  // Purge expired Recently Deleted photos in the background — never block UI.
+  // Purge expired Recently Deleted photos in the background, never block UI.
   unawaited(ProjectUtils.purgeExpiredDeletedImages());
 
   // Initialize custom fonts after database is ready

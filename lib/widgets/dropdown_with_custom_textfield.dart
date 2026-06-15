@@ -69,7 +69,7 @@ class DropdownWithCustomTextFieldState
 
     // Validate: must be a number between 1 and 120
     if (intValue == null || intValue < 1 || intValue > 120) {
-      // Invalid - revert to last committed value
+      // Invalid; revert to last committed value
       _controller?.text = _lastCommittedValue.toString();
       return;
     }

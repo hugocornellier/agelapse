@@ -73,14 +73,14 @@ class AppColorsData extends ThemeExtension<AppColorsData> {
   final Color accentDarker;
 
   /// Foreground color for content on top of `accent*` backgrounds.
-  /// Stays white in both themes — both accent shades are dark-blue enough
+  /// Stays white in both themes, both accent shades are dark-blue enough
   /// for white text/icons to meet contrast requirements.
   final Color onAccent;
   final Color overlay;
   final Color disabled;
   final Color guideCorner;
 
-  /// Gallery background - dark in both themes for photo grids
+  /// Gallery background: dark in both themes for photo grids
   final Color galleryBackground;
 
   /// Light theme color palette

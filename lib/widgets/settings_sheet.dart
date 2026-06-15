@@ -3259,20 +3259,20 @@ class SettingsSheetState extends State<SettingsSheet> {
   /// text input below it.  Returns a list so the caller can spread it into a
   /// Column with `..._buildDateFormatSection(...)`.
   ///
-  /// [isCustomFormat]   - whether the custom text-field is currently active.
-  /// [currentFormat]    - the active preset format string.
-  /// [customSentinel]   - the sentinel value that triggers custom mode.
-  /// [presetItems]      - dropdown items for all presets (excluding Custom...).
-  /// [customController] - controller for the custom text field.
-  /// [customError]      - current validation error (null = valid).
-  /// [maxLength]        - max chars for the custom field.
-  /// [validateFn]       - validates the custom string; returns null if valid.
-  /// [helpText]         - info-icon content for the SettingListTile.
-  /// [enabled]          - whether the dropdown/field is interactive.
-  /// [onSwitchToCustom] - called (inside setState) when user picks Custom...
-  /// [onPresetSelected] - called when user picks a real preset value.
-  /// [onCustomChanged]  - called on every keystroke in the custom field.
-  /// [onCustomSubmit]   - called when the user taps Apply or submits the field.
+  /// [isCustomFormat]:   whether the custom text-field is currently active.
+  /// [currentFormat]:    the active preset format string.
+  /// [customSentinel]:   the sentinel value that triggers custom mode.
+  /// [presetItems]:      dropdown items for all presets (excluding Custom...).
+  /// [customController]: controller for the custom text field.
+  /// [customError]:      current validation error (null = valid).
+  /// [maxLength]:        max chars for the custom field.
+  /// [validateFn]:       validates the custom string; returns null if valid.
+  /// [helpText]:         info-icon content for the SettingListTile.
+  /// [enabled]:          whether the dropdown/field is interactive.
+  /// [onSwitchToCustom]: called (inside setState) when user picks Custom...
+  /// [onPresetSelected]: called when user picks a real preset value.
+  /// [onCustomChanged]:  called on every keystroke in the custom field.
+  /// [onCustomSubmit]:   called when the user taps Apply or submits the field.
   List<Widget> _buildDateFormatSection({
     required bool isCustomFormat,
     required String currentFormat,
@@ -3513,7 +3513,7 @@ class SettingsSheetState extends State<SettingsSheet> {
     // stabCallback() resolves only when the entire new run finishes (minutes),
     // so we don't await it. We do attach a catchError so a throw in the
     // restart chain surfaces in logs instead of vanishing as an unhandled
-    // Future — that silent failure is what forced users to navigate to a
+    // Future; that silent failure is what forced users to navigate to a
     // different tab to retrigger stabilization after a settings change.
     unawaited(
       widget.stabCallback().catchError((Object e, StackTrace st) {
@@ -3523,7 +3523,7 @@ class SettingsSheetState extends State<SettingsSheet> {
   }
 
   /// Runs a setting-change body that cancels the current stabilization,
-  /// persists the new setting, and restarts stabilization — under a shared
+  /// persists the new setting, and restarts stabilization; under a shared
   /// try/catch so any DB/file/cancel error is logged and surfaced via
   /// snackbar instead of crashing the UI.
   Future<void> _applySettingWithRestart(
@@ -3560,7 +3560,7 @@ class SettingsSheetState extends State<SettingsSheet> {
               if (value == null) return;
 
               if (value == 'Custom') {
-                // Switching to custom mode - pre-populate with current dimensions
+                // Switching to custom mode; pre-populate with current dimensions
                 if (!_isCustomResolution) {
                   final dims = _calculateOutputDimensions();
                   final w = dims?.$1.toString() ?? '';
@@ -3651,7 +3651,7 @@ class SettingsSheetState extends State<SettingsSheet> {
             ],
           ),
           const SizedBox(height: 12),
-          // Apply button (full width) - reactive styling based on changes
+          // Apply button (full width); reactive styling based on changes
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
@@ -3804,7 +3804,7 @@ class SettingsSheetState extends State<SettingsSheet> {
       return;
     }
 
-    // Valid - apply the resolution
+    // Valid; apply the resolution
     final newResolution = '${width}x$height';
     if (newResolution == resolution && _customResolutionError == null) {
       // No change needed
@@ -4205,7 +4205,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                 color: AppColors.settingsTextPrimary,
               ),
               decoration: InputDecoration(
-                hintText: '1.1–4.0',
+                hintText: '1.1-4.0',
                 hintStyle: TextStyle(
                   color: AppColors.settingsTextTertiary,
                   fontSize: AppTypography.md,
@@ -4226,7 +4226,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                   } else if (v == null) {
                     _blurZoomError = 'Invalid number';
                   } else if (v < 1.1 || v > 4.0) {
-                    _blurZoomError = '1.1–4.0';
+                    _blurZoomError = '1.1-4.0';
                   } else {
                     _blurZoomError = null;
                   }
@@ -4351,7 +4351,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                 color: AppColors.settingsTextPrimary,
               ),
               decoration: InputDecoration(
-                hintText: '0.1–3.0',
+                hintText: '0.1-3.0',
                 hintStyle: TextStyle(
                   color: AppColors.settingsTextTertiary,
                   fontSize: AppTypography.md,
@@ -4372,7 +4372,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                   } else if (v == null) {
                     _blurStrengthError = 'Invalid number';
                   } else if (v < 0.1 || v > 3.0) {
-                    _blurStrengthError = '0.1–3.0';
+                    _blurStrengthError = '0.1-3.0';
                   } else {
                     _blurStrengthError = null;
                   }

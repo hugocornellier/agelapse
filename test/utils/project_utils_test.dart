@@ -178,7 +178,7 @@ void main() {
     });
 
     test('returns unique dates only', () {
-      // Two photos on same day - sorted newest first (descending)
+      // Two photos on same day, sorted newest first (descending)
       final photos = [
         {'timestamp': '1704070800000'}, // 2024-01-01 01:00:00 (later)
         {

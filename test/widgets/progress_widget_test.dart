@@ -168,7 +168,7 @@ void main() {
     });
 
     test('handles progress over 100%', () {
-      // Edge case - widget should handle values > 100
+      // Edge case; widget should handle values > 100
       final widget = ProgressWidget(
         stabilizingRunningInMain: true,
         videoCreationActiveInMain: false,

@@ -142,7 +142,7 @@ Future<String> getFixturePathAsync(String relativePath) async {
 }
 
 /// Synchronous version for backwards compatibility on desktop.
-/// On mobile, this will throw - use getFixturePathAsync instead.
+/// On mobile, this will throw; use getFixturePathAsync instead.
 String getFixturePath(String relativePath) {
   if (_isMobile) {
     // Check if we have a cached path
@@ -303,7 +303,7 @@ Future<void> preloadFixtures() async {
     _fixtureLoadError =
         'Failed to preload fixtures on mobile:\n${errors.join('\n')}\n\n'
         'Ensure fixtures are declared in pubspec.yaml under flutter > assets';
-    // Don't throw - let tests handle this gracefully
+    // Don't throw; let tests handle this gracefully
   }
 }
 

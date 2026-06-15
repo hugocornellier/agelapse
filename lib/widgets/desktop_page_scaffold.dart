@@ -72,7 +72,7 @@ class DesktopPageScaffold extends StatelessWidget {
       backgroundColor: bgColor,
       body: Column(
         children: [
-          // Title bar zone — only needed when NOT inside a nested navigator
+          // Title bar zone; only needed when NOT inside a nested navigator
           // (i.e. when there's no persistent title bar above us)
           if (!hasPersistentTitleBar)
             Container(

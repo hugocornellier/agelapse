@@ -23,8 +23,7 @@ void main() {
     expect(
       saveStart,
       greaterThanOrEqualTo(0),
-      reason:
-          'saveStabilizedImage method not found — did the signature change? '
+      reason: 'saveStabilizedImage method not found; did the signature change? '
           'Update this regression guard to match.',
     );
 

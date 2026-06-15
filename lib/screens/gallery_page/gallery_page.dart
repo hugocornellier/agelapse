@@ -45,7 +45,7 @@ import 'gallery_image_menu.dart';
 import 'gallery_export_handler.dart';
 import 'image_preview_navigator.dart';
 
-/// Top-level function for compute() - checks if any paths are directories.
+/// Top-level function for compute(): checks if any paths are directories.
 /// Runs in isolate to avoid blocking UI when dropping many files.
 bool _checkForDirectories(List<String> paths) {
   for (final p in paths) {
@@ -200,7 +200,7 @@ class GalleryPageState extends State<GalleryPage>
     return 9 / 16;
   }
 
-  // Global drop support - idempotent processing flag
+  // Global drop support; idempotent processing flag
   bool _pendingFilesProcessed = false;
 
   // Date stamp settings for gallery labels
@@ -380,7 +380,7 @@ class GalleryPageState extends State<GalleryPage>
 
     while (widget.settingsCache == null && mounted) {
       if (DateTime.now().isAfter(deadline)) {
-        return; // Timeout - proceed without cache
+        return; // Timeout; proceed without cache
       }
       await Future.delayed(const Duration(milliseconds: 500));
     }
@@ -552,13 +552,13 @@ class GalleryPageState extends State<GalleryPage>
 
   /// Handles incremental update when a single photo is stabilized.
   Future<void> _handleIncrementalStabUpdate(String timestamp) async {
-    // Check if this is a retry completion - if so, clear the flag and rebuild
+    // Check if this is a retry completion; if so, clear the flag and rebuild
     final isRetry = _retryingPhotoTimestamps.contains(timestamp);
     if (isRetry) {
       setState(() {
         _retryingPhotoTimestamps.remove(timestamp);
       });
-      // For retries, the path is already in the list - just rebuild to show new thumbnail
+      // For retries, the path is already in the list; just rebuild to show new thumbnail
       return;
     }
 
@@ -1186,7 +1186,7 @@ class GalleryPageState extends State<GalleryPage>
 
     if (result == null || result.isEmpty || !mounted) return;
 
-    // User confirmed — run the actual import
+    // User confirmed; run the actual import
     setState(() {
       photosImported = 0;
       successfullyImported = 0;

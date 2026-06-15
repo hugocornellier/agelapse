@@ -303,7 +303,7 @@ void main() {
               }
 
               if (preDecoded == null) {
-                // heic2png conversion failed on this platform — skip
+                // heic2png conversion failed on this platform, skip
                 return;
               }
 
@@ -374,7 +374,7 @@ void main() {
                   await tempDir.delete(recursive: true);
                 }
               } else {
-                // iOS — sips not available, skip import pipeline test
+                // iOS: sips not available, skip import pipeline test
                 return;
               }
             }
@@ -423,7 +423,7 @@ void main() {
                   await tempDir.delete(recursive: true);
                 }
               } else {
-                // iOS — sips not available, skip import pipeline test
+                // iOS: sips not available, skip import pipeline test
                 return;
               }
             }
@@ -505,7 +505,7 @@ void main() {
     });
 
     for (final format in formatSampleFormats) {
-      // Test 2 samples per format (day1, day11) — these have faces
+      // Test 2 samples per format (day1, day11); these have faces
       for (final day in ['day1', 'day11']) {
         testWidgets(
           '$format/$day decodes to cv-compatible bytes and passes through stabilization',
@@ -571,18 +571,18 @@ void main() {
 
             // Step 3: Face detection
             final faces = await StabUtils.getFacesFromBytes(cvBytes);
-            // These are photos of a person — we expect face detection to work
+            // These are photos of a person; we expect face detection to work
             // But if it doesn't find a face, that's still a valid test
             // (the format decoded correctly, face detection just didn't match)
             if (faces == null || faces.isEmpty) {
-              // Format decoded OK, face just wasn't detected — still a pass
+              // Format decoded OK, face just wasn't detected; still a pass
               // for format compatibility
               return;
             }
 
             final face = faces.first;
             if (face.leftEye == null || face.rightEye == null) {
-              return; // Eyes not detected — format decode still passed
+              return; // Eyes not detected; format decode still passed
             }
 
             // Step 4: Calculate rotation from eye positions

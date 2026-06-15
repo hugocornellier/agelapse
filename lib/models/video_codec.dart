@@ -227,7 +227,7 @@ enum VideoCodec {
     }
     // Flatpak FFmpeg lacks libx265, only offer H.264
     if (isFlatpak) return [h264];
-    // Windows: HEVC temporarily disabled — playback/encode issues with the
+    // Windows: HEVC temporarily disabled, playback/encode issues with the
     // bundled libx265 build. Users on `hevc` are auto-migrated to h264 by
     // SettingsUtil.loadVideoCodec, which validates against this list.
     if (Platform.isWindows) return [h264];

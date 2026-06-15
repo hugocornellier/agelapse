@@ -108,7 +108,7 @@ class DateStampUtils {
   // DateFormat cache to avoid creating new instances during builds
   static final Map<String, DateFormat> _formatCache = {};
 
-  // All bundled fonts (for dropdown - doesn't include custom fonts)
+  // All bundled fonts (for dropdown; doesn't include custom fonts)
   static const List<String> bundledFonts = [
     fontInter,
     fontRoboto,
@@ -179,15 +179,15 @@ class DateStampUtils {
     return defaultFont;
   }
 
-  /// Resolve export font - handles "same as gallery" logic.
+  /// Resolve export font; handles "same as gallery" logic.
   static String resolveExportFont(String exportFont, String galleryFont) {
     return exportFont == fontSameAsGallery ? galleryFont : exportFont;
   }
 
   /// Format a timestamp using the specified format pattern.
-  /// [timestampMs] - Unix timestamp in milliseconds (UTC)
-  /// [format] - DateFormat pattern string
-  /// [captureOffsetMinutes] - Optional timezone offset in minutes for accurate local time
+  /// [timestampMs]: Unix timestamp in milliseconds (UTC)
+  /// [format]: DateFormat pattern string
+  /// [captureOffsetMinutes]: Optional timezone offset in minutes for accurate local time
   static String formatTimestamp(
     int timestampMs,
     String format, {
@@ -217,13 +217,13 @@ class DateStampUtils {
 
   /// Calculate the position offset for date stamp based on corner and margins.
   /// Returns (x, y) offset from top-left corner of the image.
-  /// [imageWidth] - Width of the image in pixels
-  /// [imageHeight] - Height of the image in pixels
-  /// [textWidth] - Width of the rendered text in pixels
-  /// [textHeight] - Height of the rendered text in pixels
-  /// [position] - Corner position (e.g., 'lower right')
-  /// [marginPercentH] - Horizontal margin from edge as percentage (default 2%)
-  /// [marginPercentV] - Vertical margin from edge as percentage (default 2%)
+  /// [imageWidth]: Width of the image in pixels
+  /// [imageHeight]: Height of the image in pixels
+  /// [textWidth]: Width of the rendered text in pixels
+  /// [textHeight]: Height of the rendered text in pixels
+  /// [position]: Corner position (e.g., 'lower right')
+  /// [marginPercentH]: Horizontal margin from edge as percentage (default 2%)
+  /// [marginPercentV]: Vertical margin from edge as percentage (default 2%)
   static Offset calculatePosition({
     required double imageWidth,
     required double imageHeight,
@@ -265,8 +265,8 @@ class DateStampUtils {
   }
 
   /// Calculate font size based on image height and size percentage.
-  /// [imageHeight] - Height of the image in pixels
-  /// [sizePercent] - Font size as percentage of image height (1-6%)
+  /// [imageHeight]: Height of the image in pixels
+  /// [sizePercent]: Font size as percentage of image height (1-6%)
   static double calculateFontSize(double imageHeight, int sizePercent) {
     final clampedPercent = sizePercent.clamp(1, 6);
     return imageHeight * (clampedPercent / 100);
@@ -282,7 +282,7 @@ class DateStampUtils {
     return gallerySizePx[index];
   }
 
-  /// Resolve export size - handles "same as gallery" logic.
+  /// Resolve export size; handles "same as gallery" logic.
   static int resolveExportSize(int exportSize, int gallerySize) {
     return exportSize == sizeSameAsGallery ? gallerySize : exportSize;
   }
@@ -316,10 +316,10 @@ class DateStampUtils {
   }
 
   /// Build a gallery date label widget with background pill.
-  /// [date] - Formatted date string
-  /// [thumbnailHeight] - Height of the thumbnail for scaling
-  /// [fontFamily] - Optional font family (defaults to Inter)
-  /// [sizeLevel] - Optional size level (1-6); when null, uses legacy formula
+  /// [date]: Formatted date string
+  /// [thumbnailHeight]: Height of the thumbnail for scaling
+  /// [fontFamily]: Optional font family (defaults to Inter)
+  /// [sizeLevel]: Optional size level (1-6); when null, uses legacy formula
   static Widget buildGalleryDateLabel(
     String date,
     double thumbnailHeight, {
@@ -382,7 +382,7 @@ class DateStampUtils {
       _validateFormatPattern(pattern, exportFormatMaxLength, allowTime: true);
 
   /// Shared format validation logic.
-  /// [allowTime] — if false, rejects patterns containing time tokens.
+  /// [allowTime]: if false, rejects patterns containing time tokens.
   static String? _validateFormatPattern(
     String pattern,
     int maxLength, {
@@ -501,8 +501,8 @@ Examples
   /// Composite a date stamp onto an image and save to output path.
   /// Returns true if successful, false otherwise.
   /// This function must be called from the main isolate (requires Flutter engine).
-  /// [watermarkVerticalOffset] - Additional Y offset to avoid overlapping with watermark
-  /// [fontFamily] - Font family for date stamp text (defaults to Inter)
+  /// [watermarkVerticalOffset]: Additional Y offset to avoid overlapping with watermark
+  /// [fontFamily]: Font family for date stamp text (defaults to Inter)
   static Future<bool> compositeDate({
     required String inputPath,
     required String outputPath,
@@ -628,9 +628,9 @@ Examples
   /// Process a batch of images with date stamps.
   /// Returns a map of original path -> temp path for files that were processed.
   /// Files that fail processing will not be included in the map.
-  /// [captureOffsetMap] - Map of timestamp -> captureOffsetMinutes for accurate timezone handling
-  /// [watermarkPosition] - If provided, date stamp will be offset to avoid overlap with watermark
-  /// [fontFamily] - Font family for date stamp text (defaults to Inter)
+  /// [captureOffsetMap]: Map of timestamp -> captureOffsetMinutes for accurate timezone handling
+  /// [watermarkPosition]: If provided, date stamp will be offset to avoid overlap with watermark
+  /// [fontFamily]: Font family for date stamp text (defaults to Inter)
   static Future<Map<String, String>> processBatchWithDateStamps({
     required List<String> inputPaths,
     required String tempDir,
@@ -727,10 +727,10 @@ Examples
 
   /// Render a date stamp as a transparent PNG matching the image preview style exactly.
   /// Returns the PNG bytes, or null on failure.
-  /// [dateText] - The formatted date string to render
-  /// [videoHeight] - Height of the video for scaling the font size
-  /// [sizePercent] - Font size as percentage of video height (1-6)
-  /// [fontFamily] - Font family for date stamp text (defaults to Inter)
+  /// [dateText]: The formatted date string to render
+  /// [videoHeight]: Height of the video for scaling the font size
+  /// [sizePercent]: Font size as percentage of video height (1-6)
+  /// [fontFamily]: Font family for date stamp text (defaults to Inter)
   static Future<ui.Image?> renderDateStampImage({
     required String dateText,
     required int videoHeight,
@@ -809,7 +809,7 @@ Examples
 
   /// Render a date stamp PNG and save to file.
   /// Returns true if successful.
-  /// [fontFamily] - Font family for date stamp text (defaults to Inter)
+  /// [fontFamily]: Font family for date stamp text (defaults to Inter)
   static Future<bool> renderDateStampPng({
     required String dateText,
     required String outputPath,
@@ -855,7 +855,7 @@ Examples
   /// Generate date stamp PNG assets for video overlay.
   /// Returns a map of date text -> PNG file path, or null on failure.
   /// Also returns the temp directory path for cleanup.
-  /// [fontFamily] - Font family for date stamp text (defaults to Inter)
+  /// [fontFamily]: Font family for date stamp text (defaults to Inter)
   static Future<({Map<String, String> dateToPath, String tempDir})?>
       generateDateStampAssets({
     required List<String> uniqueDates,
@@ -898,7 +898,7 @@ Examples
         final end = (start + batchSize).clamp(0, tasks.length);
         LogService.instance.log(
           "[DATE_STAMP] Rendering batch ${start ~/ batchSize + 1}: "
-          "PNGs ${start + 1}–$end of ${tasks.length}",
+          "PNGs ${start + 1}-$end of ${tasks.length}",
         );
         await LogService.instance.flush();
         final batch = tasks.sublist(start, end);

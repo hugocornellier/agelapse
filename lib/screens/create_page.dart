@@ -209,7 +209,7 @@ class CreatePageState extends State<CreatePage>
         widget.projectId.toString(),
       );
 
-      // Cache photo count before polling loop - it won't change during compilation
+      // Cache photo count before polling loop; it won't change during compilation
       photoCount = await getStabilizedPhotoCount();
 
       // If manual compile is in progress, show progress UI
@@ -232,7 +232,7 @@ class CreatePageState extends State<CreatePage>
         });
       }
 
-      // Check if auto-compile is disabled - show manual compile options
+      // Check if auto-compile is disabled; show manual compile options
       if (!_autoCompileEnabled) {
         await _checkVideoState();
         if (!mounted) return;
@@ -390,7 +390,7 @@ class CreatePageState extends State<CreatePage>
   }
 
   Future<void> setupVideoPlayer() async {
-    // Check if video file exists - don't create directly, let stabilization service handle it
+    // Check if video file exists; don't create directly, let stabilization service handle it
     final videoExists = await _checkVideoFileExists();
     if (!videoExists) {
       setState(() {
@@ -442,7 +442,7 @@ class CreatePageState extends State<CreatePage>
       return;
     }
 
-    // Don't hide nav bar - keep the standard page layout
+    // Don't hide nav bar; keep the standard page layout
     playVideo();
 
     final bool hasViewedFirstVideo = await SettingsUtil.hasSeenFirstVideo(
@@ -599,7 +599,7 @@ class CreatePageState extends State<CreatePage>
       return "1080p";
     }
 
-    // Custom resolution - show as "1728p" format
+    // Custom resolution: show as "1728p" format
     return "${smallerSide.toInt()}p";
   }
 
@@ -772,7 +772,7 @@ class CreatePageState extends State<CreatePage>
       return _buildManualCompileOptions();
     }
 
-    // If nothing is actively compiling, we're just loading the player —
+    // If nothing is actively compiling, we're just loading the player,
     // show a plain spinner instead of the "Compiling Video 0%" card.
     if (!widget.stabilizingRunningInMain &&
         !widget.videoCreationActiveInMain &&

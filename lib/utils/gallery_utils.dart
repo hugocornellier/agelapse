@@ -59,7 +59,7 @@ class DirectoryScanInput {
   });
 }
 
-/// Top-level function for compute() - scans directory in isolate.
+/// Top-level function for compute(): scans directory in isolate.
 /// This moves the blocking stat() syscalls off the main thread.
 DirectoryScanResult scanDirectoryIsolateEntry(DirectoryScanInput input) {
   final dir = Directory(input.directoryPath);
@@ -124,7 +124,7 @@ DirectoryScanResult scanDirectoryIsolateEntry(DirectoryScanInput input) {
         // Skip Links (symlinks) for safety
       }
     } on FileSystemException catch (e) {
-      errors.add('Permission denied: ${currentDir.path} - ${e.message}');
+      errors.add('Permission denied: ${currentDir.path}: ${e.message}');
     } catch (e) {
       errors.add('Error scanning ${currentDir.path}: $e');
     }
@@ -1196,7 +1196,7 @@ class GalleryUtils {
         '(${(totalBytes / 1024 / 1024).toStringAsFixed(1)} MB)',
       );
 
-      // Use ZipFileEncoder for streaming - writes directly to disk
+      // Use ZipFileEncoder for streaming; writes directly to disk
       // level: 0 (store) = no compression, faster for already-compressed media
       encoder = ZipFileEncoder();
       try {
@@ -1256,7 +1256,7 @@ class GalleryUtils {
         return;
       }
 
-      // Finalize ZIP — this writes the central directory and closes the file
+      // Finalize ZIP: this writes the central directory and closes the file
       log('Closing ZIP encoder (added=$added files)...');
       try {
         await encoder.close();
@@ -1392,7 +1392,7 @@ class GalleryUtils {
       final completer = Completer<String>();
       Isolate? isolate;
 
-      // Inactivity timeout - reset on each progress message
+      // Inactivity timeout; reset on each progress message
       const inactivityLimit = Duration(minutes: 5);
       Timer? inactivityTimer;
 

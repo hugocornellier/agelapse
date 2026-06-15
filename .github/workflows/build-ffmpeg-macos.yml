@@ -36,7 +36,7 @@ jobs:
             --with-zlib=no --with-bzip2=no --with-png=no --with-harfbuzz=no --with-brotli=no
           make -j$(sysctl -n hw.ncpu) && make install
 
-          # Build harfbuzz (arm64, minimal — no glib, no freetype funcs)
+          # Build harfbuzz (arm64, minimal, no glib, no freetype funcs)
           cd /tmp/harfbuzz-14.1.0
           cmake -B build-arm64 \
             -DCMAKE_OSX_ARCHITECTURES=arm64 \

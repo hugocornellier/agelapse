@@ -5,12 +5,12 @@ import '../styles/styles.dart';
 ///
 /// This helper ensures consistent dialog styling across the app.
 ///
-/// [title] - Optional title text displayed below the icon
-/// [icon] - Optional icon to display (defaults to info_outline_rounded)
-/// [iconColor] - Optional icon/title color (defaults to settingsAccent)
-/// [primaryActionLabel] - Optional label for a prominent primary action button
-/// [onPrimaryAction] - Callback when primary action is tapped (dialog auto-closes)
-/// [dismissLabel] - Label for the dismiss button (defaults to "Got it", or "Close" if primary action exists)
+/// [title]: Optional title text displayed below the icon
+/// [icon]: Optional icon to display (defaults to info_outline_rounded)
+/// [iconColor]: Optional icon/title color (defaults to settingsAccent)
+/// [primaryActionLabel]: Optional label for a prominent primary action button
+/// [onPrimaryAction]: Callback when primary action is tapped (dialog auto-closes)
+/// [dismissLabel]: Label for the dismiss button (defaults to "Got it", or "Close" if primary action exists)
 void showStyledInfoDialog(
   BuildContext context,
   String content, {

@@ -109,7 +109,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
   // Init error state
   String? _initError;
 
-  // Viewport zoom state (visual only — does NOT affect stabilization params)
+  // Viewport zoom state (visual only; does NOT affect stabilization params)
   double _viewZoom = 1.0;
   Offset _viewPanOffset = Offset.zero;
   Size? _lastPreviewSize;
@@ -355,7 +355,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
 
           if (saveChanges == true) {
             await _saveChanges();
-            // Don't pop here - _saveChanges handles navigation
+            // Don't pop here; _saveChanges handles navigation
           } else if (saveChanges == false) {
             if (context.mounted) {
               Navigator.of(context).pop();
@@ -368,7 +368,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
           ? _buildInitErrorView()
           : Stack(
               children: [
-                // Main content - absorb pointer during save
+                // Main content; absorb pointer during save
                 AbsorbPointer(absorbing: isSaving, child: _buildPageScaffold()),
                 // Save overlay
                 if (isSaving) _buildSaveOverlay(),
@@ -1203,7 +1203,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
   }
 
   void _onTransformChanged(TransformState state) {
-    // Called during drag - throttled preview update
+    // Called during drag; throttled preview update
     final now = DateTime.now();
     if (_lastApplyAt == null ||
         now.difference(_lastApplyAt!) >= _applyThrottle) {
@@ -1219,7 +1219,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
   }
 
   void _onTransformChangeEnd(TransformState state) {
-    // Called when gesture ends - update preview (no autosave)
+    // Called when gesture ends; update preview (no autosave)
     processRequest(
       state.translateX,
       state.translateY,
@@ -1282,7 +1282,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
         return;
       }
 
-      // Update saved state — parse from formatted text fields to match
+      // Update saved state; parse from formatted text fields to match
       // what _checkForUnsavedChanges() will compare against
       _savedTx = double.tryParse(_inputController1.text) ?? 0;
       _savedTy = double.tryParse(_inputController2.text) ?? 0;
@@ -1296,7 +1296,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       // Trigger auto-compile video check (mirrors retry stabilization behavior)
       await DB.instance.setNewVideoNeeded(widget.projectId);
 
-      // If stabilization batch is already active, the flag is enough - video will
+      // If stabilization batch is already active, the flag is enough; video will
       // compile when batch finishes. Otherwise, trigger compilation directly.
       if (!StabilizationService.instance.isActive) {
         unawaited(
@@ -2103,7 +2103,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
                   ),
                 ),
                 const SizedBox(width: 8),
-                // View zoom controls (visual only — does not affect stabilization)
+                // View zoom controls (visual only; does not affect stabilization)
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 4,

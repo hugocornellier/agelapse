@@ -40,7 +40,7 @@ void main() {
       app.main();
       await pumpUntilAppReady(tester);
 
-      // Verify app launched - should show some kind of app structure
+      // Verify app launched; should show some kind of app structure
       // On mobile, the app may take longer to initialize
       final materialAppFinder = find.byType(MaterialApp);
       final scaffoldFinder = find.byType(Scaffold);
@@ -80,7 +80,7 @@ void main() {
         await tester.tap(button, warnIfMissed: false);
         await tester.pump(const Duration(seconds: 2));
 
-        // Step 2: Now on CreateProjectPage - verify we can see the form
+        // Step 2: Now on CreateProjectPage; verify we can see the form
         final createNewProjectText = find.text('Create New Project');
         if (createNewProjectText.evaluate().isNotEmpty) {
           expect(
@@ -163,7 +163,7 @@ void main() {
           hasInfoIcon;
 
       // On some platforms, the navigation may not be visible immediately
-      // This is okay - the main test is that the app doesn't crash
+      // This is okay; the main test is that the app doesn't crash
       if (!hasNavigation) {
         // Check if we at least have some app structure
         final hasScaffold = find.byType(Scaffold).evaluate().isNotEmpty;
@@ -207,7 +207,7 @@ void main() {
           // (e.g., video player previews that never "settle")
           await tester.pump(const Duration(seconds: 2));
 
-          // Verify app didn't crash - we should still have a scaffold
+          // Verify app didn't crash; we should still have a scaffold
           expect(
             find.byType(Scaffold),
             findsWidgets,

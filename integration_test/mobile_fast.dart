@@ -1,4 +1,4 @@
-/// Mobile "fast" aggregator — runs all non-video integration tests in a single
+/// Mobile "fast" aggregator: runs all non-video integration tests in a single
 /// app build + launch.  Point iOS/Android CI at this file instead of scanning
 /// the whole integration_test/ directory to avoid per-file rebuilds.
 ///

@@ -33,7 +33,7 @@ class TransformHistory {
   /// Push a new state onto the history stack.
   ///
   /// This should be called when a gesture ends or a discrete action completes.
-  /// Clears the redo stack (standard behavior - you can't redo after new action).
+  /// Clears the redo stack (standard behavior; you can't redo after new action).
   void push(TransformState state) {
     // Don't push duplicate states
     if (_undoStack.isNotEmpty && _undoStack.last == state) {
@@ -86,6 +86,6 @@ class TransformHistory {
   /// Useful when loading a new image or resetting the tool.
   void reset(TransformState initialState) {
     clear();
-    // Don't push initial state - it will be pushed on first change
+    // Don't push initial state; it will be pushed on first change
   }
 }

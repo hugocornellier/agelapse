@@ -339,7 +339,7 @@ class AppColors {
   static const Color settingsTextTertiary = textTertiary;
   static const Color settingsInputBackground = surface;
 
-  // DEPRECATED - Use tokens above instead
+  // DEPRECATED: Use tokens above instead
   // static const Color darkOverlay = ... → Use overlay @ 0.5
   // static const Color lightGrey = ... → Use textSecondary
   // static const Color darkGrey = ... → Use background
@@ -409,7 +409,7 @@ fontFamily: 'JetBrainsMono'
 | Old Token | New Token |
 |-----------|-----------|
 | `AppColors.darkOverlay` | `AppColors.overlay` @ 0.5 or `AppColors.surface` |
-| `AppColors.lightGrey` | `AppColors.textSecondary` (UNUSED - remove) |
+| `AppColors.lightGrey` | `AppColors.textSecondary` (UNUSED, remove) |
 | `AppColors.darkGrey` | `AppColors.background` |
 | `AppColors.lessDarkGrey` | `AppColors.surfaceElevated` |
 | `AppColors.lightBlue` | `AppColors.accentLight` |
@@ -444,7 +444,7 @@ fontFamily: 'JetBrainsMono'
 
 | Old Value | New Token |
 |-----------|-----------|
-| 2px | `radiusXSmall` (4px) - for drag handles only |
+| 2px | `radiusXSmall` (4px), for drag handles only |
 | 4px | `radiusXSmall` |
 | 6px | `radiusSmall` (8px) |
 | 7px | `radiusSmall` (8px) |

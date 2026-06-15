@@ -363,7 +363,7 @@ class TransformToolState extends State<TransformTool> {
   }
 
   void _onPanStart(DragStartDetails details) {
-    // Reject trackpad pan gestures — on macOS with "tap to click" enabled,
+    // Reject trackpad pan gestures; on macOS with "tap to click" enabled,
     // two-finger scrolling generates pointer down/move events with kind ==
     // trackpad, causing phantom drags. Real mouse clicks have kind == mouse.
     if (details.kind == PointerDeviceKind.trackpad) return;
@@ -448,7 +448,7 @@ class TransformToolState extends State<TransformTool> {
         );
         break;
 
-      // Plus/minus for scale (skip when Cmd/Ctrl held — reserved for viewport zoom)
+      // Plus/minus for scale (skip when Cmd/Ctrl held; reserved for viewport zoom)
       case LogicalKeyboardKey.equal: // + key
       case LogicalKeyboardKey.add:
       case LogicalKeyboardKey.numpadAdd:

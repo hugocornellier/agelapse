@@ -185,7 +185,7 @@ void main() {
         testProjectId.toString(),
       );
 
-      // Create test frames (3840x2160 - actual 4K, but use smaller for speed)
+      // Create test frames (3840x2160, actual 4K, but use smaller for speed)
       // Using 2304 as short side per app's 4K definition
       await setupTestFrames(testProjectId!, 'landscape', 4096, 2304, 3);
 
@@ -250,7 +250,7 @@ void main() {
       // These are synthetic solid-color frames, so they compress very small
       await setupTestFrames(testProjectId!, 'landscape', 7680, 4320, 3);
 
-      // Compile video - this should use hevc_videotoolbox
+      // Compile video; this should use hevc_videotoolbox
       final success = await VideoUtils.createTimelapseFromProjectId(
         testProjectId!,
         null,
@@ -417,7 +417,7 @@ void main() {
         timestamp,
       );
 
-      // Attempt to compile - should return false, not crash
+      // Attempt to compile; should return false, not crash
       final success = await VideoUtils.createTimelapseFromProjectId(
         testProjectId!,
         null,

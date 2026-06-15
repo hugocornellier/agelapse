@@ -397,12 +397,12 @@ void main() {
                 'Bundled ffmpeg.exe should be >1MB (got ${bytes.lengthInBytes})',
           );
         } else if (Platform.isLinux) {
-          // Linux uses system ffmpeg — verify it's on PATH
+          // Linux uses system ffmpeg; verify it's on PATH
           final result = await Process.run('which', ['ffmpeg']);
           expect(result.exitCode, equals(0),
               reason: 'ffmpeg should be available on PATH');
         } else {
-          // iOS/Android use FFmpegKit — no binary to check directly.
+          // iOS/Android use FFmpegKit; no binary to check directly.
           // The compilation tests themselves verify FFmpegKit works.
         }
       });
@@ -1239,7 +1239,7 @@ void main() {
         app.main();
         await tester.pumpAndSettle(const Duration(seconds: 3));
 
-        // Load sample face images (only available on desktop — test fixtures
+        // Load sample face images (only available on desktop; test fixtures
         // are not bundled in pubspec.yaml for mobile builds).
         if (Platform.isAndroid || Platform.isIOS) {
           markTestSkipped(

@@ -144,7 +144,7 @@ void main() {
       // 5. Verify eyes are more horizontal in output
       final stabilizedFaces = await StabUtils.getFacesFromBytes(stabilized!);
       if (stabilizedFaces == null || stabilizedFaces.isEmpty) {
-        // Stabilization worked, but face detection on result failed - still a pass
+        // Stabilization worked, but face detection on result failed; still a pass
         return;
       }
 

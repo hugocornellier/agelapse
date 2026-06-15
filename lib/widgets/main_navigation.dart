@@ -64,7 +64,7 @@ class MainNavigationState extends State<MainNavigation>
   // Key to access CreatePage state for fullscreen trigger
   final GlobalKey<CreatePageState> _createPageKey =
       GlobalKey<CreatePageState>();
-  // Nested navigator for macOS — keeps CustomAppBar fixed during page transitions
+  // Nested navigator for macOS; keeps CustomAppBar fixed during page transitions
   final GlobalKey<NavigatorState> _nestedNavKey = GlobalKey<NavigatorState>();
   final ValueNotifier<int> _selectedIndexNotifier = ValueNotifier<int>(0);
   int photoCount = 0;
@@ -81,7 +81,7 @@ class MainNavigationState extends State<MainNavigation>
   bool _isSyncingProjectFolder = false;
   bool _hasUnseenVideo = false;
 
-  // Global drag-and-drop state (UI only - GlobalDropService is source of truth)
+  // Global drag-and-drop state (UI only; GlobalDropService is source of truth)
   bool _globalDragActive = false;
   List<String>? _pendingDropFiles;
 
@@ -133,7 +133,7 @@ class MainNavigationState extends State<MainNavigation>
 
       // Ignore progress events from other projects to prevent stale UI
       // (e.g. blue bar flashing when switching projects).
-      // null projectId means idle/global — always accept those.
+      // null projectId means idle/global; always accept those.
       if (progress.projectId != null &&
           progress.projectId != widget.projectId) {
         return;
@@ -461,7 +461,7 @@ class MainNavigationState extends State<MainNavigation>
       await Future.delayed(const Duration(milliseconds: 100));
     }
 
-    // Delegate to service - progress comes via stream subscription
+    // Delegate to service; progress comes via stream subscription
     await StabilizationService.instance.startStabilization(
       widget.projectId,
       onUserRanOutOfSpace: userRanOutOfSpaceCallback,
@@ -709,7 +709,7 @@ class MainNavigationState extends State<MainNavigation>
     if (_selectedIndex != 1) {
       _onItemTapped(1);
     } else {
-      // Already on gallery - trigger rebuild so GalleryPage detects pending files
+      // Already on gallery; trigger rebuild so GalleryPage detects pending files
       setState(() {});
     }
     // GalleryPage will detect pendingDropFiles via didUpdateWidget

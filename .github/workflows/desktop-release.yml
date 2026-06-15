@@ -91,7 +91,7 @@ jobs:
             echo "::error::Release '$TAG' already exists. Delete it first or use a new version."
             exit 1
           fi
-          echo "No existing release for '$TAG' — proceeding."
+          echo "No existing release for '$TAG'; proceeding."
 
   build-windows:
     name: Build Windows Installer

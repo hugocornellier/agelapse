@@ -194,7 +194,7 @@ void main() {
         notifier,
       );
       expect(result, isNotNull);
-      // The regex may match different parts - just verify we get a valid date
+      // The regex may match different parts; just verify we get a valid date
       expect(result!.year, greaterThanOrEqualTo(2000));
       expect(result.month, greaterThanOrEqualTo(1));
       expect(result.day, greaterThanOrEqualTo(1));
@@ -430,8 +430,8 @@ void main() {
     // Numeric sort gets it RIGHT.
 
     test('sorts 13-digit timestamp after 12-digit timestamp', () {
-      const pre2001 = '/photos/999999999999.jpg'; // 12 digits — earlier
-      const post2001 = '/photos/1000000000000.jpg'; // 13 digits — later
+      const pre2001 = '/photos/999999999999.jpg'; // 12 digits, earlier
+      const post2001 = '/photos/1000000000000.jpg'; // 13 digits, later
       expect(
         GalleryUtils.compareByNumericBasename(pre2001, post2001),
         isNegative,
@@ -444,9 +444,9 @@ void main() {
 
     test('sorts list correctly across 12/13 digit boundary', () {
       final paths = [
-        '/photos/1002455847000.jpg', // Oct 2001 (13 digits — later)
-        '/photos/922954251000.jpg', // Apr 1999 (12 digits — earlier)
-        '/photos/999999999999.jpg', // Sep 2001 (12 digits — middle)
+        '/photos/1002455847000.jpg', // Oct 2001 (13 digits, later)
+        '/photos/922954251000.jpg', // Apr 1999 (12 digits, earlier)
+        '/photos/999999999999.jpg', // Sep 2001 (12 digits, middle)
       ];
       paths.sort(GalleryUtils.compareByNumericBasename);
       expect(paths[0], contains('922954251000'));
@@ -512,7 +512,7 @@ void main() {
       // Simulate a list with one post-2001 photo, inserting a pre-2001 photo.
       // The pre-2001 photo should sort to index 0, not index 1.
       final timestamps = ['1002455847000']; // Oct 2001
-      final newTimestamp = '922954251000'; // Apr 1999 — should go before
+      final newTimestamp = '922954251000'; // Apr 1999, should go before
 
       timestamps.add(newTimestamp);
       timestamps.sort(numericCompare);
@@ -543,7 +543,7 @@ void main() {
         '1002455847000', // Oct 2001 (13 digits)
         '922954251000', // Apr 1999 (12 digits)
       ];
-      timestamps.sort(); // lexicographic — WRONG
+      timestamps.sort(); // lexicographic, WRONG
 
       // String sort incorrectly places Oct 2001 before Apr 1999
       expect(timestamps[0], '1002455847000'); // WRONG: later date sorts first
@@ -555,7 +555,7 @@ void main() {
         '1002455847000', // Oct 2001 (13 digits)
         '922954251000', // Apr 1999 (12 digits)
       ];
-      timestamps.sort(numericCompare); // numeric — CORRECT
+      timestamps.sort(numericCompare); // numeric, CORRECT
 
       expect(timestamps[0], '922954251000'); // Apr 1999 sorts first (correct)
       expect(timestamps[1], '1002455847000');

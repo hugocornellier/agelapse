@@ -35,7 +35,7 @@ class ImageProcessor {
       // For AVIF and RAW formats, extract EXIF timestamp from the original
       // bytes before import. importXFile's internal EXIF parser may not
       // handle these formats, so we pre-extract and pass as an override.
-      // No format conversion is performed — the original file is imported
+      // No format conversion is performed; the original file is imported
       // as-is.
       int? overrideTs;
       if (extension == ".avif" || RawDecoder.isRawExtension(extension)) {

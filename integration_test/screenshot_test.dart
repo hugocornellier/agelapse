@@ -19,7 +19,7 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   test_config.isTestMode = true;
 
-  // Directory to save screenshots — use env var or temp dir for CI
+  // Directory to save screenshots; use env var or temp dir for CI
   final screenshotDir = Platform.environment['SCREENSHOT_DIR'] ??
       '${Directory.systemTemp.path}/agelapse_screenshots';
 

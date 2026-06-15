@@ -41,7 +41,7 @@ Source: "..\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: recurs
 ; Ensure critical Flutter runtime files (handle layout differences across Flutter versions)
 ; Top-level ICU (older/most builds)
 Source: "..\build\windows\x64\runner\Release\icudtl.dat"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
-; ICU sometimes lives under data\ (newer/varied builds) — also copy a top-level copy just in case
+; ICU sometimes lives under data\ (newer/varied builds), also copy a top-level copy just in case
 Source: "..\build\windows\x64\runner\Release\data\icudtl.dat"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
 ; D3D compiler may or may not be emitted with your build; include if present

@@ -56,7 +56,7 @@ class ImageProcessingOutput {
         height = 0;
 }
 
-/// Top-level function for compute() - MUST be top-level or static.
+/// Top-level function for compute(): MUST be top-level or static.
 /// Performs all CPU-intensive OpenCV operations in an isolate.
 ///
 /// Operations performed:
@@ -230,7 +230,7 @@ Future<ImageProcessingOutput> processImageSafely(
     // Process in isolate
     return await compute(processImageIsolateEntry, input);
   } catch (e) {
-    // Isolate failed - fall back to main thread processing
+    // Isolate failed; fall back to main thread processing
     LogService.instance.log(
       '[ImageProc] Isolate FAILED, falling back to main thread: $e',
     );

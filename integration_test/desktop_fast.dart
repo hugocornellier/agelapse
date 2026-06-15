@@ -1,4 +1,4 @@
-/// Desktop "fast" aggregator — runs all non-video integration tests in a single
+/// Desktop "fast" aggregator: runs all non-video integration tests in a single
 /// app build + launch.  If this works on desktop (single suite = single launch,
 /// sidesteps the multi-file "debug connection" bug), it eliminates the need for
 /// the sequential per-file workaround.

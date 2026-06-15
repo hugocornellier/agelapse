@@ -36,7 +36,7 @@ class DB {
 
   /// Read-only SQL view exposing only active (non-soft-deleted) rows in
   /// [photoTable]. Every read query against photos that should hide trashed
-  /// rows targets this view instead of [photoTable] — so forgetting the
+  /// rows targets this view instead of [photoTable]; so forgetting the
   /// `deletedAt IS NULL` predicate is no longer possible at the call site.
   ///
   /// Writes (INSERT / UPDATE / DELETE) and trash-management reads
@@ -226,7 +226,7 @@ class DB {
     );
     // Partial index used by the launch-time global purge, which filters by
     // deletedAt without a leading projectID (so the composite above can't
-    // serve it). The partial predicate keeps the index tiny — it only stores
+    // serve it). The partial predicate keeps the index tiny; it only stores
     // rows currently in Recently Deleted.
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_photos_deleted_at '
@@ -252,7 +252,7 @@ class DB {
     // Active-photos view. SQLite flattens this trivial WHERE-only view into
     // the outer query so the underlying indexes on [photoTable] are still
     // selected (verify with `EXPLAIN QUERY PLAN` if a future change adds
-    // aggregates / GROUP BY / DISTINCT — those would defeat flattening).
+    // aggregates / GROUP BY / DISTINCT: those would defeat flattening).
     await db.execute(
       'CREATE VIEW IF NOT EXISTS $photoActiveView AS '
       'SELECT * FROM $photoTable WHERE deletedAt IS NULL;',
@@ -279,7 +279,7 @@ class DB {
     );
 
     // Deduplicate existing setting rows (keep lowest id per title+projectID)
-    // then create unique index — both are idempotent on already-clean databases.
+    // then create unique index, both are idempotent on already-clean databases.
     await db.execute('''
       DELETE FROM $settingTable WHERE id NOT IN (
         SELECT MIN(id) FROM $settingTable GROUP BY title, projectID
@@ -387,7 +387,7 @@ class DB {
   }
 
   /// Deletes all database records associated with a project atomically.
-  /// Uses a transaction to ensure atomicity - either all deletions
+  /// Uses a transaction to ensure atomicity; either all deletions
   /// succeed or none do.
   ///
   /// Deletes from: Photos, Videos, Setting tables, then Projects table.
@@ -745,7 +745,7 @@ class DB {
   /// exactly matches [fingerprint]. Returns `null` when no row matches,
   /// including when no rows carry a fingerprint (legacy / pre-migration) and
   /// when the only matching row is soft-deleted. Callers MUST treat a
-  /// non-null return as a confirmed duplicate of the source file — the
+  /// non-null return as a confirmed duplicate of the source file; the
   /// fingerprint comparison is the whole check.
   ///
   /// Soft-deleted rows are intentionally excluded so re-importing a file the
@@ -995,7 +995,7 @@ class DB {
       rows = await txn.update(
         photoTable,
         {'deletedAt': effectiveDeletedAt},
-        // 'deletedAt IS NULL' guard ensures the UPDATE is idempotent — a
+        // 'deletedAt IS NULL' guard ensures the UPDATE is idempotent; a
         // soft-delete on an already-trashed row is a no-op and won't reset
         // the retention timer. SQLite views are read-only so this UPDATE
         // can't go through [photoActiveView].
@@ -1013,7 +1013,7 @@ class DB {
             'deletedAt': effectiveDeletedAt,
           },
           // Ignore (not replace) so a stale tombstone from a prior failed flow keeps
-          // its original deletedAt — replacing would reset retention and delay the
+          // its original deletedAt; replacing would reset retention and delay the
           // launch-time purge.
           conflictAlgorithm: ConflictAlgorithm.ignore,
         );

@@ -14,7 +14,7 @@ void main() {
         tempDir: '/tmp/ds',
         outputMapLabel: 'dsOut',
       );
-      // Watermark filter has no trailing [label] — FFmpeg auto-selects output
+      // Watermark filter has no trailing [label]; FFmpeg auto-selects output
       final testWatermark = VideoUtils.getWatermarkFilter(
         0.8,
         'lower left',

@@ -139,7 +139,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
     _suppressTextListener = false;
   }
 
-  /// Called when text changes - debounced to avoid excessive updates
+  /// Called when text changes, debounced to avoid excessive updates
   void _onTextChanged() {
     if (_suppressTextListener) return;
 
@@ -163,14 +163,14 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
     }
   }
 
-  /// Focus lost on X field - commit and validate
+  /// Focus lost on X field; commit and validate
   void _onXFocusChanged() {
     if (!_xFocusNode.hasFocus) {
       _commitTextValueX(_xController, _offsetX);
     }
   }
 
-  /// Focus lost on Y field - commit and validate
+  /// Focus lost on Y field; commit and validate
   void _onYFocusChanged() {
     if (!_yFocusNode.hasFocus) {
       _commitTextValueY(_yController, _offsetY);

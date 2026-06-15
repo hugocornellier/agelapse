@@ -18,7 +18,7 @@ import 'test_utils.dart';
 
 /// Integration tests that compile videos then attempt playback via
 /// VideoPlayerController.  These catch platform-specific codec support
-/// issues — e.g. HEVC and ProRes throw on Windows because Windows Media
+/// issues, e.g. HEVC and ProRes throw on Windows because Windows Media
 /// Foundation lacks decoders for those codecs.
 ///
 /// Run with: `flutter test integration_test/video_playback_test.dart -d <platform>`

@@ -1,4 +1,4 @@
-/// Mobile "video" aggregator — runs all video-related integration tests in a
+/// Mobile "video" aggregator: runs all video-related integration tests in a
 /// single app build + launch.
 ///
 /// File name deliberately omits the `_test.dart` suffix so `flutter test

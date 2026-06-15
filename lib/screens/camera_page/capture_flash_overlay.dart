@@ -67,7 +67,7 @@ class CaptureFlashOverlayState extends State<CaptureFlashOverlay>
   }
 
   /// Triggers the flash animation.
-  /// Safe to call multiple times - resets if already animating.
+  /// Safe to call multiple times, resets if already animating.
   void flash() {
     if (!mounted) return;
 
@@ -82,7 +82,7 @@ class CaptureFlashOverlayState extends State<CaptureFlashOverlay>
       fit: StackFit.expand,
       children: [
         widget.child,
-        // Flash overlay - ignores pointer events so it doesn't block interaction
+        // Flash overlay, ignores pointer events so it doesn't block interaction
         IgnorePointer(
           child: AnimatedBuilder(
             animation: _opacityAnimation,

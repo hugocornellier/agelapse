@@ -306,7 +306,7 @@ class StabUtils {
       try {
         await _ensureFDLite();
 
-        // Face detection runs entirely in background isolate - UI never blocked
+        // Face detection runs entirely in background isolate; UI never blocked
         final facesDetected = await _faceDetector!.detectFaces(
           bytes,
           mode: fdl.FaceDetectionMode.full,
@@ -321,7 +321,7 @@ class StabUtils {
         LogService.instance.log(
           "Error caught while fetching faces from bytes: $e",
         );
-        // Force reinit of face detector on next call - handles stale native state
+        // Force reinit of face detector on next call; handles stale native state
         // after hot restart or other isolate lifecycle issues
         _faceDetector = null;
         return (<FaceLike>[], <fdl.Face>[]);
@@ -347,7 +347,7 @@ class StabUtils {
       try {
         await _ensureFDLite();
 
-        // Face detection runs entirely in background isolate - UI never blocked
+        // Face detection runs entirely in background isolate; UI never blocked
         final facesDetected = await _faceDetector!.detectFaces(
           bytes,
           mode: fdl.FaceDetectionMode.full,
@@ -947,7 +947,7 @@ class StabUtils {
 
           cv.Mat result;
           if (mat.channels == 4) {
-            // Has alpha channel - composite on black
+            // Has alpha channel; composite on black
             final bgType =
                 mat.type.depth == 2 ? cv.MatType.CV_16UC3 : cv.MatType.CV_8UC3;
             final bg = cv.Mat.zeros(mat.rows, mat.cols, bgType);
@@ -993,7 +993,7 @@ class StabUtils {
 
           cv.Mat composited;
           if (mat.channels == 4) {
-            // Has alpha channel - composite on black
+            // Has alpha channel; composite on black
             final bg = cv.Mat.zeros(mat.rows, mat.cols, cv.MatType.CV_8UC3);
             final channels = cv.split(mat);
             final bgr = cv.merge(
@@ -1745,7 +1745,7 @@ class StabUtils {
   ///
   /// Uses [FaceDetector.detectFacesFromMatBytes] which transfers the raw
   /// pixels via zero-copy [TransferableTypedData] and reconstructs the Mat
-  /// inside the face-detection background isolate — nothing blocks the UI.
+  /// inside the face-detection background isolate; nothing blocks the UI.
   static Future<List<FaceLike>?> getFacesFromRawMatBytes(
     Uint8List data,
     int width,
@@ -1921,7 +1921,7 @@ class StabUtils {
       return result;
     }
 
-    // Pool not initialized — not supported for raw path; return null
+    // Pool not initialized; not supported for raw path; return null
     return null;
   }
 

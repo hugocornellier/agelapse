@@ -249,7 +249,7 @@ void main() {
         app.main();
         await tester.pumpAndSettle(const Duration(seconds: 2));
 
-        // Request a setting that doesn't exist - should create with default
+        // Request a setting that doesn't exist; should create with default
         final theme = await DB.instance.getSettingValueByTitle('theme');
         expect(theme, 'dark');
 

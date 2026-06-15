@@ -144,7 +144,7 @@ void main() {
     });
 
     test('handles zero project id', () {
-      // Edge case - might not be valid but shouldn't crash
+      // Edge case; might not be valid but shouldn't crash
       final widget = SetEyePositionPage(
         projectId: 0,
         projectName: 'Test',

@@ -18,7 +18,7 @@ import 'test_utils.dart';
 ///
 /// Tests are split into two tiers:
 ///   - UI tests (A, B, C): rendering, navigation, selection UX
-///   - Headless tests (D–J): soft-delete contract + filesystem verification
+///   - Headless tests (D-J): soft-delete contract + filesystem verification
 ///
 /// Run with: `flutter test integration_test/gallery_test.dart -d macos`
 void main() {
@@ -149,7 +149,7 @@ void main() {
           reason: 'Gallery page should render a Scaffold without crashing',
         );
       } else {
-        // Navigation not visible yet — just verify app is running
+        // Navigation not visible yet; just verify app is running
         final hasApp = find.byType(MaterialApp).evaluate().isNotEmpty ||
             find.byType(Scaffold).evaluate().isNotEmpty;
         expect(hasApp, isTrue, reason: 'App should display some UI structure');
@@ -181,7 +181,7 @@ void main() {
       // Navigate to gallery tab
       final galleryIcon = find.byIcon(Icons.collections);
       if (galleryIcon.evaluate().isEmpty) {
-        // Navigation not ready — pass gracefully
+        // Navigation not ready, pass gracefully
         return;
       }
       await tester.tap(galleryIcon.first);
@@ -191,12 +191,12 @@ void main() {
       // Look for a PopupMenuButton to enter selection mode
       final popupButton = find.byType(PopupMenuButton<String>);
       if (popupButton.evaluate().isEmpty) {
-        // Gallery UI may differ — pass gracefully
+        // Gallery UI may differ, pass gracefully
         return;
       }
 
       await tester.tap(popupButton.first);
-      // Use pump instead of pumpAndSettle — FlashingBox animation is active
+      // Use pump instead of pumpAndSettle; FlashingBox animation is active
       // when photos are in the gallery and would cause pumpAndSettle to timeout.
       await tester.pump(const Duration(milliseconds: 500));
       await tester.pump(const Duration(milliseconds: 500));
@@ -218,7 +218,7 @@ void main() {
           await tester.tap(cancelButton.first);
           await tester.pump(const Duration(seconds: 1));
 
-          // Action bar should disappear — TextButton with 'Cancel' gone
+          // Action bar should disappear: TextButton with 'Cancel' gone
           expect(
             cancelButton.evaluate().isEmpty,
             isTrue,
@@ -270,7 +270,7 @@ void main() {
       if (popupButton.evaluate().isEmpty) return;
 
       await tester.tap(popupButton.first);
-      // Use pump instead of pumpAndSettle — FlashingBox animation active.
+      // Use pump instead of pumpAndSettle; FlashingBox animation active.
       await tester.pump(const Duration(milliseconds: 500));
       await tester.pump(const Duration(milliseconds: 500));
 
@@ -281,13 +281,13 @@ void main() {
       await tester.pump(const Duration(seconds: 1));
 
       // The 'Select All' control is an IconButton with tooltip 'Select All'
-      // (icon: Icons.select_all) — not a Text widget. Use byTooltip to find it.
+      // (icon: Icons.select_all), not a Text widget. Use byTooltip to find it.
       final selectAllButton = find.byTooltip('Select All');
       if (selectAllButton.evaluate().isNotEmpty) {
         await tester.tap(selectAllButton.first);
         await tester.pump(const Duration(seconds: 1));
 
-        // Expect some indication of selected count — app should not crash
+        // Expect some indication of selected count; app should not crash
         expect(
           find.byType(Scaffold),
           findsWidgets,
@@ -630,7 +630,7 @@ void main() {
           [expiredAt, targetTs, testProjectId],
         );
 
-        // Run purge — should remove the expired photo and leave the recent one
+        // Run purge: should remove the expired photo and leave the recent one
         final removed = await ProjectUtils.purgeExpiredDeletedImages();
         expect(removed, greaterThanOrEqualTo(1),
             reason: 'Purge should remove at least 1 expired photo');

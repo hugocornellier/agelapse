@@ -243,7 +243,7 @@ class OutputImageLoader {
 
     final timestamp = previewTimestampMs;
     if (timestamp == null) {
-      // No guide photo loaded - don't show date stamp on placeholder
+      // No guide photo loaded; don't show date stamp on placeholder
       return null;
     }
 

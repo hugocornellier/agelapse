@@ -21,12 +21,12 @@ class RecentlyDeletedPage extends StatefulWidget {
   final String projectName;
 
   /// Fired after at least one photo was successfully restored. The gallery
-  /// uses this to reload its image list AND recompile the video — restore
+  /// uses this to reload its image list AND recompile the video; restore
   /// changes which frames make it into the video.
   final Future<void> Function()? onRestored;
 
   /// Fired after permanent-delete actions complete (success, partial, or
-  /// failure — at least one row touched). The gallery uses this to refresh
+  /// failure, at least one row touched). The gallery uses this to refresh
   /// the Recently Deleted *count badge* only; the active photo set didn't
   /// change so no video recompile is necessary.
   final Future<void> Function()? onPurged;
@@ -847,7 +847,7 @@ class _RecentlyDeletedTile extends StatelessWidget {
 
 /// Thumbnail loader with three-tier fallback so a missing or corrupted
 /// thumbnail file doesn't render an opaque blank tile (which would make
-/// recovery impossible — the user can't tell which photo it was).
+/// recovery impossible; the user can't tell which photo it was).
 ///
 /// Tier 1: thumbnail file (fast, small)
 /// Tier 2: raw file (slow but always available if the row is restorable)

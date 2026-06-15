@@ -166,12 +166,12 @@ class CustomAppBarState extends State<CustomAppBar> {
       widget.projectId,
     );
 
-    // Only use stabilized images or GIFs - skip raw photos to avoid showing
+    // Only use stabilized images or GIFs; skip raw photos to avoid showing
     // raw then switching to stabilized. This keeps the experience consistent.
     final isStabilized = imagePath.contains(DirUtils.stabilizedDirname);
     final isGif = imagePath.endsWith('.gif');
     if (!isStabilized && !isGif) {
-      // No stabilized image yet - will be updated via stabUpdateStream
+      // No stabilized image yet; will be updated via stabUpdateStream
       return;
     }
 
@@ -182,7 +182,7 @@ class CustomAppBarState extends State<CustomAppBar> {
       if (thumbnailExists) {
         imagePath = thumbnailPath;
       } else {
-        // Thumbnail may still be generating - schedule a retry
+        // Thumbnail may still be generating; schedule a retry
         _thumbnailRetryTimer?.cancel();
         _thumbnailRetryTimer = Timer(const Duration(seconds: 2), () {
           if (mounted) _loadProjectImage();
@@ -497,7 +497,7 @@ class CustomAppBarState extends State<CustomAppBar> {
               ? CircleAvatar(
                   backgroundImage: FileImage(File(projectImagePath)),
                   onBackgroundImageError: (exception, stackTrace) {
-                    // File was deleted between existsSync check and load - use fallback
+                    // File was deleted between existsSync check and load; use fallback
                     LogService.instance.log(
                       '[CustomAppBar] onBackgroundImageError! exception=$exception, path=$projectImagePath',
                     );

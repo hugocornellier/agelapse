@@ -112,7 +112,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
       filterByFaceSize: false,
     );
 
-    // Retry once if failed - handles rare cache corruption / isolate recovery
+    // Retry once if failed; handles rare cache corruption / isolate recovery
     // Our safeguards (cache validation, isolate reset) run on first attempt,
     // so retry should succeed with fresh state
     if (facesRaw == null || facesRaw.isEmpty) {

@@ -3,7 +3,7 @@ enum StabilizationState {
   /// No stabilization operation is running
   idle,
 
-  /// Initializing - loading photos, setting up face detector
+  /// Initializing: loading photos, setting up face detector
   preparing,
 
   /// Actively stabilizing photos

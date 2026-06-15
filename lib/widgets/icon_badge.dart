@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../styles/styles.dart';
 
-/// A small icon wrapped in a rounded container — used throughout list tiles and
+/// A small icon wrapped in a rounded container; used throughout list tiles and
 /// option rows.  Defaults: padding 10, size 22, textPrimary icon on a
 /// textPrimary(alpha 0.08) background.
 class IconBadge extends StatelessWidget {

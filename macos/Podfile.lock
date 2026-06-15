@@ -1,5 +1,5 @@
 PODS:
-  - camera_desktop (1.1.6):
+  - camera_desktop (1.2.1):
     - FlutterMacOS
   - desktop_drop (0.0.1):
     - FlutterMacOS
@@ -154,7 +154,7 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/window_manager/macos
 
 SPEC CHECKSUMS:
-  camera_desktop: 8bda5f29f5704d67733654371d536aac7f742219
+  camera_desktop: 5c466254897c92cc46f6169d95fe7bd20b50ca1f
   desktop_drop: 10a3e6a7fa9dbe350541f2574092fecfa345a07b
   device_info_plus: 4fb280989f669696856f8b129e4a5e3cd6c48f76
   downloadsfolder: 9a9a5fb6eee0abe38756e788bb248d1c21490a6e

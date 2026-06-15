@@ -146,7 +146,7 @@ void main() {
       await tester.enterText(textField, 'Test');
       await tester.pumpAndSettle();
 
-      // Now Delete should be enabled - tap it
+      // Now Delete should be enabled; tap it
       await tester.tap(find.text('Delete'));
       await tester.pumpAndSettle();
 

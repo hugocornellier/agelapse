@@ -20,10 +20,10 @@ class GalleryPhotoOperations {
   /// Retries stabilization for a single photo by clearing caches, deleting
   /// existing stabilized files, and resetting the database entry.
   ///
-  /// [imagePath] - Path to the raw or stabilized image
-  /// [projectId] - The project ID
-  /// [projectOrientation] - Optional orientation override; if null, loads from settings
-  /// [onRetryStarted] - Optional callback invoked with the timestamp when retry begins
+  /// [imagePath]: Path to the raw or stabilized image
+  /// [projectId]: The project ID
+  /// [projectOrientation]: Optional orientation override; if null, loads from settings
+  /// [onRetryStarted]: Optional callback invoked with the timestamp when retry begins
   ///
   /// Returns the timestamp of the photo being retried.
   static Future<String> retryStabilization({
@@ -149,9 +149,9 @@ class GalleryPhotoOperations {
   /// - Capture timezone offset update
   /// - Video regeneration flag
   ///
-  /// [oldTimestamp] - Current timestamp (milliseconds since epoch as string)
-  /// [newTimestamp] - New timestamp (milliseconds since epoch as string)
-  /// [projectId] - The project ID
+  /// [oldTimestamp]: Current timestamp (milliseconds since epoch as string)
+  /// [newTimestamp]: New timestamp (milliseconds since epoch as string)
+  /// [projectId]: The project ID
   ///
   /// Throws an exception if the original file is not found.
   static Future<void> changePhotoDate({
@@ -315,8 +315,8 @@ class GalleryPhotoOperations {
 
   /// Sets a photo as the guide photo for face stabilization.
   ///
-  /// [timestamp] - The timestamp of the photo to set as guide
-  /// [projectId] - The project ID
+  /// [timestamp]: The timestamp of the photo to set as guide
+  /// [projectId]: The project ID
   ///
   /// Returns true if successful, false if the photo was not found.
   static Future<bool> setAsGuidePhoto({
@@ -340,9 +340,9 @@ class GalleryPhotoOperations {
   /// Checks if changing a photo's timestamp would change its position in the
   /// sorted list.
   ///
-  /// [oldTimestamp] - Current timestamp string (ms since epoch)
-  /// [newTimestamp] - Proposed new timestamp string (ms since epoch)
-  /// [allImageFilenames] - Basenames (without extension) of all images in the
+  /// [oldTimestamp]: Current timestamp string (ms since epoch)
+  /// [newTimestamp]: Proposed new timestamp string (ms since epoch)
+  /// [allImageFilenames]: Basenames (without extension) of all images in the
   ///   project, used to determine current sort order.
   static bool wouldChangeOrder(
     String oldTimestamp,
@@ -374,9 +374,9 @@ class GalleryPhotoOperations {
   /// if the user completed the flow, or `null` if they cancelled at any step.
   /// Also shows a confirmation dialog when a recompile would be needed.
   ///
-  /// [currentTimestamp] - Existing timestamp string (ms since epoch)
-  /// [projectIdStr] - Project ID as string (for settings lookup)
-  /// [allImageFilenames] - Basenames without extension for all project images
+  /// [currentTimestamp]: Existing timestamp string (ms since epoch)
+  /// [projectIdStr]: Project ID as string (for settings lookup)
+  /// [allImageFilenames]: Basenames without extension for all project images
   static Future<(String, bool, bool)?> showChangeDateFlow({
     required BuildContext context,
     required String currentTimestamp,
@@ -394,7 +394,7 @@ class GalleryPhotoOperations {
       lastDate: DateTime.now(),
     );
     if (newDate == null) return null;
-    // ignore: use_build_context_synchronously — caller must check mounted after
+    // ignore: use_build_context_synchronously (caller must check mounted after)
     if (!context.mounted) return null;
 
     final newTime = await showTimePicker(

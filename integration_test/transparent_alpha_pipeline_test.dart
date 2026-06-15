@@ -167,7 +167,7 @@ void main() {
         );
 
         // ── 5. Run the real stabilization pipeline ─────────────────────
-        // This is the critical path — stabilize() calls saveStabilizedImage,
+        // This is the critical path: stabilize() calls saveStabilizedImage,
         // which is where the v2.6.0 regression lived.
         final settings = await StabilizationSettings.load(testProjectId!);
         final stabilizer =

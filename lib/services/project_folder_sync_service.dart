@@ -278,7 +278,7 @@ class ProjectFolderSyncService {
         if (importedOk) {
           imported++;
         } else {
-          // Import failed — likely a duplicate. Try to backfill source metadata
+          // Import failed, likely a duplicate. Try to backfill source metadata
           // on the existing photo so sync recognizes it on future runs.
           final backfilled = await _tryBackfillSourceInfo(
             projectId,

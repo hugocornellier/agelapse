@@ -278,7 +278,7 @@ jobs:
             make -j$(nproc)
             make install
 
-            # Save config.h and config_components.h per ABI — the wrapper's vendored
+            # Save config.h and config_components.h per ABI; the wrapper's vendored
             # fftools code #includes these, and they contain arch-specific defines.
             # Without per-ABI copies, only the last ABI's config survives in /tmp/ffmpeg-src.
             mkdir -p /tmp/ffmpeg-config-${ABI}
@@ -312,7 +312,7 @@ jobs:
           find "${WRAPPER_SRC}" \( -name '*.c' -o -name '*.h' \) \
             -exec sed -i 's/arthenica/antonkarpenko/g' {} +
 
-          # Disable SAF (Storage Access Framework) protocol — not needed for AgeLapse
+          # Disable SAF (Storage Access Framework) protocol, not needed for AgeLapse
           # and av_set_saf_open/av_set_saf_close are FFmpegKit-specific patches not
           # present in vanilla FFmpeg 6.
           sed -i 's| av_set_saf|//av_set_saf|g' "${WRAPPER_SRC}/ffmpegkit.c"
@@ -353,7 +353,7 @@ jobs:
             # don't pick up x86 asm constraints from the wrong config.
             FFMPEG_CONFIG="/tmp/ffmpeg-config-${ABI}"
 
-            # Build libffmpegkit.so — the JNI bridge between Java and FFmpeg 6
+            # Build libffmpegkit.so: the JNI bridge between Java and FFmpeg 6
             $CC -shared -o $OUT_DIR/libffmpegkit.so \
               -I${FFMPEG_CONFIG} \
               -I${FFMPEG_PREFIX}/include \
@@ -404,7 +404,7 @@ jobs:
           curl -fL -o "$ORIG_AAR" \
             "https://repo1.maven.org/maven2/com/antonkarpenko/ffmpeg-kit-full-gpl/2.1.0/ffmpeg-kit-full-gpl-2.1.0.aar"
 
-          # Extract Java bindings and manifest (no native libs — we supply our own)
+          # Extract Java bindings and manifest (no native libs; we supply our own)
           cd $AAR_DIR
           unzip -o "$ORIG_AAR" classes.jar AndroidManifest.xml R.txt 2>/dev/null || true
           unzip -o "$ORIG_AAR" "META-INF/*" 2>/dev/null || true

@@ -72,7 +72,7 @@ static int read_jpeg_exif_orientation(const char* path) {
   while (pos + 4 <= n) {
     if (buf[pos] != 0xFF) break;
     uint8_t marker = buf[pos + 1];
-    if (marker == 0xDA) break;  // SOS — image data starts
+    if (marker == 0xDA) break;  // SOS: image data starts
     uint16_t seg_len = (static_cast<uint16_t>(buf[pos + 2]) << 8) | buf[pos + 3];
     if (seg_len < 2) break;
 

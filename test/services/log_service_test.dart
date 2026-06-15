@@ -33,7 +33,7 @@ void main() {
     });
 
     test('initialize method returns Future<void>', () {
-      // Verify method signature - don't actually call to avoid file system ops
+      // Verify method signature; don't actually call to avoid file system ops
       expect(LogService.instance.initialize, isA<Function>());
     });
 

@@ -157,7 +157,7 @@ class CameraUtils {
       captureExtension = path.extension(captureImgPath).toLowerCase();
       capturePhotoLength = await image.length();
 
-      // Rotation/mirroring via OpenCV isolate (~500ms–2s for high-res).
+      // Rotation/mirroring via OpenCV isolate (~500ms-2s for high-res).
       final bool needsProcessing = (deviceOrientation == "Landscape Left" ||
               deviceOrientation == "Landscape Right") ||
           applyMirroring;
@@ -236,7 +236,7 @@ class CameraUtils {
           sourceLocationType ??= 'camera_capture';
           sourceFilename ??= 'capture_$timestamp$extension';
 
-          // Write to photos_raw/ — pre-processed bytes or raw XFile copy
+          // Write to photos_raw/: pre-processed bytes or raw XFile copy
           final rawPhotoDirPath = await DirUtils.getRawPhotoDirPath(projectId);
           final rawPhotoPath = path.join(
             rawPhotoDirPath,
@@ -264,8 +264,8 @@ class CameraUtils {
           if (captureThumbnailBytes != null &&
               captureWidth != null &&
               captureHeight != null) {
-            // Thumbnail already created in isolate during rotation/mirroring
-            // — write bytes directly, skip disk round-trip through
+            // Thumbnail already created in isolate during rotation/mirroring,
+            // write bytes directly, skip disk round-trip through
             // FastThumbnail.
             await File(thumbnailPath).writeAsBytes(captureThumbnailBytes);
             orientation = captureHeight > captureWidth
@@ -274,7 +274,7 @@ class CameraUtils {
                     ? "landscape"
                     : "square";
           } else {
-            // No processing done (portrait, no mirror) — use native
+            // No processing done (portrait, no mirror): use native
             // FastThumbnail which reads from disk with subsampled decode.
             final ThumbnailResult? thumbnailResult =
                 await FastThumbnail.generate(
@@ -391,7 +391,7 @@ class CameraUtils {
           );
           if (match != null) {
             LogService.instance.log(
-              '[Import] duplicate by fingerprint — skipping '
+              '[Import] duplicate by fingerprint, skipping '
               '(matched timestamp=${match['timestamp']})',
             );
             return false;
@@ -417,7 +417,7 @@ class CameraUtils {
                     .first;
             final bool existingIsTrashed = existingPhoto['deletedAt'] != null;
             // Only dedup against ACTIVE rows. A soft-deleted match at this
-            // slot must not block the import — that would be a silent failure
+            // slot must not block the import; that would be a silent failure
             // for a user re-importing a file they previously trashed. Bump
             // the timestamp instead, so the new row gets its own files and
             // the old soft-deleted row ages out of Recently Deleted.

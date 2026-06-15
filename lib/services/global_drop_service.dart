@@ -51,7 +51,7 @@ class GlobalDropService {
   /// Stream of queue count updates.
   Stream<int> get queueUpdateStream => _queueUpdateController.stream;
 
-  // State - THIS IS THE SINGLE SOURCE OF TRUTH
+  // State: THIS IS THE SINGLE SOURCE OF TRUTH
   bool _isDragging = false;
   bool _importSheetOpen = false;
   ImportSheetDropHandler? _importSheetDropHandler;

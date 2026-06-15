@@ -149,7 +149,7 @@ class VideoUtils {
 
   /// Builds the FFmpeg filter_complex string from overlay components.
   ///
-  /// Pure function — all async work (loading settings, generating PNGs) must
+  /// Pure function; all async work (loading settings, generating PNGs) must
   /// be done by the caller before invoking this.
   @visibleForTesting
   static FilterChainResult buildFilterChain({
@@ -485,7 +485,7 @@ class VideoUtils {
     final escapedFontPath =
         fontFilePath.replaceAll('\\', '/').replaceAll(':', '\\:');
 
-    // Build chained drawtext filters — one per date range with enable expressions.
+    // Build chained drawtext filters: one per date range with enable expressions.
     // Each drawtext renders text for its time window. This uses zero extra inputs
     // (unlike the old overlay approach) while correctly showing per-frame dates.
     final filterParts = <String>[];
@@ -581,7 +581,7 @@ class VideoUtils {
       }
     }
 
-    // Custom font — get file path from CustomFontManager
+    // Custom font: get file path from CustomFontManager
     if (DateStampUtils.isCustomFont(fontFamily)) {
       final customFont = await CustomFontManager.instance
           .getCustomFontByFamilyName(fontFamily);
@@ -821,7 +821,7 @@ class VideoUtils {
   }) async {
     try {
       LogService.instance.log(
-        "[VIDEO] createTimelapse called - projectId: $projectId, framerate: $framerate, totalPhotoCount: $totalPhotoCount",
+        "[VIDEO] createTimelapse called: projectId: $projectId, framerate: $framerate, totalPhotoCount: $totalPhotoCount",
       );
       LogService.instance.log(
         "[VIDEO] Platform: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}",
@@ -1251,7 +1251,7 @@ class VideoUtils {
       // For transparent videos with alpha output, ensure alpha channel is
       // preserved through the filter pipeline.
       // For all videos: always include a format filter when no filter_complex
-      // is present — FFmpeg 6's concat demuxer can hit "Error reinitializing
+      // is present; FFmpeg 6's concat demuxer can hit "Error reinitializing
       // filters" without one when frame metadata varies between segments.
       if (filterArgs.isEmpty) {
         filterArgs = '-vf "format=$pixFmt"';
@@ -1388,7 +1388,7 @@ class VideoUtils {
     Function(int currentFrame)? setCurrentFrame,
   ) async {
     LogService.instance.log(
-      "[VIDEO] createTimelapseFromProjectId called - projectId: $projectId",
+      "[VIDEO] createTimelapseFromProjectId called: projectId: $projectId",
     );
     try {
       String projectOrientation = await SettingsUtil.loadProjectOrientation(
@@ -1691,7 +1691,7 @@ class VideoUtils {
       final onPath = await _findFfmpegOnPath();
       if (onPath.isNotEmpty) return onPath;
 
-      // Final fallback - rely on ffmpeg being in PATH
+      // Final fallback; rely on ffmpeg being in PATH
       LogService.instance.log(
         "[VIDEO] Using 'ffmpeg' command (assuming it's in PATH)",
       );
@@ -2037,14 +2037,14 @@ class VideoUtils {
       'bt709',
     ]);
 
-    // Encoder — uses .encoder which returns encoderApple on macOS
+    // Encoder: uses .encoder which returns encoderApple on macOS
     // (e.g. h264_videotoolbox, hevc_videotoolbox, prores_ks) or
     // encoderDesktop on Windows/Linux (e.g. libx264, libx265, libvpx-vp9)
     final encoderParts = codec.encoder.split(' ');
     args.addAll(['-c:v', ...encoderParts]);
 
     // macOS uses VideoToolbox hardware encoders which auto-negotiate
-    // profile/level correctly. Do NOT set -profile:v / -level here —
+    // profile/level correctly. Do NOT set -profile:v / -level here;
     // explicit Level 5.1 causes VideoToolbox to reject 4K@30fps
     // (exceeds macroblock throughput limit).
     if (!isMacOS && codec == VideoCodec.h264) {

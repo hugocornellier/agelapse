@@ -138,7 +138,7 @@ void main() {
         ).millisecondsSinceEpoch;
         final result = CaptureTimezone.toLocalDateTime(timestamp);
 
-        // Result should be local time - verify it matches toLocal() behavior
+        // Result should be local time; verify it matches toLocal() behavior
         final expected = DateTime.fromMillisecondsSinceEpoch(
           timestamp,
           isUtc: true,

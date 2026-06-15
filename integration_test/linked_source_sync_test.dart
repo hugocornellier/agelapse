@@ -236,7 +236,7 @@ void main() {
         tempLinkedDir!.path,
       );
 
-      // First sync — should import 2
+      // First sync: should import 2
       final cache = buildCache(tempLinkedDir!.path);
       final result1 = await ProjectFolderSyncService.instance.runStartupSync(
         testProjectId!,
@@ -247,7 +247,7 @@ void main() {
       // Stop watching before second sync
       await ProjectFolderSyncService.instance.stopWatching();
 
-      // Second sync — should import 0
+      // Second sync: should import 0
       final result2 = await ProjectFolderSyncService.instance.runStartupSync(
         testProjectId!,
         cache,
@@ -289,7 +289,7 @@ void main() {
         tempLinkedDir!.path,
       );
 
-      // First sync — import both
+      // First sync: import both
       final cache = buildCache(tempLinkedDir!.path);
       final result1 = await ProjectFolderSyncService.instance.runStartupSync(
         testProjectId!,
@@ -330,7 +330,7 @@ void main() {
       );
       expect(isTombstoned, isTrue);
 
-      // Re-sync — should NOT re-import the tombstoned file
+      // Re-sync: should NOT re-import the tombstoned file
       final result2 = await ProjectFolderSyncService.instance.runStartupSync(
         testProjectId!,
         cache,

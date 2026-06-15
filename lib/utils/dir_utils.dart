@@ -336,7 +336,7 @@ class DirUtils {
   }
 
   /// Clears temporary files created during stabilization.
-  /// Safe to call on app startup - all temp files are regenerable.
+  /// Safe to call on app startup; all temp files are regenerable.
   /// Targets only app-specific temp subdirectories to avoid affecting other processes.
   static Future<void> clearStabilizationTempFiles() async {
     try {
@@ -367,7 +367,7 @@ class DirUtils {
         }
       }
     } catch (_) {
-      // Best-effort cleanup - ignore errors
+      // Best-effort cleanup; ignore errors
     }
   }
 

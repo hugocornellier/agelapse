@@ -27,7 +27,7 @@ import 'gallery_widgets.dart';
 import 'gallery_image_menu.dart';
 import '../../widgets/grid_painter_se.dart';
 
-/// Top-level function for compute() - extracts image dimensions from file header.
+/// Top-level function for compute(): extracts image dimensions from file header.
 /// Runs in isolate to avoid blocking UI thread with image decoding.
 /// Supports: PNG, JPEG, WebP (VP8/VP8L/VP8X), BMP, GIF.
 /// Returns [width, height] as a list, or [0, 0] on failure.
@@ -36,7 +36,7 @@ List<int> _extractImageDimensions(String imagePath) {
     final file = File(imagePath);
     if (!file.existsSync()) return [0, 0];
 
-    // Read first 32KB - enough for any image header
+    // Read first 32KB; enough for any image header
     final raf = file.openSync();
     final headerSize = 32768;
     final actualSize = raf.lengthSync();
@@ -97,7 +97,7 @@ List<int> _extractImageDimensions(String imagePath) {
         bytes[9] == 0x45 &&
         bytes[10] == 0x42 &&
         bytes[11] == 0x50) {
-      // VP8X (extended format) - most common for modern WebP
+      // VP8X (extended format), most common for modern WebP
       if (bytes[12] == 0x56 &&
           bytes[13] == 0x50 &&
           bytes[14] == 0x38 &&
@@ -125,7 +125,7 @@ List<int> _extractImageDimensions(String imagePath) {
           return [width, height];
         }
       }
-      // VP8 (lossy) - "VP8 " with space
+      // VP8 (lossy): "VP8 " with space
       if (bytes[12] == 0x56 &&
           bytes[13] == 0x50 &&
           bytes[14] == 0x38 &&
@@ -152,12 +152,12 @@ List<int> _extractImageDimensions(String imagePath) {
       final dibHeaderSize =
           bytes[14] | (bytes[15] << 8) | (bytes[16] << 16) | (bytes[17] << 24);
       if (dibHeaderSize == 12) {
-        // BITMAPCOREHEADER (Windows 2.x / OS/2 1.x) - 16-bit dimensions
+        // BITMAPCOREHEADER (Windows 2.x / OS/2 1.x): 16-bit dimensions
         final width = bytes[18] | (bytes[19] << 8);
         final height = bytes[20] | (bytes[21] << 8);
         return [width, height];
       } else if (dibHeaderSize >= 40) {
-        // BITMAPINFOHEADER+ (Windows 3.x+) - 32-bit signed dimensions
+        // BITMAPINFOHEADER+ (Windows 3.x+): 32-bit signed dimensions
         int width = bytes[18] |
             (bytes[19] << 8) |
             (bytes[20] << 16) |
@@ -188,7 +188,7 @@ List<int> _extractImageDimensions(String imagePath) {
       return [width, height];
     }
 
-    // Unsupported format (HEIC, AVIF, TIFF, etc.) - return 0,0 for fallback
+    // Unsupported format (HEIC, AVIF, TIFF, etc.); return 0,0 for fallback
     return [0, 0];
   } catch (e) {
     return [0, 0];
@@ -1514,7 +1514,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     // Capture the deleted timestamp BEFORE the delete so we can navigate
     // against a locally filtered list. `widget.loadImages()` triggers a
     // parent setState but does NOT synchronously update this widget's
-    // props — `_currentList` (proxied to widget.rawImageFiles) would still
+    // props, `_currentList` (proxied to widget.rawImageFiles) would still
     // contain the deleted entry until the next frame, and because soft-
     // delete leaves the file on disk we'd briefly render the trashed photo.
     final String deletedTimestamp = path.basenameWithoutExtension(

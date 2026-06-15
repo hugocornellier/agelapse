@@ -1,4 +1,4 @@
-// Transform Tool - Pixelmator-style image transform widget
+// Transform Tool: Pixelmator-style image transform widget
 //
 // Provides drag, resize, and rotate functionality with intuitive
 // handle-based interactions.

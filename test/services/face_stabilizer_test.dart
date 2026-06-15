@@ -320,7 +320,7 @@ void main() {
       // Mock faces list (we can't easily mock Face objects, so test with empty list)
       final result = stabilizer.getCentermostEyes(
         eyes,
-        [], // Empty faces list - will return original eyes as fallback
+        [], // Empty faces list; will return original eyes as fallback
         1000,
         1000,
       );
@@ -338,7 +338,7 @@ void main() {
       final stabilizer = FaceStabilizer(1, () {});
 
       // Manually set canvas dimensions for testing
-      // We'll use a simple approach - calculate expected score
+      // We'll use a simple approach: calculate expected score
 
       final eyes = <Point<double>?>[Point(400.0, 300.0), Point(600.0, 300.0)];
 

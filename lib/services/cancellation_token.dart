@@ -76,7 +76,7 @@ class CancellationToken {
 
   /// Resets the token to a non-cancelled state.
   ///
-  /// Use with caution - typically you should create a new token instead.
+  /// Use with caution; typically you should create a new token instead.
   void reset() {
     _isCancelled = false;
   }

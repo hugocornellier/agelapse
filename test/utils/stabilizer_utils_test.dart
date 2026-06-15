@@ -232,7 +232,7 @@ void main() {
 
     group('getOutputDimensions()', () {
       test('returns exact dimensions for custom WIDTHxHEIGHT format', () {
-        // Custom square resolution - should return exact dimensions
+        // Custom square resolution; should return exact dimensions
         expect(
           StabUtils.getOutputDimensions('7000x7000', '16:9', 'landscape'),
           (7000, 7000),
@@ -550,7 +550,7 @@ void main() {
       // Content-only by design: legitimate operations like cloud-backup
       // restores and rsync change mtime without changing bytes, and must
       // not invalidate the fingerprint. If this test fails someone added
-      // mtime back to the format — don't.
+      // mtime back to the format; don't.
       final file = File('${tempDir.path}/mtime.jpg');
       await file.writeAsBytes([1, 2, 3, 4, 5]);
       final fp1 = await StabUtils.computeRawPhotoFingerprint(file.path);

@@ -94,7 +94,7 @@ class IsolatePool {
     final workers = <_Worker>[];
     for (int i = 0; i < workerCount; i++) {
       final worker = await _spawnWorker();
-      // killAll() was called while we were spawning — discard everything.
+      // killAll() was called while we were spawning; discard everything.
       if (gen != _generation) {
         worker.isolate.kill(priority: Isolate.immediate);
         for (final w in workers) {
@@ -271,7 +271,7 @@ class IsolatePool {
           return null;
         }
 
-        // Thumbnails are always 8-bit JPEG — downcast 16-bit sources
+        // Thumbnails are always 8-bit JPEG: downcast 16-bit sources
         if (mat.type.depth != 0) {
           // depth 0 = CV_8U
           final mat8 = mat.convertTo(
@@ -381,11 +381,11 @@ class IsolatePool {
             cachedSrcId == srcId &&
             cachedSrcMat != null &&
             !cachedSrcMat.isEmpty) {
-          // Cache hit - reuse decoded Mat
+          // Cache hit; reuse decoded Mat
           srcMat = cachedSrcMat;
           usedCache = true;
         } else if (srcBytes != null) {
-          // Cache miss - decode and optionally cache
+          // Cache miss; decode and optionally cache
           final decodeFlag = preserveBitDepth
               ? (cv.IMREAD_ANYDEPTH | cv.IMREAD_COLOR)
               : cv.IMREAD_COLOR;
@@ -400,7 +400,7 @@ class IsolatePool {
             srcMatCacheHandedOff = true;
           }
         } else {
-          // No bytes and no cache — cannot proceed
+          // No bytes and no cache; cannot proceed
           return null;
         }
 
@@ -570,7 +570,7 @@ class IsolatePool {
           // Return raw Mat data instead of encoding to PNG.
           // TransferableTypedData.fromList copies straight out of the native
           // Mat view (Mat.data is zero-copy), so no intermediate Dart-heap
-          // copy is needed; the Mat outlives this expression — dispose runs
+          // copy is needed; the Mat outlives this expression, dispose runs
           // in the finally below.
           return {
             'data': TransferableTypedData.fromList([rawDst.data]),
@@ -902,7 +902,7 @@ class IsolatePool {
     if (worker != null) {
       return await _executeOnWorker<T>(worker, operation, params);
     } else {
-      // All workers busy - queue the task
+      // All workers busy; queue the task
       final completer = Completer<dynamic>();
       _taskQueue.add(IsolateTask(operation, params, completer));
       return await completer.future as T?;
@@ -971,7 +971,7 @@ class IsolatePool {
         return null;
       }
     } on StateError {
-      // Port was closed during killAll() — expected during cancellation.
+      // Port was closed during killAll(), expected during cancellation.
       return null;
     } finally {
       _activeResponsePorts.remove(responsePort);
@@ -999,7 +999,7 @@ class IsolatePool {
         }).catchError((e) {
           task.completer.completeError(e);
         });
-        // Move on — this worker is now busy again.
+        // Move on, this worker is now busy again.
         continue;
       }
     }
@@ -1037,7 +1037,7 @@ class IsolatePool {
     LogService.instance.log('IsolatePool: Killing all workers');
     _generation++;
 
-    // Close all active response ports first — this causes responsePort.first
+    // Close all active response ports first: this causes responsePort.first
     // to throw StateError, unblocking any awaiting _executeOnWorker callers.
     final ports = _activeResponsePorts.toList();
     _activeResponsePorts.clear();
