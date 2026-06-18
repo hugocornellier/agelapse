@@ -1561,6 +1561,32 @@ class StabUtils {
     }
   }
 
+  /// Decodes the source once on the sticky worker for [srcId], caching the
+  /// decoded Mat there (so a subsequent warp with the same [srcId] reuses it
+  /// via `useCachedSrc`) AND returning its (width, height). This replaces a
+  /// dimensions-only decode that would otherwise be thrown away before the
+  /// warp decodes the same bytes again.
+  ///
+  /// [preserveBitDepth] must match the value passed to the warp so the cached
+  /// Mat is byte-identical to what the warp would have decoded itself.
+  /// Returns null if the pool isn't initialized or decoding fails.
+  static Future<(int, int)?> prepareSourceMatAndGetDims(
+    Uint8List bytes,
+    String srcId, {
+    bool preserveBitDepth = false,
+  }) async {
+    if (!IsolatePool.instance.isInitialized) return null;
+    return await IsolatePool.instance.executeSticky<(int, int)>(
+      srcId,
+      'prepareSourceMat',
+      {
+        'bytes': bytes,
+        'srcId': srcId,
+        'preserveBitDepth': preserveBitDepth,
+      },
+    );
+  }
+
   /// Generate stabilized image bytes using OpenCV warpAffine (desktop only)
   ///
   /// [backgroundColorBGR] is an optional list of [B, G, R] values for the

@@ -358,6 +358,33 @@ class IsolatePool {
         mat.dispose();
         return dims;
 
+      case 'prepareSourceMat':
+        // Decode the source once and cache it under srcId (the exact Mat the
+        // warp would produce, using the same decode flags), returning its
+        // dimensions. Lets the caller read image dimensions AND seed the
+        // warp's source cache with a single decode, instead of decoding once
+        // for dimensions and a second time for the warp. Dispatch via
+        // executeSticky(srcId) so the cache lands on the warp's worker.
+        final prepBytes = params['bytes'] as Uint8List;
+        final prepSrcId = params['srcId'] as String;
+        final prepPreserveBitDepth =
+            params['preserveBitDepth'] as bool? ?? false;
+        final prepFlag = prepPreserveBitDepth
+            ? (cv.IMREAD_ANYDEPTH | cv.IMREAD_COLOR)
+            : cv.IMREAD_COLOR;
+        final prepMat = cv.imdecode(prepBytes, prepFlag);
+        if (prepMat.isEmpty) {
+          prepMat.dispose();
+          return null;
+        }
+        final prepDims = (prepMat.cols, prepMat.rows);
+        if (onCacheUpdate != null) {
+          onCacheUpdate(prepMat, prepSrcId);
+        } else {
+          prepMat.dispose();
+        }
+        return prepDims;
+
       case 'stabilizeCV':
         final srcBytes = params['srcBytes'] as Uint8List?;
         final rotationDegrees = params['rotationDegrees'] as double;
@@ -595,8 +622,16 @@ class IsolatePool {
         final encHeight = params['height'] as int;
         final encMatType = params['matType'] as int;
         final encCompression = params['pngCompression'] as int? ?? 3;
-        final encMat = cv.Mat.fromList(
-            encHeight, encWidth, cv.MatType(encMatType), encData);
+        // Reconstruct the Mat via create + bulk copy into its native data
+        // view. Mat.fromList takes List<num> and copies the data twice
+        // (~2.5ms per ~1MB frame, more on a full canvas); writing the raw
+        // bytes straight into Mat.data is ~125x faster and byte-identical.
+        final encMat = cv.Mat.create(
+          rows: encHeight,
+          cols: encWidth,
+          type: cv.MatType(encMatType),
+        );
+        encMat.data.setAll(0, encData);
         try {
           final (encSuccess, encPngBytes) = cv.imencode(
             '.png',

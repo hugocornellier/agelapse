@@ -1341,10 +1341,27 @@ class FaceStabilizer {
     if (srcBytes == null) return StabilizationResult(success: false);
 
     token?.throwIfCancelled();
-    final dims = await StabUtils.getImageDimensionsFromBytesAsync(
-      srcBytes,
-      token: token,
-    );
+    // Face projects run the initial pass as a raw Mat (see the warp branch
+    // below). For those, decode the source once on the sticky warp worker —
+    // caching it under srcId AND returning its dimensions — so the initial
+    // warp reuses that Mat (useCachedSrc) instead of decoding the source a
+    // second time just to read dimensions. Other project types keep the
+    // standalone dimensions decode.
+    final bool useRawInitialPass =
+        projectType == "face" && IsolatePool.instance.isInitialized;
+    final (int, int)? dims;
+    if (useRawInitialPass) {
+      dims = await StabUtils.prepareSourceMatAndGetDims(
+        srcBytes,
+        srcId,
+        preserveBitDepth: lossless,
+      );
+    } else {
+      dims = await StabUtils.getImageDimensionsFromBytesAsync(
+        srcBytes,
+        token: token,
+      );
+    }
     if (dims == null) return StabilizationResult(success: false);
     final (int imgWidth, int imgHeight) = dims;
 
@@ -1383,9 +1400,10 @@ class FaceStabilizer {
     // projects save immediately, so both keep the PNG path.
     Uint8List? imageBytesStabilized;
     Map<String, dynamic>? initialRaw;
-    final bool useRawInitialPass =
-        projectType == "face" && IsolatePool.instance.isInitialized;
     if (useRawInitialPass) {
+      // useCachedSrc: the source Mat was already decoded and cached on this
+      // sticky worker by prepareSourceMatAndGetDims above, so the warp reuses
+      // it instead of decoding the source bytes a second time.
       initialRaw = await StabUtils.generateStabilizedRawCVAsync(
         srcBytes,
         rotationDegrees,
@@ -1398,6 +1416,7 @@ class FaceStabilizer {
         srcId: srcId,
         backgroundColorBGR: backgroundColorBGR,
         preserveBitDepth: lossless,
+        useCachedSrc: true,
       );
       if (initialRaw == null) {
         return StabilizationResult(success: false);
