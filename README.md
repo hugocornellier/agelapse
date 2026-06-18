@@ -38,7 +38,7 @@ AgeLapse takes a raw photo, detects a set of landmarks on the person (eyes for f
 
 ## What's New / Changelog
 
-### v2.7.0 (May 2026)
+### v2.7.0 (June 2026)
 
 #### New Features
 - Recently Deleted
@@ -47,31 +47,10 @@ AgeLapse takes a raw photo, detects a set of landmarks on the person (eyes for f
 
 #### Improvements
 - Manual stabilization edits are saved and re-used 
+- ~16% faster stabilization
 
 #### Bug Fixes
 - Fix re-importing a previously deleted photo being blocked by duplicate fingerprint checks.
-
-### v2.6.0 (Apr 2026)
-
-#### New Features
-- Background blur zoom setting
-
-#### Improvements
-- Major performance improvements across all platforms:
-  - ~1.5x faster stabilization
-  - ~2-3x faster photo import
-- Smoother, more responsive camera
-- Reduced Android binary size (~500MB -> ~350MB) by debloating and stripping FFmpeg binary to a minimal version
-
-#### Bug Fixes
-- Fix macOS release crash importing TIFF, JP2, and AVIF files
-- Fix Android JVM compatibility issues
-- Fix duplicated file extension in gallery preview info dialog
-- Fix bug affecting changing settings during active stabilization
-- Date stamps:
-  - Fix date stamp crash when compiling with hundreds of photos
-  - Fix FFmpeg drawtext font path escaping on Windows
-  - Fix drawtext date stamps not rendering (chained enable expressions)
 
 For previous releases, see the [full changelog](https://agelapse.com/docs/changelog/).
 

@@ -19,7 +19,6 @@
 #include <heic_native/heic_native_plugin.h>
 #include <media_kit_libs_linux/media_kit_libs_linux_plugin.h>
 #include <media_kit_video/media_kit_video_plugin.h>
-#include <object_detection/object_detection_plugin.h>
 #include <pose_detection/pose_detection_plugin.h>
 #include <screen_retriever_linux/screen_retriever_linux_plugin.h>
 #include <sqlite3_flutter_libs/sqlite3_flutter_libs_plugin.h>
@@ -66,9 +65,6 @@ void fl_register_plugins(FlPluginRegistry* registry) {
   g_autoptr(FlPluginRegistrar) media_kit_video_registrar =
       fl_plugin_registry_get_registrar_for_plugin(registry, "MediaKitVideoPlugin");
   media_kit_video_plugin_register_with_registrar(media_kit_video_registrar);
-  g_autoptr(FlPluginRegistrar) object_detection_registrar =
-      fl_plugin_registry_get_registrar_for_plugin(registry, "ObjectDetectionPlugin");
-  object_detection_plugin_register_with_registrar(object_detection_registrar);
   g_autoptr(FlPluginRegistrar) pose_detection_registrar =
       fl_plugin_registry_get_registrar_for_plugin(registry, "PoseDetectionPlugin");
   pose_detection_plugin_register_with_registrar(pose_detection_registrar);

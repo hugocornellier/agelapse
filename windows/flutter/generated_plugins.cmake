@@ -17,7 +17,6 @@ list(APPEND FLUTTER_PLUGIN_LIST
   heic_native
   media_kit_libs_windows_video
   media_kit_video
-  object_detection
   permission_handler_windows
   pose_detection
   screen_retriever_windows

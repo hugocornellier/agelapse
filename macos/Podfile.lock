@@ -15,7 +15,7 @@ PODS:
     - FlutterMacOS
   - flutter_avif_macos (0.0.1):
     - FlutterMacOS
-  - flutter_litert (2.8.3):
+  - flutter_litert (3.0.0):
     - FlutterMacOS
   - flutter_local_notifications (0.0.1):
     - FlutterMacOS
@@ -162,7 +162,7 @@ SPEC CHECKSUMS:
   file_picker: 7584aae6fa07a041af2b36a2655122d42f578c1a
   file_selector_macos: 9e9e068e90ebee155097d00e89ae91edb2374db7
   flutter_avif_macos: 9ed61d67adfbd6964eccb59971020fb55c31fc11
-  flutter_litert: 1cb7b5c51ee7a3b60847b77dc5848176cee7187e
+  flutter_litert: 4169211c101addba03e2392c66ebfd5ff69e36fb
   flutter_local_notifications: 1fc7ffb10a83d6a2eeeeddb152d43f1944b0aad0
   flutter_timezone: d272288c69082ad571630e0d17140b3d6b93dc0c
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1

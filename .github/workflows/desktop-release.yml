@@ -306,6 +306,13 @@ jobs:
             DRAFT_FLAG="--draft"
           fi
 
+          # Any release posted publicly (i.e. not a draft) is always marked as a
+          # pre-release, regardless of the prerelease input. Tag-push releases
+          # have no draft input, so they are public and forced to pre-release too.
+          if [ -z "$DRAFT_FLAG" ]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
           # For manual dispatch, create tag on the correct ref
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             gh release create "${{ needs.prepare.outputs.tag }}" \

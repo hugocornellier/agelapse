@@ -16,7 +16,6 @@ list(APPEND FLUTTER_PLUGIN_LIST
   heic_native
   media_kit_libs_linux
   media_kit_video
-  object_detection
   pose_detection
   screen_retriever_linux
   sqlite3_flutter_libs
