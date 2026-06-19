@@ -13,7 +13,6 @@ import 'package:path/path.dart' as path;
 
 import '../models/video_codec.dart';
 import '../services/database_helper.dart';
-import '../services/settings_cache.dart';
 import '../styles/styles.dart';
 import '../utils/dir_utils.dart';
 import '../utils/export_naming_utils.dart';
@@ -40,7 +39,6 @@ class CreatePage extends StatefulWidget {
   final Future<void> Function() refreshSettings;
   final void Function() clearRawAndStabPhotos;
   final Future<void> Function() recompileVideoCallback;
-  final SettingsCache? settingsCache;
   final String minutesRemaining;
 
   const CreatePage({
@@ -61,7 +59,6 @@ class CreatePage extends StatefulWidget {
     required this.refreshSettings,
     required this.clearRawAndStabPhotos,
     required this.recompileVideoCallback,
-    required this.settingsCache,
     required this.minutesRemaining,
   });
 
@@ -320,6 +317,7 @@ class CreatePageState extends State<CreatePage>
       DB.instance.setNewVideoNotNeeded(widget.projectId);
     }
 
+    if (!mounted) return;
     setState(() {
       _manualCompileInProgress = false;
     });
@@ -392,6 +390,7 @@ class CreatePageState extends State<CreatePage>
   Future<void> setupVideoPlayer() async {
     // Check if video file exists; don't create directly, let stabilization service handle it
     final videoExists = await _checkVideoFileExists();
+    if (!mounted) return;
     if (!videoExists) {
       setState(() {
         loadingText = "Video is being compiled...";
@@ -400,12 +399,14 @@ class CreatePageState extends State<CreatePage>
     }
 
     final info = await _loadVideoInfo();
+    if (!mounted) return;
     final projectIdStr = widget.projectId.toString();
     final metadata = await Future.wait([
       SettingsUtil.loadVideoResolution(projectIdStr),
       SettingsUtil.loadAspectRatio(projectIdStr),
       SettingsUtil.loadFramerate(projectIdStr),
     ]);
+    if (!mounted) return;
 
     final configuredResolution = metadata[0] as String;
     final configuredAspectRatio = metadata[1] as String;
@@ -432,6 +433,7 @@ class CreatePageState extends State<CreatePage>
       );
     }
 
+    if (!mounted) return;
     setResolution(fallbackResolution: configuredResolution);
 
     // Load additional metadata for the info section
@@ -455,11 +457,14 @@ class CreatePageState extends State<CreatePage>
   }
 
   Future<void> _setupMediaKitPlayer(File videoFile) async {
-    _mediaKitPlayer = Player();
+    // Build into locals so a dispose/teardown during the awaits below can't
+    // null the fields out from under us (force-unwrap crash) or leave an
+    // orphaned player behind.
+    final player = Player();
     // Create video controller with scaled-down texture for preview
     // This allows 8K video to play by scaling the preview to 1080p
-    _mediaKitController = VideoController(
-      _mediaKitPlayer!,
+    final controller = VideoController(
+      player,
       configuration: const VideoControllerConfiguration(
         enableHardwareAcceleration: false,
         width: 1920,
@@ -467,26 +472,37 @@ class CreatePageState extends State<CreatePage>
       ),
     );
 
-    await _mediaKitPlayer!.open(Media(videoFile.path));
-    _mediaKitPlayer!.setPlaylistMode(PlaylistMode.loop);
-    _mediaKitPlayer!.setRate(playbackSpeed);
-    _showMediaKitControlsTemporarily();
+    await player.open(Media(videoFile.path));
+    player.setPlaylistMode(PlaylistMode.loop);
+    player.setRate(playbackSpeed);
 
     // Wait for controller to be ready after opening media
-    await _mediaKitController!.waitUntilFirstFrameRendered;
+    await controller.waitUntilFirstFrameRendered;
+
+    if (!mounted) {
+      await player.dispose();
+      return;
+    }
+
+    // Dispose any previously committed player before replacing it.
+    _mediaKitPlayer?.dispose();
+    _mediaKitPlayer = player;
+    _mediaKitController = controller;
+    _showMediaKitControlsTemporarily();
   }
 
   Future<bool> _setupStandardVideoPlayer(
     File videoFile, {
     required double fallbackAspectRatio,
   }) async {
-    _videoPlayerController = VideoPlayerController.file(videoFile);
+    // Build into a local so a dispose during initialize() can't strand a
+    // half-initialized controller in the field or trigger a force-unwrap.
+    final controller = VideoPlayerController.file(videoFile);
 
     try {
-      await _videoPlayerController!.initialize();
+      await controller.initialize();
     } catch (e) {
-      _videoPlayerController?.dispose();
-      _videoPlayerController = null;
+      await controller.dispose();
       setStateIfMounted(() {
         loadingComplete = true;
         _playbackUnsupported = true;
@@ -494,10 +510,20 @@ class CreatePageState extends State<CreatePage>
       return false;
     }
 
-    _videoPlayerController!.setLooping(true);
-    _videoPlayerController!.setPlaybackSpeed(playbackSpeed);
-    _videoPlayerController!.addListener(_handleStandardVideoMetricsChanged);
+    if (!mounted) {
+      await controller.dispose();
+      return false;
+    }
 
+    controller.setLooping(true);
+    controller.setPlaybackSpeed(playbackSpeed);
+    controller.addListener(_handleStandardVideoMetricsChanged);
+
+    // Replace any previously committed controllers before swapping in the new.
+    _videoPlayerController?.removeListener(_handleStandardVideoMetricsChanged);
+    _videoPlayerController?.dispose();
+    _chewieController?.dispose();
+    _videoPlayerController = controller;
     _chewieController = _buildChewieController(
       aspectRatio: _resolveStandardVideoAspectRatio(
         fallbackAspectRatio: fallbackAspectRatio,

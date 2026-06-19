@@ -239,14 +239,18 @@ class CustomAppBarState extends State<CustomAppBar> {
         ),
       );
     } else {
+      // Caller-supplied transitionAnimationController is NOT disposed by the
+      // framework (ModalBottomSheetRoute sets willDisposeAnimationController =
+      // false), so we own it and dispose it when the sheet closes.
+      final transitionController = AnimationController(
+        duration: const Duration(milliseconds: 150),
+        vsync: Navigator.of(context),
+      );
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
         // Use a very fast animation to minimize perceived lag from shader compilation
-        transitionAnimationController: AnimationController(
-          duration: const Duration(milliseconds: 150),
-          vsync: Navigator.of(context),
-        ),
+        transitionAnimationController: transitionController,
         builder: (context) {
           return SettingsSheet(
             projectId: projectId,
@@ -257,7 +261,7 @@ class CustomAppBarState extends State<CustomAppBar> {
             recompileVideoCallback: recompileVideoCallback,
           );
         },
-      );
+      ).whenComplete(transitionController.dispose);
     }
   }
 

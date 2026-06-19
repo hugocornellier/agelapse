@@ -632,10 +632,12 @@ class ProjectUtils {
     canvas.drawPicture(pictureInfo.picture);
 
     final picture = recorder.endRecording();
-    final image = await picture.toImage(width, height);
-
-    pictureInfo.picture.dispose();
-    return image;
+    try {
+      return await picture.toImage(width, height);
+    } finally {
+      picture.dispose();
+      pictureInfo.picture.dispose();
+    }
   }
 
   static Duration calculateDateDifference(int startDate, int endDate) {
@@ -812,8 +814,12 @@ class ProjectUtils {
     final data = await rootBundle.load(imagePath);
     final bytes = data.buffer.asUint8List();
     final codec = await ui.instantiateImageCodec(bytes);
-    final frameInfo = await codec.getNextFrame();
-    return frameInfo.image;
+    try {
+      final frameInfo = await codec.getNextFrame();
+      return frameInfo.image;
+    } finally {
+      codec.dispose();
+    }
   }
 
   static Future<bool> photoWasTakenToday(int projectId) async {

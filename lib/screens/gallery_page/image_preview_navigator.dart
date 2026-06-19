@@ -1177,11 +1177,15 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
                 _exportDateStampPosition.toLowerCase().contains('lower');
             final imageBytes = await File(_currentImagePath).readAsBytes();
             final codec = await ui.instantiateImageCodec(imageBytes);
-            final frame = await codec.getNextFrame();
-            final imageHeight = frame.image.height.toDouble();
-            frame.image.dispose();
-            watermarkOffset =
-                isLowerCorner ? -(imageHeight * 0.05) : (imageHeight * 0.05);
+            try {
+              final frame = await codec.getNextFrame();
+              final imageHeight = frame.image.height.toDouble();
+              frame.image.dispose();
+              watermarkOffset =
+                  isLowerCorner ? -(imageHeight * 0.05) : (imageHeight * 0.05);
+            } finally {
+              codec.dispose();
+            }
           }
 
           // Create temp file for date-stamped image (use original filename)
@@ -1556,6 +1560,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     if (filteredList.isEmpty) {
       if (mounted) Navigator.of(context).pop();
     } else {
+      if (!mounted) return;
       final newIndex = _currentIndex.clamp(0, filteredList.length - 1);
       setState(() => _currentIndex = newIndex);
       _pageController.jumpToPage(newIndex);

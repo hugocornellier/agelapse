@@ -1152,7 +1152,7 @@ class _CameraViewState extends State<CameraView>
         LogService.instance.log('Camera initialization failed: $e');
         await _controller?.dispose();
         _controller = null;
-        setState(() => _cameraError = e.toString());
+        if (mounted) setState(() => _cameraError = e.toString());
         return;
       }
 

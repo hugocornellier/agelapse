@@ -1266,6 +1266,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       // Save via processRequest
       final outcome = await processRequest(tx, ty, sc, rot, save: true);
       if (outcome != ManualStabOutcome.success) {
+        if (!mounted) return;
         setState(() => _savePhase = _SavePhase.idle);
         if (mounted) {
           final msg = switch (outcome) {
@@ -1321,6 +1322,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       Navigator.of(context).pop();
     } catch (e, st) {
       _log('_saveChanges ERROR: $e\n$st');
+      if (!mounted) return;
       setState(() => _savePhase = _SavePhase.idle);
       if (mounted) {
         ScaffoldMessenger.of(
@@ -1421,6 +1423,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
     _viewZoom = 1.0;
     _viewPanOffset = Offset.zero;
 
+    if (!mounted) return;
     setState(() => _hasUnsavedChanges = false);
   }
 
@@ -1579,6 +1582,7 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
 
     await processRequest(tx, ty, sc, rot, save: false);
 
+    if (!mounted) return;
     setState(() {
       _lastTx = tx;
       _lastTy = ty;

@@ -34,6 +34,7 @@ import '../../widgets/yellow_tip_bar.dart';
 import '../../widgets/gallery_date_stamp_provider.dart';
 import '../../widgets/import_preview_dialog.dart';
 import '../../widgets/info_dialog.dart';
+import '../../widgets/info_tooltip_icon.dart';
 import '../../widgets/confirm_action_dialog.dart';
 import '../../widgets/icon_badge.dart';
 import '../manual_stab_page.dart';
@@ -181,6 +182,7 @@ class GalleryPageState extends State<GalleryPage>
   int _recentlyDeletedCount = 0;
   Set<String> _selectedPhotos = {};
   bool _isInspectionMode = false;
+  int _inspectionColumns = 2;
   int _imageRefreshKey = 0;
   String? _projectType;
   String _aspectRatio = '9:16';
@@ -225,6 +227,7 @@ class GalleryPageState extends State<GalleryPage>
       SettingsUtil.loadGalleryDateStampFont(projectIdStr),
       SettingsUtil.loadGalleryDateStampSize(projectIdStr),
       SettingsUtil.loadAspectRatio(projectIdStr),
+      SettingsUtil.loadInspectionColumns(projectIdStr),
     ]);
     if (mounted) {
       setState(() {
@@ -237,6 +240,7 @@ class GalleryPageState extends State<GalleryPage>
         _galleryDateFont = results[6] as String;
         _galleryDateSizeLevel = results[7] as int;
         _aspectRatio = results[8] as String;
+        _inspectionColumns = results[9] as int;
       });
       _settingsVersion.value++;
     }
@@ -595,6 +599,7 @@ class GalleryPageState extends State<GalleryPage>
     _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     activeProcessingDateNotifier.dispose();
+    _settingsVersion.dispose();
     _stabilizedScrollController.removeListener(_onStabilizedScroll);
     _stabilizedScrollController.dispose();
     _rawScrollController.dispose();
@@ -715,6 +720,7 @@ class GalleryPageState extends State<GalleryPage>
         body: Column(
           children: [
             _buildCustomHeader(context),
+            if (_isInspectionMode) _buildInspectionActionBar(),
             Expanded(
               child: GestureDetector(
                 onScaleStart: (details) {
@@ -844,7 +850,6 @@ class GalleryPageState extends State<GalleryPage>
               ),
             ),
             if (_isSelectionMode) _buildSelectionActionBar(),
-            if (_isInspectionMode) _buildInspectionActionBar(),
           ],
         ),
       ),
@@ -1026,7 +1031,7 @@ class GalleryPageState extends State<GalleryPage>
   double _tileExtentForGridCount(BuildContext context) {
     if (_isInspectionMode) {
       final double width = MediaQuery.of(context).size.width;
-      return width < 850 ? width : width / 2;
+      return width / _inspectionColumns;
     }
     if (_galleryGridMode == 'auto') {
       return 180;
@@ -1161,6 +1166,7 @@ class GalleryPageState extends State<GalleryPage>
   /// Shows the import preview dialog, then runs the actual import if confirmed.
   /// All user-initiated import paths should route through this.
   Future<void> _showImportPreview(List<String> filePaths) async {
+    if (!mounted) return;
     // Filter for valid image files
     final validPaths =
         filePaths.where((p) => ImageFormats.isAcceptedPath(p)).toList();
@@ -1384,23 +1390,22 @@ class GalleryPageState extends State<GalleryPage>
   }
 
   Future<void> _openRecentlyDeleted() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => RecentlyDeletedPage(
-          projectId: projectId,
-          projectName: widget.projectName,
-          // Restore changes the active photo set → reload + recompile.
-          onRestored: () async {
-            await _loadImages();
-            await widget.recompileVideoCallback();
-          },
-          // Permanent-delete of an already-soft-deleted row doesn't change
-          // the active set; recompiling would be wasted work. Just refresh
-          // the gallery's badge.
-          onPurged: () async {
-            await _refreshRecentlyDeletedCount();
-          },
-        ),
+    await Utils.navigateToScreen(
+      context,
+      RecentlyDeletedPage(
+        projectId: projectId,
+        projectName: widget.projectName,
+        // Restore changes the active photo set → reload + recompile.
+        onRestored: () async {
+          await _loadImages();
+          await widget.recompileVideoCallback();
+        },
+        // Permanent-delete of an already-soft-deleted row doesn't change
+        // the active set; recompiling would be wasted work. Just refresh
+        // the gallery's badge.
+        onPurged: () async {
+          await _refreshRecentlyDeletedCount();
+        },
       ),
     );
     // On pop, refresh badge + reload once. The page's own callbacks reloaded
@@ -1773,35 +1778,122 @@ class GalleryPageState extends State<GalleryPage>
     });
   }
 
+  static const String _inspectionInfoText =
+      'Inspection Mode overlays the eye-alignment guide lines on each '
+      'stabilized photo so you can check that every frame is aligned the '
+      'same way.\n\n'
+      'The two vertical lines mark the inter-eye distance and the horizontal '
+      'line marks the eye level. In a well-stabilized photo the eyes sit '
+      'right on these lines, so any drift is easy to spot.\n\n'
+      'Use the settings icon to choose how many photos appear per row (1-4). '
+      'Tapping a photo opens it full screen with the same overlay.\n\n'
+      'Inspection Mode only applies to the Stabilized view. To turn it off, '
+      'tap "Done".';
+
+  Future<void> _setInspectionColumns(int count) async {
+    if (count == _inspectionColumns) return;
+    setState(() => _inspectionColumns = count);
+    await SettingsUtil.setInspectionColumns(projectIdStr, count);
+  }
+
   Widget _buildInspectionActionBar() {
     return Container(
-      color: AppColors.surface,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          children: [
-            TextButton.icon(
-              onPressed: _exitInspectionMode,
-              icon: const Icon(Icons.close, size: 20),
-              label: const Text('Done'),
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.textPrimary,
-              ),
-            ),
-            const Spacer(),
-            Text(
-              'Inspection Mode',
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: AppTypography.sm,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const Spacer(),
-            const SizedBox(width: 80),
-          ],
+      decoration: BoxDecoration(
+        // Sit visually between the tab bar (AppColors.background, darkest) and
+        // the gallery: a touch darker than surface, but not as dark as the tabs.
+        color: Color.lerp(AppColors.surface, AppColors.background, 0.4),
+        border: Border(
+          bottom: BorderSide(
+            color: AppColors.surfaceElevated,
+            width: 1,
+          ),
         ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      child: Row(
+        children: [
+          TextButton.icon(
+            onPressed: _exitInspectionMode,
+            icon: const Icon(Icons.close, size: 20),
+            label: const Text('Done'),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.textPrimary,
+            ),
+          ),
+          const Spacer(),
+          Text(
+            'Inspection Mode',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: AppTypography.sm,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const Spacer(),
+          _buildInspectionColumnsMenu(),
+          const InfoTooltipIcon(content: _inspectionInfoText, size: 20),
+          const SizedBox(width: 6),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInspectionColumnsMenu() {
+    return PopupMenuButton<int>(
+      icon: Icon(
+        Icons.settings_outlined,
+        size: 20,
+        color: AppColors.textPrimary,
+      ),
+      tooltip: 'Images per row',
+      color: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+      ),
+      offset: const Offset(0, 44),
+      onSelected: _setInspectionColumns,
+      itemBuilder: (context) => [
+        PopupMenuItem<int>(
+          enabled: false,
+          height: 32,
+          child: Text(
+            'Images per row',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: AppTypography.sm,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        const PopupMenuDivider(height: 1),
+        for (int count = 1; count <= 4; count++)
+          _buildInspectionColumnItem(count),
+      ],
+    );
+  }
+
+  PopupMenuItem<int> _buildInspectionColumnItem(int count) {
+    final bool selected = _inspectionColumns == count;
+    return PopupMenuItem<int>(
+      value: count,
+      height: 40,
+      child: Row(
+        children: [
+          Icon(
+            selected ? Icons.check : Icons.grid_view_outlined,
+            size: 18,
+            color: selected ? AppColors.accentLight : AppColors.textSecondary,
+          ),
+          const SizedBox(width: 12),
+          Text(
+            '$count',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: AppTypography.md,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1955,7 +2047,7 @@ class GalleryPageState extends State<GalleryPage>
       await widget.recompileVideoCallback();
     }
 
-    setState(() => isImporting = false);
+    if (mounted) setState(() => isImporting = false);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -2184,7 +2276,9 @@ class GalleryPageState extends State<GalleryPage>
                       );
 
                       if (res == 'success') {
-                        setState(() => exportSuccessful = true);
+                        if (context.mounted) {
+                          setState(() => exportSuccessful = true);
+                        }
                         if (isMobile) {
                           GalleryExportHandler.shareZipFile(
                             widget.projectId,
@@ -2204,7 +2298,9 @@ class GalleryPageState extends State<GalleryPage>
                           }
                         } catch (_) {}
                       }
-                      setState(() => localExportingToZip = false);
+                      if (context.mounted) {
+                        setState(() => localExportingToZip = false);
+                      }
                     }
                   },
                   child: Container(
@@ -2280,6 +2376,7 @@ class GalleryPageState extends State<GalleryPage>
     stabThumbProvider.evict();
 
     // Update state to show loader immediately
+    if (!mounted) return;
     setState(() {
       _retryingPhotoTimestamps.add(timestamp);
     });

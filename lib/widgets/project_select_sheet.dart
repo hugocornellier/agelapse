@@ -59,6 +59,7 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
   Future<void> _getProjects() async {
     final List<Map<String, dynamic>> projects =
         await DB.instance.getAllProjects();
+    if (!mounted) return;
     setState(() => _projects = projects);
   }
 

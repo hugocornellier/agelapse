@@ -488,6 +488,7 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
     // 6. Restart stabilization
     widget.stabCallback();
 
+    if (!mounted) return;
     setState(() {
       _isSaving = false;
       _hasUnsavedChanges = false;

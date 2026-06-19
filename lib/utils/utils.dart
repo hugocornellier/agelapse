@@ -75,9 +75,9 @@ class Utils {
     return '$formattedDate, $formattedTime ($tzLabel)';
   }
 
-  static void navigateToScreen(BuildContext context, Widget screen) {
+  static Future<void> navigateToScreen(BuildContext context, Widget screen) {
     if (hasCustomTitleBar) {
-      Navigator.push(
+      return Navigator.push(
         context,
         PageRouteBuilder(
           pageBuilder: (_, __, ___) => screen,
@@ -88,7 +88,7 @@ class Utils {
         ),
       );
     } else {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+      return Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
     }
   }
 

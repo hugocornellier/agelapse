@@ -545,7 +545,11 @@ class SettingsSheetState extends State<SettingsSheet> {
 
   /// Show dialog to enter/confirm custom font name.
   Future<String?> _showFontNameDialog(String suggestedName) async {
-    final controller = TextEditingController(text: suggestedName);
+    // Use a captured local + TextFormField.initialValue instead of a
+    // TextEditingController so there's no controller to leak (the dialog is
+    // ephemeral and disposing a controller on the showDialog future is unsafe
+    // while the exit transition is still running).
+    String currentName = suggestedName;
     String? error;
 
     return showDialog<String>(
@@ -563,8 +567,8 @@ class SettingsSheetState extends State<SettingsSheet> {
                 style: TextStyle(color: AppColors.settingsTextSecondary),
               ),
               const SizedBox(height: 12),
-              TextField(
-                controller: controller,
+              TextFormField(
+                initialValue: suggestedName,
                 autofocus: true,
                 maxLength: 30,
                 decoration: InputDecoration(
@@ -577,6 +581,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                   ),
                 ),
                 onChanged: (value) {
+                  currentName = value;
                   if (error != null) {
                     setDialogState(() => error = null);
                   }
@@ -591,7 +596,7 @@ class SettingsSheetState extends State<SettingsSheet> {
             ),
             TextButton(
               onPressed: () async {
-                final name = controller.text.trim();
+                final name = currentName.trim();
                 if (name.isEmpty) {
                   setDialogState(() => error = 'Name cannot be empty');
                   return;

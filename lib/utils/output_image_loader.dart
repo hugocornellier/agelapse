@@ -313,11 +313,14 @@ class OutputImageLoader {
   }
 
   Future<void> _loadPlaceholderImage() async {
-    guideImage = await ProjectUtils.loadSvgImage(
+    final placeholder = await ProjectUtils.loadSvgImage(
       'assets/images/person-grey.svg',
       width: 400,
       height: 480,
     );
+    // Dispose any previously held image before replacing to avoid a leak.
+    guideImage?.dispose();
+    guideImage = placeholder;
     ghostImageOffsetX = 0.105;
     ghostImageOffsetY = 0.292;
   }
@@ -370,7 +373,10 @@ class OutputImageLoader {
         }
 
         try {
-          guideImage = await StabUtils.loadImageFromFile(File(guideImagePath));
+          final loaded =
+              await StabUtils.loadImageFromFile(File(guideImagePath));
+          guideImage?.dispose();
+          guideImage = loaded;
           hasRealGuideImage = true;
           _guideImagePath = guideImagePath;
         } catch (e) {

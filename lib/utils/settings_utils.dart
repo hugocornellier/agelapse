@@ -248,6 +248,19 @@ class SettingsUtil {
     await DB.instance.setSettingByTitle('gallery_grid_mode', mode, projectId);
   }
 
+  /// Load inspection mode column count (per-project, clamped 1-4)
+  static Future<int> loadInspectionColumns(String projectId) =>
+      _loadIntSettingClamped('inspection_columns', projectId, 2, 1, 4);
+
+  /// Save inspection mode column count
+  static Future<void> setInspectionColumns(String projectId, int count) async {
+    await DB.instance.setSettingByTitle(
+      'inspection_columns',
+      count.toString(),
+      projectId,
+    );
+  }
+
   static Future<int> loadGridModeIndex(String projectId) async {
     final String gridModeIndexAsStr;
     gridModeIndexAsStr = await DB.instance.getSettingValueByTitle(

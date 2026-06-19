@@ -37,6 +37,12 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
   ];
 
   @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     if (widget.isFullPage) {
       return _buildFullPageLayout();

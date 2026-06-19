@@ -205,8 +205,8 @@ class MainNavigationState extends State<MainNavigation>
       }
     });
 
-    // If the project is a newly created one, we use a settingsCache filled
-    // default values instead of loading project data
+    // When an initial settings cache was provided (the default project loaded
+    // at startup), reuse it instead of loading project data again.
     if (widget.initialSettingsCache != null) {
       _settingsCache = widget.initialSettingsCache;
       _initPhotosThenStabilize();
@@ -226,7 +226,6 @@ class MainNavigationState extends State<MainNavigation>
     _syncSubscription?.cancel();
     _stabUpdateController.close();
     ProjectFolderSyncService.instance.stopWatching();
-    _settingsCache?.dispose();
     _selectedIndexNotifier.dispose();
     super.dispose();
   }
@@ -336,16 +335,11 @@ class MainNavigationState extends State<MainNavigation>
   }
 
   Future<void> _refreshSettingsCache() async {
-    final oldCache = _settingsCache;
     SettingsCache settingsCache = await SettingsCache.initialize(
       widget.projectId,
     );
-    if (!mounted) {
-      settingsCache.dispose();
-      return;
-    }
+    if (!mounted) return;
     setState(() => _settingsCache = settingsCache);
-    oldCache?.dispose(); // Dispose old cache after replacing
   }
 
   Future<void> refreshSettings() async {
@@ -602,7 +596,6 @@ class MainNavigationState extends State<MainNavigation>
           refreshSettings: refreshSettings,
           clearRawAndStabPhotos: clearRawAndStabPhotos,
           recompileVideoCallback: _recompileVideo,
-          settingsCache: _settingsCache,
           minutesRemaining: minutesRemaining,
         ),
         InfoPage(

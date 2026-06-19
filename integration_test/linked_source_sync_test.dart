@@ -50,7 +50,6 @@ void main() {
       aspectRatio: '9:16',
       resolution: '1080p',
       watermarkEnabled: false,
-      image: null,
       eyeOffsetX: 0.0,
       eyeOffsetY: 0.0,
       galleryDateLabelsEnabled: false,
@@ -209,8 +208,6 @@ void main() {
           reason: 'Raw photo should exist on disk',
         );
       }
-
-      cache.dispose();
     });
 
     testWidgets('re-sync skips already imported files', (tester) async {
@@ -262,8 +259,6 @@ void main() {
       // DB should still have exactly 2 photos
       final photos = await DB.instance.getPhotosByProjectID(testProjectId!);
       expect(photos.length, 2);
-
-      cache.dispose();
     });
 
     testWidgets('tombstoned files are not re-imported', (tester) async {
@@ -346,8 +341,6 @@ void main() {
         testProjectId!,
       );
       expect(remainingPhotos.length, 1);
-
-      cache.dispose();
     });
 
     testWidgets('subdirectory paths are preserved in sourceRelativePath', (
@@ -413,8 +406,6 @@ void main() {
         0,
         reason: 'Re-sync with subdirectory paths should skip existing',
       );
-
-      cache.dispose();
     });
 
     testWidgets(
@@ -481,8 +472,6 @@ void main() {
           originalRelativePath,
           reason: 'Duplicate linked files must not move source metadata',
         );
-
-        cache.dispose();
       },
     );
   });

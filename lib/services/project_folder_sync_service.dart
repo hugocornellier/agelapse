@@ -46,6 +46,7 @@ class ProjectFolderSyncService {
   int? _watchedProjectId;
   String? _watchedFolderPath;
   int _watcherRestartCount = 0;
+  Timer? _watcherRestartTimer;
   static const int _maxWatcherRestarts = 5;
   final Set<String> _pendingUnstableFiles = {};
 
@@ -144,7 +145,11 @@ class ProjectFolderSyncService {
     LogService.instance.log(
       '[LinkedSync] Scheduling watcher restart #$_watcherRestartCount',
     );
-    Future.delayed(const Duration(seconds: 5), () {
+    // Store the restart in a cancellable timer so stopWatching() can cancel a
+    // pending restart; otherwise a stale restart could cancel a freshly
+    // installed subscription after a quick stop/restart on the same path.
+    _watcherRestartTimer?.cancel();
+    _watcherRestartTimer = Timer(const Duration(seconds: 5), () {
       if (_watchedProjectId == projectId && _watchedFolderPath == folderPath) {
         _watchSubscription?.cancel();
         _watchSubscription = null;
@@ -174,6 +179,8 @@ class ProjectFolderSyncService {
   Future<void> stopWatching() async {
     _debounceTimer?.cancel();
     _debounceTimer = null;
+    _watcherRestartTimer?.cancel();
+    _watcherRestartTimer = null;
     _fallbackPollingTimer?.cancel();
     _fallbackPollingTimer = null;
     await _watchSubscription?.cancel();

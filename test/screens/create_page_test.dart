@@ -26,7 +26,6 @@ void main() {
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
         recompileVideoCallback: () async {},
-        settingsCache: null,
         minutesRemaining: '',
       );
 
@@ -59,7 +58,6 @@ void main() {
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
         recompileVideoCallback: () async {},
-        settingsCache: null,
         minutesRemaining: '',
       );
 
@@ -86,7 +84,6 @@ void main() {
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
         recompileVideoCallback: () async {},
-        settingsCache: null,
         minutesRemaining: '',
       );
 
@@ -112,7 +109,6 @@ void main() {
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
         recompileVideoCallback: () async {},
-        settingsCache: null,
         minutesRemaining: '',
       );
 
@@ -143,7 +139,6 @@ void main() {
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
         recompileVideoCallback: () async {},
-        settingsCache: null,
         minutesRemaining: '',
       );
 
@@ -173,7 +168,6 @@ void main() {
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
         recompileVideoCallback: () async {},
-        settingsCache: null,
         minutesRemaining: '',
       );
 
@@ -203,7 +197,6 @@ void main() {
         refreshSettings: () async {},
         clearRawAndStabPhotos: () {},
         recompileVideoCallback: () async {},
-        settingsCache: null,
         minutesRemaining: '',
       );
 

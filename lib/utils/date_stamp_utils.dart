@@ -515,6 +515,10 @@ Examples
     double marginPercentH = 2.0,
     double marginPercentV = 2.0,
   }) async {
+    ui.Codec? codec;
+    ui.Image? image;
+    ui.Picture? picture;
+    ui.Image? outputImage;
     try {
       LogService.instance.log(
         "[DATE_STAMP] compositeDate called: input=$inputPath, output=$outputPath, text=$dateText",
@@ -529,9 +533,9 @@ Examples
       }
 
       final bytes = await file.readAsBytes();
-      final codec = await ui.instantiateImageCodec(bytes);
+      codec = await ui.instantiateImageCodec(bytes);
       final frame = await codec.getNextFrame();
-      final image = frame.image;
+      image = frame.image;
 
       final width = image.width.toDouble();
       final height = image.height.toDouble();
@@ -598,8 +602,8 @@ Examples
       textPainter.paint(canvas, adjustedOffset);
 
       // Convert to image
-      final picture = recorder.endRecording();
-      final outputImage = await picture.toImage(image.width, image.height);
+      picture = recorder.endRecording();
+      outputImage = await picture.toImage(image.width, image.height);
 
       // Encode to PNG
       final byteData = await outputImage.toByteData(
@@ -611,10 +615,6 @@ Examples
       final outputFile = File(outputPath);
       await outputFile.writeAsBytes(byteData.buffer.asUint8List());
 
-      // Dispose
-      image.dispose();
-      outputImage.dispose();
-
       LogService.instance.log(
         "[DATE_STAMP] compositeDate SUCCESS: $outputPath",
       );
@@ -622,6 +622,12 @@ Examples
     } catch (e) {
       LogService.instance.log("[DATE_STAMP] compositeDate ERROR: $e");
       return false;
+    } finally {
+      // Release native resources on every path (success, early-return, error).
+      codec?.dispose();
+      image?.dispose();
+      picture?.dispose();
+      outputImage?.dispose();
     }
   }
 
@@ -694,6 +700,7 @@ Examples
         final frame = await codec.getNextFrame();
         final imageHeight = frame.image.height.toDouble();
         frame.image.dispose();
+        codec.dispose();
         watermarkOffset =
             isLowerCorner ? -(imageHeight * 0.05) : (imageHeight * 0.05);
       }

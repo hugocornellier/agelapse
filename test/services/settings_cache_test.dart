@@ -24,7 +24,6 @@ void main() {
         aspectRatio: '9:16',
         resolution: '1080p',
         watermarkEnabled: false,
-        image: null,
         eyeOffsetX: 0.5,
         eyeOffsetY: 0.5,
         exportDateStampEnabled: false,
@@ -54,7 +53,6 @@ void main() {
         aspectRatio: '16:9',
         resolution: '4K',
         watermarkEnabled: true,
-        image: null,
         eyeOffsetX: 0.3,
         eyeOffsetY: 0.4,
         exportDateStampEnabled: false,
@@ -91,7 +89,6 @@ void main() {
         aspectRatio: '9:16',
         resolution: '1080p',
         watermarkEnabled: false,
-        image: null,
         eyeOffsetX: 0.123,
         eyeOffsetY: 0.456,
         exportDateStampEnabled: false,
@@ -124,7 +121,6 @@ void main() {
         aspectRatio: '1:1',
         resolution: '720p',
         watermarkEnabled: false,
-        image: null,
         eyeOffsetX: 0.5,
         eyeOffsetY: 0.5,
         exportDateStampEnabled: false,
@@ -157,7 +153,6 @@ void main() {
         aspectRatio: '9:16',
         resolution: '1080p',
         watermarkEnabled: false,
-        image: null,
         eyeOffsetX: 0.5,
         eyeOffsetY: 0.5,
         exportDateStampEnabled: false,
@@ -168,75 +163,9 @@ void main() {
     });
   });
 
-  group('SettingsCache Dispose', () {
-    test('dispose method exists', () {
-      final cache = SettingsCache(
-        hasOpenedNonEmptyGallery: false,
-        isLightTheme: null,
-        noPhotos: true,
-        hasViewedFirstVideo: false,
-        hasOpenedNotifications: false,
-        hasTakenMoreThanOnePhoto: false,
-        hasSeenGuideModeTut: false,
-        hasTakenFirstPhoto: false,
-        streak: 0,
-        photoCount: 0,
-        firstPhotoDate: '',
-        lastPhotoDate: '',
-        lengthInDays: 0,
-        projectOrientation: 'portrait',
-        aspectRatio: '9:16',
-        resolution: '1080p',
-        watermarkEnabled: false,
-        image: null,
-        eyeOffsetX: 0.5,
-        eyeOffsetY: 0.5,
-        exportDateStampEnabled: false,
-        galleryDateLabelsEnabled: false,
-      );
-
-      // dispose should not throw when image is null
-      expect(() => cache.dispose(), returnsNormally);
-    });
-
-    test('dispose sets image to null', () {
-      final cache = SettingsCache(
-        hasOpenedNonEmptyGallery: false,
-        isLightTheme: null,
-        noPhotos: true,
-        hasViewedFirstVideo: false,
-        hasOpenedNotifications: false,
-        hasTakenMoreThanOnePhoto: false,
-        hasSeenGuideModeTut: false,
-        hasTakenFirstPhoto: false,
-        streak: 0,
-        photoCount: 0,
-        firstPhotoDate: '',
-        lastPhotoDate: '',
-        lengthInDays: 0,
-        projectOrientation: 'portrait',
-        aspectRatio: '9:16',
-        resolution: '1080p',
-        watermarkEnabled: false,
-        image: null,
-        eyeOffsetX: 0.5,
-        eyeOffsetY: 0.5,
-        exportDateStampEnabled: false,
-        galleryDateLabelsEnabled: false,
-      );
-
-      cache.dispose();
-      expect(cache.image, isNull);
-    });
-  });
-
   group('SettingsCache Static Methods', () {
     test('initialize static method exists', () {
       expect(SettingsCache.initialize, isA<Function>());
-    });
-
-    test('initializeWithDefaults static method exists', () {
-      expect(SettingsCache.initializeWithDefaults, isA<Function>());
     });
   });
 
@@ -260,7 +189,6 @@ void main() {
         aspectRatio: '9:16',
         resolution: '1080p',
         watermarkEnabled: false,
-        image: null,
         eyeOffsetX: 0.5,
         eyeOffsetY: 0.5,
         exportDateStampEnabled: false,
@@ -290,7 +218,6 @@ void main() {
         aspectRatio: '9:16',
         resolution: '1080p',
         watermarkEnabled: false,
-        image: null,
         eyeOffsetX: 0.5,
         eyeOffsetY: 0.5,
         exportDateStampEnabled: false,
@@ -320,7 +247,6 @@ void main() {
         aspectRatio: '9:16',
         resolution: '1080p',
         watermarkEnabled: false,
-        image: null,
         eyeOffsetX: 0.5,
         eyeOffsetY: 0.5,
         exportDateStampEnabled: false,
@@ -350,7 +276,6 @@ void main() {
         aspectRatio: '9:16',
         resolution: '1080p',
         watermarkEnabled: false,
-        image: null,
         eyeOffsetX: -0.5,
         eyeOffsetY: -0.3,
         exportDateStampEnabled: false,

@@ -510,6 +510,7 @@ class DB {
     'guideOffsetYLandscape': '0.421875',
     'gridAxisCount': '5',
     'gallery_grid_mode': 'auto', // 'auto' or 'manual' (desktop only)
+    'inspection_columns': '2', // images per row in inspection mode (1-4)
     'video_resolution': '1080p',
     'auto_compile_video': 'true',
     'aspect_ratio': '16:9',

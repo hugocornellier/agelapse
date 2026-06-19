@@ -164,6 +164,12 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
       confirmText: 'Confirm',
     );
     if (userConfirmed) {
+      if (!mounted) return;
+      // Capture the stabilizer locally so a concurrent reset/dispose can't
+      // null it out from under the awaits below.
+      final stabilizer = faceStabilizer;
+      if (stabilizer == null) return;
+
       setState(() {
         loadingStatus = "Stabilizing image...";
         isLoading = true;
@@ -171,7 +177,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
 
       final Rect targetBox = (tappedFace as dynamic).boundingBox as Rect;
 
-      final result = await faceStabilizer!.stabilize(
+      final result = await stabilizer.stabilize(
         rawImagePath,
         null, // No cancellation token for one-off operations
         userRanOutOfSpaceCallback,
@@ -185,7 +191,7 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
       if (successful) {
         // 1. Wait for thumbnail to be created before updating UI
         final thumbnailPath =
-            await faceStabilizer!.createStabThumbnailFromRawPath(rawImagePath);
+            await stabilizer.createStabThumbnailFromRawPath(rawImagePath);
 
         // 2. Clear caches BEFORE reloading gallery
         Utils.clearFlutterImageCache();
@@ -195,9 +201,14 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
       await DB.instance.setNewVideoNeeded(widget.projectId);
       await widget.reloadImagesInGallery();
 
+      // stabCallback drives the parent's stabilization, so it must run even if
+      // this page was popped mid-operation; only the setState below needs a
+      // mounted guard.
       if (!widget.stabilizationRunningInMain) {
         widget.stabCallback();
       }
+
+      if (!mounted) return;
 
       setState(() {
         loadingStatus = loadStatus;

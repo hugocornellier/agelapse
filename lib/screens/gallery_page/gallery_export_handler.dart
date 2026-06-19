@@ -85,10 +85,12 @@ class GalleryExportHandler {
                         projectId,
                         projectName,
                       );
-                      setState(() {
-                        localExportingToZip = false;
-                        exportSuccessful = saved;
-                      });
+                      if (context.mounted) {
+                        setState(() {
+                          localExportingToZip = false;
+                          exportSuccessful = saved;
+                        });
+                      }
                       if (saved) {
                         LogService.instance.log('[EXPORT] Saved to Downloads');
                       } else if (error == 'save_failed') {
@@ -97,7 +99,9 @@ class GalleryExportHandler {
                           '[EXPORT] Downloads save failed, using share sheet',
                         );
                         await shareZipFile(projectId, projectName);
-                        setState(() => exportSuccessful = true);
+                        if (context.mounted) {
+                          setState(() => exportSuccessful = true);
+                        }
                       } else {
                         LogService.instance.log('[EXPORT] Save failed: $error');
                         if (context.mounted) {
@@ -108,17 +112,21 @@ class GalleryExportHandler {
                       }
                     } else if (success && Platform.isIOS) {
                       // iOS: Share sheet is the expected UX
-                      setState(() {
-                        localExportingToZip = false;
-                        exportSuccessful = true;
-                      });
+                      if (context.mounted) {
+                        setState(() {
+                          localExportingToZip = false;
+                          exportSuccessful = true;
+                        });
+                      }
                       await shareZipFile(projectId, projectName);
                     } else {
                       // Desktop or failure
-                      setState(() {
-                        localExportingToZip = false;
-                        exportSuccessful = success;
-                      });
+                      if (context.mounted) {
+                        setState(() {
+                          localExportingToZip = false;
+                          exportSuccessful = success;
+                        });
+                      }
                       if (!success && context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
