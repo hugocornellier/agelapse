@@ -130,7 +130,12 @@ class SettingsSheetState extends State<SettingsSheet> {
   int gridCount = 4;
   int _gridModeIndex = 0;
   String _galleryGridMode = 'auto';
+  int _inspectionColumns = 2;
+  String? _projectType;
   String _backgroundColor = '#000000';
+
+  bool get _isEyeBasedProject =>
+      _projectType == 'face' || _projectType == 'cat' || _projectType == 'dog';
 
   // Video codec settings
   VideoCodec _videoCodec = VideoCodec.h264;
@@ -415,9 +420,13 @@ class SettingsSheetState extends State<SettingsSheet> {
     final results = await Future.wait([
       SettingsUtil.loadGridAxisCount(projectIdStr),
       SettingsUtil.loadGalleryGridMode(projectIdStr),
+      SettingsUtil.loadInspectionColumns(projectIdStr),
+      DB.instance.getProjectTypeByProjectId(widget.projectId),
     ]);
     gridCount = results[0] as int;
     _galleryGridMode = results[1] as String;
+    _inspectionColumns = results[2] as int;
+    _projectType = results[3] as String?;
     if (!mounted) return gridCount;
     setState(() {});
     return gridCount;
@@ -1193,6 +1202,7 @@ class SettingsSheetState extends State<SettingsSheet> {
               _buildGalleryGridModeDropdown(),
               if (_galleryGridMode == 'manual')
                 _buildGridColumnsControl(isDesktop),
+              if (_isEyeBasedProject) _buildInspectionColumnsControl(),
             ],
           ),
           () => _gridCountFuture,
@@ -2154,6 +2164,54 @@ class SettingsSheetState extends State<SettingsSheet> {
           },
         );
       },
+    );
+  }
+
+  /// Inspection-mode grid count. This is deliberately separate from the gallery
+  /// Grid mode / Grid columns settings above: it only controls how many photos
+  /// per row are shown while Inspection Mode is active. The value is shared with
+  /// the Inspection Mode toolbar's settings menu and stays in sync with it.
+  Widget _buildInspectionColumnsControl() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Divider(height: 1, color: AppColors.settingsDivider),
+        const SizedBox(height: 16),
+        const SectionHeader(
+          title: 'Inspection Mode',
+          icon: Icons.grid_on,
+        ),
+        SettingListTile(
+          title: 'Inspection grid columns',
+          showDivider: false,
+          contentWidget: CustomDropdownButton<int>(
+            value: _inspectionColumns.clamp(1, 4),
+            items: List.generate(4, (index) {
+              return DropdownMenuItem<int>(
+                value: index + 1,
+                child: Text('${index + 1}'),
+              );
+            }),
+            onChanged: (int? value) async {
+              if (value != null && value != _inspectionColumns) {
+                setState(() => _inspectionColumns = value);
+                await _saveProjectSetting(
+                  'inspection_columns',
+                  value.toString(),
+                );
+              }
+            },
+          ),
+          infoContent:
+              'How many photos appear per row while Inspection Mode is active '
+              '(1-4).\n\n'
+              'This is separate from the gallery Grid mode and Grid columns '
+              'settings above, which control the normal gallery grid.\n\n'
+              'Changing it here also updates the settings menu inside the '
+              'Inspection Mode toolbar, and vice versa.',
+          showInfo: true,
+        ),
+      ],
     );
   }
 

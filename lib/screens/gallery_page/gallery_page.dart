@@ -191,6 +191,28 @@ class GalleryPageState extends State<GalleryPage>
       _projectType == 'face' || _projectType == 'cat' || _projectType == 'dog';
 
   double get _inspectionChildAspectRatio {
+    // Match the tile shape to the ACTUAL stabilized output aspect ratio so the
+    // BoxFit.cover thumbnail isn't cropped and the inspection guidelines line
+    // up with the eyes. This must use the same canonical output-dimension logic
+    // the stabilizer uses (StabUtils.getOutputDimensions), which handles custom
+    // "WIDTHxHEIGHT" resolutions (where the aspect_ratio setting is ignored) as
+    // well as presets across both orientations. GridView childAspectRatio is
+    // width / height.
+    final String? resolution = widget.settingsCache?.resolution;
+    if (resolution != null) {
+      final dims = StabUtils.getOutputDimensions(
+        resolution,
+        _aspectRatio,
+        projectOrientation ?? 'portrait',
+      );
+      if (dims != null && dims.$1 != 0 && dims.$2 != 0) {
+        return dims.$1 / dims.$2;
+      }
+    }
+
+    // Fallback (e.g. settings not yet loaded or unparseable): derive from the
+    // aspect_ratio string directly. Note this does NOT reflect custom
+    // resolutions, but presets are unaffected.
     final parts = _aspectRatio.split(':');
     if (parts.length == 2) {
       final w = double.tryParse(parts[0]);
@@ -362,18 +384,47 @@ class GalleryPageState extends State<GalleryPage>
   }
 
   void _onTabChanged() {
+    // Mirror the scroll position onto the newly-active tab so switching tabs
+    // lands on the same spot. Both grids stay mounted, so the jump happens
+    // behind the cross-fade and is never visible mid-scroll.
     if (_tabController.indexIsChanging) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Future.delayed(const Duration(milliseconds: 100), () {
-          if (!mounted) return;
-          if (_tabController.index == 0) {
-            _stickyBottomEnabled = true;
-            GalleryUtils.scrollToBottomInstantly(_stabilizedScrollController);
-          } else {
-            GalleryUtils.scrollToBottomInstantly(_rawScrollController);
-          }
-        });
-      });
+      _mirrorScrollToActiveTab();
+    }
+    // Rebuild so the cross-fade opacity / pointer targets follow the new index.
+    if (mounted) setState(() {});
+  }
+
+  /// Positions the destination tab to match the source tab's scroll offset,
+  /// clamped to the destination's scrollable range. When the destination list
+  /// is shorter (e.g. stabilization still running and the stabilized list lags
+  /// the raw list), the clamp lands the user as deep as possible — i.e. pinned
+  /// to that tab's bottom.
+  void _mirrorScrollToActiveTab() {
+    if (!_stabilizedScrollController.hasClients ||
+        !_rawScrollController.hasClients) {
+      return;
+    }
+
+    if (_tabController.index == 0) {
+      // Stabilized is now active: mirror from Raw.
+      final double target = _rawScrollController.offset.clamp(
+        0.0,
+        _stabilizedScrollController.position.maxScrollExtent,
+      );
+      // Suppress the sticky-bottom listener during the jump, then set sticky
+      // ourselves based on where we landed (so landing at the bottom keeps the
+      // live "follow new stabilized photos" behavior).
+      _isAutoScrolling = true;
+      _stabilizedScrollController.jumpTo(target);
+      _isAutoScrolling = false;
+      _stickyBottomEnabled = _isAtBottom() || _hasNoScrollbar();
+    } else {
+      // Raw is now active: mirror from Stabilized.
+      final double target = _stabilizedScrollController.offset.clamp(
+        0.0,
+        _rawScrollController.position.maxScrollExtent,
+      );
+      _rawScrollController.jumpTo(target);
     }
   }
 
@@ -719,7 +770,9 @@ class GalleryPageState extends State<GalleryPage>
         extendBodyBehindAppBar: true,
         body: Column(
           children: [
-            _buildCustomHeader(context),
+            // Hide the Stabilized/Raw tab control during inspection mode — only
+            // the Stabilized view is meaningful there. It reappears on exit.
+            if (!_isInspectionMode) _buildCustomHeader(context),
             if (_isInspectionMode) _buildInspectionActionBar(),
             Expanded(
               child: GestureDetector(
@@ -829,7 +882,7 @@ class GalleryPageState extends State<GalleryPage>
                                 _buildModernMenuItem(
                                   value: 'inspect',
                                   icon: Icons.search,
-                                  label: 'Inspect',
+                                  label: 'Inspection Mode',
                                 ),
                               ],
                               const PopupMenuDivider(height: 1),
@@ -879,48 +932,69 @@ class GalleryPageState extends State<GalleryPage>
   }
 
   Widget _buildTabBarView() {
-    return TabBarView(
-      controller: _tabController,
-      physics: const NeverScrollableScrollPhysics(),
+    final bool stabilizedActive = _tabController.index == 0;
+
+    final Widget stabilizedTab = Stack(
       children: [
-        Stack(
-          children: [
-            _buildImageGrid(
-              widget.stabilizedImageFilesStr,
-              _stabilizedScrollController,
-            ),
-            if (!_stickyBottomEnabled && !_hasNoScrollbar())
-              Positioned(
-                bottom: 16,
-                right: 16,
-                child: Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: AppColors.surfaceElevated,
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.overlay.withValues(alpha: 0.15),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: FloatingActionButton.small(
-                    onPressed: _scrollToBottomAndReenableSticky,
-                    backgroundColor: AppColors.surface,
-                    foregroundColor: AppColors.textPrimary,
-                    elevation: 0,
-                    child: const Icon(Icons.arrow_downward, size: 20),
-                  ),
-                ),
-              ),
-          ],
+        _buildImageGrid(
+          widget.stabilizedImageFilesStr,
+          _stabilizedScrollController,
         ),
-        _buildImageGrid(widget.imageFilesStr, _rawScrollController),
+        if (!_stickyBottomEnabled && !_hasNoScrollbar())
+          Positioned(
+            bottom: 16,
+            right: 16,
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppColors.surfaceElevated,
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.overlay.withValues(alpha: 0.15),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: FloatingActionButton.small(
+                onPressed: _scrollToBottomAndReenableSticky,
+                backgroundColor: AppColors.surface,
+                foregroundColor: AppColors.textPrimary,
+                elevation: 0,
+                child: const Icon(Icons.arrow_downward, size: 20),
+              ),
+            ),
+          ),
       ],
+    );
+
+    // Both grids stay mounted so their scroll controllers remain live (needed
+    // for cross-tab scroll mirroring) and the Stabilized tab keeps its live
+    // stabilization progress. Tabs cross-fade instead of sliding; the inactive
+    // tab is faded out and ignores pointers so it can't absorb taps.
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        _buildFadeTab(
+          active: !stabilizedActive,
+          child: _buildImageGrid(widget.imageFilesStr, _rawScrollController),
+        ),
+        _buildFadeTab(active: stabilizedActive, child: stabilizedTab),
+      ],
+    );
+  }
+
+  Widget _buildFadeTab({required bool active, required Widget child}) {
+    return IgnorePointer(
+      ignoring: !active,
+      child: AnimatedOpacity(
+        opacity: active ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 150),
+        child: child,
+      ),
     );
   }
 
@@ -1841,7 +1915,7 @@ class GalleryPageState extends State<GalleryPage>
   Widget _buildInspectionColumnsMenu() {
     return PopupMenuButton<int>(
       icon: Icon(
-        Icons.settings_outlined,
+        Icons.view_column_outlined,
         size: 20,
         color: AppColors.textPrimary,
       ),
