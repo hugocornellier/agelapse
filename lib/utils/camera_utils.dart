@@ -18,6 +18,7 @@ import 'image_processing_isolate.dart';
 import 'linked_source_utils.dart';
 import 'photo_fingerprint.dart';
 import 'settings_utils.dart';
+import 'windows_file_time.dart';
 
 class CameraUtils {
   static final AsyncMutex _savePhotoMutex = AsyncMutex();
@@ -184,20 +185,24 @@ class CameraUtils {
       String imgPath = image.path;
       String extension = path.extension(imgPath).toLowerCase();
 
-      // Content-based dedup fingerprinting is file-local and can run before
-      // the serialized save/DB section.
-      try {
-        importFingerprint = await PhotoFingerprint.compute(imgPath);
-      } catch (e) {
-        LogService.instance.log('[Import] fingerprint error: $e');
-      }
-
-      // Read bytes if not already provided
+      // Read bytes if not already provided. These same source bytes feed the
+      // fingerprint, the format pre-decode, and OpenCV processing below, so the
+      // source file is read once here instead of also being re-read for the
+      // hash (Finding #7, variant C: dedupe reads, keep File.copy placement).
       if (bytes == null || imgPath != image.path) {
         bytes = await CameraUtils.readBytesInIsolate(imgPath);
       }
 
       if (bytes != null) {
+        // Content-based dedup fingerprint, computed from the bytes already in
+        // memory. Byte-identical to hashing the file (same size + sha256),
+        // minus a second full read of the source.
+        try {
+          importFingerprint = PhotoFingerprint.fromBytes(bytes);
+        } catch (e) {
+          LogService.instance.log('[Import] fingerprint error: $e');
+        }
+
         // Pre-decode non-native formats (HEIC, AVIF, RAW, etc.)
         if (FormatDecodeUtils.needsConversion(extension)) {
           final tempDir = await DirUtils.getTemporaryDirPath();
@@ -569,7 +574,8 @@ class CameraUtils {
   /// to [targetPath].
   ///
   /// - macOS: `setLastModified` to an earlier date also moves birthtime.
-  /// - Windows: Uses PowerShell to copy CreationTime since Dart has no API.
+  /// - Windows: copies CreationTime via the Win32 API (CreateFileW/GetFileTime/
+  ///   SetFileTime) through dart:ffi — see [copyWindowsCreationTime].
   /// - Linux: Creation time (btime) cannot be set from userspace; only
   ///   modification time is preserved.
   static Future<void> _preserveModifiedTime({
@@ -584,26 +590,8 @@ class CameraUtils {
       await targetFile.setLastModified(sourceModified);
 
       if (Platform.isWindows) {
-        await _preserveCreationTimeWindows(sourcePath, targetPath);
+        copyWindowsCreationTime(sourcePath, targetPath);
       }
-    } catch (_) {}
-  }
-
-  /// Uses PowerShell to copy the creation time from one file to another.
-  static Future<void> _preserveCreationTimeWindows(
-    String sourcePath,
-    String targetPath,
-  ) async {
-    try {
-      final escaped = targetPath.replaceAll("'", "''");
-      final srcEscaped = sourcePath.replaceAll("'", "''");
-      await Process.run('powershell', [
-        '-NoProfile',
-        '-NonInteractive',
-        '-Command',
-        "(Get-Item '$escaped').CreationTime = "
-            "(Get-Item '$srcEscaped').CreationTime",
-      ]);
     } catch (_) {}
   }
 

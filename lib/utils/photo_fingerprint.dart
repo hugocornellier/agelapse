@@ -27,4 +27,15 @@ class PhotoFingerprint {
     final digest = await sha256.bind(file.openRead()).first;
     return '$size:$digest';
   }
+
+  /// Same fingerprint as [compute], but from already-in-memory [bytes].
+  ///
+  /// Lets the import path reuse the source bytes it already read (for decoding)
+  /// instead of reading the file a second time just to hash it. Byte-identical
+  /// to [compute] for the same content: `file.length()` equals `bytes.length`
+  /// for a full read, and SHA-256 of the bytes equals the streamed digest.
+  static String fromBytes(List<int> bytes) {
+    final digest = sha256.convert(bytes);
+    return '${bytes.length}:$digest';
+  }
 }

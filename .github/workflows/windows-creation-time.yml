@@ -1,0 +1,59 @@
+name: Windows Creation-Time Benchmark
+
+# Proves the per-photo creation-time copy was changed from a powershell.exe
+# spawn to a direct Win32 (dart:ffi) call WITHOUT changing the result: the
+# benchmark test runs the OLD (PowerShell) and NEW (ffi) implementations on a
+# real sample image, asserts the resulting NTFS creation timestamp is
+# byte-for-byte identical, and times both to confirm the new path is faster.
+on:
+  push:
+    branches: [perf/windows-creation-time-ffi]
+  workflow_dispatch:
+
+concurrency:
+  group: win-ctime-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-creation-time:
+    name: Creation-time before/after (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+          cache-key: 'flutter-:os:-:channel:-:version:-:arch:-win-ctime-:hash:'
+
+      - name: Cache opencv_dart native build
+        uses: actions/cache@v5
+        continue-on-error: true
+        with:
+          path: .dart_tool/hooks_runner/shared
+          key: opencv-native-windows-ctime-${{ hashFiles('pubspec.lock') }}
+          restore-keys: opencv-native-windows-ctime-
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # Host (Dart VM) test on the real Windows runner: no device needed, the
+      # FFI calls hit the real Win32 API. Tolerate the known native-DLL
+      # teardown crash where the process exits nonzero AFTER all tests pass.
+      - name: Run before/after creation-time benchmark
+        shell: bash
+        run: |
+          TEST_OUTPUT=$(mktemp)
+          EXIT_CODE=0
+          flutter test test/utils/windows_file_time_benchmark_test.dart \
+            --reporter expanded 2>&1 | tee "$TEST_OUTPUT" || EXIT_CODE=$?
+          if [ "$EXIT_CODE" -ne 0 ]; then
+            if grep -q "All tests passed" "$TEST_OUTPUT" && ! grep -q "Some tests failed" "$TEST_OUTPUT"; then
+              echo "::warning::Tests exited $EXIT_CODE but all tests passed (process teardown crash, ignored)"
+            else
+              exit 1
+            fi
+          fi
+          rm -f "$TEST_OUTPUT"

@@ -1,0 +1,55 @@
+name: Import Read-Amplification Benchmark
+
+# A/B benchmark for Finding #7 (the import pipeline reads each source file ~4x).
+# Runs the current 4x-read pattern vs a read-once pattern on real photo bytes,
+# asserts byte-identical output (same SHA-256 + same written bytes), and reports
+# the timings on a real Windows runner.
+on:
+  push:
+    branches: [perf/windows-creation-time-ffi]
+  workflow_dispatch:
+
+concurrency:
+  group: import-read-bench-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  read-amplification:
+    name: Read-amplification A/B (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+          cache-key: 'flutter-:os:-:channel:-:version:-:arch:-read-bench-:hash:'
+
+      - name: Cache opencv_dart native build
+        uses: actions/cache@v5
+        continue-on-error: true
+        with:
+          path: .dart_tool/hooks_runner/shared
+          key: opencv-native-windows-readbench-${{ hashFiles('pubspec.lock') }}
+          restore-keys: opencv-native-windows-readbench-
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run read-amplification benchmark
+        shell: bash
+        run: |
+          TEST_OUTPUT=$(mktemp)
+          EXIT_CODE=0
+          flutter test test/utils/import_read_amplification_benchmark_test.dart \
+            --reporter expanded 2>&1 | tee "$TEST_OUTPUT" || EXIT_CODE=$?
+          if [ "$EXIT_CODE" -ne 0 ]; then
+            if grep -q "All tests passed" "$TEST_OUTPUT" && ! grep -q "Some tests failed" "$TEST_OUTPUT"; then
+              echo "::warning::Tests exited $EXIT_CODE but all tests passed (process teardown crash, ignored)"
+            else
+              exit 1
+            fi
+          fi
+          rm -f "$TEST_OUTPUT"
