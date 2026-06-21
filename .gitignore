@@ -39,3 +39,4 @@ app.*.map.json
 STABILIZATION_OPTIMIZATION_PLAN.md
 __MACOSX/
 **/__MACOSX/
+/temp/

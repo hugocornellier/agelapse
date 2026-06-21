@@ -7,9 +7,15 @@ import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 import 'package:file_selector/file_selector.dart';
 import 'package:path_provider/path_provider.dart';
+import '../../models/detected_faces_snapshot.dart';
 import '../../services/database_helper.dart';
+import '../../services/detected_faces_repository.dart';
 import '../../services/face_stabilizer.dart';
+import '../../services/face_thumbnail_service.dart';
+import '../../services/thumbnail_service.dart';
 import '../../styles/styles.dart';
+import '../../widgets/detected_faces_chip.dart';
+import '../../widgets/detected_faces_dialog.dart';
 import '../../utils/dir_utils.dart';
 import '../../utils/utils.dart';
 import '../../utils/camera_utils.dart';
@@ -263,6 +269,12 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
   // Cache for photo metadata
   Future<Map<String, dynamic>?>? _previewPhotoFuture;
 
+  // Detected-faces state (header chip + standalone dialog).
+  final DetectedFacesRepository _facesRepo = DetectedFacesRepository();
+  Future<DetectedFacesSnapshot>? _detectedFacesFuture;
+  DetectedFacesSnapshot? _detectedFaces;
+  int _facesGen = 0;
+
   // Export date stamp preview settings
   bool _exportDateStampEnabled = false;
   String _exportDateStampPosition = DateStampUtils.positionLowerRight;
@@ -374,6 +386,33 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
         widget.projectId,
       );
     }
+    _loadDetectedFaces();
+  }
+
+  /// Loads the cheap detected-faces metadata for the current photo (no crops).
+  /// A generation token guards against stale completions during fast swipes.
+  void _loadDetectedFaces() {
+    final ts = _currentTimestamp;
+    if (ts.isEmpty) {
+      _detectedFacesFuture = null;
+      _detectedFaces = null;
+      return;
+    }
+    final gen = ++_facesGen;
+    final future = _facesRepo.load(ts, widget.projectId);
+    _detectedFacesFuture = future;
+    _detectedFaces = null;
+    future.then((snap) {
+      if (!mounted || gen != _facesGen) return;
+      setState(() => _detectedFaces = snap);
+    }).catchError((_) {});
+  }
+
+  String _pathForTimestamp(List<String> files, String timestamp) {
+    for (final p in files) {
+      if (path.basenameWithoutExtension(p) == timestamp) return p;
+    }
+    return '';
   }
 
   void _onPageChanged(int index) {
@@ -571,6 +610,11 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
               ],
             ),
           ),
+          DetectedFacesChip(
+            future: _detectedFacesFuture,
+            onTap: _showDetectedFacesDialog,
+          ),
+          if (_detectedFaces?.count != null) const SizedBox(width: 8),
           _buildInfoButton(),
           const SizedBox(width: 8),
           _buildCloseButton(),
@@ -642,25 +686,105 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
   }
 
   void _showImageInfoDialog() {
-    final rawPath =
-        _currentIndex >= 0 && _currentIndex < widget.rawImageFiles.length
-            ? widget.rawImageFiles[_currentIndex]
-            : '';
-    final stabPath =
-        _currentIndex >= 0 && _currentIndex < widget.stabilizedImageFiles.length
-            ? widget.stabilizedImageFiles[_currentIndex]
-            : '';
+    // Resolve paths by timestamp, not by shared index: the raw and stabilized
+    // lists can diverge (a failed/no-face photo is absent from stabilized).
+    final ts = _currentTimestamp;
+    final rawPath = _pathForTimestamp(widget.rawImageFiles, ts);
+    final stabPath = _pathForTimestamp(widget.stabilizedImageFiles, ts);
 
     GalleryImageMenu.showImageInfo(
       context: context,
-      timestamp: _currentTimestamp,
+      timestamp: ts,
       projectId: widget.projectId,
       rawPath: rawPath,
       stabPath: stabPath,
       isInspectionMode: _isInspectionMode,
       isRaw: _isRaw,
       getDimensions: _getImageDimensions,
+      detectedFacesFuture: ts.isEmpty
+          ? null
+          : _facesRepo.load(
+              ts,
+              widget.projectId,
+              computeFingerprintIfMissing: true,
+            ),
     );
+  }
+
+  Future<void> _showDetectedFacesDialog() async {
+    final ts = _currentTimestamp;
+    if (ts.isEmpty) return;
+    final existing = _detectedFaces;
+    final DetectedFacesSnapshot snapshot = existing ??
+        await (_detectedFacesFuture ?? _facesRepo.load(ts, widget.projectId));
+    if (!mounted || !snapshot.isAvailable) return;
+
+    await showDetectedFacesDialog(
+      context: context,
+      snapshot: snapshot,
+      stabilizationRunningInMain: widget.stabilizingRunningInMain,
+      onSelectFace: (index) => _stabilizeOnFace(snapshot, index),
+      reload: () async {
+        final fresh = await _facesRepo.load(
+          ts,
+          widget.projectId,
+          computeFingerprintIfMissing: true,
+        );
+        _detectedFacesFuture = Future.value(fresh);
+        if (mounted) setState(() => _detectedFaces = fresh);
+        return fresh;
+      },
+    );
+  }
+
+  /// Re-stabilizes the current photo onto the cached face at [index]. Only
+  /// supported for `original`-orientation detections for now (Phase 4 extends
+  /// this to flipped/rotated detections). Returns true on success.
+  Future<bool> _stabilizeOnFace(
+    DetectedFacesSnapshot snapshot,
+    int index,
+  ) async {
+    final faces = snapshot.cache?.faces;
+    if (faces == null || index < 0 || index >= faces.length) return false;
+    if (snapshot.orientation != 'original') return false;
+    if (snapshot.rawPath.isEmpty) return false;
+
+    final box = faces[index].boundingBox; // original-image coords here
+    final stabilizer = FaceStabilizer(
+      widget.projectId,
+      widget.userRanOutOfSpaceCallback,
+    );
+    try {
+      await stabilizer.init();
+      final result = await stabilizer.stabilize(
+        snapshot.rawPath,
+        null,
+        widget.userRanOutOfSpaceCallback,
+        targetBoundingBox: box,
+      );
+      if (!result.success) return false;
+
+      final thumbnailPath = await stabilizer.createStabThumbnailFromRawPath(
+        snapshot.rawPath,
+      );
+      Utils.clearFlutterImageCache();
+      ThumbnailService.instance.clearCache(thumbnailPath);
+      final fp = snapshot.fingerprint;
+      if (fp != null) FaceThumbnailService.instance.evictForFingerprint(fp);
+
+      if (mounted) setState(() => _imageRefreshKey++);
+      await widget.loadImages();
+      // Kick off video recompilation in the background. Do NOT await it: the
+      // callback only completes once the whole video finishes compiling, which
+      // would keep the faces dialog busy (Close disabled, checkmark frozen) for
+      // the entire render. The single-photo re-stabilization is already done.
+      unawaited(widget.recompileVideoCallback());
+      return true;
+    } catch (_) {
+      return false;
+    } finally {
+      stabilizer.dispose();
+    }
   }
 
   Widget _buildCloseButton() {

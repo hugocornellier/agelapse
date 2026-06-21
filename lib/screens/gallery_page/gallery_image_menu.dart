@@ -4,10 +4,12 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
 
+import '../../models/detected_faces_snapshot.dart';
 import '../../services/database_helper.dart';
 import '../../styles/styles.dart';
 import '../../utils/capture_timezone.dart';
 import '../../utils/utils.dart';
+import '../../widgets/detected_faces_info_section.dart';
 
 /// Shared image options menu used by both gallery_page.dart and image_preview_navigator.dart.
 /// Consolidates duplicate menu implementations.
@@ -198,6 +200,7 @@ class GalleryImageMenu {
     bool isInspectionMode = false,
     bool isRaw = true,
     Future<Size> Function(String path)? getDimensions,
+    Future<DetectedFacesSnapshot>? detectedFacesFuture,
   }) {
     if (timestamp.isEmpty) return;
 
@@ -233,7 +236,10 @@ class GalleryImageMenu {
               borderRadius: BorderRadius.circular(16),
             ),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
+              constraints: BoxConstraints(
+                maxWidth: 440,
+                maxHeight: MediaQuery.of(context).size.height * 0.85,
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Column(
@@ -286,57 +292,75 @@ class GalleryImageMenu {
                           ),
                       ],
                     ),
-                    const SizedBox(height: 20),
-                    _infoRow('Date', formattedDate),
-                    if (originalFilename.isNotEmpty)
-                      _infoRow(
-                        'Original file',
-                        fileExtension.isNotEmpty &&
-                                !originalFilename.toLowerCase().endsWith(
-                                      fileExtension.toLowerCase(),
-                                    )
-                            ? '$originalFilename$fileExtension'
-                            : originalFilename,
-                      ),
                     const SizedBox(height: 16),
-                    _infoSectionHeader('Raw'),
-                    const SizedBox(height: 8),
-                    _infoRow(
-                      'Resolution',
-                      rawDims.width > 0
-                          ? '${rawDims.width.toInt()} × ${rawDims.height.toInt()}'
-                          : 'Not available',
-                    ),
-                    if (rawPath.isNotEmpty)
-                      _infoRow(
-                        'Format',
-                        fileExtension.isNotEmpty
-                            ? fileExtension.toUpperCase().replaceFirst('.', '')
-                            : path
-                                .extension(rawPath)
-                                .toUpperCase()
-                                .replaceFirst('.', ''),
+                    Flexible(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _infoRow('Date', formattedDate),
+                            if (originalFilename.isNotEmpty)
+                              _infoRow(
+                                'Original file',
+                                fileExtension.isNotEmpty &&
+                                        !originalFilename
+                                            .toLowerCase()
+                                            .endsWith(
+                                              fileExtension.toLowerCase(),
+                                            )
+                                    ? '$originalFilename$fileExtension'
+                                    : originalFilename,
+                              ),
+                            const SizedBox(height: 16),
+                            _infoSectionHeader('Raw'),
+                            const SizedBox(height: 8),
+                            _infoRow(
+                              'Resolution',
+                              rawDims.width > 0
+                                  ? '${rawDims.width.toInt()} × ${rawDims.height.toInt()}'
+                                  : 'Not available',
+                            ),
+                            if (rawPath.isNotEmpty)
+                              _infoRow(
+                                'Format',
+                                fileExtension.isNotEmpty
+                                    ? fileExtension
+                                        .toUpperCase()
+                                        .replaceFirst('.', '')
+                                    : path
+                                        .extension(rawPath)
+                                        .toUpperCase()
+                                        .replaceFirst('.', ''),
+                              ),
+                            const SizedBox(height: 16),
+                            _infoSectionHeader('Stabilized'),
+                            const SizedBox(height: 8),
+                            _infoRow(
+                              'Resolution',
+                              stabDims.width > 0
+                                  ? '${stabDims.width.toInt()} × ${stabDims.height.toInt()}'
+                                  : stabPath.isEmpty
+                                      ? 'Not stabilized'
+                                      : 'Not available',
+                            ),
+                            if (stabPath.isNotEmpty)
+                              _infoRow(
+                                'Format',
+                                path
+                                    .extension(stabPath)
+                                    .toUpperCase()
+                                    .replaceFirst('.', ''),
+                              ),
+                            if (detectedFacesFuture != null)
+                              DetectedFacesInfoSection(
+                                future: detectedFacesFuture,
+                              ),
+                          ],
+                        ),
                       ),
-                    const SizedBox(height: 16),
-                    _infoSectionHeader('Stabilized'),
-                    const SizedBox(height: 8),
-                    _infoRow(
-                      'Resolution',
-                      stabDims.width > 0
-                          ? '${stabDims.width.toInt()} × ${stabDims.height.toInt()}'
-                          : stabPath.isEmpty
-                              ? 'Not stabilized'
-                              : 'Not available',
                     ),
-                    if (stabPath.isNotEmpty)
-                      _infoRow(
-                        'Format',
-                        path
-                            .extension(stabPath)
-                            .toUpperCase()
-                            .replaceFirst('.', ''),
-                      ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 12),
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(

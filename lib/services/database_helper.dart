@@ -893,6 +893,24 @@ class DB {
         where: _photoWhereClause,
         whereArgs: [oldTimestamp, projectId],
       );
+
+      // Migrate detected-face cache rows so face data follows the photo to its
+      // new timestamp (the cache key includes timestamp). Without this, a date
+      // change orphans the rows and the photo loses its detected-face data.
+      // Clear any pre-existing rows at the destination first so the
+      // UNIQUE(timestamp, projectID, orientation, faceIndex) constraint can't
+      // fail on a stale orphan.
+      await txn.delete(
+        faceDetectionCacheTable,
+        where: 'timestamp = ? AND projectID = ?',
+        whereArgs: [newTimestamp, projectId],
+      );
+      await txn.update(
+        faceDetectionCacheTable,
+        {'timestamp': newTimestamp},
+        where: 'timestamp = ? AND projectID = ?',
+        whereArgs: [oldTimestamp, projectId],
+      );
     });
 
     return newId;
