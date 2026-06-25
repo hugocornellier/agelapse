@@ -69,7 +69,7 @@ class FFmpegSession extends AbstractSession {
   Future<List<Statistics>> getAllStatistics([int? waitTimeout]) async {
     try {
       await FFmpegKitConfig.init();
-      return FFmpegKitPlatform.instance
+      return await FFmpegKitPlatform.instance
           .ffmpegSessionGetAllStatistics(this.getSessionId(), waitTimeout)
           .then((allStatistics) {
         if (allStatistics == null) {
@@ -96,7 +96,7 @@ class FFmpegSession extends AbstractSession {
   Future<List<Statistics>> getStatistics() async {
     try {
       await FFmpegKitConfig.init();
-      return FFmpegKitPlatform.instance
+      return await FFmpegKitPlatform.instance
           .ffmpegSessionGetStatistics(this.getSessionId())
           .then((statistics) {
         if (statistics == null) {

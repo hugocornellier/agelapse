@@ -30,7 +30,7 @@ class Packages {
   static Future<String?> getPackageName() async {
     try {
       await FFmpegKitConfig.init();
-      return _platform.getPackageName();
+      return await _platform.getPackageName();
     } on PlatformException catch (e, stack) {
       print("Plugin getPackageName error: ${e.message}");
       return Future.error("getPackageName failed.", stack);
@@ -41,7 +41,7 @@ class Packages {
   static Future<List<String>> getExternalLibraries() async {
     try {
       await FFmpegKitConfig.init();
-      return _platform.getExternalLibraries().then((externalLibraries) {
+      return await _platform.getExternalLibraries().then((externalLibraries) {
         if (externalLibraries == null) {
           return List.empty();
         } else {

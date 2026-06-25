@@ -198,7 +198,7 @@ class FormatDecodeUtils {
         return null;
       }
 
-      return _readAndCleanup(decodedPath);
+      return await _readAndCleanup(decodedPath);
     } catch (e) {
       LogService.instance.log('[FormatDecode] RAW decode error: $e');
       _tryDelete(tempInputPath);

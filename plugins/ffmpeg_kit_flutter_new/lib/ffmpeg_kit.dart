@@ -87,9 +87,9 @@ class FFmpegKit {
     try {
       await FFmpegKitConfig.init();
       if (sessionId == null) {
-        return _platform.ffmpegKitCancel();
+        return await _platform.ffmpegKitCancel();
       } else {
-        return _platform.ffmpegKitCancelSession(sessionId);
+        return await _platform.ffmpegKitCancelSession(sessionId);
       }
     } on PlatformException catch (e, stack) {
       print("Plugin cancel error: ${e.message}");
@@ -101,7 +101,7 @@ class FFmpegKit {
   static Future<List<FFmpegSession>> listSessions() async {
     try {
       await FFmpegKitConfig.init();
-      return _platform.ffmpegKitListSessions().then((sessions) {
+      return await _platform.ffmpegKitListSessions().then((sessions) {
         if (sessions == null) {
           return List.empty();
         } else {

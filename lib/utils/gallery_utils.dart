@@ -993,7 +993,7 @@ class GalleryUtils {
 
       // Tier 3: file modified date
       if (timestampMs == null) {
-        return fileModifiedFallback();
+        return await fileModifiedFallback();
       }
 
       captureOffsetMinutes ??= DateTime.fromMillisecondsSinceEpoch(

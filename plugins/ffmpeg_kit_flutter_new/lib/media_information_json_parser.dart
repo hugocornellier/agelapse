@@ -33,7 +33,9 @@ class MediaInformationJsonParser {
   static Future<MediaInformation?> from(String ffprobeJsonOutput) async {
     try {
       await FFmpegKitConfig.init();
-      return _platform.mediaInformationJsonParserFrom(ffprobeJsonOutput).then((
+      return await _platform
+          .mediaInformationJsonParserFrom(ffprobeJsonOutput)
+          .then((
         properties,
       ) {
         if (properties == null || properties.isEmpty) {
@@ -54,7 +56,7 @@ class MediaInformationJsonParser {
   ) async {
     try {
       await FFmpegKitConfig.init();
-      return _platform
+      return await _platform
           .mediaInformationJsonParserFromWithError(ffprobeJsonOutput)
           .then(MediaInformation.new);
     } on PlatformException catch (e, stack) {

@@ -69,7 +69,7 @@ class RawDecoder {
         '[RAW] Apple decode returned null or missing file',
       );
       // Fall back to FFmpeg if native decode fails
-      return _decodeFfmpeg(rawPath, outputDir, baseName, sixteenBit);
+      return await _decodeFfmpeg(rawPath, outputDir, baseName, sixteenBit);
     } on MissingPluginException {
       LogService.instance.log(
         '[RAW] MethodChannel not available, using FFmpeg',

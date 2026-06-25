@@ -30,7 +30,7 @@ class ArchDetect {
   static Future<String> getArch() async {
     try {
       await FFmpegKitConfig.init();
-      return _platform.archDetectGetArch();
+      return await _platform.archDetectGetArch();
     } on PlatformException catch (e, stack) {
       print("Plugin getArch error: ${e.message}");
       return Future.error("getArch failed.", stack);

@@ -251,7 +251,7 @@ class FFprobeKit {
   static Future<List<FFprobeSession>> listFFprobeSessions() async {
     try {
       await FFmpegKitConfig.init();
-      return _platform.ffprobeKitListFFprobeSessions().then((sessions) {
+      return await _platform.ffprobeKitListFFprobeSessions().then((sessions) {
         if (sessions == null) {
           return List.empty();
         } else {
@@ -276,7 +276,7 @@ class FFprobeKit {
       listMediaInformationSessions() async {
     try {
       await FFmpegKitConfig.init();
-      return _platform.ffprobeKitListMediaInformationSessions().then((
+      return await _platform.ffprobeKitListMediaInformationSessions().then((
         sessions,
       ) {
         if (sessions == null) {

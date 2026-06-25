@@ -62,7 +62,7 @@ class FFmpegKitConfig {
   static Future<void> enableRedirection() async {
     try {
       await init();
-      return _platform.ffmpegKitConfigEnableRedirection();
+      return await _platform.ffmpegKitConfigEnableRedirection();
     } on PlatformException catch (e, stack) {
       print("Plugin enableRedirection error: ${e.message}");
       return Future.error("enableRedirection failed.", stack);
@@ -77,7 +77,7 @@ class FFmpegKitConfig {
   static Future<void> disableRedirection() async {
     try {
       await init();
-      return _platform.ffmpegKitConfigDisableRedirection();
+      return await _platform.ffmpegKitConfigDisableRedirection();
     } on PlatformException catch (e, stack) {
       print("Plugin disableRedirection error: ${e.message}");
       return Future.error("disableRedirection failed.", stack);
@@ -88,7 +88,8 @@ class FFmpegKitConfig {
   static Future<void> setFontconfigConfigurationPath(String path) async {
     try {
       await init();
-      return _platform.ffmpegKitConfigSetFontconfigConfigurationPath(path);
+      return await _platform
+          .ffmpegKitConfigSetFontconfigConfigurationPath(path);
     } on PlatformException catch (e, stack) {
       print("Plugin setFontconfigConfigurationPath error: ${e.message}");
       return Future.error("setFontconfigConfigurationPath failed.", stack);
@@ -106,7 +107,7 @@ class FFmpegKitConfig {
   ]) async {
     try {
       await init();
-      return _platform.ffmpegKitConfigSetFontDirectory(path, mapping);
+      return await _platform.ffmpegKitConfigSetFontDirectory(path, mapping);
     } on PlatformException catch (e, stack) {
       print("Plugin setFontDirectory error: ${e.message}");
       return Future.error("setFontDirectory failed.", stack);
@@ -124,7 +125,7 @@ class FFmpegKitConfig {
   ]) async {
     try {
       await init();
-      return _platform.ffmpegKitConfigSetFontDirectoryList(
+      return await _platform.ffmpegKitConfigSetFontDirectoryList(
         fontDirectoryList,
         mapping,
       );
@@ -140,7 +141,7 @@ class FFmpegKitConfig {
   static Future<String?> registerNewFFmpegPipe() async {
     try {
       await init();
-      return _platform.ffmpegKitConfigRegisterNewFFmpegPipe();
+      return await _platform.ffmpegKitConfigRegisterNewFFmpegPipe();
     } on PlatformException catch (e, stack) {
       print("Plugin registerNewFFmpegPipe error: ${e.message}");
       return Future.error("registerNewFFmpegPipe failed.", stack);
@@ -151,7 +152,7 @@ class FFmpegKitConfig {
   static Future<void> closeFFmpegPipe(String ffmpegPipePath) async {
     try {
       await init();
-      return _platform.ffmpegKitConfigCloseFFmpegPipe(ffmpegPipePath);
+      return await _platform.ffmpegKitConfigCloseFFmpegPipe(ffmpegPipePath);
     } on PlatformException catch (e, stack) {
       print("Plugin closeFFmpegPipe error: ${e.message}");
       return Future.error("closeFFmpegPipe failed.", stack);
@@ -162,7 +163,7 @@ class FFmpegKitConfig {
   static Future<String?> getFFmpegVersion() async {
     try {
       await init();
-      return _platform.ffmpegKitConfigGetFFmpegVersion();
+      return await _platform.ffmpegKitConfigGetFFmpegVersion();
     } on PlatformException catch (e, stack) {
       print("Plugin getFFmpegVersion error: ${e.message}");
       return Future.error("getFFmpegVersion failed.", stack);
@@ -176,7 +177,7 @@ class FFmpegKitConfig {
   static Future<bool> isLTSBuild() async {
     try {
       await init();
-      return _platform.ffmpegKitConfigIsLTSBuild().then((value) {
+      return await _platform.ffmpegKitConfigIsLTSBuild().then((value) {
         if (value == null) {
           return false;
         } else {
@@ -193,7 +194,7 @@ class FFmpegKitConfig {
   static Future<String?> getBuildDate() async {
     try {
       await init();
-      return _platform.ffmpegKitConfigGetBuildDate();
+      return await _platform.ffmpegKitConfigGetBuildDate();
     } on PlatformException catch (e, stack) {
       print("Plugin getBuildDate error: ${e.message}");
       return Future.error("getBuildDate failed.", stack);
@@ -204,7 +205,7 @@ class FFmpegKitConfig {
   static Future<void> setEnvironmentVariable(String name, String value) async {
     try {
       await init();
-      return _platform.ffmpegKitConfigSetEnvironmentVariable(name, value);
+      return await _platform.ffmpegKitConfigSetEnvironmentVariable(name, value);
     } on PlatformException catch (e, stack) {
       print("Plugin setEnvironmentVariable error: ${e.message}");
       return Future.error("setEnvironmentVariable failed.", stack);
@@ -216,7 +217,7 @@ class FFmpegKitConfig {
   static Future<void> ignoreSignal(Signal signal) async {
     try {
       await init();
-      return _platform.ffmpegKitConfigIgnoreSignal(signal.index);
+      return await _platform.ffmpegKitConfigIgnoreSignal(signal.index);
     } on PlatformException catch (e, stack) {
       print("Plugin ignoreSignal error: ${e.message}");
       return Future.error("ignoreSignal failed.", stack);
@@ -227,7 +228,7 @@ class FFmpegKitConfig {
   static Future<void> ffmpegExecute(FFmpegSession ffmpegSession) async {
     try {
       await init();
-      return _platform.ffmpegKitConfigFFmpegExecute(
+      return await _platform.ffmpegKitConfigFFmpegExecute(
         ffmpegSession.getSessionId(),
       );
     } on PlatformException catch (e, stack) {
@@ -240,7 +241,7 @@ class FFmpegKitConfig {
   static Future<void> ffprobeExecute(FFprobeSession ffprobeSession) async {
     try {
       await init();
-      return _platform.ffmpegKitConfigFFprobeExecute(
+      return await _platform.ffmpegKitConfigFFprobeExecute(
         ffprobeSession.getSessionId(),
       );
     } on PlatformException catch (e, stack) {
@@ -256,7 +257,7 @@ class FFmpegKitConfig {
   ]) async {
     try {
       await init();
-      return _platform.ffmpegKitConfigGetMediaInformationExecute(
+      return await _platform.ffmpegKitConfigGetMediaInformationExecute(
         mediaInformationSession.getSessionId(),
         waitTimeout,
       );
@@ -275,7 +276,7 @@ class FFmpegKitConfig {
   static Future<void> asyncFFmpegExecute(FFmpegSession ffmpegSession) async {
     try {
       await init();
-      return _platform.ffmpegKitConfigAsyncFFmpegExecute(
+      return await _platform.ffmpegKitConfigAsyncFFmpegExecute(
         ffmpegSession.getSessionId(),
       );
     } on PlatformException catch (e, stack) {
@@ -293,7 +294,7 @@ class FFmpegKitConfig {
   static Future<void> asyncFFprobeExecute(FFprobeSession ffprobeSession) async {
     try {
       await init();
-      return _platform.ffmpegKitConfigAsyncFFprobeExecute(
+      return await _platform.ffmpegKitConfigAsyncFFprobeExecute(
         ffprobeSession.getSessionId(),
       );
     } on PlatformException catch (e, stack) {
@@ -315,7 +316,7 @@ class FFmpegKitConfig {
   ]) async {
     try {
       await init();
-      return _platform.ffmpegKitConfigAsyncGetMediaInformationExecute(
+      return await _platform.ffmpegKitConfigAsyncGetMediaInformationExecute(
         mediaInformationSession.getSessionId(),
         waitTimeout,
       );
@@ -389,7 +390,7 @@ class FFmpegKitConfig {
     _activeLogLevel = logLevel;
     try {
       await init();
-      return _platform.ffmpegKitConfigSetLogLevel(logLevel);
+      return await _platform.ffmpegKitConfigSetLogLevel(logLevel);
     } on PlatformException catch (e, stack) {
       print("Plugin setLogLevel error: ${e.message}");
       return Future.error("setLogLevel failed.", stack);
@@ -405,7 +406,7 @@ class FFmpegKitConfig {
   static Future<String?> getSafParameterForRead(String uriString) async {
     try {
       await init();
-      return _platform.ffmpegKitConfigGetSafParameter(uriString, "r");
+      return await _platform.ffmpegKitConfigGetSafParameter(uriString, "r");
     } on PlatformException catch (e, stack) {
       print("Plugin getSafParameterForRead error: ${e.message}");
       return Future.error("getSafParameterForRead failed.", stack);
@@ -421,7 +422,7 @@ class FFmpegKitConfig {
   static Future<String?> getSafParameterForWrite(String uriString) async {
     try {
       await init();
-      return _platform.ffmpegKitConfigGetSafParameter(uriString, "w");
+      return await _platform.ffmpegKitConfigGetSafParameter(uriString, "w");
     } on PlatformException catch (e, stack) {
       print("Plugin getSafParameterForWrite error: ${e.message}");
       return Future.error("getSafParameterForWrite failed.", stack);
@@ -440,7 +441,8 @@ class FFmpegKitConfig {
   ) async {
     try {
       await init();
-      return _platform.ffmpegKitConfigGetSafParameter(uriString, openMode);
+      return await _platform.ffmpegKitConfigGetSafParameter(
+          uriString, openMode);
     } on PlatformException catch (e, stack) {
       print("Plugin getSafParameter error: ${e.message}");
       return Future.error("getSafParameter failed.", stack);
@@ -451,7 +453,7 @@ class FFmpegKitConfig {
   static Future<int?> getSessionHistorySize() async {
     try {
       await init();
-      return _platform.ffmpegKitConfigGetSessionHistorySize();
+      return await _platform.ffmpegKitConfigGetSessionHistorySize();
     } on PlatformException catch (e, stack) {
       print("Plugin getSessionHistorySize error: ${e.message}");
       return Future.error("getSessionHistorySize failed.", stack);
@@ -462,7 +464,8 @@ class FFmpegKitConfig {
   static Future<void> setSessionHistorySize(int sessionHistorySize) async {
     try {
       await init();
-      return _platform.ffmpegKitConfigSetSessionHistorySize(sessionHistorySize);
+      return await _platform
+          .ffmpegKitConfigSetSessionHistorySize(sessionHistorySize);
     } on PlatformException catch (e, stack) {
       print("Plugin setSessionHistorySize error: ${e.message}");
       return Future.error("setSessionHistorySize failed.", stack);
@@ -473,7 +476,7 @@ class FFmpegKitConfig {
   static Future<Session?> getSession(int sessionId) async {
     try {
       await init();
-      return _platform
+      return await _platform
           .ffmpegKitConfigGetSession(sessionId)
           .then(FFmpegKitFactory.mapToNullableSession);
     } on PlatformException catch (e, stack) {
@@ -486,7 +489,7 @@ class FFmpegKitConfig {
   static Future<Session?> getLastSession() async {
     try {
       await init();
-      return _platform.ffmpegKitConfigGetLastSession().then(
+      return await _platform.ffmpegKitConfigGetLastSession().then(
             FFmpegKitFactory.mapToNullableSession,
           );
     } on PlatformException catch (e, stack) {
@@ -499,7 +502,7 @@ class FFmpegKitConfig {
   static Future<Session?> getLastCompletedSession() async {
     try {
       await init();
-      return _platform.ffmpegKitConfigGetLastCompletedSession().then(
+      return await _platform.ffmpegKitConfigGetLastCompletedSession().then(
             FFmpegKitFactory.mapToNullableSession,
           );
     } on PlatformException catch (e, stack) {
@@ -512,7 +515,7 @@ class FFmpegKitConfig {
   static Future<List<Session>> getSessions() async {
     try {
       await init();
-      return _platform.ffmpegKitConfigGetSessions().then((sessions) {
+      return await _platform.ffmpegKitConfigGetSessions().then((sessions) {
         if (sessions == null) {
           return List.empty();
         } else {
@@ -536,7 +539,7 @@ class FFmpegKitConfig {
   static Future<void> clearSessions() async {
     try {
       await init();
-      return _platform.clearSessions();
+      return await _platform.clearSessions();
     } on PlatformException catch (e, stack) {
       print("Plugin clearSessions error: ${e.message}");
       return Future.error("clearSessions failed.", stack);
@@ -547,7 +550,7 @@ class FFmpegKitConfig {
   static Future<List<FFmpegSession>> getFFmpegSessions() async {
     try {
       await FFmpegKitConfig.init();
-      return _platform.ffmpegKitListSessions().then((sessions) {
+      return await _platform.ffmpegKitListSessions().then((sessions) {
         if (sessions == null) {
           return List.empty();
         } else {
@@ -571,7 +574,7 @@ class FFmpegKitConfig {
   static Future<List<FFprobeSession>> getFFprobeSessions() async {
     try {
       await FFmpegKitConfig.init();
-      return _platform.ffprobeKitListFFprobeSessions().then((sessions) {
+      return await _platform.ffprobeKitListFFprobeSessions().then((sessions) {
         if (sessions == null) {
           return List.empty();
         } else {
@@ -596,7 +599,7 @@ class FFmpegKitConfig {
       getMediaInformationSessions() async {
     try {
       await FFmpegKitConfig.init();
-      return _platform.ffprobeKitListMediaInformationSessions().then((
+      return await _platform.ffprobeKitListMediaInformationSessions().then((
         sessions,
       ) {
         if (sessions == null) {
@@ -624,7 +627,7 @@ class FFmpegKitConfig {
   ) async {
     try {
       await init();
-      return _platform
+      return await _platform
           .ffmpegKitConfigGetSessionsByState(sessionState.index)
           .then((sessions) {
         if (sessions == null) {
@@ -661,7 +664,7 @@ class FFmpegKitConfig {
   static Future<int?> messagesInTransmit(int sessionId) async {
     try {
       await init();
-      return _platform.ffmpegKitConfigMessagesInTransmit(sessionId);
+      return await _platform.ffmpegKitConfigMessagesInTransmit(sessionId);
     } on PlatformException catch (e, stack) {
       print("Plugin messagesInTransmit error: ${e.message}");
       return Future.error("messagesInTransmit failed.", stack);
@@ -761,7 +764,7 @@ class FFmpegKitConfig {
   static Future<void> enableLogs() async {
     try {
       await init();
-      return _platform.ffmpegKitConfigEnableLogs();
+      return await _platform.ffmpegKitConfigEnableLogs();
     } on PlatformException catch (e, stack) {
       print("Plugin enableLogs error: ${e.message}");
       return Future.error("enableLogs failed.", stack);
@@ -772,7 +775,7 @@ class FFmpegKitConfig {
   static Future<void> disableLogs() async {
     try {
       await init();
-      return _platform.ffmpegKitConfigDisableLogs();
+      return await _platform.ffmpegKitConfigDisableLogs();
     } on PlatformException catch (e, stack) {
       print("Plugin disableLogs error: ${e.message}");
       return Future.error("disableLogs failed.", stack);
@@ -783,7 +786,7 @@ class FFmpegKitConfig {
   static Future<void> enableStatistics() async {
     try {
       await init();
-      return _platform.ffmpegKitConfigEnableStatistics();
+      return await _platform.ffmpegKitConfigEnableStatistics();
     } on PlatformException catch (e, stack) {
       print("Plugin enableStatistics error: ${e.message}");
       return Future.error("enableStatistics failed.", stack);
@@ -794,7 +797,7 @@ class FFmpegKitConfig {
   static Future<void> disableStatistics() async {
     try {
       await init();
-      return _platform.ffmpegKitConfigDisableStatistics();
+      return await _platform.ffmpegKitConfigDisableStatistics();
     } on PlatformException catch (e, stack) {
       print("Plugin disableStatistics error: ${e.message}");
       return Future.error("disableStatistics failed.", stack);
@@ -805,7 +808,7 @@ class FFmpegKitConfig {
   static Future<String?> getPlatform() async {
     try {
       await init();
-      return _platform.ffmpegKitConfigGetPlatform();
+      return await _platform.ffmpegKitConfigGetPlatform();
     } on PlatformException catch (e, stack) {
       print("Plugin getPlatform error: ${e.message}");
       return Future.error("getPlatform failed.", stack);
@@ -816,7 +819,7 @@ class FFmpegKitConfig {
   static Future<int?> writeToPipe(String inputPath, String pipePath) async {
     try {
       await init();
-      return _platform.ffmpegKitConfigWriteToPipe(inputPath, pipePath);
+      return await _platform.ffmpegKitConfigWriteToPipe(inputPath, pipePath);
     } on PlatformException catch (e, stack) {
       print("Plugin writeToPipe error: ${e.message}");
       return Future.error("writeToPipe failed.", stack);
@@ -835,7 +838,8 @@ class FFmpegKitConfig {
   ]) async {
     try {
       await init();
-      return _platform.ffmpegKitConfigSelectDocumentForRead(type, extraTypes);
+      return await _platform.ffmpegKitConfigSelectDocumentForRead(
+          type, extraTypes);
     } on PlatformException catch (e, stack) {
       print("Plugin selectDocumentForRead error: ${e.message}");
       return Future.error("selectDocumentForRead failed.", stack);
@@ -855,7 +859,7 @@ class FFmpegKitConfig {
   ]) async {
     try {
       await init();
-      return _platform.ffmpegKitConfigSelectDocumentForWrite(
+      return await _platform.ffmpegKitConfigSelectDocumentForWrite(
         title,
         type,
         extraTypes,
