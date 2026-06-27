@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:opencv_dart/opencv_dart.dart' as cv;
 
 import 'log_service.dart';
+import '../utils/face_box_transform.dart';
 import '../utils/platform_utils.dart';
 
 /// A task to be executed by a worker isolate.
@@ -357,6 +358,76 @@ class IsolatePool {
         final dims = (mat.cols, mat.rows);
         mat.dispose();
         return dims;
+
+      case 'cropFaceThumbnails':
+        // Decode the raw source ONCE, then crop every requested face out of it.
+        // Boxes arrive in the detector's successful-orientation space; they are
+        // inverse-mapped to original-image pixels here (see FaceBoxTransform).
+        // Returns a List<Uint8List?> aligned to the input box order — a null
+        // entry means that one face could not be cropped (degenerate box, etc.).
+        final cropBytes = params['bytes'] as Uint8List;
+        final orientation = params['orientation'] as String;
+        final rawBoxes = params['boxes'] as List<dynamic>;
+        final maxDimension = (params['maxDimension'] as int?) ?? 256;
+        final paddingFraction = (params['paddingFraction'] as double?) ?? 0.15;
+        final quality = (params['quality'] as int?) ?? 85;
+
+        final srcMat = cv.imdecode(cropBytes, cv.IMREAD_COLOR);
+        if (srcMat.isEmpty) {
+          srcMat.dispose();
+          return null;
+        }
+        final int srcW = srcMat.cols;
+        final int srcH = srcMat.rows;
+        final List<Uint8List?> crops = [];
+        for (final raw in rawBoxes) {
+          final b = (raw as List).cast<num>();
+          final bounds = FaceBoxTransform.originalSpaceCropBounds(
+            b[0].toDouble(),
+            b[1].toDouble(),
+            b[2].toDouble(),
+            b[3].toDouble(),
+            orientation,
+            srcW,
+            srcH,
+            paddingFraction: paddingFraction,
+          );
+          if (bounds == null) {
+            crops.add(null);
+            continue;
+          }
+          final (x, y, w, h) = bounds;
+          cv.Mat? region;
+          cv.Mat? resized;
+          try {
+            // region() returns a view over srcMat's pixels; resize/encode it
+            // before srcMat is disposed (done after the loop).
+            region = srcMat.region(cv.Rect(x, y, w, h));
+            final int longest = w > h ? w : h;
+            final double scale =
+                longest > maxDimension ? maxDimension / longest : 1.0;
+            final int tw = (w * scale).round().clamp(1, maxDimension);
+            final int th = (h * scale).round().clamp(1, maxDimension);
+            resized = cv.resize(
+              region,
+              (tw, th),
+              interpolation: cv.INTER_AREA,
+            );
+            final (ok, jpg) = cv.imencode(
+              '.jpg',
+              resized,
+              params: cv.VecI32.fromList([cv.IMWRITE_JPEG_QUALITY, quality]),
+            );
+            crops.add(ok ? jpg : null);
+          } catch (_) {
+            crops.add(null);
+          } finally {
+            region?.dispose();
+            resized?.dispose();
+          }
+        }
+        srcMat.dispose();
+        return crops;
 
       case 'prepareSourceMat':
         // Decode the source once and cache it under srcId (the exact Mat the
