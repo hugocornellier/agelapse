@@ -20,7 +20,14 @@ Pod::Spec.new do |s|
   s.default_subspec = 'full-gpl'
 
   s.dependency          'Flutter'
-  s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }
+  s.pod_target_xcconfig = {
+    'DEFINES_MODULE' => 'YES',
+    # The simulator xcframework slice ships a native arm64 slice, so arm64 must
+    # NOT be excluded for the simulator (required by Apple Silicon / Xcode 26+).
+    # i386 stays excluded (no 32-bit simulator slice exists / is supported).
+    'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386',
+    'HEADER_SEARCH_PATHS' => '$(inherited) "$(PODS_TARGET_SRCROOT)/ffmpeg_kit_flutter_new/Frameworks/ffmpegkit.xcframework/ios-arm64_x86_64-simulator/ffmpegkit.framework/Headers" "$(PODS_TARGET_SRCROOT)/ffmpeg_kit_flutter_new/Frameworks/ffmpegkit.xcframework/ios-arm64/ffmpegkit.framework/Headers"'
+  }
 
   s.subspec 'full-gpl' do |ss|
     # Adding pre-install hook

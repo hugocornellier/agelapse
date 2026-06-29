@@ -3,37 +3,6 @@ PODS:
     - Flutter
   - device_info_plus (0.0.1):
     - Flutter
-  - DKImagePickerController/Core (4.3.9):
-    - DKImagePickerController/ImageDataManager
-    - DKImagePickerController/Resource
-  - DKImagePickerController/ImageDataManager (4.3.9)
-  - DKImagePickerController/PhotoGallery (4.3.9):
-    - DKImagePickerController/Core
-    - DKPhotoGallery
-  - DKImagePickerController/Resource (4.3.9)
-  - DKPhotoGallery (0.0.19):
-    - DKPhotoGallery/Core (= 0.0.19)
-    - DKPhotoGallery/Model (= 0.0.19)
-    - DKPhotoGallery/Preview (= 0.0.19)
-    - DKPhotoGallery/Resource (= 0.0.19)
-    - SDWebImage
-    - SwiftyGif
-  - DKPhotoGallery/Core (0.0.19):
-    - DKPhotoGallery/Model
-    - DKPhotoGallery/Preview
-    - SDWebImage
-    - SwiftyGif
-  - DKPhotoGallery/Model (0.0.19):
-    - SDWebImage
-    - SwiftyGif
-  - DKPhotoGallery/Preview (0.0.19):
-    - DKPhotoGallery/Model
-    - DKPhotoGallery/Resource
-    - SDWebImage
-    - SwiftyGif
-  - DKPhotoGallery/Resource (0.0.19):
-    - SDWebImage
-    - SwiftyGif
   - downloadsfolder (0.0.1):
     - Flutter
   - fast_thumbnail (0.1.0):
@@ -44,8 +13,8 @@ PODS:
   - ffmpeg_kit_flutter_new/full-gpl (1.0.0):
     - Flutter
   - file_picker (0.0.1):
-    - DKImagePickerController/PhotoGallery
     - Flutter
+    - FlutterMacOS
   - file_selector_ios (0.0.1):
     - Flutter
   - Flutter (1.0.0)
@@ -54,8 +23,6 @@ PODS:
   - flutter_litert (3.2.0):
     - Flutter
   - flutter_local_notifications (0.0.1):
-    - Flutter
-  - flutter_native_splash (2.4.3):
     - Flutter
   - flutter_timezone (0.0.1):
     - Flutter
@@ -67,16 +34,13 @@ PODS:
     - Flutter
   - package_info_plus (0.4.5):
     - Flutter
-  - permission_handler_apple (9.3.0):
+  - permission_handler_apple (9.4.8):
     - Flutter
   - photo_manager (3.9.0):
     - Flutter
     - FlutterMacOS
   - saver_gallery (0.0.1):
     - Flutter
-  - SDWebImage (5.21.7):
-    - SDWebImage/Core (= 5.21.7)
-  - SDWebImage/Core (5.21.7)
   - sensors_plus (0.0.1):
     - Flutter
   - share_plus (0.0.1):
@@ -109,7 +73,6 @@ PODS:
     - sqlite3/perf-threadsafe
     - sqlite3/rtree
     - sqlite3/session
-  - SwiftyGif (5.4.5)
   - url_launcher_ios (0.0.1):
     - Flutter
   - vibration (3.0.0):
@@ -126,13 +89,12 @@ DEPENDENCIES:
   - downloadsfolder (from `.symlinks/plugins/downloadsfolder/ios`)
   - fast_thumbnail (from `.symlinks/plugins/fast_thumbnail/ios`)
   - ffmpeg_kit_flutter_new (from `.symlinks/plugins/ffmpeg_kit_flutter_new/ios`)
-  - file_picker (from `.symlinks/plugins/file_picker/ios`)
+  - file_picker (from `.symlinks/plugins/file_picker/darwin`)
   - file_selector_ios (from `.symlinks/plugins/file_selector_ios/ios`)
   - Flutter (from `Flutter`)
   - flutter_avif_ios (from `.symlinks/plugins/flutter_avif_ios/ios`)
   - flutter_litert (from `.symlinks/plugins/flutter_litert/ios`)
   - flutter_local_notifications (from `.symlinks/plugins/flutter_local_notifications/ios`)
-  - flutter_native_splash (from `.symlinks/plugins/flutter_native_splash/ios`)
   - flutter_timezone (from `.symlinks/plugins/flutter_timezone/ios`)
   - heic_native (from `.symlinks/plugins/heic_native/ios`)
   - integration_test (from `.symlinks/plugins/integration_test/ios`)
@@ -152,11 +114,7 @@ DEPENDENCIES:
 
 SPEC REPOS:
   trunk:
-    - DKImagePickerController
-    - DKPhotoGallery
-    - SDWebImage
     - sqlite3
-    - SwiftyGif
 
 EXTERNAL SOURCES:
   camera_avfoundation:
@@ -170,7 +128,7 @@ EXTERNAL SOURCES:
   ffmpeg_kit_flutter_new:
     :path: ".symlinks/plugins/ffmpeg_kit_flutter_new/ios"
   file_picker:
-    :path: ".symlinks/plugins/file_picker/ios"
+    :path: ".symlinks/plugins/file_picker/darwin"
   file_selector_ios:
     :path: ".symlinks/plugins/file_selector_ios/ios"
   Flutter:
@@ -181,8 +139,6 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/flutter_litert/ios"
   flutter_local_notifications:
     :path: ".symlinks/plugins/flutter_local_notifications/ios"
-  flutter_native_splash:
-    :path: ".symlinks/plugins/flutter_native_splash/ios"
   flutter_timezone:
     :path: ".symlinks/plugins/flutter_timezone/ios"
   heic_native:
@@ -219,36 +175,31 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   camera_avfoundation: 968a9a5323c79a99c166ad9d7866bfd2047b5a9b
   device_info_plus: 21fcca2080fbcd348be798aa36c3e5ed849eefbe
-  DKImagePickerController: 946cec48c7873164274ecc4624d19e3da4c1ef3c
-  DKPhotoGallery: b3834fecb755ee09a593d7c9e389d8b5d6deed60
   downloadsfolder: 7d5c7b5d23e3c4dded522ff2a2ef14a56846378a
   fast_thumbnail: 76e71ca044ae63ff54a47084ee6bc2ccecc9a0e1
-  ffmpeg_kit_flutter_new: c873ca832cbd641e3f5f6047372102ee71578a79
-  file_picker: a0560bc09d61de87f12d246fc47d2119e6ef37be
+  ffmpeg_kit_flutter_new: a16a6ce31603a82fedf30c74b2904ae1ad85bf7f
+  file_picker: 70164d9778c42c47218d6cd79ce435de0856b11a
   file_selector_ios: ec57ec07954363dd730b642e765e58f199bb621a
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   flutter_avif_ios: 2553d2aafda56339cf924e943da89ad3f40af2dd
   flutter_litert: adf39895ca89ce361949aa381d6309024e4c5dd4
   flutter_local_notifications: 643a3eda1ce1c0599413ca31672536d423dee214
-  flutter_native_splash: c32d145d68aeda5502d5f543ee38c192065986cf
   flutter_timezone: 7c838e17ffd4645d261e87037e5bebf6d38fe544
   heic_native: e7fb6286bc1553bb72015eb185fe47c296d19b17
   integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
   media_kit_video: f3b0d035d89def15cfbbcf7dc2ae278f201e2f83
   package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499
-  permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d
+  permission_handler_apple: 92d754bbaa7361d436db2d6c3c1c2a0fdcec462e
   photo_manager: 25fd77df14f4f0ba5ef99e2c61814dde77e2bceb
-  saver_gallery: af2d0c762dafda254e0ad025ef0dabd6506cd490
-  SDWebImage: e9fc87c1aab89a8ab1bbd74eba378c6f53be8abf
-  sensors_plus: 6a11ed0c2e1d0bd0b20b4029d3bad27d96e0c65b
+  saver_gallery: 44507a28b0ace1a0446473fb8cbd36179402f5af
+  sensors_plus: b70a93b69dafdabd26ce4ac3f4d0529ab9acc4ca
   share_plus: 50da8cb520a8f0f65671c6c6a99b3617ed10a58a
   sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
   sqlite3: a51c07cf16e023d6c48abd5e5791a61a47354921
   sqlite3_flutter_libs: b3e120efe9a82017e5552a620f696589ed4f62ab
-  SwiftyGif: 706c60cf65fa2bc5ee0313beece843c8eb8194d4
   url_launcher_ios: 7a95fa5b60cc718a708b8f2966718e93db0cef1b
   vibration: ca8104a8875b9c493e15b21b04e456befd0ff6eb
-  video_player_avfoundation: dd410b52df6d2466a42d28550e33e4146928280a
+  video_player_avfoundation: 3453f792138786248960ca029747fcd9f318ef52
   wakelock_plus: e29112ab3ef0b318e58cfa5c32326458be66b556
 
 PODFILE CHECKSUM: 79d0d9d69cd3a1ff371c2ac34781fa82ea1cee51

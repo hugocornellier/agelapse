@@ -14,7 +14,11 @@ jobs:
       MIN_IOS_VERSION: "14.0"
       # arm64 = device (platform 2: iPhoneOS)
       # x86_64 = simulator (platform 7: iPhoneSimulator)
-      # Apple Silicon simulators run x86_64 via Rosetta (EXCLUDED_ARCHS=arm64 in xcconfig).
+      # The arm64 iOS-simulator slice is derived afterwards by
+      # scripts/make_xcframeworks.sh, which retags this device arm64 slice to the
+      # simulator platform (vtool -set-build-version 7). FFmpeg is plain C, so the
+      # retagged slice runs natively on Apple Silicon simulators -- no Rosetta and
+      # no EXCLUDED_ARCHS=arm64 hack are needed.
       ARCHS: "arm64 x86_64"
 
     steps:

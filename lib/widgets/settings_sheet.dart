@@ -495,19 +495,19 @@ class SettingsSheetState extends State<SettingsSheet> {
 
     try {
       // Open file picker for TTF/OTF files
-      final result = await FilePicker.pickFiles(
+      final result = await FilePicker.pickFile(
         type: FileType.custom,
         allowedExtensions: ['ttf', 'otf'],
         dialogTitle: 'Select a font file (TTF or OTF)',
       );
 
-      if (result == null || result.files.isEmpty) {
+      if (result == null) {
         if (!mounted) return null;
         setState(() => _isLoadingCustomFonts = false);
         return null;
       }
 
-      final filePath = result.files.first.path;
+      final filePath = result.path;
       if (filePath == null) {
         if (!mounted) return null;
         setState(() => _isLoadingCustomFonts = false);
@@ -4675,15 +4675,14 @@ class ImagePickerWidgetState extends State<ImagePickerWidget> {
   }
 
   Future<void> _pickImage() async {
-    FilePickerResult? result = await FilePicker.pickFiles(
+    final PlatformFile? result = await FilePicker.pickFile(
       type: FileType.image,
-      allowMultiple: false,
     );
     if (!mounted) return;
     setState(() => uploading = true);
 
-    if (result != null && result.files.isNotEmpty) {
-      String imagePath = result.files.single.path!;
+    if (result != null) {
+      String imagePath = result.path!;
       File file = File(imagePath);
       Uint8List bytes = await file.readAsBytes();
 

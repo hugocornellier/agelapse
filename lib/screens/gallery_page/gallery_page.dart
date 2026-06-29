@@ -1123,7 +1123,7 @@ class GalleryPageState extends State<GalleryPage>
     try {
       FilePickerResult? pickedFiles;
       try {
-        pickedFiles = await FilePicker.pickFiles(allowMultiple: true);
+        pickedFiles = await FilePicker.pickFiles();
       } catch (e) {
         LogService.instance.log(e.toString());
         return;
