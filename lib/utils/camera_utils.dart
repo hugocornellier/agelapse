@@ -86,7 +86,7 @@ class CameraUtils {
         fileName: path.basename(filePath),
         filePath: filePath,
         skipIfExists: false,
-        androidRelativePath: "Pictures/AgeLapse Exports",
+        albumPath: "AgeLapse Exports",
       );
 
       if (result.isSuccess) {

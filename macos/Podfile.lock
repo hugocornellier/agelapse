@@ -10,6 +10,7 @@ PODS:
   - fast_thumbnail (0.1.0):
     - FlutterMacOS
   - file_picker (0.0.1):
+    - Flutter
     - FlutterMacOS
   - file_selector_macos (0.0.1):
     - FlutterMacOS
@@ -79,7 +80,7 @@ DEPENDENCIES:
   - device_info_plus (from `Flutter/ephemeral/.symlinks/plugins/device_info_plus/macos`)
   - downloadsfolder (from `Flutter/ephemeral/.symlinks/plugins/downloadsfolder/macos`)
   - fast_thumbnail (from `Flutter/ephemeral/.symlinks/plugins/fast_thumbnail/macos`)
-  - file_picker (from `Flutter/ephemeral/.symlinks/plugins/file_picker/macos`)
+  - file_picker (from `Flutter/ephemeral/.symlinks/plugins/file_picker/darwin`)
   - file_selector_macos (from `Flutter/ephemeral/.symlinks/plugins/file_selector_macos/macos`)
   - flutter_avif_macos (from `Flutter/ephemeral/.symlinks/plugins/flutter_avif_macos/macos`)
   - flutter_litert (from `Flutter/ephemeral/.symlinks/plugins/flutter_litert/macos`)
@@ -115,7 +116,7 @@ EXTERNAL SOURCES:
   fast_thumbnail:
     :path: Flutter/ephemeral/.symlinks/plugins/fast_thumbnail/macos
   file_picker:
-    :path: Flutter/ephemeral/.symlinks/plugins/file_picker/macos
+    :path: Flutter/ephemeral/.symlinks/plugins/file_picker/darwin
   file_selector_macos:
     :path: Flutter/ephemeral/.symlinks/plugins/file_selector_macos/macos
   flutter_avif_macos:
@@ -159,7 +160,7 @@ SPEC CHECKSUMS:
   device_info_plus: 4fb280989f669696856f8b129e4a5e3cd6c48f76
   downloadsfolder: 9a9a5fb6eee0abe38756e788bb248d1c21490a6e
   fast_thumbnail: 2417991edd04c434d5d80b415b70136f0ec49dfc
-  file_picker: 7584aae6fa07a041af2b36a2655122d42f578c1a
+  file_picker: 70164d9778c42c47218d6cd79ce435de0856b11a
   file_selector_macos: 9e9e068e90ebee155097d00e89ae91edb2374db7
   flutter_avif_macos: 9ed61d67adfbd6964eccb59971020fb55c31fc11
   flutter_litert: 0898a443f5a78923863d3180780ba338fcb3f944
@@ -170,13 +171,13 @@ SPEC CHECKSUMS:
   media_kit_video: 28d7d27611c7769a2464eb7621c37386a61dcc9a
   package_info_plus: f0052d280d17aa382b932f399edf32507174e870
   photo_manager: 25fd77df14f4f0ba5ef99e2c61814dde77e2bceb
-  screen_retriever_macos: 452e51764a9e1cdb74b3c541238795849f21557f
+  screen_retriever_macos: c5508cc3c66ff0d4db650480cf0ab691e220d933
   share_plus: 510bf0af1a42cd602274b4629920c9649c52f4cc
   sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
   sqlite3: a51c07cf16e023d6c48abd5e5791a61a47354921
   sqlite3_flutter_libs: b3e120efe9a82017e5552a620f696589ed4f62ab
   url_launcher_macos: f87a979182d112f911de6820aefddaf56ee9fbfd
-  video_player_avfoundation: dd410b52df6d2466a42d28550e33e4146928280a
+  video_player_avfoundation: 3453f792138786248960ca029747fcd9f318ef52
   wakelock_plus: 917609be14d812ddd9e9528876538b2263aaa03b
   window_manager: b729e31d38fb04905235df9ea896128991cad99e
 

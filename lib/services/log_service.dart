@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
@@ -139,16 +140,14 @@ class LogService {
       if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
         // Desktop: Native save dialog
         final dateStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
-        final result = await FilePicker.saveFile(
+        // file_picker >=12 requires `bytes` and writes the file itself.
+        await FilePicker.saveFile(
           dialogTitle: 'Save AgeLapse Logs',
           fileName: 'agelapse_logs_$dateStr.log',
           type: FileType.custom,
           allowedExtensions: ['log', 'txt'],
+          bytes: Uint8List.fromList(utf8.encode(exportContent)),
         );
-
-        if (result != null) {
-          await File(result).writeAsString(exportContent);
-        }
       } else {
         // Mobile: Share dialog
         final exportPath = path.join(
