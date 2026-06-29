@@ -563,16 +563,14 @@ void main() {
       },
     );
 
-    // ─── Test F: ZIP import (desktop only) ───────────────────────────────
+    // ─── Test F: ZIP import (all platforms) ──────────────────────────────
+    // Routes through processPickedFile so each platform exercises its own
+    // implementation: desktop -> processPickedZipFileDesktop (archive),
+    // mobile -> processPickedZipFile (IsolateZipReader).
 
     testWidgets(
-      'Test F: ZIP containing 3 JPEGs imports all entries (desktop only)',
+      'Test F: ZIP containing 3 JPEGs imports all entries (all platforms)',
       (tester) async {
-        if (Platform.isIOS || Platform.isAndroid) {
-          markTestSkipped('ZIP desktop import: desktop only');
-          return;
-        }
-
         app.main();
         await tester.pump(const Duration(seconds: 2));
 
@@ -623,14 +621,14 @@ void main() {
           int importedCount = 0;
           final notifier = ValueNotifier<String>('');
 
-          await GalleryUtils.processPickedZipFileDesktop(
+          await GalleryUtils.processPickedFile(
             File(zipWithTinyPath),
             testProjectId!,
             notifier,
-            () {},
-            (p) {},
-            () => successCount++,
-            (v) => importedCount += v,
+            onImagesLoaded: () {},
+            setProgressInMain: (p) {},
+            increaseSuccessfulImportCount: () => successCount++,
+            increasePhotosImported: (v) => importedCount += v,
           );
 
           notifier.dispose();
@@ -644,6 +642,292 @@ void main() {
             3,
             reason: 'All 3 valid JPEGs should be imported; tiny entry filtered',
           );
+        } finally {
+          await tempDir.delete(recursive: true);
+        }
+      },
+    );
+
+    // ─── Test G: export -> re-import round-trip (all platforms) ──────────
+
+    testWidgets(
+      'Test G: exported ZIP re-imports into a fresh project (round-trip)',
+      (tester) async {
+        app.main();
+        await tester.pump(const Duration(seconds: 2));
+
+        if (fixturesUnavailable) {
+          markTestSkipped('Test fixtures not available: $fixtureLoadError');
+          return;
+        }
+
+        final ts = DateTime.now().millisecondsSinceEpoch;
+        final sourceProjectId = await DB.instance.addProject(
+          'Import Test G Source',
+          'face',
+          ts,
+        );
+        testProjectId = sourceProjectId;
+
+        // Seed the source project with 3 raw photos, then export to ZIP.
+        final rawDir = await DirUtils.getRawPhotoDirPath(sourceProjectId);
+        await Directory(rawDir).create(recursive: true);
+        final rawPaths = <String>[];
+        for (int day = 1; day <= 3; day++) {
+          final fixturePath = await getSampleFacePathAsync(day);
+          final photoTs = (ts + day * 86400000).toString();
+          final destPath = p.join(rawDir, '$photoTs.jpg');
+          await File(fixturePath).copy(destPath);
+          rawPaths.add(destPath);
+          final len = await File(destPath).length();
+          await DB.instance.addPhoto(
+            photoTs,
+            sourceProjectId,
+            '.jpg',
+            len,
+            '$photoTs.jpg',
+            'portrait',
+          );
+        }
+
+        final exportResult = await GalleryUtils.exportZipFile(
+          sourceProjectId,
+          'Import Test G Source',
+          {'Raw': rawPaths, 'Stabilized': <String>[]},
+          (_) {},
+        );
+        expect(exportResult, 'success', reason: 'Export should succeed');
+
+        // Locate the exported ZIP.
+        await tester.pump(const Duration(seconds: 1));
+        final exportsDir = Directory(
+          await DirUtils.getExportsDirPath(sourceProjectId),
+        );
+        final exportedZips = await exportsDir
+            .list(followLinks: false)
+            .where((e) => e is File && e.path.endsWith('.zip'))
+            .cast<File>()
+            .toList();
+        expect(exportedZips, isNotEmpty, reason: 'Export should create a ZIP');
+
+        // Re-import the ZIP into a fresh project and verify the round-trip.
+        final targetProjectId = await DB.instance.addProject(
+          'Import Test G Target',
+          'face',
+          DateTime.now().millisecondsSinceEpoch,
+        );
+        try {
+          final notifier = ValueNotifier<String>('');
+          try {
+            await GalleryUtils.processPickedFile(
+              exportedZips.first,
+              targetProjectId,
+              notifier,
+              onImagesLoaded: () {},
+              setProgressInMain: (_) {},
+              increaseSuccessfulImportCount: () {},
+              increasePhotosImported: (_) {},
+            );
+          } finally {
+            notifier.dispose();
+          }
+
+          await tester.pump(const Duration(seconds: 5));
+
+          final reimported = await DB.instance.getPhotosByProjectID(
+            targetProjectId,
+          );
+          expect(
+            reimported.length,
+            3,
+            reason: 'All 3 exported photos should re-import (round-trip)',
+          );
+        } finally {
+          try {
+            final targetDir = await DirUtils.getProjectDirPath(targetProjectId);
+            if (await Directory(targetDir).exists()) {
+              await Directory(targetDir).delete(recursive: true);
+            }
+            await DB.instance.deleteProject(targetProjectId);
+          } catch (_) {}
+        }
+      },
+    );
+
+    // ─── Test H: ZIP with no importable entries imports gracefully ───────
+
+    testWidgets(
+      'Test H: ZIP with only filtered entries imports zero photos',
+      (tester) async {
+        app.main();
+        await tester.pump(const Duration(seconds: 2));
+
+        final ts = DateTime.now().millisecondsSinceEpoch;
+        testProjectId =
+            await DB.instance.addProject('Import Test H', 'face', ts);
+
+        final tempDir = await Directory.systemTemp.createTemp('import_test_h_');
+        try {
+          // A sub-threshold image, a non-image file, and a .DS_Store entry:
+          // each rejected by the import filter for a different reason.
+          final tinyPath = p.join(tempDir.path, 'tiny.jpg');
+          await File(tinyPath).writeAsBytes(List.filled(100, 0xFF));
+          final textPath = p.join(tempDir.path, 'notes.txt');
+          await File(textPath).writeAsString('not an image');
+          final dsStorePath = p.join(tempDir.path, '.DS_Store');
+          await File(dsStorePath).writeAsBytes(List.filled(20000, 0x00));
+
+          final zipPath = p.join(tempDir.path, 'filtered_only.zip');
+          final encoder = ZipFileEncoder();
+          encoder.create(zipPath);
+          await encoder.addFile(File(tinyPath));
+          await encoder.addFile(File(textPath));
+          await encoder.addFile(File(dsStorePath));
+          await encoder.close();
+
+          final notifier = ValueNotifier<String>('');
+          try {
+            await GalleryUtils.processPickedFile(
+              File(zipPath),
+              testProjectId!,
+              notifier,
+              onImagesLoaded: () {},
+              setProgressInMain: (_) {},
+              increaseSuccessfulImportCount: () {},
+              increasePhotosImported: (_) {},
+            );
+          } finally {
+            notifier.dispose();
+          }
+
+          await tester.pump(const Duration(seconds: 2));
+
+          final photos = await DB.instance.getPhotosByProjectID(testProjectId!);
+          expect(
+            photos,
+            isEmpty,
+            reason: 'No importable entries -> no photos, no error',
+          );
+        } finally {
+          await tempDir.delete(recursive: true);
+        }
+      },
+    );
+
+    // ─── Test I: ZIP with non-ASCII (UTF-8) entry names ──────────────────
+
+    testWidgets(
+      'Test I: ZIP with UTF-8 entry names imports correctly',
+      (tester) async {
+        app.main();
+        await tester.pump(const Duration(seconds: 2));
+
+        if (fixturesUnavailable) {
+          markTestSkipped('Test fixtures not available: $fixtureLoadError');
+          return;
+        }
+
+        final ts = DateTime.now().millisecondsSinceEpoch;
+        testProjectId =
+            await DB.instance.addProject('Import Test I', 'face', ts);
+
+        final tempDir = await Directory.systemTemp.createTemp('import_test_i_');
+        try {
+          final facePath = await getSampleFacePathAsync(1);
+          final zipPath = p.join(tempDir.path, 'unicode_names.zip');
+          final encoder = ZipFileEncoder();
+          encoder.create(zipPath);
+          // Non-ASCII archive entry name (Japanese + accented Latin).
+          await encoder.addFile(File(facePath), '写真_café_テスト.jpg');
+          await encoder.close();
+
+          final notifier = ValueNotifier<String>('');
+          try {
+            await GalleryUtils.processPickedFile(
+              File(zipPath),
+              testProjectId!,
+              notifier,
+              onImagesLoaded: () {},
+              setProgressInMain: (_) {},
+              increaseSuccessfulImportCount: () {},
+              increasePhotosImported: (_) {},
+            );
+          } finally {
+            notifier.dispose();
+          }
+
+          await tester.pump(const Duration(seconds: 3));
+
+          final photos = await DB.instance.getPhotosByProjectID(testProjectId!);
+          expect(
+            photos.length,
+            greaterThanOrEqualTo(1),
+            reason: 'Image under a UTF-8 entry name should import',
+          );
+        } finally {
+          await tempDir.delete(recursive: true);
+        }
+      },
+    );
+
+    // ─── Test J: corrupt/truncated ZIP does not crash the import ─────────
+
+    testWidgets(
+      'Test J: truncated ZIP imports zero photos without crashing',
+      (tester) async {
+        app.main();
+        await tester.pump(const Duration(seconds: 2));
+
+        if (fixturesUnavailable) {
+          markTestSkipped('Test fixtures not available: $fixtureLoadError');
+          return;
+        }
+
+        final ts = DateTime.now().millisecondsSinceEpoch;
+        testProjectId =
+            await DB.instance.addProject('Import Test J', 'face', ts);
+
+        final tempDir = await Directory.systemTemp.createTemp('import_test_j_');
+        try {
+          // Build a valid ZIP, then truncate it to simulate a corrupt or
+          // interrupted file (the central directory at the end is lost).
+          final facePath = await getSampleFacePathAsync(1);
+          final goodZipPath = p.join(tempDir.path, 'good.zip');
+          final encoder = ZipFileEncoder();
+          encoder.create(goodZipPath);
+          await encoder.addFile(File(facePath), 'face.jpg');
+          await encoder.close();
+
+          final goodBytes = await File(goodZipPath).readAsBytes();
+          final corruptZipPath = p.join(tempDir.path, 'corrupt.zip');
+          await File(
+            corruptZipPath,
+          ).writeAsBytes(goodBytes.sublist(0, goodBytes.length ~/ 2));
+
+          final notifier = ValueNotifier<String>('');
+          try {
+            await GalleryUtils.processPickedFile(
+              File(corruptZipPath),
+              testProjectId!,
+              notifier,
+              onImagesLoaded: () {},
+              setProgressInMain: (_) {},
+              increaseSuccessfulImportCount: () {},
+              increasePhotosImported: (_) {},
+            );
+          } catch (_) {
+            // Acceptable: a corrupt archive may surface a decode error. The
+            // guarantee under test is that it imports no garbage and does not
+            // crash the test process.
+          } finally {
+            notifier.dispose();
+          }
+
+          await tester.pump(const Duration(seconds: 2));
+
+          final photos = await DB.instance.getPhotosByProjectID(testProjectId!);
+          expect(photos, isEmpty,
+              reason: 'A corrupt ZIP should import nothing');
         } finally {
           await tempDir.delete(recursive: true);
         }

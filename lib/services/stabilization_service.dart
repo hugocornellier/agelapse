@@ -12,6 +12,7 @@ import 'ffmpeg_process_manager.dart';
 import 'isolate_manager.dart';
 import 'isolate_pool.dart';
 import 'log_service.dart';
+import 'ordered_reveal_gate.dart';
 import 'stabilization_benchmark.dart';
 import 'stabilization_progress.dart';
 import 'stabilization_settings.dart';
@@ -446,12 +447,25 @@ class StabilizationService {
   ) async {
     FaceStabilizer.resetCacheCounters();
 
+    // Gate that releases per-photo reveal notifications to the gallery in
+    // strict timestamp order, even though the fast path below finishes photos
+    // out of order. One gate per batch; [photos] is already ascending by
+    // timestamp (StabUtils.getUnstabilizedPhotos orders by timestamp ASC).
+    final gate = OrderedRevealGate([
+      for (final photo in photos) photo['timestamp'].toString(),
+    ]);
+
     // Phase 1: parallel transform-cache fast path. Cache-hit renders don't
     // touch per-photo FaceStabilizer state (detection is bypassed), so we can
     // run several at once and saturate the warp isolate pool. Anything that
     // misses falls through to the serial slow path in phase 2.
-    final List<Map<String, dynamic>> remaining =
-        await _runFastPathPhase(photos, stopwatch, progressState, projectId);
+    final List<Map<String, dynamic>> remaining = await _runFastPathPhase(
+      photos,
+      stopwatch,
+      progressState,
+      projectId,
+      gate,
+    );
 
     // Phase 2: serial slow path for misses; detection mutates shared state,
     // so this must stay sequential.
@@ -476,7 +490,7 @@ class StabilizationService {
         _recordPhotoSuccess(result);
       }
 
-      _advanceProgress(photo, stopwatch, progressState, projectId);
+      _advanceProgress(photo, stopwatch, progressState, projectId, gate);
     }
 
     final totalPhotos = photos.length;
@@ -496,6 +510,7 @@ class StabilizationService {
     Stopwatch stopwatch,
     _ProgressState progressState,
     int projectId,
+    OrderedRevealGate gate,
   ) async {
     final workerCount = _fastPathWorkerCount(photos.length);
     if (workerCount <= 1) {
@@ -525,7 +540,7 @@ class StabilizationService {
         final hit = await _tryFastPathForPhoto(photo);
         if (hit != null && hit.success) {
           _recordPhotoSuccess(hit);
-          _advanceProgress(photo, stopwatch, progressState, projectId);
+          _advanceProgress(photo, stopwatch, progressState, projectId, gate);
         } else {
           missedByIndex[i] = photo;
         }
@@ -582,6 +597,7 @@ class StabilizationService {
     Stopwatch stopwatch,
     _ProgressState progressState,
     int projectId,
+    OrderedRevealGate gate,
   ) {
     _currentPhoto++;
     progressState.photosDone++;
@@ -600,16 +616,45 @@ class StabilizationService {
     if (pct >= 100) pct = 99.9;
     if (pct < 0) pct = 0.0;
 
-    _emitProgress(
-      StabilizationProgress.stabilizing(
-        currentPhoto: _currentPhoto,
-        totalPhotos: _totalPhotos,
-        progressPercent: pct,
-        eta: _eta,
-        projectId: projectId,
-        lastStabilizedTimestamp: photo['timestamp']?.toString(),
-      ),
-    );
+    // Hand the finished photo to the reveal gate. It returns the timestamps
+    // that may now be shown, in ascending order: this photo plus any earlier
+    // ones that finished first and were buffered waiting for it. The gate keeps
+    // the gallery filling oldest->newest even though the parallel fast path
+    // finishes photos out of order.
+    final timestamp = photo['timestamp']?.toString();
+    final released =
+        timestamp == null ? const <String>[] : gate.complete(timestamp);
+
+    if (released.isEmpty) {
+      // Buffered behind an earlier photo that hasn't finished yet. Advance the
+      // bar/ETA/counter immediately (work happened) but reveal nothing now; the
+      // reveal fires later, in order, once the earlier photo lands.
+      _emitProgress(
+        StabilizationProgress.stabilizing(
+          currentPhoto: _currentPhoto,
+          totalPhotos: _totalPhotos,
+          progressPercent: pct,
+          eta: _eta,
+          projectId: projectId,
+        ),
+      );
+      return;
+    }
+
+    // Emit one reveal per released timestamp, in order. Each carries the live
+    // bar/ETA too, so no separate work-progress tick is needed in this branch.
+    for (final revealTimestamp in released) {
+      _emitProgress(
+        StabilizationProgress.stabilizing(
+          currentPhoto: _currentPhoto,
+          totalPhotos: _totalPhotos,
+          progressPercent: pct,
+          eta: _eta,
+          projectId: projectId,
+          lastStabilizedTimestamp: revealTimestamp,
+        ),
+      );
+    }
   }
 
   /// Worker count for the parallel transform-cache fast path. Capped at the

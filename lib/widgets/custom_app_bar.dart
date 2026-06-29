@@ -239,18 +239,20 @@ class CustomAppBarState extends State<CustomAppBar> {
         ),
       );
     } else {
-      // Caller-supplied transitionAnimationController is NOT disposed by the
-      // framework (ModalBottomSheetRoute sets willDisposeAnimationController =
-      // false), so we own it and dispose it when the sheet closes.
-      final transitionController = AnimationController(
-        duration: const Duration(milliseconds: 150),
-        vsync: Navigator.of(context),
-      );
+      // Use sheetAnimationStyle (not a caller-owned transitionAnimationController)
+      // for the fast 150ms feel. The returned future is `popped`, which completes
+      // before the exit animation runs; disposing a caller-owned controller there
+      // freezes it mid-reverse so the route never finalizes and the sheet/barrier
+      // stay stuck. Letting the framework own the controller disposes it at the
+      // correct point. Both duration and reverseDuration must be set: the close
+      // otherwise falls back to the 200ms default.
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
-        // Use a very fast animation to minimize perceived lag from shader compilation
-        transitionAnimationController: transitionController,
+        sheetAnimationStyle: const AnimationStyle(
+          duration: Duration(milliseconds: 150),
+          reverseDuration: Duration(milliseconds: 150),
+        ),
         builder: (context) {
           return SettingsSheet(
             projectId: projectId,
@@ -261,7 +263,7 @@ class CustomAppBarState extends State<CustomAppBar> {
             recompileVideoCallback: recompileVideoCallback,
           );
         },
-      ).whenComplete(transitionController.dispose);
+      );
     }
   }
 

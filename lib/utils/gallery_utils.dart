@@ -4,7 +4,6 @@ import 'dart:isolate';
 import 'dart:ui' as ui;
 
 import 'package:archive/archive_io.dart';
-import 'package:async_zip/async_zip.dart';
 import 'package:exif_reader/exif_reader.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
@@ -23,6 +22,7 @@ import 'camera_utils.dart';
 import 'dir_utils.dart';
 import 'export_naming_utils.dart';
 import 'image_format_utils.dart';
+import 'isolate_zip_reader.dart';
 import 'platform_utils.dart';
 import 'settings_utils.dart';
 import 'test_mode.dart' as test_config;
@@ -698,16 +698,17 @@ class GalleryUtils {
     void Function() increaseSuccessfulImportCount,
     void Function(int value) increasePhotosImported,
   ) async {
-    final reader = ZipFileReader();
+    final reader = IsolateZipReader();
     try {
-      reader.open(File(file.path));
-      final List<ZipEntry> rawEntries = (await reader.entries()).where((entry) {
+      await reader.open(File(file.path));
+      final List<ZipEntryInfo> rawEntries =
+          (await reader.entries()).where((entry) {
         final String basenameOnly = path.basename(entry.name);
         return entry.size >= 10000 &&
             ImageFormats.isAcceptedPath(basenameOnly) &&
             !entry.isDir;
       }).toList()
-        ..sort((a, b) => a.name.compareTo(b.name));
+            ..sort((a, b) => a.name.compareTo(b.name));
 
       final zipEntries = rawEntries
           .map(
@@ -729,7 +730,7 @@ class GalleryUtils {
         increasePhotosImported,
       );
     } finally {
-      reader.close();
+      await reader.close();
     }
   }
 

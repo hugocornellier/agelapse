@@ -97,6 +97,12 @@ class MainNavigationState extends State<MainNavigation>
   final StreamController<StabUpdateEvent> _stabUpdateController =
       StreamController<StabUpdateEvent>.broadcast();
 
+  /// Monotonic de-dupe key for photo-reveal events forwarded to the gallery.
+  /// The service releases reveals in timestamp order, which differs from
+  /// completion order, so [StabilizationProgress.currentPhoto] could repeat or
+  /// move backward and must not be used as the key.
+  int _stabRevealSequence = 0;
+
   /// Separate progress tracking for imports (not part of stabilization).
   int _importProgressPercent = 0;
 
@@ -145,12 +151,21 @@ class MainNavigationState extends State<MainNavigation>
       // Emit typed events for UI components (gallery, app bar, project page)
       switch (progress.state) {
         case StabilizationState.stabilizing:
-          _stabUpdateController.add(
-            StabUpdateEvent.photoStabilized(
-              progress.currentPhoto,
-              timestamp: progress.lastStabilizedTimestamp,
-            ),
-          );
+          // Only forward genuine reveal events (those carrying a timestamp).
+          // Work-progress ticks update the bar/ETA via the setState above but
+          // carry no timestamp; forwarding them would hit the gallery's
+          // null-timestamp branch and trigger an out-of-order full reload.
+          // Reveals arrive from the service already in timestamp order; use a
+          // monotonic sequence as the de-dupe key since completion order is not
+          // the same as reveal order.
+          if (progress.lastStabilizedTimestamp != null) {
+            _stabUpdateController.add(
+              StabUpdateEvent.photoStabilized(
+                ++_stabRevealSequence,
+                timestamp: progress.lastStabilizedTimestamp,
+              ),
+            );
+          }
           break;
         case StabilizationState.completed:
           _stabUpdateController.add(StabUpdateEvent.stabilizationComplete());

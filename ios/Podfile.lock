@@ -1,6 +1,4 @@
 PODS:
-  - async_zip (0.0.1):
-    - Flutter
   - camera_avfoundation (0.0.1):
     - Flutter
   - device_info_plus (0.0.1):
@@ -53,7 +51,7 @@ PODS:
   - Flutter (1.0.0)
   - flutter_avif_ios (0.0.1):
     - Flutter
-  - flutter_litert (0.0.1):
+  - flutter_litert (3.2.0):
     - Flutter
   - flutter_local_notifications (0.0.1):
     - Flutter
@@ -61,7 +59,7 @@ PODS:
     - Flutter
   - flutter_timezone (0.0.1):
     - Flutter
-  - heic_native (0.1.1):
+  - heic_native (1.0.0):
     - Flutter
   - integration_test (0.0.1):
     - Flutter
@@ -123,7 +121,6 @@ PODS:
     - Flutter
 
 DEPENDENCIES:
-  - async_zip (from `.symlinks/plugins/async_zip/ios`)
   - camera_avfoundation (from `.symlinks/plugins/camera_avfoundation/ios`)
   - device_info_plus (from `.symlinks/plugins/device_info_plus/ios`)
   - downloadsfolder (from `.symlinks/plugins/downloadsfolder/ios`)
@@ -162,8 +159,6 @@ SPEC REPOS:
     - SwiftyGif
 
 EXTERNAL SOURCES:
-  async_zip:
-    :path: ".symlinks/plugins/async_zip/ios"
   camera_avfoundation:
     :path: ".symlinks/plugins/camera_avfoundation/ios"
   device_info_plus:
@@ -222,23 +217,22 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/wakelock_plus/ios"
 
 SPEC CHECKSUMS:
-  async_zip: 1d6a4f059b13bd0f2c60eb2e32666d33166b96bd
   camera_avfoundation: 968a9a5323c79a99c166ad9d7866bfd2047b5a9b
   device_info_plus: 21fcca2080fbcd348be798aa36c3e5ed849eefbe
   DKImagePickerController: 946cec48c7873164274ecc4624d19e3da4c1ef3c
   DKPhotoGallery: b3834fecb755ee09a593d7c9e389d8b5d6deed60
   downloadsfolder: 7d5c7b5d23e3c4dded522ff2a2ef14a56846378a
   fast_thumbnail: 76e71ca044ae63ff54a47084ee6bc2ccecc9a0e1
-  ffmpeg_kit_flutter_new: 3b1638336f0b350bf2d5edac3258dc29e6b385b9
+  ffmpeg_kit_flutter_new: c873ca832cbd641e3f5f6047372102ee71578a79
   file_picker: a0560bc09d61de87f12d246fc47d2119e6ef37be
   file_selector_ios: ec57ec07954363dd730b642e765e58f199bb621a
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   flutter_avif_ios: 2553d2aafda56339cf924e943da89ad3f40af2dd
-  flutter_litert: d2b3d84e8e00eb6a8166dc2686a64ebe8a6497fa
+  flutter_litert: adf39895ca89ce361949aa381d6309024e4c5dd4
   flutter_local_notifications: 643a3eda1ce1c0599413ca31672536d423dee214
   flutter_native_splash: c32d145d68aeda5502d5f543ee38c192065986cf
   flutter_timezone: 7c838e17ffd4645d261e87037e5bebf6d38fe544
-  heic_native: aba770fab7b6876380c394fdab71717580018b38
+  heic_native: e7fb6286bc1553bb72015eb185fe47c296d19b17
   integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
   media_kit_video: f3b0d035d89def15cfbbcf7dc2ae278f201e2f83
   package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499

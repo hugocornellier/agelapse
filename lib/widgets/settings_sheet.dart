@@ -224,6 +224,7 @@ class SettingsSheetState extends State<SettingsSheet> {
     // Defer initialization until after the first frame to allow
     // the modal animation to start smoothly
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       _init();
     });
   }
@@ -346,6 +347,7 @@ class SettingsSheetState extends State<SettingsSheet> {
       SettingsUtil.loadBlurZoom(projectIdStr),
       SettingsUtil.loadBlurStrength(projectIdStr),
     ]);
+    if (!mounted) return;
 
     resolution = results[0] as String;
     aspectRatio = results[1] as String;
@@ -436,6 +438,7 @@ class SettingsSheetState extends State<SettingsSheet> {
     final settings = await SettingsUtil.loadAllDateStampSettings(
       widget.projectId.toString(),
     );
+    if (!mounted) return;
 
     _galleryDateLabelsEnabled = settings.galleryLabelsEnabled;
     _galleryRawDateLabelsEnabled = settings.galleryRawLabelsEnabled;
@@ -1665,6 +1668,12 @@ class SettingsSheetState extends State<SettingsSheet> {
   Widget _buildCloseButton() {
     return GestureDetector(
       onTap: () {
+        // Ignore repeat taps once the route is already closing: isCurrent flips
+        // false the moment a pop begins, so an unguarded second pop would close
+        // the page behind the sheet/dialog. Mirrors the isCurrent guard Flutter
+        // uses for the bottom sheet's own drag-to-dismiss close.
+        final route = ModalRoute.of(context);
+        if (route == null || !route.isCurrent) return;
         Navigator.of(context).pop();
         if (widget.onlyShowNotificationSettings) {
           Utils.navigateToScreenReplaceNoAnim(
@@ -4660,10 +4669,9 @@ class ImagePickerWidgetState extends State<ImagePickerWidget> {
 
   Future<void> _initializeData() async {
     watermarkFilePath = await DirUtils.getWatermarkFilePath(widget.projectId);
-    if (await assetExists(watermarkFilePath)) {
-      setState(() => watermarkExists = true);
-    }
-    setState(() {});
+    final bool exists = await assetExists(watermarkFilePath);
+    if (!mounted) return;
+    setState(() => watermarkExists = exists);
   }
 
   Future<void> _pickImage() async {
