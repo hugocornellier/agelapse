@@ -31,9 +31,6 @@ class StabilizationSettings {
     required this.lossless,
   });
 
-  /// Returns true if background should be transparent (alpha channel)
-  bool get isTransparentBackground => backgroundColorBGR == null;
-
   /// Load all settings in parallel (single DB round-trip batch)
   static Future<StabilizationSettings> load(int projectId) async {
     final results = await Future.wait([

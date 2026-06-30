@@ -124,16 +124,6 @@ class GalleryDateStampProvider extends InheritedWidget {
     return provider?.config ?? GalleryDateStampConfig.disabled;
   }
 
-  /// Access config without creating a dependency.
-  ///
-  /// Use when you need to read the config once without subscribing
-  /// to changes (e.g., in callbacks or event handlers).
-  static GalleryDateStampConfig read(BuildContext context) {
-    final provider =
-        context.getInheritedWidgetOfExactType<GalleryDateStampProvider>();
-    return provider?.config ?? GalleryDateStampConfig.disabled;
-  }
-
   @override
   bool updateShouldNotify(GalleryDateStampProvider oldWidget) {
     return config != oldWidget.config;

@@ -545,46 +545,6 @@ class _CameraViewState extends State<CameraView>
     });
   }
 
-  Widget mirrorButton() => _buildButton(
-        () => toggleMirror(),
-        Icon(
-          isMirrored ? Icons.flip : Icons.flip_outlined,
-          size: 24,
-          color: AppColors.textPrimary,
-        ),
-      );
-
-  void toggleMirror() {
-    setState(() {
-      isMirrored = !isMirrored;
-    });
-
-    // Save the NEW value after toggling
-    DB.instance.setSettingByTitle(
-      'camera_mirror',
-      isMirrored.toString(),
-      widget.projectId.toString(),
-    );
-
-    // On macOS/Linux, toggle mirror at the native source; no restart needed.
-    if (Platform.isMacOS || Platform.isLinux) {
-      if (_controller != null) {
-        CameraDesktopPlugin().setMirror(_controller!.cameraId, isMirrored);
-      }
-    } else if (Platform.isWindows) {
-      // Windows: mirror is visual-only (Transform.scale in preview).
-      // setState already triggers rebuild with new scaleX. No restart needed.
-    } else {
-      // Mobile: restart to apply mirror.
-      _restartCameraWithCurrentSettings();
-    }
-  }
-
-  Future<void> _restartCameraWithCurrentSettings() async {
-    await _stopLiveFeed();
-    await _startLiveFeed();
-  }
-
   Widget _timerButton() => Container(
         padding: const EdgeInsets.all(0),
         decoration: BoxDecoration(
@@ -870,25 +830,6 @@ class _CameraViewState extends State<CameraView>
       ),
     );
   }
-
-  Widget flashButton() => Positioned(
-        bottom: 21,
-        left: 16,
-        child: _buildButton(
-          () => toggleFlash(),
-          Icon(
-            flashEnabled ? Icons.flash_auto : Icons.flash_off,
-            size: 24,
-            color: AppColors.textPrimary,
-          ),
-        ),
-      );
-
-  Widget gridButton() => Positioned(
-        bottom: 21,
-        left: 64,
-        child: _buildButton(() => _toggleGrid(), _buildIcon()),
-      );
 
   Widget _cameraControl() {
     return Positioned(
@@ -1217,13 +1158,6 @@ class _CameraViewState extends State<CameraView>
     await _stopLiveFeed();
     await _startLiveFeed();
     if (mounted) setState(() => _changingCameraLens = false);
-  }
-
-  Future<void> setFocusPoint(Offset point) async {
-    if (_controller!.value.isInitialized &&
-        _controller!.value.focusPointSupported) {
-      await _controller?.setFocusPoint(point);
-    }
   }
 
   Future<void> resetOffsetValues(String potentialOrientation) async {

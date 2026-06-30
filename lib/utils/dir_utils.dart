@@ -6,10 +6,8 @@ import '../models/video_codec.dart';
 import '../utils/platform_utils.dart';
 import '../utils/settings_utils.dart';
 import '../utils/test_mode.dart' as test_config;
-import '../utils/utils.dart';
 
 import '../services/database_helper.dart';
-import '../services/log_service.dart';
 import 'export_naming_utils.dart';
 
 class DirUtils {
@@ -52,14 +50,6 @@ class DirUtils {
 
   static Future<String> getStabilizedWIPDirPath() async =>
       join(await getTemporaryDirPath(), stabilizedWIPDirname);
-
-  static Future<String> getStabilizedWIPPathFromRawPhotoPath(
-    String rawPhotoPath,
-  ) async =>
-      join(
-        await getStabilizedWIPDirPath(),
-        '${path.basenameWithoutExtension(rawPhotoPath)}.jpg',
-      );
 
   /// Returns the video output extension based on codec or transparency+platform.
   ///
@@ -180,26 +170,6 @@ class DirUtils {
         rawImagePath,
       );
 
-  static Future<String> getStabilizedPortraitImagePathFromRawPath(
-    String rawImagePath,
-    int projectId,
-  ) async =>
-      buildStabilizedImagePath(
-        await getStabilizedDirPath(projectId),
-        'portrait',
-        rawImagePath,
-      );
-
-  static Future<String> getStabilizedLandscapeImagePathFromRawPath(
-    String rawImagePath,
-    int projectId,
-  ) async =>
-      buildStabilizedImagePath(
-        await getStabilizedDirPath(projectId),
-        'landscape',
-        rawImagePath,
-      );
-
   // Cross-platform temp & permanent data directory path fetchers
   static Future<String> getTemporaryDirPath() async =>
       (await getTemporaryDirectory()).path;
@@ -227,46 +197,11 @@ class DirUtils {
     }
   }
 
-  static Future<List<File>> getAllFilesInRawPhotoDirByExtension(
-    int projectId,
-    String extension,
-  ) async {
-    try {
-      final String rawPhotoDirectoryPath = await getRawPhotoDirPath(projectId);
-      final Directory directory = Directory(rawPhotoDirectoryPath);
-      final List<File> files = await directory
-          .list()
-          .where((entity) => entity is File && Utils.isImage(entity.path))
-          .cast<File>()
-          .toList();
-      files.sort((a, b) {
-        final ai = int.tryParse(path.basenameWithoutExtension(b.path));
-        final bi = int.tryParse(path.basenameWithoutExtension(a.path));
-        if (ai != null && bi != null) return ai.compareTo(bi);
-        return b.path.compareTo(a.path);
-      });
-      return files;
-    } catch (e) {
-      return [];
-    }
-  }
-
   static Future<void> createDirectoryIfNotExists(String imagePath) async {
     final directory = Directory(path.dirname(imagePath));
     if (!await directory.exists()) {
       await directory.create(recursive: true);
     }
-  }
-
-  static Future<File?> getFileObjectFromFilepath(String filepath) async {
-    try {
-      final file = File(filepath);
-      final bool fileExists = await file.exists();
-      return fileExists ? file : null;
-    } catch (e) {
-      LogService.instance.log("Failed to load image: $e");
-    }
-    return null;
   }
 
   static Future<void> tryDeleteFiles(List<String> filepathList) async {
@@ -296,42 +231,6 @@ class DirUtils {
           await entity.delete(recursive: true);
         }
       }
-    }
-  }
-
-  static Future<void> deleteAllThumbnails(
-    int projectId,
-    String projectOrientation,
-  ) async {
-    final String stabilizedDirPath = await DirUtils.getStabilizedDirPath(
-      projectId,
-    );
-    final String thumbnailDir = join(
-      stabilizedDirPath,
-      projectOrientation,
-      DirUtils.thumbnailDirname,
-      "thumbnail.jpg",
-    );
-
-    final bool isValidDirectory = await _isValidDirectory(thumbnailDir);
-    if (isValidDirectory) {
-      await deleteDirectory(thumbnailDir);
-    } else {
-      LogService.instance.log(
-        'Directory does not exist or is not a valid directory.',
-      );
-    }
-  }
-
-  static Future<bool> _isValidDirectory(String path) async {
-    final dir = Directory(path);
-    return await dir.exists();
-  }
-
-  static Future<void> deleteDirectory(String path) async {
-    final dir = Directory(path);
-    if (await dir.exists()) {
-      await dir.delete(recursive: true);
     }
   }
 

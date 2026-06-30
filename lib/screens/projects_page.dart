@@ -6,7 +6,6 @@ import '../services/database_helper.dart';
 import '../styles/styles.dart';
 import '../utils/platform_utils.dart';
 import '../utils/utils.dart';
-import '../widgets/main_navigation.dart';
 import '../widgets/onboarding_action_button.dart';
 import '../widgets/project_select_sheet.dart';
 import 'create_project_page.dart';
@@ -162,19 +161,6 @@ class ProjectsPageState extends State<ProjectsPage> {
     const String imagePath = 'assets/images/wave-tc.png';
 
     return Image.asset(imagePath, width: double.infinity, fit: BoxFit.cover);
-  }
-
-  void navigateToProject(BuildContext context, Map<String, dynamic> project) {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MainNavigation(
-          projectId: project['id'],
-          projectName: project['name'],
-          showFlashingCircle: false,
-        ),
-      ),
-    );
   }
 
   @override

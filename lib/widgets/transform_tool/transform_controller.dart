@@ -242,11 +242,6 @@ class TransformController extends ChangeNotifier {
     _updateState(_state.copyWith(scale: scale.clamp(0.1, 10.0)));
   }
 
-  /// Set scale factor directly (including base scale)
-  void setScaleFactor(double scaleFactor) {
-    setScale(scaleFactor / baseScale);
-  }
-
   /// Set rotation value directly (in degrees)
   void setRotation(double degrees) {
     var normalized = degrees;
@@ -272,23 +267,6 @@ class TransformController extends ChangeNotifier {
         translateY: translateY,
         scale: scale?.clamp(0.1, 10.0),
         rotation: rotation,
-      ),
-    );
-  }
-
-  /// Set transform from database values
-  void setFromDatabaseValues({
-    required double translateX,
-    required double translateY,
-    required double scaleFactor,
-    required double rotationDegrees,
-  }) {
-    _updateState(
-      _state.copyWith(
-        translateX: translateX,
-        translateY: translateY,
-        scale: (scaleFactor / baseScale).clamp(0.1, 10.0),
-        rotation: rotationDegrees,
       ),
     );
   }
@@ -397,8 +375,6 @@ class TransformController extends ChangeNotifier {
 
   /// Get individual database values
   double get databaseTranslateX => _state.translateX;
-  double get databaseTranslateY => _state.translateY;
-  double get databaseScaleFactor => _state.scale * baseScale;
   double get databaseRotationDegrees => _state.rotation;
 
   // ============ Canvas/Image Size Updates ============

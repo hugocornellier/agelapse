@@ -683,12 +683,6 @@ class CreatePageState extends State<CreatePage>
     );
   }
 
-  Future<String> getRawPhotoPathFromTimestamp(String timestamp) async =>
-      await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-        timestamp,
-        widget.projectId,
-      );
-
   void togglePlayback() {
     setState(() {
       if (_useMediaKit) {
@@ -1679,12 +1673,6 @@ class CreatePageState extends State<CreatePage>
 
     await _saveVideoDesktop(videoOutputPath);
   }
-
-  Future<bool> videoSettingsChanged(Map<String, dynamic>? newestVideo) async =>
-      await VideoUtils.videoOutputSettingsChanged(
-        widget.projectId,
-        newestVideo,
-      );
 
   Future<int> getStabilizedPhotoCount() async {
     String projectOrientation = await SettingsUtil.loadProjectOrientation(

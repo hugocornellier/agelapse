@@ -140,11 +140,6 @@ class GalleryPageState extends State<GalleryPage>
   static int? _lastProjectId;
 
   late TabController _tabController;
-  bool exportingToZip = false;
-  bool gallerySaveIsLoading = false;
-  bool gallerySaveSuccessful = false;
-  String? activeImagePreviewPath;
-  String activeButton = 'raw';
   String? projectOrientation;
   bool isImporting = false;
   bool preparingImport = false;
@@ -152,8 +147,6 @@ class GalleryPageState extends State<GalleryPage>
   bool isDraggingOver =
       false; // True when user is dragging files over drop zone
   bool _importSheetDropHandling = false;
-  bool imagePreviewIsOpen = false;
-  VoidCallback? closeImagePreviewCallback;
   ValueNotifier<String> activeProcessingDateNotifier = ValueNotifier<String>(
     '',
   );
@@ -567,7 +560,6 @@ class GalleryPageState extends State<GalleryPage>
     }
   }
 
-  List<File> cloneList(List list) => List.from(list);
   Future<void> _init() async {
     await reloadGallerySettings();
     if (widget.userOnImportTutorial) {
@@ -657,20 +649,6 @@ class GalleryPageState extends State<GalleryPage>
     _isMounted = false;
     _retryingPhotoTimestamps.clear();
     super.dispose();
-  }
-
-  Future<bool> requestPermission() async {
-    PermissionStatus status = await Permission.photos.request();
-    if (status.isGranted) {
-      return true;
-    } else if (status.isDenied) {
-      status = await Permission.storage.request();
-      return false;
-    } else if (status.isPermanentlyDenied) {
-      openAppSettings();
-      return false;
-    }
-    return false;
   }
 
   Future<void> _pickFromGallery() async {
@@ -1139,18 +1117,6 @@ class GalleryPageState extends State<GalleryPage>
     } catch (e) {
       LogService.instance.log("ERROR CAUGHT IN PICK FILES");
     }
-  }
-
-  Future<void> processPickedFile(dynamic file) async {
-    await GalleryUtils.processPickedFile(
-      file,
-      projectId,
-      activeProcessingDateNotifier,
-      onImagesLoaded: _loadImages,
-      setProgressInMain: widget.setProgressInMain,
-      increaseSuccessfulImportCount: increaseSuccessfulImportCount,
-      increasePhotosImported: increasePhotosImported,
-    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────────

@@ -55,26 +55,6 @@ class Utils {
     return '${fmt.format(wall)} $tzLabel';
   }
 
-  static String formatUnixTimestamp2(
-    int timestamp, {
-    int? captureOffsetMinutes,
-  }) {
-    final DateTime localLike = CaptureTimezone.toLocalDateTime(
-      timestamp,
-      offsetMinutes: captureOffsetMinutes,
-    );
-    final DateTime nowRef = DateTime.now();
-    final String formattedTime = DateFormat('h:mm a').format(localLike);
-    final String formattedDate = localLike.year == nowRef.year
-        ? DateFormat('MMMM d').format(localLike)
-        : DateFormat('MMMM d y').format(localLike);
-    final String tzLabel = CaptureTimezone.formatOffsetLabel(
-      captureOffsetMinutes,
-      fallbackDateTime: localLike,
-    );
-    return '$formattedDate, $formattedTime ($tzLabel)';
-  }
-
   static Future<void> navigateToScreen(BuildContext context, Widget screen) {
     if (hasCustomTitleBar) {
       return Navigator.push(
@@ -136,8 +116,6 @@ class Utils {
       ),
     );
   }
-
-  static void navigateBack(BuildContext context) => Navigator.pop(context);
 
   static String capitalizeFirstLetter(String input) {
     if (input.isEmpty) return input;

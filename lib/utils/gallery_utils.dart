@@ -5,7 +5,6 @@ import 'dart:ui' as ui;
 
 import 'package:archive/archive_io.dart';
 import 'package:exif_reader/exif_reader.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_avif/flutter_avif.dart';
 import 'package:intl/intl.dart';
@@ -152,9 +151,6 @@ DirectoryScanResult scanDirectoryIsolateEntry(DirectoryScanInput input) {
 class GalleryUtils {
   /// Maximum directory recursion depth to prevent stack overflow
   static const int maxRecursionDepth = 50;
-
-  /// File count threshold that triggers user confirmation
-  static const int largeDirectoryThreshold = 500;
 
   /// Minimum file size in bytes for valid images (matches ZIP processing)
   static const int minImageSizeBytes = 10000;
@@ -487,22 +483,6 @@ class GalleryUtils {
     // Seed the cache with failure statuses
     if (cacheEntries.isNotEmpty) {
       ThumbnailService.instance.seedCache(cacheEntries);
-    }
-  }
-
-  static Future<void> scrollToBottomInstantly(
-    ScrollController scrollController,
-  ) async {
-    if (scrollController.hasClients) {
-      scrollController.jumpTo(scrollController.position.maxScrollExtent);
-    } else {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Future.delayed(const Duration(milliseconds: 100), () {
-          if (scrollController.hasClients) {
-            scrollController.jumpTo(scrollController.position.maxScrollExtent);
-          }
-        });
-      });
     }
   }
 

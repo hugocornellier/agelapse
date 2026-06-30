@@ -379,17 +379,6 @@ class CustomFontManager {
     return familyName.startsWith(customFontPrefix);
   }
 
-  /// Get the display name for a font family name.
-  /// Returns the display name for custom fonts, or the family name itself for bundled fonts.
-  Future<String> getDisplayNameForFamily(String familyName) async {
-    if (!isCustomFont(familyName)) {
-      return familyName;
-    }
-
-    final font = await getCustomFontByFamilyName(familyName);
-    return font?.displayName ?? familyName;
-  }
-
   /// Uninstall a custom font.
   Future<void> uninstallFont(CustomFont font) async {
     LogService.instance.log(
@@ -460,19 +449,5 @@ class CustomFontManager {
       }
     }
     _cachedFonts = null;
-  }
-
-  /// Get the total storage used by custom fonts.
-  Future<int> getTotalStorageUsed() async {
-    final fonts = await getAllCustomFonts();
-    return fonts.fold<int>(0, (sum, font) => sum + font.fileSize);
-  }
-
-  /// Clear all custom fonts.
-  Future<void> clearAllFonts() async {
-    final fonts = await getAllCustomFonts();
-    for (final font in fonts) {
-      await uninstallFont(font);
-    }
   }
 }

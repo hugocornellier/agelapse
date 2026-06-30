@@ -146,24 +146,6 @@ class SettingsUtil {
   ) async =>
       _loadOffsetAxis(projectId, axis, 'eye', null);
 
-  static Future<String> loadGuideOffsetXCurrentOrientation(
-    String projectId,
-  ) async {
-    return await _loadGuideOffsetCurrentOrientation(projectId, 'X');
-  }
-
-  static Future<String> loadGuideOffsetYCurrentOrientation(
-    String projectId,
-  ) async {
-    return await _loadGuideOffsetCurrentOrientation(projectId, 'Y');
-  }
-
-  static Future<String> _loadGuideOffsetCurrentOrientation(
-    String projectId,
-    String axis,
-  ) async =>
-      _loadOffsetAxis(projectId, axis, 'guide', null);
-
   static Future<String> loadGuideOffsetXCustomOrientation(
     String projectId,
     String customOrientation,
@@ -216,9 +198,6 @@ class SettingsUtil {
   static Future<bool> hasOpenedNotifPage(String projectId) async =>
       _loadBoolSetting('has_opened_notif_page', projectId, false);
 
-  static Future<void> setHasOpenedNotifPageToTrue(String projectIdStr) async =>
-      _setBoolToTrue('has_opened_notif_page', projectIdStr);
-
   static Future<bool> hasSeenGuideModeTut(String projectId) async =>
       _loadBoolSetting('has_seen_guide_mode_tut', projectId, false);
 
@@ -268,17 +247,6 @@ class SettingsUtil {
       projectId,
     );
     return int.parse(gridModeIndexAsStr);
-  }
-
-  static Future<void> setGridModeIndex(
-    String projectId,
-    int gridModeIndex,
-  ) async {
-    await DB.instance.setSettingByTitle(
-      'grid_mode_index',
-      gridModeIndex.toString(),
-      projectId,
-    );
   }
 
   // ==================== Background Color ====================
@@ -576,30 +544,6 @@ class SettingsUtil {
     } catch (e) {
       return defaultValue;
     }
-  }
-
-  /// Save gallery date stamp font (per-project)
-  static Future<void> setGalleryDateStampFont(
-    String projectId,
-    String font,
-  ) async {
-    await DB.instance.setSettingByTitle(
-      'gallery_date_stamp_font',
-      font,
-      projectId,
-    );
-  }
-
-  /// Save export date stamp font (per-project)
-  static Future<void> setExportDateStampFont(
-    String projectId,
-    String font,
-  ) async {
-    await DB.instance.setSettingByTitle(
-      'export_date_stamp_font',
-      font,
-      projectId,
-    );
   }
 
   /// Load gallery date stamp size level (per-project)

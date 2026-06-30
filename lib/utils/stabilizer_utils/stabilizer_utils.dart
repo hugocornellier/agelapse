@@ -451,37 +451,6 @@ class StabUtils {
     });
   }
 
-  /// Gets face embeddings for all detected faces in the image.
-  /// Returns a list of embeddings (may contain nulls for faces where extraction failed).
-  static Future<List<Float32List?>> getFaceEmbeddingsFromBytes(
-    Uint8List bytes,
-  ) async {
-    // Serialize access to the face detector to prevent race conditions
-    return await _faceDetectorMutex.protect(() async {
-      try {
-        await _ensureFDLite();
-
-        final faces = await _faceDetector!.detectFacesFromBytes(
-          bytes,
-          mode: fdl.FaceDetectionMode.fast,
-        );
-
-        if (faces.isEmpty) return [];
-
-        final embeddings = await _faceDetector!.getFaceEmbeddings(
-          faces,
-          bytes,
-        );
-
-        return embeddings;
-      } catch (e) {
-        LogService.instance.log("Error extracting face embeddings: $e");
-        _faceDetector = null; // Force reinit on next call
-        return [];
-      }
-    });
-  }
-
   /// Picks the face index with highest similarity to the reference embedding.
   /// Returns -1 if no match found above threshold, or falls back to first face.
   /// [referenceEmbedding] is the 192-dim embedding from a single-face photo.
@@ -1502,13 +1471,6 @@ class StabUtils {
     }
   }
 
-  /// Load image as cv.Mat from PNG file path (desktop only)
-  /// Returns the raw bytes so caller can decode to Mat synchronously after async read
-  static Future<Uint8List?> loadPngBytesAsync(String pngPath) async {
-    if (!await File(pngPath).exists()) return null;
-    return await File(pngPath).readAsBytes();
-  }
-
   /// Isolate entry point for getting image dimensions
   static void _getImageDimensionsIsolate(Map<String, dynamic> params) {
     final SendPort sendPort = params['sendPort'];
@@ -1585,93 +1547,6 @@ class StabUtils {
         'preserveBitDepth': preserveBitDepth,
       },
     );
-  }
-
-  /// Generate stabilized image bytes using OpenCV warpAffine (desktop only)
-  ///
-  /// [backgroundColorBGR] is an optional list of [B, G, R] values for the
-  /// background fill color. Null means transparent background (BGRA output).
-  /// Defaults to black if not provided and not transparent.
-  static Uint8List? generateStabilizedImageBytesCV(
-    cv.Mat srcMat,
-    double rotationDegrees,
-    double scaleFactor,
-    double translateX,
-    double translateY,
-    int canvasWidth,
-    int canvasHeight, {
-    List<int>? backgroundColorBGR,
-    bool isTransparent = false,
-  }) {
-    // For transparent backgrounds, convert to BGRA (4 channels)
-    cv.Mat srcMatForWarp;
-    bool needsDispose = false;
-    if (isTransparent) {
-      srcMatForWarp = cv.cvtColor(srcMat, cv.COLOR_BGR2BGRA);
-      needsDispose = true;
-    } else {
-      srcMatForWarp = srcMat;
-    }
-
-    final int iw = srcMatForWarp.cols;
-    final int ih = srcMatForWarp.rows;
-
-    // Create rotation matrix centered at image center
-    // Negate angle to match Flutter Canvas rotation convention
-    final cv.Mat rotMat = cv.getRotationMatrix2D(
-      cv.Point2f(iw / 2.0, ih / 2.0),
-      -rotationDegrees,
-      scaleFactor,
-    );
-
-    // Adjust translation to center scaled image in canvas + apply user translation
-    final double offsetX = (canvasWidth - iw) / 2.0 + translateX;
-    final double offsetY = (canvasHeight - ih) / 2.0 + translateY;
-    rotMat.set<double>(0, 2, rotMat.at<double>(0, 2) + offsetX);
-    rotMat.set<double>(1, 2, rotMat.at<double>(1, 2) + offsetY);
-
-    // Create border color scalar
-    // For transparent: BGRA with alpha=0
-    // For solid color: BGR with alpha=255
-    final cv.Scalar borderValue;
-    if (isTransparent) {
-      borderValue = cv.Scalar(0.0, 0.0, 0.0, 0.0); // Fully transparent
-    } else if (backgroundColorBGR != null) {
-      borderValue = cv.Scalar(
-        backgroundColorBGR[0].toDouble(), // B
-        backgroundColorBGR[1].toDouble(), // G
-        backgroundColorBGR[2].toDouble(), // R
-        255.0, // A
-      );
-    } else {
-      borderValue = cv.Scalar.black;
-    }
-
-    // Apply affine transformation with cubic interpolation for smooth edges
-    final cv.Mat dst = cv.warpAffine(
-      srcMatForWarp,
-      rotMat,
-      (canvasWidth, canvasHeight),
-      flags: cv.INTER_CUBIC,
-      borderMode: cv.BORDER_CONSTANT,
-      borderValue: borderValue,
-    );
-
-    // Encode to PNG (preserves alpha channel if present)
-    final (bool success, Uint8List bytes) = cv.imencode(
-      '.png',
-      dst,
-      params: cv.VecI32.fromList([cv.IMWRITE_PNG_COMPRESSION, 1]),
-    );
-
-    // Cleanup
-    rotMat.dispose();
-    dst.dispose();
-    if (needsDispose) {
-      srcMatForWarp.dispose();
-    }
-
-    return success ? bytes : null;
   }
 
   /// Isolate entry point for CV stabilization

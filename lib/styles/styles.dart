@@ -22,7 +22,7 @@ ButtonStyle takePhotoRoundStyle() {
 
 /// Typography scale for consistent font sizes across the app.
 ///
-/// Usage: `fontSize: AppTypography.md` or `style: AppTypography.bodyMedium`
+/// Usage: `fontSize: AppTypography.md`
 class AppTypography {
   // Font size scale (these remain const)
   static const double xs = 11; // Extra small: captions, badges
@@ -33,43 +33,6 @@ class AppTypography {
   static const double xxl = 20; // 2XL: section headers
   static const double xxxl = 24; // 3XL: page titles
   static const double display = 28; // Display: hero text, large titles
-
-  // Pre-built text styles: GETTERS for dynamic theme colors
-  static TextStyle get caption =>
-      TextStyle(fontSize: xs, color: AppColors.textSecondary);
-
-  static TextStyle get bodySmall =>
-      TextStyle(fontSize: sm, color: AppColors.textPrimary);
-
-  static TextStyle get bodyMedium =>
-      TextStyle(fontSize: md, color: AppColors.textPrimary);
-
-  static TextStyle get bodyLarge =>
-      TextStyle(fontSize: lg, color: AppColors.textPrimary);
-
-  static TextStyle get headingSmall => TextStyle(
-        fontSize: xl,
-        color: AppColors.textPrimary,
-        fontWeight: FontWeight.w600,
-      );
-
-  static TextStyle get headingMedium => TextStyle(
-        fontSize: xxl,
-        color: AppColors.textPrimary,
-        fontWeight: FontWeight.w600,
-      );
-
-  static TextStyle get headingLarge => TextStyle(
-        fontSize: xxxl,
-        color: AppColors.textPrimary,
-        fontWeight: FontWeight.bold,
-      );
-
-  static TextStyle get displayText => TextStyle(
-        fontSize: display,
-        color: AppColors.textPrimary,
-        fontWeight: FontWeight.bold,
-      );
 }
 
 /// Shared decoration for dropdown/input container widgets in settings.

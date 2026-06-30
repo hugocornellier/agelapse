@@ -132,68 +132,6 @@ extension TransformHandleExtension on TransformHandle {
     }
   }
 
-  /// Get the position of this handle in canvas coordinates
-  Offset? getPosition(
-    TransformState state, {
-    double rotationHandleDistance = 30,
-  }) {
-    switch (this) {
-      case TransformHandle.topLeft:
-        return state.corners[0];
-      case TransformHandle.topRight:
-        return state.corners[1];
-      case TransformHandle.bottomRight:
-        return state.corners[2];
-      case TransformHandle.bottomLeft:
-        return state.corners[3];
-      case TransformHandle.topCenter:
-        return state.edgeMidpoints[0];
-      case TransformHandle.rightCenter:
-        return state.edgeMidpoints[1];
-      case TransformHandle.bottomCenter:
-        return state.edgeMidpoints[2];
-      case TransformHandle.leftCenter:
-        return state.edgeMidpoints[3];
-      case TransformHandle.rotationHandle:
-        return state.getRotationHandlePosition(rotationHandleDistance);
-      case TransformHandle.body:
-      case TransformHandle.none:
-        return null;
-    }
-  }
-
-  /// Get the index of this handle's position in the corners list (0-3 for corners)
-  int get cornerIndex {
-    switch (this) {
-      case TransformHandle.topLeft:
-        return 0;
-      case TransformHandle.topRight:
-        return 1;
-      case TransformHandle.bottomRight:
-        return 2;
-      case TransformHandle.bottomLeft:
-        return 3;
-      default:
-        return -1;
-    }
-  }
-
-  /// Get the index of this handle's position in the edgeMidpoints list (0-3 for edges)
-  int get edgeIndex {
-    switch (this) {
-      case TransformHandle.topCenter:
-        return 0;
-      case TransformHandle.rightCenter:
-        return 1;
-      case TransformHandle.bottomCenter:
-        return 2;
-      case TransformHandle.leftCenter:
-        return 3;
-      default:
-        return -1;
-    }
-  }
-
   /// Whether this edge handle affects horizontal sizing
   bool get isHorizontalEdge =>
       this == TransformHandle.leftCenter || this == TransformHandle.rightCenter;

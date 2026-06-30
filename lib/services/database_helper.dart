@@ -362,9 +362,6 @@ class DB {
   Future<Map<String, dynamic>?> getProject(int id) =>
       _querySingle(projectTable, 'id = ?', [id], (r) => r);
 
-  Future<Map<String, dynamic>?> getFirstProjectByName(String name) =>
-      _querySingle(projectTable, 'name = ?', [name], (r) => r);
-
   Future<List<Map<String, dynamic>>> getAllProjects() async {
     final db = await database;
     return await db.query(projectTable);
@@ -602,19 +599,8 @@ class DB {
     return settingValue;
   }
 
-  Future<Map<String, dynamic>?> getPhotoById(String id, int projectId) async {
-    final db = await database;
-    final results = await db.query(
-      photoTable,
-      where: 'id = ? AND projectID = ?',
-      whereArgs: [id, projectId],
-      limit: 1,
-    );
-    return results.isNotEmpty ? results.first : null;
-  }
-
-  /// Active-only variant of [getPhotoById]. Returns `null` when the row is
-  /// soft-deleted, mirroring how the gallery and stabilizer should see it.
+  /// Looks up a photo by id from the active-only view. Returns `null` when the
+  /// row is soft-deleted, mirroring how the gallery and stabilizer should see it.
   Future<Map<String, dynamic>?> getActivePhotoById(
     String id,
     int projectId,
@@ -664,32 +650,6 @@ class DB {
       setting.toJson(),
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
-  }
-
-  Future<int> updateSetting(Setting setting) async {
-    final db = await database;
-    return await db.update(
-      settingTable,
-      setting.toJson(),
-      where: 'id = ?',
-      whereArgs: [setting.id],
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
-  }
-
-  Future<int> deleteSetting(Setting setting) async {
-    final db = await database;
-    return await db.delete(
-      settingTable,
-      where: 'id = ?',
-      whereArgs: [setting.id],
-    );
-  }
-
-  Future<List<Setting>> getAllSettings() async {
-    final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(settingTable);
-    return maps.map((map) => Setting.fromJson(map)).toList();
   }
 
   /* ┌──────────────────────┐
@@ -1156,19 +1116,6 @@ class DB {
     return landscapeCount / total >= 0.5 ? 'landscape' : 'portrait';
   }
 
-  Future<String?> checkAllPhotoOrientations() async {
-    final db = await database;
-    final result = await db.rawQuery('''
-      SELECT
-        COUNT(*) AS totalNonNull,
-        SUM(CASE WHEN originalOrientation = 'portrait' THEN 1 ELSE 0 END) AS portraitCount,
-        SUM(CASE WHEN originalOrientation = 'landscape' THEN 1 ELSE 0 END) AS landscapeCount
-      FROM $photoTable
-      WHERE originalOrientation IS NOT NULL
-    ''');
-    return _resolveOrientation(result, unanimous: true);
-  }
-
   Future<String?> checkPhotoOrientationThreshold(int projectId) async {
     final db = await database;
     final result = await db.rawQuery(
@@ -1189,12 +1136,6 @@ class DB {
     return projectOrientation.toLowerCase() == "portrait"
         ? "stabilizedPortrait"
         : "stabilizedLandscape";
-  }
-
-  Future<void> resetStabilizedColumn(String projectOrientation) async {
-    final db = await database;
-    final String stabilizedColumn = getStabilizedColumn(projectOrientation);
-    await db.update(photoTable, {stabilizedColumn: 0});
   }
 
   Future<void> resetStabilizedColumnByTimestamp(
@@ -1998,10 +1939,6 @@ class DB {
     return results.map((row) => CustomFont.fromJson(row)).toList();
   }
 
-  /// Get a custom font by its ID.
-  Future<CustomFont?> getCustomFontById(int id) =>
-      _querySingle(customFontTable, 'id = ?', [id], CustomFont.fromJson);
-
   /// Get a custom font by its family name.
   Future<CustomFont?> getCustomFontByFamilyName(String familyName) =>
       _querySingle(
@@ -2026,26 +1963,6 @@ class DB {
   Future<int> deleteCustomFont(int id) async {
     final db = await database;
     return await db.delete(customFontTable, where: 'id = ?', whereArgs: [id]);
-  }
-
-  /// Update the display name of a custom font.
-  Future<int> updateCustomFontDisplayName(int id, String newDisplayName) async {
-    final db = await database;
-    return await db.update(
-      customFontTable,
-      {'displayName': newDisplayName},
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-  }
-
-  /// Get the count of installed custom fonts.
-  Future<int> getCustomFontCount() async {
-    final db = await database;
-    final result = await db.rawQuery(
-      'SELECT COUNT(*) as count FROM $customFontTable',
-    );
-    return result.first['count'] as int? ?? 0;
   }
 
   /* ┌──────────────────────────────┐
@@ -2086,20 +2003,6 @@ class DB {
       limit: 1,
     );
     return results.isNotEmpty;
-  }
-
-  /// Removes the tombstone for a linked source that has been restored, allowing
-  /// the sync service to reimport it if it reappears.
-  Future<void> deleteLinkedSourceTombstone(
-    int projectId,
-    String sourceRelativePath,
-  ) async {
-    final db = await database;
-    await db.delete(
-      deletedLinkedSourcesTable,
-      where: 'projectID = ? AND sourceRelativePath = ?',
-      whereArgs: [projectId, sourceRelativePath],
-    );
   }
 
   /* ┌──────────────────────────────┐

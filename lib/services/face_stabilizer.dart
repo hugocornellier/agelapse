@@ -19,7 +19,6 @@ import '../utils/format_decode_utils.dart';
 import '../utils/settings_utils.dart';
 import '../utils/stabilizer_utils/stabilizer_utils.dart';
 import '../utils/transform_cache_key.dart';
-import '../utils/video_utils.dart';
 import '../models/transform_cache_entry.dart';
 import 'database_helper.dart';
 
@@ -3613,18 +3612,6 @@ class FaceStabilizer {
     }
     return eyes;
   }
-
-  Future<bool> videoSettingsChanged() async =>
-      await VideoUtils.videoOutputSettingsChanged(
-        projectId,
-        await DB.instance.getNewestVideoByProjectId(projectId),
-      );
-
-  Future<String> getRawPhotoPathFromTimestamp(String timestamp) async =>
-      await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-        timestamp,
-        projectId,
-      );
 
   Future<void> setPhotoStabilized(
     String rawPhotoPath, {

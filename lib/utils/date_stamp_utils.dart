@@ -75,9 +75,6 @@ class DateStampUtils {
   /// Approximate pixel margins for each export margin level (1-6) at 1080p reference.
   static const List<int> exportMarginApproxPx = [11, 22, 32, 43, 54, 65];
 
-  /// Default export date stamp margin level.
-  static const int defaultMarginPercent = 2;
-
   /// Sentinel value for "Custom" margin option (independent H/V percentages).
   static const int marginCustom = 0;
 

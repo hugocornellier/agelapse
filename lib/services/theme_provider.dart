@@ -68,11 +68,6 @@ class ThemeProvider extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  /// Returns the current AppColorsData based on resolved brightness.
-  AppColorsData get currentColors {
-    return isLightMode ? AppColorsData.light() : AppColorsData.dark();
-  }
-
   /// Light theme with AppColorsData extension.
   ThemeData get lightTheme {
     return _materialTheme.light().copyWith(
