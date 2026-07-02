@@ -1853,17 +1853,19 @@ class FaceStabilizer {
   ) async {
     bool successfulStabilization = false;
 
-    // Encodes a raw pass result to PNG. The initial pass encodes at
-    // compression 3 (matching the PNG bytes the non-raw flow produces) so
-    // saved artifacts are identical either way; refinement passes keep
-    // compression 1 as before.
+    // Encodes a raw pass result to PNG, always at compression 1. Decoded
+    // pixels are identical at every zlib level, and level 3 cost ~32 ms more
+    // per photo (73.8 vs 41.5 ms on a 1080x1920 frame) for ~5% smaller files.
+    // Refinement-pass winners were already saved at level 1; this unifies the
+    // initial-pass winner, which previously kept level 3 for byte-compat with
+    // the legacy non-raw flow.
     Future<Uint8List?> encodeRaw(Map<String, dynamic> raw) {
       return StabUtils.encodeRawToPngAsync(
         raw['data'] as Uint8List,
         raw['width'] as int,
         raw['height'] as int,
         raw['matType'] as int,
-        pngCompression: identical(raw, initialRaw) ? 3 : 1,
+        pngCompression: 1,
       );
     }
 

@@ -233,14 +233,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.1+4"
-  dartx:
-    dependency: transitive
-    description:
-      name: dartx
-      sha256: "8b25435617027257d43e6508b5fe061012880ddfdaa75a71d607c3de2a13d244"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.2.0"
   dbus:
     dependency: transitive
     description:
@@ -294,10 +286,10 @@ packages:
     dependency: "direct main"
     description:
       name: downloadsfolder
-      sha256: "0e1bb7dd634d6231c0ac116c467da94507a07ed62239712ea0dead981d58b114"
+      sha256: bc3cab34a71d10c05539497dfa3dcc1d493eb6799a0d59add703df66e36ee4b2
       url: "https://pub.dev"
     source: hosted
-    version: "1.2.0"
+    version: "2.0.0-pre.2"
   equatable:
     dependency: transitive
     description:
@@ -1479,14 +1471,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.11"
-  time:
-    dependency: transitive
-    description:
-      name: time
-      sha256: "46187cf30bffdab28c56be9a63861b36e4ab7347bf403297595d6a97e10c789f"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.1.6"
   timezone:
     dependency: "direct main"
     description:

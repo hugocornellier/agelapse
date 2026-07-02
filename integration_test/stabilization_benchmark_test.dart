@@ -8,10 +8,12 @@ import 'package:opencv_dart/opencv_dart.dart' as cv;
 import 'package:agelapse/main.dart' as app;
 import 'package:agelapse/services/database_helper.dart';
 import 'package:agelapse/services/database_import_ffi.dart';
+import 'package:agelapse/utils/photo_fingerprint.dart';
 import 'package:agelapse/services/face_stabilizer.dart';
 import 'package:agelapse/services/isolate_pool.dart';
 import 'package:agelapse/services/stabilization_settings.dart';
 import 'package:agelapse/utils/dir_utils.dart';
+import 'package:agelapse/utils/stabilizer_utils/stabilizer_utils.dart';
 import 'package:agelapse/utils/test_mode.dart' as test_config;
 import 'package:path/path.dart' as p;
 
@@ -26,11 +28,13 @@ import 'test_utils.dart';
 /// Speed: per-photo wall-clock, aggregated as median over the measured rounds
 /// (the first [warmupRounds] are discarded as warm-up).
 ///
-/// Parity: each stabilized PNG is SHA-256 hashed. Stabilization is expected to
-/// be deterministic, so every round must produce the same hash for a given
-/// fixture (an intra-run determinism check enforces this). The per-fixture
-/// hash + transform are written to a manifest file named by the PERF_LABEL
-/// env var, so a BEFORE run and an AFTER run can be diffed:
+/// Parity: each stabilized PNG is decoded and its PIXELS are SHA-256 hashed
+/// (dims + mat type + raw data), so parity means "identical decoded output",
+/// independent of PNG encoding details like zlib level. Stabilization is
+/// expected to be deterministic, so every round must produce the same hash
+/// for a given fixture (an intra-run determinism check enforces this). The
+/// per-fixture hash + transform are written to a manifest file named by the
+/// PERF_LABEL env var, so a BEFORE run and an AFTER run can be diffed:
 ///
 ///   PERF_LABEL=baseline flutter test integration_test/stabilization_benchmark_test.dart -d macos
 ///   # ...apply one optimization...
@@ -148,6 +152,14 @@ void main() {
           '$ts.jpg',
           'portrait',
         );
+
+        // Store the fingerprint on the photo row, exactly like the import
+        // path does. The batch stabilization service passes it to stabilize()
+        // as knownFingerprint, so the real slow path never streams the source
+        // through SHA-256; a benchmark without it measures ~10+ ms/photo of
+        // hashing that users never pay at stabilization time.
+        final fingerprint = await PhotoFingerprint.compute(destPath);
+        await DB.instance.backfillPhotoFingerprint(ts, projectId, fingerprint);
       }
 
       return projectId;
@@ -190,13 +202,28 @@ void main() {
           final ext = photo['fileExtension'] as String;
           final rawPath = p.join(rawDir, '$ts$ext');
 
+          StabUtils.resetOpCounters();
           final sw = Stopwatch()..start();
-          final result = await stabilizer.stabilize(rawPath, null, () {});
+          // Pass the stored fingerprint like StabilizationService does, so the
+          // measured path matches the real batch flow (no per-photo SHA-256).
+          final result = await stabilizer.stabilize(
+            rawPath,
+            null,
+            () {},
+            knownFingerprint: photo['fingerprint'] as String?,
+          );
           sw.stop();
+          final opMix = StabUtils.opCountersSummary();
 
           // Hash the stabilized output for parity checking. saveStabilizedImage
           // always writes a .png in the orientation subdir, regardless of the
           // .jpg path naming.
+          //
+          // The hash is over the DECODED PIXELS (dims + type + raw data), not
+          // the file bytes: PNG zlib level is an encoding detail that changes
+          // bytes without changing a single pixel, and the save path
+          // legitimately varies the level. "Zero output change" is defined at
+          // the pixel level; file size is still recorded for visibility.
           final outPath = p.join(stabDir, 'portrait', '$ts.png');
           String outputHash = 'MISSING';
           int outputBytes = 0;
@@ -204,7 +231,12 @@ void main() {
           if (await outFile.exists()) {
             final bytes = await outFile.readAsBytes();
             outputBytes = bytes.length;
-            outputHash = sha256.convert(bytes).toString();
+            final decoded = cv.imdecode(bytes, cv.IMREAD_UNCHANGED);
+            outputHash = decoded.isEmpty
+                ? 'DECODE_FAILED'
+                : '${decoded.cols}x${decoded.rows}t${decoded.type.value}'
+                    ':${sha256.convert(decoded.data)}';
+            decoded.dispose();
           }
 
           // Capture the stored face embedding (single-face photos) so changes
@@ -232,6 +264,7 @@ void main() {
             'outputHash': outputHash,
             'outputBytes': outputBytes,
             'embeddingHash': embeddingHash,
+            'opMix': opMix,
           });
         }
       } finally {
@@ -399,6 +432,18 @@ void main() {
       debugPrint('  Manifest: ${manifestFile.path}');
       for (final line in manifestLines) {
         debugPrint('    $line');
+      }
+      debugPrint('  ───────────── OP MIX (per photo, all rounds) ──');
+      for (final ts in sortedTimestamps) {
+        final entries = byTimestamp[ts]!;
+        final mixes = entries.map((e) => e['opMix']).toSet();
+        final measured = entries
+            .skip(warmupRounds)
+            .map((e) => e['elapsedMs'] as int)
+            .toList()
+          ..sort();
+        final med = measured[measured.length ~/ 2];
+        debugPrint('    ts=$ts median=${med}ms ${mixes.join('  |  ')}');
       }
       debugPrint('═══════════════════════════════════════════════');
       debugPrint('');
