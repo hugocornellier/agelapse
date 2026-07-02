@@ -1,0 +1,84 @@
+name: Windows DB smoke
+
+# Fast, targeted proof that the desktop SQLite path still works on Windows after
+# removing sqlite3_flutter_libs. package:sqlite3 3.x bundles its native library
+# via Dart build hooks; Windows is the only shipped platform with no system
+# SQLite fallback, so this is the one that must be verified.
+#
+# Runs on demand (workflow_dispatch) and on pushes to the perf branch that touch
+# the SQLite stack or this workflow. Not wired into the default CI.
+on:
+  workflow_dispatch:
+  push:
+    branches: [perf/stabilize-micro-2]
+    paths:
+      - pubspec.yaml
+      - pubspec.lock
+      - integration_test/windows_db_smoke_test.dart
+      - .github/workflows/windows-db-smoke.yml
+
+concurrency:
+  group: windows-db-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Windows sqlite3 DB round-trip
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+          cache-key: 'flutter-:os:-:channel:-:version:-:arch:-windows-db-smoke-:hash:'
+
+      # Reuse the opencv_dart native-asset build cache from the main test
+      # workflow so we don't recompile OpenCV from scratch.
+      - name: Cache opencv_dart native build
+        uses: actions/cache@v5
+        continue-on-error: true
+        with:
+          path: .dart_tool/hooks_runner/shared
+          key: opencv-native-windows-db-smoke-${{ hashFiles('pubspec.lock') }}
+          restore-keys: |
+            opencv-native-windows-db-smoke-
+            opencv-native-windows-tests-stable-fast-
+            opencv-native-windows-tests-stable-
+            opencv-native-windows-
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Assert sqlite3_flutter_libs is absent, sqlite3 present
+        shell: bash
+        run: |
+          if grep -q "sqlite3_flutter_libs" pubspec.lock; then
+            echo "::error::sqlite3_flutter_libs is still in pubspec.lock; the removal did not take"
+            exit 1
+          fi
+          if ! grep -q "^  sqlite3:" pubspec.lock; then
+            echo "::error::package:sqlite3 is missing from pubspec.lock; no SQLite provider"
+            exit 1
+          fi
+          echo "confirmed: sqlite3_flutter_libs absent; package:sqlite3 provides the native lib"
+
+      # A minimal in-memory DB round-trip. The slow part is building the Windows
+      # app + native assets; the test itself is instant. The teardown guard
+      # mirrors integration.yml (known libheif DLL crash on process exit).
+      - name: Run Windows DB smoke test
+        shell: bash
+        run: |
+          TEST_OUTPUT=$(mktemp)
+          EXIT_CODE=0
+          flutter test integration_test/windows_db_smoke_test.dart -d windows --reporter expanded 2>&1 | tee "$TEST_OUTPUT" || EXIT_CODE=$?
+          if [ "$EXIT_CODE" -ne 0 ]; then
+            if grep -q "tests passed" "$TEST_OUTPUT" && ! grep -q "failed" "$TEST_OUTPUT"; then
+              echo "::warning::Test process exited $EXIT_CODE but all tests passed (known Windows teardown crash, ignored)"
+            else
+              exit 1
+            fi
+          fi
+          rm -f "$TEST_OUTPUT"
