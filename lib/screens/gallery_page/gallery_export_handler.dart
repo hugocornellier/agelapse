@@ -483,10 +483,12 @@ class GalleryExportHandler {
       final fileName = path.basename(zipPath);
       LogService.instance.log('[EXPORT] Saving to Downloads: $fileName');
 
-      // Use downloadsfolder package; uses MediaStore on API 29+
-      final success = await copyFileIntoDownloadFolder(zipPath, fileName);
+      // Use downloadsfolder package; uses MediaStore on API 29+.
+      // Returns a non-null SavedDownload on success, null if the save did not
+      // resolve a path, and throws on I/O failure (caught below).
+      final saved = await copyFileIntoDownloadFolder(zipPath, fileName);
 
-      if (success == true) {
+      if (saved != null) {
         LogService.instance.log('[EXPORT] Saved to Downloads/$fileName');
         // Clean up old private exports
         await _cleanupOldPrivateExports(projectId);

@@ -83,6 +83,37 @@ class StabUtils {
 
   static final AsyncMutex _faceDetectorMutex = AsyncMutex();
 
+  // ============================================================
+  // Hot-path op counters (perf benchmark instrumentation)
+  // ============================================================
+  // Incremented on the main isolate by the wrappers below; the stabilization
+  // benchmark resets them per photo and prints the per-photo op mix so the
+  // per-photo time budget can be reconciled against op-level microbenches.
+  // Counting only: never read on the hot path, never affects behavior.
+  static int opDetectFull = 0; // full-mode detect on encoded bytes (source)
+  static int opDetectRaw = 0; // full-mode detect on raw canvas frames
+  static int opDetectForEmbed = 0; // fast-mode detect inside embedding helpers
+  static int opEmbeds = 0; // embedding inferences
+  static int opWarps = 0; // pool warp renders (raw + png paths)
+  static int opPngEncodes = 0; // pool PNG encodes
+  static int opSourceDecodes = 0; // prepareSourceMat decodes
+
+  static void resetOpCounters() {
+    opDetectFull = 0;
+    opDetectRaw = 0;
+    opDetectForEmbed = 0;
+    opEmbeds = 0;
+    opWarps = 0;
+    opPngEncodes = 0;
+    opSourceDecodes = 0;
+  }
+
+  /// One-line summary of the per-photo op mix, for benchmark output.
+  static String opCountersSummary() =>
+      'detectFull=$opDetectFull detectRaw=$opDetectRaw '
+      'detectForEmbed=$opDetectForEmbed embeds=$opEmbeds warps=$opWarps '
+      'pngEncodes=$opPngEncodes srcDecodes=$opSourceDecodes';
+
   /// Returns [current] if non-null and [isReady] is true; otherwise calls [spawn].
   static Future<T> _ensureDetector<T>(
     T? current,
@@ -301,6 +332,7 @@ class StabUtils {
     bool filterByFaceSize = true,
     int? imageWidth,
   }) async {
+    opDetectFull++;
     // Serialize access to the face detector to prevent race conditions
     return await _faceDetectorMutex.protect(() async {
       try {
@@ -342,6 +374,7 @@ class StabUtils {
     // Read file bytes outside mutex (doesn't need face detector)
     final bytes = await File(imagePath).readAsBytes();
 
+    opDetectFull++;
     // Serialize access to the face detector to prevent race conditions
     return await _faceDetectorMutex.protect(() async {
       try {
@@ -404,6 +437,8 @@ class StabUtils {
   /// Used for single-face photos to store reference embeddings.
   /// Returns null if no faces detected or embedding extraction fails.
   static Future<Float32List?> getFaceEmbeddingFromBytes(Uint8List bytes) async {
+    opDetectForEmbed++;
+    opEmbeds++;
     // Serialize access to the face detector to prevent race conditions
     return await _faceDetectorMutex.protect(() async {
       try {
@@ -438,6 +473,7 @@ class StabUtils {
     fdl.Face face,
     Uint8List bytes,
   ) async {
+    opEmbeds++;
     // Serialize access to the face detector to prevent race conditions
     return await _faceDetectorMutex.protect(() async {
       try {
@@ -474,6 +510,7 @@ class StabUtils {
             "Using ${faces.length} pre-detected faces for embedding matching",
           );
         } else {
+          opDetectForEmbed++;
           faces = await _faceDetector!.detectFacesFromBytes(
             imageBytes,
             mode: fdl.FaceDetectionMode.fast,
@@ -487,6 +524,7 @@ class StabUtils {
         double bestSimilarity = -1.0;
 
         for (int i = 0; i < faces.length; i++) {
+          opEmbeds++;
           final embedding = await _faceDetector!.getFaceEmbedding(
             faces[i],
             imageBytes,
@@ -1538,6 +1576,7 @@ class StabUtils {
     bool preserveBitDepth = false,
   }) async {
     if (!IsolatePool.instance.isInitialized) return null;
+    opSourceDecodes++;
     return await IsolatePool.instance.executeSticky<(int, int)>(
       srcId,
       'prepareSourceMat',
@@ -1654,6 +1693,7 @@ class StabUtils {
     int matType, {
     bool filterByFaceSize = true,
   }) async {
+    opDetectRaw++;
     return await _faceDetectorMutex.protect(() async {
       try {
         await _ensureFDLite();
@@ -1705,6 +1745,7 @@ class StabUtils {
     int pngCompression = 3,
   }) async {
     token?.throwIfCancelled();
+    opWarps++;
 
     if (IsolatePool.instance.isInitialized) {
       final params = <String, dynamic>{
@@ -1786,6 +1827,7 @@ class StabUtils {
     bool useCachedSrc = false,
   }) async {
     token?.throwIfCancelled();
+    opWarps++;
 
     if (IsolatePool.instance.isInitialized) {
       final params = <String, dynamic>{
@@ -1835,6 +1877,7 @@ class StabUtils {
     int matType, {
     int pngCompression = 3,
   }) async {
+    opPngEncodes++;
     if (IsolatePool.instance.isInitialized) {
       return await IsolatePool.instance.execute<Uint8List>(
         'encodeRawToPng',
