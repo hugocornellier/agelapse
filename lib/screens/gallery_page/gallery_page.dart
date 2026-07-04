@@ -167,6 +167,13 @@ class GalleryPageState extends State<GalleryPage>
   final ScrollController _stabilizedScrollController = ScrollController();
   final ScrollController _rawScrollController = ScrollController();
   StreamSubscription<StabUpdateEvent>? _stabUpdateSubscription;
+
+  /// Serializes incremental stab-reveal handling. A multi-photo gate flush
+  /// emits several reveal events back to back; their async handlers must not
+  /// interleave or a later photo could insert before an earlier one. Both
+  /// awaits inside the handler currently resolve FIFO by coincidence (single
+  /// sqflite queue), but nothing enforces that.
+  Future<void> _stabUpdateQueue = Future<void>.value();
   Timer? _loadImagesDebounce;
   int _loadImagesRequestId = 0;
   bool _stickyBottomEnabled = true;
@@ -584,7 +591,19 @@ class GalleryPageState extends State<GalleryPage>
 
           // Use incremental update if timestamp is available
           if (event.timestamp != null && projectOrientation != null) {
-            _handleIncrementalStabUpdate(event.timestamp!);
+            final String timestamp = event.timestamp!;
+            _stabUpdateQueue = _stabUpdateQueue.then((_) async {
+              if (!_isMounted) return;
+              try {
+                await _handleIncrementalStabUpdate(timestamp);
+              } catch (e) {
+                // Keep the chain alive; a dropped reveal self-heals on the
+                // next full reload.
+                LogService.instance.log(
+                  '[GALLERY] incremental stab update failed for $timestamp: $e',
+                );
+              }
+            });
           } else {
             // Fall back to debounced full reload
             _loadImagesDebounce?.cancel();

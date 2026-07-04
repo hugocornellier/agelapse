@@ -48,6 +48,18 @@ class DB {
   static const String _photoWhereClause = 'timestamp = ? AND projectID = ?';
   static const String _orderByTimestamp = 'CAST(timestamp AS INTEGER)';
 
+  /// In-memory, per `projectId:stabilizedColumn` reveal watermark: the exclusive
+  /// upper timestamp bound below which the stabilized gallery has already
+  /// revealed every photo. It only advances during normal operation, so a photo
+  /// that later goes pending BELOW it (backdated import, mid-sequence re-stab,
+  /// retry) never retracts its already-revealed siblings. It is reset in
+  /// [resetStabilizationStatusForProject] on a full restart so a fresh run
+  /// re-gates from scratch instead of leaking out-of-order completions below a
+  /// stale-high mark, and clamped when photos leave the active set
+  /// ([_clampRevealWatermarksAfterPhotoRemoval]) so it can't outlive the
+  /// photos that justified it. See [getStabilizedAndFailedPhotosByProjectID].
+  static final Map<String, int> _revealWatermarks = {};
+
   /// Default retention window for soft-deleted photos before permanent
   /// purge (mirrors iOS Photos "Recently Deleted").
   static const int recentlyDeletedRetentionDays = 30;
@@ -380,7 +392,10 @@ class DB {
 
   Future<int> deleteProject(int id) async {
     final db = await database;
-    return await db.delete(projectTable, where: 'id = ?', whereArgs: [id]);
+    final int rows =
+        await db.delete(projectTable, where: 'id = ?', whereArgs: [id]);
+    _removeRevealWatermarksForProject(id);
+    return rows;
   }
 
   /// Deletes all database records associated with a project atomically.
@@ -425,6 +440,7 @@ class DB {
         );
         await txn.delete(projectTable, where: 'id = ?', whereArgs: [projectId]);
       });
+      _removeRevealWatermarksForProject(projectId);
       return true;
     } catch (e) {
       LogService.instance.log('Failed to delete project cascade: $e');
@@ -886,16 +902,68 @@ class DB {
     );
   }
 
+  /// Drops both orientations' reveal watermarks for [projectId]. See
+  /// [_revealWatermarks].
+  void _removeRevealWatermarksForProject(int projectId) {
+    _revealWatermarks.remove('$projectId:${getStabilizedColumn("landscape")}');
+    _revealWatermarks.remove('$projectId:${getStabilizedColumn("portrait")}');
+  }
+
+  /// Clamps [projectId]'s reveal watermarks after a photo leaves the active
+  /// set (soft delete, or hard delete of an active row). A watermark above
+  /// every remaining photo refers only to photos that no longer exist; left
+  /// alone it would exempt later photos from reveal gating entirely (clearing
+  /// a project and re-importing an older set would resurrect out-of-order
+  /// reveals below the stale-high bound). Pulling it down to one past the
+  /// newest remaining photo (or dropping it when no active photos remain)
+  /// restores gating without retracting anything: every photo at or below the
+  /// new bound keeps its revealed status, and every photo between the new and
+  /// old bounds is gone.
+  Future<void> _clampRevealWatermarksAfterPhotoRemoval(int projectId) async {
+    final String landscapeKey =
+        '$projectId:${getStabilizedColumn("landscape")}';
+    final String portraitKey = '$projectId:${getStabilizedColumn("portrait")}';
+    if (!_revealWatermarks.containsKey(landscapeKey) &&
+        !_revealWatermarks.containsKey(portraitKey)) {
+      return;
+    }
+
+    final db = await database;
+    final List<Map<String, dynamic>> rows = await db.rawQuery(
+      'SELECT MAX($_orderByTimestamp) AS maxTs FROM $photoActiveView '
+      'WHERE projectID = ?',
+      [projectId],
+    );
+    final int? maxTs =
+        rows.isNotEmpty ? (rows.first['maxTs'] as num?)?.toInt() : null;
+    if (maxTs == null) {
+      _removeRevealWatermarksForProject(projectId);
+      return;
+    }
+
+    final int bound = maxTs + 1;
+    for (final String key in [landscapeKey, portraitKey]) {
+      final int? current = _revealWatermarks[key];
+      if (current != null && current > bound) {
+        _revealWatermarks[key] = bound;
+      }
+    }
+  }
+
   /// Hard-deletes a photo row. Used by the project-folder sync service
   /// (when an external linked file vanishes) and by [permanentlyDeletePhoto]
   /// after the recently-deleted retention window expires.
   Future<int> deletePhoto(int timestamp, int projectId) async {
     final db = await database;
-    return await db.delete(
+    final int rows = await db.delete(
       photoTable,
       where: _photoWhereClause,
       whereArgs: [timestamp, projectId],
     );
+    if (rows > 0) {
+      await _clampRevealWatermarksAfterPhotoRemoval(projectId);
+    }
+    return rows;
   }
 
   /// Hard-deletes a photo row only if it is currently soft-deleted. Used by
@@ -998,6 +1066,9 @@ class DB {
         );
       }
     });
+    if (rows > 0) {
+      await _clampRevealWatermarksAfterPhotoRemoval(projectId);
+    }
     return rows;
   }
 
@@ -1096,7 +1167,10 @@ class DB {
 
   Future<int> deleteAllPhotos() async {
     final db = await database;
-    return await db.delete(photoTable);
+    final int rows = await db.delete(photoTable);
+    // Every project's photos are gone, so every reveal watermark is stale.
+    _revealWatermarks.clear();
+    return rows;
   }
 
   String? _resolveOrientation(
@@ -1702,6 +1776,17 @@ class DB {
     );
   }
 
+  // Powers the gallery's stabilized grid via GalleryUtils.getAllStabAndFailed-
+  // ImagePaths (the only caller). The gallery must fill strictly oldest ->
+  // newest even though the parallel fast path finishes photos, and writes their
+  // DB flags, out of order. A photo is "terminal" once it is stabilized, failed,
+  // or has no faces, and "pending" until then. Exposing every terminal row lets
+  // a later photo appear before an earlier one through any full reload, so this
+  // returns only terminal photos below the reveal watermark: an exclusive,
+  // monotonically-advancing bound that tracks the oldest still-pending photo but
+  // never moves backward, so a photo that later goes pending below it does not
+  // retract its already-revealed siblings (see [_revealWatermarks]). Results are
+  // ascending so no caller has to re-sort (MainNavigation.loadPhotos does not).
   Future<List<Map<String, dynamic>>> getStabilizedAndFailedPhotosByProjectID(
     int projectId,
     String projectOrientation,
@@ -1709,13 +1794,36 @@ class DB {
     final db = await database;
     final String stabilizedColumn = getStabilizedColumn(projectOrientation);
 
+    // Natural cut: exclusive bound below which every photo is already terminal.
+    // = the oldest pending photo's timestamp, or one past the newest photo when
+    // nothing is pending (the whole set is revealable).
+    final List<Map<String, dynamic>> boundsRows = await db.rawQuery(
+      'SELECT '
+      'MIN(CASE WHEN $stabilizedColumn = 0 AND stabFailed = 0 '
+      'AND noFacesFound = 0 THEN $_orderByTimestamp END) AS earliestPending, '
+      'MAX($_orderByTimestamp) AS maxTs '
+      'FROM $photoActiveView WHERE projectID = ?',
+      [projectId],
+    );
+    final Map<String, dynamic> bounds =
+        boundsRows.isNotEmpty ? boundsRows.first : const {};
+    final int? earliestPending = (bounds['earliestPending'] as num?)?.toInt();
+    final int? maxTs = (bounds['maxTs'] as num?)?.toInt();
+    final int naturalCut = earliestPending ?? ((maxTs ?? -1) + 1);
+
+    // Advance (never retract) the per-orientation watermark. There is no `await`
+    // between the read and write, so the update is atomic on the event loop.
+    final String wmKey = '$projectId:$stabilizedColumn';
+    final int watermark = max(_revealWatermarks[wmKey] ?? 0, naturalCut);
+    _revealWatermarks[wmKey] = watermark;
+
     return await db.query(
       photoActiveView,
       columns: ['timestamp', 'fileExtension'],
-      where:
-          '($stabilizedColumn = ? OR stabFailed = ? OR noFacesFound = ?) AND projectID = ?',
-      whereArgs: [1, 1, 1, projectId],
-      orderBy: '$_orderByTimestamp DESC',
+      where: '($stabilizedColumn = 1 OR stabFailed = 1 OR noFacesFound = 1) '
+          'AND projectID = ? AND $_orderByTimestamp < ?',
+      whereArgs: [projectId, watermark],
+      orderBy: '$_orderByTimestamp ASC',
     );
   }
 
@@ -1820,6 +1928,11 @@ class DB {
       where: 'projectID = ?',
       whereArgs: [projectId],
     );
+
+    // Reset the reveal watermarks (both orientations) so the re-stabilization
+    // re-gates strict oldest-first ordering from scratch, instead of revealing
+    // out-of-order completions below a now-stale watermark.
+    _removeRevealWatermarksForProject(projectId);
 
     // Also clear retry-count state so previously-capped photos (stabAttempts
     // >= maxAttempts) are eligible for stabilization again after an explicit
