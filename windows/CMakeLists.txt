@@ -85,7 +85,7 @@ install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
 
 # Strip unused TFLite models and sample images from plugin assets.
 # These files are bundled by pub.dev plugins but never loaded at runtime
-# for AgeLapse's specific configuration. Removing them saves ~24 MB.
+# for AgeLapse's specific configuration. Removing them saves ~35 MB.
 # See strip-savings.md for the full audit.
 set(_STRIP_FLUTTER_ASSETS_DIR "${INSTALL_BUNDLE_DATA_DIR}/${FLUTTER_ASSET_DIR_NAME}")
 set(_STRIP_FILES
@@ -97,8 +97,9 @@ set(_STRIP_FILES
   "packages/face_detection_tflite/assets/models/selfie_segmenter.tflite"
   "packages/face_detection_tflite/assets/models/face_detection_front.tflite"
   "packages/face_detection_tflite/assets/models/face_detection_short_range.tflite"
-  # pose_detection: unused landmark variant (AgeLapse only uses heavy)
+  # pose_detection: unused landmark variants (AgeLapse only uses heavy)
   "packages/pose_detection/assets/models/pose_landmark_full.tflite"
+  "packages/pose_detection/assets/models/pose_landmark_lite.tflite"
 )
 install(CODE "
   foreach(_f ${_STRIP_FILES})
@@ -110,14 +111,16 @@ install(CODE "
       file(REMOVE \"\${_path}\")
     endif()
   endforeach()
-  # Strip plugin sample images (not used by AgeLapse)
+  # Strip plugin sample images, plus hand_detection models: the app only
+  # reads HandDetector.modelVersion, so its models never load.
   foreach(_dir
     \"${_STRIP_FLUTTER_ASSETS_DIR}/packages/pose_detection/assets/samples\"
     \"${_STRIP_FLUTTER_ASSETS_DIR}/packages/dog_detection/assets/samples\"
     \"${_STRIP_FLUTTER_ASSETS_DIR}/packages/animal_detection/assets/samples\"
+    \"${_STRIP_FLUTTER_ASSETS_DIR}/packages/hand_detection/assets/models\"
   )
     if(IS_DIRECTORY \"\${_dir}\")
-      message(STATUS \"Stripping unused sample dir: \${_dir}\")
+      message(STATUS \"Stripping unused asset dir: \${_dir}\")
       file(REMOVE_RECURSE \"\${_dir}\")
     endif()
   endforeach()

@@ -108,6 +108,7 @@ afterEvaluate {
                 "packages/face_detection_tflite/assets/models/face_detection_front.tflite",
                 "packages/face_detection_tflite/assets/models/face_detection_short_range.tflite",
                 "packages/pose_detection/assets/models/pose_landmark_full.tflite",
+                "packages/pose_detection/assets/models/pose_landmark_lite.tflite",
             ).forEach { rel ->
                 val f = flutterAssetsDir.resolve(rel)
                 if (f.exists()) {
@@ -116,15 +117,17 @@ afterEvaluate {
                 }
             }
 
-            // Plugin sample images
+            // Plugin sample images, plus hand_detection models: the app only
+            // reads HandDetector.modelVersion, so its models never load.
             listOf(
                 "packages/pose_detection/assets/samples",
                 "packages/dog_detection/assets/samples",
                 "packages/animal_detection/assets/samples",
+                "packages/hand_detection/assets/models",
             ).forEach { rel ->
                 val d = flutterAssetsDir.resolve(rel)
                 if (d.isDirectory) {
-                    logger.lifecycle("Stripping unused sample dir: $rel")
+                    logger.lifecycle("Stripping unused asset dir: $rel")
                     d.deleteRecursively()
                 }
             }
