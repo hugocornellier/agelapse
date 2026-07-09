@@ -5,10 +5,10 @@ packages:
     dependency: transitive
     description:
       name: animal_detection
-      sha256: "464d19024647049c5bd74b000a471cf38e14858cfcfae56d2f68b5546d8cc51c"
+      sha256: "10ccc2ba187a835386490dc8acdfcb92d723569e14bee6e578ef88619eafa7f1"
       url: "https://pub.dev"
     source: hosted
-    version: "1.3.1"
+    version: "1.3.2"
   animated_bottom_navigation_bar:
     dependency: "direct main"
     description:
@@ -117,10 +117,10 @@ packages:
     dependency: "direct main"
     description:
       name: cat_detection
-      sha256: "0c24c58398fc69938f96abee4f0dfa248adca004fed97f0cdbf682aef0b5c11a"
+      sha256: "73de1faa0593a4ab37bf024071fffc80a0b4a5e97dd2c1c81d5b7be59355b6e0"
       url: "https://pub.dev"
     source: hosted
-    version: "1.3.1"
+    version: "1.3.2"
   change_case:
     dependency: transitive
     description:
@@ -278,10 +278,10 @@ packages:
     dependency: "direct main"
     description:
       name: dog_detection
-      sha256: "1aa6a96235e1abb1f4bea8a91b7fc99e8b491cdc642386231cd6547b162c7cac"
+      sha256: a6b3ffdb1889036f47bb9ddc8b92f1bc804c5585b663afe544beb158f0c1235b
       url: "https://pub.dev"
     source: hosted
-    version: "1.3.1"
+    version: "1.3.2"
   downloadsfolder:
     dependency: "direct main"
     description:
@@ -334,10 +334,10 @@ packages:
     dependency: "direct main"
     description:
       name: face_detection_tflite
-      sha256: "6413bf90ff4b55e9595a587d0e351a57c3d51099f4c3048cb52ffd7b9f0040e7"
+      sha256: "696289d9659662ae98c5a59ac08771926f261e00760b9206c1f05e3056ce7f05"
       url: "https://pub.dev"
     source: hosted
-    version: "6.6.0"
+    version: "6.6.1"
   fake_async:
     dependency: transitive
     description:
@@ -581,10 +581,10 @@ packages:
     dependency: transitive
     description:
       name: flutter_litert
-      sha256: "26788265d0cb19c4954678e855b4e2ee0f688343149857742cf4f9ff9b6ee4b4"
+      sha256: "0e98e7af177699657b5b8cc10dcf875b5e96f73acfd5020d2611c48b0487c6e8"
       url: "https://pub.dev"
     source: hosted
-    version: "3.3.1"
+    version: "3.4.1"
   flutter_local_notifications:
     dependency: "direct main"
     description:
@@ -697,10 +697,10 @@ packages:
     dependency: "direct main"
     description:
       name: hand_detection
-      sha256: "509c31c6740b7eb65c8d0ad1edd76206b3923eb1cd1eb01d0e8516cf02c40076"
+      sha256: "364d69e46ed6df8d359da808bfab666b4f5bde76ea0e074457ea0af644fdd4b5"
       url: "https://pub.dev"
     source: hosted
-    version: "3.3.0"
+    version: "3.4.0"
   heic_native:
     dependency: "direct main"
     description:
@@ -1150,10 +1150,10 @@ packages:
     dependency: "direct main"
     description:
       name: pose_detection
-      sha256: "6d438c4e5ed7ed7d92fa9f4127ea90a7e537be9a01a82f0c0273ef6c8e1f1d2d"
+      sha256: "4f6ae8c160c76cd99fa1b35f90aa8fc9fa5b1d442589fd94583973bdc2bd07f3"
       url: "https://pub.dev"
     source: hosted
-    version: "3.5.0"
+    version: "3.5.1"
   posix:
     dependency: transitive
     description:
