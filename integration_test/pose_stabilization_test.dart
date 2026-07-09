@@ -41,7 +41,7 @@ void main() {
       detector = PoseDetector();
       await detector.initialize(
         mode: PoseMode.boxesAndLandmarks,
-        landmarkModel: PoseLandmarkModel.lite,
+        landmarkModel: PoseLandmarkModel.heavy,
       );
       detectorInitialized = true;
     }
