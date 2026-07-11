@@ -71,6 +71,14 @@ for lib in "${LIBS[@]}"; do
   # --- Device slice: arm64 (platform iOS, untouched) ---
   lipo "$bin" -thin arm64 -output "$tmp/device/$lib.framework/$lib"
 
+  # The upstream fat frameworks list both platforms in CFBundleSupportedPlatforms,
+  # which App Store Connect rejects (ITMS error 91177). Each slice must declare
+  # exactly the one platform it targets.
+  plutil -replace CFBundleSupportedPlatforms -json '["iPhoneOS"]' \
+    "$tmp/device/$lib.framework/Info.plist"
+  plutil -replace CFBundleSupportedPlatforms -json '["iPhoneSimulator"]' \
+    "$tmp/sim/$lib.framework/Info.plist"
+
   # --- Simulator slice: x86_64 + arm64 retagged iOS (2) -> iOS-Simulator (7) ---
   sim_args=()
   if echo "$archs" | tr ' ' '\n' | grep -qx x86_64; then
@@ -89,5 +97,11 @@ for lib in "${LIBS[@]}"; do
     -framework "$tmp/sim/$lib.framework" \
     -output "$out"
   rm -rf "$tmp"
+
+  # bitcode_strip/vtool invalidate the embedded signatures, so ad-hoc sign the
+  # final bundles (Xcode re-signs with the real identity at embed time).
+  for fw in "$out"/*/"$lib.framework"; do
+    codesign --force --sign - "$fw"
+  done
   echo "created $out"
 done

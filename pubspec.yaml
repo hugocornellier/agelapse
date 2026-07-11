@@ -2,7 +2,7 @@ name: agelapse
 description: A powerful tool for creating stabilized aging timelapses.
 publish_to: 'none'
 
-version: 2.7.0-prerelease-B+45
+version: 2.7.0-prerelease-B+46
 
 environment:
   sdk: ">=3.1.0 <4.0.0"
@@ -89,7 +89,7 @@ dev_dependencies:
 
 flutter:
   config:
-    enable-swift-package-manager: false
+    enable-swift-package-manager: true
   uses-material-design: true
 
   assets:

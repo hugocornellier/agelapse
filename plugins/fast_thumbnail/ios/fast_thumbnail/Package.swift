@@ -5,10 +5,10 @@ import PackageDescription
 let package = Package(
     name: "fast_thumbnail",
     platforms: [
-        .iOS("12.0")
+        .iOS("14.0")
     ],
     products: [
-        .library(name: "fast_thumbnail", targets: ["fast_thumbnail"])
+        .library(name: "fast-thumbnail", targets: ["fast_thumbnail"])
     ],
     dependencies: [
         .package(name: "FlutterFramework", path: "../FlutterFramework")

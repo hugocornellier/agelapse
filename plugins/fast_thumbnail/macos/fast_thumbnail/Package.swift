@@ -8,7 +8,7 @@ let package = Package(
         .macOS("10.14")
     ],
     products: [
-        .library(name: "fast_thumbnail", targets: ["fast_thumbnail"])
+        .library(name: "fast-thumbnail", targets: ["fast_thumbnail"])
     ],
     dependencies: [
         .package(name: "FlutterFramework", path: "../FlutterFramework")

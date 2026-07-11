@@ -43,9 +43,9 @@ post_install do |installer|
   end
 
   # Re-sign FFmpegKit vendored frameworks (bitcode stripping leaves them unsigned)
-  ffmpeg_pod_dir = File.join(installer.sandbox.root.to_s, '..', '.symlinks', 'plugins', 'ffmpeg_kit_flutter_new', 'ios', 'Frameworks')
+  ffmpeg_pod_dir = File.join(installer.sandbox.root.to_s, '..', '.symlinks', 'plugins', 'ffmpeg_kit_flutter_new', 'ios', 'ffmpeg_kit_flutter_new', 'Frameworks')
   if File.directory?(ffmpeg_pod_dir)
-    Dir.glob(File.join(ffmpeg_pod_dir, '*.framework')).each do |fw|
+    Dir.glob(File.join(ffmpeg_pod_dir, '*.xcframework', '*', '*.framework')).each do |fw|
       system("codesign", "--force", "--sign", "-", fw)
     end
   end

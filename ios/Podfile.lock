@@ -1,173 +1,28 @@
 PODS:
-  - camera_avfoundation (0.0.1):
-    - Flutter
-  - device_info_plus (0.0.1):
-    - Flutter
-  - downloadsfolder (2.0.0-pre.2):
-    - Flutter
-  - fast_thumbnail (0.1.0):
-    - Flutter
-  - ffmpeg_kit_flutter_new (1.0.0):
-    - ffmpeg_kit_flutter_new/full-gpl (= 1.0.0)
-    - Flutter
-  - ffmpeg_kit_flutter_new/full-gpl (1.0.0):
-    - Flutter
-  - file_picker (0.0.1):
-    - Flutter
-    - FlutterMacOS
-  - file_selector_ios (0.0.1):
-    - Flutter
   - Flutter (1.0.0)
   - flutter_avif_ios (0.0.1):
     - Flutter
-  - flutter_litert (3.2.0):
-    - Flutter
-  - flutter_local_notifications (0.0.1):
-    - Flutter
-  - flutter_timezone (0.0.1):
-    - Flutter
-  - heic_native (1.0.0):
-    - Flutter
-  - integration_test (0.0.1):
-    - Flutter
   - media_kit_video (0.0.1):
-    - Flutter
-  - package_info_plus (0.4.5):
-    - Flutter
-  - permission_handler_apple (9.4.8):
-    - Flutter
-  - photo_manager (3.9.0):
-    - Flutter
-    - FlutterMacOS
-  - saver_gallery (0.0.1):
-    - Flutter
-  - sensors_plus (0.0.1):
-    - Flutter
-  - share_plus (0.0.1):
-    - Flutter
-  - sqflite_darwin (0.0.4):
-    - Flutter
-    - FlutterMacOS
-  - url_launcher_ios (0.0.1):
-    - Flutter
-  - vibration (3.0.0):
-    - Flutter
-  - video_player_avfoundation (0.0.1):
-    - Flutter
-    - FlutterMacOS
-  - wakelock_plus (0.0.1):
     - Flutter
 
 DEPENDENCIES:
-  - camera_avfoundation (from `.symlinks/plugins/camera_avfoundation/ios`)
-  - device_info_plus (from `.symlinks/plugins/device_info_plus/ios`)
-  - downloadsfolder (from `.symlinks/plugins/downloadsfolder/ios`)
-  - fast_thumbnail (from `.symlinks/plugins/fast_thumbnail/ios`)
-  - ffmpeg_kit_flutter_new (from `.symlinks/plugins/ffmpeg_kit_flutter_new/ios`)
-  - file_picker (from `.symlinks/plugins/file_picker/darwin`)
-  - file_selector_ios (from `.symlinks/plugins/file_selector_ios/ios`)
   - Flutter (from `Flutter`)
   - flutter_avif_ios (from `.symlinks/plugins/flutter_avif_ios/ios`)
-  - flutter_litert (from `.symlinks/plugins/flutter_litert/ios`)
-  - flutter_local_notifications (from `.symlinks/plugins/flutter_local_notifications/ios`)
-  - flutter_timezone (from `.symlinks/plugins/flutter_timezone/ios`)
-  - heic_native (from `.symlinks/plugins/heic_native/ios`)
-  - integration_test (from `.symlinks/plugins/integration_test/ios`)
   - media_kit_video (from `.symlinks/plugins/media_kit_video/ios`)
-  - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
-  - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
-  - photo_manager (from `.symlinks/plugins/photo_manager/darwin`)
-  - saver_gallery (from `.symlinks/plugins/saver_gallery/ios`)
-  - sensors_plus (from `.symlinks/plugins/sensors_plus/ios`)
-  - share_plus (from `.symlinks/plugins/share_plus/ios`)
-  - sqflite_darwin (from `.symlinks/plugins/sqflite_darwin/darwin`)
-  - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
-  - vibration (from `.symlinks/plugins/vibration/ios`)
-  - video_player_avfoundation (from `.symlinks/plugins/video_player_avfoundation/darwin`)
-  - wakelock_plus (from `.symlinks/plugins/wakelock_plus/ios`)
 
 EXTERNAL SOURCES:
-  camera_avfoundation:
-    :path: ".symlinks/plugins/camera_avfoundation/ios"
-  device_info_plus:
-    :path: ".symlinks/plugins/device_info_plus/ios"
-  downloadsfolder:
-    :path: ".symlinks/plugins/downloadsfolder/ios"
-  fast_thumbnail:
-    :path: ".symlinks/plugins/fast_thumbnail/ios"
-  ffmpeg_kit_flutter_new:
-    :path: ".symlinks/plugins/ffmpeg_kit_flutter_new/ios"
-  file_picker:
-    :path: ".symlinks/plugins/file_picker/darwin"
-  file_selector_ios:
-    :path: ".symlinks/plugins/file_selector_ios/ios"
   Flutter:
     :path: Flutter
   flutter_avif_ios:
     :path: ".symlinks/plugins/flutter_avif_ios/ios"
-  flutter_litert:
-    :path: ".symlinks/plugins/flutter_litert/ios"
-  flutter_local_notifications:
-    :path: ".symlinks/plugins/flutter_local_notifications/ios"
-  flutter_timezone:
-    :path: ".symlinks/plugins/flutter_timezone/ios"
-  heic_native:
-    :path: ".symlinks/plugins/heic_native/ios"
-  integration_test:
-    :path: ".symlinks/plugins/integration_test/ios"
   media_kit_video:
     :path: ".symlinks/plugins/media_kit_video/ios"
-  package_info_plus:
-    :path: ".symlinks/plugins/package_info_plus/ios"
-  permission_handler_apple:
-    :path: ".symlinks/plugins/permission_handler_apple/ios"
-  photo_manager:
-    :path: ".symlinks/plugins/photo_manager/darwin"
-  saver_gallery:
-    :path: ".symlinks/plugins/saver_gallery/ios"
-  sensors_plus:
-    :path: ".symlinks/plugins/sensors_plus/ios"
-  share_plus:
-    :path: ".symlinks/plugins/share_plus/ios"
-  sqflite_darwin:
-    :path: ".symlinks/plugins/sqflite_darwin/darwin"
-  url_launcher_ios:
-    :path: ".symlinks/plugins/url_launcher_ios/ios"
-  vibration:
-    :path: ".symlinks/plugins/vibration/ios"
-  video_player_avfoundation:
-    :path: ".symlinks/plugins/video_player_avfoundation/darwin"
-  wakelock_plus:
-    :path: ".symlinks/plugins/wakelock_plus/ios"
 
 SPEC CHECKSUMS:
-  camera_avfoundation: 968a9a5323c79a99c166ad9d7866bfd2047b5a9b
-  device_info_plus: 21fcca2080fbcd348be798aa36c3e5ed849eefbe
-  downloadsfolder: 4dbaac19cd97dbab6028b5d748fea221ebfb12bb
-  fast_thumbnail: 76e71ca044ae63ff54a47084ee6bc2ccecc9a0e1
-  ffmpeg_kit_flutter_new: a16a6ce31603a82fedf30c74b2904ae1ad85bf7f
-  file_picker: 70164d9778c42c47218d6cd79ce435de0856b11a
-  file_selector_ios: ec57ec07954363dd730b642e765e58f199bb621a
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   flutter_avif_ios: 2553d2aafda56339cf924e943da89ad3f40af2dd
-  flutter_litert: adf39895ca89ce361949aa381d6309024e4c5dd4
-  flutter_local_notifications: 643a3eda1ce1c0599413ca31672536d423dee214
-  flutter_timezone: 7c838e17ffd4645d261e87037e5bebf6d38fe544
-  heic_native: e7fb6286bc1553bb72015eb185fe47c296d19b17
-  integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
   media_kit_video: f3b0d035d89def15cfbbcf7dc2ae278f201e2f83
-  package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499
-  permission_handler_apple: 92d754bbaa7361d436db2d6c3c1c2a0fdcec462e
-  photo_manager: 25fd77df14f4f0ba5ef99e2c61814dde77e2bceb
-  saver_gallery: 44507a28b0ace1a0446473fb8cbd36179402f5af
-  sensors_plus: b70a93b69dafdabd26ce4ac3f4d0529ab9acc4ca
-  share_plus: 50da8cb520a8f0f65671c6c6a99b3617ed10a58a
-  sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
-  url_launcher_ios: 7a95fa5b60cc718a708b8f2966718e93db0cef1b
-  vibration: ca8104a8875b9c493e15b21b04e456befd0ff6eb
-  video_player_avfoundation: 3453f792138786248960ca029747fcd9f318ef52
-  wakelock_plus: e29112ab3ef0b318e58cfa5c32326458be66b556
 
-PODFILE CHECKSUM: 79d0d9d69cd3a1ff371c2ac34781fa82ea1cee51
+PODFILE CHECKSUM: 9f0a1fedb94757721f309ef3496b66227f3b4551
 
 COCOAPODS: 1.16.2
