@@ -1,4 +1,5 @@
 import AppKit
+import CoreServices
 import FlutterMacOS
 import ImageIO
 import UniformTypeIdentifiers
@@ -61,7 +62,15 @@ public class FastThumbnailPlugin: NSObject, FlutterPlugin {
 
     // Write JPEG
     let outputURL = URL(fileURLWithPath: outputPath)
-    guard let destination = CGImageDestinationCreateWithURL(outputURL as CFURL, UTType.jpeg.identifier as CFString, 1, nil) else { return nil }
+    // The SwiftPM platform floor is macOS 10.14, but UTType requires 11.0;
+    // fall back to the legacy CoreServices constant on older systems.
+    let jpegTypeIdentifier: CFString
+    if #available(macOS 11.0, *) {
+      jpegTypeIdentifier = UTType.jpeg.identifier as CFString
+    } else {
+      jpegTypeIdentifier = kUTTypeJPEG
+    }
+    guard let destination = CGImageDestinationCreateWithURL(outputURL as CFURL, jpegTypeIdentifier, 1, nil) else { return nil }
 
     let jpegOptions: [CFString: Any] = [
       kCGImageDestinationLossyCompressionQuality: Double(quality) / 100.0,
