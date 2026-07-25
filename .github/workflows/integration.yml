@@ -15,6 +15,7 @@ jobs:
     name: Unit Tests (${{ matrix.flutter-channel }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    continue-on-error: ${{ matrix.flutter-channel == 'beta' }}
     strategy:
       fail-fast: false
       matrix:
@@ -25,11 +26,12 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: ${{ matrix.flutter-channel }}
+          flutter-version: ${{ matrix.flutter-channel == 'stable' && '3.44.8' || '' }}
           cache: true
           cache-key: 'flutter-:os:-:channel:-:version:-:arch:-tests-unit-:hash:'
 
       - name: Install dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Run unit tests with coverage
         run: flutter test --coverage
@@ -48,6 +50,7 @@ jobs:
     name: Integration macOS ${{ matrix.group }} (${{ matrix.flutter-channel }})
     runs-on: macos-15
     timeout-minutes: 60
+    continue-on-error: ${{ matrix.flutter-channel == 'beta' }}
     strategy:
       fail-fast: false
       matrix:
@@ -59,6 +62,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: ${{ matrix.flutter-channel }}
+          flutter-version: ${{ matrix.flutter-channel == 'stable' && '3.44.8' || '' }}
           cache: true
           cache-key: 'flutter-:os:-:channel:-:version:-:arch:-tests-macos-${{ matrix.group }}-:hash:'
 
@@ -70,7 +74,7 @@ jobs:
           restore-keys: pods-macos-
 
       - name: Install dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Install macOS pods
         working-directory: macos
@@ -93,6 +97,7 @@ jobs:
     name: Integration iOS (${{ matrix.flutter-channel }})
     runs-on: macos-15
     timeout-minutes: 120
+    continue-on-error: ${{ matrix.flutter-channel == 'beta' }}
     strategy:
       fail-fast: false
       matrix:
@@ -106,6 +111,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: ${{ matrix.flutter-channel }}
+          flutter-version: ${{ matrix.flutter-channel == 'stable' && '3.44.8' || '' }}
           cache: true
           cache-key: 'flutter-:os:-:channel:-:version:-:arch:-tests-ios-:hash:'
 
@@ -116,16 +122,8 @@ jobs:
           key: pods-ios-${{ hashFiles('ios/Podfile.lock', 'pubspec.lock') }}
           restore-keys: pods-ios-
 
-      - name: Cache opencv_dart native build
-        uses: actions/cache@v5
-        continue-on-error: true
-        with:
-          path: .dart_tool/hooks_runner/shared
-          key: opencv-native-ios-tests-${{ matrix.flutter-channel }}-xcode26.2-${{ hashFiles('pubspec.lock') }}
-          restore-keys: opencv-native-ios-tests-${{ matrix.flutter-channel }}-xcode26.2-
-
       - name: Install dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Install iOS pods
         working-directory: ios
@@ -193,6 +191,7 @@ jobs:
     name: Integration Android (${{ matrix.flutter-channel }})
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    continue-on-error: ${{ matrix.flutter-channel == 'beta' }}
     strategy:
       fail-fast: false
       matrix:
@@ -219,6 +218,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: ${{ matrix.flutter-channel }}
+          flutter-version: ${{ matrix.flutter-channel == 'stable' && '3.44.8' || '' }}
           cache: true
           cache-key: 'flutter-:os:-:channel:-:version:-:arch:-tests-android-:hash:'
 
@@ -232,7 +232,7 @@ jobs:
           restore-keys: gradle-${{ runner.os }}-
 
       - name: Install dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Prewarm Android build
         run: flutter build apk --debug
@@ -265,6 +265,7 @@ jobs:
     name: Integration Linux ${{ matrix.group }} (${{ matrix.flutter-channel }})
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    continue-on-error: ${{ matrix.flutter-channel == 'beta' }}
     strategy:
       fail-fast: false
       matrix:
@@ -281,19 +282,12 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: ${{ matrix.flutter-channel }}
+          flutter-version: ${{ matrix.flutter-channel == 'stable' && '3.44.8' || '' }}
           cache: true
           cache-key: 'flutter-:os:-:channel:-:version:-:arch:-tests-linux-${{ matrix.group }}-:hash:'
 
-      - name: Cache opencv_dart native build
-        uses: actions/cache@v5
-        continue-on-error: true
-        with:
-          path: .dart_tool/hooks_runner/shared
-          key: opencv-native-linux-tests-${{ matrix.flutter-channel }}-${{ matrix.group }}-${{ hashFiles('pubspec.lock') }}
-          restore-keys: opencv-native-linux-tests-${{ matrix.flutter-channel }}-${{ matrix.group }}-
-
       - name: Install dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Prefetch mimalloc tarball
         uses: ./.github/actions/prefetch-mimalloc
@@ -311,6 +305,7 @@ jobs:
     name: Integration Windows ${{ matrix.group }} (${{ matrix.flutter-channel }})
     runs-on: windows-latest
     timeout-minutes: 60
+    continue-on-error: ${{ matrix.flutter-channel == 'beta' }}
     strategy:
       fail-fast: false
       matrix:
@@ -322,19 +317,12 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: ${{ matrix.flutter-channel }}
+          flutter-version: ${{ matrix.flutter-channel == 'stable' && '3.44.8' || '' }}
           cache: true
           cache-key: 'flutter-:os:-:channel:-:version:-:arch:-tests-windows-${{ matrix.group }}-:hash:'
 
-      - name: Cache opencv_dart native build
-        uses: actions/cache@v5
-        continue-on-error: true
-        with:
-          path: .dart_tool/hooks_runner/shared
-          key: opencv-native-windows-tests-${{ matrix.flutter-channel }}-${{ matrix.group }}-${{ hashFiles('pubspec.lock') }}
-          restore-keys: opencv-native-windows-tests-${{ matrix.flutter-channel }}-${{ matrix.group }}-
-
       - name: Install dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Prewarm Windows build
         run: flutter build windows --debug

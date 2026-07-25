@@ -5,12 +5,19 @@ name: Windows DB smoke
 # via Dart build hooks; Windows is the only shipped platform with no system
 # SQLite fallback, so this is the one that must be verified.
 #
-# Runs on demand (workflow_dispatch) and on pushes to the perf branch that touch
-# the SQLite stack or this workflow. Not wired into the default CI.
+# Runs on demand and whenever a pull request or main-branch push changes the
+# SQLite dependency stack or this workflow.
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - pubspec.yaml
+      - pubspec.lock
+      - integration_test/windows_db_smoke_test.dart
+      - .github/workflows/windows-db-smoke.yml
   push:
-    branches: [perf/stabilize-micro-2]
+    branches: [main]
     paths:
       - pubspec.yaml
       - pubspec.lock
@@ -25,32 +32,19 @@ jobs:
   smoke:
     name: Windows sqlite3 DB round-trip
     runs-on: windows-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
 
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: 3.44.8
           cache: true
           cache-key: 'flutter-:os:-:channel:-:version:-:arch:-windows-db-smoke-:hash:'
 
-      # Reuse the opencv_dart native-asset build cache from the main test
-      # workflow so we don't recompile OpenCV from scratch.
-      - name: Cache opencv_dart native build
-        uses: actions/cache@v5
-        continue-on-error: true
-        with:
-          path: .dart_tool/hooks_runner/shared
-          key: opencv-native-windows-db-smoke-${{ hashFiles('pubspec.lock') }}
-          restore-keys: |
-            opencv-native-windows-db-smoke-
-            opencv-native-windows-tests-stable-fast-
-            opencv-native-windows-tests-stable-
-            opencv-native-windows-
-
       - name: Install dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Assert sqlite3_flutter_libs is absent, sqlite3 present
         shell: bash

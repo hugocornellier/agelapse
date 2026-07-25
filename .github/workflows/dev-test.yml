@@ -47,10 +47,11 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: 3.44.8
           cache: true
 
       - name: Install dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Verify formatting
         run: dart format --output=none --set-exit-if-changed .
@@ -73,6 +74,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: ${{ inputs.flutter_channel }}
+          flutter-version: ${{ inputs.flutter_channel == 'stable' && '3.44.8' || '' }}
           cache: true
 
       - name: Cache CocoaPods
@@ -83,7 +85,7 @@ jobs:
           restore-keys: pods-macos-
 
       - name: Install dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Install macOS pods
         working-directory: macos
@@ -115,6 +117,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: ${{ inputs.flutter_channel }}
+          flutter-version: ${{ inputs.flutter_channel == 'stable' && '3.44.8' || '' }}
           cache: true
 
       - name: Cache CocoaPods
@@ -124,15 +127,8 @@ jobs:
           key: pods-ios-${{ hashFiles('ios/Podfile.lock', 'pubspec.lock') }}
           restore-keys: pods-ios-
 
-      - name: Cache opencv_dart native build
-        uses: actions/cache@v5
-        with:
-          path: .dart_tool/hooks_runner/shared
-          key: opencv-native-ios-${{ inputs.flutter_channel }}-xcode26.2-${{ hashFiles('pubspec.lock') }}
-          restore-keys: opencv-native-ios-${{ inputs.flutter_channel }}-xcode26.2-
-
       - name: Install dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Install iOS pods
         working-directory: ios
@@ -212,6 +208,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: ${{ inputs.flutter_channel }}
+          flutter-version: ${{ inputs.flutter_channel == 'stable' && '3.44.8' || '' }}
           cache: true
 
       - name: Cache Gradle
@@ -224,7 +221,7 @@ jobs:
           restore-keys: gradle-${{ runner.os }}-
 
       - name: Install dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Prewarm Android build
         run: flutter build apk --debug
@@ -264,17 +261,11 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: ${{ inputs.flutter_channel }}
+          flutter-version: ${{ inputs.flutter_channel == 'stable' && '3.44.8' || '' }}
           cache: true
 
-      - name: Cache opencv_dart native build
-        uses: actions/cache@v5
-        with:
-          path: .dart_tool/hooks_runner/shared
-          key: opencv-native-linux-${{ hashFiles('pubspec.lock') }}
-          restore-keys: opencv-native-linux-
-
       - name: Install dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Prefetch mimalloc tarball
         uses: ./.github/actions/prefetch-mimalloc
@@ -299,17 +290,11 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: ${{ inputs.flutter_channel }}
+          flutter-version: ${{ inputs.flutter_channel == 'stable' && '3.44.8' || '' }}
           cache: true
 
-      - name: Cache opencv_dart native build
-        uses: actions/cache@v5
-        with:
-          path: .dart_tool/hooks_runner/shared
-          key: opencv-native-windows-${{ hashFiles('pubspec.lock') }}
-          restore-keys: opencv-native-windows-
-
       - name: Install dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Prewarm Windows build
         run: flutter build windows --debug
