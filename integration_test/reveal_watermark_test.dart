@@ -67,7 +67,7 @@ void main() {
     await stabilize(projectId, '400');
     expect(
       await revealed(projectId),
-      ['100', '200'],
+      equals(['100', '200']),
       reason: 'a later photo must not appear before an earlier pending one',
     );
 
@@ -86,7 +86,7 @@ void main() {
     );
     expect(
       await revealed(projectId),
-      ['100', '200', '400', '500'],
+      equals(['100', '200', '400', '500']),
       reason: '300 hides but its later siblings must not retract',
     );
 
@@ -141,7 +141,7 @@ void main() {
       await DB.instance.softDeletePhoto(500, projectId);
       expect(
         await revealed(projectId),
-        ['100', '200', '400'],
+        equals(['100', '200', '400']),
         reason: 'clamp must not retract 400 while 300 is pending',
       );
 
