@@ -38,7 +38,6 @@ dependencies:
   flutter_native_splash: ^2.4.8
   flutter_svg: ^2.3.0
   flutter_timezone: ^5.1.0
-  font_awesome_flutter: ^11.0.0
   fast_thumbnail:
     path: plugins/fast_thumbnail
   heic_native: ^1.1.0
@@ -96,6 +95,7 @@ flutter:
   assets:
     - assets/images/
     - assets/ghost-custom.svg
+    - assets/ghost-solid.svg
     # ffmpeg.exe is only needed on Windows (Android uses FFmpegKit, macOS/Linux
     # use system ffmpeg). The platforms: key ensures it's only bundled for Windows.
     - path: assets/ffmpeg/windows/ffmpeg.exe
