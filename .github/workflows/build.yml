@@ -44,7 +44,7 @@ jobs:
   build-android:
     name: Build Android (${{ matrix.flutter-channel }})
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 75
     continue-on-error: ${{ matrix.flutter-channel == 'beta' }}
     strategy:
       fail-fast: false
@@ -91,10 +91,14 @@ jobs:
       - name: Build APK (debug)
         run: flutter build apk --debug
 
+      - name: Build APK (release)
+        if: matrix.flutter-channel == 'stable'
+        run: flutter build apk --release
+
   build-ios:
     name: Build iOS (${{ matrix.flutter-channel }})
     runs-on: macos-15
-    timeout-minutes: 60
+    timeout-minutes: 90
     continue-on-error: ${{ matrix.flutter-channel == 'beta' }}
     strategy:
       fail-fast: false
@@ -142,10 +146,14 @@ jobs:
             sleep $((attempt * 30))
           done
 
+      - name: Build iOS release (no codesign)
+        if: matrix.flutter-channel == 'stable'
+        run: flutter build ios --release --no-codesign
+
   build-macos:
     name: Build macOS (${{ matrix.flutter-channel }})
     runs-on: macos-15
-    timeout-minutes: 45
+    timeout-minutes: 90
     continue-on-error: ${{ matrix.flutter-channel == 'beta' }}
     strategy:
       fail-fast: false
@@ -181,13 +189,17 @@ jobs:
             sleep $((attempt * 15))
           done
 
-      - name: Build macOS
+      - name: Build macOS (debug)
         run: flutter build macos --debug
+
+      - name: Build macOS (release)
+        if: matrix.flutter-channel == 'stable'
+        run: flutter build macos --release
 
   build-linux:
     name: Build Linux (${{ matrix.flutter-channel }})
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     continue-on-error: ${{ matrix.flutter-channel == 'beta' }}
     strategy:
       fail-fast: false
@@ -211,13 +223,23 @@ jobs:
       - name: Install dependencies
         run: flutter pub get ${{ matrix.flutter-channel == 'stable' && '--enforce-lockfile' || '' }}
 
-      - name: Prefetch mimalloc tarball
+      - name: Prefetch mimalloc tarball (debug)
         uses: ./.github/actions/prefetch-mimalloc
         with:
           build-mode: debug
 
-      - name: Build Linux
+      - name: Build Linux (debug)
         run: flutter build linux --debug
+
+      - name: Prefetch mimalloc tarball (release)
+        if: matrix.flutter-channel == 'stable'
+        uses: ./.github/actions/prefetch-mimalloc
+        with:
+          build-mode: release
+
+      - name: Build Linux (release)
+        if: matrix.flutter-channel == 'stable'
+        run: flutter build linux --release
 
       - name: Report flutter_assets size
         run: |
@@ -231,7 +253,7 @@ jobs:
   build-windows:
     name: Build Windows (${{ matrix.flutter-channel }})
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 75
     continue-on-error: ${{ matrix.flutter-channel == 'beta' }}
     strategy:
       fail-fast: false
@@ -250,8 +272,12 @@ jobs:
       - name: Install dependencies
         run: flutter pub get ${{ matrix.flutter-channel == 'stable' && '--enforce-lockfile' || '' }}
 
-      - name: Build Windows
+      - name: Build Windows (debug)
         run: flutter build windows --debug
+
+      - name: Build Windows (release)
+        if: matrix.flutter-channel == 'stable'
+        run: flutter build windows --release
 
       - name: Report flutter_assets size
         shell: bash
