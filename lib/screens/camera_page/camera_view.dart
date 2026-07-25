@@ -476,7 +476,8 @@ class _CameraViewState extends State<CameraView>
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-                content: Text('Failed to save photo. Please try again.')),
+              content: Text('Failed to save photo. Please try again.'),
+            ),
           );
           return;
         }
@@ -491,7 +492,7 @@ class _CameraViewState extends State<CameraView>
           if (!mounted) return;
           Navigator.of(context, rootNavigator: true).push(
             PageRouteBuilder(
-              pageBuilder: (_, __, ___) => TookFirstPhotoPage(
+              pageBuilder: (_, _, _) => TookFirstPhotoPage(
                 projectId: widget.projectId,
                 projectName: widget.projectName,
                 goToPage: widget.goToPage,
@@ -521,13 +522,16 @@ class _CameraViewState extends State<CameraView>
   void _saveGridOffsets() async {
     // Handle both mobile orientations ("Landscape Left"/"Landscape Right")
     // and desktop orientations ("landscape" lowercase from project settings)
-    final bool isLandscape = _orientation == "Landscape Left" ||
+    final bool isLandscape =
+        _orientation == "Landscape Left" ||
         _orientation == "Landscape Right" ||
         _orientation.toLowerCase() == "landscape";
-    final String guideOffSetXColName =
-        isLandscape ? "guideOffsetXLandscape" : "guideOffsetXPortrait";
-    final String guideOffSetYColName =
-        isLandscape ? "guideOffsetYLandscape" : "guideOffsetYPortrait";
+    final String guideOffSetXColName = isLandscape
+        ? "guideOffsetXLandscape"
+        : "guideOffsetXPortrait";
+    final String guideOffSetYColName = isLandscape
+        ? "guideOffsetYLandscape"
+        : "guideOffsetYPortrait";
 
     await DB.instance.setSettingByTitle(
       guideOffSetXColName,
@@ -546,119 +550,118 @@ class _CameraViewState extends State<CameraView>
   }
 
   Widget _timerButton() => Container(
-        padding: const EdgeInsets.all(0),
-        decoration: BoxDecoration(
-          color: AppColors.overlay.withValues(alpha: 0.54),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: RotatingIconButton(
-          rotationTurns: getRotation(_orientation),
-          onPressed: _cycleTimerDuration,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Icon(
-                _timerDuration == 0 ? Icons.timer_off_outlined : Icons.timer,
+    padding: const EdgeInsets.all(0),
+    decoration: BoxDecoration(
+      color: AppColors.overlay.withValues(alpha: 0.54),
+      borderRadius: BorderRadius.circular(10),
+    ),
+    child: RotatingIconButton(
+      rotationTurns: getRotation(_orientation),
+      onPressed: _cycleTimerDuration,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Icon(
+            _timerDuration == 0 ? Icons.timer_off_outlined : Icons.timer,
+            size: 24,
+            color: AppColors.textPrimary,
+          ),
+          if (_timerDuration > 0)
+            Positioned(
+              right: -6,
+              bottom: -4,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                decoration: BoxDecoration(
+                  color: AppColors.accentLight,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  '$_timerDuration',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: AppTypography.xs,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _leftSideControls() => Positioned(
+    bottom: 21,
+    left: 16,
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (!Platform.isMacOS && !Platform.isWindows && !Platform.isLinux)
+          Container(
+            padding: const EdgeInsets.all(0),
+            decoration: BoxDecoration(
+              color: AppColors.overlay.withValues(alpha: 0.54),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: RotatingIconButton(
+              rotationTurns: getRotation(_orientation),
+              onPressed: toggleFlash,
+              child: Icon(
+                flashEnabled ? Icons.flash_auto : Icons.flash_off,
                 size: 24,
                 color: AppColors.textPrimary,
               ),
-              if (_timerDuration > 0)
-                Positioned(
-                  right: -6,
-                  bottom: -4,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: AppColors.accentLight,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      '$_timerDuration',
-                      style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: AppTypography.xs,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
+            ),
+          ),
+        if (!Platform.isMacOS && !Platform.isWindows && !Platform.isLinux)
+          const SizedBox(width: 12),
+        Container(
+          padding: const EdgeInsets.all(0),
+          decoration: BoxDecoration(
+            color: AppColors.overlay.withValues(alpha: 0.54),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: RotatingIconButton(
+            rotationTurns: getRotation(_orientation),
+            onPressed: _toggleGrid,
+            child: _buildIcon(),
           ),
         ),
-      );
-
-  Widget _leftSideControls() => Positioned(
-        bottom: 21,
-        left: 16,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (!Platform.isMacOS && !Platform.isWindows && !Platform.isLinux)
-              Container(
-                padding: const EdgeInsets.all(0),
-                decoration: BoxDecoration(
-                  color: AppColors.overlay.withValues(alpha: 0.54),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: RotatingIconButton(
-                  rotationTurns: getRotation(_orientation),
-                  onPressed: toggleFlash,
-                  child: Icon(
-                    flashEnabled ? Icons.flash_auto : Icons.flash_off,
-                    size: 24,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-            if (!Platform.isMacOS && !Platform.isWindows && !Platform.isLinux)
-              const SizedBox(width: 12),
-            Container(
-              padding: const EdgeInsets.all(0),
-              decoration: BoxDecoration(
-                color: AppColors.overlay.withValues(alpha: 0.54),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: RotatingIconButton(
-                rotationTurns: getRotation(_orientation),
-                onPressed: _toggleGrid,
-                child: _buildIcon(),
-              ),
-            ),
-          ],
-        ),
-      );
+      ],
+    ),
+  );
 
   Widget _rightSideControls() => Positioned(
-        bottom: 21,
-        right: 16,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _timerButton(),
-            if (!isDesktop) const SizedBox(width: 12),
-            if (!isDesktop)
-              Container(
-                padding: const EdgeInsets.all(0),
-                decoration: BoxDecoration(
-                  color: AppColors.overlay.withValues(alpha: 0.54),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: RotatingIconButton(
-                  rotationTurns: getRotation(_orientation),
-                  onPressed: _switchLiveCamera,
-                  child: Icon(
-                    Platform.isIOS
-                        ? Icons.flip_camera_ios_outlined
-                        : Icons.flip_camera_android_outlined,
-                    color: AppColors.textPrimary,
-                    size: 27,
-                  ),
-                ),
+    bottom: 21,
+    right: 16,
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _timerButton(),
+        if (!isDesktop) const SizedBox(width: 12),
+        if (!isDesktop)
+          Container(
+            padding: const EdgeInsets.all(0),
+            decoration: BoxDecoration(
+              color: AppColors.overlay.withValues(alpha: 0.54),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: RotatingIconButton(
+              rotationTurns: getRotation(_orientation),
+              onPressed: _switchLiveCamera,
+              child: Icon(
+                Platform.isIOS
+                    ? Icons.flip_camera_ios_outlined
+                    : Icons.flip_camera_android_outlined,
+                color: AppColors.textPrimary,
+                size: 27,
               ),
-          ],
-        ),
-      );
+            ),
+          ),
+      ],
+    ),
+  );
 
   void _toggleGrid() {
     setState(() {
@@ -730,33 +733,31 @@ class _CameraViewState extends State<CameraView>
               child: _changingCameraLens
                   ? const Center(child: CircularProgressIndicator())
                   : Platform.isWindows
-                      // Windows: camera_windows doesn't mirror at source, so flip in Dart.
-                      ? Transform.scale(
-                          scaleX: isMirrored ? 1 : -1,
-                          child: AspectRatio(
-                            aspectRatio: camera.aspectRatio,
-                            child: CameraPreview(_controller!, child: null),
-                          ),
-                        )
-                      : (Platform.isMacOS || Platform.isLinux)
-                          // macOS/Linux: camera_desktop mirrors at source; no Dart flip needed.
-                          ? AspectRatio(
-                              aspectRatio: camera.aspectRatio,
-                              child: CameraPreview(_controller!, child: null),
-                            )
-                          // Mobile: original cover/crop logic
-                          : Transform.scale(
-                              scale: scale,
-                              child: Center(
-                                child: Transform(
-                                  alignment: Alignment.center,
-                                  transform: Matrix4.identity()
-                                    ..setEntry(3, 3, 1.0),
-                                  child:
-                                      CameraPreview(_controller!, child: null),
-                                ),
-                              ),
-                            ),
+                  // Windows: camera_windows doesn't mirror at source, so flip in Dart.
+                  ? Transform.scale(
+                      scaleX: isMirrored ? 1 : -1,
+                      child: AspectRatio(
+                        aspectRatio: camera.aspectRatio,
+                        child: CameraPreview(_controller!, child: null),
+                      ),
+                    )
+                  : (Platform.isMacOS || Platform.isLinux)
+                  // macOS/Linux: camera_desktop mirrors at source; no Dart flip needed.
+                  ? AspectRatio(
+                      aspectRatio: camera.aspectRatio,
+                      child: CameraPreview(_controller!, child: null),
+                    )
+                  // Mobile: original cover/crop logic
+                  : Transform.scale(
+                      scale: scale,
+                      child: Center(
+                        child: Transform(
+                          alignment: Alignment.center,
+                          transform: Matrix4.identity()..setEntry(3, 3, 1.0),
+                          child: CameraPreview(_controller!, child: null),
+                        ),
+                      ),
+                    ),
             ),
             if (_gridMode != GridMode.none)
               CameraGridOverlay(
@@ -904,34 +905,34 @@ class _CameraViewState extends State<CameraView>
   }
 
   Widget modifyGridButton() => Positioned(
-        bottom: 75,
-        left: 16,
-        child: RotatingIconButton(
-          rotationTurns: getRotation(_orientation),
-          onPressed: _toggleModifyGridMode,
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppColors.accentLight.withValues(alpha: 0.25),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              "Move\nGuides",
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: AppTypography.sm),
-            ),
-          ),
+    bottom: 75,
+    left: 16,
+    child: RotatingIconButton(
+      rotationTurns: getRotation(_orientation),
+      onPressed: _toggleModifyGridMode,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: AppColors.accentLight.withValues(alpha: 0.25),
+          borderRadius: BorderRadius.circular(10),
         ),
-      );
+        child: Text(
+          "Move\nGuides",
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: AppTypography.sm),
+        ),
+      ),
+    ),
+  );
 
   Widget saveGridButton() => Positioned(
-        top: 32,
-        right: 32,
-        child: _buildButton(
-          () => _saveGridOffsets(),
-          Icon(Icons.check, size: 24, color: AppColors.textPrimary),
-        ),
-      );
+    top: 32,
+    right: 32,
+    child: _buildButton(
+      () => _saveGridOffsets(),
+      Icon(Icons.check, size: 24, color: AppColors.textPrimary),
+    ),
+  );
 
   Widget gridModifierOverlay() {
     return Positioned.fill(
@@ -944,7 +945,8 @@ class _CameraViewState extends State<CameraView>
               final size = MediaQuery.of(context).size;
               final dx = details.localPosition.dx;
               final dy = details.localPosition.dy;
-              final bool isLandscape = (_orientation == "Landscape Left" ||
+              final bool isLandscape =
+                  (_orientation == "Landscape Left" ||
                   _orientation == "Landscape Right");
 
               if (!isLandscape) {
@@ -989,7 +991,8 @@ class _CameraViewState extends State<CameraView>
             },
             onPanUpdate: (details) {
               final size = MediaQuery.of(context).size;
-              final bool isLandscape = (_orientation == "Landscape Left" ||
+              final bool isLandscape =
+                  (_orientation == "Landscape Left" ||
                   _orientation == "Landscape Right");
 
               if (!isLandscape) {
@@ -1106,8 +1109,9 @@ class _CameraViewState extends State<CameraView>
       // Sync flash mode to match saved setting; prevents flash firing
       // when UI shows it's disabled after camera reopen.
       if (isMobile) {
-        await _controller
-            ?.setFlashMode(flashEnabled ? FlashMode.auto : FlashMode.off);
+        await _controller?.setFlashMode(
+          flashEnabled ? FlashMode.auto : FlashMode.off,
+        );
       }
 
       // Apply mirror setting via camera_desktop on macOS/Linux.
@@ -1171,14 +1175,14 @@ class _CameraViewState extends State<CameraView>
 
     final String offsetXStr =
         await SettingsUtil.loadGuideOffsetXCustomOrientation(
-      widget.projectId.toString(),
-      customOrientation,
-    );
+          widget.projectId.toString(),
+          customOrientation,
+        );
     final String offsetYStr =
         await SettingsUtil.loadGuideOffsetYCustomOrientation(
-      widget.projectId.toString(),
-      customOrientation,
-    );
+          widget.projectId.toString(),
+          customOrientation,
+        );
 
     setStateIfMounted(() {
       offsetX = double.parse(offsetXStr);

@@ -252,9 +252,9 @@ class GalleryExportHandler {
       if (exportStabilizedFiles) {
         String stabilizedDir =
             await DirUtils.getStabilizedDirPathFromProjectIdAndOrientation(
-          projectId,
-          projectOrientation!,
-        );
+              projectId,
+              projectOrientation!,
+            );
         List<String> stabilizedFiles = await listFilesInDirectory(
           stabilizedDir,
         );
@@ -340,8 +340,7 @@ class GalleryExportHandler {
           final String? watermarkPos = watermarkEnabled
               ? (await DB.instance.getSettingValueByTitle(
                   'watermark_position',
-                ))
-                  .toLowerCase()
+                )).toLowerCase()
               : null;
 
           // Load timezone offsets for accurate date stamps

@@ -72,8 +72,9 @@ String buildWorkingSample(Directory tmp) {
 Future<String> baselineFourRead(String src, String dst) async {
   final exifBytes = await File(src).readAsBytes(); // read 1: preview EXIF
   final importBytes = await File(src).readAsBytes(); // read 2: import bytes
-  final digest =
-      await sha256.bind(File(src).openRead()).first; // read 3: fingerprint
+  final digest = await sha256
+      .bind(File(src).openRead())
+      .first; // read 3: fingerprint
   await File(src).copy(dst); // read 4 + write (kernel copy)
   if (exifBytes.length != importBytes.length) {
     throw StateError('inconsistent reads of the same file');
@@ -138,8 +139,11 @@ void main() {
       final dst = '${tmp.path}${Platform.pathSeparator}${entry.key}.out';
       final fp = await entry.value(sample, dst);
       expect(fp, expectedFp, reason: '${entry.key} fingerprint diverged');
-      expect(await File(dst).readAsBytes(), srcBytes,
-          reason: '${entry.key} written bytes diverged');
+      expect(
+        await File(dst).readAsBytes(),
+        srcBytes,
+        reason: '${entry.key} written bytes diverged',
+      );
     }
   });
 
@@ -159,16 +163,26 @@ void main() {
 
     final sizeMb = (srcBytes.length / (1024 * 1024)).toStringAsFixed(0);
     String x(int med) => (aMed / med).toStringAsFixed(2);
-    print('[read-amplification] ${sizeMb}MB, $benchIterations iters, median/op '
-        '(warm cache; cold/NTFS gap differs)');
-    print('  A baseline (3 reads + copy): '
-        '${(aMed / 1000).toStringAsFixed(2)} ms/op  (1.00x)');
-    print('  B read-once + write(memory): '
-        '${(bMed / 1000).toStringAsFixed(2)} ms/op  (${x(bMed)}x)');
-    print('  C read-once + File.copy:     '
-        '${(cMed / 1000).toStringAsFixed(2)} ms/op  (${x(cMed)}x)');
-    print('  Note: winner is platform-dependent — Windows CopyFile (kernel) '
-        'beats userspace write, so prefer variant C.');
+    print(
+      '[read-amplification] ${sizeMb}MB, $benchIterations iters, median/op '
+      '(warm cache; cold/NTFS gap differs)',
+    );
+    print(
+      '  A baseline (3 reads + copy): '
+      '${(aMed / 1000).toStringAsFixed(2)} ms/op  (1.00x)',
+    );
+    print(
+      '  B read-once + write(memory): '
+      '${(bMed / 1000).toStringAsFixed(2)} ms/op  (${x(bMed)}x)',
+    );
+    print(
+      '  C read-once + File.copy:     '
+      '${(cMed / 1000).toStringAsFixed(2)} ms/op  (${x(cMed)}x)',
+    );
+    print(
+      '  Note: winner is platform-dependent — Windows CopyFile (kernel) '
+      'beats userspace write, so prefer variant C.',
+    );
 
     // Output identity is the hard guarantee (asserted above). Timings are
     // reported, not gated, because the fastest variant differs per platform.

@@ -64,7 +64,8 @@ class OptionTile extends StatelessWidget {
       bgColor = AppColors.textPrimary.withValues(alpha: 0.05);
     }
 
-    final trailingWidget = trailing ??
+    final trailingWidget =
+        trailing ??
         Icon(
           Icons.chevron_right,
           color: titleColor.withValues(alpha: 0.3),

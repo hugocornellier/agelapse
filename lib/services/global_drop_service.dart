@@ -9,7 +9,7 @@ class QueuedDropItem {
   final DateTime queuedAt;
 
   QueuedDropItem({required this.path, required this.projectId})
-      : queuedAt = DateTime.now();
+    : queuedAt = DateTime.now();
 }
 
 /// Central service for managing global drag-and-drop operations.
@@ -118,8 +118,9 @@ class GlobalDropService {
   bool queueFiles(List<String> filePaths, int projectId) {
     // Dedupe by path
     final existingPaths = _queuedItems.map((i) => i.path).toSet();
-    final newPaths =
-        filePaths.where((p) => !existingPaths.contains(p)).toList();
+    final newPaths = filePaths
+        .where((p) => !existingPaths.contains(p))
+        .toList();
 
     // Check queue limit
     if (_queuedItems.length + newPaths.length > _maxQueueSize) {
@@ -138,8 +139,9 @@ class GlobalDropService {
   /// Returns the file paths and removes them from the queue.
   /// Only returns files that match the given projectId.
   List<String> consumeQueuedFiles(int projectId) {
-    final matching =
-        _queuedItems.where((i) => i.projectId == projectId).toList();
+    final matching = _queuedItems
+        .where((i) => i.projectId == projectId)
+        .toList();
     _queuedItems.removeWhere((i) => i.projectId == projectId);
     _queueUpdateController.add(_queuedItems.length);
     return matching.map((i) => i.path).toList();

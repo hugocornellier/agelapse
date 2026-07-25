@@ -206,7 +206,8 @@ class StabilizationBenchmark {
       },
       'rotation': _rotationErrors.isNotEmpty
           ? {
-              'mean': _rotationErrors.reduce((a, b) => a + b) /
+              'mean':
+                  _rotationErrors.reduce((a, b) => a + b) /
                   _rotationErrors.length,
               'median': _percentile(sortedRotation, 50),
               'stdDev': _standardDeviation(

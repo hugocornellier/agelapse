@@ -16,18 +16,18 @@ class VideoBackground {
 
   /// Create a transparent video background.
   const VideoBackground.transparent()
-      : keepTransparent = true,
-        solidColorHex = null;
+    : keepTransparent = true,
+      solidColorHex = null;
 
   /// Create a solid color video background.
   VideoBackground.solidColor(String hexColor)
-      : keepTransparent = false,
-        solidColorHex = hexColor.toUpperCase();
+    : keepTransparent = false,
+      solidColorHex = hexColor.toUpperCase();
 
   /// Create a blurred video background.
   const VideoBackground.blurred()
-      : keepTransparent = false,
-        solidColorHex = null;
+    : keepTransparent = false,
+      solidColorHex = null;
 
   /// Parse from stored DB value.
   /// 'TRANSPARENT' -> keepTransparent, 'BLURRED' -> blurred, otherwise hex color.

@@ -40,15 +40,15 @@ class FaceLike {
 
   /// Serialize to isolate-safe map.
   Map<String, dynamic> toMap() => {
-        'bbox': [
-          boundingBox.left,
-          boundingBox.top,
-          boundingBox.right,
-          boundingBox.bottom,
-        ],
-        'leftEye': leftEye != null ? [leftEye!.x, leftEye!.y] : null,
-        'rightEye': rightEye != null ? [rightEye!.x, rightEye!.y] : null,
-      };
+    'bbox': [
+      boundingBox.left,
+      boundingBox.top,
+      boundingBox.right,
+      boundingBox.bottom,
+    ],
+    'leftEye': leftEye != null ? [leftEye!.x, leftEye!.y] : null,
+    'rightEye': rightEye != null ? [rightEye!.x, rightEye!.y] : null,
+  };
 
   /// Deserialize from isolate-safe map.
   factory FaceLike.fromMap(Map<String, dynamic> m) {
@@ -130,9 +130,7 @@ class StabUtils {
       (d) => d.isReady,
       () async {
         final detector = fdl.FaceDetector();
-        await detector.initialize(
-          model: fdl.FaceDetectionModel.backCamera,
-        );
+        await detector.initialize(model: fdl.FaceDetectionModel.backCamera);
         return detector;
       },
     );
@@ -692,7 +690,8 @@ class StabUtils {
       List<T>, {
       bool filterByFaceSize,
       int? imageWidth,
-    }) retry,
+    })
+    retry,
   }) {
     final double w = imageWidth?.toDouble() ?? getImageWidth(detections.first);
     final List<FaceLike> faces = [];
@@ -724,7 +723,7 @@ class StabUtils {
     Future<void> Function() ensure,
     Future<List<T>> Function(Uint8List) detect,
     List<FaceLike> Function(List<T>, {bool filterByFaceSize, int? imageWidth})
-        convert,
+    convert,
     void Function() onError,
     String errorLabel, {
     bool filterByFaceSize = true,
@@ -753,18 +752,17 @@ class StabUtils {
     Uint8List bytes, {
     bool filterByFaceSize = true,
     int? imageWidth,
-  }) =>
-      _getAnimalFacesFromBytes(
-        bytes,
-        _catDetectorMutex,
-        _ensureCatDetector,
-        (b) => _catDetectorIsolate!.detectCats(b),
-        _convertCatFaces,
-        () => _catDetectorIsolate = null,
-        'cat',
-        filterByFaceSize: filterByFaceSize,
-        imageWidth: imageWidth,
-      );
+  }) => _getAnimalFacesFromBytes(
+    bytes,
+    _catDetectorMutex,
+    _ensureCatDetector,
+    (b) => _catDetectorIsolate!.detectCats(b),
+    _convertCatFaces,
+    () => _catDetectorIsolate = null,
+    'cat',
+    filterByFaceSize: filterByFaceSize,
+    imageWidth: imageWidth,
+  );
 
   static List<FaceLike> _convertCatFaces(
     List<cat.Cat> cats, {
@@ -793,18 +791,17 @@ class StabUtils {
     Uint8List bytes, {
     bool filterByFaceSize = true,
     int? imageWidth,
-  }) =>
-      _getAnimalFacesFromBytes(
-        bytes,
-        _dogDetectorMutex,
-        _ensureDogDetector,
-        (b) => _dogDetectorIsolate!.detectDogs(b),
-        _convertDogFaces,
-        () => _dogDetectorIsolate = null,
-        'dog',
-        filterByFaceSize: filterByFaceSize,
-        imageWidth: imageWidth,
-      );
+  }) => _getAnimalFacesFromBytes(
+    bytes,
+    _dogDetectorMutex,
+    _ensureDogDetector,
+    (b) => _dogDetectorIsolate!.detectDogs(b),
+    _convertDogFaces,
+    () => _dogDetectorIsolate = null,
+    'dog',
+    filterByFaceSize: filterByFaceSize,
+    imageWidth: imageWidth,
+  );
 
   static List<FaceLike> _convertDogFaces(
     List<dog.Dog> dogs, {
@@ -955,8 +952,9 @@ class StabUtils {
           cv.Mat result;
           if (mat.channels == 4) {
             // Has alpha channel; composite on black
-            final bgType =
-                mat.type.depth == 2 ? cv.MatType.CV_16UC3 : cv.MatType.CV_8UC3;
+            final bgType = mat.type.depth == 2
+                ? cv.MatType.CV_16UC3
+                : cv.MatType.CV_8UC3;
             final bg = cv.Mat.zeros(mat.rows, mat.cols, bgType);
             final channels = cv.split(mat);
             final bgr = cv.merge(
@@ -1031,13 +1029,10 @@ class StabUtils {
           // Resize to 800px width with high-quality interpolation
           final aspectRatio = composited.rows / composited.cols;
           final height = (800 * aspectRatio).round();
-          final thumb = cv.resize(
-              composited,
-              (
-                800,
-                height,
-              ),
-              interpolation: cv.INTER_CUBIC);
+          final thumb = cv.resize(composited, (
+            800,
+            height,
+          ), interpolation: cv.INTER_CUBIC);
           composited.dispose();
 
           final (success, jpgBytes) = cv.imencode(
@@ -1067,13 +1062,10 @@ class StabUtils {
           // Resize to 800px width with high-quality interpolation
           final aspectRatio = mat.rows / mat.cols;
           final height = (800 * aspectRatio).round();
-          final thumb = cv.resize(
-              mat,
-              (
-                800,
-                height,
-              ),
-              interpolation: cv.INTER_CUBIC);
+          final thumb = cv.resize(mat, (
+            800,
+            height,
+          ), interpolation: cv.INTER_CUBIC);
           mat.dispose();
 
           final (success, pngBytes) = cv.imencode(
@@ -1432,7 +1424,7 @@ class StabUtils {
       'operation': operation,
       'suffix': suffix,
       'rootIsolateToken': rootIsolateToken,
-      if (preDecodedBytes != null) 'preDecodedBytes': preDecodedBytes,
+      'preDecodedBytes': ?preDecodedBytes,
     };
 
     final isolate = await Isolate.spawn(
@@ -1580,11 +1572,7 @@ class StabUtils {
     return await IsolatePool.instance.executeSticky<(int, int)>(
       srcId,
       'prepareSourceMat',
-      {
-        'bytes': bytes,
-        'srcId': srcId,
-        'preserveBitDepth': preserveBitDepth,
-      },
+      {'bytes': bytes, 'srcId': srcId, 'preserveBitDepth': preserveBitDepth},
     );
   }
 
@@ -1769,8 +1757,11 @@ class StabUtils {
       // Use sticky routing when srcId is available so all passes for the same
       // source image hit the same worker, maximizing Mat cache hits.
       if (srcId != null) {
-        return await IsolatePool.instance
-            .executeSticky<Uint8List>(srcId, 'stabilizeCV', params);
+        return await IsolatePool.instance.executeSticky<Uint8List>(
+          srcId,
+          'stabilizeCV',
+          params,
+        );
       }
       return await IsolatePool.instance.execute<Uint8List>(
         'stabilizeCV',
@@ -1847,7 +1838,10 @@ class StabUtils {
       final Map<String, dynamic>? result;
       if (srcId != null) {
         result = await IsolatePool.instance.executeSticky<Map<String, dynamic>>(
-            srcId, 'stabilizeCVRaw', params);
+          srcId,
+          'stabilizeCVRaw',
+          params,
+        );
       } else {
         result = await IsolatePool.instance.execute<Map<String, dynamic>>(
           'stabilizeCVRaw',
@@ -1879,16 +1873,13 @@ class StabUtils {
   }) async {
     opPngEncodes++;
     if (IsolatePool.instance.isInitialized) {
-      return await IsolatePool.instance.execute<Uint8List>(
-        'encodeRawToPng',
-        {
-          'data': data,
-          'width': width,
-          'height': height,
-          'matType': matType,
-          'pngCompression': pngCompression,
-        },
-      );
+      return await IsolatePool.instance.execute<Uint8List>('encodeRawToPng', {
+        'data': data,
+        'width': width,
+        'height': height,
+        'matType': matType,
+        'pngCompression': pngCompression,
+      });
     }
     return null;
   }

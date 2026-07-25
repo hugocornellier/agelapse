@@ -67,8 +67,9 @@ class _RecentlyDeletedPageState extends State<RecentlyDeletedPage> {
     try {
       await ProjectUtils.purgeExpiredDeletedImages();
     } catch (e) {
-      LogService.instance
-          .log('RecentlyDeletedPage page-entry purge failed: $e');
+      LogService.instance.log(
+        'RecentlyDeletedPage page-entry purge failed: $e',
+      );
     }
     await _load();
   }
@@ -85,9 +86,7 @@ class _RecentlyDeletedPageState extends State<RecentlyDeletedPage> {
         _photos = rows;
         _loading = false;
         _loadFailed = false;
-        _selected.removeWhere(
-          (ts) => !rows.any((r) => r['timestamp'] == ts),
-        );
+        _selected.removeWhere((ts) => !rows.any((r) => r['timestamp'] == ts));
       });
     } catch (e) {
       LogService.instance.log('RecentlyDeletedPage load failed: $e');
@@ -238,7 +237,7 @@ class _RecentlyDeletedPageState extends State<RecentlyDeletedPage> {
       description: isSingle
           ? 'This photo will be permanently deleted. This cannot be undone.'
           : '${targets.length} photos will be permanently deleted. '
-              'This cannot be undone.',
+                'This cannot be undone.',
       titleIcon: Icons.delete_forever_rounded,
       confirmText: 'Delete Forever',
       accentColor: AppColors.danger,
@@ -251,9 +250,7 @@ class _RecentlyDeletedPageState extends State<RecentlyDeletedPage> {
   /// Body of permanent-delete with no confirm dialog. Used by both
   /// [_permanentlyDelete] (which prompts first) and [_emptyTrash] (which
   /// already prompted at the menu).
-  Future<void> _runPermanentDeletes(
-    List<Map<String, dynamic>> targets,
-  ) async {
+  Future<void> _runPermanentDeletes(List<Map<String, dynamic>> targets) async {
     if (targets.isEmpty) return;
     setState(() => _busy = true);
     int removed = 0;
@@ -372,10 +369,10 @@ class _RecentlyDeletedPageState extends State<RecentlyDeletedPage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _loadFailed
-              ? _buildErrorState()
-              : _photos.isEmpty
-                  ? _buildEmptyState()
-                  : _buildGrid(),
+          ? _buildErrorState()
+          : _photos.isEmpty
+          ? _buildEmptyState()
+          : _buildGrid(),
       bottomNavigationBar: _selectionMode ? _buildSelectionBar() : null,
     );
   }
@@ -469,10 +466,7 @@ class _RecentlyDeletedPageState extends State<RecentlyDeletedPage> {
                 value: 'empty_trash',
                 child: Row(
                   children: [
-                    Icon(
-                      Icons.delete_forever_rounded,
-                      color: AppColors.danger,
-                    ),
+                    Icon(Icons.delete_forever_rounded, color: AppColors.danger),
                     const SizedBox(width: 12),
                     const Text('Empty Trash'),
                   ],
@@ -518,7 +512,7 @@ class _RecentlyDeletedPageState extends State<RecentlyDeletedPage> {
       description: count == 1
           ? 'This photo will be permanently deleted. This cannot be undone.'
           : 'All $count photos will be permanently deleted. '
-              'This cannot be undone.',
+                'This cannot be undone.',
       titleIcon: Icons.delete_forever_rounded,
       confirmText: 'Empty Trash',
       accentColor: AppColors.danger,
@@ -577,10 +571,10 @@ class _RecentlyDeletedPageState extends State<RecentlyDeletedPage> {
     final crossAxisCount = width >= 1200
         ? 6
         : width >= 800
-            ? 5
-            : width >= 500
-                ? 4
-                : 3;
+        ? 5
+        : width >= 500
+        ? 4
+        : 3;
 
     return Column(
       children: [
@@ -611,8 +605,9 @@ class _RecentlyDeletedPageState extends State<RecentlyDeletedPage> {
               return _RecentlyDeletedTile(
                 projectId: widget.projectId,
                 row: _photos[index],
-                selected:
-                    _selected.contains(_photos[index]['timestamp'] as String),
+                selected: _selected.contains(
+                  _photos[index]['timestamp'] as String,
+                ),
                 selectionMode: _selectionMode,
                 daysLabel: _daysRemainingLabel(
                   (_photos[index]['deletedAt'] as int?) ?? 0,
@@ -695,8 +690,9 @@ class _RecentlyDeletedPageState extends State<RecentlyDeletedPage> {
               ),
             ),
             TextButton.icon(
-              onPressed:
-                  hasSelection && !_busy ? () => _permanentlyDelete() : null,
+              onPressed: hasSelection && !_busy
+                  ? () => _permanentlyDelete()
+                  : null,
               icon: Icon(Icons.delete_forever_rounded, color: AppColors.danger),
               label: Text(
                 'Delete Forever',
@@ -757,7 +753,8 @@ class _RecentlyDeletedTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final timestamp = row['timestamp'] as String;
     final fileExtension = row['fileExtension'] as String?;
-    final originalFilename = (row['originalFilename'] as String?) ??
+    final originalFilename =
+        (row['originalFilename'] as String?) ??
         (row['sourceFilename'] as String?);
     final dateLabel = _humanDate(timestamp);
     final semanticsLabel =
@@ -770,7 +767,7 @@ class _RecentlyDeletedTile extends StatelessWidget {
       hint: selectionMode
           ? 'Double-tap to ${selected ? 'deselect' : 'select'}'
           : 'Double-tap for restore or delete forever options. '
-              'Long-press to enter selection mode.',
+                'Long-press to enter selection mode.',
       child: GestureDetector(
         onTap: onTap,
         onLongPress: onLongPress,
@@ -869,13 +866,13 @@ class _ThumbnailWithFallback extends StatelessWidget {
       File(thumbPath),
       fit: BoxFit.cover,
       cacheWidth: 256,
-      errorBuilder: (_, __, ___) {
+      errorBuilder: (_, _, _) {
         if (rawPath == null) return _captionTile(context);
         return Image.file(
           File(rawPath!),
           fit: BoxFit.cover,
           cacheWidth: 256,
-          errorBuilder: (_, __, ___) => _captionTile(context),
+          errorBuilder: (_, _, _) => _captionTile(context),
         );
       },
     );

@@ -118,16 +118,17 @@ void main() {
       expect(
         GalleryExportHandler.exportSelectedPhotos,
         isA<
-            Future<bool> Function({
-              required int projectId,
-              required String projectName,
-              required String projectIdStr,
-              required String? projectOrientation,
-              required Set<String> selectedPhotos,
-              required bool exportRawFiles,
-              required bool exportStabilizedFiles,
-              required void Function(double) setExportProgress,
-            })>(),
+          Future<bool> Function({
+            required int projectId,
+            required String projectName,
+            required String projectIdStr,
+            required String? projectOrientation,
+            required Set<String> selectedPhotos,
+            required bool exportRawFiles,
+            required bool exportStabilizedFiles,
+            required void Function(double) setExportProgress,
+          })
+        >(),
       );
     });
   });

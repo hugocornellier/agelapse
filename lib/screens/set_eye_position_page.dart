@@ -198,15 +198,13 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
   void _commitTextValueX(
     TextEditingController controller,
     double currentOffset,
-  ) =>
-      _commitTextValue(controller, currentOffset, _offsetXToPercent);
+  ) => _commitTextValue(controller, currentOffset, _offsetXToPercent);
 
   /// Validates and normalizes Y text input on blur
   void _commitTextValueY(
     TextEditingController controller,
     double currentOffset,
-  ) =>
-      _commitTextValue(controller, currentOffset, _offsetToPercent);
+  ) => _commitTextValue(controller, currentOffset, _offsetToPercent);
 
   /// Adjusts X offset by delta percentage points (in display units, doubled)
   void _adjustX(double deltaPct) {
@@ -589,16 +587,17 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
       HelpIconButton(onTap: _showHelpDialog),
       if (_hasUnsavedChanges)
         DesktopIconButton(
-          icon:
-              _showCheckmark ? Icons.check_circle_rounded : Icons.save_rounded,
+          icon: _showCheckmark
+              ? Icons.check_circle_rounded
+              : Icons.save_rounded,
           onTap: _isSaving
               ? null
               : () async {
                   final bool shouldProceed =
                       await Utils.showConfirmChangeDialog(
-                    context,
-                    "eye position",
-                  );
+                        context,
+                        "eye position",
+                      );
                   if (shouldProceed) await _saveChanges();
                 },
           isLoading: _isSaving,
@@ -609,8 +608,9 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
           borderColor: _showCheckmark
               ? AppColors.success.withValues(alpha: 0.3)
               : AppColors.settingsAccent.withValues(alpha: 0.3),
-          iconColor:
-              _showCheckmark ? AppColors.success : AppColors.settingsAccent,
+          iconColor: _showCheckmark
+              ? AppColors.success
+              : AppColors.settingsAccent,
         ),
     ];
   }
@@ -650,12 +650,12 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
   }
 
   void _showHelpDialog() => showQuickGuideDialog(
-        context,
-        'This screen controls where eyes are positioned in the output frame.\n\n'
-        'Drag the horizontal guide line up or down to adjust the vertical eye position.\n\n'
-        'Drag the vertical guide lines left or right to adjust the horizontal eye spacing.\n\n'
-        'Your photos are transformed so that detected eyes align to these positions.',
-      );
+    context,
+    'This screen controls where eyes are positioned in the output frame.\n\n'
+    'Drag the horizontal guide line up or down to adjust the vertical eye position.\n\n'
+    'Drag the vertical guide lines left or right to adjust the horizontal eye spacing.\n\n'
+    'Your photos are transformed so that detected eyes align to these positions.',
+  );
 
   Widget _buildInfoBanner() {
     return Positioned(
@@ -726,8 +726,8 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         // Use actual output dimensions (handles custom resolutions)
-        final double aspectRatioValue =
-            outputImageLoader.getDisplayAspectRatio();
+        final double aspectRatioValue = outputImageLoader
+            .getDisplayAspectRatio();
 
         final double maxW = constraints.maxWidth;
         final double maxH = constraints.maxHeight;
@@ -796,15 +796,17 @@ class SetEyePositionPageState extends State<SetEyePositionPage> {
 
                             final distanceToLeftX = (dx - leftX).abs();
                             final distanceToRightX = (dx - rightX).abs();
-                            final distanceToHorizontalLine =
-                                (dy - centerY).abs();
+                            final distanceToHorizontalLine = (dy - centerY)
+                                .abs();
 
                             setState(() {
-                              _isDraggingVertical = (distanceToLeftX < 20 ||
+                              _isDraggingVertical =
+                                  (distanceToLeftX < 20 ||
                                   distanceToRightX < 20);
                               _draggingRight =
                                   distanceToRightX < distanceToLeftX;
-                              _isDraggingHorizontal = (!_isDraggingVertical &&
+                              _isDraggingHorizontal =
+                                  (!_isDraggingVertical &&
                                   distanceToHorizontalLine < 20);
                             });
                           },

@@ -25,12 +25,13 @@ void main() {
       expect(
         GalleryPhotoOperations.retryStabilization,
         isA<
-            Future<String> Function({
-              required String imagePath,
-              required int projectId,
-              String? projectOrientation,
-              void Function(String timestamp)? onRetryStarted,
-            })>(),
+          Future<String> Function({
+            required String imagePath,
+            required int projectId,
+            String? projectOrientation,
+            void Function(String timestamp)? onRetryStarted,
+          })
+        >(),
       );
     });
   });
@@ -44,10 +45,11 @@ void main() {
       expect(
         GalleryPhotoOperations.deletePhoto,
         isA<
-            Future<bool> Function({
-              required File imageFile,
-              required int projectId,
-            })>(),
+          Future<bool> Function({
+            required File imageFile,
+            required int projectId,
+          })
+        >(),
       );
     });
   });
@@ -61,11 +63,12 @@ void main() {
       expect(
         GalleryPhotoOperations.changePhotoDate,
         isA<
-            Future<void> Function({
-              required String oldTimestamp,
-              required String newTimestamp,
-              required int projectId,
-            })>(),
+          Future<void> Function({
+            required String oldTimestamp,
+            required String newTimestamp,
+            required int projectId,
+          })
+        >(),
       );
     });
   });
@@ -79,10 +82,11 @@ void main() {
       expect(
         GalleryPhotoOperations.setAsGuidePhoto,
         isA<
-            Future<bool> Function({
-              required String timestamp,
-              required int projectId,
-            })>(),
+          Future<bool> Function({
+            required String timestamp,
+            required int projectId,
+          })
+        >(),
       );
     });
   });

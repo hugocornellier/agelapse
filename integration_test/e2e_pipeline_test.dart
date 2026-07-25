@@ -187,10 +187,10 @@ void main() {
 
     /// Timestamps spread across different months (for date stamp overlay tests).
     List<int> dateStampTimestamps() => [
-          DateTime(2024, 1, 15, 12, 0, 0).millisecondsSinceEpoch,
-          DateTime(2024, 6, 15, 12, 0, 0).millisecondsSinceEpoch,
-          DateTime(2024, 11, 15, 12, 0, 0).millisecondsSinceEpoch,
-        ];
+      DateTime(2024, 1, 15, 12, 0, 0).millisecondsSinceEpoch,
+      DateTime(2024, 6, 15, 12, 0, 0).millisecondsSinceEpoch,
+      DateTime(2024, 11, 15, 12, 0, 0).millisecondsSinceEpoch,
+    ];
 
     /// Core test runner: creates project, sets settings, creates frames,
     /// compiles video, verifies output file and optionally playback.
@@ -228,11 +228,7 @@ void main() {
         pid,
       );
       await DB.instance.setSettingByTitle('video_codec', codec.name, pid);
-      await DB.instance.setSettingByTitle(
-        'framerate_is_default',
-        'false',
-        pid,
-      );
+      await DB.instance.setSettingByTitle('framerate_is_default', 'false', pid);
       await DB.instance.setSettingByTitle('framerate', '14', pid);
 
       if (transparent) {
@@ -298,11 +294,7 @@ void main() {
         projectId,
         null,
       );
-      expect(
-        success,
-        isTrue,
-        reason: '$testName: compilation should succeed',
-      );
+      expect(success, isTrue, reason: '$testName: compilation should succeed');
 
       // Verify output file
       final videoPath = await DirUtils.getVideoOutputPath(
@@ -367,9 +359,7 @@ void main() {
 
         if (Platform.isMacOS) {
           final exeDir = p.dirname(Platform.resolvedExecutable);
-          final resourcesDir = p.normalize(
-            p.join(exeDir, '..', 'Resources'),
-          );
+          final resourcesDir = p.normalize(p.join(exeDir, '..', 'Resources'));
           final ffmpegPath = p.join(resourcesDir, 'ffmpeg');
           expect(
             await File(ffmpegPath).exists(),
@@ -378,8 +368,11 @@ void main() {
           );
 
           final result = await Process.run(ffmpegPath, ['-version']);
-          expect(result.exitCode, equals(0),
-              reason: 'ffmpeg -version should succeed');
+          expect(
+            result.exitCode,
+            equals(0),
+            reason: 'ffmpeg -version should succeed',
+          );
           expect(
             (result.stdout as String),
             contains('ffmpeg version'),
@@ -399,8 +392,11 @@ void main() {
         } else if (Platform.isLinux) {
           // Linux uses system ffmpeg; verify it's on PATH
           final result = await Process.run('which', ['ffmpeg']);
-          expect(result.exitCode, equals(0),
-              reason: 'ffmpeg should be available on PATH');
+          expect(
+            result.exitCode,
+            equals(0),
+            reason: 'ffmpeg should be available on PATH',
+          );
         } else {
           // iOS/Android use FFmpegKit; no binary to check directly.
           // The compilation tests themselves verify FFmpegKit works.
@@ -1320,14 +1316,14 @@ void main() {
           // Stabilize
           final stabilized =
               await StabUtils.generateStabilizedImageBytesCVAsync(
-            bytes,
-            rotationDegrees,
-            1.0, // scale
-            0.0, // translateX
-            0.0, // translateY
-            1920, // canvas width
-            1080, // canvas height
-          );
+                bytes,
+                rotationDegrees,
+                1.0, // scale
+                0.0, // translateX
+                0.0, // translateY
+                1920, // canvas width
+                1080, // canvas height
+              );
           expect(
             stabilized,
             isNotNull,

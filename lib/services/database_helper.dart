@@ -92,15 +92,14 @@ class DB {
       columns: ['name'],
       where: 'type = ?',
       whereArgs: ['table'],
-    ))
-        .map((row) => row['name'] as String)
-        .toList();
+    )).map((row) => row['name'] as String).toList();
 
     Map<String, String> tablesToCreate = {
       // NOTE: 'timestamp' is TEXT but stores milliseconds-since-epoch integers.
       // TEXT sort is WRONG across the 12→13 digit boundary (pre/post Sept 2001).
       // Always use CAST(timestamp AS INTEGER) in ORDER BY clauses.
-      photoTable: "CREATE TABLE $photoTable("
+      photoTable:
+          "CREATE TABLE $photoTable("
           "id INTEGER PRIMARY KEY AUTOINCREMENT, "
           "timestamp TEXT NOT NULL, "
           "projectID INTEGER NOT NULL, "
@@ -126,21 +125,24 @@ class DB {
           "tempPath TEXT, "
           "deletedAt INTEGER"
           ");",
-      settingTable: "CREATE TABLE $settingTable("
+      settingTable:
+          "CREATE TABLE $settingTable("
           "id INTEGER PRIMARY KEY AUTOINCREMENT, "
           "title TEXT NOT NULL, "
           "value TEXT NOT NULL, "
           "projectID TEXT NOT NULL, "
           "UNIQUE(title, projectID)"
           ");",
-      projectTable: "CREATE TABLE $projectTable("
+      projectTable:
+          "CREATE TABLE $projectTable("
           "id INTEGER PRIMARY KEY AUTOINCREMENT, "
           "name TEXT NOT NULL, "
           "type TEXT NOT NULL, "
           "timestampCreated INTEGER NOT NULL,"
           "newVideoNeeded INTEGER NOT NULL"
           ");",
-      videoTable: "CREATE TABLE $videoTable("
+      videoTable:
+          "CREATE TABLE $videoTable("
           "id INTEGER PRIMARY KEY AUTOINCREMENT, "
           "resolution TEXT NOT NULL, "
           "watermarkEnabled TEXT NOT NULL, "
@@ -150,7 +152,8 @@ class DB {
           "framerate INTEGER NOT NULL, "
           "timestampCreated INTEGER NOT NULL"
           ");",
-      customFontTable: "CREATE TABLE $customFontTable("
+      customFontTable:
+          "CREATE TABLE $customFontTable("
           "id INTEGER PRIMARY KEY AUTOINCREMENT, "
           "displayName TEXT NOT NULL UNIQUE, "
           "familyName TEXT NOT NULL UNIQUE, "
@@ -158,14 +161,16 @@ class DB {
           "fileSize INTEGER NOT NULL, "
           "installedAt INTEGER NOT NULL"
           ");",
-      deletedLinkedSourcesTable: "CREATE TABLE $deletedLinkedSourcesTable("
+      deletedLinkedSourcesTable:
+          "CREATE TABLE $deletedLinkedSourcesTable("
           "id INTEGER PRIMARY KEY AUTOINCREMENT, "
           "projectID INTEGER NOT NULL, "
           "sourceRelativePath TEXT NOT NULL, "
           "deletedAt INTEGER NOT NULL, "
           "UNIQUE(projectID, sourceRelativePath)"
           ");",
-      faceDetectionCacheTable: "CREATE TABLE $faceDetectionCacheTable("
+      faceDetectionCacheTable:
+          "CREATE TABLE $faceDetectionCacheTable("
           "id INTEGER PRIMARY KEY AUTOINCREMENT, "
           "timestamp TEXT NOT NULL, "
           "projectID INTEGER NOT NULL, "
@@ -184,7 +189,8 @@ class DB {
           "fingerprint TEXT NOT NULL, "
           "UNIQUE(timestamp, projectID, orientation, faceIndex)"
           ");",
-      transformCacheTable: "CREATE TABLE $transformCacheTable("
+      transformCacheTable:
+          "CREATE TABLE $transformCacheTable("
           "id INTEGER PRIMARY KEY AUTOINCREMENT, "
           "cacheKey TEXT NOT NULL UNIQUE, "
           "projectID INTEGER NOT NULL, "
@@ -364,12 +370,12 @@ class DB {
   }
 
   Future<String?> getProjectNameById(int projectId) => _querySingle(
-        projectTable,
-        'id = ?',
-        [projectId],
-        (r) => r['name'] as String,
-        columns: ['name'],
-      );
+    projectTable,
+    'id = ?',
+    [projectId],
+    (r) => r['name'] as String,
+    columns: ['name'],
+  );
 
   Future<Map<String, dynamic>?> getProject(int id) =>
       _querySingle(projectTable, 'id = ?', [id], (r) => r);
@@ -392,8 +398,11 @@ class DB {
 
   Future<int> deleteProject(int id) async {
     final db = await database;
-    final int rows =
-        await db.delete(projectTable, where: 'id = ?', whereArgs: [id]);
+    final int rows = await db.delete(
+      projectTable,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
     _removeRevealWatermarksForProject(id);
     return rows;
   }
@@ -449,12 +458,12 @@ class DB {
   }
 
   Future<String?> getProjectTypeByProjectId(int projectId) => _querySingle(
-        projectTable,
-        'id = ?',
-        [projectId],
-        (r) => r['type'] as String,
-        columns: ['type'],
-      );
+    projectTable,
+    'id = ?',
+    [projectId],
+    (r) => r['type'] as String,
+    columns: ['type'],
+  );
 
   Future<void> setNewVideoNeeded(int projectId) async {
     final db = await database;
@@ -477,12 +486,12 @@ class DB {
   }
 
   Future<int?> getNewVideoNeeded(int projectId) => _querySingle(
-        projectTable,
-        'id = ?',
-        [projectId],
-        (r) => r['newVideoNeeded'] as int,
-        columns: ['newVideoNeeded'],
-      );
+    projectTable,
+    'id = ?',
+    [projectId],
+    (r) => r['newVideoNeeded'] as int,
+    columns: ['newVideoNeeded'],
+  );
 
   /* ┌──────────────────────┐
      │                      │
@@ -815,9 +824,7 @@ class DB {
 
   Future<void> _dropLegacyTransformCacheHitCount() async {
     final db = await database;
-    final cols = await db.rawQuery(
-      'PRAGMA table_info($transformCacheTable)',
-    );
+    final cols = await db.rawQuery('PRAGMA table_info($transformCacheTable)');
     if (!cols.any((c) => c['name'] == 'hitCount')) return;
     try {
       await db.execute(
@@ -826,9 +833,7 @@ class DB {
     } catch (e) {
       // SQLite < 3.35 lacks DROP COLUMN. The column is unused and defaults
       // to 0, so leaving it in place is harmless.
-      LogService.instance.log(
-        '[DB] Could not drop legacy hitCount column: $e',
-      );
+      LogService.instance.log('[DB] Could not drop legacy hitCount column: $e');
     }
   }
 
@@ -934,8 +939,9 @@ class DB {
       'WHERE projectID = ?',
       [projectId],
     );
-    final int? maxTs =
-        rows.isNotEmpty ? (rows.first['maxTs'] as num?)?.toInt() : null;
+    final int? maxTs = rows.isNotEmpty
+        ? (rows.first['maxTs'] as num?)?.toInt()
+        : null;
     if (maxTs == null) {
       _removeRevealWatermarksForProject(projectId);
       return;
@@ -1257,37 +1263,35 @@ class DB {
   Future<String?> getPhotoExtensionByTimestampAndProjectId(
     String timestamp,
     int projectId,
-  ) =>
-      _querySingle(
-        photoTable,
-        _photoWhereClause,
-        [timestamp, projectId],
-        (r) => r['fileExtension'] as String,
-        columns: ['fileExtension'],
-      );
+  ) => _querySingle(
+    photoTable,
+    _photoWhereClause,
+    [timestamp, projectId],
+    (r) => r['fileExtension'] as String,
+    columns: ['fileExtension'],
+  );
 
   Future<Map<String, dynamic>?> getOriginalInfoByTimestamp(
     String timestamp,
     int projectId,
-  ) =>
-      _querySingle(
-        photoTable,
-        _photoWhereClause,
-        [timestamp, projectId],
-        (r) => r,
-        columns: [
-          'id',
-          'timestamp',
-          'fileExtension',
-          'originalFilename',
-          'sourceFilename',
-          'sourceRelativePath',
-          'sourceLocationType',
-          // Needed by permanentlyDeleteImage to clear the transform cache.
-          'fingerprint',
-          'deletedAt',
-        ],
-      );
+  ) => _querySingle(
+    photoTable,
+    _photoWhereClause,
+    [timestamp, projectId],
+    (r) => r,
+    columns: [
+      'id',
+      'timestamp',
+      'fileExtension',
+      'originalFilename',
+      'sourceFilename',
+      'sourceRelativePath',
+      'sourceLocationType',
+      // Needed by permanentlyDeleteImage to clear the transform cache.
+      'fingerprint',
+      'deletedAt',
+    ],
+  );
 
   /// Batch query to get original source filenames for multiple timestamps.
   /// Returns a map of timestamp -> sourceFilename. Queries in chunks to avoid
@@ -1332,15 +1336,12 @@ class DB {
   Future<Map<String, dynamic>?> getPhotoBySourceRelativePath(
     String relativePath,
     int projectId,
-  ) =>
-      _querySingle(
-          photoActiveView,
-          'sourceRelativePath = ? AND projectID = ?',
-          [
-            relativePath,
-            projectId,
-          ],
-          (r) => r);
+  ) => _querySingle(
+    photoActiveView,
+    'sourceRelativePath = ? AND projectID = ?',
+    [relativePath, projectId],
+    (r) => r,
+  );
 
   Future<List<Map<String, dynamic>>> getPhotosBySourceLocationType(
     int projectId,
@@ -1805,8 +1806,9 @@ class DB {
       'FROM $photoActiveView WHERE projectID = ?',
       [projectId],
     );
-    final Map<String, dynamic> bounds =
-        boundsRows.isNotEmpty ? boundsRows.first : const {};
+    final Map<String, dynamic> bounds = boundsRows.isNotEmpty
+        ? boundsRows.first
+        : const {};
     final int? earliestPending = (bounds['earliestPending'] as num?)?.toInt();
     final int? maxTs = (bounds['maxTs'] as num?)?.toInt();
     final int naturalCut = earliestPending ?? ((maxTs ?? -1) + 1);
@@ -1820,7 +1822,8 @@ class DB {
     return await db.query(
       photoActiveView,
       columns: ['timestamp', 'fileExtension'],
-      where: '($stabilizedColumn = 1 OR stabFailed = 1 OR noFacesFound = 1) '
+      where:
+          '($stabilizedColumn = 1 OR stabFailed = 1 OR noFacesFound = 1) '
           'AND projectID = ? AND $_orderByTimestamp < ?',
       whereArgs: [projectId, watermark],
       orderBy: '$_orderByTimestamp ASC',
@@ -1911,8 +1914,8 @@ class DB {
 
     String inactiveProjectOrientation =
         projectOrientation.toLowerCase() == "landscape"
-            ? "portrait"
-            : "landscape";
+        ? "portrait"
+        : "landscape";
 
     String activePOColumn = getStabilizedColumn(projectOrientation);
     String inactivePOColumn = getStabilizedColumn(inactiveProjectOrientation);
@@ -1968,12 +1971,12 @@ class DB {
       );
 
   Future<String?> getLatestPhotoTimestamp(int projectId) => _queryFirstByOrder(
-        photoActiveView,
-        'projectID = ?',
-        [projectId],
-        '$_orderByTimestamp DESC',
-        (r) => r['timestamp'] as String,
-      );
+    photoActiveView,
+    'projectID = ?',
+    [projectId],
+    '$_orderByTimestamp DESC',
+    (r) => r['timestamp'] as String,
+  );
 
   /* ┌──────────────────────┐
      │                      │
@@ -1991,18 +1994,15 @@ class DB {
   ) async {
     final db = await database;
     final timestampCreated = DateTime.now().millisecondsSinceEpoch;
-    return await db.insert(
-        videoTable,
-        {
-          'projectID': projectId,
-          'resolution': resolution,
-          'watermarkEnabled': watermarkEnabled,
-          'watermarkPos': watermarkPos,
-          'photoCount': photoCount,
-          'framerate': framerate,
-          'timestampCreated': timestampCreated,
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace);
+    return await db.insert(videoTable, {
+      'projectID': projectId,
+      'resolution': resolution,
+      'watermarkEnabled': watermarkEnabled,
+      'watermarkPos': watermarkPos,
+      'photoCount': photoCount,
+      'framerate': framerate,
+      'timestampCreated': timestampCreated,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<Map<String, dynamic>?> getNewestVideoByProjectId(int projectId) =>
@@ -2030,16 +2030,13 @@ class DB {
   }) async {
     final db = await database;
     final installedAt = DateTime.now().millisecondsSinceEpoch;
-    return await db.insert(
-        customFontTable,
-        {
-          'displayName': displayName,
-          'familyName': familyName,
-          'filePath': filePath,
-          'fileSize': fileSize,
-          'installedAt': installedAt,
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace);
+    return await db.insert(customFontTable, {
+      'displayName': displayName,
+      'familyName': familyName,
+      'filePath': filePath,
+      'fileSize': fileSize,
+      'installedAt': installedAt,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   /// Get all custom fonts from the database.
@@ -2054,23 +2051,15 @@ class DB {
 
   /// Get a custom font by its family name.
   Future<CustomFont?> getCustomFontByFamilyName(String familyName) =>
-      _querySingle(
-          customFontTable,
-          'familyName = ?',
-          [
-            familyName,
-          ],
-          CustomFont.fromJson);
+      _querySingle(customFontTable, 'familyName = ?', [
+        familyName,
+      ], CustomFont.fromJson);
 
   /// Get a custom font by its display name.
   Future<CustomFont?> getCustomFontByDisplayName(String displayName) =>
-      _querySingle(
-          customFontTable,
-          'displayName = ?',
-          [
-            displayName,
-          ],
-          CustomFont.fromJson);
+      _querySingle(customFontTable, 'displayName = ?', [
+        displayName,
+      ], CustomFont.fromJson);
 
   /// Delete a custom font by its ID.
   Future<int> deleteCustomFont(int id) async {
@@ -2091,14 +2080,11 @@ class DB {
     String sourceRelativePath,
   ) async {
     final db = await database;
-    await db.insert(
-        deletedLinkedSourcesTable,
-        {
-          'projectID': projectId,
-          'sourceRelativePath': sourceRelativePath,
-          'deletedAt': DateTime.now().millisecondsSinceEpoch,
-        },
-        conflictAlgorithm: ConflictAlgorithm.ignore);
+    await db.insert(deletedLinkedSourcesTable, {
+      'projectID': projectId,
+      'sourceRelativePath': sourceRelativePath,
+      'deletedAt': DateTime.now().millisecondsSinceEpoch,
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
   }
 
   /// Returns true if the given relative path was explicitly deleted by the user
@@ -2214,26 +2200,23 @@ class DB {
 
       for (int i = 0; i < faceRows.length; i++) {
         final face = faceRows[i];
-        await txn.insert(
-            faceDetectionCacheTable,
-            {
-              'timestamp': timestamp,
-              'projectID': projectId,
-              'orientation': orientation,
-              'faceIndex': i,
-              'selectedFaceIndex': selectedFaceIndex,
-              'boundingBoxLeft': face['boundingBoxLeft'],
-              'boundingBoxTop': face['boundingBoxTop'],
-              'boundingBoxRight': face['boundingBoxRight'],
-              'boundingBoxBottom': face['boundingBoxBottom'],
-              'leftEyeX': face['leftEyeX'],
-              'leftEyeY': face['leftEyeY'],
-              'rightEyeX': face['rightEyeX'],
-              'rightEyeY': face['rightEyeY'],
-              'modelVersion': modelVersion,
-              'fingerprint': fingerprint,
-            },
-            conflictAlgorithm: ConflictAlgorithm.replace);
+        await txn.insert(faceDetectionCacheTable, {
+          'timestamp': timestamp,
+          'projectID': projectId,
+          'orientation': orientation,
+          'faceIndex': i,
+          'selectedFaceIndex': selectedFaceIndex,
+          'boundingBoxLeft': face['boundingBoxLeft'],
+          'boundingBoxTop': face['boundingBoxTop'],
+          'boundingBoxRight': face['boundingBoxRight'],
+          'boundingBoxBottom': face['boundingBoxBottom'],
+          'leftEyeX': face['leftEyeX'],
+          'leftEyeY': face['leftEyeY'],
+          'rightEyeX': face['rightEyeX'],
+          'rightEyeY': face['rightEyeY'],
+          'modelVersion': modelVersion,
+          'fingerprint': fingerprint,
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
       }
     });
   }
@@ -2253,26 +2236,23 @@ class DB {
         where: 'timestamp = ? AND projectID = ?',
         whereArgs: [timestamp, projectId],
       );
-      await txn.insert(
-          faceDetectionCacheTable,
-          {
-            'timestamp': timestamp,
-            'projectID': projectId,
-            'orientation': 'no_faces',
-            'faceIndex': -1,
-            'selectedFaceIndex': null,
-            'boundingBoxLeft': null,
-            'boundingBoxTop': null,
-            'boundingBoxRight': null,
-            'boundingBoxBottom': null,
-            'leftEyeX': null,
-            'leftEyeY': null,
-            'rightEyeX': null,
-            'rightEyeY': null,
-            'modelVersion': modelVersion,
-            'fingerprint': fingerprint,
-          },
-          conflictAlgorithm: ConflictAlgorithm.replace);
+      await txn.insert(faceDetectionCacheTable, {
+        'timestamp': timestamp,
+        'projectID': projectId,
+        'orientation': 'no_faces',
+        'faceIndex': -1,
+        'selectedFaceIndex': null,
+        'boundingBoxLeft': null,
+        'boundingBoxTop': null,
+        'boundingBoxRight': null,
+        'boundingBoxBottom': null,
+        'leftEyeX': null,
+        'leftEyeY': null,
+        'rightEyeX': null,
+        'rightEyeY': null,
+        'modelVersion': modelVersion,
+        'fingerprint': fingerprint,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
     });
   }
 
@@ -2292,13 +2272,9 @@ class DB {
      └──────────────────────────────┘ */
 
   Future<TransformCacheEntry?> getTransformCache(String cacheKey) =>
-      _querySingle(
-          transformCacheTable,
-          'cacheKey = ?',
-          [
-            cacheKey,
-          ],
-          TransformCacheEntry.fromMap);
+      _querySingle(transformCacheTable, 'cacheKey = ?', [
+        cacheKey,
+      ], TransformCacheEntry.fromMap);
 
   Future<void> writeTransformCache(TransformCacheEntry entry) async {
     final db = await database;
@@ -2318,10 +2294,7 @@ class DB {
 
       final row = existing.first;
       final map = entry
-          .copyWith(
-            id: row['id'] as int?,
-            createdAt: row['createdAt'] as int?,
-          )
+          .copyWith(id: row['id'] as int?, createdAt: row['createdAt'] as int?)
           .toMap();
       await txn.update(
         transformCacheTable,
@@ -2389,22 +2362,22 @@ class CustomFont {
   });
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'displayName': displayName,
-        'familyName': familyName,
-        'filePath': filePath,
-        'fileSize': fileSize,
-        'installedAt': installedAt,
-      };
+    'id': id,
+    'displayName': displayName,
+    'familyName': familyName,
+    'filePath': filePath,
+    'fileSize': fileSize,
+    'installedAt': installedAt,
+  };
 
   factory CustomFont.fromJson(Map<String, dynamic> json) => CustomFont(
-        id: json['id'] as int,
-        displayName: json['displayName'] as String,
-        familyName: json['familyName'] as String,
-        filePath: json['filePath'] as String,
-        fileSize: json['fileSize'] as int,
-        installedAt: json['installedAt'] as int,
-      );
+    id: json['id'] as int,
+    displayName: json['displayName'] as String,
+    familyName: json['familyName'] as String,
+    filePath: json['filePath'] as String,
+    fileSize: json['fileSize'] as int,
+    installedAt: json['installedAt'] as int,
+  );
 
   @override
   String toString() => 'CustomFont($displayName, $familyName)';

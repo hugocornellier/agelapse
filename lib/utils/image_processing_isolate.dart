@@ -49,11 +49,11 @@ class ImageProcessingOutput {
   });
 
   const ImageProcessingOutput.failure(this.error)
-      : success = false,
-        processedBytes = null,
-        thumbnailBytes = null,
-        width = 0,
-        height = 0;
+    : success = false,
+      processedBytes = null,
+      thumbnailBytes = null,
+      width = 0,
+      height = 0;
 }
 
 /// Top-level function for compute(): MUST be top-level or static.

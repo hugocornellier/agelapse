@@ -180,7 +180,8 @@ void main() {
         'every state belongs to at least one category or is transitional',
         () {
           for (final state in StabilizationState.values) {
-            final isInSomeCategory = state.isActive ||
+            final isInSomeCategory =
+                state.isActive ||
                 state.isCancelling ||
                 state.isFinished ||
                 state.isVideoPhase;

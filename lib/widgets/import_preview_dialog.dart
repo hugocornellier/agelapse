@@ -92,9 +92,7 @@ class _ImportPreviewDialogState extends State<ImportPreviewDialog> {
         if (index >= filePaths.length) return;
         nextIndex++;
 
-        final item = await GalleryUtils.extractDateForPreview(
-          filePaths[index],
-        );
+        final item = await GalleryUtils.extractDateForPreview(filePaths[index]);
         if (_isCancelled) return;
 
         results[index] = item;

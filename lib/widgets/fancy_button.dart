@@ -18,8 +18,9 @@ class FancyButton {
         ? Colors.white.withValues(alpha: 0.15)
         : AppColors.accent.withValues(alpha: 0.15);
     final iconColor = onDarkBg ? Colors.white : AppColors.accent;
-    final chevronColor =
-        onDarkBg ? Colors.white.withValues(alpha: 0.6) : AppColors.textTertiary;
+    final chevronColor = onDarkBg
+        ? Colors.white.withValues(alpha: 0.6)
+        : AppColors.textTertiary;
 
     return ElevatedButton(
       style: ElevatedButton.styleFrom(

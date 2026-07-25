@@ -23,7 +23,8 @@ class InProgress extends StatelessWidget {
           : null,
       child: Container(
         width: double.infinity,
-        color: backgroundColor ??
+        color:
+            backgroundColor ??
             (message == "No storage space on device."
                 ? AppColors.danger
                 : AppColors.accentDarker),

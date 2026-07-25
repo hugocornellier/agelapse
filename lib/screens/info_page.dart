@@ -217,8 +217,8 @@ class InfoPageState extends State<InfoPage> {
                   color: _emailCopied
                       ? AppColors.success.withValues(alpha: 0.1)
                       : _emailHovered
-                          ? AppColors.surfaceElevated
-                          : AppColors.surface,
+                      ? AppColors.surfaceElevated
+                      : AppColors.surface,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: _emailCopied

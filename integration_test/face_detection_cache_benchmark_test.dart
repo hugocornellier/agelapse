@@ -200,10 +200,7 @@ class _BenchSource {
   final String path;
   final String fingerprint;
 
-  const _BenchSource({
-    required this.path,
-    required this.fingerprint,
-  });
+  const _BenchSource({required this.path, required this.fingerprint});
 }
 
 class _PhotoResult {
@@ -250,14 +247,9 @@ class _RunSummary {
   int get totalMs => results.fold(0, (sum, r) => sum + r.elapsedMs);
   int get successCount => results.where((r) => r.success).length;
   double get meanMs => results.isEmpty ? 0 : totalMs / results.length;
-  double get medianMs => _percentile(
-        results.map((r) => r.elapsedMs).toList(),
-        50,
-      );
-  double get p95Ms => _percentile(
-        results.map((r) => r.elapsedMs).toList(),
-        95,
-      );
+  double get medianMs =>
+      _percentile(results.map((r) => r.elapsedMs).toList(), 50);
+  double get p95Ms => _percentile(results.map((r) => r.elapsedMs).toList(), 95);
 }
 
 class _RoundComparison {
@@ -404,15 +396,18 @@ Future<void> _configureProject(
 }
 
 Future<void> _createProjectDirs(int projectId) async {
-  await Directory(await DirUtils.getRawPhotoDirPath(projectId))
-      .create(recursive: true);
+  await Directory(
+    await DirUtils.getRawPhotoDirPath(projectId),
+  ).create(recursive: true);
   final stabDir = await DirUtils.getStabilizedDirPath(projectId);
   await Directory(p.join(stabDir, _projectOrientation)).create(recursive: true);
   final thumbDir = await DirUtils.getThumbnailDirPath(projectId);
-  await Directory(p.join(thumbDir, 'stabilized', _projectOrientation))
-      .create(recursive: true);
-  await Directory(await DirUtils.getFailureDirPath(projectId))
-      .create(recursive: true);
+  await Directory(
+    p.join(thumbDir, 'stabilized', _projectOrientation),
+  ).create(recursive: true);
+  await Directory(
+    await DirUtils.getFailureDirPath(projectId),
+  ).create(recursive: true);
 }
 
 Future<_RunSummary> _runNoCache4K(int projectId) async {
@@ -516,10 +511,7 @@ Future<_RunSummary> _runMeasuredStabilization({
   );
 }
 
-Future<void> _expectFaceCacheSeeded(
-  int projectId,
-  int expectedCount,
-) async {
+Future<void> _expectFaceCacheSeeded(int projectId, int expectedCount) async {
   final photos = await DB.instance.getPhotosByProjectID(projectId);
   expect(photos.length, expectedCount);
 
@@ -573,10 +565,10 @@ Future<void> _resetStabilizationOutputs(int projectId) async {
 
     final pngPath =
         await DirUtils.getStabilizedImagePathFromRawPathAndProjectOrientation(
-      projectId,
-      rawPath,
-      _projectOrientation,
-    );
+          projectId,
+          rawPath,
+          _projectOrientation,
+        );
     final jpgPath = p.setExtension(pngPath, '.jpg');
     await DirUtils.deleteFileIfExists(pngPath);
     await DirUtils.deleteFileIfExists(jpgPath);
@@ -685,9 +677,7 @@ void _printSummary(_RunSummary summary) {
   );
 }
 
-_AggregateComparison _aggregateComparisons(
-  List<_RoundComparison> comparisons,
-) {
+_AggregateComparison _aggregateComparisons(List<_RoundComparison> comparisons) {
   final baselineMedians = comparisons.map((c) => c.baseline.medianMs).toList();
   final cachedMedians = comparisons.map((c) => c.cached.medianMs).toList();
   final baselineMeans = comparisons.map((c) => c.baseline.meanMs).toList();
@@ -763,7 +753,9 @@ double _mean(List<double> values) {
 
 double _percentile(List<int> values, int percentile) {
   return _percentileDouble(
-      values.map((v) => v.toDouble()).toList(), percentile);
+    values.map((v) => v.toDouble()).toList(),
+    percentile,
+  );
 }
 
 double _percentileDouble(List<double> values, int percentile) {

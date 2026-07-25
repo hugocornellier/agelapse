@@ -20,28 +20,32 @@ import 'package:agelapse/services/database_import_ffi.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  test('desktop sqlite3 loads without sqlite3_flutter_libs and round-trips',
-      () async {
-    // Same FFI factory setup the app performs in initDatabase() on desktop.
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
+  test(
+    'desktop sqlite3 loads without sqlite3_flutter_libs and round-trips',
+    () async {
+      // Same FFI factory setup the app performs in initDatabase() on desktop.
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
 
-    final db = await databaseFactory.openDatabase(inMemoryDatabasePath);
-    try {
-      await db
-          .execute('CREATE TABLE t(id INTEGER PRIMARY KEY, v TEXT NOT NULL)');
-      await db.insert('t', {'v': 'agelapse'});
-      final rows = await db.query('t');
-      expect(rows.single['v'], 'agelapse');
+      final db = await databaseFactory.openDatabase(inMemoryDatabasePath);
+      try {
+        await db.execute(
+          'CREATE TABLE t(id INTEGER PRIMARY KEY, v TEXT NOT NULL)',
+        );
+        await db.insert('t', {'v': 'agelapse'});
+        final rows = await db.query('t');
+        expect(rows.single['v'], 'agelapse');
 
-      // Reading the real SQLite version proves the bundled native lib is live.
-      final version = (await db.rawQuery('SELECT sqlite_version() AS v'))
-          .single['v'] as String;
-      expect(version, isNotEmpty);
-      // ignore: avoid_print
-      print('[windows-db-smoke] sqlite_version = $version');
-    } finally {
-      await db.close();
-    }
-  });
+        // Reading the real SQLite version proves the bundled native lib is live.
+        final version =
+            (await db.rawQuery('SELECT sqlite_version() AS v')).single['v']
+                as String;
+        expect(version, isNotEmpty);
+        // ignore: avoid_print
+        print('[windows-db-smoke] sqlite_version = $version');
+      } finally {
+        await db.close();
+      }
+    },
+  );
 }

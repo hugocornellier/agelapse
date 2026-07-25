@@ -28,13 +28,13 @@ class StabilizationResult {
   final double? preScore; // Score before two-pass (first pass)
   final double? twoPassScore; // Score after two-pass (null if not attempted)
   final double?
-      threePassScore; // Score after three-pass (null if not attempted)
+  threePassScore; // Score after three-pass (null if not attempted)
   final double? fourPassScore; // Score after four-pass (null if not attempted)
 
   // Final benchmark metrics
   final double? finalScore; // Final stabilization score
   final double?
-      finalEyeDeltaY; // Final vertical difference between eyes (rotation error)
+  finalEyeDeltaY; // Final vertical difference between eyes (rotation error)
   final double? finalEyeDistance; // Final distance between eyes
   final double? goalEyeDistance; // Target eye distance
   final double? translateX;
@@ -302,8 +302,9 @@ class FaceStabilizer {
         // so the re-check loop and next-session scan do not re-pick it.
         if (!result.success && !result.cancelled) {
           try {
-            final String timestamp =
-                path.basenameWithoutExtension(rawPhotoPath);
+            final String timestamp = path.basenameWithoutExtension(
+              rawPhotoPath,
+            );
             await DB.instance.setPhotoStabFailed(timestamp, projectId);
             unawaited(
               _emitThumbnailFailure(rawPhotoPath, ThumbnailStatus.stabFailed),
@@ -458,7 +459,7 @@ class FaceStabilizer {
     }
 
     final Future<File> Function(String, {Uint8List? preDecodedBytes})
-        transformFn;
+    transformFn;
     final int hitTimeSavedMs;
     switch (cached.orientation) {
       case 'flipped':
@@ -579,8 +580,8 @@ class FaceStabilizer {
     // (avoids crash for TIFF/JP2 on Apple where cv.imdecode segfaults).
     final Uint8List? preDecodedBytes =
         FormatDecodeUtils.needsConversion(path.extension(originalPath))
-            ? await FormatDecodeUtils.loadCvCompatibleBytes(originalPath)
-            : null;
+        ? await FormatDecodeUtils.loadCvCompatibleBytes(originalPath)
+        : null;
 
     final String timestamp = path.basenameWithoutExtension(originalPath);
     final tempFiles = <String>[];
@@ -607,8 +608,9 @@ class FaceStabilizer {
         fingerprint = knownFingerprint;
       } else {
         try {
-          fingerprint =
-              await StabUtils.computeRawPhotoFingerprint(originalPath);
+          fingerprint = await StabUtils.computeRawPhotoFingerprint(
+            originalPath,
+          );
         } catch (e) {
           LogService.instance.log('[cache] $timestamp: fingerprint error: $e');
         }
@@ -681,11 +683,7 @@ class FaceStabilizer {
           }
         }
         if (cacheEnabled && fingerprint != null) {
-          await _writeFacesToCache(
-            timestamp,
-            fingerprint,
-            'original',
-          );
+          await _writeFacesToCache(timestamp, fingerprint, 'original');
           await _writeTransformToCache(
             timestamp: timestamp,
             fingerprint: fingerprint,
@@ -752,8 +750,9 @@ class FaceStabilizer {
             '[cache] $timestamp: MISS → no_faces (wrote sentinel)',
           );
         } catch (e) {
-          LogService.instance
-              .log('[cache] $timestamp: write sentinel error: $e');
+          LogService.instance.log(
+            '[cache] $timestamp: write sentinel error: $e',
+          );
         }
       }
 
@@ -834,8 +833,9 @@ class FaceStabilizer {
 
     // Manual override takes precedence; survives settings changes.
     TransformCacheEntry? hit;
-    final manualCacheKey =
-        _buildManualTransformCacheKey(fingerprint: fingerprint);
+    final manualCacheKey = _buildManualTransformCacheKey(
+      fingerprint: fingerprint,
+    );
     final manualHit = await DB.instance.getTransformCache(manualCacheKey);
     if (manualHit != null && _isValidTransformCacheHit(manualHit)) {
       hit = manualHit;
@@ -889,7 +889,8 @@ class FaceStabilizer {
       final double renderSf = hit.scaleFactor * canvasScale;
 
       token?.throwIfCancelled();
-      final baseBytes = preDecodedBytes ??
+      final baseBytes =
+          preDecodedBytes ??
           await FormatDecodeUtils.loadCvCompatibleBytes(originalPath);
       if (baseBytes == null) {
         transformCacheRenderFailures++;
@@ -912,18 +913,18 @@ class FaceStabilizer {
       final srcId = '$timestamp:${hit.sourceOrientation}:transform-cache';
       final imageBytesStabilized =
           await StabUtils.generateStabilizedImageBytesCVAsync(
-        orientedBytes,
-        hit.rotationDegrees,
-        renderSf,
-        renderTx,
-        renderTy,
-        canvasWidth,
-        canvasHeight,
-        token: token,
-        srcId: srcId,
-        backgroundColorBGR: backgroundColorBGR,
-        preserveBitDepth: lossless,
-      );
+            orientedBytes,
+            hit.rotationDegrees,
+            renderSf,
+            renderTx,
+            renderTy,
+            canvasWidth,
+            canvasHeight,
+            token: token,
+            srcId: srcId,
+            backgroundColorBGR: backgroundColorBGR,
+            preserveBitDepth: lossless,
+          );
       if (imageBytesStabilized == null) {
         transformCacheRenderFailures++;
         return null;
@@ -983,9 +984,7 @@ class FaceStabilizer {
       rethrow;
     } catch (e) {
       transformCacheRenderFailures++;
-      LogService.instance.log(
-        '[transform-cache] $timestamp: render error: $e',
-      );
+      LogService.instance.log('[transform-cache] $timestamp: render error: $e');
       return null;
     }
   }
@@ -1019,8 +1018,12 @@ class FaceStabilizer {
       return false;
     }
     if (hit.isEstimated) return false;
-    if (!const {'original', 'flipped', 'ccw', 'cw'}
-        .contains(hit.sourceOrientation)) {
+    if (!const {
+      'original',
+      'flipped',
+      'ccw',
+      'cw',
+    }.contains(hit.sourceOrientation)) {
       return false;
     }
     return hit.translateX.isFinite &&
@@ -1038,7 +1041,7 @@ class FaceStabilizer {
     if (sourceOrientation == 'original') return originalBytes;
 
     final Future<File> Function(String, {Uint8List? preDecodedBytes})
-        transformFn;
+    transformFn;
     switch (sourceOrientation) {
       case 'flipped':
         transformFn = StabUtils.flipImageHorizontally;
@@ -1066,7 +1069,8 @@ class FaceStabilizer {
         projectOrientation: projectOrientation!,
         resolution: resolution,
         aspectRatio: aspectRatio,
-        aspectRatioDecimal: aspectRatioDecimal ??
+        aspectRatioDecimal:
+            aspectRatioDecimal ??
             StabUtils.getAspectRatioAsDecimal(aspectRatio) ??
             (16 / 9),
         eyeOffsetX: eyeOffsetX,
@@ -1109,11 +1113,11 @@ class FaceStabilizer {
   }
 
   String _buildManualReuseHash() => TransformCacheKey.buildManualReuseHash(
-        aspectRatio: aspectRatio,
-        eyeOffsetX: eyeOffsetX,
-        eyeOffsetY: eyeOffsetY,
-        projectOrientation: projectOrientation!,
-      );
+    aspectRatio: aspectRatio,
+    eyeOffsetX: eyeOffsetX,
+    eyeOffsetY: eyeOffsetY,
+    projectOrientation: projectOrientation!,
+  );
 
   bool _hasFiniteTransform(StabilizationResult result) {
     final values = [
@@ -1135,8 +1139,12 @@ class FaceStabilizer {
     if (!_supportsTransformCache) return;
     if (!result.success || result.cancelled || result.isEstimated) return;
     if (!_hasFiniteTransform(result)) return;
-    if (!const {'original', 'flipped', 'ccw', 'cw'}
-        .contains(sourceOrientation)) {
+    if (!const {
+      'original',
+      'flipped',
+      'ccw',
+      'cw',
+    }.contains(sourceOrientation)) {
       return;
     }
 
@@ -1228,8 +1236,9 @@ class FaceStabilizer {
   }) async {
     if (!_supportsTransformCache) return;
     try {
-      final fingerprint =
-          await StabUtils.computeRawPhotoFingerprint(rawPhotoPath);
+      final fingerprint = await StabUtils.computeRawPhotoFingerprint(
+        rawPhotoPath,
+      );
       final cacheKey = _buildManualTransformCacheKey(fingerprint: fingerprint);
       final now = DateTime.now().millisecondsSinceEpoch;
       // Write the manual entry first. If this throws, nothing has been cleared
@@ -1240,8 +1249,9 @@ class FaceStabilizer {
           projectId: projectId,
           fingerprint: fingerprint,
           projectType: projectType,
-          modelVersion:
-              StabUtils.detectorModelVersionForProjectType(projectType),
+          modelVersion: StabUtils.detectorModelVersionForProjectType(
+            projectType,
+          ),
           transformAlgorithmVersion:
               TransformCacheKey.transformAlgorithmVersion,
           settingsHash: _buildManualReuseHash(),
@@ -1423,18 +1433,18 @@ class FaceStabilizer {
     } else {
       imageBytesStabilized =
           await StabUtils.generateStabilizedImageBytesCVAsync(
-        srcBytes,
-        rotationDegrees,
-        scaleFactor,
-        translateX,
-        translateY,
-        canvasWidth,
-        canvasHeight,
-        token: token,
-        srcId: srcId,
-        backgroundColorBGR: backgroundColorBGR,
-        preserveBitDepth: lossless,
-      );
+            srcBytes,
+            rotationDegrees,
+            scaleFactor,
+            translateX,
+            translateY,
+            canvasWidth,
+            canvasHeight,
+            token: token,
+            srcId: srcId,
+            backgroundColorBGR: backgroundColorBGR,
+            preserveBitDepth: lossless,
+          );
       if (imageBytesStabilized == null) {
         return StabilizationResult(success: false);
       }
@@ -1627,7 +1637,8 @@ class FaceStabilizer {
     if (initialRaw != null) {
       // Map a detector error (null) to an empty list for parity with the PNG
       // path, which cannot distinguish error from no-faces either.
-      stabFaces = await _detectFacesFromRaw(
+      stabFaces =
+          await _detectFacesFromRaw(
             initialRaw,
             filterByFaceSize: false,
             imageWidth: canvasWidth,
@@ -2284,8 +2295,8 @@ class FaceStabilizer {
       cleanupScaleError = (cleanupEyeDistance - eyeDistanceGoal).abs();
       cleanupRotationAngle =
           atan2(cleanupEyeDeltaY, cleanupRightEye.x - cleanupLeftEye.x) *
-              180 /
-              pi;
+          180 /
+          pi;
       needsCleanup = cleanupEyeDeltaY.abs() > 1.5 || cleanupScaleError > 2.0;
     }
 
@@ -2408,7 +2419,9 @@ class FaceStabilizer {
     } else {
       LogService.instance.log("STAB FAILURE. STAB SCORE: $bestScore");
       await StabUtils.writeImagesBytesToJpgFile(
-          bytesToSave, stabilizedPhotoPath);
+        bytesToSave,
+        stabilizedPhotoPath,
+      );
       await _handleStabilizationFailure(
         rawPhotoPath,
         stabilizedPhotoPath,
@@ -2460,8 +2473,9 @@ class FaceStabilizer {
     // commit any bytes to disk; otherwise we'd resurrect a stabilized PNG
     // for a photo that's already in (or past) Recently Deleted, leaving an
     // orphaned file the user can't see or recover from.
-    final String timestampForCheck =
-        path.basenameWithoutExtension(rawPhotoPath);
+    final String timestampForCheck = path.basenameWithoutExtension(
+      rawPhotoPath,
+    );
     if (int.tryParse(timestampForCheck) != null) {
       try {
         final row = await DB.instance.getActivePhotoByTimestamp(
@@ -2583,7 +2597,8 @@ class FaceStabilizer {
     final String timestamp = path.basenameWithoutExtension(stabilizedPhotoPath);
     try {
       await DirUtils.createDirectoryIfNotExists(stabThumbnailPath);
-      final bytes = imageBytes ??
+      final bytes =
+          imageBytes ??
           await CameraUtils.readBytesInIsolate(stabilizedPhotoPath);
       if (bytes == null) {
         LogService.instance.log(
@@ -2706,12 +2721,14 @@ class FaceStabilizer {
           preloadedFaces: preloadedFaces,
         );
       } else if (projectType == "pregnancy") {
-        final Uint8List? bytes = cvBytes ??
+        final Uint8List? bytes =
+            cvBytes ??
             await FormatDecodeUtils.loadCvCompatibleBytes(rawPhotoPath);
         if (bytes == null) return (null, null);
         return await _calculateRotationAngleAndScalePregnancy(bytes);
       } else if (projectType == "musc") {
-        final Uint8List? bytes = cvBytes ??
+        final Uint8List? bytes =
+            cvBytes ??
             await FormatDecodeUtils.loadCvCompatibleBytes(rawPhotoPath);
         if (bytes == null) return (null, null);
         return await _calculateRotationAngleAndScaleMusc(bytes);
@@ -2742,7 +2759,8 @@ class FaceStabilizer {
     required Future<List<Point<double>?>> Function(
       List<dynamic> facesToUse,
       List<Point<double>?> eyes,
-    ) selectEyes,
+    )
+    selectEyes,
   }) async {
     final List<dynamic>? faces;
     if (preloadedFaces != null) {
@@ -2888,10 +2906,7 @@ class FaceStabilizer {
           preselectedFaceIndex,
           facesToUse.length,
         )) {
-          final selectedEyes = _eyesForFaceIndex(
-            eyes,
-            preselectedFaceIndex!,
-          );
+          final selectedEyes = _eyesForFaceIndex(eyes, preselectedFaceIndex!);
           if (selectedEyes != null) {
             _currentSelectedFaceIndex = preselectedFaceIndex;
             LogService.instance.log(
@@ -2980,7 +2995,8 @@ class FaceStabilizer {
         "Using reference embedding from photo $refTimestamp for face matching",
       );
 
-      final Uint8List? imageBytes = _lastCvBytes ??
+      final Uint8List? imageBytes =
+          _lastCvBytes ??
           await FormatDecodeUtils.loadCvCompatibleBytes(rawPhotoPath);
       if (imageBytes == null) return null;
 
@@ -3002,7 +3018,8 @@ class FaceStabilizer {
   /// Extracts and stores the face embedding for a single-face photo.
   Future<void> _extractAndStoreEmbedding(String rawPhotoPath) async {
     try {
-      final Uint8List? imageBytes = _lastCvBytes ??
+      final Uint8List? imageBytes =
+          _lastCvBytes ??
           await FormatDecodeUtils.loadCvCompatibleBytes(rawPhotoPath);
       if (imageBytes == null) return;
 
@@ -3074,9 +3091,9 @@ class FaceStabilizer {
 
     final facesData = faces.map((f) => (f as FaceLike).toMap()).toList();
 
-    final List<dynamic> result = IsolatePool.getEyesFromFacesSync(
-      {'faces': facesData},
-    );
+    final List<dynamic> result = IsolatePool.getEyesFromFacesSync({
+      'faces': facesData,
+    });
 
     return result.map((e) {
       if (e == null) return null;
@@ -3154,7 +3171,8 @@ class FaceStabilizer {
       final selectedEyes = _eyesForFaceIndex(eyes, i);
       if (selectedEyes == null) continue;
 
-      final double distance = (selectedEyes[0].x - imgWidth ~/ 2).abs() +
+      final double distance =
+          (selectedEyes[0].x - imgWidth ~/ 2).abs() +
           (selectedEyes[1].x - imgWidth ~/ 2).abs();
 
       if (distance < smallestDistance) {
@@ -3186,14 +3204,12 @@ class FaceStabilizer {
     final eyesData = eyes.map((e) => e != null ? [e.x, e.y] : null).toList();
     final facesData = faces.map((f) => (f as FaceLike).toMap()).toList();
 
-    final List<dynamic> result = IsolatePool.getCentermostEyesSync(
-      {
-        'eyes': eyesData,
-        'faces': facesData,
-        'imgWidth': imgWidth,
-        'imgHeight': imgHeight,
-      },
-    );
+    final List<dynamic> result = IsolatePool.getCentermostEyesSync({
+      'eyes': eyesData,
+      'faces': facesData,
+      'imgWidth': imgWidth,
+      'imgHeight': imgHeight,
+    });
 
     if (result.isEmpty) return [];
 
@@ -3216,17 +3232,15 @@ class FaceStabilizer {
 
     final facesData = faces.map((f) => (f as FaceLike).toMap()).toList();
 
-    return IsolatePool.pickFaceIndexByBoxSync(
-      {
-        'faces': facesData,
-        'targetBox': [
-          targetBox.left,
-          targetBox.top,
-          targetBox.right,
-          targetBox.bottom,
-        ],
-      },
-    );
+    return IsolatePool.pickFaceIndexByBoxSync({
+      'faces': facesData,
+      'targetBox': [
+        targetBox.left,
+        targetBox.top,
+        targetBox.right,
+        targetBox.bottom,
+      ],
+    });
   }
 
   /// Runs the pose detector and returns the first detected pose, or null if none found.
@@ -3290,7 +3304,8 @@ class FaceStabilizer {
     originalRightHipY = rightHipPos.y.toDouble();
     final num verticalDistance = (rightHipPos.y - leftHipPos.y).abs();
     final num horizontalDistance = (rightHipPos.x - leftHipPos.x).abs();
-    double rotationDegrees = atan2(verticalDistance, horizontalDistance) *
+    double rotationDegrees =
+        atan2(verticalDistance, horizontalDistance) *
         (180 / pi) *
         (rightHipPos.y > leftHipPos.y ? -1 : 1);
     double hypotenuse = sqrt(
@@ -3463,7 +3478,8 @@ class FaceStabilizer {
       final Point<double>? rightEye = eyes[ri];
       if (leftEye == null || rightEye == null) continue;
 
-      final double distance = (leftEye.x - imgWidth ~/ 2).abs() +
+      final double distance =
+          (leftEye.x - imgWidth ~/ 2).abs() +
           (rightEye.x - imgWidth ~/ 2).abs();
 
       if (distance < smallestDistance) {
@@ -3516,8 +3532,12 @@ class FaceStabilizer {
 
     // Cat/dog detectors don't support Mat input: fall back to PNG
     if (projectType == 'cat' || projectType == 'dog') {
-      final pngBytes =
-          await StabUtils.encodeRawToPngAsync(data, width, height, matType);
+      final pngBytes = await StabUtils.encodeRawToPngAsync(
+        data,
+        width,
+        height,
+        matType,
+      );
       if (pngBytes == null) return null;
       return _detectFaces(
         pngBytes,
@@ -3742,7 +3762,8 @@ class FaceStabilizer {
     final Point<double> rightEye = detectedEyes[1]!;
     final double verticalDistance = (rightEye.y - leftEye.y).abs();
     final double horizontalDistance = (rightEye.x - leftEye.x).abs();
-    double rotationDegrees = atan2(verticalDistance, horizontalDistance) *
+    double rotationDegrees =
+        atan2(verticalDistance, horizontalDistance) *
         (180 / pi) *
         (rightEye.y > leftEye.y ? -1 : 1);
     double hypotenuse = sqrt(

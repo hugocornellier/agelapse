@@ -118,7 +118,8 @@ class ProjectPageState extends State<ProjectPage> {
         _handleSettingsChange();
       } else {
         // Check if only eye offsets changed (no need to reset guide image)
-        final eyeOffsetChanged = oldCache.eyeOffsetX != newCache.eyeOffsetX ||
+        final eyeOffsetChanged =
+            oldCache.eyeOffsetX != newCache.eyeOffsetX ||
             oldCache.eyeOffsetY != newCache.eyeOffsetY;
 
         if (eyeOffsetChanged) {
@@ -472,8 +473,8 @@ class ProjectPageState extends State<ProjectPage> {
                                     outputImageLoader.backgroundColor,
                                 dateStampEnabled:
                                     outputImageLoader.dateStampEnabled,
-                                dateStampText:
-                                    outputImageLoader.getDateStampPreviewText(),
+                                dateStampText: outputImageLoader
+                                    .getDateStampPreviewText(),
                                 dateStampPosition:
                                     outputImageLoader.dateStampPosition,
                                 dateStampSizePercent:
@@ -811,7 +812,8 @@ class TextRowBuilder extends StatelessWidget {
           children: [
             Text(
               value,
-              style: valueTextStyle ??
+              style:
+                  valueTextStyle ??
                   TextStyle(
                     color: AppColors.settingsTextPrimary,
                     fontSize: AppTypography.xxxl,

@@ -363,8 +363,8 @@ class MainNavigationState extends State<MainNavigation>
   }
 
   Future<void> initPhotoCount() async {
-    final List<Map<String, dynamic>> rawPhotos =
-        await DB.instance.getPhotosByProjectID(widget.projectId);
+    final List<Map<String, dynamic>> rawPhotos = await DB.instance
+        .getPhotosByProjectID(widget.projectId);
     photoCount = rawPhotos.length;
   }
 
@@ -398,19 +398,20 @@ class MainNavigationState extends State<MainNavigation>
 
     _importMaxProgress = 0;
 
-    final List<String> allPhotosBefore =
-        await DB.instance.getAllPhotoPathsByProjectID(widget.projectId);
+    final List<String> allPhotosBefore = await DB.instance
+        .getAllPhotoPathsByProjectID(widget.projectId);
     final int photoCountBeforeImport = allPhotosBefore.length;
 
-    final List<File> files =
-        pickedFiles.paths.map((path) => File(path!)).toList();
+    final List<File> files = pickedFiles.paths
+        .map((path) => File(path!))
+        .toList();
     for (File file in files) {
       await processFileCallback(file);
     }
 
     if (photoCountBeforeImport == 0) {
-      String? importedPhotosOrientation =
-          await DB.instance.checkPhotoOrientationThreshold(widget.projectId);
+      String? importedPhotosOrientation = await DB.instance
+          .checkPhotoOrientationThreshold(widget.projectId);
       if (importedPhotosOrientation == 'landscape') {
         DB.instance.setSettingByTitle(
           "project_orientation",
@@ -536,91 +537,91 @@ class MainNavigationState extends State<MainNavigation>
   }
 
   List<Widget> get _widgetOptions => [
-        ProjectPage(
-          projectId: widget.projectId,
-          projectName: widget.projectName,
-          stabilizingRunningInMain: _stabilizingActive,
-          stabCallback: _startStabilization,
-          cancelStabCallback: _cancelStabilizationProcess,
-          goToPage: _onItemTapped,
-          setUserOnImportTutorialTrue: setUserOnImportTutorialTrue,
-          settingsCache: _settingsCache,
-          refreshSettings: refreshSettings,
-          clearRawAndStabPhotos: clearRawAndStabPhotos,
-          recompileVideoCallback: _recompileVideo,
-          photoTakenToday: _photoTakenToday,
-          stabUpdateStream: _stabUpdateController.stream,
-        ),
-        GalleryPage(
-          projectId: widget.projectId,
-          projectName: widget.projectName,
-          stabCallback: _startStabilization,
-          userRanOutOfSpaceCallback: userRanOutOfSpaceCallback,
-          cancelStabCallback: _cancelStabilizationProcess,
-          processPickedFiles: processPickedFiles,
-          stabilizingRunningInMain: _stabilizingActive,
-          videoCreationActiveInMain: _videoCreationActive,
-          showFlashingCircle: _showFlashingCircle,
-          hideFlashingCircle: _hideFlashingCircle,
-          goToPage: _onItemTapped,
-          progressPercent: progressPercent,
-          minutesRemaining: minutesRemaining,
-          userOnImportTutorial: userOnImportTutorial,
-          setUserOnImportTutorialFalse: setUserOnImportTutorialFalse,
-          importRunningInMain: _isImporting,
-          setProgressInMain: setProgressInMain,
-          setImportingInMain: setImportingInMain,
-          imageFilesStr: _imageFiles,
-          stabilizedImageFilesStr: _stabilizedImageFiles,
-          setRawAndStabPhotoStates: setRawAndStabPhotoStates,
-          addStabilizedImagePath: addStabilizedImagePath,
-          settingsCache: _settingsCache,
-          refreshSettings: refreshSettings,
-          recompileVideoCallback: _recompileVideo,
-          userRanOutOfSpace: _userRanOutOfSpace,
-          stabUpdateStream: _stabUpdateController.stream,
-          // Global drop support
-          setImportSheetOpen: (isOpen) =>
-              GlobalDropService.instance.setImportSheetOpen(isOpen),
-          pendingDropFiles: _pendingDropFiles,
-          clearPendingDropFiles: () => setState(() => _pendingDropFiles = null),
-        ),
-        CameraPage(
-          projectId: widget.projectId,
-          projectName: widget.projectName,
-          takingGuidePhoto: widget.takingGuidePhoto,
-          openGallery: openGallery,
-          refreshSettings: refreshSettings,
-          goToPage: _onItemTapped,
-        ),
-        CreatePage(
-          key: _createPageKey,
-          projectId: widget.projectId,
-          projectName: widget.projectName,
-          stabilizingRunningInMain: _stabilizingActive,
-          videoCreationActiveInMain: _videoCreationActive,
-          currentFrame: _currentFrame,
-          unstabilizedPhotoCount: _unstabilizedPhotoCount,
-          photoIndex: _photoIndex,
-          stabCallback: _startStabilization,
-          cancelStabCallback: _cancelStabilizationProcess,
-          goToPage: _onItemTapped,
-          hideNavBar: hideNavBar,
-          prevIndex: _prevIndex,
-          progressPercent: progressPercent,
-          refreshSettings: refreshSettings,
-          clearRawAndStabPhotos: clearRawAndStabPhotos,
-          recompileVideoCallback: _recompileVideo,
-          minutesRemaining: minutesRemaining,
-        ),
-        InfoPage(
-          projectId: widget.projectId,
-          projectName: widget.projectName,
-          cancelStabCallback: _cancelStabilizationProcess,
-          goToPage: _onItemTapped,
-          stabilizingRunningInMain: _stabilizingActive,
-        ),
-      ];
+    ProjectPage(
+      projectId: widget.projectId,
+      projectName: widget.projectName,
+      stabilizingRunningInMain: _stabilizingActive,
+      stabCallback: _startStabilization,
+      cancelStabCallback: _cancelStabilizationProcess,
+      goToPage: _onItemTapped,
+      setUserOnImportTutorialTrue: setUserOnImportTutorialTrue,
+      settingsCache: _settingsCache,
+      refreshSettings: refreshSettings,
+      clearRawAndStabPhotos: clearRawAndStabPhotos,
+      recompileVideoCallback: _recompileVideo,
+      photoTakenToday: _photoTakenToday,
+      stabUpdateStream: _stabUpdateController.stream,
+    ),
+    GalleryPage(
+      projectId: widget.projectId,
+      projectName: widget.projectName,
+      stabCallback: _startStabilization,
+      userRanOutOfSpaceCallback: userRanOutOfSpaceCallback,
+      cancelStabCallback: _cancelStabilizationProcess,
+      processPickedFiles: processPickedFiles,
+      stabilizingRunningInMain: _stabilizingActive,
+      videoCreationActiveInMain: _videoCreationActive,
+      showFlashingCircle: _showFlashingCircle,
+      hideFlashingCircle: _hideFlashingCircle,
+      goToPage: _onItemTapped,
+      progressPercent: progressPercent,
+      minutesRemaining: minutesRemaining,
+      userOnImportTutorial: userOnImportTutorial,
+      setUserOnImportTutorialFalse: setUserOnImportTutorialFalse,
+      importRunningInMain: _isImporting,
+      setProgressInMain: setProgressInMain,
+      setImportingInMain: setImportingInMain,
+      imageFilesStr: _imageFiles,
+      stabilizedImageFilesStr: _stabilizedImageFiles,
+      setRawAndStabPhotoStates: setRawAndStabPhotoStates,
+      addStabilizedImagePath: addStabilizedImagePath,
+      settingsCache: _settingsCache,
+      refreshSettings: refreshSettings,
+      recompileVideoCallback: _recompileVideo,
+      userRanOutOfSpace: _userRanOutOfSpace,
+      stabUpdateStream: _stabUpdateController.stream,
+      // Global drop support
+      setImportSheetOpen: (isOpen) =>
+          GlobalDropService.instance.setImportSheetOpen(isOpen),
+      pendingDropFiles: _pendingDropFiles,
+      clearPendingDropFiles: () => setState(() => _pendingDropFiles = null),
+    ),
+    CameraPage(
+      projectId: widget.projectId,
+      projectName: widget.projectName,
+      takingGuidePhoto: widget.takingGuidePhoto,
+      openGallery: openGallery,
+      refreshSettings: refreshSettings,
+      goToPage: _onItemTapped,
+    ),
+    CreatePage(
+      key: _createPageKey,
+      projectId: widget.projectId,
+      projectName: widget.projectName,
+      stabilizingRunningInMain: _stabilizingActive,
+      videoCreationActiveInMain: _videoCreationActive,
+      currentFrame: _currentFrame,
+      unstabilizedPhotoCount: _unstabilizedPhotoCount,
+      photoIndex: _photoIndex,
+      stabCallback: _startStabilization,
+      cancelStabCallback: _cancelStabilizationProcess,
+      goToPage: _onItemTapped,
+      hideNavBar: hideNavBar,
+      prevIndex: _prevIndex,
+      progressPercent: progressPercent,
+      refreshSettings: refreshSettings,
+      clearRawAndStabPhotos: clearRawAndStabPhotos,
+      recompileVideoCallback: _recompileVideo,
+      minutesRemaining: minutesRemaining,
+    ),
+    InfoPage(
+      projectId: widget.projectId,
+      projectName: widget.projectName,
+      cancelStabCallback: _cancelStabilizationProcess,
+      goToPage: _onItemTapped,
+      stabilizingRunningInMain: _stabilizingActive,
+    ),
+  ];
 
   void _onItemTapped(int index) {
     int selectedIndex = _selectedIndex;
@@ -834,9 +835,9 @@ class MainNavigationState extends State<MainNavigation>
         child: Navigator(
           key: _nestedNavKey,
           onGenerateRoute: (_) => PageRouteBuilder(
-            pageBuilder: (_, __, ___) => ValueListenableBuilder<int>(
+            pageBuilder: (_, _, _) => ValueListenableBuilder<int>(
               valueListenable: _selectedIndexNotifier,
-              builder: (_, index, __) => _widgetOptions.elementAt(index),
+              builder: (_, index, _) => _widgetOptions.elementAt(index),
             ),
             transitionDuration: Duration.zero,
           ),
@@ -855,7 +856,7 @@ class MainNavigationState extends State<MainNavigation>
                 Expanded(
                   child: Column(
                     children: [
-                      if (appBar != null) appBar,
+                      ?appBar,
                       Expanded(
                         child: ClipRRect(
                           borderRadius: const BorderRadius.only(
@@ -877,7 +878,7 @@ class MainNavigationState extends State<MainNavigation>
             backgroundColor: AppColors.backgroundDark,
             body: Column(
               children: [
-                if (appBar != null) appBar,
+                ?appBar,
                 Expanded(child: contentArea),
               ],
             ),
@@ -967,8 +968,8 @@ class _DesktopNavButtonState extends State<_DesktopNavButton> {
     final Color iconColor = widget.isActive
         ? AppColors.accentLight
         : _hovering
-            ? AppColors.textPrimary
-            : AppColors.textSecondary;
+        ? AppColors.textPrimary
+        : AppColors.textSecondary;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovering = true),
@@ -983,8 +984,8 @@ class _DesktopNavButtonState extends State<_DesktopNavButton> {
             color: widget.isActive
                 ? AppColors.textPrimary.withValues(alpha: 0.1)
                 : _hovering
-                    ? AppColors.textPrimary.withValues(alpha: 0.05)
-                    : Colors.transparent,
+                ? AppColors.textPrimary.withValues(alpha: 0.05)
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Stack(

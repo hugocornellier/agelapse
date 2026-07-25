@@ -95,8 +95,8 @@ class GridPainterSE extends CustomPainter {
     final scaledStrokeWidth = size.width * 0.0015;
 
     final paint = Paint()
-      ..color =
-          AppColors.accentLight.withAlpha(128) // Equivalent to opacity 0.5
+      ..color = AppColors.accentLight
+          .withAlpha(128) // Equivalent to opacity 0.5
       ..strokeWidth = scaledStrokeWidth.clamp(2.0, 20.0);
 
     final offsetXInPixels = size.width * offsetX;
@@ -164,7 +164,8 @@ class GridPainterSE extends CustomPainter {
     if (!hideToolTip) {
       // Draw text background rectangle
       final textBackgroundPaint = Paint()
-        ..color = AppColors.overlay.withAlpha(230) // Equivalent to opacity 0.9
+        ..color = AppColors.overlay
+            .withAlpha(230) // Equivalent to opacity 0.9
         ..style = PaintingStyle.fill;
 
       const textPadding = 8.0;

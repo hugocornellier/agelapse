@@ -92,11 +92,10 @@ class DirUtils {
   static Future<String> getZipFileExportPath(
     int projectId,
     String projectName,
-  ) async =>
-      path.join(
-        await getExportsDirPath(projectId),
-        ExportNamingUtils.generateZipFilename(projectName: projectName),
-      );
+  ) async => path.join(
+    await getExportsDirPath(projectId),
+    ExportNamingUtils.generateZipFilename(projectName: projectName),
+  );
 
   static Future<String> getRawPhotoPathFromTimestampAndProjectId(
     String timestamp,
@@ -152,23 +151,21 @@ class DirUtils {
     String stabilizedDirPath,
     String orientation,
     String rawImagePath,
-  ) =>
-      path.join(
-        stabilizedDirPath,
-        orientation.toLowerCase(),
-        "${path.basenameWithoutExtension(rawImagePath)}.png",
-      );
+  ) => path.join(
+    stabilizedDirPath,
+    orientation.toLowerCase(),
+    "${path.basenameWithoutExtension(rawImagePath)}.png",
+  );
 
   static Future<String> getStabilizedImagePathFromRawPathAndProjectOrientation(
     int projectId,
     String rawImagePath,
     String projectOrientation,
-  ) async =>
-      buildStabilizedImagePath(
-        await getStabilizedDirPath(projectId),
-        projectOrientation,
-        rawImagePath,
-      );
+  ) async => buildStabilizedImagePath(
+    await getStabilizedDirPath(projectId),
+    projectOrientation,
+    rawImagePath,
+  );
 
   // Cross-platform temp & permanent data directory path fetchers
   static Future<String> getTemporaryDirPath() async =>
@@ -300,8 +297,8 @@ class DirUtils {
     double offsetX,
     int projectId,
   ) async {
-    List<Map<String, Object?>> validGuidePhotos =
-        await DB.instance.getSetEyePhoto(offsetX, projectId);
+    List<Map<String, Object?>> validGuidePhotos = await DB.instance
+        .getSetEyePhoto(offsetX, projectId);
 
     if (validGuidePhotos.isEmpty) {
       return null;

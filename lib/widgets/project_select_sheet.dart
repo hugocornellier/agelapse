@@ -57,8 +57,8 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
   }
 
   Future<void> _getProjects() async {
-    final List<Map<String, dynamic>> projects =
-        await DB.instance.getAllProjects();
+    final List<Map<String, dynamic>> projects = await DB.instance
+        .getAllProjects();
     if (!mounted) return;
     setState(() => _projects = projects);
   }
@@ -186,8 +186,8 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                         child: _projects.isEmpty
                             ? _buildEmptyState()
                             : isDesktop
-                                ? _buildProjectGrid(crossAxisCount)
-                                : _buildProjectList(),
+                            ? _buildProjectGrid(crossAxisCount)
+                            : _buildProjectList(),
                       ),
                     ],
                   ),
@@ -271,8 +271,9 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children:
-            _projects.map((project) => _buildProjectItem(project)).toList(),
+        children: _projects
+            .map((project) => _buildProjectItem(project))
+            .toList(),
       ),
     );
   }
@@ -285,7 +286,8 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
           future: ProjectUtils.photoWasTakenToday(project['id']),
           builder: (context, photoSnapshot) {
             final bool takenToday = photoSnapshot.data ?? false;
-            final bool hasImage = snapshot.hasData &&
+            final bool hasImage =
+                snapshot.hasData &&
                 snapshot.data!.isNotEmpty &&
                 File(snapshot.data!).existsSync();
 
@@ -709,7 +711,8 @@ class ProjectSelectionSheetState extends State<ProjectSelectionSheet> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                         clipBehavior: Clip.antiAlias,
-                        child: snapshot.hasData &&
+                        child:
+                            snapshot.hasData &&
                                 snapshot.data!.isNotEmpty &&
                                 File(snapshot.data!).existsSync()
                             ? Image.file(

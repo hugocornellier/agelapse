@@ -193,17 +193,18 @@ class DropdownWithCustomTextFieldState
             fontSize: AppTypography.md,
             color: AppColors.settingsTextPrimary,
           ),
-          items: defaultValues
-              .map<DropdownMenuItem<int>>(
-                (int value) => DropdownMenuItem<int>(
-                  value: value,
-                  child: Text(value.toString()),
+          items:
+              defaultValues
+                  .map<DropdownMenuItem<int>>(
+                    (int value) => DropdownMenuItem<int>(
+                      value: value,
+                      child: Text(value.toString()),
+                    ),
+                  )
+                  .toList()
+                ..add(
+                  const DropdownMenuItem<int>(value: -1, child: Text('Custom')),
                 ),
-              )
-              .toList()
-            ..add(
-              const DropdownMenuItem<int>(value: -1, child: Text('Custom')),
-            ),
         ),
       ),
     );

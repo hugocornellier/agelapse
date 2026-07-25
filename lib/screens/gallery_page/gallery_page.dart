@@ -80,12 +80,14 @@ class GalleryPage extends StatefulWidget {
   final void Function(
     List<String> imageFiles,
     List<String> stabilizedImageFiles,
-  ) setRawAndStabPhotoStates;
+  )
+  setRawAndStabPhotoStates;
   final void Function(String stabilizedImagePath) addStabilizedImagePath;
   final Future<void> Function(
     FilePickerResult? pickedFiles,
     Future<void> Function(dynamic file) processFileCallback,
-  ) processPickedFiles;
+  )
+  processPickedFiles;
   final Future<void> Function() refreshSettings;
   final Future<void> Function() recompileVideoCallback;
   final String minutesRemaining;
@@ -944,10 +946,7 @@ class GalleryPageState extends State<GalleryPage>
             child: Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: AppColors.surfaceElevated,
-                  width: 1,
-                ),
+                border: Border.all(color: AppColors.surfaceElevated, width: 1),
                 boxShadow: [
                   BoxShadow(
                     color: AppColors.overlay.withValues(alpha: 0.15),
@@ -1014,18 +1013,21 @@ class GalleryPageState extends State<GalleryPage>
     }
     final bool isStabilizedTab =
         scrollController == _stabilizedScrollController;
-    final List<String> files =
-        isStabilizedTab ? widget.stabilizedImageFilesStr : imageFiles;
+    final List<String> files = isStabilizedTab
+        ? widget.stabilizedImageFilesStr
+        : imageFiles;
 
     // Only show end-of-grid FlashingBox if there are NEW photos being stabilized,
     // not just retries. If all raw photos are already in stabilized list, it's only retries.
-    final bool onlyRetrying = _retryingPhotoTimestamps.isNotEmpty &&
+    final bool onlyRetrying =
+        _retryingPhotoTimestamps.isNotEmpty &&
         widget.imageFilesStr.length == widget.stabilizedImageFilesStr.length;
     final bool showStabProgressIndicator =
         isStabilizedTab && widget.stabilizingRunningInMain && !onlyRetrying;
 
-    final int itemCount =
-        showStabProgressIndicator ? files.length + 1 : files.length;
+    final int itemCount = showStabProgressIndicator
+        ? files.length + 1
+        : files.length;
     // Wrap grid in dark container so spacing between photos is dark, not white
     return Container(
       color: AppColors.galleryBackground,
@@ -1036,8 +1038,9 @@ class GalleryPageState extends State<GalleryPage>
           maxCrossAxisExtent: _tileExtentForGridCount(context),
           crossAxisSpacing: 2.0,
           mainAxisSpacing: 2.0,
-          childAspectRatio:
-              _isInspectionMode ? _inspectionChildAspectRatio : 1.0,
+          childAspectRatio: _isInspectionMode
+              ? _inspectionChildAspectRatio
+              : 1.0,
         ),
         itemCount: itemCount,
         itemBuilder: (context, index) {
@@ -1227,8 +1230,9 @@ class GalleryPageState extends State<GalleryPage>
   Future<void> _showImportPreview(List<String> filePaths) async {
     if (!mounted) return;
     // Filter for valid image files
-    final validPaths =
-        filePaths.where((p) => ImageFormats.isAcceptedPath(p)).toList();
+    final validPaths = filePaths
+        .where((p) => ImageFormats.isAcceptedPath(p))
+        .toList();
 
     if (validPaths.isEmpty) {
       if (mounted) {
@@ -1496,8 +1500,9 @@ class GalleryPageState extends State<GalleryPage>
       GalleryBottomSheets.buildImportOptionTile(
         icon: Icons.folder_outlined,
         title: isDesktop ? 'Browse Files' : 'Files',
-        subtitle:
-            isDesktop ? 'Select images or folders' : 'Import from file manager',
+        subtitle: isDesktop
+            ? 'Select images or folders'
+            : 'Import from file manager',
         onTap: isImporting
             ? null
             : () {
@@ -1515,8 +1520,9 @@ class GalleryPageState extends State<GalleryPage>
 
     // Notify that import sheet is opening (disables global drop overlay)
     widget.setImportSheetOpen(true);
-    GlobalDropService.instance
-        .setImportSheetDropHandler(_handleImportSheetDrop);
+    GlobalDropService.instance.setImportSheetDropHandler(
+      _handleImportSheetDrop,
+    );
 
     bool isDateInfoExpanded = false;
 
@@ -1657,66 +1663,66 @@ class GalleryPageState extends State<GalleryPage>
               ],
             )
           : isDraggingOver
-              ? Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconBadge(
-                      icon: Icons.file_download_outlined,
-                      iconSize: 26,
-                      padding: 12,
-                      iconColor: AppColors.info.withValues(alpha: 0.9),
-                      backgroundColor: AppColors.info.withValues(alpha: 0.2),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Release to import',
-                      style: TextStyle(
-                        color: AppColors.info.withValues(alpha: 0.9),
-                        fontSize: AppTypography.md,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'drop files to begin',
-                      style: TextStyle(
-                        color: AppColors.info.withValues(alpha: 0.6),
-                        fontSize: AppTypography.sm,
-                      ),
-                    ),
-                  ],
-                )
-              : Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconBadge(
-                      icon: Icons.upload_file_outlined,
-                      iconSize: 26,
-                      padding: 12,
-                      iconColor: AppColors.textPrimary.withValues(alpha: 0.7),
-                      backgroundColor: AppColors.textPrimary.withValues(
-                        alpha: 0.06,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Drop files or folders here',
-                      style: TextStyle(
-                        color: AppColors.textPrimary.withValues(alpha: 0.7),
-                        fontSize: AppTypography.md,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'images and folders supported',
-                      style: TextStyle(
-                        color: AppColors.textPrimary.withValues(alpha: 0.4),
-                        fontSize: AppTypography.sm,
-                      ),
-                    ),
-                  ],
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconBadge(
+                  icon: Icons.file_download_outlined,
+                  iconSize: 26,
+                  padding: 12,
+                  iconColor: AppColors.info.withValues(alpha: 0.9),
+                  backgroundColor: AppColors.info.withValues(alpha: 0.2),
                 ),
+                const SizedBox(height: 12),
+                Text(
+                  'Release to import',
+                  style: TextStyle(
+                    color: AppColors.info.withValues(alpha: 0.9),
+                    fontSize: AppTypography.md,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'drop files to begin',
+                  style: TextStyle(
+                    color: AppColors.info.withValues(alpha: 0.6),
+                    fontSize: AppTypography.sm,
+                  ),
+                ),
+              ],
+            )
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconBadge(
+                  icon: Icons.upload_file_outlined,
+                  iconSize: 26,
+                  padding: 12,
+                  iconColor: AppColors.textPrimary.withValues(alpha: 0.7),
+                  backgroundColor: AppColors.textPrimary.withValues(
+                    alpha: 0.06,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Drop files or folders here',
+                  style: TextStyle(
+                    color: AppColors.textPrimary.withValues(alpha: 0.7),
+                    fontSize: AppTypography.md,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'images and folders supported',
+                  style: TextStyle(
+                    color: AppColors.textPrimary.withValues(alpha: 0.4),
+                    fontSize: AppTypography.sm,
+                  ),
+                ),
+              ],
+            ),
     );
   }
 
@@ -1862,10 +1868,7 @@ class GalleryPageState extends State<GalleryPage>
         // the gallery: a touch darker than surface, but not as dark as the tabs.
         color: Color.lerp(AppColors.surface, AppColors.background, 0.4),
         border: Border(
-          bottom: BorderSide(
-            color: AppColors.surfaceElevated,
-            width: 1,
-          ),
+          bottom: BorderSide(color: AppColors.surfaceElevated, width: 1),
         ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -1875,9 +1878,7 @@ class GalleryPageState extends State<GalleryPage>
             onPressed: _exitInspectionMode,
             icon: const Icon(Icons.close, size: 20),
             label: const Text('Done'),
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.textPrimary,
-            ),
+            style: TextButton.styleFrom(foregroundColor: AppColors.textPrimary),
           ),
           const Spacer(),
           Text(
@@ -1906,9 +1907,7 @@ class GalleryPageState extends State<GalleryPage>
       ),
       tooltip: 'Images per row',
       color: AppColors.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       offset: const Offset(0, 44),
       onSelected: _setInspectionColumns,
       itemBuilder: (context) => [
@@ -1959,8 +1958,9 @@ class GalleryPageState extends State<GalleryPage>
 
   void _selectAllPhotos() {
     final bool isStabilizedTab = _tabController.index == 0;
-    final List<String> currentFiles =
-        isStabilizedTab ? widget.stabilizedImageFilesStr : widget.imageFilesStr;
+    final List<String> currentFiles = isStabilizedTab
+        ? widget.stabilizedImageFilesStr
+        : widget.imageFilesStr;
     setState(() {
       if (_selectedPhotos.length == currentFiles.length) {
         _selectedPhotos.clear();
@@ -1972,9 +1972,11 @@ class GalleryPageState extends State<GalleryPage>
 
   Widget _buildSelectionActionBar() {
     final bool isStabilizedTab = _tabController.index == 0;
-    final List<String> currentFiles =
-        isStabilizedTab ? widget.stabilizedImageFilesStr : widget.imageFilesStr;
-    final bool allSelected = _selectedPhotos.length == currentFiles.length &&
+    final List<String> currentFiles = isStabilizedTab
+        ? widget.stabilizedImageFilesStr
+        : widget.imageFilesStr;
+    final bool allSelected =
+        _selectedPhotos.length == currentFiles.length &&
         currentFiles.isNotEmpty;
 
     return Container(
@@ -2058,16 +2060,16 @@ class GalleryPageState extends State<GalleryPage>
       try {
         // For stabilized images, we need to get the raw path first
         final bool isStabilizedImage = imagePath.toLowerCase().contains(
-              'stabilized',
-            );
+          'stabilized',
+        );
         File toDelete;
         if (isStabilizedImage) {
           final String timestamp = path.basenameWithoutExtension(imagePath);
           final String rawPhotoPath =
               await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-            timestamp,
-            projectId,
-          );
+                timestamp,
+                projectId,
+              );
           toDelete = File(rawPhotoPath);
         } else {
           toDelete = File(imagePath);
@@ -2227,35 +2229,35 @@ class GalleryPageState extends State<GalleryPage>
                       if (selectedStabilized.isNotEmpty) {
                         final dateStampEnabled =
                             await SettingsUtil.loadExportDateStampEnabled(
-                          projectIdStr,
-                        );
+                              projectIdStr,
+                            );
 
                         if (dateStampEnabled) {
                           // Load date stamp settings
                           final dateFormat =
                               await SettingsUtil.loadExportDateStampFormat(
-                            projectIdStr,
-                          );
+                                projectIdStr,
+                              );
                           final datePosition =
                               await SettingsUtil.loadExportDateStampPosition(
-                            projectIdStr,
-                          );
+                                projectIdStr,
+                              );
                           final dateSize =
                               await SettingsUtil.loadExportDateStampSize(
-                            projectIdStr,
-                          );
+                                projectIdStr,
+                              );
                           final gallerySize =
                               await SettingsUtil.loadGalleryDateStampSize(
-                            projectIdStr,
-                          );
+                                projectIdStr,
+                              );
                           final resolvedSize = DateStampUtils.resolveExportSize(
                             dateSize,
                             gallerySize,
                           );
                           final dateOpacity =
                               await SettingsUtil.loadExportDateStampOpacity(
-                            projectIdStr,
-                          );
+                                projectIdStr,
+                              );
                           final (
                             dateMarginH,
                             dateMarginV,
@@ -2266,21 +2268,20 @@ class GalleryPageState extends State<GalleryPage>
                           // Load watermark settings for overlap prevention
                           final watermarkEnabled =
                               await SettingsUtil.loadWatermarkSetting(
-                            projectIdStr,
-                          );
+                                projectIdStr,
+                              );
                           final String? watermarkPos = watermarkEnabled
                               ? (await DB.instance.getSettingValueByTitle(
                                   'watermark_position',
-                                ))
-                                  .toLowerCase()
+                                )).toLowerCase()
                               : null;
 
                           // Load timezone offsets for accurate date stamps
                           final captureOffsetMap =
                               await CaptureTimezone.loadOffsetsForFiles(
-                            selectedStabilized,
-                            widget.projectId,
-                          );
+                                selectedStabilized,
+                                widget.projectId,
+                              );
 
                           // Create temp directory for date-stamped files
                           final tempBase = await DirUtils.getTemporaryDirPath();
@@ -2290,20 +2291,20 @@ class GalleryPageState extends State<GalleryPage>
                           // Pre-process files with date stamps
                           final processedMap =
                               await DateStampUtils.processBatchWithDateStamps(
-                            inputPaths: selectedStabilized,
-                            tempDir: dateStampTempDir,
-                            format: dateFormat,
-                            position: datePosition,
-                            sizePercent: resolvedSize,
-                            opacity: dateOpacity,
-                            captureOffsetMap: captureOffsetMap,
-                            watermarkPosition: watermarkPos,
-                            onProgress: (current, total) {
-                              setExportProgress((current / total) * 30);
-                            },
-                            marginPercentH: dateMarginH,
-                            marginPercentV: dateMarginV,
-                          );
+                                inputPaths: selectedStabilized,
+                                tempDir: dateStampTempDir,
+                                format: dateFormat,
+                                position: datePosition,
+                                sizePercent: resolvedSize,
+                                opacity: dateOpacity,
+                                captureOffsetMap: captureOffsetMap,
+                                watermarkPosition: watermarkPos,
+                                onProgress: (current, total) {
+                                  setExportProgress((current / total) * 30);
+                                },
+                                marginPercentH: dateMarginH,
+                                marginPercentV: dateMarginV,
+                              );
 
                           // Use processed files for export
                           filesToExport['Stabilized']!.addAll(
@@ -2409,18 +2410,18 @@ class GalleryPageState extends State<GalleryPage>
     // Get paths first (before setState)
     final String rawPhotoPath =
         await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-      timestamp,
-      widget.projectId,
-    );
+          timestamp,
+          widget.projectId,
+        );
     final String projectOrientation = await SettingsUtil.loadProjectOrientation(
       widget.projectId.toString(),
     );
     final String stabilizedImagePath =
         await DirUtils.getStabilizedImagePathFromRawPathAndProjectOrientation(
-      widget.projectId,
-      rawPhotoPath,
-      projectOrientation,
-    );
+          widget.projectId,
+          rawPhotoPath,
+          projectOrientation,
+        );
     final String stabThumbPath = FaceStabilizer.getStabThumbnailPath(
       stabilizedImagePath,
     );
@@ -2674,8 +2675,9 @@ class GalleryPageState extends State<GalleryPage>
   }
 
   void _showImagePreviewDialog(File imageFile, {required bool isStabilized}) {
-    final List<String> currentList =
-        isStabilized ? widget.stabilizedImageFilesStr : widget.imageFilesStr;
+    final List<String> currentList = isStabilized
+        ? widget.stabilizedImageFilesStr
+        : widget.imageFilesStr;
 
     final int initialIndex = currentList.indexOf(imageFile.path);
     if (initialIndex < 0 || currentList.isEmpty) return;
@@ -2684,24 +2686,24 @@ class GalleryPageState extends State<GalleryPage>
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
             ImagePreviewNavigator(
-          rawImageFiles: widget.imageFilesStr,
-          stabilizedImageFiles: widget.stabilizedImageFilesStr,
-          initialIndex: initialIndex,
-          initialIsRaw: !isStabilized,
-          projectId: widget.projectId,
-          projectOrientation: projectOrientation ?? 'portrait',
-          stabCallback: widget.stabCallback,
-          userRanOutOfSpaceCallback: widget.userRanOutOfSpaceCallback,
-          stabilizingRunningInMain: widget.stabilizingRunningInMain,
-          loadImages: _loadImages,
-          recompileVideoCallback: widget.recompileVideoCallback,
-          settingsVersion: _settingsVersion,
-          isEyeBasedProject: _isEyeBasedProject,
-          initialInspectionMode: _isInspectionMode,
-          eyeOffsetX: widget.settingsCache?.eyeOffsetX ?? 0.065,
-          eyeOffsetY: widget.settingsCache?.eyeOffsetY ?? 0.421875,
-          aspectRatio: _aspectRatio,
-        ),
+              rawImageFiles: widget.imageFilesStr,
+              stabilizedImageFiles: widget.stabilizedImageFilesStr,
+              initialIndex: initialIndex,
+              initialIsRaw: !isStabilized,
+              projectId: widget.projectId,
+              projectOrientation: projectOrientation ?? 'portrait',
+              stabCallback: widget.stabCallback,
+              userRanOutOfSpaceCallback: widget.userRanOutOfSpaceCallback,
+              stabilizingRunningInMain: widget.stabilizingRunningInMain,
+              loadImages: _loadImages,
+              recompileVideoCallback: widget.recompileVideoCallback,
+              settingsVersion: _settingsVersion,
+              isEyeBasedProject: _isEyeBasedProject,
+              initialInspectionMode: _isInspectionMode,
+              eyeOffsetX: widget.settingsCache?.eyeOffsetX ?? 0.065,
+              eyeOffsetY: widget.settingsCache?.eyeOffsetY ?? 0.421875,
+              aspectRatio: _aspectRatio,
+            ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },
@@ -2775,15 +2777,15 @@ class GalleryPageState extends State<GalleryPage>
 
     File toDelete = image;
     final bool isStabilizedImage = image.path.toLowerCase().contains(
-          "stabilized",
-        );
+      "stabilized",
+    );
     if (isStabilizedImage) {
       final String timestamp = path.basenameWithoutExtension(image.path);
       final String rawPhotoPath =
           await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-        timestamp,
-        projectId,
-      );
+            timestamp,
+            projectId,
+          );
       toDelete = File(rawPhotoPath);
     }
     await _deleteImage(toDelete, triggerRecompile: shouldRecompile);

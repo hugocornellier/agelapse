@@ -159,7 +159,8 @@ class CameraUtils {
       capturePhotoLength = await image.length();
 
       // Rotation/mirroring via OpenCV isolate (~500ms-2s for high-res).
-      final bool needsProcessing = (deviceOrientation == "Landscape Left" ||
+      final bool needsProcessing =
+          (deviceOrientation == "Landscape Left" ||
               deviceOrientation == "Landscape Right") ||
           applyMirroring;
       if (needsProcessing) {
@@ -208,10 +209,10 @@ class CameraUtils {
           final tempDir = await DirUtils.getTemporaryDirPath();
           importPreDecodedBytes =
               await FormatDecodeUtils.decodeToCvCompatibleBytes(
-            imgPath,
-            extension,
-            tempDir,
-          );
+                imgPath,
+                extension,
+                tempDir,
+              );
         }
 
         // Process image in isolate (decode, rotate, flip, create thumbnail)
@@ -282,23 +283,23 @@ class CameraUtils {
             orientation = preparedHeight > preparedWidth
                 ? "portrait"
                 : preparedHeight < preparedWidth
-                    ? "landscape"
-                    : "square";
+                ? "landscape"
+                : "square";
           } else {
             // No processing done (portrait, no mirror): use native
             // FastThumbnail which reads from disk with subsampled decode.
             final ThumbnailResult? thumbnailResult =
                 await FastThumbnail.generate(
-              inputPath: rawPhotoPath,
-              outputPath: thumbnailPath,
-            );
+                  inputPath: rawPhotoPath,
+                  outputPath: thumbnailPath,
+                );
             if (thumbnailResult == null) return false;
-            orientation = thumbnailResult.originalHeight >
-                    thumbnailResult.originalWidth
+            orientation =
+                thumbnailResult.originalHeight > thumbnailResult.originalWidth
                 ? "portrait"
                 : thumbnailResult.originalHeight < thumbnailResult.originalWidth
-                    ? "landscape"
-                    : "square";
+                ? "landscape"
+                : "square";
           }
 
           final linkedPlacement = await _maybePlaceSourceInLinkedFolder(
@@ -425,10 +426,9 @@ class CameraUtils {
           while (photoExists) {
             final Map<String, dynamic> existingPhoto =
                 (await DB.instance.getPhotosByTimestamp(
-              timestamp,
-              projectId,
-            ))
-                    .first;
+                  timestamp,
+                  projectId,
+                )).first;
             final bool existingIsTrashed = existingPhoto['deletedAt'] != null;
             // Only dedup against ACTIVE rows. A soft-deleted match at this
             // slot must not block the import; that would be a silent failure
@@ -476,8 +476,8 @@ class CameraUtils {
         String orientation = importedImageHeight > importedImageWidth
             ? "portrait"
             : importedImageHeight < importedImageWidth
-                ? "landscape"
-                : "square";
+            ? "landscape"
+            : "square";
 
         // Write files to disk BEFORE DB insert to avoid orphaned DB rows
         await CameraUtils.saveImageToFileSystem(
@@ -487,10 +487,10 @@ class CameraUtils {
         );
         final rawPhotoPath =
             await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-          timestamp,
-          projectId,
-          fileExtension: extension,
-        );
+              timestamp,
+              projectId,
+              fileExtension: extension,
+            );
         await _preserveModifiedTime(
           sourcePath: originalFilePath ?? imgPath,
           targetPath: rawPhotoPath,

@@ -32,10 +32,7 @@ void main() {
 
   group('toOriginalSpace — explicit hand-computed values', () {
     test('original is identity', () {
-      _expectRect(
-        FaceBoxTransform.toOriginalSpace(box, 'original', w, h),
-        box,
-      );
+      _expectRect(FaceBoxTransform.toOriginalSpace(box, 'original', w, h), box);
     });
 
     test('flipped: (W-r, t, W-l, b)', () {
@@ -219,10 +216,7 @@ void main() {
     });
 
     test('rejects non-positive dimensions', () {
-      expect(
-        FaceBoxTransform.padClampToInt(box, 0, 100),
-        isNull,
-      );
+      expect(FaceBoxTransform.padClampToInt(box, 0, 100), isNull);
     });
   });
 
@@ -242,17 +236,11 @@ void main() {
     });
 
     test('unsupported orientation returns null', () {
-      expect(
-        FaceBoxTransform.originalSpaceCrop(box, 'no_faces', w, h),
-        isNull,
-      );
+      expect(FaceBoxTransform.originalSpaceCrop(box, 'no_faces', w, h), isNull);
     });
 
     test('non-positive dimensions return null', () {
-      expect(
-        FaceBoxTransform.originalSpaceCrop(box, 'original', 0, h),
-        isNull,
-      );
+      expect(FaceBoxTransform.originalSpaceCrop(box, 'original', 0, h), isNull);
     });
   });
 

@@ -424,8 +424,9 @@ class CustomAppBarState extends State<CustomAppBar> {
     final String displayProjectName = widget.projectName.trim().isEmpty
         ? 'agelapse'
         : widget.projectName.trim();
-    final String projectInitial =
-        displayProjectName.substring(0, 1).toUpperCase();
+    final String projectInitial = displayProjectName
+        .substring(0, 1)
+        .toUpperCase();
     final Color badgeColor = _projectBadgeColor(widget.projectId);
     final Color badgeTextColor = _projectBadgeTextColor(badgeColor);
 

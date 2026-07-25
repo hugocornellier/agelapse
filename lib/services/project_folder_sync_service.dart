@@ -108,25 +108,27 @@ class ProjectFolderSyncService {
 
   void _startWatcherStream(int projectId, String folderPath) {
     try {
-      _watchSubscription = Directory(folderPath).watch(recursive: true).listen(
-        (event) {
-          if (event.type == FileSystemEvent.create ||
-              event.type == FileSystemEvent.move ||
-              event.type == FileSystemEvent.modify) {
-            scheduleDebouncedRescan();
-          }
-        },
-        onError: (Object e) {
-          LogService.instance.log('[LinkedSync] Watcher error: $e');
-          _emitState(SyncState.error);
-          _scheduleWatcherRestart(projectId, folderPath);
-        },
-        onDone: () {
-          LogService.instance.log('[LinkedSync] Watcher stream closed');
-          _scheduleWatcherRestart(projectId, folderPath);
-        },
-        cancelOnError: false,
-      );
+      _watchSubscription = Directory(folderPath)
+          .watch(recursive: true)
+          .listen(
+            (event) {
+              if (event.type == FileSystemEvent.create ||
+                  event.type == FileSystemEvent.move ||
+                  event.type == FileSystemEvent.modify) {
+                scheduleDebouncedRescan();
+              }
+            },
+            onError: (Object e) {
+              LogService.instance.log('[LinkedSync] Watcher error: $e');
+              _emitState(SyncState.error);
+              _scheduleWatcherRestart(projectId, folderPath);
+            },
+            onDone: () {
+              LogService.instance.log('[LinkedSync] Watcher stream closed');
+              _scheduleWatcherRestart(projectId, folderPath);
+            },
+            cancelOnError: false,
+          );
     } catch (e) {
       LogService.instance.log('[LinkedSync] Failed to start watcher: $e');
       _emitState(SyncState.error);
@@ -392,8 +394,10 @@ class ProjectFolderSyncService {
 
       String? timestamp;
       if (fingerprint != null) {
-        final match =
-            await DB.instance.findPhotoByFingerprint(projectId, fingerprint);
+        final match = await DB.instance.findPhotoByFingerprint(
+          projectId,
+          fingerprint,
+        );
         if (match != null) {
           final existingSourcePath = match['sourceRelativePath'] as String?;
           if (existingSourcePath != null && existingSourcePath.isNotEmpty) {
@@ -415,8 +419,11 @@ class ProjectFolderSyncService {
         if (timestamp == null) return false;
 
         if (fingerprint != null) {
-          await DB.instance
-              .backfillPhotoFingerprint(timestamp, projectId, fingerprint);
+          await DB.instance.backfillPhotoFingerprint(
+            timestamp,
+            projectId,
+            fingerprint,
+          );
         }
       }
 
