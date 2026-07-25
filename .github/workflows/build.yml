@@ -31,7 +31,9 @@ jobs:
           cache-key: 'flutter-:os:-:channel:-:version:-:arch:-ci-format-:hash:'
 
       - name: Install dependencies
-        run: flutter pub get --enforce-lockfile
+        # Beta pins framework packages independently of stable. Preserve the
+        # committed lock exactly on stable; let beta resolve only SDK deltas.
+        run: flutter pub get ${{ matrix.flutter-channel == 'stable' && '--enforce-lockfile' || '' }}
 
       - name: Verify formatting
         run: dart format --output=none --set-exit-if-changed .
@@ -84,7 +86,7 @@ jobs:
           restore-keys: gradle-${{ runner.os }}-
 
       - name: Install dependencies
-        run: flutter pub get --enforce-lockfile
+        run: flutter pub get ${{ matrix.flutter-channel == 'stable' && '--enforce-lockfile' || '' }}
 
       - name: Build APK (debug)
         run: flutter build apk --debug
@@ -119,7 +121,7 @@ jobs:
           restore-keys: pods-ios-
 
       - name: Install dependencies
-        run: flutter pub get --enforce-lockfile
+        run: flutter pub get ${{ matrix.flutter-channel == 'stable' && '--enforce-lockfile' || '' }}
 
       - name: Install iOS pods
         working-directory: ios
@@ -167,7 +169,7 @@ jobs:
           restore-keys: pods-macos-
 
       - name: Install dependencies
-        run: flutter pub get --enforce-lockfile
+        run: flutter pub get ${{ matrix.flutter-channel == 'stable' && '--enforce-lockfile' || '' }}
 
       - name: Install macOS pods
         working-directory: macos
@@ -207,7 +209,7 @@ jobs:
           cache-key: 'flutter-:os:-:channel:-:version:-:arch:-ci-linux-:hash:'
 
       - name: Install dependencies
-        run: flutter pub get --enforce-lockfile
+        run: flutter pub get ${{ matrix.flutter-channel == 'stable' && '--enforce-lockfile' || '' }}
 
       - name: Prefetch mimalloc tarball
         uses: ./.github/actions/prefetch-mimalloc
@@ -246,7 +248,7 @@ jobs:
           cache-key: 'flutter-:os:-:channel:-:version:-:arch:-ci-windows-:hash:'
 
       - name: Install dependencies
-        run: flutter pub get --enforce-lockfile
+        run: flutter pub get ${{ matrix.flutter-channel == 'stable' && '--enforce-lockfile' || '' }}
 
       - name: Build Windows
         run: flutter build windows --debug

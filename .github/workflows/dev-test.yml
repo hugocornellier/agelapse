@@ -85,7 +85,9 @@ jobs:
           restore-keys: pods-macos-
 
       - name: Install dependencies
-        run: flutter pub get --enforce-lockfile
+        # Stable must reproduce pubspec.lock. Moving beta channels may replace
+        # Flutter SDK-pinned packages that cannot share stable's exact lock.
+        run: flutter pub get ${{ inputs.flutter_channel == 'stable' && '--enforce-lockfile' || '' }}
 
       - name: Install macOS pods
         working-directory: macos
@@ -128,7 +130,7 @@ jobs:
           restore-keys: pods-ios-
 
       - name: Install dependencies
-        run: flutter pub get --enforce-lockfile
+        run: flutter pub get ${{ inputs.flutter_channel == 'stable' && '--enforce-lockfile' || '' }}
 
       - name: Install iOS pods
         working-directory: ios
@@ -221,7 +223,7 @@ jobs:
           restore-keys: gradle-${{ runner.os }}-
 
       - name: Install dependencies
-        run: flutter pub get --enforce-lockfile
+        run: flutter pub get ${{ inputs.flutter_channel == 'stable' && '--enforce-lockfile' || '' }}
 
       - name: Prewarm Android build
         run: flutter build apk --debug
@@ -265,7 +267,7 @@ jobs:
           cache: true
 
       - name: Install dependencies
-        run: flutter pub get --enforce-lockfile
+        run: flutter pub get ${{ inputs.flutter_channel == 'stable' && '--enforce-lockfile' || '' }}
 
       - name: Prefetch mimalloc tarball
         uses: ./.github/actions/prefetch-mimalloc
@@ -294,7 +296,7 @@ jobs:
           cache: true
 
       - name: Install dependencies
-        run: flutter pub get --enforce-lockfile
+        run: flutter pub get ${{ inputs.flutter_channel == 'stable' && '--enforce-lockfile' || '' }}
 
       - name: Prewarm Windows build
         run: flutter build windows --debug

@@ -31,7 +31,9 @@ jobs:
           cache-key: 'flutter-:os:-:channel:-:version:-:arch:-tests-unit-:hash:'
 
       - name: Install dependencies
-        run: flutter pub get --enforce-lockfile
+        # Beta pins framework packages independently of stable. Preserve the
+        # committed lock exactly on stable; let beta resolve only SDK deltas.
+        run: flutter pub get ${{ matrix.flutter-channel == 'stable' && '--enforce-lockfile' || '' }}
 
       - name: Run unit tests with coverage
         run: flutter test --coverage
@@ -74,7 +76,7 @@ jobs:
           restore-keys: pods-macos-
 
       - name: Install dependencies
-        run: flutter pub get --enforce-lockfile
+        run: flutter pub get ${{ matrix.flutter-channel == 'stable' && '--enforce-lockfile' || '' }}
 
       - name: Install macOS pods
         working-directory: macos
@@ -123,7 +125,7 @@ jobs:
           restore-keys: pods-ios-
 
       - name: Install dependencies
-        run: flutter pub get --enforce-lockfile
+        run: flutter pub get ${{ matrix.flutter-channel == 'stable' && '--enforce-lockfile' || '' }}
 
       - name: Install iOS pods
         working-directory: ios
@@ -232,7 +234,7 @@ jobs:
           restore-keys: gradle-${{ runner.os }}-
 
       - name: Install dependencies
-        run: flutter pub get --enforce-lockfile
+        run: flutter pub get ${{ matrix.flutter-channel == 'stable' && '--enforce-lockfile' || '' }}
 
       - name: Prewarm Android build
         run: flutter build apk --debug
@@ -287,7 +289,7 @@ jobs:
           cache-key: 'flutter-:os:-:channel:-:version:-:arch:-tests-linux-${{ matrix.group }}-:hash:'
 
       - name: Install dependencies
-        run: flutter pub get --enforce-lockfile
+        run: flutter pub get ${{ matrix.flutter-channel == 'stable' && '--enforce-lockfile' || '' }}
 
       - name: Prefetch mimalloc tarball
         uses: ./.github/actions/prefetch-mimalloc
@@ -322,7 +324,7 @@ jobs:
           cache-key: 'flutter-:os:-:channel:-:version:-:arch:-tests-windows-${{ matrix.group }}-:hash:'
 
       - name: Install dependencies
-        run: flutter pub get --enforce-lockfile
+        run: flutter pub get ${{ matrix.flutter-channel == 'stable' && '--enforce-lockfile' || '' }}
 
       - name: Prewarm Windows build
         run: flutter build windows --debug
