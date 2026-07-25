@@ -91,6 +91,25 @@ jobs:
       - name: Build APK (debug)
         run: flutter build apk --debug
 
+      - name: Create CI release keystore
+        if: matrix.flutter-channel == 'stable'
+        run: |
+          keytool -genkeypair -noprompt \
+            -keystore "$RUNNER_TEMP/agelapse-ci-release.jks" \
+            -storepass ci-only-password \
+            -keypass ci-only-password \
+            -alias agelapse-ci \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 1 \
+            -dname "CN=AgeLapse CI, OU=CI, O=AgeLapse, L=Halifax, ST=Nova Scotia, C=CA"
+          printf '%s\n' \
+            "storeFile=$RUNNER_TEMP/agelapse-ci-release.jks" \
+            "storePassword=ci-only-password" \
+            "keyAlias=agelapse-ci" \
+            "keyPassword=ci-only-password" \
+            > android/key.properties
+
       - name: Build APK (release)
         if: matrix.flutter-channel == 'stable'
         run: flutter build apk --release
