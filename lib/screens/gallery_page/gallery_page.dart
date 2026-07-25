@@ -494,16 +494,20 @@ class GalleryPageState extends State<GalleryPage>
   }
 
   Future<void> _loadImages() async {
+    if (!mounted) return;
+
     // Guard against race conditions: capture request ID to detect if a newer
     // request started while this one was running (stale snapshot prevention)
     final int thisRequestId = ++_loadImagesRequestId;
+    bool isCurrentRequest() => mounted && thisRequestId == _loadImagesRequestId;
 
     await GalleryUtils.loadImages(
       projectId: projectId,
       projectIdStr: projectIdStr,
       onImagesLoaded: (rawImages, stabImageFiles) async {
-        // Discard stale results if a newer request has started
-        if (thisRequestId != _loadImagesRequestId) return;
+        // Discard stale results if a newer request started or this page was
+        // disposed while the database and filesystem work was in flight.
+        if (!isCurrentRequest()) return;
 
         var finalStabFiles = stabImageFiles;
 
@@ -554,16 +558,18 @@ class GalleryPageState extends State<GalleryPage>
 
         widget.setRawAndStabPhotoStates(rawImages, finalStabFiles);
       },
-      onShowInfoDialog: () => showInfoDialog(context),
+      onShowInfoDialog: () {
+        if (!isCurrentRequest()) return;
+        showInfoDialog(context);
+      },
     );
 
+    if (!isCurrentRequest()) return;
     unawaited(_refreshRecentlyDeletedCount());
-
-    // Also guard scroll operation against stale requests
-    if (thisRequestId != _loadImagesRequestId) return;
 
     if (_stickyBottomEnabled) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!isCurrentRequest()) return;
         _performAutoScroll();
       });
     }
@@ -658,6 +664,8 @@ class GalleryPageState extends State<GalleryPage>
 
   @override
   void dispose() {
+    // Invalidate callbacks from any database/filesystem load still in flight.
+    _loadImagesRequestId++;
     _loadImagesDebounce?.cancel();
     _stabUpdateSubscription?.cancel();
     _tabController.removeListener(_onTabChanged);
