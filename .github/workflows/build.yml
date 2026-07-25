@@ -213,6 +213,12 @@ jobs:
 
       - name: Build macOS (release)
         if: matrix.flutter-channel == 'stable'
+        env:
+          # Flutter forwards FLUTTER_XCODE_* variables as command-line Xcode
+          # settings, so CI can exercise Release without a developer identity.
+          FLUTTER_XCODE_CODE_SIGNING_ALLOWED: 'NO'
+          FLUTTER_XCODE_CODE_SIGNING_REQUIRED: 'NO'
+          FLUTTER_XCODE_CODE_SIGNING_IDENTITY: ''
         run: flutter build macos --release
 
   build-linux:
