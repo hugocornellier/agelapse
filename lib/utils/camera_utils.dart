@@ -266,16 +266,22 @@ class CameraUtils {
           await DirUtils.createDirectoryIfNotExists(thumbnailPath);
 
           String orientation;
-          if (captureThumbnailBytes != null &&
-              captureWidth != null &&
-              captureHeight != null) {
+          // These values are written before entering the async mutex callback.
+          // Snapshot them here so their null checks remain valid across awaits
+          // on every supported Dart analyzer.
+          final preparedThumbnailBytes = captureThumbnailBytes;
+          final preparedWidth = captureWidth;
+          final preparedHeight = captureHeight;
+          if (preparedThumbnailBytes != null &&
+              preparedWidth != null &&
+              preparedHeight != null) {
             // Thumbnail already created in isolate during rotation/mirroring,
             // write bytes directly, skip disk round-trip through
             // FastThumbnail.
-            await File(thumbnailPath).writeAsBytes(captureThumbnailBytes);
-            orientation = captureHeight > captureWidth
+            await File(thumbnailPath).writeAsBytes(preparedThumbnailBytes);
+            orientation = preparedHeight > preparedWidth
                 ? "portrait"
-                : captureHeight < captureWidth
+                : preparedHeight < preparedWidth
                     ? "landscape"
                     : "square";
           } else {
@@ -379,9 +385,12 @@ class CameraUtils {
           return false;
         }
 
+        // importProcessingOutput is assigned before entering this async
+        // callback. A final local keeps the validation sound across awaits.
+        final processingOutput = importProcessingOutput;
         if (bytes == null ||
-            importProcessingOutput == null ||
-            !importProcessingOutput.success) {
+            processingOutput == null ||
+            !processingOutput.success) {
           return false;
         }
 
@@ -456,14 +465,13 @@ class CameraUtils {
         sourceFilename ??= path.basename(originalFilePath ?? imgPath);
 
         // Write processed image if rotation/mirroring was applied
-        if (importProcessingOutput.processedBytes != null) {
-          await File(
-            imgPath,
-          ).writeAsBytes(importProcessingOutput.processedBytes!);
+        final processedBytes = processingOutput.processedBytes;
+        if (processedBytes != null) {
+          await File(imgPath).writeAsBytes(processedBytes);
         }
 
-        int importedImageWidth = importProcessingOutput.width;
-        int importedImageHeight = importProcessingOutput.height;
+        int importedImageWidth = processingOutput.width;
+        int importedImageHeight = processingOutput.height;
 
         String orientation = importedImageHeight > importedImageWidth
             ? "portrait"
@@ -495,12 +503,11 @@ class CameraUtils {
         await DirUtils.createDirectoryIfNotExists(thumbnailPath);
 
         // Write thumbnail (already created in isolate)
-        if (importProcessingOutput.thumbnailBytes == null) {
+        final thumbnailBytes = processingOutput.thumbnailBytes;
+        if (thumbnailBytes == null) {
           return false;
         }
-        await File(
-          thumbnailPath,
-        ).writeAsBytes(importProcessingOutput.thumbnailBytes!);
+        await File(thumbnailPath).writeAsBytes(thumbnailBytes);
 
         final linkedPlacement = await _maybePlaceSourceInLinkedFolder(
           projectId: projectId,
