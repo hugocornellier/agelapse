@@ -97,7 +97,7 @@ jobs:
     name: Build Windows Installer
     needs: prepare
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     permissions:
       contents: read
     steps:
@@ -109,17 +109,11 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: 3.44.8
           cache: true
 
-      - name: Cache opencv_dart native build
-        uses: actions/cache@v5
-        with:
-          path: .dart_tool/hooks_runner/shared
-          key: opencv-native-windows-release-${{ hashFiles('pubspec.lock') }}
-          restore-keys: opencv-native-windows-
-
       - name: Install dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Build Windows release
         run: flutter build windows --release --build-name=${{ needs.prepare.outputs.version }} --build-number=${{ needs.prepare.outputs.build_number }}
@@ -178,17 +172,11 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: 3.44.8
           cache: true
 
-      - name: Cache opencv_dart native build
-        uses: actions/cache@v5
-        with:
-          path: .dart_tool/hooks_runner/shared
-          key: opencv-native-linux-release-${{ hashFiles('pubspec.lock') }}
-          restore-keys: opencv-native-linux-
-
       - name: Install dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Prefetch mimalloc tarball
         uses: ./.github/actions/prefetch-mimalloc
