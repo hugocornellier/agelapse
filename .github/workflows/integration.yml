@@ -98,7 +98,9 @@ jobs:
   integration-ios:
     name: Integration iOS (${{ matrix.flutter-channel }})
     runs-on: macos-15
-    timeout-minutes: 120
+    # Leave enough job time for failure artifacts and simulator cleanup while
+    # bounding each expensive Xcode/test phase independently below.
+    timeout-minutes: 150
     continue-on-error: ${{ matrix.flutter-channel == 'beta' }}
     strategy:
       fail-fast: false
@@ -157,6 +159,7 @@ jobs:
       # exceeds the test framework's default 12-minute loading timeout.
       # Building here first means the test run starts with a warm cache.
       - name: Prewarm Xcode build
+        timeout-minutes: 60
         run: |
           for attempt in 1 2 3; do
             flutter build ios --simulator --debug --no-codesign && exit 0
@@ -168,12 +171,14 @@ jobs:
       # Aggregator files run all tests in a single build+launch, avoiding
       # the per-file Xcode rebuild overhead (~1 min × 16 files saved).
       - name: Run fast integration tests
+        timeout-minutes: 35
         run: |
           set -o pipefail
           mkdir -p test-results
           flutter test integration_test/mobile_fast.dart -d "$SIMULATOR_UDID" --reporter expanded 2>&1 | tee test-results/fast.log
 
       - name: Run video integration tests
+        timeout-minutes: 25
         run: |
           set -o pipefail
           flutter test integration_test/mobile_video.dart -d "$SIMULATOR_UDID" --reporter expanded 2>&1 | tee test-results/video.log

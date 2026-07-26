@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../services/async_mutex.dart';
 import '../../services/database_helper.dart';
 import '../../services/log_service.dart';
@@ -889,10 +888,11 @@ class _CameraViewState extends State<CameraView>
     } else if (_gridMode == GridMode.gridOnly) {
       return Icon(Icons.grid_3x3, size: 24, color: AppColors.textPrimary);
     } else if (_gridMode == GridMode.ghostOnly) {
-      return FaIcon(
-        FontAwesomeIcons.ghost,
-        size: 24,
-        color: AppColors.textPrimary,
+      return SvgPicture.asset(
+        'assets/ghost-solid.svg',
+        width: 18,
+        height: 24,
+        colorFilter: ColorFilter.mode(AppColors.textPrimary, BlendMode.srcIn),
       );
     } else {
       return SvgPicture.asset(

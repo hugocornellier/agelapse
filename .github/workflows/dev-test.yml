@@ -54,7 +54,7 @@ jobs:
         run: flutter pub get --enforce-lockfile
 
       - name: Verify formatting
-        run: dart format --output=none --set-exit-if-changed .
+        run: bash tool/check_format.sh
 
       - name: Analyze
         run: flutter analyze --fatal-infos .
