@@ -110,9 +110,7 @@ class _DetectedFacesDialogState extends State<DetectedFacesDialog> {
       canPop: !_busy,
       child: Dialog(
         backgroundColor: AppColors.settingsBackground,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: width, maxHeight: maxH),
           child: Padding(
@@ -237,10 +235,7 @@ class _DetectedFacesDialogState extends State<DetectedFacesDialog> {
                 } else if (list != null && index < list.length) {
                   r = list[index];
                 } else {
-                  r = FaceThumbnailResult(
-                    faceIndex: index,
-                    error: 'No crop',
-                  );
+                  r = FaceThumbnailResult(faceIndex: index, error: 'No crop');
                 }
               }
               return FaceCropThumbnail(

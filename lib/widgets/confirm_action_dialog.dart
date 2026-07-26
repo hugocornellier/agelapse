@@ -129,8 +129,7 @@ class ConfirmActionDialog extends StatelessWidget {
   static Future<bool> showDeleteRecompile(
     BuildContext context, {
     required int photoCount,
-  }) =>
-      _showDelete(context, photoCount: photoCount, includeVideoWarning: true);
+  }) => _showDelete(context, photoCount: photoCount, includeVideoWarning: true);
 
   /// Shows a simple confirmation dialog for photo deletion without video warning.
   ///
@@ -151,7 +150,8 @@ class ConfirmActionDialog extends StatelessWidget {
   }) async {
     final bool isSingle = photoCount == 1;
     final String photoText = isSingle ? 'this photo' : '$photoCount photos';
-    final String description = 'Move $photoText to Recently Deleted? '
+    final String description =
+        'Move $photoText to Recently Deleted? '
         'You can restore from there for the next '
         '${DB.recentlyDeletedRetentionDays} days.';
 

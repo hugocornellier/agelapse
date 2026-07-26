@@ -67,16 +67,15 @@ class StabilizationProgress {
     String? eta,
     int? projectId,
     String? lastStabilizedTimestamp,
-  }) =>
-      StabilizationProgress(
-        state: StabilizationState.stabilizing,
-        currentPhoto: currentPhoto,
-        totalPhotos: totalPhotos,
-        progressPercent: progressPercent,
-        eta: eta,
-        projectId: projectId,
-        lastStabilizedTimestamp: lastStabilizedTimestamp,
-      );
+  }) => StabilizationProgress(
+    state: StabilizationState.stabilizing,
+    currentPhoto: currentPhoto,
+    totalPhotos: totalPhotos,
+    progressPercent: progressPercent,
+    eta: eta,
+    projectId: projectId,
+    lastStabilizedTimestamp: lastStabilizedTimestamp,
+  );
 
   /// Creates a cancelling state.
   factory StabilizationProgress.cancelling({int? projectId}) =>
@@ -92,15 +91,14 @@ class StabilizationProgress {
     required double progressPercent,
     String? eta,
     int? projectId,
-  }) =>
-      StabilizationProgress(
-        state: StabilizationState.compilingVideo,
-        currentFrame: currentFrame,
-        totalFrames: totalFrames,
-        progressPercent: progressPercent,
-        eta: eta,
-        projectId: projectId,
-      );
+  }) => StabilizationProgress(
+    state: StabilizationState.compilingVideo,
+    currentFrame: currentFrame,
+    totalFrames: totalFrames,
+    progressPercent: progressPercent,
+    eta: eta,
+    projectId: projectId,
+  );
 
   /// Creates a video cancelling state.
   factory StabilizationProgress.cancellingVideo({int? projectId}) =>
@@ -143,23 +141,23 @@ class StabilizationProgress {
     int? totalFrames,
     int? projectId,
     String? lastStabilizedTimestamp,
-  }) =>
-      StabilizationProgress(
-        state: state ?? this.state,
-        currentPhoto: currentPhoto ?? this.currentPhoto,
-        totalPhotos: totalPhotos ?? this.totalPhotos,
-        progressPercent: progressPercent ?? this.progressPercent,
-        eta: eta ?? this.eta,
-        errorMessage: errorMessage ?? this.errorMessage,
-        currentFrame: currentFrame ?? this.currentFrame,
-        totalFrames: totalFrames ?? this.totalFrames,
-        projectId: projectId ?? this.projectId,
-        lastStabilizedTimestamp:
-            lastStabilizedTimestamp ?? this.lastStabilizedTimestamp,
-      );
+  }) => StabilizationProgress(
+    state: state ?? this.state,
+    currentPhoto: currentPhoto ?? this.currentPhoto,
+    totalPhotos: totalPhotos ?? this.totalPhotos,
+    progressPercent: progressPercent ?? this.progressPercent,
+    eta: eta ?? this.eta,
+    errorMessage: errorMessage ?? this.errorMessage,
+    currentFrame: currentFrame ?? this.currentFrame,
+    totalFrames: totalFrames ?? this.totalFrames,
+    projectId: projectId ?? this.projectId,
+    lastStabilizedTimestamp:
+        lastStabilizedTimestamp ?? this.lastStabilizedTimestamp,
+  );
 
   @override
-  String toString() => 'StabilizationProgress('
+  String toString() =>
+      'StabilizationProgress('
       'state: $state, '
       'photo: $currentPhoto/$totalPhotos, '
       'progress: $progressPercent%, '
@@ -185,15 +183,15 @@ class StabilizationProgress {
 
   @override
   int get hashCode => Object.hash(
-        state,
-        currentPhoto,
-        totalPhotos,
-        progressPercent,
-        eta,
-        errorMessage,
-        currentFrame,
-        totalFrames,
-        projectId,
-        lastStabilizedTimestamp,
-      );
+    state,
+    currentPhoto,
+    totalPhotos,
+    progressPercent,
+    eta,
+    errorMessage,
+    currentFrame,
+    totalFrames,
+    projectId,
+    lastStabilizedTimestamp,
+  );
 }

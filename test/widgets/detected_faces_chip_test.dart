@@ -7,20 +7,20 @@ import 'package:agelapse/models/face_detection_cache_result.dart';
 import 'package:agelapse/widgets/detected_faces_chip.dart';
 
 DetectedFacesSnapshot _available(int n) => DetectedFacesSnapshot(
-      timestamp: 't',
-      projectId: 1,
-      projectType: 'face',
-      rawPath: '/x',
-      availability: DetectedFacesAvailability.available,
-      cache: FaceDetectionCacheResult(
-        orientation: 'original',
-        faces: List.generate(
-          n,
-          (i) => const CachedFace(boundingBox: Rect.fromLTRB(0, 0, 10, 10)),
-        ),
-        selectedFaceIndex: 0,
-      ),
-    );
+  timestamp: 't',
+  projectId: 1,
+  projectType: 'face',
+  rawPath: '/x',
+  availability: DetectedFacesAvailability.available,
+  cache: FaceDetectionCacheResult(
+    orientation: 'original',
+    faces: List.generate(
+      n,
+      (i) => const CachedFace(boundingBox: Rect.fromLTRB(0, 0, 10, 10)),
+    ),
+    selectedFaceIndex: 0,
+  ),
+);
 
 DetectedFacesSnapshot _state(DetectedFacesAvailability a) =>
     DetectedFacesSnapshot(
@@ -46,8 +46,9 @@ Future<void> _pump(
 }
 
 void main() {
-  testWidgets('shows count and is tappable when faces are available',
-      (tester) async {
+  testWidgets('shows count and is tappable when faces are available', (
+    tester,
+  ) async {
     var tapped = 0;
     await _pump(tester, Future.value(_available(3)), onTap: () => tapped++);
     await tester.pumpAndSettle();

@@ -253,10 +253,10 @@ class ProjectUtils {
       try {
         final String rawPath =
             await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-          timestamp,
-          projectId,
-          fileExtension: fileExtension,
-        );
+              timestamp,
+              projectId,
+              fileExtension: fileExtension,
+            );
         if (!await File(rawPath).exists()) {
           LogService.instance.log(
             "restoreImage: raw file missing after restore for $timestamp "
@@ -288,14 +288,18 @@ class ProjectUtils {
     // settings. Face-detection cache is intentionally left intact (faces
     // don't change with settings; saves an expensive ML pass).
     try {
-      final fingerprint = await DB.instance.getPhotoColumnValueByTimestamp(
-        timestamp,
-        'fingerprint',
-        projectId,
-      ) as String?;
+      final fingerprint =
+          await DB.instance.getPhotoColumnValueByTimestamp(
+                timestamp,
+                'fingerprint',
+                projectId,
+              )
+              as String?;
       if (fingerprint != null && fingerprint.isNotEmpty) {
-        await DB.instance
-            .clearTransformCacheForFingerprint(projectId, fingerprint);
+        await DB.instance.clearTransformCacheForFingerprint(
+          projectId,
+          fingerprint,
+        );
       }
     } catch (e) {
       LogService.instance.log(
@@ -346,8 +350,10 @@ class ProjectUtils {
     // a stale "Delete Forever" tap (UI snapshot vs. concurrent restore) and
     // against a future caller wiring this method to an active photo.
     try {
-      final int rowsDeleted =
-          await DB.instance.hardDeletePhotoIfTrashed(parsedTs, projectId);
+      final int rowsDeleted = await DB.instance.hardDeletePhotoIfTrashed(
+        parsedTs,
+        projectId,
+      );
       if (rowsDeleted == 0) {
         LogService.instance.log(
           "permanentlyDeleteImage: no trashed row for ${image.path} "
@@ -471,11 +477,11 @@ class ProjectUtils {
             // can be linked to *different* external roots that happen to
             // share the same relative path; counting those would falsely
             // block deletion.
-            final int otherRefs =
-                await DB.instance.countActivePhotosBySourceRelativePath(
-              projectId,
-              sourceRelativePath,
-            );
+            final int otherRefs = await DB.instance
+                .countActivePhotosBySourceRelativePath(
+                  projectId,
+                  sourceRelativePath,
+                );
             if (otherRefs > 0) {
               LogService.instance.log(
                 "Skipping linked source delete; $otherRefs active row(s) "
@@ -572,10 +578,10 @@ class ProjectUtils {
       try {
         final String rawPath =
             await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-          timestamp,
-          projectId,
-          fileExtension: fileExtension,
-        );
+              timestamp,
+              projectId,
+              fileExtension: fileExtension,
+            );
         final outcome = await permanentlyDeleteImage(File(rawPath), projectId);
         if (outcome == PermDeleteOutcome.success ||
             outcome == PermDeleteOutcome.filesPartiallyRemain) {
@@ -863,5 +869,5 @@ enum PermDeleteOutcome {
   success,
   filesPartiallyRemain,
   rowAlreadyGone,
-  dbFailure
+  dbFailure,
 }

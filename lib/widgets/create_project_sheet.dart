@@ -278,8 +278,8 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
     if (!test_config.isTestMode) {
       try {
         DateTime fivePMLocalTime = NotificationUtil.getFivePMLocalTime();
-        final dailyNotificationTime =
-            fivePMLocalTime.millisecondsSinceEpoch.toString();
+        final dailyNotificationTime = fivePMLocalTime.millisecondsSinceEpoch
+            .toString();
 
         await DB.instance.setSettingByTitle(
           'daily_notification_time',
@@ -304,12 +304,12 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => MainNavigation(
+        pageBuilder: (_, _, _) => MainNavigation(
           projectId: projectId,
           projectName: projectName,
           showFlashingCircle: false,
         ),
-        transitionsBuilder: (_, animation, __, child) =>
+        transitionsBuilder: (_, animation, _, child) =>
             FadeTransition(opacity: animation, child: child),
         transitionDuration: const Duration(milliseconds: 150),
         reverseTransitionDuration: const Duration(milliseconds: 150),

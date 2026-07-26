@@ -13,11 +13,7 @@ class FaceThumbnailResult {
   final Uint8List? bytes;
   final String? error;
 
-  const FaceThumbnailResult({
-    required this.faceIndex,
-    this.bytes,
-    this.error,
-  });
+  const FaceThumbnailResult({required this.faceIndex, this.bytes, this.error});
 
   bool get ok => bytes != null;
 }
@@ -83,8 +79,12 @@ class FaceThumbnailService {
     double paddingFraction,
   ) async {
     try {
-      final results =
-          await _generate(snapshot, faces, maxDimension, paddingFraction);
+      final results = await _generate(
+        snapshot,
+        faces,
+        maxDimension,
+        paddingFraction,
+      );
       _put(key, results);
       return results;
     } catch (e, st) {
@@ -112,33 +112,34 @@ class FaceThumbnailService {
     }
 
     final boxes = faces
-        .map((f) => [
-              f.boundingBox.left,
-              f.boundingBox.top,
-              f.boundingBox.right,
-              f.boundingBox.bottom,
-            ])
+        .map(
+          (f) => [
+            f.boundingBox.left,
+            f.boundingBox.top,
+            f.boundingBox.right,
+            f.boundingBox.bottom,
+          ],
+        )
         .toList();
 
     List<dynamic>? raw;
     try {
-      raw = await IsolatePool.instance.execute<List<dynamic>>(
-        'cropFaceThumbnails',
-        {
-          'bytes': cvBytes,
-          'orientation': snapshot.orientation ?? 'original',
-          'boxes': boxes,
-          'maxDimension': maxDimension,
-          'paddingFraction': paddingFraction,
-          'quality': 85,
-        },
-      ).timeout(
-        const Duration(seconds: 20),
-        onTimeout: () {
-          LogService.instance.log('[face-thumb] crop op timed out');
-          return null;
-        },
-      );
+      raw = await IsolatePool.instance
+          .execute<List<dynamic>>('cropFaceThumbnails', {
+            'bytes': cvBytes,
+            'orientation': snapshot.orientation ?? 'original',
+            'boxes': boxes,
+            'maxDimension': maxDimension,
+            'paddingFraction': paddingFraction,
+            'quality': 85,
+          })
+          .timeout(
+            const Duration(seconds: 20),
+            onTimeout: () {
+              LogService.instance.log('[face-thumb] crop op timed out');
+              return null;
+            },
+          );
     } catch (e) {
       LogService.instance.log('[face-thumb] crop failed: $e');
     }
@@ -197,8 +198,10 @@ class FaceThumbnailService {
       ..write('|d$maxDimension|p$paddingFraction');
     for (final f in faces) {
       final b = f.boundingBox;
-      sig.write('|${b.left.toStringAsFixed(1)},${b.top.toStringAsFixed(1)},'
-          '${b.right.toStringAsFixed(1)},${b.bottom.toStringAsFixed(1)}');
+      sig.write(
+        '|${b.left.toStringAsFixed(1)},${b.top.toStringAsFixed(1)},'
+        '${b.right.toStringAsFixed(1)},${b.bottom.toStringAsFixed(1)}',
+      );
     }
     return sig.toString();
   }

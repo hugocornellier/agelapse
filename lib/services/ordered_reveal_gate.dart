@@ -18,7 +18,7 @@
 /// faces.
 class OrderedRevealGate {
   OrderedRevealGate(List<String> order)
-      : _order = List<String>.unmodifiable(order);
+    : _order = List<String>.unmodifiable(order);
 
   /// Batch timestamps in reveal order (ascending).
   final List<String> _order;

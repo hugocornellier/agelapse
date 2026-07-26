@@ -581,20 +581,22 @@ void main() {
     });
 
     group('buildBlurFilter', () {
-      test('contains expected filter components at 1080p with default zoom',
-          () {
-        final filter = VideoUtils.buildBlurFilter(1080);
-        expect(filter, contains('split=2'));
-        expect(filter, contains('[orig]'));
-        expect(filter, contains('[bg]'));
-        expect(filter, contains('format=rgb24'));
-        expect(filter, contains('scale=iw*3.0:ih*3.0'));
-        expect(filter, contains('crop=iw/3.0:ih/3.0'));
-        expect(filter, contains('gblur=sigma=20'));
-        expect(filter, contains('[blurred]'));
-        expect(filter, contains('overlay=0:0'));
-        expect(filter, contains('[base]'));
-      });
+      test(
+        'contains expected filter components at 1080p with default zoom',
+        () {
+          final filter = VideoUtils.buildBlurFilter(1080);
+          expect(filter, contains('split=2'));
+          expect(filter, contains('[orig]'));
+          expect(filter, contains('[bg]'));
+          expect(filter, contains('format=rgb24'));
+          expect(filter, contains('scale=iw*3.0:ih*3.0'));
+          expect(filter, contains('crop=iw/3.0:ih/3.0'));
+          expect(filter, contains('gblur=sigma=20'));
+          expect(filter, contains('[blurred]'));
+          expect(filter, contains('overlay=0:0'));
+          expect(filter, contains('[base]'));
+        },
+      );
 
       test('uses resolution-aware sigma at 4K', () {
         final filter = VideoUtils.buildBlurFilter(2160);

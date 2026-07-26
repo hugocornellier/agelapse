@@ -14,16 +14,21 @@ void main() {
 
     test('non-face types are not supported in v1', () {
       for (final t in ['cat', 'dog', 'musc', 'pregnancy', 'pose', 'hand']) {
-        expect(DetectedFacesRepository.supportsProjectType(t), isFalse,
-            reason: t);
+        expect(
+          DetectedFacesRepository.supportsProjectType(t),
+          isFalse,
+          reason: t,
+        );
       }
     });
   });
 
   group('classifyCacheHit', () {
     test('no_faces sentinel -> noFaces', () {
-      const sentinel =
-          FaceDetectionCacheResult(orientation: 'no_faces', faces: []);
+      const sentinel = FaceDetectionCacheResult(
+        orientation: 'no_faces',
+        faces: [],
+      );
       expect(
         DetectedFacesRepository.classifyCacheHit(sentinel),
         DetectedFacesAvailability.noFaces,
@@ -31,8 +36,10 @@ void main() {
     });
 
     test('non-sentinel empty list -> error (malformed)', () {
-      const malformed =
-          FaceDetectionCacheResult(orientation: 'original', faces: []);
+      const malformed = FaceDetectionCacheResult(
+        orientation: 'original',
+        faces: [],
+      );
       expect(
         DetectedFacesRepository.classifyCacheHit(malformed),
         DetectedFacesAvailability.error,
@@ -101,14 +108,15 @@ void main() {
   group('messageFor', () {
     test('available has no message', () {
       expect(
-          DetectedFacesRepository.messageFor(
-              DetectedFacesAvailability.available),
-          isNull);
+        DetectedFacesRepository.messageFor(DetectedFacesAvailability.available),
+        isNull,
+      );
     });
 
     test('legacy explains older-version + re-stabilize', () {
       final m = DetectedFacesRepository.messageFor(
-          DetectedFacesAvailability.legacyCacheMissing)!;
+        DetectedFacesAvailability.legacyCacheMissing,
+      )!;
       expect(m.toLowerCase(), contains('older version'));
       expect(m.toLowerCase(), contains('re-stabilize'));
     });

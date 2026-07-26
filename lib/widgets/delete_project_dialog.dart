@@ -126,8 +126,9 @@ class _DeleteProjectDialogContentState
               actionLabel: 'Delete',
               actionColor: _dangerRed,
               onCancel: () => Navigator.pop(context, false),
-              onAction:
-                  _isNameCorrect ? () => Navigator.pop(context, true) : null,
+              onAction: _isNameCorrect
+                  ? () => Navigator.pop(context, true)
+                  : null,
               useMouseRegion: false,
               isAnimated: true,
               actionEnabled: _isNameCorrect,

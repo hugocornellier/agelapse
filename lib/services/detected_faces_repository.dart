@@ -87,10 +87,11 @@ class DetectedFacesRepository {
     String? projectType,
     bool computeFingerprintIfMissing = false,
   }) async {
-    final String type = (projectType ??
-            await DB.instance.getProjectTypeByProjectId(projectId) ??
-            'face')
-        .toLowerCase();
+    final String type =
+        (projectType ??
+                await DB.instance.getProjectTypeByProjectId(projectId) ??
+                'face')
+            .toLowerCase();
 
     if (!supportsProjectType(type)) {
       return DetectedFacesSnapshot(
@@ -102,8 +103,10 @@ class DetectedFacesRepository {
       );
     }
 
-    final photo =
-        await DB.instance.getActivePhotoByTimestamp(timestamp, projectId);
+    final photo = await DB.instance.getActivePhotoByTimestamp(
+      timestamp,
+      projectId,
+    );
     if (photo == null) {
       return DetectedFacesSnapshot(
         timestamp: timestamp,
@@ -118,10 +121,10 @@ class DetectedFacesRepository {
     final String? fileExtension = photo['fileExtension'] as String?;
     final String rawPath =
         await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-      timestamp,
-      projectId,
-      fileExtension: fileExtension,
-    );
+          timestamp,
+          projectId,
+          fileExtension: fileExtension,
+        );
     final bool rawExists = await File(rawPath).exists();
 
     final bool photoStabilized =
@@ -129,8 +132,9 @@ class DetectedFacesRepository {
     final bool noFacesFlag = photo['noFacesFound'] == 1;
     final int? legacyFaceCount = photo['faceCount'] as int?;
 
-    final String modelVersion =
-        StabUtils.detectorModelVersionForProjectType(type);
+    final String modelVersion = StabUtils.detectorModelVersionForProjectType(
+      type,
+    );
 
     String? fingerprint = photo['fingerprint'] as String?;
     if (fingerprint != null && fingerprint.isEmpty) fingerprint = null;
@@ -138,11 +142,15 @@ class DetectedFacesRepository {
     if (fingerprint == null && computeFingerprintIfMissing && rawExists) {
       try {
         fingerprint = await StabUtils.computeRawPhotoFingerprint(rawPath);
-        await DB.instance
-            .backfillPhotoFingerprint(timestamp, projectId, fingerprint);
+        await DB.instance.backfillPhotoFingerprint(
+          timestamp,
+          projectId,
+          fingerprint,
+        );
       } catch (e) {
-        LogService.instance
-            .log('[detected-faces] fingerprint compute failed: $e');
+        LogService.instance.log(
+          '[detected-faces] fingerprint compute failed: $e',
+        );
         fingerprint = null;
       }
     }

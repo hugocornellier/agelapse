@@ -185,13 +185,15 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
       );
       final bool successful = result.success;
 
-      final String loadStatus =
-          successful ? "Stabilization successful" : "Stabilization failed";
+      final String loadStatus = successful
+          ? "Stabilization successful"
+          : "Stabilization failed";
 
       if (successful) {
         // 1. Wait for thumbnail to be created before updating UI
-        final thumbnailPath =
-            await stabilizer.createStabThumbnailFromRawPath(rawImagePath);
+        final thumbnailPath = await stabilizer.createStabThumbnailFromRawPath(
+          rawImagePath,
+        );
 
         // 2. Clear caches BEFORE reloading gallery
         Utils.clearFlutterImageCache();
@@ -219,57 +221,57 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
   }
 
   void _showHelpDialog() => showQuickGuideDialog(
-        context,
-        'This screen lets you choose which face to stabilize on when multiple faces are detected in a photo.\n\n'
-        'Detected faces are highlighted with blue outlines. Tap on a face to select it as the stabilization target.\n\n'
-        'Use this when the automatic stabilization picked the wrong person, or when you want to create a timelapse focused on someone else in the photo.',
-      );
+    context,
+    'This screen lets you choose which face to stabilize on when multiple faces are detected in a photo.\n\n'
+    'Detected faces are highlighted with blue outlines. Tap on a face to select it as the stabilization target.\n\n'
+    'Use this when the automatic stabilization picked the wrong person, or when you want to create a timelapse focused on someone else in the photo.',
+  );
 
   @override
   Widget build(BuildContext context) {
     final body = Center(
       child: stabCompletedSuccessfully == null
           ? !isLoading
-              ? LayoutBuilder(
-                  builder: (context, constraints) {
-                    return _buildImageWithContours(
-                      constraints,
-                      widget.userRanOutOfSpaceCallback,
-                    );
-                  },
-                )
-              : _buildStatusDisplay(
-                  icon: SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppColors.settingsAccent,
+                ? LayoutBuilder(
+                    builder: (context, constraints) {
+                      return _buildImageWithContours(
+                        constraints,
+                        widget.userRanOutOfSpaceCallback,
+                      );
+                    },
+                  )
+                : _buildStatusDisplay(
+                    icon: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.settingsAccent,
+                      ),
                     ),
-                  ),
-                  message: loadingStatus,
-                  messageStyle: TextStyle(
-                    color: AppColors.settingsTextSecondary,
-                    fontSize: AppTypography.md,
-                  ),
-                )
+                    message: loadingStatus,
+                    messageStyle: TextStyle(
+                      color: AppColors.settingsTextSecondary,
+                      fontSize: AppTypography.md,
+                    ),
+                  )
           : stabCompletedSuccessfully!
-              ? _buildStatusDisplay(
-                  icon: Icon(
-                    Icons.check_circle_rounded,
-                    color: AppColors.settingsAccent,
-                    size: 48,
-                  ),
-                  message: loadingStatus,
-                )
-              : _buildStatusDisplay(
-                  icon: Icon(
-                    Icons.error_outline_rounded,
-                    color: AppColors.warningMuted,
-                    size: 48,
-                  ),
-                  message: loadingStatus,
-                ),
+          ? _buildStatusDisplay(
+              icon: Icon(
+                Icons.check_circle_rounded,
+                color: AppColors.settingsAccent,
+                size: 48,
+              ),
+              message: loadingStatus,
+            )
+          : _buildStatusDisplay(
+              icon: Icon(
+                Icons.error_outline_rounded,
+                color: AppColors.warningMuted,
+                size: 48,
+              ),
+              message: loadingStatus,
+            ),
     );
 
     return DesktopPageScaffold(
@@ -294,7 +296,8 @@ class StabDiffFacePageState extends State<StabDiffFacePage> {
         const SizedBox(height: 16),
         Text(
           message,
-          style: messageStyle ??
+          style:
+              messageStyle ??
               TextStyle(
                 color: AppColors.settingsTextPrimary,
                 fontSize: AppTypography.lg,

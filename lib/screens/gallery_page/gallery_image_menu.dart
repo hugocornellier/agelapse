@@ -325,13 +325,14 @@ class GalleryImageMenu {
                               _infoRow(
                                 'Format',
                                 fileExtension.isNotEmpty
-                                    ? fileExtension
-                                        .toUpperCase()
-                                        .replaceFirst('.', '')
+                                    ? fileExtension.toUpperCase().replaceFirst(
+                                        '.',
+                                        '',
+                                      )
                                     : path
-                                        .extension(rawPath)
-                                        .toUpperCase()
-                                        .replaceFirst('.', ''),
+                                          .extension(rawPath)
+                                          .toUpperCase()
+                                          .replaceFirst('.', ''),
                               ),
                             const SizedBox(height: 16),
                             _infoSectionHeader('Stabilized'),
@@ -341,8 +342,8 @@ class GalleryImageMenu {
                               stabDims.width > 0
                                   ? '${stabDims.width.toInt()} × ${stabDims.height.toInt()}'
                                   : stabPath.isEmpty
-                                      ? 'Not stabilized'
-                                      : 'Not available',
+                                  ? 'Not stabilized'
+                                  : 'Not available',
                             ),
                             if (stabPath.isNotEmpty)
                               _infoRow(

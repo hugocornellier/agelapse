@@ -134,7 +134,8 @@ class TransformToolState extends State<TransformTool> {
       _controller.rotationZoneRadius = _isTouchDevice ? 35.0 : 25.0;
       _controller.displayScale = widget.displayScale;
     } else {
-      final initialState = widget.initialState ??
+      final initialState =
+          widget.initialState ??
           TransformState.identity(
             imageSize: widget.imageSize,
             canvasSize: widget.canvasSize,
@@ -283,8 +284,8 @@ class TransformToolState extends State<TransformTool> {
         child: MouseRegion(
           cursor: widget.enabled
               ? (_controller.isGestureActive
-                  ? _controller.activeHandle.activeCursor
-                  : _hoveredHandle.cursor)
+                    ? _controller.activeHandle.activeCursor
+                    : _hoveredHandle.cursor)
               : SystemMouseCursors.basic,
           onHover: widget.enabled ? _onHover : null,
           onExit: (_) => setState(() => _hoveredHandle = TransformHandle.none),
@@ -398,7 +399,8 @@ class TransformToolState extends State<TransformTool> {
     }
 
     final shiftHeld = HardwareKeyboard.instance.isShiftPressed;
-    final ctrlOrCmd = HardwareKeyboard.instance.isControlPressed ||
+    final ctrlOrCmd =
+        HardwareKeyboard.instance.isControlPressed ||
         HardwareKeyboard.instance.isMetaPressed;
 
     final nudgeAmount = shiftHeld ? 10.0 : 1.0;

@@ -62,13 +62,13 @@ class GalleryDateStampConfig {
 
   @override
   int get hashCode => Object.hash(
-        stabilizedLabelsEnabled,
-        rawLabelsEnabled,
-        dateFormat,
-        fontFamily,
-        sizeLevel,
-        identityHashCode(captureOffsetMap),
-      );
+    stabilizedLabelsEnabled,
+    rawLabelsEnabled,
+    dateFormat,
+    fontFamily,
+    sizeLevel,
+    identityHashCode(captureOffsetMap),
+  );
 
   /// Create a copy with optional overrides.
   GalleryDateStampConfig copyWith({
@@ -119,8 +119,8 @@ class GalleryDateStampProvider extends InheritedWidget {
   /// Safe to call during widget initialization or in contexts
   /// where the provider may not be present.
   static GalleryDateStampConfig of(BuildContext context) {
-    final provider =
-        context.dependOnInheritedWidgetOfExactType<GalleryDateStampProvider>();
+    final provider = context
+        .dependOnInheritedWidgetOfExactType<GalleryDateStampProvider>();
     return provider?.config ?? GalleryDateStampConfig.disabled;
   }
 

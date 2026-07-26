@@ -150,7 +150,8 @@ void main() {
         );
       } else {
         // Navigation not visible yet; just verify app is running
-        final hasApp = find.byType(MaterialApp).evaluate().isNotEmpty ||
+        final hasApp =
+            find.byType(MaterialApp).evaluate().isNotEmpty ||
             find.byType(Scaffold).evaluate().isNotEmpty;
         expect(hasApp, isTrue, reason: 'App should display some UI structure');
       }
@@ -298,129 +299,182 @@ void main() {
 
     // ─── Test D: Single photo soft-delete → restore → permanent delete ────
 
-    testWidgets(
-      'Test D: deleteImage soft-deletes; restoreImage recovers; '
-      'permanentlyDeleteImage removes row and files',
-      (tester) async {
-        app.main();
-        await pumpUntilAppReady(tester);
+    testWidgets('Test D: deleteImage soft-deletes; restoreImage recovers; '
+        'permanentlyDeleteImage removes row and files', (tester) async {
+      app.main();
+      await pumpUntilAppReady(tester);
 
-        final ts = DateTime.now().millisecondsSinceEpoch;
-        testProjectId = await DB.instance.addProject(
-          'DeleteSingleTest',
-          'face',
-          ts,
-        );
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      testProjectId = await DB.instance.addProject(
+        'DeleteSingleTest',
+        'face',
+        ts,
+      );
 
-        final timestamps = await createTestPhotos(testProjectId!, 3);
-        final target = timestamps[0];
+      final timestamps = await createTestPhotos(testProjectId!, 3);
+      final target = timestamps[0];
 
-        final rawDir = await DirUtils.getRawPhotoDirPath(testProjectId!);
-        final thumbDir = await DirUtils.getThumbnailDirPath(testProjectId!);
-        final rawFile = File(p.join(rawDir, '$target.jpg'));
-        final thumbFile = File(p.join(thumbDir, '$target.jpg'));
+      final rawDir = await DirUtils.getRawPhotoDirPath(testProjectId!);
+      final thumbDir = await DirUtils.getThumbnailDirPath(testProjectId!);
+      final rawFile = File(p.join(rawDir, '$target.jpg'));
+      final thumbFile = File(p.join(thumbDir, '$target.jpg'));
 
-        // ── Precondition ──────────────────────────────────────────────────
-        var activePhotos =
-            await DB.instance.getPhotosByProjectID(testProjectId!);
-        expect(activePhotos.length, 3,
-            reason: 'Should start with 3 active photos');
-        expect(await rawFile.exists(), isTrue,
-            reason: 'Raw file should exist before delete');
-        expect(await thumbFile.exists(), isTrue,
-            reason: 'Thumbnail should exist before delete');
+      // ── Precondition ──────────────────────────────────────────────────
+      var activePhotos = await DB.instance.getPhotosByProjectID(testProjectId!);
+      expect(
+        activePhotos.length,
+        3,
+        reason: 'Should start with 3 active photos',
+      );
+      expect(
+        await rawFile.exists(),
+        isTrue,
+        reason: 'Raw file should exist before delete',
+      );
+      expect(
+        await thumbFile.exists(),
+        isTrue,
+        reason: 'Thumbnail should exist before delete',
+      );
 
-        // ── LEG 1: soft-delete ────────────────────────────────────────────
-        final deleteResult =
-            await ProjectUtils.deleteImage(rawFile, testProjectId!);
-        expect(deleteResult, isTrue, reason: 'deleteImage should return true');
+      // ── LEG 1: soft-delete ────────────────────────────────────────────
+      final deleteResult = await ProjectUtils.deleteImage(
+        rawFile,
+        testProjectId!,
+      );
+      expect(deleteResult, isTrue, reason: 'deleteImage should return true');
 
-        // Active gallery count drops by 1
-        activePhotos = await DB.instance.getPhotosByProjectID(testProjectId!);
-        expect(activePhotos.length, 2,
-            reason: 'Active count should drop to 2 after soft-delete');
+      // Active gallery count drops by 1
+      activePhotos = await DB.instance.getPhotosByProjectID(testProjectId!);
+      expect(
+        activePhotos.length,
+        2,
+        reason: 'Active count should drop to 2 after soft-delete',
+      );
 
-        // Row appears in Recently Deleted with non-null deletedAt
-        final trashed = await DB.instance
-            .getRecentlyDeletedPhotosByProjectID(testProjectId!);
-        expect(trashed.length, 1,
-            reason: 'Recently Deleted should contain 1 row');
-        expect(trashed.first['deletedAt'], isNotNull,
-            reason: 'deletedAt should be set');
+      // Row appears in Recently Deleted with non-null deletedAt
+      final trashed = await DB.instance.getRecentlyDeletedPhotosByProjectID(
+        testProjectId!,
+      );
+      expect(
+        trashed.length,
+        1,
+        reason: 'Recently Deleted should contain 1 row',
+      );
+      expect(
+        trashed.first['deletedAt'],
+        isNotNull,
+        reason: 'deletedAt should be set',
+      );
 
-        // getActivePhotoByTimestamp returns null
-        final notFound = await DB.instance.getActivePhotoByTimestamp(
-          target,
-          testProjectId!,
-        );
-        expect(notFound, isNull,
-            reason:
-                'Active-only lookup should return null for soft-deleted row');
+      // getActivePhotoByTimestamp returns null
+      final notFound = await DB.instance.getActivePhotoByTimestamp(
+        target,
+        testProjectId!,
+      );
+      expect(
+        notFound,
+        isNull,
+        reason: 'Active-only lookup should return null for soft-deleted row',
+      );
 
-        // getPhotoByTimestamp (includes trashed) returns the row
-        final found = await DB.instance.getPhotoByTimestamp(
-          target,
-          testProjectId!,
-        );
-        expect(found, isNotNull,
-            reason: 'Any-state lookup should still find the soft-deleted row');
+      // getPhotoByTimestamp (includes trashed) returns the row
+      final found = await DB.instance.getPhotoByTimestamp(
+        target,
+        testProjectId!,
+      );
+      expect(
+        found,
+        isNotNull,
+        reason: 'Any-state lookup should still find the soft-deleted row',
+      );
 
-        // Files still on disk
-        expect(await rawFile.exists(), isTrue,
-            reason: 'Raw file should still exist after soft-delete');
-        expect(await thumbFile.exists(), isTrue,
-            reason: 'Thumbnail should still exist after soft-delete');
+      // Files still on disk
+      expect(
+        await rawFile.exists(),
+        isTrue,
+        reason: 'Raw file should still exist after soft-delete',
+      );
+      expect(
+        await thumbFile.exists(),
+        isTrue,
+        reason: 'Thumbnail should still exist after soft-delete',
+      );
 
-        // ── LEG 2: restore ────────────────────────────────────────────────
-        final restoreResult =
-            await ProjectUtils.restoreImage(target, testProjectId!);
-        expect(restoreResult, equals(RestoreOutcome.success),
-            reason: 'restoreImage should return RestoreOutcome.success');
+      // ── LEG 2: restore ────────────────────────────────────────────────
+      final restoreResult = await ProjectUtils.restoreImage(
+        target,
+        testProjectId!,
+      );
+      expect(
+        restoreResult,
+        equals(RestoreOutcome.success),
+        reason: 'restoreImage should return RestoreOutcome.success',
+      );
 
-        // Active count back to 3
-        activePhotos = await DB.instance.getPhotosByProjectID(testProjectId!);
-        expect(activePhotos.length, 3,
-            reason: 'Active count should return to 3 after restore');
+      // Active count back to 3
+      activePhotos = await DB.instance.getPhotosByProjectID(testProjectId!);
+      expect(
+        activePhotos.length,
+        3,
+        reason: 'Active count should return to 3 after restore',
+      );
 
-        // Recently Deleted is now empty
-        final afterRestore = await DB.instance
-            .getRecentlyDeletedPhotosByProjectID(testProjectId!);
-        expect(afterRestore.isEmpty, isTrue,
-            reason: 'Recently Deleted should be empty after restore');
+      // Recently Deleted is now empty
+      final afterRestore = await DB.instance
+          .getRecentlyDeletedPhotosByProjectID(testProjectId!);
+      expect(
+        afterRestore.isEmpty,
+        isTrue,
+        reason: 'Recently Deleted should be empty after restore',
+      );
 
-        // Files still on disk (restore is non-destructive)
-        expect(await rawFile.exists(), isTrue,
-            reason: 'Raw file should still exist after restore');
-        expect(await thumbFile.exists(), isTrue,
-            reason: 'Thumbnail should still exist after restore');
+      // Files still on disk (restore is non-destructive)
+      expect(
+        await rawFile.exists(),
+        isTrue,
+        reason: 'Raw file should still exist after restore',
+      );
+      expect(
+        await thumbFile.exists(),
+        isTrue,
+        reason: 'Thumbnail should still exist after restore',
+      );
 
-        // ── LEG 3: permanent delete ───────────────────────────────────────
-        // Soft-delete again to put it back in trash before permanent removal
-        await ProjectUtils.deleteImage(rawFile, testProjectId!);
+      // ── LEG 3: permanent delete ───────────────────────────────────────
+      // Soft-delete again to put it back in trash before permanent removal
+      await ProjectUtils.deleteImage(rawFile, testProjectId!);
 
-        final permResult = await ProjectUtils.permanentlyDeleteImage(
-          rawFile,
-          testProjectId!,
-        );
-        expect(permResult, equals(PermDeleteOutcome.success),
-            reason:
-                'permanentlyDeleteImage should return PermDeleteOutcome.success');
+      final permResult = await ProjectUtils.permanentlyDeleteImage(
+        rawFile,
+        testProjectId!,
+      );
+      expect(
+        permResult,
+        equals(PermDeleteOutcome.success),
+        reason:
+            'permanentlyDeleteImage should return PermDeleteOutcome.success',
+      );
 
-        // Row completely gone (even when including trashed rows)
-        final gone = await DB.instance.getPhotoByTimestamp(
-          target,
-          testProjectId!,
-        );
-        expect(gone, isNull,
-            reason: 'Row should be gone after permanent delete');
+      // Row completely gone (even when including trashed rows)
+      final gone = await DB.instance.getPhotoByTimestamp(
+        target,
+        testProjectId!,
+      );
+      expect(gone, isNull, reason: 'Row should be gone after permanent delete');
 
-        // Files removed from disk
-        expect(await rawFile.exists(), isFalse,
-            reason: 'Raw file should be deleted after permanent delete');
-        expect(await thumbFile.exists(), isFalse,
-            reason: 'Thumbnail should be deleted after permanent delete');
-      },
-    );
+      // Files removed from disk
+      expect(
+        await rawFile.exists(),
+        isFalse,
+        reason: 'Raw file should be deleted after permanent delete',
+      );
+      expect(
+        await thumbFile.exists(),
+        isFalse,
+        reason: 'Thumbnail should be deleted after permanent delete',
+      );
+    });
 
     // ─── Test E: Bulk soft-delete → permanent delete ──────────────────────
 
@@ -439,10 +493,14 @@ void main() {
 
         final timestamps = await createTestPhotos(testProjectId!, 5);
 
-        var activePhotos =
-            await DB.instance.getPhotosByProjectID(testProjectId!);
-        expect(activePhotos.length, 5,
-            reason: 'Should start with 5 active photos');
+        var activePhotos = await DB.instance.getPhotosByProjectID(
+          testProjectId!,
+        );
+        expect(
+          activePhotos.length,
+          5,
+          reason: 'Should start with 5 active photos',
+        );
 
         final rawDir = await DirUtils.getRawPhotoDirPath(testProjectId!);
 
@@ -454,19 +512,29 @@ void main() {
 
         // Active gallery should be empty; Recently Deleted should have all 5
         activePhotos = await DB.instance.getPhotosByProjectID(testProjectId!);
-        expect(activePhotos.length, 0,
-            reason: 'Active count should be 0 after bulk soft-delete');
+        expect(
+          activePhotos.length,
+          0,
+          reason: 'Active count should be 0 after bulk soft-delete',
+        );
 
-        final trashed = await DB.instance
-            .getRecentlyDeletedPhotosByProjectID(testProjectId!);
-        expect(trashed.length, 5,
-            reason: 'Recently Deleted should contain all 5 rows');
+        final trashed = await DB.instance.getRecentlyDeletedPhotosByProjectID(
+          testProjectId!,
+        );
+        expect(
+          trashed.length,
+          5,
+          reason: 'Recently Deleted should contain all 5 rows',
+        );
 
         // Files still exist after soft-delete
         for (final timestamp in timestamps) {
           final rawFile = File(p.join(rawDir, '$timestamp.jpg'));
-          expect(await rawFile.exists(), isTrue,
-              reason: 'Raw file $timestamp should persist after soft-delete');
+          expect(
+            await rawFile.exists(),
+            isTrue,
+            reason: 'Raw file $timestamp should persist after soft-delete',
+          );
         }
 
         // Permanently delete all
@@ -481,8 +549,11 @@ void main() {
             timestamp,
             testProjectId!,
           );
-          expect(row, isNull,
-              reason: 'Row $timestamp should be gone after permanent delete');
+          expect(
+            row,
+            isNull,
+            reason: 'Row $timestamp should be gone after permanent delete',
+          );
         }
 
         // All files removed
@@ -491,22 +562,31 @@ void main() {
 
         for (final timestamp in timestamps) {
           final rawFile = File(p.join(rawDir, '$timestamp.jpg'));
-          expect(await rawFile.exists(), isFalse,
-              reason:
-                  'Raw file $timestamp should not exist after permanent delete');
+          expect(
+            await rawFile.exists(),
+            isFalse,
+            reason:
+                'Raw file $timestamp should not exist after permanent delete',
+          );
 
           final thumbFile = File(p.join(thumbDir, '$timestamp.jpg'));
-          expect(await thumbFile.exists(), isFalse,
-              reason:
-                  'Thumbnail $timestamp should not exist after permanent delete');
+          expect(
+            await thumbFile.exists(),
+            isFalse,
+            reason:
+                'Thumbnail $timestamp should not exist after permanent delete',
+          );
 
           for (final orientation in DirUtils.orientations) {
             final stabFile = File(
               p.join(stabDir, orientation, '$timestamp.png'),
             );
-            expect(await stabFile.exists(), isFalse,
-                reason:
-                    'Stabilized file $timestamp/$orientation should not exist');
+            expect(
+              await stabFile.exists(),
+              isFalse,
+              reason:
+                  'Stabilized file $timestamp/$orientation should not exist',
+            );
           }
         }
       },
@@ -563,27 +643,39 @@ void main() {
 
         // Project A active count drops to 2
         photosA = await DB.instance.getPhotosByProjectID(testProjectId!);
-        expect(photosA.length, 2,
-            reason: 'Project A should have 2 active photos after soft-delete');
+        expect(
+          photosA.length,
+          2,
+          reason: 'Project A should have 2 active photos after soft-delete',
+        );
 
         // Project B still has 3 active photos (untouched)
         photosB = await DB.instance.getPhotosByProjectID(projectBId);
-        expect(photosB.length, 3,
-            reason: 'Project B should still have 3 active photos (unaffected)');
+        expect(
+          photosB.length,
+          3,
+          reason: 'Project B should still have 3 active photos (unaffected)',
+        );
 
         // Project B Recently Deleted is empty
-        final trashedB =
-            await DB.instance.getRecentlyDeletedPhotosByProjectID(projectBId);
-        expect(trashedB.isEmpty, isTrue,
-            reason: 'Project B Recently Deleted should be empty');
+        final trashedB = await DB.instance.getRecentlyDeletedPhotosByProjectID(
+          projectBId,
+        );
+        expect(
+          trashedB.isEmpty,
+          isTrue,
+          reason: 'Project B Recently Deleted should be empty',
+        );
 
         // Verify project B's files still exist on disk
         final rawDirB = await DirUtils.getRawPhotoDirPath(projectBId);
         for (final timestamp in tsB) {
           final rawFileB = File(p.join(rawDirB, '$timestamp.jpg'));
-          expect(await rawFileB.exists(), isTrue,
-              reason:
-                  'Project B raw file $timestamp should still exist on disk');
+          expect(
+            await rawFileB.exists(),
+            isTrue,
+            reason: 'Project B raw file $timestamp should still exist on disk',
+          );
         }
       },
     );
@@ -632,29 +724,41 @@ void main() {
 
         // Run purge: should remove the expired photo and leave the recent one
         final removed = await ProjectUtils.purgeExpiredDeletedImages();
-        expect(removed, greaterThanOrEqualTo(1),
-            reason: 'Purge should remove at least 1 expired photo');
+        expect(
+          removed,
+          greaterThanOrEqualTo(1),
+          reason: 'Purge should remove at least 1 expired photo',
+        );
 
         // Expired photo row should be gone
         final expiredRow = await DB.instance.getPhotoByTimestamp(
           targetTs,
           testProjectId!,
         );
-        expect(expiredRow, isNull,
-            reason: 'Expired photo row should be purged');
+        expect(
+          expiredRow,
+          isNull,
+          reason: 'Expired photo row should be purged',
+        );
 
         // Expired photo file should be gone
         final expiredFile = File(p.join(rawDir, '$targetTs.jpg'));
-        expect(await expiredFile.exists(), isFalse,
-            reason: 'Expired photo file should be deleted by purge');
+        expect(
+          await expiredFile.exists(),
+          isFalse,
+          reason: 'Expired photo file should be deleted by purge',
+        );
 
         // Recent soft-deleted photo should still be present
         final keptRow = await DB.instance.getPhotoByTimestamp(
           keepTs,
           testProjectId!,
         );
-        expect(keptRow, isNotNull,
-            reason: 'Recently soft-deleted photo should not be purged');
+        expect(
+          keptRow,
+          isNotNull,
+          reason: 'Recently soft-deleted photo should not be purged',
+        );
       },
     );
 
@@ -709,9 +813,12 @@ void main() {
           'selected_guide_photo',
           testProjectId.toString(),
         );
-        expect(guideAfterDeleteA, equals('not set'),
-            reason:
-                'Guide setting should reset to "not set" when guide photo is soft-deleted');
+        expect(
+          guideAfterDeleteA,
+          equals('not set'),
+          reason:
+              'Guide setting should reset to "not set" when guide photo is soft-deleted',
+        );
 
         // Restore for negative case
         await ProjectUtils.restoreImage(photoATs, testProjectId!);
@@ -732,9 +839,12 @@ void main() {
           'selected_guide_photo',
           testProjectId.toString(),
         );
-        expect(guideAfterDeleteOther, equals(idB),
-            reason:
-                'Guide setting should remain unchanged when a non-guide photo is soft-deleted');
+        expect(
+          guideAfterDeleteOther,
+          equals(idB),
+          reason:
+              'Guide setting should remain unchanged when a non-guide photo is soft-deleted',
+        );
       },
     );
 
@@ -770,8 +880,11 @@ void main() {
           testProjectId!,
           relPath,
         );
-        expect(beforeDelete, isFalse,
-            reason: 'Tombstone should not exist before soft-delete');
+        expect(
+          beforeDelete,
+          isFalse,
+          reason: 'Tombstone should not exist before soft-delete',
+        );
 
         // Soft-delete → tombstone should be written
         final rawDir = await DirUtils.getRawPhotoDirPath(testProjectId!);
@@ -785,21 +898,32 @@ void main() {
           testProjectId!,
           relPath,
         );
-        expect(afterDelete, isTrue,
-            reason: 'Tombstone should exist after soft-delete');
+        expect(
+          afterDelete,
+          isTrue,
+          reason: 'Tombstone should exist after soft-delete',
+        );
 
         // Restore → tombstone should be removed
-        final restoreResult =
-            await ProjectUtils.restoreImage(target, testProjectId!);
-        expect(restoreResult, equals(RestoreOutcome.success),
-            reason: 'restoreImage should succeed');
+        final restoreResult = await ProjectUtils.restoreImage(
+          target,
+          testProjectId!,
+        );
+        expect(
+          restoreResult,
+          equals(RestoreOutcome.success),
+          reason: 'restoreImage should succeed',
+        );
 
         final afterRestore = await DB.instance.isLinkedSourceDeleted(
           testProjectId!,
           relPath,
         );
-        expect(afterRestore, isFalse,
-            reason: 'Tombstone should be removed after restore');
+        expect(
+          afterRestore,
+          isFalse,
+          reason: 'Tombstone should be removed after restore',
+        );
       },
     );
 
@@ -835,8 +959,11 @@ void main() {
           testProjectId!,
           fingerprint,
         );
-        expect(activeMatch, isNotNull,
-            reason: 'Active row should be found by fingerprint');
+        expect(
+          activeMatch,
+          isNotNull,
+          reason: 'Active row should be found by fingerprint',
+        );
         expect(activeMatch!['timestamp'], equals(target));
 
         // Soft-delete it.
@@ -848,12 +975,19 @@ void main() {
         expect(deleteResult, isTrue, reason: 'deleteImage should succeed');
 
         // Sanity: row is in Recently Deleted with its fingerprint intact.
-        final trashed = await DB.instance
-            .getRecentlyDeletedPhotosByProjectID(testProjectId!);
-        expect(trashed.length, 1,
-            reason: 'Soft-deleted row should be in Recently Deleted');
-        expect(trashed.first['fingerprint'], equals(fingerprint),
-            reason: 'Soft-delete must not clear fingerprint');
+        final trashed = await DB.instance.getRecentlyDeletedPhotosByProjectID(
+          testProjectId!,
+        );
+        expect(
+          trashed.length,
+          1,
+          reason: 'Soft-deleted row should be in Recently Deleted',
+        );
+        expect(
+          trashed.first['fingerprint'],
+          equals(fingerprint),
+          reason: 'Soft-delete must not clear fingerprint',
+        );
 
         // Core assertion: fingerprint lookup must skip the soft-deleted row
         // so the picker import path does not silently reject the re-import.
@@ -861,24 +995,35 @@ void main() {
           testProjectId!,
           fingerprint,
         );
-        expect(afterDeleteMatch, isNull,
-            reason:
-                'findPhotoByFingerprint must return null when the only match '
-                'is soft-deleted (otherwise picker re-import is silently '
-                'blocked by camera_utils.savePhoto).');
+        expect(
+          afterDeleteMatch,
+          isNull,
+          reason:
+              'findPhotoByFingerprint must return null when the only match '
+              'is soft-deleted (otherwise picker re-import is silently '
+              'blocked by camera_utils.savePhoto).',
+        );
 
         // After restore, the active row should match again.
-        final restoreResult =
-            await ProjectUtils.restoreImage(target, testProjectId!);
-        expect(restoreResult, equals(RestoreOutcome.success),
-            reason: 'restoreImage should succeed');
+        final restoreResult = await ProjectUtils.restoreImage(
+          target,
+          testProjectId!,
+        );
+        expect(
+          restoreResult,
+          equals(RestoreOutcome.success),
+          reason: 'restoreImage should succeed',
+        );
 
         final afterRestoreMatch = await DB.instance.findPhotoByFingerprint(
           testProjectId!,
           fingerprint,
         );
-        expect(afterRestoreMatch, isNotNull,
-            reason: 'Restored row should match by fingerprint again');
+        expect(
+          afterRestoreMatch,
+          isNotNull,
+          reason: 'Restored row should match by fingerprint again',
+        );
         expect(afterRestoreMatch!['timestamp'], equals(target));
       },
     );

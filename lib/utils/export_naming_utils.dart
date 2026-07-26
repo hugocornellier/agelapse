@@ -29,8 +29,9 @@ class ExportNamingUtils {
     final DateTime dt = timestamp ?? DateTime.now();
     final String sanitizedName = sanitizeProjectName(projectName);
     final String formattedDate = formatTimestamp(dt);
-    final String cleanExt =
-        extension.startsWith('.') ? extension.substring(1) : extension;
+    final String cleanExt = extension.startsWith('.')
+        ? extension.substring(1)
+        : extension;
 
     return '${sanitizedName}_${brandIdentifier}_$formattedDate.$cleanExt';
   }

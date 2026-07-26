@@ -62,8 +62,8 @@ class CameraGridOverlayState extends State<CameraGridOverlay> {
       if (widget.useSelectedGuidePhoto) {
         final String selectedGuidePhoto =
             await SettingsUtil.loadSelectedGuidePhoto(
-          widget.projectId.toString(),
-        );
+              widget.projectId.toString(),
+            );
         if (selectedGuidePhoto == "not set") {
           guidePhoto = stabPhotos.first;
           timestamp = guidePhoto['timestamp'].toString();
@@ -299,8 +299,9 @@ class _GridPainter extends CustomPainter {
         final center = Offset(size.width / 2, size.height / 2);
         canvas.save();
         canvas.translate(center.dx, center.dy);
-        final angle =
-            orientation == "Landscape Left" ? math.pi / 2 : -math.pi / 2;
+        final angle = orientation == "Landscape Left"
+            ? math.pi / 2
+            : -math.pi / 2;
         canvas.rotate(angle);
         final rect = Rect.fromCenter(
           center: Offset(0, -difference),

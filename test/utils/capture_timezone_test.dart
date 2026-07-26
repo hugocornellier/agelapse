@@ -231,13 +231,13 @@ void main() {
         final expectedOffset = fallback.timeZoneOffset.inMinutes;
         final expectedSign = expectedOffset >= 0 ? '+' : '−';
         final expectedHours = (expectedOffset.abs() ~/ 60).toString().padLeft(
-              2,
-              '0',
-            );
+          2,
+          '0',
+        );
         final expectedMinutes = (expectedOffset.abs() % 60).toString().padLeft(
-              2,
-              '0',
-            );
+          2,
+          '0',
+        );
         expect(
           result,
           equals('UTC$expectedSign$expectedHours:$expectedMinutes'),
@@ -252,13 +252,13 @@ void main() {
         final expectedOffset = now.timeZoneOffset.inMinutes;
         final expectedSign = expectedOffset >= 0 ? '+' : '−';
         final expectedHours = (expectedOffset.abs() ~/ 60).toString().padLeft(
-              2,
-              '0',
-            );
+          2,
+          '0',
+        );
         final expectedMinutes = (expectedOffset.abs() % 60).toString().padLeft(
-              2,
-              '0',
-            );
+          2,
+          '0',
+        );
         expect(
           result,
           equals('UTC$expectedSign$expectedHours:$expectedMinutes'),

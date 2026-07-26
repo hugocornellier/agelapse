@@ -108,7 +108,8 @@ void main() {
             expect(
               fileSize,
               greaterThan(minSize),
-              reason: '$day.$format should be at least $minSize bytes '
+              reason:
+                  '$day.$format should be at least $minSize bytes '
                   '(got $fileSize)',
             );
           });
@@ -190,7 +191,8 @@ void main() {
             expect(
               bytes[i],
               equals(expected),
-              reason: '$format magic byte mismatch at offset $i: '
+              reason:
+                  '$format magic byte mismatch at offset $i: '
                   'expected 0x${expected.toRadixString(16)}, '
                   'got 0x${bytes[i].toRadixString(16)}',
             );
@@ -253,7 +255,8 @@ void main() {
               expect(
                 output.success,
                 isTrue,
-                reason: '$format/$day should decode successfully via '
+                reason:
+                    '$format/$day should decode successfully via '
                     'cv.imdecode (got: ${output.error})',
               );
               expect(
@@ -318,7 +321,8 @@ void main() {
               expect(
                 output.success,
                 isTrue,
-                reason: 'HEIC/$day should decode via pre-converted PNG '
+                reason:
+                    'HEIC/$day should decode via pre-converted PNG '
                     '(got: ${output.error})',
               );
               expect(output.width, greaterThan(0));
@@ -359,7 +363,8 @@ void main() {
                     expect(
                       output.success,
                       isTrue,
-                      reason: 'TIFF/$day should decode via pre-converted PNG '
+                      reason:
+                          'TIFF/$day should decode via pre-converted PNG '
                           '(got: ${output.error})',
                     );
                     expect(output.width, greaterThan(0));
@@ -408,7 +413,8 @@ void main() {
                     expect(
                       output.success,
                       isTrue,
-                      reason: 'JP2/$day should decode via pre-converted PNG '
+                      reason:
+                          'JP2/$day should decode via pre-converted PNG '
                           '(got: ${output.error})',
                     );
                     expect(output.width, greaterThan(0));
@@ -459,7 +465,8 @@ void main() {
                 expect(
                   output.success,
                   isTrue,
-                  reason: 'AVIF/$day should decode via pre-converted PNG '
+                  reason:
+                      'AVIF/$day should decode via pre-converted PNG '
                       '(got: ${output.error})',
                 );
                 expect(output.width, greaterThan(0));
@@ -593,14 +600,14 @@ void main() {
             // Step 5: Apply stabilization transform
             final stabilized =
                 await StabUtils.generateStabilizedImageBytesCVAsync(
-              cvBytes,
-              rotationDegrees,
-              1.0, // scale
-              0.0, // translateX
-              0.0, // translateY
-              dims.$1, // canvas width = original width
-              dims.$2, // canvas height = original height
-            );
+                  cvBytes,
+                  rotationDegrees,
+                  1.0, // scale
+                  0.0, // translateX
+                  0.0, // translateY
+                  dims.$1, // canvas width = original width
+                  dims.$2, // canvas height = original height
+                );
 
             expect(
               stabilized,

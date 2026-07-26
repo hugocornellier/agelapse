@@ -164,11 +164,13 @@ List<int> _extractImageDimensions(String imagePath) {
         return [width, height];
       } else if (dibHeaderSize >= 40) {
         // BITMAPINFOHEADER+ (Windows 3.x+): 32-bit signed dimensions
-        int width = bytes[18] |
+        int width =
+            bytes[18] |
             (bytes[19] << 8) |
             (bytes[20] << 16) |
             (bytes[21] << 24);
-        int height = bytes[22] |
+        int height =
+            bytes[22] |
             (bytes[23] << 8) |
             (bytes[24] << 16) |
             (bytes[25] << 24);
@@ -402,10 +404,12 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     final future = _facesRepo.load(ts, widget.projectId);
     _detectedFacesFuture = future;
     _detectedFaces = null;
-    future.then((snap) {
-      if (!mounted || gen != _facesGen) return;
-      setState(() => _detectedFaces = snap);
-    }).catchError((_) {});
+    future
+        .then((snap) {
+          if (!mounted || gen != _facesGen) return;
+          setState(() => _detectedFaces = snap);
+        })
+        .catchError((_) {});
   }
 
   String _pathForTimestamp(List<String> files, String timestamp) {
@@ -451,8 +455,9 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
 
   Future<void> _switchView({required bool toRaw}) async {
     final currentTimestamp = _currentTimestamp;
-    final targetList =
-        toRaw ? widget.rawImageFiles : widget.stabilizedImageFiles;
+    final targetList = toRaw
+        ? widget.rawImageFiles
+        : widget.stabilizedImageFiles;
     final newIndex = _findIndexForTimestamp(targetList, currentTimestamp);
 
     if (newIndex >= 0) {
@@ -715,7 +720,8 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     final ts = _currentTimestamp;
     if (ts.isEmpty) return;
     final existing = _detectedFaces;
-    final DetectedFacesSnapshot snapshot = existing ??
+    final DetectedFacesSnapshot snapshot =
+        existing ??
         await (_detectedFacesFuture ?? _facesRepo.load(ts, widget.projectId));
     if (!mounted || !snapshot.isAvailable) return;
 
@@ -1254,10 +1260,10 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
         if (photoData != null) {
           saveFilename =
               (photoData['sourceFilename'] as String?)?.trim().isNotEmpty ==
-                      true
-                  ? (photoData['sourceFilename'] as String).trim()
-                  : (photoData['originalFilename'] as String? ??
-                      path.basename(_currentImagePath));
+                  true
+              ? (photoData['sourceFilename'] as String).trim()
+              : (photoData['originalFilename'] as String? ??
+                    path.basename(_currentImagePath));
 
           imagePathToSave = _currentImagePath;
         }
@@ -1288,8 +1294,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
           final String? watermarkPos = watermarkEnabled
               ? (await DB.instance.getSettingValueByTitle(
                   'watermark_position',
-                ))
-                  .toLowerCase()
+                )).toLowerCase()
               : null;
 
           // Calculate watermark offset if both are in same position
@@ -1297,16 +1302,18 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
           if (watermarkPos != null &&
               _exportDateStampPosition.toLowerCase() ==
                   watermarkPos.toLowerCase()) {
-            final isLowerCorner =
-                _exportDateStampPosition.toLowerCase().contains('lower');
+            final isLowerCorner = _exportDateStampPosition
+                .toLowerCase()
+                .contains('lower');
             final imageBytes = await File(_currentImagePath).readAsBytes();
             final codec = await ui.instantiateImageCodec(imageBytes);
             try {
               final frame = await codec.getNextFrame();
               final imageHeight = frame.image.height.toDouble();
               frame.image.dispose();
-              watermarkOffset =
-                  isLowerCorner ? -(imageHeight * 0.05) : (imageHeight * 0.05);
+              watermarkOffset = isLowerCorner
+                  ? -(imageHeight * 0.05)
+                  : (imageHeight * 0.05);
             } finally {
               codec.dispose();
             }
@@ -1572,9 +1579,9 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
 
     final rawPhotoPath =
         await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-      timestamp,
-      widget.projectId,
-    );
+          timestamp,
+          widget.projectId,
+        );
 
     await GalleryPhotoOperations.retryStabilization(
       imagePath: rawPhotoPath,
@@ -1676,9 +1683,7 @@ class _ImagePreviewNavigatorState extends State<ImagePreviewNavigator> {
     // the next frame, but our navigation decision must not depend on that
     // timing.
     final List<String> filteredList = _currentList
-        .where(
-          (p) => path.basenameWithoutExtension(p) != deletedTimestamp,
-        )
+        .where((p) => path.basenameWithoutExtension(p) != deletedTimestamp)
         .toList(growable: false);
 
     if (filteredList.isEmpty) {

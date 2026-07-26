@@ -31,20 +31,22 @@ void main() {
       expect(gate.isDrained, isTrue);
     });
 
-    test('a straggling earliest photo flushes the whole buffered run in order',
-        () {
-      final gate = OrderedRevealGate(['1', '2', '3', '4', '5']);
+    test(
+      'a straggling earliest photo flushes the whole buffered run in order',
+      () {
+        final gate = OrderedRevealGate(['1', '2', '3', '4', '5']);
 
-      // Everything finishes except the earliest, in arbitrary order.
-      expect(gate.complete('3'), isEmpty);
-      expect(gate.complete('5'), isEmpty);
-      expect(gate.complete('2'), isEmpty);
-      expect(gate.complete('4'), isEmpty);
+        // Everything finishes except the earliest, in arbitrary order.
+        expect(gate.complete('3'), isEmpty);
+        expect(gate.complete('5'), isEmpty);
+        expect(gate.complete('2'), isEmpty);
+        expect(gate.complete('4'), isEmpty);
 
-      // The earliest finally lands: contiguous prefix flushes ascending.
-      expect(gate.complete('1'), ['1', '2', '3', '4', '5']);
-      expect(gate.isDrained, isTrue);
-    });
+        // The earliest finally lands: contiguous prefix flushes ascending.
+        expect(gate.complete('1'), ['1', '2', '3', '4', '5']);
+        expect(gate.isDrained, isTrue);
+      },
+    );
 
     test('partial flush only releases the contiguous ready prefix', () {
       final gate = OrderedRevealGate(['1', '2', '3', '4']);
@@ -58,14 +60,16 @@ void main() {
       expect(gate.isDrained, isTrue);
     });
 
-    test('reverse-order completion buffers until the first, then full flush',
-        () {
-      final gate = OrderedRevealGate(['10', '20', '30']);
+    test(
+      'reverse-order completion buffers until the first, then full flush',
+      () {
+        final gate = OrderedRevealGate(['10', '20', '30']);
 
-      expect(gate.complete('30'), isEmpty);
-      expect(gate.complete('20'), isEmpty);
-      expect(gate.complete('10'), ['10', '20', '30']);
-    });
+        expect(gate.complete('30'), isEmpty);
+        expect(gate.complete('20'), isEmpty);
+        expect(gate.complete('10'), ['10', '20', '30']);
+      },
+    );
 
     test('a failed/no-faces photo still advances the cursor (no deadlock)', () {
       // The gate does not distinguish success from failure: every photo reports
@@ -79,14 +83,16 @@ void main() {
       expect(gate.complete('1'), ['1', '2', '3']);
     });
 
-    test('duplicate completion of an already-released photo releases nothing',
-        () {
-      final gate = OrderedRevealGate(['1', '2']);
+    test(
+      'duplicate completion of an already-released photo releases nothing',
+      () {
+        final gate = OrderedRevealGate(['1', '2']);
 
-      expect(gate.complete('1'), ['1']);
-      expect(gate.complete('1'), isEmpty); // idempotent, no double reveal
-      expect(gate.complete('2'), ['2']);
-    });
+        expect(gate.complete('1'), ['1']);
+        expect(gate.complete('1'), isEmpty); // idempotent, no double reveal
+        expect(gate.complete('2'), ['2']);
+      },
+    );
 
     test('an unknown timestamp does not break ordering', () {
       final gate = OrderedRevealGate(['1', '2']);

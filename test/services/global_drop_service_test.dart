@@ -168,8 +168,10 @@ void main() {
         ]);
 
         expect(handled, isTrue);
-        expect(receivedPaths,
-            equals(['/path/to/file1.jpg', '/path/to/file2.jpg']));
+        expect(
+          receivedPaths,
+          equals(['/path/to/file1.jpg', '/path/to/file2.jpg']),
+        );
       });
     });
 

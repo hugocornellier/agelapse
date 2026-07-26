@@ -37,17 +37,18 @@ class GalleryPhotoOperations {
     // Get paths
     final String rawPhotoPath =
         await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-      timestamp,
-      projectId,
-    );
-    final String orientation = projectOrientation ??
+          timestamp,
+          projectId,
+        );
+    final String orientation =
+        projectOrientation ??
         await SettingsUtil.loadProjectOrientation(projectId.toString());
     final String stabilizedImagePath =
         await DirUtils.getStabilizedImagePathFromRawPathAndProjectOrientation(
-      projectId,
-      rawPhotoPath,
-      orientation,
-    );
+          projectId,
+          rawPhotoPath,
+          orientation,
+        );
     final String stabThumbPath = FaceStabilizer.getStabThumbnailPath(
       stabilizedImagePath,
     );
@@ -107,15 +108,15 @@ class GalleryPhotoOperations {
     // Resolve to raw file if this is a stabilized image
     File toDelete = imageFile;
     final bool isStabilizedImage = imageFile.path.toLowerCase().contains(
-          "stabilized",
-        );
+      "stabilized",
+    );
     if (isStabilizedImage) {
       final String timestamp = path.basenameWithoutExtension(imageFile.path);
       final String rawPhotoPath =
           await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-        timestamp,
-        projectId,
-      );
+            timestamp,
+            projectId,
+          );
       toDelete = File(rawPhotoPath);
     }
 
@@ -161,9 +162,9 @@ class GalleryPhotoOperations {
   }) async {
     final String oldRawPhotoPath =
         await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-      oldTimestamp,
-      projectId,
-    );
+          oldTimestamp,
+          projectId,
+        );
     if (!await File(oldRawPhotoPath).exists()) {
       throw Exception('Original file not found');
     }
@@ -193,10 +194,10 @@ class GalleryPhotoOperations {
     for (final orientation in DirUtils.orientations) {
       final String oldStabPath =
           await DirUtils.getStabilizedImagePathFromRawPathAndProjectOrientation(
-        projectId,
-        oldRawPhotoPath,
-        orientation,
-      );
+            projectId,
+            oldRawPhotoPath,
+            orientation,
+          );
       if (!await File(oldStabPath).exists()) continue;
 
       final String newStabPath = path.join(
@@ -353,8 +354,9 @@ class GalleryPhotoOperations {
 
     final oldIndex = allImageFilenames.indexOf(oldTimestamp);
 
-    final timestamps =
-        allImageFilenames.where((t) => t != oldTimestamp).toList();
+    final timestamps = allImageFilenames
+        .where((t) => t != oldTimestamp)
+        .toList();
     timestamps.add(newTimestamp);
     timestamps.sort((a, b) {
       final ai = int.tryParse(a);

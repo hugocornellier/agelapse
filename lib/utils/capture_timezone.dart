@@ -24,8 +24,10 @@ class CaptureTimezone {
   ) async {
     if (filePaths.isEmpty) return {};
 
-    final timestamps =
-        filePaths.map((f) => p.basenameWithoutExtension(f)).toSet().toList();
+    final timestamps = filePaths
+        .map((f) => p.basenameWithoutExtension(f))
+        .toSet()
+        .toList();
 
     return DB.instance.getCaptureOffsetMinutesForTimestamps(
       timestamps,

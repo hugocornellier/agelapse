@@ -65,7 +65,7 @@ class FaceCropThumbnail extends StatelessWidget {
       height: size,
       fit: BoxFit.cover,
       gaplessPlayback: true,
-      errorBuilder: (_, __, ___) => Center(
+      errorBuilder: (_, _, _) => Center(
         child: Icon(
           Icons.broken_image_outlined,
           size: size * 0.4,

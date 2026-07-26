@@ -236,7 +236,9 @@ class IsolatePool {
 
         cv.Mat result;
         if (mat.channels == 4) {
-          final bgType = mat.type.depth == 2 // CV_16U
+          final bgType =
+              mat.type.depth ==
+                  2 // CV_16U
               ? cv.MatType.CV_16UC3
               : cv.MatType.CV_8UC3;
           final bg = cv.Mat.zeros(mat.rows, mat.cols, bgType);
@@ -304,13 +306,10 @@ class IsolatePool {
 
         final aspectRatio = composited.rows / composited.cols;
         final height = (800 * aspectRatio).round();
-        final thumb = cv.resize(
-            composited,
-            (
-              800,
-              height,
-            ),
-            interpolation: cv.INTER_CUBIC);
+        final thumb = cv.resize(composited, (
+          800,
+          height,
+        ), interpolation: cv.INTER_CUBIC);
         composited.dispose();
 
         final (success, jpgBytes) = cv.imencode(
@@ -331,13 +330,10 @@ class IsolatePool {
 
         final aspectRatioAlpha = matAlpha.rows / matAlpha.cols;
         final heightAlpha = (800 * aspectRatioAlpha).round();
-        final thumbAlpha = cv.resize(
-            matAlpha,
-            (
-              800,
-              heightAlpha,
-            ),
-            interpolation: cv.INTER_CUBIC);
+        final thumbAlpha = cv.resize(matAlpha, (
+          800,
+          heightAlpha,
+        ), interpolation: cv.INTER_CUBIC);
         matAlpha.dispose();
 
         final (successAlpha, pngBytesAlpha) = cv.imencode(
@@ -404,15 +400,12 @@ class IsolatePool {
             // before srcMat is disposed (done after the loop).
             region = srcMat.region(cv.Rect(x, y, w, h));
             final int longest = w > h ? w : h;
-            final double scale =
-                longest > maxDimension ? maxDimension / longest : 1.0;
+            final double scale = longest > maxDimension
+                ? maxDimension / longest
+                : 1.0;
             final int tw = (w * scale).round().clamp(1, maxDimension);
             final int th = (h * scale).round().clamp(1, maxDimension);
-            resized = cv.resize(
-              region,
-              (tw, th),
-              interpolation: cv.INTER_AREA,
-            );
+            resized = cv.resize(region, (tw, th), interpolation: cv.INTER_AREA);
             final (ok, jpg) = cv.imencode(
               '.jpg',
               resized,
@@ -558,8 +551,10 @@ class IsolatePool {
           final (success, bytes) = cv.imencode(
             '.png',
             dst,
-            params: cv.VecI32.fromList(
-                [cv.IMWRITE_PNG_COMPRESSION, pngCompression]),
+            params: cv.VecI32.fromList([
+              cv.IMWRITE_PNG_COMPRESSION,
+              pngCompression,
+            ]),
           );
 
           return success ? bytes : null;
@@ -707,8 +702,10 @@ class IsolatePool {
           final (encSuccess, encPngBytes) = cv.imencode(
             '.png',
             encMat,
-            params: cv.VecI32.fromList(
-                [cv.IMWRITE_PNG_COMPRESSION, encCompression]),
+            params: cv.VecI32.fromList([
+              cv.IMWRITE_PNG_COMPRESSION,
+              encCompression,
+            ]),
           );
           return encSuccess ? encPngBytes : null;
         } finally {
@@ -742,9 +739,7 @@ class IsolatePool {
   // ============================================================
 
   /// Isolate implementation: Extract eye coordinates from serialized faces.
-  static List<List<double>?> getEyesFromFacesSync(
-    Map<String, dynamic> params,
-  ) {
+  static List<List<double>?> getEyesFromFacesSync(Map<String, dynamic> params) {
     final facesData = params['faces'] as List;
     final List<List<double>?> eyes = [];
 
@@ -795,9 +790,7 @@ class IsolatePool {
   }
 
   /// Isolate implementation: Get centermost eyes from multiple faces.
-  static List<List<double>> getCentermostEyesSync(
-    Map<String, dynamic> params,
-  ) {
+  static List<List<double>> getCentermostEyesSync(Map<String, dynamic> params) {
     final eyesData = params['eyes'] as List;
     final facesData = params['faces'] as List;
     final imgWidth = params['imgWidth'] as int;
@@ -843,8 +836,9 @@ class IsolatePool {
     List<List<double>> centeredEyes = [];
 
     final int pairCount = eyes.length ~/ 2;
-    final int limit =
-        validFaces.length < pairCount ? validFaces.length : pairCount;
+    final int limit = validFaces.length < pairCount
+        ? validFaces.length
+        : pairCount;
 
     for (var i = 0; i < limit; i++) {
       final bbox = validFaces[i]['bbox'] as List;
@@ -1100,11 +1094,13 @@ class IsolatePool {
       if (stickyList != null && stickyList.isNotEmpty) {
         final task = stickyList.removeAt(0);
         if (stickyList.isEmpty) _stickyQueue.remove(i);
-        _executeOnWorker(worker, task.operation, task.params).then((result) {
-          task.completer.complete(result);
-        }).catchError((e) {
-          task.completer.completeError(e);
-        });
+        _executeOnWorker(worker, task.operation, task.params)
+            .then((result) {
+              task.completer.complete(result);
+            })
+            .catchError((e) {
+              task.completer.completeError(e);
+            });
         // Move on, this worker is now busy again.
         continue;
       }
@@ -1116,11 +1112,13 @@ class IsolatePool {
     if (worker == null) return;
 
     final task = _taskQueue.removeAt(0);
-    _executeOnWorker(worker, task.operation, task.params).then((result) {
-      task.completer.complete(result);
-    }).catchError((e) {
-      task.completer.completeError(e);
-    });
+    _executeOnWorker(worker, task.operation, task.params)
+        .then((result) {
+          task.completer.complete(result);
+        })
+        .catchError((e) {
+          task.completer.completeError(e);
+        });
   }
 
   /// Clear cached Mat in all workers (call after finishing a photo).

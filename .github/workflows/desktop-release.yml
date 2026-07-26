@@ -260,9 +260,321 @@ jobs:
           path: dist/agelapse-linux-${{ needs.prepare.outputs.version }}-x64.flatpak
           if-no-files-found: error
 
+  smoke-windows-installer:
+    name: Smoke Windows Installed Package
+    needs: [prepare, build-windows]
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Download Windows installer
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+          path: package
+
+      - name: Install, launch, and uninstall packaged app
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $installer = Get-ChildItem package -Filter "*.exe" -File |
+            Select-Object -First 1
+          if (-not $installer) {
+            throw "The downloaded artifact does not contain an installer."
+          }
+
+          $installDir = Join-Path $env:ProgramFiles "AgeLapse"
+          if (Test-Path $installDir) {
+            throw "Expected a clean runner, but $installDir already exists."
+          }
+
+          $installLog = Join-Path $env:RUNNER_TEMP "agelapse-install.log"
+          $installArgs = @(
+            "/VERYSILENT",
+            "/SUPPRESSMSGBOXES",
+            "/NORESTART",
+            "/SP-",
+            "/LOG=$installLog"
+          )
+          $installProcess = Start-Process `
+            -FilePath $installer.FullName `
+            -ArgumentList $installArgs `
+            -Wait `
+            -PassThru
+          if ($installProcess.ExitCode -ne 0) {
+            if (Test-Path $installLog) {
+              Get-Content $installLog
+            }
+            throw "Installer exited with code $($installProcess.ExitCode)."
+          }
+
+          $appExe = Join-Path $installDir "agelapse.exe"
+          $uninstaller = Join-Path $installDir "unins000.exe"
+          $requiredPaths = @(
+            $appExe,
+            $uninstaller,
+            (Join-Path $installDir "flutter_windows.dll"),
+            (Join-Path $installDir "data\flutter_assets")
+          )
+          foreach ($path in $requiredPaths) {
+            if (-not (Test-Path $path)) {
+              throw "Installed package is missing required path: $path"
+            }
+          }
+
+          $stdoutLog = Join-Path $env:RUNNER_TEMP "agelapse-stdout.log"
+          $stderrLog = Join-Path $env:RUNNER_TEMP "agelapse-stderr.log"
+          $appProcess = Start-Process `
+            -FilePath $appExe `
+            -WorkingDirectory $installDir `
+            -RedirectStandardOutput $stdoutLog `
+            -RedirectStandardError $stderrLog `
+            -PassThru
+
+          Start-Sleep -Seconds 20
+          $appProcess.Refresh()
+          if ($appProcess.HasExited) {
+            if (Test-Path $stdoutLog) {
+              Get-Content $stdoutLog
+            }
+            if (Test-Path $stderrLog) {
+              Get-Content $stderrLog
+            }
+            throw "Installed app exited during the 20-second startup smoke window (code $($appProcess.ExitCode))."
+          }
+
+          Stop-Process -Id $appProcess.Id -Force
+          $appProcess.WaitForExit()
+          Write-Host "Installed app remained running for the complete startup smoke window."
+
+          $uninstallLog = Join-Path $env:RUNNER_TEMP "agelapse-uninstall.log"
+          $uninstallArgs = @(
+            "/VERYSILENT",
+            "/SUPPRESSMSGBOXES",
+            "/NORESTART",
+            "/LOG=$uninstallLog"
+          )
+          $uninstallProcess = Start-Process `
+            -FilePath $uninstaller `
+            -ArgumentList $uninstallArgs `
+            -Wait `
+            -PassThru
+          if ($uninstallProcess.ExitCode -ne 0) {
+            if (Test-Path $uninstallLog) {
+              Get-Content $uninstallLog
+            }
+            throw "Uninstaller exited with code $($uninstallProcess.ExitCode)."
+          }
+
+          Start-Sleep -Seconds 2
+          if (Test-Path $appExe) {
+            throw "Uninstall completed but the installed executable still exists."
+          }
+          Write-Host "Installer, packaged startup, and uninstaller smoke checks passed."
+
+  smoke-linux-packages:
+    name: Smoke Linux ${{ matrix.label }}
+    needs: [prepare, build-linux]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - kind: deb
+            label: Debian Package
+            artifact: linux-deb
+          - kind: bundle
+            label: Bundle
+            artifact: linux-bundle
+          - kind: flatpak
+            label: Flatpak
+            artifact: linux-flatpak
+    steps:
+      - name: Download packaged artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: package
+
+      - name: Install headless launch support
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y dbus-x11 xvfb
+
+      - name: Install, launch, and remove Debian package
+        if: matrix.kind == 'deb'
+        run: |
+          DEB_FILE=$(find package -maxdepth 1 -type f -name '*.deb' -print -quit)
+          if [ -z "$DEB_FILE" ]; then
+            echo "::error::The downloaded artifact does not contain a .deb package."
+            exit 1
+          fi
+
+          DEB_FILE=$(realpath "$DEB_FILE")
+          dpkg-deb --info "$DEB_FILE"
+          sudo apt-get install -y "$DEB_FILE"
+
+          if [ "$(dpkg-query -W -f='${Status}' agelapse)" != "install ok installed" ]; then
+            echo "::error::dpkg does not report agelapse as installed."
+            exit 1
+          fi
+
+          dpkg-query -L agelapse | tee "$RUNNER_TEMP/agelapse-deb-files.log"
+          test -x /opt/agelapse/agelapse
+          test -x /usr/bin/agelapse
+          test -d /opt/agelapse/data/flutter_assets
+          if ! grep -Eq '/usr/share/applications/.+\.desktop$' "$RUNNER_TEMP/agelapse-deb-files.log"; then
+            echo "::error::The Debian package did not install a desktop entry."
+            exit 1
+          fi
+
+          : > "$RUNNER_TEMP/agelapse-deb-ldd.log"
+          while IFS= read -r -d '' LIBRARY; do
+            if file "$LIBRARY" | grep -q 'ELF'; then
+              echo "==> $LIBRARY" | tee -a "$RUNNER_TEMP/agelapse-deb-ldd.log"
+              LD_LIBRARY_PATH=/opt/agelapse/lib ldd "$LIBRARY" |
+                tee -a "$RUNNER_TEMP/agelapse-deb-ldd.log"
+            fi
+          done < <(find /opt/agelapse -type f \
+            \( -name agelapse -o -name '*.so' -o -name '*.so.*' \) -print0)
+          if grep -q 'not found' "$RUNNER_TEMP/agelapse-deb-ldd.log"; then
+            echo "::error::The installed Debian package has unresolved shared libraries."
+            exit 1
+          fi
+
+          set +e
+          timeout --signal=TERM --kill-after=10s 20s \
+            dbus-run-session -- xvfb-run -a /usr/bin/agelapse \
+            >"$RUNNER_TEMP/agelapse-deb-startup.log" 2>&1
+          STARTUP_STATUS=$?
+          set -e
+          cat "$RUNNER_TEMP/agelapse-deb-startup.log"
+          if [ "$STARTUP_STATUS" -ne 124 ]; then
+            echo "::error::Installed Debian app exited before the 20-second startup window completed (code $STARTUP_STATUS)."
+            exit 1
+          fi
+
+          sudo apt-get purge -y agelapse
+          if dpkg-query -W agelapse >/dev/null 2>&1; then
+            echo "::error::The Debian package is still registered after purge."
+            exit 1
+          fi
+          test ! -e /usr/bin/agelapse
+          test ! -e /opt/agelapse/agelapse
+          echo "Debian install, dependency, packaged startup, and removal checks passed."
+
+      - name: Extract, inspect, and launch Linux bundle
+        if: matrix.kind == 'bundle'
+        run: |
+          sudo apt-get install -y \
+            ffmpeg \
+            libgtk-3-dev \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+            libmpv-dev libheif-dev libpng-dev libturbojpeg0-dev
+
+          BUNDLE_FILE=$(find package -maxdepth 1 -type f -name '*.tar.gz' -print -quit)
+          if [ -z "$BUNDLE_FILE" ]; then
+            echo "::error::The downloaded artifact does not contain a bundle tarball."
+            exit 1
+          fi
+
+          mkdir unpacked
+          tar -xzf "$BUNDLE_FILE" -C unpacked
+          test -x unpacked/bundle/agelapse
+          test -d unpacked/bundle/data/flutter_assets
+
+          : > "$RUNNER_TEMP/agelapse-bundle-ldd.log"
+          while IFS= read -r -d '' LIBRARY; do
+            if file "$LIBRARY" | grep -q 'ELF'; then
+              echo "==> $LIBRARY" | tee -a "$RUNNER_TEMP/agelapse-bundle-ldd.log"
+              LD_LIBRARY_PATH="$PWD/unpacked/bundle/lib" ldd "$LIBRARY" |
+                tee -a "$RUNNER_TEMP/agelapse-bundle-ldd.log"
+            fi
+          done < <(find unpacked/bundle -type f \
+            \( -name agelapse -o -name '*.so' -o -name '*.so.*' \) -print0)
+          if grep -q 'not found' "$RUNNER_TEMP/agelapse-bundle-ldd.log"; then
+            echo "::error::The extracted Linux bundle has unresolved shared libraries."
+            exit 1
+          fi
+
+          set +e
+          (
+            cd unpacked/bundle
+            timeout --signal=TERM --kill-after=10s 20s \
+              dbus-run-session -- xvfb-run -a ./agelapse
+          ) >"$RUNNER_TEMP/agelapse-bundle-startup.log" 2>&1
+          STARTUP_STATUS=$?
+          set -e
+          cat "$RUNNER_TEMP/agelapse-bundle-startup.log"
+          if [ "$STARTUP_STATUS" -ne 124 ]; then
+            echo "::error::Bundled Linux app exited before the 20-second startup window completed (code $STARTUP_STATUS)."
+            exit 1
+          fi
+          echo "Bundle extraction, dependency, and packaged startup checks passed."
+
+      - name: Install, launch, and remove Flatpak
+        if: matrix.kind == 'flatpak'
+        run: |
+          sudo apt-get install -y flatpak
+
+          FLATPAK_FILE=$(find package -maxdepth 1 -type f -name '*.flatpak' -print -quit)
+          if [ -z "$FLATPAK_FILE" ]; then
+            echo "::error::The downloaded artifact does not contain a Flatpak bundle."
+            exit 1
+          fi
+
+          FLATPAK_FILE=$(realpath "$FLATPAK_FILE")
+          flatpak remote-add --user --if-not-exists \
+            flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak install --user -y --noninteractive flathub \
+            org.freedesktop.Platform//24.08 \
+            org.freedesktop.Platform.ffmpeg-full//24.08
+          flatpak install --user -y --noninteractive "$FLATPAK_FILE"
+
+          flatpak info --user com.hugocornellier.agelapse
+          flatpak run --command=sh com.hugocornellier.agelapse -euxc \
+            'test -x /app/agelapse
+             test -x /app/bin/agelapse
+             test -d /app/data/flutter_assets
+             test -d /app/lib/ffmpeg
+             test -f /app/share/applications/com.hugocornellier.agelapse.desktop
+             command -v ffmpeg
+             ffmpeg -hide_banner -version'
+
+          set +e
+          timeout --signal=TERM --kill-after=10s 20s \
+            dbus-run-session -- xvfb-run -a \
+            flatpak run com.hugocornellier.agelapse \
+            >"$RUNNER_TEMP/agelapse-flatpak-startup.log" 2>&1
+          STARTUP_STATUS=$?
+          set -e
+          cat "$RUNNER_TEMP/agelapse-flatpak-startup.log"
+          if [ "$STARTUP_STATUS" -ne 124 ]; then
+            echo "::error::Installed Flatpak exited before the 20-second startup window completed (code $STARTUP_STATUS)."
+            exit 1
+          fi
+
+          flatpak uninstall --user -y --noninteractive \
+            com.hugocornellier.agelapse
+          if flatpak info --user com.hugocornellier.agelapse >/dev/null 2>&1; then
+            echo "::error::The Flatpak is still installed after removal."
+            exit 1
+          fi
+          echo "Flatpak install, packaged startup, and removal checks passed."
+
   publish-release:
     name: Publish GitHub Release
-    needs: [prepare, build-windows, build-linux]
+    needs:
+      - prepare
+      - build-windows
+      - build-linux
+      - smoke-windows-installer
+      - smoke-linux-packages
     runs-on: ubuntu-latest
     permissions:
       contents: write

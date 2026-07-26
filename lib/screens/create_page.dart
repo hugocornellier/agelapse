@@ -156,7 +156,8 @@ class CreatePageState extends State<CreatePage>
     super.didUpdateWidget(oldWidget);
 
     // Detect transition: not compiling → compiling (either stabilization or video)
-    final wasIdle = !oldWidget.stabilizingRunningInMain &&
+    final wasIdle =
+        !oldWidget.stabilizingRunningInMain &&
         !oldWidget.videoCreationActiveInMain;
     final nowActive =
         widget.stabilizingRunningInMain || widget.videoCreationActiveInMain;
@@ -189,8 +190,8 @@ class CreatePageState extends State<CreatePage>
     _isWaiting = true;
 
     try {
-      final List<Map<String, dynamic>> rawPhotos =
-          await DB.instance.getPhotosByProjectID(widget.projectId);
+      final List<Map<String, dynamic>> rawPhotos = await DB.instance
+          .getPhotosByProjectID(widget.projectId);
 
       // Check if there are no photos
       if (rawPhotos.length < 2) {
@@ -215,8 +216,8 @@ class CreatePageState extends State<CreatePage>
         return;
       }
 
-      while (
-          widget.stabilizingRunningInMain || widget.videoCreationActiveInMain) {
+      while (widget.stabilizingRunningInMain ||
+          widget.videoCreationActiveInMain) {
         await Future.delayed(const Duration(milliseconds: 300));
         if (!mounted) return;
         final double percentUnrounded = widget.currentFrame / photoCount! * 100;
@@ -295,8 +296,9 @@ class CreatePageState extends State<CreatePage>
     final result = await VideoUtils.createTimelapseFromProjectId(
       widget.projectId,
       (frame) {
-        final double percentUnrounded =
-            totalFrames > 0 ? (frame / totalFrames * 100) : 0;
+        final double percentUnrounded = totalFrames > 0
+            ? (frame / totalFrames * 100)
+            : 0;
         final String percent = percentUnrounded.toStringAsFixed(1);
         final String? eta = VideoUtils.calculateVideoEta(frame);
         final String etaDisplay = eta ?? "Calculating ETA";
@@ -356,12 +358,9 @@ class CreatePageState extends State<CreatePage>
 
   /// Loads orientation, codec, video path, and File object for the current project.
   Future<
-      ({
-        String videoPath,
-        VideoCodec codec,
-        String orientation,
-        File videoFile
-      })> _loadVideoInfo() async {
+    ({String videoPath, VideoCodec codec, String orientation, File videoFile})
+  >
+  _loadVideoInfo() async {
     final String orientation = await SettingsUtil.loadProjectOrientation(
       widget.projectId.toString(),
     );
@@ -804,12 +803,12 @@ class CreatePageState extends State<CreatePage>
     final double percent = isStabilizing
         ? widget.progressPercent
         : _manualCompileInProgress
-            ? (photoCount != null && photoCount! > 0
-                ? (_manualFrame * 100.0 / photoCount!)
-                : 0.0)
-            : (photoCount != null && photoCount! > 0)
-                ? (widget.currentFrame * 100.0 / photoCount!)
-                : 0.0;
+        ? (photoCount != null && photoCount! > 0
+              ? (_manualFrame * 100.0 / photoCount!)
+              : 0.0)
+        : (photoCount != null && photoCount! > 0)
+        ? (widget.currentFrame * 100.0 / photoCount!)
+        : 0.0;
     final double progressValue = percent.clamp(0.0, 100.0) / 100.0;
 
     return _buildModalCard([
@@ -1009,15 +1008,17 @@ class CreatePageState extends State<CreatePage>
         final useCompactInfo = estimatedWidth.clamp(200.0, maxWidth) < 680;
 
         // Use actual bottom row height based on compact mode
-        final bottomRowHeight =
-            useCompactInfo ? compactBottomRowHeight : normalBottomRowHeight;
+        final bottomRowHeight = useCompactInfo
+            ? compactBottomRowHeight
+            : normalBottomRowHeight;
         final verticalPadding = useCompactInfo ? 8.0 : 24.0;
 
         // Top spacer matches the breathing room beneath the export button.
         final topSpacing = useCompactInfo ? 16.0 : 32.0;
 
         // Calculate video dimensions based on available space
-        final availableVideoHeight = constraints.maxHeight -
+        final availableVideoHeight =
+            constraints.maxHeight -
             bottomRowHeight -
             verticalPadding -
             topSpacing;
@@ -1168,8 +1169,9 @@ class CreatePageState extends State<CreatePage>
         Wrap(
           spacing: 6,
           runSpacing: 6,
-          children:
-              infoChips.map((chip) => _buildInfoChipWidget(chip)).toList(),
+          children: infoChips
+              .map((chip) => _buildInfoChipWidget(chip))
+              .toList(),
         ),
       ],
     );

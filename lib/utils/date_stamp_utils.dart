@@ -698,8 +698,9 @@ Examples
         final imageHeight = frame.image.height.toDouble();
         frame.image.dispose();
         codec.dispose();
-        watermarkOffset =
-            isLowerCorner ? -(imageHeight * 0.05) : (imageHeight * 0.05);
+        watermarkOffset = isLowerCorner
+            ? -(imageHeight * 0.05)
+            : (imageHeight * 0.05);
       }
 
       // Composite date
@@ -801,8 +802,9 @@ Examples
       final picture = recorder.endRecording();
       final image = await picture.toImage(imageWidth, imageHeight);
       picture.dispose();
-      LogService.instance
-          .log("[DATE_STAMP] picture.toImage completed for '$dateText'");
+      LogService.instance.log(
+        "[DATE_STAMP] picture.toImage completed for '$dateText'",
+      );
 
       return image;
     } catch (e) {
@@ -831,7 +833,8 @@ Examples
       );
       if (image == null) {
         LogService.instance.log(
-            "[DATE_STAMP] renderDateStampPng: image is null for '$dateText'");
+          "[DATE_STAMP] renderDateStampPng: image is null for '$dateText'",
+        );
         return false;
       }
 
@@ -839,7 +842,8 @@ Examples
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       if (byteData == null) {
         LogService.instance.log(
-            "[DATE_STAMP] renderDateStampPng: toByteData returned null for '$dateText'");
+          "[DATE_STAMP] renderDateStampPng: toByteData returned null for '$dateText'",
+        );
         return false;
       }
 
@@ -861,7 +865,7 @@ Examples
   /// Also returns the temp directory path for cleanup.
   /// [fontFamily]: Font family for date stamp text (defaults to Inter)
   static Future<({Map<String, String> dateToPath, String tempDir})?>
-      generateDateStampAssets({
+  generateDateStampAssets({
     required List<String> uniqueDates,
     required int videoHeight,
     required int sizePercent,
@@ -908,20 +912,21 @@ Examples
         final batch = tasks.sublist(start, end);
         final results = await Future.wait(
           batch.map(
-            (t) => renderDateStampPng(
-              dateText: t.dateText,
-              outputPath: t.outputPath,
-              videoHeight: videoHeight,
-              sizePercent: sizePercent,
-              fontFamily: fontFamily,
-            ).then((success) {
-              if (!success) {
-                LogService.instance.log(
-                  "[DATE_STAMP] Failed to render: ${t.dateText}",
-                );
-              }
-              return success ? MapEntry(t.dateText, t.outputPath) : null;
-            }),
+            (t) =>
+                renderDateStampPng(
+                  dateText: t.dateText,
+                  outputPath: t.outputPath,
+                  videoHeight: videoHeight,
+                  sizePercent: sizePercent,
+                  fontFamily: fontFamily,
+                ).then((success) {
+                  if (!success) {
+                    LogService.instance.log(
+                      "[DATE_STAMP] Failed to render: ${t.dateText}",
+                    );
+                  }
+                  return success ? MapEntry(t.dateText, t.outputPath) : null;
+                }),
           ),
         );
         for (final entry in results) {

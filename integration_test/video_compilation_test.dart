@@ -67,8 +67,9 @@ void main() {
 
       // Generate simple colored frames
       for (int i = 0; i < frameCount; i++) {
-        final timestamp =
-            timestamps != null ? timestamps[i] : 1000000000 + (i * 1000);
+        final timestamp = timestamps != null
+            ? timestamps[i]
+            : 1000000000 + (i * 1000);
         final framePath = p.join(orientationDir.path, '$timestamp.png');
 
         // Create a simple colored image

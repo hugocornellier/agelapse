@@ -142,10 +142,9 @@ class VideoUtils {
     String baseFilter,
     String inputLabel,
     int wmIndex,
-  ) =>
-      baseFilter
-          .replaceFirst('[0:v]', inputLabel)
-          .replaceFirst('[1:v]', '[$wmIndex:v]');
+  ) => baseFilter
+      .replaceFirst('[0:v]', inputLabel)
+      .replaceFirst('[1:v]', '[$wmIndex:v]');
 
   /// Builds the FFmpeg filter_complex string from overlay components.
   ///
@@ -284,7 +283,8 @@ class VideoUtils {
       return null;
     }
     LogService.instance.log(
-        "[VIDEO] _generateDateStampOverlay started for project $projectId");
+      "[VIDEO] _generateDateStampOverlay started for project $projectId",
+    );
     final projectIdStr = projectId.toString();
 
     // Check if date stamp is enabled
@@ -331,8 +331,7 @@ class VideoUtils {
     final String? watermarkPos = watermarkEnabled
         ? (await DB.instance.getSettingValueByTitle(
             'watermark_position',
-          ))
-            .toLowerCase()
+          )).toLowerCase()
         : null;
 
     // Get list of PNG files
@@ -396,22 +395,22 @@ class VideoUtils {
     for (int i = 0; i < frameDates.length; i++) {
       if (frameDates[i] != currentDate) {
         if (currentDate != null && currentDate.isNotEmpty) {
-          dateRanges.add(
-            (date: currentDate, startFrame: rangeStart, endFrame: i - 1),
-          );
+          dateRanges.add((
+            date: currentDate,
+            startFrame: rangeStart,
+            endFrame: i - 1,
+          ));
         }
         currentDate = frameDates[i];
         rangeStart = i;
       }
     }
     if (currentDate != null && currentDate.isNotEmpty) {
-      dateRanges.add(
-        (
-          date: currentDate,
-          startFrame: rangeStart,
-          endFrame: frameDates.length - 1
-        ),
-      );
+      dateRanges.add((
+        date: currentDate,
+        startFrame: rangeStart,
+        endFrame: frameDates.length - 1,
+      ));
     }
 
     LogService.instance.log(
@@ -450,8 +449,9 @@ class VideoUtils {
     }
 
     // Calculate font size
-    final int fontSize =
-        (videoHeight * resolvedSize / 100).clamp(12, 200).round();
+    final int fontSize = (videoHeight * resolvedSize / 100)
+        .clamp(12, 200)
+        .round();
 
     // Calculate position expressions
     String xExpr, yExpr;
@@ -482,8 +482,9 @@ class VideoUtils {
     // 2. Escape colons with \: (colon is FFmpeg's filter option separator)
     // 3. Escape single quotes
     // In Dart: '\\:' produces the string \: which FFmpeg interprets as literal colon.
-    final escapedFontPath =
-        fontFilePath.replaceAll('\\', '/').replaceAll(':', '\\:');
+    final escapedFontPath = fontFilePath
+        .replaceAll('\\', '/')
+        .replaceAll(':', '\\:');
 
     // Build chained drawtext filters: one per date range with enable expressions.
     // Each drawtext renders text for its time window. This uses zero extra inputs
@@ -569,8 +570,9 @@ class VideoUtils {
         final timestamp = DateTime.now().millisecondsSinceEpoch;
         final fontTempDir = path.join(tempBase, 'date_stamps_$timestamp');
         await Directory(fontTempDir).create(recursive: true);
-        final fontFile =
-            File(path.join(fontTempDir, 'agelapse_drawtext_font.ttf'));
+        final fontFile = File(
+          path.join(fontTempDir, 'agelapse_drawtext_font.ttf'),
+        );
         await fontFile.writeAsBytes(bytes.buffer.asUint8List(), flush: true);
         return (fontFile.path, fontTempDir);
       } catch (e) {
@@ -620,14 +622,13 @@ class VideoUtils {
 
   /// Loads the three core watermark settings shared by all encoding paths.
   static Future<({bool enabled, String pos, String filePath})>
-      _loadWatermarkSettings(int projectId) async {
+  _loadWatermarkSettings(int projectId) async {
     final bool enabled = await SettingsUtil.loadWatermarkSetting(
       projectId.toString(),
     );
     final String pos = (await DB.instance.getSettingValueByTitle(
       'watermark_position',
-    ))
-        .toLowerCase();
+    )).toLowerCase();
     final String filePath = await DirUtils.getWatermarkFilePath(projectId);
     return (enabled: enabled, pos: pos, filePath: filePath);
   }
@@ -663,8 +664,9 @@ class VideoUtils {
         await tempDir.delete(recursive: true);
       }
     } catch (e) {
-      LogService.instance
-          .log("[VIDEO] Failed to clean up date stamp temp dir: $e");
+      LogService.instance.log(
+        "[VIDEO] Failed to clean up date stamp temp dir: $e",
+      );
     }
   }
 
@@ -827,7 +829,8 @@ class VideoUtils {
         "[VIDEO] Platform: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}",
       );
 
-      String projectOrientation = orientation ??
+      String projectOrientation =
+          orientation ??
           await SettingsUtil.loadProjectOrientation(projectId.toString());
       final String stabilizedDirPath = await DirUtils.getStabilizedDirPath(
         projectId,
@@ -884,43 +887,43 @@ class VideoUtils {
         final outputDir = Directory(path.dirname(videoOutputPath));
         if (await outputDir.exists()) {
           if (Platform.isWindows) {
-            Process.run(
-                    'wmic',
-                    [
-                      'logicaldisk',
-                      'where',
-                      'DeviceID="${path.rootPrefix(videoOutputPath).replaceAll('\\', '')}"',
-                      'get',
-                      'FreeSpace',
-                      '/value',
-                    ],
-                    runInShell: true)
+            Process.run('wmic', [
+                  'logicaldisk',
+                  'where',
+                  'DeviceID="${path.rootPrefix(videoOutputPath).replaceAll('\\', '')}"',
+                  'get',
+                  'FreeSpace',
+                  '/value',
+                ], runInShell: true)
                 .then((result) {
-              LogService.instance.log(
-                "[VIDEO] Disk space check: ${result.stdout.toString().trim()}",
-              );
-            }).catchError((e) {
-              LogService.instance.log(
-                "[VIDEO] Disk space check failed: $e",
-              );
-            });
+                  LogService.instance.log(
+                    "[VIDEO] Disk space check: ${result.stdout.toString().trim()}",
+                  );
+                })
+                .catchError((e) {
+                  LogService.instance.log(
+                    "[VIDEO] Disk space check failed: $e",
+                  );
+                });
           } else if (Platform.isLinux || Platform.isMacOS) {
             // df works in both .deb and Flatpak (available in freedesktop runtime)
-            Process.run('df', ['-h', videoOutputPath]).then((result) {
-              if (result.exitCode == 0) {
-                LogService.instance.log(
-                  "[VIDEO] Disk space check:\n${result.stdout}",
-                );
-              } else {
-                LogService.instance.log(
-                  "[VIDEO] Disk space check unavailable (exit ${result.exitCode})",
-                );
-              }
-            }).catchError((dfError) {
-              LogService.instance.log(
-                "[VIDEO] Disk space check unavailable: $dfError",
-              );
-            });
+            Process.run('df', ['-h', videoOutputPath])
+                .then((result) {
+                  if (result.exitCode == 0) {
+                    LogService.instance.log(
+                      "[VIDEO] Disk space check:\n${result.stdout}",
+                    );
+                  } else {
+                    LogService.instance.log(
+                      "[VIDEO] Disk space check unavailable (exit ${result.exitCode})",
+                    );
+                  }
+                })
+                .catchError((dfError) {
+                  LogService.instance.log(
+                    "[VIDEO] Disk space check unavailable: $dfError",
+                  );
+                });
           }
         }
       } catch (e) {
@@ -973,8 +976,9 @@ class VideoUtils {
       }
 
       if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-        final String platformName =
-            Platform.isMacOS ? 'macOS' : 'Windows/Linux';
+        final String platformName = Platform.isMacOS
+            ? 'macOS'
+            : 'Windows/Linux';
         LogService.instance.log("[VIDEO] Using $platformName encoding path");
         try {
           final String framesDir = path.join(
@@ -1101,8 +1105,9 @@ class VideoUtils {
         return false;
       }
       final (videoWidth, videoHeight) = dimensions;
-      LogService.instance
-          .log("[VIDEO] Frame dimensions: ${videoWidth}x$videoHeight");
+      LogService.instance.log(
+        "[VIDEO] Frame dimensions: ${videoWidth}x$videoHeight",
+      );
 
       // Generate date stamp overlay with PNG assets (if enabled)
       // When color overlay is present, video input shifts and indices offset by 1.
@@ -1154,9 +1159,7 @@ class VideoUtils {
         backgroundFilter =
             "[0:v][1:v]overlay=shortest=1,format=${effectiveCodec.pixelFormat}[base]";
       } else if (needsBlurOverlay) {
-        final blurZoom = await SettingsUtil.loadBlurZoom(
-          projectId.toString(),
-        );
+        final blurZoom = await SettingsUtil.loadBlurZoom(projectId.toString());
         final blurStrength = await SettingsUtil.loadBlurStrength(
           projectId.toString(),
         );
@@ -1169,8 +1172,9 @@ class VideoUtils {
 
       // Build combined filter chain
       final filterResult = buildFilterChain(
-        colorOverlayFilter:
-            backgroundFilter.isNotEmpty ? backgroundFilter : null,
+        colorOverlayFilter: backgroundFilter.isNotEmpty
+            ? backgroundFilter
+            : null,
         dateStampOverlay: dateStampOverlay,
         watermarkFilterPart: watermarkFilterPart,
         watermarkInputIndex: watermarkInputIndex,
@@ -1181,8 +1185,9 @@ class VideoUtils {
       String filterArgs = filterResult.hasFilter
           ? '-filter_complex "${filterResult.filterComplex}"'
           : "";
-      String mapArg =
-          filterResult.hasMap ? '-map "${filterResult.mapLabel}"' : "";
+      String mapArg = filterResult.hasMap
+          ? '-map "${filterResult.mapLabel}"'
+          : "";
       LogService.instance.log(
         "[VIDEO] Filter chain: hasFilter=${filterResult.hasFilter}, "
         "mapLabel=${filterResult.mapLabel}, "
@@ -1245,8 +1250,9 @@ class VideoUtils {
       );
 
       // Build movflags
-      final String movFlags =
-          finalCodec.usesMovFlags ? '-movflags +faststart' : '';
+      final String movFlags = finalCodec.usesMovFlags
+          ? '-movflags +faststart'
+          : '';
 
       // For transparent videos with alpha output, ensure alpha channel is
       // preserved through the filter pipeline.
@@ -1259,12 +1265,13 @@ class VideoUtils {
 
       // Build the color source input (before concat) when needed
       final int outFps = outputFps(framerate);
-      final String colorSourceInput = needsColorOverlay &&
-              videoBg.solidColorHex != null
+      final String colorSourceInput =
+          needsColorOverlay && videoBg.solidColorHex != null
           ? '-f lavfi -i "color=c=${videoBg.solidColorHex!.replaceFirst('#', '0x')}:s=${videoWidth}x$videoHeight:r=$outFps" '
           : '';
 
-      String ffmpegCommand = "-y "
+      String ffmpegCommand =
+          "-y "
           "$colorSourceInput"
           "-f concat -safe 0 "
           "-i \"$listPath\" "
@@ -1483,7 +1490,8 @@ class VideoUtils {
   ) async {
     if (newestVideo == null) return false;
 
-    final bool newPhotos = newestVideo['photoCount'] !=
+    final bool newPhotos =
+        newestVideo['photoCount'] !=
         await _getTotalPhotoCountByProjectId(projectId);
     if (newPhotos) {
       return true;
@@ -1497,16 +1505,14 @@ class VideoUtils {
 
     final String watermarkEnabled = (await SettingsUtil.loadWatermarkSetting(
       projectId.toString(),
-    ))
-        .toString();
+    )).toString();
     if (newestVideo['watermarkEnabled'] != watermarkEnabled) {
       return true;
     }
 
     final String watermarkPos = (await DB.instance.getSettingValueByTitle(
       'watermark_position',
-    ))
-        .toLowerCase();
+    )).toLowerCase();
     if (newestVideo['watermarkPos'] != watermarkPos) {
       return true;
     }
@@ -1601,8 +1607,9 @@ class VideoUtils {
             ).writeAsBytes(dllBytes.buffer.asUint8List(), flush: true);
             LogService.instance.log("[VIDEO] Extracted DLL: $dll");
           } catch (e) {
-            LogService.instance
-                .log("[VIDEO] WARNING: Could not extract $dll: $e");
+            LogService.instance.log(
+              "[VIDEO] WARNING: Could not extract $dll: $e",
+            );
           }
         }
         await File(markerPath).writeAsString('2', flush: true);
@@ -1898,9 +1905,7 @@ class VideoUtils {
     LogService.instance.log("[VIDEO] outputPath: $outputPath");
     LogService.instance.log("[VIDEO] fps: $fps");
     if (dateStampOverlay != null) {
-      LogService.instance.log(
-        "[VIDEO] Date stamp overlay enabled (drawtext)",
-      );
+      LogService.instance.log("[VIDEO] Date stamp overlay enabled (drawtext)");
     }
 
     LogService.instance.log("[VIDEO] Resolved ffmpeg executable: $ffmpegExe");
@@ -1980,9 +1985,7 @@ class VideoUtils {
       backgroundFilterStr =
           '[0:v][1:v]overlay=shortest=1,format=${codec.pixelFormat}[base]';
     } else if (needsBlurOverlay && videoHeight != null) {
-      final blurZoom = await SettingsUtil.loadBlurZoom(
-        projectId.toString(),
-      );
+      final blurZoom = await SettingsUtil.loadBlurZoom(projectId.toString());
       final blurStrength = await SettingsUtil.loadBlurStrength(
         projectId.toString(),
       );
@@ -2105,23 +2108,23 @@ class VideoUtils {
           .transform(utf8.decoder)
           .transform(const LineSplitter())
           .listen((line) {
-        if (onLog != null) onLog(line);
-      });
+            if (onLog != null) onLog(line);
+          });
       proc.stderr
           .transform(utf8.decoder)
           .transform(const LineSplitter())
           .listen((line) {
-        if (onLog != null) onLog(line);
-        final m = RegExp(r'frame=\s*(\d+)').firstMatch(line);
-        if (m != null && onProgress != null) {
-          final videoFrame = int.tryParse(m.group(1)!);
-          if (videoFrame != null) {
-            final int outFps = outputFps(fps);
-            final int f = (videoFrame * fps) ~/ outFps;
-            onProgress(f);
-          }
-        }
-      });
+            if (onLog != null) onLog(line);
+            final m = RegExp(r'frame=\s*(\d+)').firstMatch(line);
+            if (m != null && onProgress != null) {
+              final videoFrame = int.tryParse(m.group(1)!);
+              if (videoFrame != null) {
+                final int outFps = outputFps(fps);
+                final int f = (videoFrame * fps) ~/ outFps;
+                onProgress(f);
+              }
+            }
+          });
 
       final code = await proc.exitCode;
       FFmpegProcessManager.instance.unregisterProcess();

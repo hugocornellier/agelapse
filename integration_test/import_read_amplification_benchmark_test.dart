@@ -121,8 +121,11 @@ void main() {
       final dst = '${dir.path}${Platform.pathSeparator}${entry.key}.out';
       final fp = await entry.value(sample, dst);
       expect(fp, expectedFp, reason: '${entry.key} fingerprint diverged');
-      expect(await File(dst).readAsBytes(), srcBytes,
-          reason: '${entry.key} written bytes diverged');
+      expect(
+        await File(dst).readAsBytes(),
+        srcBytes,
+        reason: '${entry.key} written bytes diverged',
+      );
     }
   });
 
@@ -142,14 +145,22 @@ void main() {
 
     final sizeMb = (srcBytes.length / (1024 * 1024)).toStringAsFixed(0);
     String x(int med) => (aMed / med).toStringAsFixed(2);
-    print('[read-amplification] platform=${Platform.operatingSystem} '
-        '${sizeMb}MB, $benchIterations iters, median/op');
-    print('  A baseline (3 reads + copy): '
-        '${(aMed / 1000).toStringAsFixed(2)} ms/op  (1.00x)');
-    print('  B read-once + write(memory): '
-        '${(bMed / 1000).toStringAsFixed(2)} ms/op  (${x(bMed)}x)');
-    print('  C read-once + File.copy:     '
-        '${(cMed / 1000).toStringAsFixed(2)} ms/op  (${x(cMed)}x)');
+    print(
+      '[read-amplification] platform=${Platform.operatingSystem} '
+      '${sizeMb}MB, $benchIterations iters, median/op',
+    );
+    print(
+      '  A baseline (3 reads + copy): '
+      '${(aMed / 1000).toStringAsFixed(2)} ms/op  (1.00x)',
+    );
+    print(
+      '  B read-once + write(memory): '
+      '${(bMed / 1000).toStringAsFixed(2)} ms/op  (${x(bMed)}x)',
+    );
+    print(
+      '  C read-once + File.copy:     '
+      '${(cMed / 1000).toStringAsFixed(2)} ms/op  (${x(cMed)}x)',
+    );
 
     expect(aMed, greaterThan(0));
     expect(bMed, greaterThan(0));

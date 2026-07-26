@@ -31,8 +31,8 @@ class ProjectsPageState extends State<ProjectsPage> {
   }
 
   Future<void> _getProjects() async {
-    final List<Map<String, dynamic>> projects =
-        await DB.instance.getAllProjects();
+    final List<Map<String, dynamic>> projects = await DB.instance
+        .getAllProjects();
     if (mounted) {
       setState(() => _projects = projects);
     }
@@ -42,14 +42,15 @@ class ProjectsPageState extends State<ProjectsPage> {
   Widget build(BuildContext context) {
     Widget bodyContents = !kIsWeb && isDesktop
         ? (_projects.isEmpty
-            ? _buildWelcomePageDesktop()
-            : _buildProjectSelectScreenDesktop())
+              ? _buildWelcomePageDesktop()
+              : _buildProjectSelectScreenDesktop())
         : (_projects.isEmpty
-            ? _buildWelcomePage()
-            : _buildProjectSelectScreen());
+              ? _buildWelcomePage()
+              : _buildProjectSelectScreen());
 
-    final Color backgroundColor =
-        _projects.isEmpty ? AppColors.background : AppColors.overlay;
+    final Color backgroundColor = _projects.isEmpty
+        ? AppColors.background
+        : AppColors.overlay;
 
     return Scaffold(
       appBar: AppBar(backgroundColor: backgroundColor, toolbarHeight: 0),

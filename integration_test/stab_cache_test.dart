@@ -443,35 +443,36 @@ void main() {
     });
 
     testWidgets(
-        'writeTransformCache upserts by cacheKey and preserves id/createdAt',
-        (tester) async {
-      app.main();
-      await tester.pump(const Duration(seconds: 2));
+      'writeTransformCache upserts by cacheKey and preserves id/createdAt',
+      (tester) async {
+        app.main();
+        await tester.pump(const Duration(seconds: 2));
 
-      final entry = _makeTransformEntry(projectId!);
-      await DB.instance.writeTransformCache(entry);
+        final entry = _makeTransformEntry(projectId!);
+        await DB.instance.writeTransformCache(entry);
 
-      final first = await DB.instance.getTransformCache(entry.cacheKey);
-      expect(first, isNotNull);
+        final first = await DB.instance.getTransformCache(entry.cacheKey);
+        expect(first, isNotNull);
 
-      final replacement = entry.copyWith(
-        translateX: 22.0,
-        translateY: 33.0,
-        rotationDegrees: -2.0,
-        scaleFactor: 0.95,
-        updatedAt: entry.updatedAt + 1000,
-      );
-      await DB.instance.writeTransformCache(replacement);
+        final replacement = entry.copyWith(
+          translateX: 22.0,
+          translateY: 33.0,
+          rotationDegrees: -2.0,
+          scaleFactor: 0.95,
+          updatedAt: entry.updatedAt + 1000,
+        );
+        await DB.instance.writeTransformCache(replacement);
 
-      final cached = await DB.instance.getTransformCache(entry.cacheKey);
-      expect(cached, isNotNull);
-      expect(cached!.id, first!.id);
-      expect(cached.createdAt, first.createdAt);
-      expect(cached.translateX, closeTo(22.0, 1e-9));
-      expect(cached.translateY, closeTo(33.0, 1e-9));
-      expect(cached.rotationDegrees, closeTo(-2.0, 1e-9));
-      expect(cached.scaleFactor, closeTo(0.95, 1e-9));
-    });
+        final cached = await DB.instance.getTransformCache(entry.cacheKey);
+        expect(cached, isNotNull);
+        expect(cached!.id, first!.id);
+        expect(cached.createdAt, first.createdAt);
+        expect(cached.translateX, closeTo(22.0, 1e-9));
+        expect(cached.translateY, closeTo(33.0, 1e-9));
+        expect(cached.rotationDegrees, closeTo(-2.0, 1e-9));
+        expect(cached.scaleFactor, closeTo(0.95, 1e-9));
+      },
+    );
 
     testWidgets(
       'clearTransformCacheForFingerprint respects scope and settings',

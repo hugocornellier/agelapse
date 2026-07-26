@@ -151,7 +151,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
 
   void _handlePreviewPointerSignal(PointerSignalEvent event) {
     if (event is PointerScrollEvent) {
-      final isCtrlOrCmd = HardwareKeyboard.instance.isControlPressed ||
+      final isCtrlOrCmd =
+          HardwareKeyboard.instance.isControlPressed ||
           HardwareKeyboard.instance.isMetaPressed;
 
       if (isCtrlOrCmd) {
@@ -204,16 +205,17 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       vsync: this,
       duration: const Duration(milliseconds: 400),
     );
-    _checkmarkScaleAnim = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.2), weight: 60),
-      TweenSequenceItem(tween: Tween(begin: 1.2, end: 0.9), weight: 20),
-      TweenSequenceItem(tween: Tween(begin: 0.9, end: 1.0), weight: 20),
-    ]).animate(
-      CurvedAnimation(
-        parent: _checkmarkAnimController,
-        curve: Curves.easeOut,
-      ),
-    );
+    _checkmarkScaleAnim =
+        TweenSequence<double>([
+          TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.2), weight: 60),
+          TweenSequenceItem(tween: Tween(begin: 1.2, end: 0.9), weight: 20),
+          TweenSequenceItem(tween: Tween(begin: 0.9, end: 1.0), weight: 20),
+        ]).animate(
+          CurvedAnimation(
+            parent: _checkmarkAnimController,
+            curve: Curves.easeOut,
+          ),
+        );
 
     if (isDesktop) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -405,13 +407,14 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
             builder: (context, constraints) {
               const double minPreviewHeight = 300;
               const double controlsEstimatedHeight = 160; // controls + spacing
-              final double availableForPreview = constraints.maxHeight -
+              final double availableForPreview =
+                  constraints.maxHeight -
                   24 -
                   controlsEstimatedHeight; // 24 for padding
               final double previewHeight =
                   availableForPreview >= minPreviewHeight
-                      ? availableForPreview
-                      : minPreviewHeight;
+                  ? availableForPreview
+                  : minPreviewHeight;
               final bool shouldEnableScroll =
                   availableForPreview < minPreviewHeight;
 
@@ -756,14 +759,14 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
   }
 
   void _showHelpDialog() => showQuickGuideDialog(
-        context,
-        'Goal: Center each pupil on its vertical line and place both pupils exactly on the horizontal line.\n\n'
-        'Horiz. Offset (decimal, +/-)\nShifts the image left/right. Increase to move the face right, decrease to move left.\n\n'
-        'Vert. Offset (decimal, +/-)\nShifts the image up/down. Increase to move the face up, decrease to move down.\n\n'
-        'Scale Factor (positive decimal)\nZooms in or out. Values > 1 enlarge, values between 0 and 1 shrink.\n\n'
-        'Rotation (decimal, +/-)\nTilts the image. Positive values rotate clockwise, negative counter-clockwise.\n\n'
-        'Use the toolbar arrows or type exact numbers. Keep adjusting until the pupils touch all three guides.',
-      );
+    context,
+    'Goal: Center each pupil on its vertical line and place both pupils exactly on the horizontal line.\n\n'
+    'Horiz. Offset (decimal, +/-)\nShifts the image left/right. Increase to move the face right, decrease to move left.\n\n'
+    'Vert. Offset (decimal, +/-)\nShifts the image up/down. Increase to move the face up, decrease to move down.\n\n'
+    'Scale Factor (positive decimal)\nZooms in or out. Values > 1 enlarge, values between 0 and 1 shrink.\n\n'
+    'Rotation (decimal, +/-)\nTilts the image. Positive values rotate clockwise, negative counter-clockwise.\n\n'
+    'Use the toolbar arrows or type exact numbers. Keep adjusting until the pupils touch all three guides.',
+  );
 
   Widget _buildControlsSection() {
     return Column(
@@ -1237,7 +1240,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
     final rot = double.tryParse(_inputController4.text) ?? 0;
 
     const double tolerance = 0.0001;
-    final bool hasChanges = (tx - _savedTx).abs() > tolerance ||
+    final bool hasChanges =
+        (tx - _savedTx).abs() > tolerance ||
         (ty - _savedTy).abs() > tolerance ||
         (mult - _savedMult).abs() > tolerance ||
         (rot - _savedRot).abs() > tolerance;
@@ -1276,9 +1280,9 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
             ManualStabOutcome.stale => 'Save outdated, please try again',
             _ => 'Failed to save changes',
           };
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(msg)),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(msg)));
         }
         return;
       }
@@ -1544,11 +1548,8 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
 
   Future<void> _loadSavedTransformAndBootPreview() async {
     final String timestamp = p.basenameWithoutExtension(rawPhotoPath);
-    final Map<String, dynamic>? row =
-        await DB.instance.getActivePhotoByTimestamp(
-      timestamp,
-      widget.projectId,
-    );
+    final Map<String, dynamic>? row = await DB.instance
+        .getActivePhotoByTimestamp(timestamp, widget.projectId);
     final String prefix = DB.instance.getStabilizedColumn(projectOrientation);
 
     double tx = 0;
@@ -1639,15 +1640,15 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
 
       final Uint8List? imageBytesStabilized =
           await StabUtils.generateStabilizedImageBytesCVAsync(
-        _rawImageBytes!,
-        rotationDegrees ?? 0,
-        scaleFactor ?? 1,
-        translateX ?? 0,
-        translateY ?? 0,
-        this.canvasWidth,
-        this.canvasHeight,
-        preserveBitDepth: _lossless,
-      );
+            _rawImageBytes!,
+            rotationDegrees ?? 0,
+            scaleFactor ?? 1,
+            translateX ?? 0,
+            translateY ?? 0,
+            this.canvasWidth,
+            this.canvasHeight,
+            preserveBitDepth: _lossless,
+          );
       if (imageBytesStabilized == null) {
         _log(
           'processRequest ABORTED: generateStabilizedImageBytesCVAsync returned null',
@@ -1665,14 +1666,14 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       if (save && _faceStabilizer != null) {
         final String projectOrientation =
             await SettingsUtil.loadProjectOrientation(
-          widget.projectId.toString(),
-        );
+              widget.projectId.toString(),
+            );
         final String stabilizedPhotoPath =
             await StabUtils.getStabilizedImagePath(
-          rawPhotoPath,
-          widget.projectId,
-          projectOrientation,
-        );
+              rawPhotoPath,
+              widget.projectId,
+              projectOrientation,
+            );
         final String stabThumbPath = FaceStabilizer.getStabThumbnailPath(
           stabilizedPhotoPath,
         );
@@ -1848,9 +1849,9 @@ class ManualStabilizationPageState extends State<ManualStabilizationPage>
       const double tolerance = 0.0001;
       bool changed =
           (_lastTx == null || (_lastTx! - (tx ?? 0)).abs() > tolerance) ||
-              (_lastTy == null || (_lastTy! - (ty ?? 0)).abs() > tolerance) ||
-              (_lastMult == null || (_lastMult! - mult).abs() > tolerance) ||
-              (_lastRot == null || (_lastRot! - (rot ?? 0)).abs() > tolerance);
+          (_lastTy == null || (_lastTy! - (ty ?? 0)).abs() > tolerance) ||
+          (_lastMult == null || (_lastMult! - mult).abs() > tolerance) ||
+          (_lastRot == null || (_lastRot! - (rot ?? 0)).abs() > tolerance);
 
       if (changed) {
         _log('Debounce applied: tx=$tx, ty=$ty, mult=$mult, rot=$rot');

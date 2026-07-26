@@ -60,8 +60,8 @@ class Utils {
       return Navigator.push(
         context,
         PageRouteBuilder(
-          pageBuilder: (_, __, ___) => screen,
-          transitionsBuilder: (_, animation, __, child) =>
+          pageBuilder: (_, _, _) => screen,
+          transitionsBuilder: (_, animation, _, child) =>
               FadeTransition(opacity: animation, child: child),
           transitionDuration: const Duration(milliseconds: 150),
           reverseTransitionDuration: const Duration(milliseconds: 150),
@@ -88,8 +88,8 @@ class Utils {
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(
-          pageBuilder: (_, __, ___) => screen,
-          transitionsBuilder: (_, animation, __, child) =>
+          pageBuilder: (_, _, _) => screen,
+          transitionsBuilder: (_, animation, _, child) =>
               FadeTransition(opacity: animation, child: child),
           transitionDuration: const Duration(milliseconds: 150),
           reverseTransitionDuration: const Duration(milliseconds: 150),

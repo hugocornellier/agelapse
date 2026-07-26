@@ -390,7 +390,8 @@ void main() {
         expect(
           relPath,
           startsWith('$subdir/'),
-          reason: 'sourceRelativePath should preserve subdirectory structure, '
+          reason:
+              'sourceRelativePath should preserve subdirectory structure, '
               'got: $relPath',
         );
       }

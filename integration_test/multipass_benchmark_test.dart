@@ -47,8 +47,11 @@ void main() {
       final projectId = await DB.instance.addProject(name, 'face', timestamp);
       final pid = projectId.toString();
 
-      await DB.instance
-          .setSettingByTitle('project_orientation', 'portrait', pid);
+      await DB.instance.setSettingByTitle(
+        'project_orientation',
+        'portrait',
+        pid,
+      );
       await DB.instance.setSettingByTitle('video_resolution', '1080p', pid);
       await DB.instance.setSettingByTitle('aspect_ratio', '16:9', pid);
       await DB.instance.setSettingByTitle('background_color', '#000000', pid);
@@ -58,8 +61,9 @@ void main() {
       final stabDir = await DirUtils.getStabilizedDirPath(projectId);
       await Directory(p.join(stabDir, 'portrait')).create(recursive: true);
       final thumbDir = await DirUtils.getThumbnailDirPath(projectId);
-      await Directory(p.join(thumbDir, 'stabilized', 'portrait'))
-          .create(recursive: true);
+      await Directory(
+        p.join(thumbDir, 'stabilized', 'portrait'),
+      ).create(recursive: true);
       final failDir = await DirUtils.getFailureDirPath(projectId);
       await Directory(failDir).create(recursive: true);
 
@@ -145,8 +149,10 @@ void main() {
         return;
       }
 
-      final files =
-          await dir.list().where((f) => f.path.endsWith('.jpg')).toList();
+      final files = await dir
+          .list()
+          .where((f) => f.path.endsWith('.jpg'))
+          .toList();
       files.sort((a, b) => a.path.compareTo(b.path));
 
       for (int i = 0; i < files.length && i < maxPhotos; i++) {
