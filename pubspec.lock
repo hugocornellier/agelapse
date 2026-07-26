@@ -226,12 +226,11 @@ packages:
     source: hosted
     version: "1.0.9"
   dartcv4:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: dartcv4
-      sha256: "5764d13550055da3bb35ca28e6866b837579dfb4b594582b7a7753785ca5dfef"
-      url: "https://pub.dev"
-    source: hosted
+      path: "third_party/dartcv4"
+      relative: true
+    source: path
     version: "2.2.1+4"
   dbus:
     dependency: transitive
@@ -245,7 +244,7 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: HEAD
+      ref: "5e212328208beb8f9671f8347c3e93c85004f113"
       resolved-ref: "5e212328208beb8f9671f8347c3e93c85004f113"
       url: "https://github.com/hugocornellier/desktop_drop_custom.git"
     source: git
@@ -934,10 +933,10 @@ packages:
     dependency: transitive
     description:
       name: native_toolchain_cmake
-      sha256: cd4865568c57f03c7ab1f138cc5032c5f77825d27083d6f5a3e9bbb3e8014a87
+      sha256: de90e8952bad0684bdcff4d674c53d961f5cd1fdcf3a0255a669a35986c4ac1d
       url: "https://pub.dev"
     source: hosted
-    version: "0.2.5"
+    version: "0.2.7"
   nested:
     dependency: transitive
     description:
@@ -1110,10 +1109,10 @@ packages:
     dependency: transitive
     description:
       name: photo_manager
-      sha256: bf840253a7a5a48774f3a23b042a673614785e9874e0c86e2837681d576ef252
+      sha256: "4f7de6c9778993c5c54cf1fb2eaa8d5c27c0771dc24a4dfca341aa81aef13fe1"
       url: "https://pub.dev"
     source: hosted
-    version: "3.10.0"
+    version: "3.11.0"
   photo_manager_image_provider:
     dependency: transitive
     description:

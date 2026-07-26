@@ -30,3 +30,6 @@ linter:
 analyzer:
   exclude:
     - "plugins/**"
+    # Keep the root analyzer focused on app-owned code. Vendored packages are
+    # validated by their upstream constraints and by our native build matrix.
+    - "third_party/**"

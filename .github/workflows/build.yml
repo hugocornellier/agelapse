@@ -36,7 +36,7 @@ jobs:
         run: flutter pub get ${{ matrix.flutter-channel == 'stable' && '--enforce-lockfile' || '' }}
 
       - name: Verify formatting
-        run: dart format --output=none --set-exit-if-changed .
+        run: bash tool/check_format.sh
 
       - name: Analyze
         run: flutter analyze --fatal-infos .
@@ -220,6 +220,10 @@ jobs:
           FLUTTER_XCODE_CODE_SIGNING_REQUIRED: 'NO'
           FLUTTER_XCODE_CODE_SIGNING_IDENTITY: ''
         run: flutter build macos --release
+
+      - name: Audit macOS release dependencies
+        if: matrix.flutter-channel == 'stable'
+        run: bash tool/check_macos_bundle_dependencies.sh build/macos/Build/Products/Release/AgeLapse.app
 
   build-linux:
     name: Build Linux (${{ matrix.flutter-channel }})

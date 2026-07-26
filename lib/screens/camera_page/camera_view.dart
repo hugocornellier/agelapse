@@ -892,10 +892,7 @@ class _CameraViewState extends State<CameraView>
         'assets/ghost-solid.svg',
         width: 18,
         height: 24,
-        colorFilter: ColorFilter.mode(
-          AppColors.textPrimary,
-          BlendMode.srcIn,
-        ),
+        colorFilter: ColorFilter.mode(AppColors.textPrimary, BlendMode.srcIn),
       );
     } else {
       return SvgPicture.asset(

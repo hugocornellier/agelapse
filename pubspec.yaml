@@ -17,6 +17,7 @@ dependencies:
   desktop_drop:
     git:
       url: https://github.com/hugocornellier/desktop_drop_custom.git
+      ref: 5e212328208beb8f9671f8347c3e93c85004f113
   device_info_plus: ^13.2.0
   downloadsfolder: ^2.0.0-pre.2
   exif_reader: ^4.1.0
@@ -71,6 +72,10 @@ dependencies:
   window_manager: ^0.5.2
 
 dependency_overrides:
+  # dartcv4 2.2.1+4 otherwise discovers host Jasper on macOS and can embed an
+  # architecture-specific Homebrew dependency in universal release builds.
+  dartcv4:
+    path: third_party/dartcv4
   flutter_avif_android:
     path: plugins/flutter_avif_android
 
