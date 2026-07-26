@@ -40,9 +40,9 @@ class AppTypography {
 /// Use this for `Container.decoration` wherever the settings pill-style
 /// background with rounded corners is needed.
 BoxDecoration settingsDropdownDecoration() => BoxDecoration(
-      color: AppColors.settingsCardBorder,
-      borderRadius: BorderRadius.circular(8),
-    );
+  color: AppColors.settingsCardBorder,
+  borderRadius: BorderRadius.circular(8),
+);
 
 /// Global accessor for current theme colors.
 /// Synced via MaterialApp.builder; always reflects current theme.

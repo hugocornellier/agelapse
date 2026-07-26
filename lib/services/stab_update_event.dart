@@ -37,12 +37,11 @@ class StabUpdateEvent {
   factory StabUpdateEvent.photoStabilized(
     int photoIndex, {
     String? timestamp,
-  }) =>
-      StabUpdateEvent._(
-        type: StabUpdateType.photoStabilized,
-        photoIndex: photoIndex,
-        timestamp: timestamp,
-      );
+  }) => StabUpdateEvent._(
+    type: StabUpdateType.photoStabilized,
+    photoIndex: photoIndex,
+    timestamp: timestamp,
+  );
 
   /// All photos have been stabilized.
   factory StabUpdateEvent.stabilizationComplete() =>

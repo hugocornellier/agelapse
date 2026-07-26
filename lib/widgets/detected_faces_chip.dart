@@ -14,11 +14,7 @@ class DetectedFacesChip extends StatelessWidget {
   final Future<DetectedFacesSnapshot>? future;
   final VoidCallback? onTap;
 
-  const DetectedFacesChip({
-    super.key,
-    required this.future,
-    this.onTap,
-  });
+  const DetectedFacesChip({super.key, required this.future, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -28,10 +24,7 @@ class DetectedFacesChip extends StatelessWidget {
       future: future,
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) {
-          return _chip(
-            child: _spinner(),
-            tappable: false,
-          );
+          return _chip(child: _spinner(), tappable: false);
         }
         final data = snap.data;
         if (data == null) return const SizedBox.shrink();

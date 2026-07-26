@@ -373,8 +373,9 @@ class OutputImageLoader {
         }
 
         try {
-          final loaded =
-              await StabUtils.loadImageFromFile(File(guideImagePath));
+          final loaded = await StabUtils.loadImageFromFile(
+            File(guideImagePath),
+          );
           guideImage?.dispose();
           guideImage = loaded;
           hasRealGuideImage = true;

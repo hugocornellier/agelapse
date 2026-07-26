@@ -32,8 +32,11 @@ void main() {
     final viaFile = await PhotoFingerprint.compute(path);
     final viaBytes = PhotoFingerprint.fromBytes(bytes);
 
-    expect(viaBytes, viaFile,
-        reason: 'fromBytes must equal compute or import dedup diverges');
+    expect(
+      viaBytes,
+      viaFile,
+      reason: 'fromBytes must equal compute or import dedup diverges',
+    );
     expect(viaBytes, startsWith('${bytes.length}:')); // {size}:{sha256hex}
   });
 

@@ -128,8 +128,7 @@ class SettingsUtil {
     return (await DB.instance.getSettingValueByTitle(
       'project_orientation',
       projectId,
-    ))
-        .toLowerCase();
+    )).toLowerCase();
   }
 
   static Future<String> loadOffsetXCurrentOrientation(String projectId) async {
@@ -143,8 +142,7 @@ class SettingsUtil {
   static Future<String> _loadOffsetCurrentOrientation(
     String projectId,
     String axis,
-  ) async =>
-      _loadOffsetAxis(projectId, axis, 'eye', null);
+  ) async => _loadOffsetAxis(projectId, axis, 'eye', null);
 
   static Future<String> loadGuideOffsetXCustomOrientation(
     String projectId,
@@ -172,16 +170,14 @@ class SettingsUtil {
     String projectId,
     String axis,
     String customOrientation,
-  ) async =>
-      _loadOffsetAxis(projectId, axis, 'guide', customOrientation);
+  ) async => _loadOffsetAxis(projectId, axis, 'guide', customOrientation);
 
   static Future<bool> hasOpenedNonEmptyGallery(String projectId) async =>
       _loadBoolSetting('opened_nonempty_gallery', projectId, false);
 
   static Future<void> setHasOpenedNonEmptyGalleryToTrue(
     String projectIdStr,
-  ) async =>
-      _setBoolToTrue('opened_nonempty_gallery', projectIdStr);
+  ) async => _setBoolToTrue('opened_nonempty_gallery', projectIdStr);
 
   static Future<bool> hasTakenFirstPhoto(String projectId) async =>
       _loadBoolSetting('has_taken_first_photo', projectId, false);
@@ -797,10 +793,10 @@ class DateStampSettings {
 
   /// Get resolved margin (handles preset vs custom).
   (double h, double v) get resolvedMargin => SettingsUtil.resolveMargin(
-        exportMarginPercent,
-        exportMarginH,
-        exportMarginV,
-      );
+    exportMarginPercent,
+    exportMarginH,
+    exportMarginV,
+  );
 
   /// Default settings
   static const DateStampSettings defaults = DateStampSettings(

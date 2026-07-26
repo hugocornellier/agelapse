@@ -98,8 +98,11 @@ void main() {
       final pid = projectId.toString();
 
       // Configure project settings
-      await DB.instance
-          .setSettingByTitle('project_orientation', 'portrait', pid);
+      await DB.instance.setSettingByTitle(
+        'project_orientation',
+        'portrait',
+        pid,
+      );
       await DB.instance.setSettingByTitle('video_resolution', '1080p', pid);
       await DB.instance.setSettingByTitle('aspect_ratio', '16:9', pid);
       await DB.instance.setSettingByTitle('background_color', '#000000', pid);
@@ -112,8 +115,9 @@ void main() {
       final stabDir = await DirUtils.getStabilizedDirPath(projectId);
       await Directory(p.join(stabDir, 'portrait')).create(recursive: true);
       final thumbDir = await DirUtils.getThumbnailDirPath(projectId);
-      await Directory(p.join(thumbDir, 'stabilized', 'portrait'))
-          .create(recursive: true);
+      await Directory(
+        p.join(thumbDir, 'stabilized', 'portrait'),
+      ).create(recursive: true);
       // Failure dir
       final failDir = await DirUtils.getFailureDirPath(projectId);
       await Directory(failDir).create(recursive: true);
@@ -129,8 +133,10 @@ void main() {
             await File(fixturePaths[i]).readAsBytes(),
             cv.IMREAD_COLOR,
           );
-          final big =
-              cv.resize(mat, (4000, 3000), interpolation: cv.INTER_CUBIC);
+          final big = cv.resize(mat, (
+            4000,
+            3000,
+          ), interpolation: cv.INTER_CUBIC);
           final (ok, jpg) = cv.imencode('.jpg', big);
           mat.dispose();
           big.dispose();
@@ -235,7 +241,7 @@ void main() {
             outputHash = decoded.isEmpty
                 ? 'DECODE_FAILED'
                 : '${decoded.cols}x${decoded.rows}t${decoded.type.value}'
-                    ':${sha256.convert(decoded.data)}';
+                      ':${sha256.convert(decoded.data)}';
             decoded.dispose();
           }
 
@@ -243,8 +249,10 @@ void main() {
           // to the embedding path can be verified bit-identical, not just the
           // PNG. The embedding is a stored side effect of stabilize().
           String embeddingHash = 'none';
-          final row =
-              await DB.instance.getActivePhotoByTimestamp(ts, projectId);
+          final row = await DB.instance.getActivePhotoByTimestamp(
+            ts,
+            projectId,
+          );
           final emb = row?['faceEmbedding'] as Uint8List?;
           if (emb != null) {
             embeddingHash = '${emb.length}:${sha256.convert(emb)}';
@@ -318,7 +326,9 @@ void main() {
 
         // Print per-round results
         final roundTotalMs = roundResults.fold<int>(
-            0, (sum, r) => sum + (r['elapsedMs'] as int));
+          0,
+          (sum, r) => sum + (r['elapsedMs'] as int),
+        );
         final roundAvgMs = roundTotalMs / roundResults.length;
 
         debugPrint(
@@ -361,8 +371,9 @@ void main() {
       final minMs = measuredTimes.first;
       final maxMs = measuredTimes.last;
 
-      final successCount =
-          measuredResults.where((r) => r['success'] == true).length;
+      final successCount = measuredResults
+          .where((r) => r['success'] == true)
+          .length;
 
       // ── Parity: per-fixture output hash + determinism check ────────────
       // Group every round's result by timestamp; a deterministic pipeline
@@ -402,14 +413,17 @@ void main() {
       // Write the manifest for BEFORE/AFTER diffing.
       final manifestDir = Directory('/tmp/agelapse_perf');
       await manifestDir.create(recursive: true);
-      final manifestFile =
-          File(p.join(manifestDir.path, '$perfLabel.manifest'));
+      final manifestFile = File(
+        p.join(manifestDir.path, '$perfLabel.manifest'),
+      );
       await manifestFile.writeAsString('${manifestLines.join('\n')}\n');
 
       debugPrint('');
       debugPrint('═══════════════════════════════════════════════');
-      debugPrint('  STABILIZATION BENCHMARK — label="$perfLabel" '
-          '(${perfLarge ? "~12MP upscaled" : "640x480 fixture"})');
+      debugPrint(
+        '  STABILIZATION BENCHMARK — label="$perfLabel" '
+        '(${perfLarge ? "~12MP upscaled" : "640x480 fixture"})',
+      );
       debugPrint('═══════════════════════════════════════════════');
       debugPrint('  Rounds: $rounds (warm-up discarded: $warmupRounds)');
       debugPrint('  Photos per round: ${faceDays.length}');
@@ -437,11 +451,12 @@ void main() {
       for (final ts in sortedTimestamps) {
         final entries = byTimestamp[ts]!;
         final mixes = entries.map((e) => e['opMix']).toSet();
-        final measured = entries
-            .skip(warmupRounds)
-            .map((e) => e['elapsedMs'] as int)
-            .toList()
-          ..sort();
+        final measured =
+            entries
+                .skip(warmupRounds)
+                .map((e) => e['elapsedMs'] as int)
+                .toList()
+              ..sort();
         final med = measured[measured.length ~/ 2];
         debugPrint('    ts=$ts median=${med}ms ${mixes.join('  |  ')}');
       }
@@ -451,9 +466,13 @@ void main() {
       // At least some photos should succeed
       expect(successCount, greaterThan(0));
       // Output must be deterministic for hash-based parity to be meaningful.
-      expect(nonDeterministic, isEmpty,
-          reason: 'Stabilization output is non-deterministic across rounds; '
-              'hash-based parity checking will not work.');
+      expect(
+        nonDeterministic,
+        isEmpty,
+        reason:
+            'Stabilization output is non-deterministic across rounds; '
+            'hash-based parity checking will not work.',
+      );
     });
   });
 }

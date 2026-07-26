@@ -38,9 +38,9 @@ class ImportPreviewItem {
   /// The capture-local DateTime for display, derived from [timestampMs] and
   /// [captureOffsetMinutes].
   DateTime get displayDate => CaptureTimezone.toLocalDateTime(
-        timestampMs,
-        offsetMinutes: captureOffsetMinutes,
-      );
+    timestampMs,
+    offsetMinutes: captureOffsetMinutes,
+  );
 
   /// Human-readable label for the date source tier.
   String get sourceLabel => sourceTier.sourceLabel;

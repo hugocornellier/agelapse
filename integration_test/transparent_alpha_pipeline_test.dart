@@ -80,9 +80,11 @@ void main() {
         // Verify ffprobe and ffmpeg are available.
         const ffprobePath = '/opt/homebrew/bin/ffprobe';
         const ffmpegPath = '/opt/homebrew/bin/ffmpeg';
-        final hasFfprobe = await File(ffprobePath).exists() ||
+        final hasFfprobe =
+            await File(ffprobePath).exists() ||
             (await Process.run('which', ['ffprobe'])).exitCode == 0;
-        final hasFfmpeg = await File(ffmpegPath).exists() ||
+        final hasFfmpeg =
+            await File(ffmpegPath).exists() ||
             (await Process.run('which', ['ffmpeg'])).exitCode == 0;
 
         if (!hasFfprobe || !hasFfmpeg) {
@@ -120,12 +122,18 @@ void main() {
 
         const orientation = 'portrait';
 
-        await DB.instance
-            .setSettingByTitle('project_orientation', orientation, pid);
+        await DB.instance.setSettingByTitle(
+          'project_orientation',
+          orientation,
+          pid,
+        );
         await DB.instance.setSettingByTitle('video_resolution', '1080p', pid);
         await DB.instance.setSettingByTitle('aspect_ratio', '16:9', pid);
-        await DB.instance
-            .setSettingByTitle('background_color', '#TRANSPARENT', pid);
+        await DB.instance.setSettingByTitle(
+          'background_color',
+          '#TRANSPARENT',
+          pid,
+        );
 
         // On macOS the alpha codec is ProRes 4444; on Linux it is VP9.
         final codec = Platform.isMacOS ? VideoCodec.prores4444 : VideoCodec.vp9;
@@ -145,8 +153,9 @@ void main() {
         await Directory(p.join(stabDir, orientation)).create(recursive: true);
 
         final thumbDir = await DirUtils.getThumbnailDirPath(testProjectId!);
-        await Directory(p.join(thumbDir, 'stabilized', orientation))
-            .create(recursive: true);
+        await Directory(
+          p.join(thumbDir, 'stabilized', orientation),
+        ).create(recursive: true);
 
         final failDir = await DirUtils.getFailureDirPath(testProjectId!);
         await Directory(failDir).create(recursive: true);
@@ -170,8 +179,11 @@ void main() {
         // This is the critical path: stabilize() calls saveStabilizedImage,
         // which is where the v2.6.0 regression lived.
         final settings = await StabilizationSettings.load(testProjectId!);
-        final stabilizer =
-            FaceStabilizer(testProjectId!, () {}, settings: settings);
+        final stabilizer = FaceStabilizer(
+          testProjectId!,
+          () {},
+          settings: settings,
+        );
         await stabilizer.init();
 
         late StabilizationResult stabResult;
@@ -274,20 +286,17 @@ void main() {
         );
 
         // ── 10. ffprobe: assert pixel format retains alpha ──────────────
-        final ffprobeResult = await Process.run(
-          ffprobePath,
-          [
-            '-v',
-            'error',
-            '-select_streams',
-            'v:0',
-            '-show_entries',
-            'stream=pix_fmt',
-            '-of',
-            'csv=p=0',
-            videoPath,
-          ],
-        );
+        final ffprobeResult = await Process.run(ffprobePath, [
+          '-v',
+          'error',
+          '-select_streams',
+          'v:0',
+          '-show_entries',
+          'stream=pix_fmt',
+          '-of',
+          'csv=p=0',
+          videoPath,
+        ]);
         expect(
           ffprobeResult.exitCode,
           equals(0),
@@ -306,7 +315,8 @@ void main() {
         expect(
           alphaPxFmts.contains(pixFmt),
           isTrue,
-          reason: 'Output pixel format must be alpha-capable. '
+          reason:
+              'Output pixel format must be alpha-capable. '
               'Got: "$pixFmt". Expected one of: $alphaPxFmts. '
               'REGRESSION: the compiled video has lost its alpha channel.',
         );
@@ -315,34 +325,36 @@ void main() {
         final tmpDir = Directory.systemTemp.createTempSync('alpha_test_');
         final firstFramePath = p.join(tmpDir.path, 'frame0.png');
         try {
-          final ffmpegResult = await Process.run(
-            ffmpegPath,
-            [
-              '-y',
-              '-i',
-              videoPath,
-              '-vframes',
-              '1',
-              '-vf',
-              'format=rgba',
-              firstFramePath,
-            ],
-          );
+          final ffmpegResult = await Process.run(ffmpegPath, [
+            '-y',
+            '-i',
+            videoPath,
+            '-vframes',
+            '1',
+            '-vf',
+            'format=rgba',
+            firstFramePath,
+          ]);
           expect(
             ffmpegResult.exitCode,
             equals(0),
-            reason: 'ffmpeg frame extraction must succeed. '
+            reason:
+                'ffmpeg frame extraction must succeed. '
                 'stderr: ${ffmpegResult.stderr}',
           );
 
           final frameBytes = await File(firstFramePath).readAsBytes();
           final frame = img.decodePng(frameBytes);
-          expect(frame, isNotNull,
-              reason: 'Extracted first frame must decode as a valid PNG');
+          expect(
+            frame,
+            isNotNull,
+            reason: 'Extracted first frame must decode as a valid PNG',
+          );
           expect(
             frame!.numChannels,
             equals(4),
-            reason: 'Extracted first frame must have 4 channels (RGBA). '
+            reason:
+                'Extracted first frame must have 4 channels (RGBA). '
                 'REGRESSION: alpha channel was destroyed during compilation.',
           );
 
@@ -359,7 +371,8 @@ void main() {
           expect(
             foundTransparentVideoPixel,
             isTrue,
-            reason: 'At least one pixel in the exported video frame must have '
+            reason:
+                'At least one pixel in the exported video frame must have '
                 'alpha < 255. REGRESSION: all pixels are fully opaque, '
                 'meaning alpha was composited onto black during stabilization '
                 'or video compilation.',

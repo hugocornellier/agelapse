@@ -108,7 +108,7 @@ class _DetectedFacesInfoSectionState extends State<DetectedFacesInfoSection> {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: faces.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, i) {
           final r = i < data.thumbs.length ? data.thumbs[i] : null;
           return Column(

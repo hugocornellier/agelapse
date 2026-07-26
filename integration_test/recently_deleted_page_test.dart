@@ -98,22 +98,21 @@ void main() {
 
     // ─── empty state ─────────────────────────────────────────────────────
 
-    testWidgets(
-      'shows empty-state copy when there are no trashed photos',
-      (tester) async {
-        testProjectId = await DB.instance.addProject(
-          'EmptyTrashTest',
-          'face',
-          DateTime.now().millisecondsSinceEpoch,
-        );
-        await pumpPage(tester, projectId: testProjectId!);
+    testWidgets('shows empty-state copy when there are no trashed photos', (
+      tester,
+    ) async {
+      testProjectId = await DB.instance.addProject(
+        'EmptyTrashTest',
+        'face',
+        DateTime.now().millisecondsSinceEpoch,
+      );
+      await pumpPage(tester, projectId: testProjectId!);
 
-        expect(find.text('No recently deleted photos'), findsOneWidget);
-        // The header overflow menu should be hidden when the trash is empty.
-        expect(find.byTooltip('More actions'), findsNothing);
-        expect(find.byTooltip('Select'), findsNothing);
-      },
-    );
+      expect(find.text('No recently deleted photos'), findsOneWidget);
+      // The header overflow menu should be hidden when the trash is empty.
+      expect(find.byTooltip('More actions'), findsNothing);
+      expect(find.byTooltip('Select'), findsNothing);
+    });
 
     // ─── grid renders + days label ───────────────────────────────────────
 
@@ -168,17 +167,27 @@ void main() {
         await tester.pumpAndSettle(const Duration(seconds: 2));
 
         // Row no longer in trash.
-        final trashed = await DB.instance
-            .getRecentlyDeletedPhotosByProjectID(testProjectId!);
-        expect(trashed, isEmpty,
-            reason: 'restored row should leave Recently Deleted');
+        final trashed = await DB.instance.getRecentlyDeletedPhotosByProjectID(
+          testProjectId!,
+        );
+        expect(
+          trashed,
+          isEmpty,
+          reason: 'restored row should leave Recently Deleted',
+        );
 
         // The right callback fired (restore changes active set, purge does
         // not).
-        expect(restoredCallbacks, equals(1),
-            reason: 'onRestored should be invoked exactly once');
-        expect(purgedCallbacks, equals(0),
-            reason: 'onPurged must NOT fire on a successful restore');
+        expect(
+          restoredCallbacks,
+          equals(1),
+          reason: 'onRestored should be invoked exactly once',
+        );
+        expect(
+          purgedCallbacks,
+          equals(0),
+          reason: 'onPurged must NOT fire on a successful restore',
+        );
 
         // SnackBar surfaces success.
         expect(find.text('Restored 1 photo'), findsOneWidget);
@@ -187,52 +196,59 @@ void main() {
 
     // ─── Delete Forever → confirm → permanent delete fires onPurged only ─
 
-    testWidgets(
-      'Delete Forever requires confirmation and fires onPurged (not '
-      'onRestored)',
-      (tester) async {
-        testProjectId = await DB.instance.addProject(
-          'SinglePermDeleteTest',
-          'face',
-          DateTime.now().millisecondsSinceEpoch,
-        );
-        await seedTrashed(testProjectId!, 1);
+    testWidgets('Delete Forever requires confirmation and fires onPurged (not '
+        'onRestored)', (tester) async {
+      testProjectId = await DB.instance.addProject(
+        'SinglePermDeleteTest',
+        'face',
+        DateTime.now().millisecondsSinceEpoch,
+      );
+      await seedTrashed(testProjectId!, 1);
 
-        int restoredCallbacks = 0;
-        int purgedCallbacks = 0;
-        await pumpPage(
-          tester,
-          projectId: testProjectId!,
-          onRestored: () async => restoredCallbacks++,
-          onPurged: () async => purgedCallbacks++,
-        );
+      int restoredCallbacks = 0;
+      int purgedCallbacks = 0;
+      await pumpPage(
+        tester,
+        projectId: testProjectId!,
+        onRestored: () async => restoredCallbacks++,
+        onPurged: () async => purgedCallbacks++,
+      );
 
-        await tester.tap(find.byType(GestureDetector).first);
-        await tester.pumpAndSettle();
+      await tester.tap(find.byType(GestureDetector).first);
+      await tester.pumpAndSettle();
 
-        await tester.tap(find.text('Delete Forever'));
-        await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete Forever'));
+      await tester.pumpAndSettle();
 
-        // Confirm dialog must appear before any destructive action.
-        expect(find.text('Delete Photo Forever?'), findsOneWidget);
+      // Confirm dialog must appear before any destructive action.
+      expect(find.text('Delete Photo Forever?'), findsOneWidget);
 
-        // Confirm.
-        await tester.tap(find.widgetWithText(TextButton, 'Delete Forever'));
-        await tester.pumpAndSettle(const Duration(seconds: 2));
+      // Confirm.
+      await tester.tap(find.widgetWithText(TextButton, 'Delete Forever'));
+      await tester.pumpAndSettle(const Duration(seconds: 2));
 
-        final trashed = await DB.instance
-            .getRecentlyDeletedPhotosByProjectID(testProjectId!);
-        expect(trashed, isEmpty,
-            reason: 'permanent-delete should remove the row');
+      final trashed = await DB.instance.getRecentlyDeletedPhotosByProjectID(
+        testProjectId!,
+      );
+      expect(
+        trashed,
+        isEmpty,
+        reason: 'permanent-delete should remove the row',
+      );
 
-        expect(purgedCallbacks, equals(1),
-            reason: 'onPurged must fire after permanent delete');
-        expect(restoredCallbacks, equals(0),
-            reason:
-                'onRestored must NOT fire on permanent delete (no recompile '
-                'needed, saves a video pass)');
-      },
-    );
+      expect(
+        purgedCallbacks,
+        equals(1),
+        reason: 'onPurged must fire after permanent delete',
+      );
+      expect(
+        restoredCallbacks,
+        equals(0),
+        reason:
+            'onRestored must NOT fire on permanent delete (no recompile '
+            'needed, saves a video pass)',
+      );
+    });
 
     // ─── cancel-button on confirm dialog leaves the row trashed ──────────
 
@@ -270,10 +286,14 @@ void main() {
           await tester.pumpAndSettle();
         }
 
-        final trashed = await DB.instance
-            .getRecentlyDeletedPhotosByProjectID(testProjectId!);
-        expect(trashed.length, 1,
-            reason: 'row must remain trashed when user cancels');
+        final trashed = await DB.instance.getRecentlyDeletedPhotosByProjectID(
+          testProjectId!,
+        );
+        expect(
+          trashed.length,
+          1,
+          reason: 'row must remain trashed when user cancels',
+        );
         expect(purgedCallbacks, equals(0));
       },
     );
@@ -334,10 +354,14 @@ void main() {
         await tester.tap(find.widgetWithText(TextButton, 'Empty Trash'));
         await tester.pumpAndSettle(const Duration(seconds: 3));
 
-        final trashed = await DB.instance
-            .getRecentlyDeletedPhotosByProjectID(testProjectId!);
-        expect(trashed, isEmpty,
-            reason: 'all rows should be permanently deleted');
+        final trashed = await DB.instance.getRecentlyDeletedPhotosByProjectID(
+          testProjectId!,
+        );
+        expect(
+          trashed,
+          isEmpty,
+          reason: 'all rows should be permanently deleted',
+        );
         expect(purgedCallbacks, equals(1));
       },
     );
@@ -371,13 +395,17 @@ void main() {
         await tester.tap(find.widgetWithText(TextButton, 'Restore All'));
         await tester.pumpAndSettle(const Duration(seconds: 3));
 
-        final trashed = await DB.instance
-            .getRecentlyDeletedPhotosByProjectID(testProjectId!);
+        final trashed = await DB.instance.getRecentlyDeletedPhotosByProjectID(
+          testProjectId!,
+        );
         expect(trashed, isEmpty);
 
         final active = await DB.instance.getPhotosByProjectID(testProjectId!);
-        expect(active.length, equals(3),
-            reason: 'all 3 rows should now be active');
+        expect(
+          active.length,
+          equals(3),
+          reason: 'all 3 rows should now be active',
+        );
         expect(restoredCallbacks, equals(1));
       },
     );
@@ -423,13 +451,19 @@ void main() {
         // Row stays trashed; no broken active row was resurrected.
         final stillTrashed = await DB.instance
             .getRecentlyDeletedPhotosByProjectID(testProjectId!);
-        expect(stillTrashed.length, 1,
-            reason:
-                'restoreImage must abort when the raw file is missing on disk');
+        expect(
+          stillTrashed.length,
+          1,
+          reason:
+              'restoreImage must abort when the raw file is missing on disk',
+        );
 
         // No restore callback (nothing actually restored → no recompile).
-        expect(restoredCallbacks, equals(0),
-            reason: 'onRestored must not fire when no row was restored');
+        expect(
+          restoredCallbacks,
+          equals(0),
+          reason: 'onRestored must not fire when no row was restored',
+        );
 
         // SnackBar mentions the missing file.
         expect(find.textContaining('missing on disk'), findsOneWidget);

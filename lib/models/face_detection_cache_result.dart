@@ -7,11 +7,7 @@ class CachedFace {
   final Point<double>? leftEye;
   final Point<double>? rightEye;
 
-  const CachedFace({
-    required this.boundingBox,
-    this.leftEye,
-    this.rightEye,
-  });
+  const CachedFace({required this.boundingBox, this.leftEye, this.rightEye});
 }
 
 class FaceDetectionCacheResult {

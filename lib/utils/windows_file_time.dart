@@ -31,56 +31,60 @@ const int _invalidHandleValue = -1;
 
 // --- Win32 signatures -------------------------------------------------------
 
-typedef _CreateFileWNative = IntPtr Function(
-  Pointer<Utf16> lpFileName,
-  Uint32 dwDesiredAccess,
-  Uint32 dwShareMode,
-  Pointer<Void> lpSecurityAttributes,
-  Uint32 dwCreationDisposition,
-  Uint32 dwFlagsAndAttributes,
-  IntPtr hTemplateFile,
-);
-typedef _CreateFileWDart = int Function(
-  Pointer<Utf16> lpFileName,
-  int dwDesiredAccess,
-  int dwShareMode,
-  Pointer<Void> lpSecurityAttributes,
-  int dwCreationDisposition,
-  int dwFlagsAndAttributes,
-  int hTemplateFile,
-);
+typedef _CreateFileWNative =
+    IntPtr Function(
+      Pointer<Utf16> lpFileName,
+      Uint32 dwDesiredAccess,
+      Uint32 dwShareMode,
+      Pointer<Void> lpSecurityAttributes,
+      Uint32 dwCreationDisposition,
+      Uint32 dwFlagsAndAttributes,
+      IntPtr hTemplateFile,
+    );
+typedef _CreateFileWDart =
+    int Function(
+      Pointer<Utf16> lpFileName,
+      int dwDesiredAccess,
+      int dwShareMode,
+      Pointer<Void> lpSecurityAttributes,
+      int dwCreationDisposition,
+      int dwFlagsAndAttributes,
+      int hTemplateFile,
+    );
 
 // GetFileTime / SetFileTime share the same shape (handle + 3 FILETIME ptrs).
-typedef _FileTimeNative = Int32 Function(
-  IntPtr hFile,
-  Pointer<Uint8> lpCreationTime,
-  Pointer<Uint8> lpLastAccessTime,
-  Pointer<Uint8> lpLastWriteTime,
-);
-typedef _FileTimeDart = int Function(
-  int hFile,
-  Pointer<Uint8> lpCreationTime,
-  Pointer<Uint8> lpLastAccessTime,
-  Pointer<Uint8> lpLastWriteTime,
-);
+typedef _FileTimeNative =
+    Int32 Function(
+      IntPtr hFile,
+      Pointer<Uint8> lpCreationTime,
+      Pointer<Uint8> lpLastAccessTime,
+      Pointer<Uint8> lpLastWriteTime,
+    );
+typedef _FileTimeDart =
+    int Function(
+      int hFile,
+      Pointer<Uint8> lpCreationTime,
+      Pointer<Uint8> lpLastAccessTime,
+      Pointer<Uint8> lpLastWriteTime,
+    );
 
 typedef _CloseHandleNative = Int32 Function(IntPtr hObject);
 typedef _CloseHandleDart = int Function(int hObject);
 
 class _Kernel32 {
   _Kernel32(DynamicLibrary lib)
-      : createFile = lib.lookupFunction<_CreateFileWNative, _CreateFileWDart>(
-          'CreateFileW',
-        ),
-        getFileTime = lib.lookupFunction<_FileTimeNative, _FileTimeDart>(
-          'GetFileTime',
-        ),
-        setFileTime = lib.lookupFunction<_FileTimeNative, _FileTimeDart>(
-          'SetFileTime',
-        ),
-        closeHandle = lib.lookupFunction<_CloseHandleNative, _CloseHandleDart>(
-          'CloseHandle',
-        );
+    : createFile = lib.lookupFunction<_CreateFileWNative, _CreateFileWDart>(
+        'CreateFileW',
+      ),
+      getFileTime = lib.lookupFunction<_FileTimeNative, _FileTimeDart>(
+        'GetFileTime',
+      ),
+      setFileTime = lib.lookupFunction<_FileTimeNative, _FileTimeDart>(
+        'SetFileTime',
+      ),
+      closeHandle = lib.lookupFunction<_CloseHandleNative, _CloseHandleDart>(
+        'CloseHandle',
+      );
 
   final _CreateFileWDart createFile;
   final _FileTimeDart getFileTime;

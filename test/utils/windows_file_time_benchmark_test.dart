@@ -67,8 +67,11 @@ void main() {
     // Stamp a known creation time so the copy result is deterministic.
     final ok = setWindowsCreationTimeRaw(samplePath, knownFileTime);
     expect(ok, isTrue, reason: 'failed to stamp known ctime on source');
-    expect(readWindowsCreationTimeRaw(samplePath), knownFileTime,
-        reason: 'source ctime did not round-trip (FAT volume?)');
+    expect(
+      readWindowsCreationTimeRaw(samplePath),
+      knownFileTime,
+      reason: 'source ctime did not round-trip (FAT volume?)',
+    );
   });
 
   tearDown(() {
@@ -85,28 +88,33 @@ void main() {
     return dst;
   }
 
-  test('FFI copy yields a byte-for-byte identical creation time to PowerShell',
-      () async {
-    final targetPs = freshTarget('ps');
-    final targetFfi = freshTarget('ffi');
+  test(
+    'FFI copy yields a byte-for-byte identical creation time to PowerShell',
+    () async {
+      final targetPs = freshTarget('ps');
+      final targetFfi = freshTarget('ffi');
 
-    // Precondition: targets start with a different ctime than the source.
-    expect(readWindowsCreationTimeRaw(targetPs), otherFileTime);
-    expect(readWindowsCreationTimeRaw(targetFfi), otherFileTime);
+      // Precondition: targets start with a different ctime than the source.
+      expect(readWindowsCreationTimeRaw(targetPs), otherFileTime);
+      expect(readWindowsCreationTimeRaw(targetFfi), otherFileTime);
 
-    await preserveCreationTimePowerShell(samplePath, targetPs);
-    copyWindowsCreationTime(samplePath, targetFfi);
+      await preserveCreationTimePowerShell(samplePath, targetPs);
+      copyWindowsCreationTime(samplePath, targetFfi);
 
-    final afterPs = readWindowsCreationTimeRaw(targetPs);
-    final afterFfi = readWindowsCreationTimeRaw(targetFfi);
+      final afterPs = readWindowsCreationTimeRaw(targetPs);
+      final afterFfi = readWindowsCreationTimeRaw(targetFfi);
 
-    // Both must equal the source exactly...
-    expect(afterPs, knownFileTime, reason: 'PowerShell did not copy ctime');
-    expect(afterFfi, knownFileTime, reason: 'FFI did not copy ctime');
-    // ...and therefore be byte-for-byte identical to each other.
-    expect(afterFfi, afterPs,
-        reason: 'FFI and PowerShell produced different creation times');
-  });
+      // Both must equal the source exactly...
+      expect(afterPs, knownFileTime, reason: 'PowerShell did not copy ctime');
+      expect(afterFfi, knownFileTime, reason: 'FFI did not copy ctime');
+      // ...and therefore be byte-for-byte identical to each other.
+      expect(
+        afterFfi,
+        afterPs,
+        reason: 'FFI and PowerShell produced different creation times',
+      );
+    },
+  );
 
   test('FFI copy is faster than spawning PowerShell', () async {
     const iterations = 20;
@@ -136,10 +144,14 @@ void main() {
     final speedup = ffiUs == 0 ? double.infinity : psUs / ffiUs;
 
     print('[creation-time benchmark] $iterations iterations on a real sample');
-    print('  PowerShell: ${psPerMs.toStringAsFixed(2)} ms/op '
-        '(${(psUs / 1000).toStringAsFixed(1)} ms total)');
-    print('  FFI:        ${ffiPerMs.toStringAsFixed(3)} ms/op '
-        '(${(ffiUs / 1000).toStringAsFixed(2)} ms total)');
+    print(
+      '  PowerShell: ${psPerMs.toStringAsFixed(2)} ms/op '
+      '(${(psUs / 1000).toStringAsFixed(1)} ms total)',
+    );
+    print(
+      '  FFI:        ${ffiPerMs.toStringAsFixed(3)} ms/op '
+      '(${(ffiUs / 1000).toStringAsFixed(2)} ms total)',
+    );
     print('  Speedup:    ${speedup.toStringAsFixed(0)}x faster');
 
     // Correctness must still hold after the benchmark loop.
@@ -148,8 +160,12 @@ void main() {
 
     // FFI is microseconds vs PowerShell's hundreds of ms per spawn, so a 5x
     // floor sits far below the real gap yet stays robust to shared-runner noise.
-    expect(psUs, greaterThan(ffiUs * 5),
-        reason: 'FFI ($ffiUs us) should be >=5x faster than '
-            'PowerShell ($psUs us)');
+    expect(
+      psUs,
+      greaterThan(ffiUs * 5),
+      reason:
+          'FFI ($ffiUs us) should be >=5x faster than '
+          'PowerShell ($psUs us)',
+    );
   });
 }

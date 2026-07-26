@@ -91,8 +91,8 @@ class CountdownProgressPainter extends CustomPainter {
     this.strokeWidth = 4,
     Color? color,
     Color? backgroundColor,
-  })  : color = color ?? AppColors.textPrimary,
-        backgroundColor = backgroundColor ?? const Color(0x4DFFFFFF);
+  }) : color = color ?? AppColors.textPrimary,
+       backgroundColor = backgroundColor ?? const Color(0x4DFFFFFF);
 
   @override
   void paint(Canvas canvas, Size size) {

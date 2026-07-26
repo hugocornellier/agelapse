@@ -77,14 +77,16 @@ Future<void> _main() async {
       _windowManagerInitialized = true;
       await windowManager.ensureInitialized();
 
-      final List<Map<String, dynamic>> projects =
-          await DB.instance.getAllProjects();
+      final List<Map<String, dynamic>> projects = await DB.instance
+          .getAllProjects();
       final bool hasProjects = projects.isNotEmpty;
 
-      final Size startSize =
-          hasProjects ? kWindowSizeDefault : kWindowSizeWelcome;
-      final Size minSize =
-          hasProjects ? kWindowMinSizeDefault : kWindowMinSizeWelcome;
+      final Size startSize = hasProjects
+          ? kWindowSizeDefault
+          : kWindowSizeWelcome;
+      final Size minSize = hasProjects
+          ? kWindowMinSizeDefault
+          : kWindowMinSizeWelcome;
 
       String windowTitle = 'AgeLapse';
       try {
@@ -166,10 +168,10 @@ Future<void> initializeNotifications() async {
     settings: initializationSettings,
     onDidReceiveNotificationResponse:
         (NotificationResponse notificationResponse) async {
-      if (notificationResponse.payload != null) {
-        // In the future, need to handle notification tapped logic here
-      }
-    },
+          if (notificationResponse.payload != null) {
+            // In the future, need to handle notification tapped logic here
+          }
+        },
   );
 }
 
@@ -215,10 +217,12 @@ void _updateSystemUiOverlay(bool isLight) {
   if (isMobile) {
     SystemChrome.setSystemUIOverlayStyle(
       SystemUiOverlayStyle(
-        systemNavigationBarColor:
-            isLight ? const Color(0xFFFFFFFF) : const Color(0xFF000000),
-        systemNavigationBarIconBrightness:
-            isLight ? Brightness.dark : Brightness.light,
+        systemNavigationBarColor: isLight
+            ? const Color(0xFFFFFFFF)
+            : const Color(0xFF000000),
+        systemNavigationBarIconBrightness: isLight
+            ? Brightness.dark
+            : Brightness.light,
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: isLight ? Brightness.dark : Brightness.light,
       ),

@@ -340,7 +340,8 @@ class GalleryUtils {
         }
       }
 
-      final String? dtStr = exifData['EXIF DateTimeOriginal']?.toString() ??
+      final String? dtStr =
+          exifData['EXIF DateTimeOriginal']?.toString() ??
           exifData['Image DateTime']?.toString();
       if (dtStr == null) return (true, null);
 
@@ -364,11 +365,11 @@ class GalleryUtils {
 
       final String? rawOffset =
           exifData['EXIF OffsetTimeOriginal']?.toString() ??
-              exifData['EXIF OffsetTime']?.toString() ??
-              exifData['EXIF OffsetTimeDigitized']?.toString() ??
-              exifData['Time Zone for Original Date']?.toString() ??
-              exifData['Time Zone for Digitized Date']?.toString() ??
-              exifData['Time Zone for Modification Date']?.toString();
+          exifData['EXIF OffsetTime']?.toString() ??
+          exifData['EXIF OffsetTimeDigitized']?.toString() ??
+          exifData['Time Zone for Original Date']?.toString() ??
+          exifData['Time Zone for Digitized Date']?.toString() ??
+          exifData['Time Zone for Modification Date']?.toString();
 
       if (rawOffset != null) {
         final norm = _normalizeOffset(rawOffset);
@@ -402,12 +403,11 @@ class GalleryUtils {
       final String? fileExtension = stabilizedPhoto['fileExtension'] as String?;
       final rawPhotoPath =
           await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-        timestamp,
-        projectId,
-        fileExtension: fileExtension,
-      );
-      return await DirUtils
-          .getStabilizedImagePathFromRawPathAndProjectOrientation(
+            timestamp,
+            projectId,
+            fileExtension: fileExtension,
+          );
+      return await DirUtils.getStabilizedImagePathFromRawPathAndProjectOrientation(
         projectId,
         rawPhotoPath,
         projectOrientation,
@@ -458,8 +458,9 @@ class GalleryUtils {
   ) async {
     if (stabImagePaths.isEmpty) return;
 
-    final timestamps =
-        stabImagePaths.map((p) => path.basenameWithoutExtension(p)).toList();
+    final timestamps = stabImagePaths
+        .map((p) => path.basenameWithoutExtension(p))
+        .toList();
     final statusMap = await DB.instance.getPhotoStatusBatch(
       timestamps,
       projectId,
@@ -522,11 +523,9 @@ class GalleryUtils {
   /// archive library.
   static Future<void> _processZipEntries(
     List<
-            ({
-              String name,
-              Future<void> Function(String tempFilePath) writeTempFile
-            })>
-        zipEntries,
+      ({String name, Future<void> Function(String tempFilePath) writeTempFile})
+    >
+    zipEntries,
     int projectId,
     ValueNotifier<String> activeProcessingDateNotifier,
     Function onImagesLoaded,
@@ -590,8 +589,7 @@ class GalleryUtils {
         }
         if (!ImageFormats.isAcceptedPath(lowerName)) return false;
         return f.size >= 10000;
-      }).toList()
-        ..sort((a, b) => a.name.compareTo(b.name));
+      }).toList()..sort((a, b) => a.name.compareTo(b.name));
 
       final zipEntries = entries
           .map(
@@ -681,14 +679,14 @@ class GalleryUtils {
     final reader = IsolateZipReader();
     try {
       await reader.open(File(file.path));
-      final List<ZipEntryInfo> rawEntries =
-          (await reader.entries()).where((entry) {
+      final List<ZipEntryInfo> rawEntries = (await reader.entries()).where((
+        entry,
+      ) {
         final String basenameOnly = path.basename(entry.name);
         return entry.size >= 10000 &&
             ImageFormats.isAcceptedPath(basenameOnly) &&
             !entry.isDir;
-      }).toList()
-            ..sort((a, b) => a.name.compareTo(b.name));
+      }).toList()..sort((a, b) => a.name.compareTo(b.name));
 
       final zipEntries = rawEntries
           .map(
@@ -798,11 +796,11 @@ class GalleryUtils {
           } else {
             final String? rawOffset =
                 data['EXIF OffsetTimeOriginal']?.toString() ??
-                    data['EXIF OffsetTime']?.toString() ??
-                    data['EXIF OffsetTimeDigitized']?.toString() ??
-                    data['Time Zone for Original Date']?.toString() ??
-                    data['Time Zone for Digitized Date']?.toString() ??
-                    data['Time Zone for Modification Date']?.toString();
+                data['EXIF OffsetTime']?.toString() ??
+                data['EXIF OffsetTimeDigitized']?.toString() ??
+                data['Time Zone for Original Date']?.toString() ??
+                data['Time Zone for Digitized Date']?.toString() ??
+                data['Time Zone for Modification Date']?.toString();
             if (rawOffset != null) {
               final norm = _normalizeOffset(rawOffset);
               final off = GalleryUtils.parseOffset(norm);
@@ -825,8 +823,9 @@ class GalleryUtils {
               parsed.month,
               parsed.day,
             );
-            final int utcMidnightMs =
-                localMidnight.toUtc().millisecondsSinceEpoch;
+            final int utcMidnightMs = localMidnight
+                .toUtc()
+                .millisecondsSinceEpoch;
             imageTimestampFromExif = utcMidnightMs;
             captureOffsetMinutes = localMidnight.timeZoneOffset.inMinutes;
           }
@@ -835,8 +834,9 @@ class GalleryUtils {
         if (imageTimestampFromExif == null) {
           final DateTime lm = await File(file.path).lastModified();
           final DateTime localMidnight = DateTime(lm.year, lm.month, lm.day);
-          final int utcMidnightMs =
-              localMidnight.toUtc().millisecondsSinceEpoch;
+          final int utcMidnightMs = localMidnight
+              .toUtc()
+              .millisecondsSinceEpoch;
           imageTimestampFromExif = utcMidnightMs;
           captureOffsetMinutes = localMidnight.timeZoneOffset.inMinutes;
         }
@@ -922,8 +922,9 @@ class GalleryUtils {
 
       // Tier 1: EXIF
       final Uint8List? bytes = await CameraUtils.readBytesInIsolate(filePath);
-      final Map<String, dynamic> exifData =
-          bytes != null ? await tryReadExifFromBytes(bytes) : {};
+      final Map<String, dynamic> exifData = bytes != null
+          ? await tryReadExifFromBytes(bytes)
+          : {};
 
       if (exifData.isNotEmpty) {
         (_, timestampMs) = await GalleryUtils.parseExifDate(exifData);
@@ -938,11 +939,11 @@ class GalleryUtils {
           } else {
             final String? rawOffset =
                 exifData['EXIF OffsetTimeOriginal']?.toString() ??
-                    exifData['EXIF OffsetTime']?.toString() ??
-                    exifData['EXIF OffsetTimeDigitized']?.toString() ??
-                    exifData['Time Zone for Original Date']?.toString() ??
-                    exifData['Time Zone for Digitized Date']?.toString() ??
-                    exifData['Time Zone for Modification Date']?.toString();
+                exifData['EXIF OffsetTime']?.toString() ??
+                exifData['EXIF OffsetTimeDigitized']?.toString() ??
+                exifData['Time Zone for Original Date']?.toString() ??
+                exifData['Time Zone for Digitized Date']?.toString() ??
+                exifData['Time Zone for Modification Date']?.toString();
             if (rawOffset != null) {
               final norm = _normalizeOffset(rawOffset);
               final off = GalleryUtils.parseOffset(norm);

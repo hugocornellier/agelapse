@@ -74,8 +74,8 @@ class ThemeProvider extends ChangeNotifier with WidgetsBindingObserver {
       extensions: [AppColorsData.light()],
       // Align colorScheme.primary with AppColors.accent
       colorScheme: _materialTheme.light().colorScheme.copyWith(
-            primary: AppColorsData.light().accent,
-          ),
+        primary: AppColorsData.light().accent,
+      ),
     );
   }
 
@@ -84,8 +84,8 @@ class ThemeProvider extends ChangeNotifier with WidgetsBindingObserver {
     return _materialTheme.dark().copyWith(
       extensions: [AppColorsData.dark()],
       colorScheme: _materialTheme.dark().colorScheme.copyWith(
-            primary: AppColorsData.dark().accent,
-          ),
+        primary: AppColorsData.dark().accent,
+      ),
     );
   }
 

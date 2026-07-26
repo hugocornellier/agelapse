@@ -130,7 +130,7 @@ class GalleryBottomSheets {
               ),
             ),
           ],
-          if (additionalContent != null) ...additionalContent,
+          ...?additionalContent,
         ],
       ),
     );

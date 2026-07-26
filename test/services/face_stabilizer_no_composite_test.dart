@@ -14,36 +14,41 @@ import 'package:flutter_test/flutter_test.dart';
 /// `compositeBlackPngBytes` call inside `saveStabilizedImage`, this test
 /// fails loudly on every `flutter test` run.
 void main() {
-  test('saveStabilizedImage does not composite transparent PNGs onto black',
-      () {
-    final src = File('lib/services/face_stabilizer.dart').readAsStringSync();
+  test(
+    'saveStabilizedImage does not composite transparent PNGs onto black',
+    () {
+      final src = File('lib/services/face_stabilizer.dart').readAsStringSync();
 
-    final saveStart =
-        src.indexOf('Future<(bool, Uint8List?)> saveStabilizedImage(');
-    expect(
-      saveStart,
-      greaterThanOrEqualTo(0),
-      reason: 'saveStabilizedImage method not found; did the signature change? '
-          'Update this regression guard to match.',
-    );
+      final saveStart = src.indexOf(
+        'Future<(bool, Uint8List?)> saveStabilizedImage(',
+      );
+      expect(
+        saveStart,
+        greaterThanOrEqualTo(0),
+        reason:
+            'saveStabilizedImage method not found; did the signature change? '
+            'Update this regression guard to match.',
+      );
 
-    // Match the end of the method body: newline + two-space closing brace.
-    final saveEnd = src.indexOf('\n  }\n', saveStart);
-    expect(
-      saveEnd,
-      greaterThan(saveStart),
-      reason: 'Could not locate end of saveStabilizedImage body.',
-    );
+      // Match the end of the method body: newline + two-space closing brace.
+      final saveEnd = src.indexOf('\n  }\n', saveStart);
+      expect(
+        saveEnd,
+        greaterThan(saveStart),
+        reason: 'Could not locate end of saveStabilizedImage body.',
+      );
 
-    final saveBody = src.substring(saveStart, saveEnd);
+      final saveBody = src.substring(saveStart, saveEnd);
 
-    expect(
-      saveBody.contains('compositeBlackPngBytes'),
-      isFalse,
-      reason: 'REGRESSION: saveStabilizedImage must not call '
-          'compositeBlackPngBytes. Compositing a transparent BGRA PNG onto '
-          'black destroys the alpha channel, which silently breaks ProRes '
-          '4444 / VP9 transparent video export. See v2.6.0 fix for details.',
-    );
-  });
+      expect(
+        saveBody.contains('compositeBlackPngBytes'),
+        isFalse,
+        reason:
+            'REGRESSION: saveStabilizedImage must not call '
+            'compositeBlackPngBytes. Compositing a transparent BGRA PNG onto '
+            'black destroys the alpha channel, which silently breaks ProRes '
+            '4444 / VP9 transparent video export. See v2.6.0 fix for details.',
+      );
+    },
+  );
 }

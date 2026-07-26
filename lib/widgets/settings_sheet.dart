@@ -265,13 +265,15 @@ class SettingsSheetState extends State<SettingsSheet> {
 
   void _init() {
     // Start all initializations and complete their Completers
-    _initializeData().then((result) {
-      _settingsCompleter.complete(result);
-      _notificationCompleter.complete();
-    }).catchError((e) {
-      _settingsCompleter.completeError(e);
-      _notificationCompleter.completeError(e);
-    });
+    _initializeData()
+        .then((result) {
+          _settingsCompleter.complete(result);
+          _notificationCompleter.complete();
+        })
+        .catchError((e) {
+          _settingsCompleter.completeError(e);
+          _notificationCompleter.completeError(e);
+        });
 
     _wireCompleter(_initializeVideoSettings(), _videoSettingsCompleter);
     _wireCompleter(_initializeWatermarkSettings(), _watermarkSettingsCompleter);
@@ -387,10 +389,12 @@ class SettingsSheetState extends State<SettingsSheet> {
         final aspectDecimal = StabUtils.getAspectRatioAsDecimal(aspectRatio);
         if (shortSide != null && aspectDecimal != null) {
           final longSide = (shortSide * aspectDecimal).toInt();
-          final width =
-              projectOrientation == "Landscape" ? longSide : shortSide.toInt();
-          final height =
-              projectOrientation == "Landscape" ? shortSide.toInt() : longSide;
+          final width = projectOrientation == "Landscape"
+              ? longSide
+              : shortSide.toInt();
+          final height = projectOrientation == "Landscape"
+              ? shortSide.toInt()
+              : longSide;
           w = width.toString();
           h = height.toString();
         }
@@ -676,7 +680,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                       // Check if this font is currently in use
                       final isInUse =
                           _galleryDateStampFont == font.familyName ||
-                              _exportDateStampFont == font.familyName;
+                          _exportDateStampFont == font.familyName;
 
                       return ListTile(
                         contentPadding: EdgeInsets.zero,
@@ -886,7 +890,8 @@ class SettingsSheetState extends State<SettingsSheet> {
 
   /// Handle font selection, including importing custom fonts.
   Future<void> _handleGalleryFontSelection(String? value) async {
-    final affectsExport = _exportDateStampEnabled &&
+    final affectsExport =
+        _exportDateStampEnabled &&
         _exportDateStampFont == DateStampUtils.fontSameAsGallery;
     await _handleFontSelection(
       value: value,
@@ -1036,9 +1041,9 @@ class SettingsSheetState extends State<SettingsSheet> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: Theme.of(context).colorScheme.copyWith(
-                  primary: AppColors.settingsAccent,
-                  surface: AppColors.settingsCardBackground,
-                ),
+              primary: AppColors.settingsAccent,
+              surface: AppColors.settingsCardBackground,
+            ),
           ),
           child: child!,
         );
@@ -1114,10 +1119,7 @@ class SettingsSheetState extends State<SettingsSheet> {
                 ),
               ),
               const SizedBox(height: 24),
-              SectionHeader(
-                title: 'Video',
-                icon: Icons.movie_outlined,
-              ),
+              SectionHeader(title: 'Video', icon: Icons.movie_outlined),
               Container(
                 decoration: BoxDecoration(
                   color: AppColors.settingsCardBackground,
@@ -1408,10 +1410,11 @@ class SettingsSheetState extends State<SettingsSheet> {
     final labelColor = isSelected
         ? accentColor
         : isDanger
-            ? AppColors.danger.withValues(alpha: 0.7)
-            : AppColors.settingsTextSecondary;
-    final bgColor =
-        isSelected ? accentColor.withValues(alpha: 0.12) : Colors.transparent;
+        ? AppColors.danger.withValues(alpha: 0.7)
+        : AppColors.settingsTextSecondary;
+    final bgColor = isSelected
+        ? accentColor.withValues(alpha: 0.12)
+        : Colors.transparent;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -2186,10 +2189,7 @@ class SettingsSheetState extends State<SettingsSheet> {
       children: [
         Divider(height: 1, color: AppColors.settingsDivider),
         const SizedBox(height: 16),
-        const SectionHeader(
-          title: 'Inspection Mode',
-          icon: Icons.grid_on,
-        ),
+        const SectionHeader(title: 'Inspection Mode', icon: Icons.grid_on),
         SettingListTile(
           title: 'Inspection grid columns',
           showDivider: false,
@@ -2308,8 +2308,9 @@ class SettingsSheetState extends State<SettingsSheet> {
       // 8K on macOS/iOS: H.264 disabled, default to HEVC if H.264 was selected
       availableCodecs = VideoCodec.availableCodecs(isTransparentVideo: false);
       disabledCodecs = {VideoCodec.h264};
-      effectiveCodec =
-          _videoCodec == VideoCodec.h264 ? VideoCodec.hevc : _videoCodec;
+      effectiveCodec = _videoCodec == VideoCodec.h264
+          ? VideoCodec.hevc
+          : _videoCodec;
     } else {
       effectiveCodec = _videoCodec;
       availableCodecs = VideoCodec.availableCodecs(isTransparentVideo: false);
@@ -2373,9 +2374,9 @@ class SettingsSheetState extends State<SettingsSheet> {
 
                 final shouldProceed =
                     await ConfirmActionDialog.showRecompileVideoSetting(
-                  context,
-                  'video codec',
-                );
+                      context,
+                      'video codec',
+                    );
 
                 if (shouldProceed && mounted) {
                   setState(() => _videoCodec = newCodec);
@@ -2685,15 +2686,16 @@ class SettingsSheetState extends State<SettingsSheet> {
                 ? (int? value) async {
                     if (value == null) return;
                     // Check cascade BEFORE persisting
-                    final affectsExport = _exportDateStampEnabled &&
+                    final affectsExport =
+                        _exportDateStampEnabled &&
                         _exportDateStampSize ==
                             DateStampUtils.sizeSameAsGallery;
                     if (affectsExport) {
                       final shouldProceed =
                           await ConfirmActionDialog.showRecompileVideo(
-                        context,
-                        'font size',
-                      );
+                            context,
+                            'font size',
+                          );
                       if (!shouldProceed) return;
                     }
 
@@ -3019,15 +3021,17 @@ class SettingsSheetState extends State<SettingsSheet> {
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(
-                  color:
-                      hasError ? AppColors.danger : AppColors.settingsDivider,
+                  color: hasError
+                      ? AppColors.danger
+                      : AppColors.settingsDivider,
                 ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(
-                  color:
-                      hasError ? AppColors.danger : AppColors.settingsDivider,
+                  color: hasError
+                      ? AppColors.danger
+                      : AppColors.settingsDivider,
                 ),
               ),
               focusedBorder: OutlineInputBorder(
@@ -3148,10 +3152,10 @@ class SettingsSheetState extends State<SettingsSheet> {
                       updateState: () {
                         _isCustomMargin = true;
                         _exportDateStampMargin = DateStampUtils.marginCustom;
-                        _customMarginHController.text =
-                            _customMarginH.toString();
-                        _customMarginVController.text =
-                            _customMarginV.toString();
+                        _customMarginHController.text = _customMarginH
+                            .toString();
+                        _customMarginVController.text = _customMarginV
+                            .toString();
                       },
                       dbKey: 'export_date_stamp_margin',
                       dbValue: DateStampUtils.marginCustom.toString(),
@@ -3214,7 +3218,8 @@ class SettingsSheetState extends State<SettingsSheet> {
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: _exportDateStampEnabled &&
+              onPressed:
+                  _exportDateStampEnabled &&
                       _customMarginHError == null &&
                       _customMarginVError == null
                   ? () async {
@@ -3223,9 +3228,9 @@ class SettingsSheetState extends State<SettingsSheet> {
                       if (h == null || v == null) return;
                       final shouldProceed =
                           await ConfirmActionDialog.showRecompileVideo(
-                        context,
-                        'margin',
-                      );
+                            context,
+                            'margin',
+                          );
                       if (!shouldProceed || !mounted) return;
                       setState(() {
                         _customMarginH = h;
@@ -3298,15 +3303,17 @@ class SettingsSheetState extends State<SettingsSheet> {
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(
-                  color:
-                      hasError ? AppColors.danger : AppColors.settingsDivider,
+                  color: hasError
+                      ? AppColors.danger
+                      : AppColors.settingsDivider,
                 ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(
-                  color:
-                      hasError ? AppColors.danger : AppColors.settingsDivider,
+                  color: hasError
+                      ? AppColors.danger
+                      : AppColors.settingsDivider,
                 ),
               ),
               focusedBorder: OutlineInputBorder(
@@ -3727,8 +3734,9 @@ class SettingsSheetState extends State<SettingsSheet> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed:
-                  _customResolutionModified ? _applyCustomResolution : null,
+              onPressed: _customResolutionModified
+                  ? _applyCustomResolution
+                  : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: _customResolutionModified
                     ? AppColors.settingsAccent
@@ -4104,9 +4112,9 @@ class SettingsSheetState extends State<SettingsSheet> {
                 // Transparent ↔ blurred: video-only recompile.
                 final shouldProceed =
                     await ConfirmActionDialog.showRecompileVideoSetting(
-                  context,
-                  'background mode',
-                );
+                      context,
+                      'background mode',
+                    );
                 if (!shouldProceed || !mounted) return;
 
                 setState(() {
@@ -4242,19 +4250,16 @@ class SettingsSheetState extends State<SettingsSheet> {
 
         final shouldProceed =
             await ConfirmActionDialog.showRecompileVideoSetting(
-          context,
-          'blur zoom',
-        );
+              context,
+              'blur zoom',
+            );
         if (!shouldProceed || !mounted) return;
 
         setState(() {
           _blurZoom = zoom;
           _isCustomBlurZoom = false;
         });
-        await SettingsUtil.saveBlurZoom(
-          widget.projectId.toString(),
-          zoom,
-        );
+        await SettingsUtil.saveBlurZoom(widget.projectId.toString(), zoom);
         await widget.recompileVideoCallback();
       },
     );
@@ -4287,8 +4292,9 @@ class SettingsSheetState extends State<SettingsSheet> {
                 border: InputBorder.none,
                 isDense: true,
               ),
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               textInputAction: TextInputAction.done,
               onChanged: (value) {
                 final v = double.tryParse(value);
@@ -4346,10 +4352,7 @@ class SettingsSheetState extends State<SettingsSheet> {
       _blurZoom = v;
       _isCustomBlurZoom = !_blurZoomPresets.containsValue(v);
     });
-    await SettingsUtil.saveBlurZoom(
-      widget.projectId.toString(),
-      v,
-    );
+    await SettingsUtil.saveBlurZoom(widget.projectId.toString(), v);
     await widget.recompileVideoCallback();
   }
 
@@ -4388,9 +4391,9 @@ class SettingsSheetState extends State<SettingsSheet> {
 
         final shouldProceed =
             await ConfirmActionDialog.showRecompileVideoSetting(
-          context,
-          'blur strength',
-        );
+              context,
+              'blur strength',
+            );
         if (!shouldProceed || !mounted) return;
 
         setState(() {
@@ -4433,8 +4436,9 @@ class SettingsSheetState extends State<SettingsSheet> {
                 border: InputBorder.none,
                 isDense: true,
               ),
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               textInputAction: TextInputAction.done,
               onChanged: (value) {
                 final v = double.tryParse(value);
@@ -4458,8 +4462,9 @@ class SettingsSheetState extends State<SettingsSheet> {
         GestureDetector(
           onTap: () {
             setState(() {
-              _isCustomBlurStrength =
-                  !_blurStrengthPresets.containsValue(_blurStrength);
+              _isCustomBlurStrength = !_blurStrengthPresets.containsValue(
+                _blurStrength,
+              );
             });
           },
           child: Icon(
@@ -4493,10 +4498,7 @@ class SettingsSheetState extends State<SettingsSheet> {
       _blurStrength = v;
       _isCustomBlurStrength = !_blurStrengthPresets.containsValue(v);
     });
-    await SettingsUtil.saveBlurStrength(
-      widget.projectId.toString(),
-      v,
-    );
+    await SettingsUtil.saveBlurStrength(widget.projectId.toString(), v);
     await widget.recompileVideoCallback();
   }
 

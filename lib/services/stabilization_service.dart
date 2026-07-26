@@ -387,10 +387,10 @@ class StabilizationService {
     try {
       final rawPhotoPath =
           await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-        photo['timestamp'],
-        _currentProjectId!,
-        fileExtension: photo['fileExtension'],
-      );
+            photo['timestamp'],
+            _currentProjectId!,
+            fileExtension: photo['fileExtension'],
+          );
 
       final result = await stabilizer.stabilize(
         rawPhotoPath,
@@ -416,8 +416,9 @@ class StabilizationService {
             projectId: _currentProjectId!,
           );
         } catch (e) {
-          LogService.instance
-              .log('[STAB] incrementPhotoStabAttempts threw: $e');
+          LogService.instance.log(
+            '[STAB] incrementPhotoStabAttempts threw: $e',
+          );
         }
       }
 
@@ -432,7 +433,8 @@ class StabilizationService {
           await DB.instance.setPhotoStabFailed(timestamp, _currentProjectId!);
         } catch (markErr) {
           LogService.instance.log(
-              '[STAB_ERROR] Failed to mark photo stabFailed in service: $markErr');
+            '[STAB_ERROR] Failed to mark photo stabFailed in service: $markErr',
+          );
         }
       }
       return StabilizationResult(success: false);
@@ -548,10 +550,7 @@ class StabilizationService {
     }
 
     await Future.wait(List.generate(workerCount, (_) => worker()));
-    return [
-      for (final photo in missedByIndex)
-        if (photo != null) photo,
-    ];
+    return [for (final photo in missedByIndex) ?photo];
   }
 
   Future<StabilizationResult?> _tryFastPathForPhoto(
@@ -561,10 +560,10 @@ class StabilizationService {
     try {
       final rawPhotoPath =
           await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
-        photo['timestamp'],
-        _currentProjectId!,
-        fileExtension: photo['fileExtension'],
-      );
+            photo['timestamp'],
+            _currentProjectId!,
+            fileExtension: photo['fileExtension'],
+          );
       return await _currentStabilizer!.tryTransformCacheFastPath(
         rawPhotoPath,
         _currentToken,
@@ -622,8 +621,9 @@ class StabilizationService {
     // the gallery filling oldest->newest even though the parallel fast path
     // finishes photos out of order.
     final timestamp = photo['timestamp']?.toString();
-    final released =
-        timestamp == null ? const <String>[] : gate.complete(timestamp);
+    final released = timestamp == null
+        ? const <String>[]
+        : gate.complete(timestamp);
 
     if (released.isEmpty) {
       // Buffered behind an earlier photo that hasn't finished yet. Advance the
@@ -673,12 +673,12 @@ class StabilizationService {
     final freshSettings = await StabilizationSettings.load(projectId);
     final currentOffsetX = freshSettings.eyeOffsetX.toString();
 
-    final photosNeedingRestab =
-        await DB.instance.getPhotosNeedingRestabilization(
-      projectId,
-      freshSettings.projectOrientation,
-      currentOffsetX,
-    );
+    final photosNeedingRestab = await DB.instance
+        .getPhotosNeedingRestabilization(
+          projectId,
+          freshSettings.projectOrientation,
+          currentOffsetX,
+        );
 
     for (var photo in photosNeedingRestab) {
       _currentToken?.throwIfCancelled();
@@ -729,7 +729,8 @@ class StabilizationService {
   Future<_VideoConfig> _loadVideoConfig(int projectId) async {
     final newestVideo = await DB.instance.getNewestVideoByProjectId(projectId);
     // Use cached settings if available, otherwise load fresh
-    final orientation = _currentSettings?.projectOrientation ??
+    final orientation =
+        _currentSettings?.projectOrientation ??
         await SettingsUtil.loadProjectOrientation(projectId.toString());
     final stabPhotoCount = await DB.instance.getStabilizedPhotoCountByProjectID(
       projectId,
@@ -783,7 +784,8 @@ class StabilizationService {
     try {
       final cfg = await _loadVideoConfig(projectId);
 
-      final result = cfg.newVideoNeeded ||
+      final result =
+          cfg.newVideoNeeded ||
           ((cfg.videoIsNull || cfg.settingsHaveChanged) &&
               cfg.stabPhotoCount > 1);
 
@@ -818,7 +820,8 @@ class StabilizationService {
       final newPhotosStabilized = _successfullyStabilized > 0;
 
       // Determine if video compilation is needed
-      final shouldCompile = cfg.newVideoNeeded ||
+      final shouldCompile =
+          cfg.newVideoNeeded ||
           ((cfg.videoIsNull ||
                   cfg.settingsHaveChanged ||
                   newPhotosStabilized) &&
@@ -895,9 +898,7 @@ class StabilizationService {
       return _VideoCompileResult.success();
     } catch (e) {
       if (e is CancelledException) rethrow;
-      LogService.instance.log(
-        'StabilizationService: Error creating video: $e',
-      );
+      LogService.instance.log('StabilizationService: Error creating video: $e');
       return _VideoCompileResult.failed(e.toString());
     }
   }

@@ -77,8 +77,9 @@ class ImageUtils {
   /// Create a black background image of the same size and composite the source on top
   static cv.Mat compositeOnBlackBackground(cv.Mat src) {
     // Create black background with same dimensions (depth-aware)
-    final bgType =
-        src.type.depth == 2 ? cv.MatType.CV_16UC3 : cv.MatType.CV_8UC3;
+    final bgType = src.type.depth == 2
+        ? cv.MatType.CV_16UC3
+        : cv.MatType.CV_8UC3;
     final bg = cv.Mat.zeros(src.rows, src.cols, bgType);
 
     // If source has alpha channel, we need to handle transparency
@@ -144,8 +145,9 @@ class ImageUtils {
     }
 
     // Composite on black background if has alpha
-    final composited =
-        mat.channels == 4 ? compositeOnBlackBackground(mat) : mat;
+    final composited = mat.channels == 4
+        ? compositeOnBlackBackground(mat)
+        : mat;
     final resized = resize(composited, width: width);
     final result = encodeJpg(resized, quality: quality);
 

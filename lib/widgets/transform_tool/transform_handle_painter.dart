@@ -306,7 +306,8 @@ class TransformHandlePainter extends CustomPainter {
     );
 
     final paint = Paint()
-      ..color = const Color(0x99666666) // Subtle gray at 60% opacity
+      ..color =
+          const Color(0x99666666) // Subtle gray at 60% opacity
       ..style = PaintingStyle.stroke
       ..strokeWidth = _effectiveBoundingBoxWidth;
 

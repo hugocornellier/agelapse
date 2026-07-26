@@ -10,7 +10,7 @@ import '../services/log_service.dart';
 
 class NotificationUtil {
   static final FlutterLocalNotificationsPlugin
-      _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
   static Future<void> cancelNotification(int projectId) async {
     await _flutterLocalNotificationsPlugin.cancel(id: projectId);
@@ -46,7 +46,8 @@ class NotificationUtil {
 
       await _flutterLocalNotificationsPlugin
           .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
+            AndroidFlutterLocalNotificationsPlugin
+          >()
           ?.createNotificationChannel(channel);
     }
 

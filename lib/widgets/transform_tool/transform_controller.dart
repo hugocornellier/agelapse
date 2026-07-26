@@ -44,8 +44,8 @@ class TransformController extends ChangeNotifier {
     this.displayScale = 1.0,
     this.historyEnabled = true,
     int maxHistorySize = 100,
-  })  : _state = initialState,
-        _history = TransformHistory(maxHistorySize: maxHistorySize);
+  }) : _state = initialState,
+       _history = TransformHistory(maxHistorySize: maxHistorySize);
 
   /// Create controller from database values
   factory TransformController.fromDatabaseValues({

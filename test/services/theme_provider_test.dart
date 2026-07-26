@@ -81,8 +81,7 @@ void main() {
         expect(provider.isLightMode, isFalse);
       });
 
-      testWidgets('returns value based on platform brightness for system mode',
-          (
+      testWidgets('returns value based on platform brightness for system mode', (
         tester,
       ) async {
         provider.themeMode = 'system';

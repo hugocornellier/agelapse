@@ -87,13 +87,16 @@ void main() {
         times.add(sw.elapsedMicroseconds);
         m.dispose();
       }
-      debugPrint('A.1  source decode (IMREAD_COLOR): '
-          'median ${_medianMs(times).toStringAsFixed(2)} ms/call (n=$n) '
-          '— removed once per photo by folding dims into the warp decode');
+      debugPrint(
+        'A.1  source decode (IMREAD_COLOR): '
+        'median ${_medianMs(times).toStringAsFixed(2)} ms/call (n=$n) '
+        '— removed once per photo by folding dims into the warp decode',
+      );
     });
 
-    testWidgets('A.4 — Mat reconstruct: fromList vs create+setAll',
-        (tester) async {
+    testWidgets('A.4 — Mat reconstruct: fromList vs create+setAll', (
+      tester,
+    ) async {
       final bytes = srcBytes;
       if (bytes == null) {
         markTestSkipped('Fixture not loaded');
@@ -114,15 +117,20 @@ void main() {
       final identical = _bytesEqual(a.data, fast.data);
       a.dispose();
       fast.dispose();
-      expect(identical, isTrue,
-          reason: 'create+setAll must reproduce Mat.fromList bytes exactly');
+      expect(
+        identical,
+        isTrue,
+        reason: 'create+setAll must reproduce Mat.fromList bytes exactly',
+      );
 
       const warm = 5, n = 80;
       for (int i = 0; i < warm; i++) {
         cv.Mat.fromList(h, w, cv.MatType(tv), frame).dispose();
-        (cv.Mat.create(rows: h, cols: w, type: cv.MatType(tv))
-              ..data.setAll(0, frame))
-            .dispose();
+        (cv.Mat.create(
+          rows: h,
+          cols: w,
+          type: cv.MatType(tv),
+        )..data.setAll(0, frame)).dispose();
       }
       final tFromList = <int>[];
       for (int i = 0; i < n; i++) {
@@ -141,11 +149,15 @@ void main() {
         tCreate.add(sw.elapsedMicroseconds);
         m.dispose();
       }
-      debugPrint('A.4  Mat.fromList:   '
-          'median ${_medianMs(tFromList).toStringAsFixed(2)} ms/call (n=$n)');
-      debugPrint('A.4  create+setAll:  '
-          'median ${_medianMs(tCreate).toStringAsFixed(2)} ms/call (n=$n) '
-          '— op-parity verified; runs once per saved photo');
+      debugPrint(
+        'A.4  Mat.fromList:   '
+        'median ${_medianMs(tFromList).toStringAsFixed(2)} ms/call (n=$n)',
+      );
+      debugPrint(
+        'A.4  create+setAll:  '
+        'median ${_medianMs(tCreate).toStringAsFixed(2)} ms/call (n=$n) '
+        '— op-parity verified; runs once per saved photo',
+      );
     });
 
     testWidgets('A.3 — clearMatCache broadcast cost', (tester) async {
@@ -160,9 +172,11 @@ void main() {
         sw.stop();
         times.add(sw.elapsedMicroseconds);
       }
-      debugPrint('A.3  clearMatCache (broadcast ${IsolatePool.workerCount} '
-          'workers): median ${_medianMs(times).toStringAsFixed(2)} ms/call '
-          '(n=$n) — called once per photo');
+      debugPrint(
+        'A.3  clearMatCache (broadcast ${IsolatePool.workerCount} '
+        'workers): median ${_medianMs(times).toStringAsFixed(2)} ms/call '
+        '(n=$n) — called once per photo',
+      );
     });
 
     testWidgets('#3 — redundant decode cost vs image size', (tester) async {
@@ -207,10 +221,14 @@ void main() {
       }
       base.dispose();
 
-      debugPrint('#3  redundant decode cost (saved once per single-face photo '
-          'if detect+embed share one decode in the plugin):');
-      debugPrint('#3  fixture(${smallMs.toStringAsFixed(2)} ms)  |  '
-          '${results.join('  |  ')}');
+      debugPrint(
+        '#3  redundant decode cost (saved once per single-face photo '
+        'if detect+embed share one decode in the plugin):',
+      );
+      debugPrint(
+        '#3  fixture(${smallMs.toStringAsFixed(2)} ms)  |  '
+        '${results.join('  |  ')}',
+      );
     });
   });
 
@@ -224,8 +242,9 @@ void main() {
       await cleanupFixtures();
     });
 
-    testWidgets('B.1 — isolate payload send: plain vs transferable',
-        (tester) async {
+    testWidgets('B.1 — isolate payload send: plain vs transferable', (
+      tester,
+    ) async {
       // The pool sends big per-photo payloads (canvas raw for encodeRawToPng,
       // source JPEG for prepareSourceMat) as plain Uint8List map values. This
       // measures whether wrapping them in TransferableTypedData is actually
@@ -265,14 +284,17 @@ void main() {
       ]) {
         final plain = await bench(size, false, 25);
         final transf = await bench(size, true, 25);
-        debugPrint('B.1  $label: plain ${plain.toStringAsFixed(2)} ms  |  '
-            'transferable ${transf.toStringAsFixed(2)} ms  (one-way + tiny reply)');
+        debugPrint(
+          'B.1  $label: plain ${plain.toStringAsFixed(2)} ms  |  '
+          'transferable ${transf.toStringAsFixed(2)} ms  (one-way + tiny reply)',
+        );
       }
       echo.kill(priority: Isolate.immediate);
     });
 
-    testWidgets('B.2 — photo-save DB writes: separate vs coalesced',
-        (tester) async {
+    testWidgets('B.2 — photo-save DB writes: separate vs coalesced', (
+      tester,
+    ) async {
       // saveStabilizedImage issues two UPDATEs on the same Photos row
       // (setPhotoStabilized, then setPhotoFaceData). Without WAL each UPDATE
       // is its own transaction+fsync; this measures what coalescing into one
@@ -281,11 +303,20 @@ void main() {
       await tester.pumpAndSettle(const Duration(seconds: 3));
 
       final now = DateTime.now().millisecondsSinceEpoch;
-      final projectId =
-          await DB.instance.addProject('microbench-db', 'face', now);
+      final projectId = await DB.instance.addProject(
+        'microbench-db',
+        'face',
+        now,
+      );
       const ts = '2000000000';
-      await DB.instance
-          .addPhoto(ts, projectId, '.jpg', 1000, '$ts.jpg', 'portrait');
+      await DB.instance.addPhoto(
+        ts,
+        projectId,
+        '.jpg',
+        1000,
+        '$ts.jpg',
+        'portrait',
+      );
       final embedding = Uint8List(768);
       for (int i = 0; i < embedding.length; i++) {
         embedding[i] = i & 0xff;
@@ -350,15 +381,18 @@ void main() {
 
       final separate = await bench(false, 40);
       final coalesced = await bench(true, 40);
-      debugPrint('B.2  photo-save DB writes: separate '
-          '${separate.toStringAsFixed(2)} ms  |  coalesced '
-          '${coalesced.toStringAsFixed(2)} ms  (per photo)');
+      debugPrint(
+        'B.2  photo-save DB writes: separate '
+        '${separate.toStringAsFixed(2)} ms  |  coalesced '
+        '${coalesced.toStringAsFixed(2)} ms  (per photo)',
+      );
 
       await DB.instance.deleteProjectCascade(projectId);
     });
 
-    testWidgets('B.3 — per-photo fingerprint cost (benchmark harness skew)',
-        (tester) async {
+    testWidgets('B.3 — per-photo fingerprint cost (benchmark harness skew)', (
+      tester,
+    ) async {
       // When stabilize() is called without knownFingerprint (as the benchmark
       // does), the cache path streams the whole source file through pure-Dart
       // SHA-256 per photo. The real batch path passes the import-time
@@ -403,18 +437,21 @@ void main() {
 
       final smallMs = await benchFile(smallTmp, 30);
       final bigMs = await benchFile(tmp, 30);
-      debugPrint('B.3  fingerprint sha256: fixture '
-          '${(small.length / 1024).round()}KB ${smallMs.toStringAsFixed(2)} ms'
-          '  |  12MP JPEG ${(bigJpeg.length / 1024 / 1024).toStringAsFixed(1)}MB '
-          '${bigMs.toStringAsFixed(2)} ms  (paid per photo by the benchmark, '
-          'not by the real batch path)');
+      debugPrint(
+        'B.3  fingerprint sha256: fixture '
+        '${(small.length / 1024).round()}KB ${smallMs.toStringAsFixed(2)} ms'
+        '  |  12MP JPEG ${(bigJpeg.length / 1024 / 1024).toStringAsFixed(1)}MB '
+        '${bigMs.toStringAsFixed(2)} ms  (paid per photo by the benchmark, '
+        'not by the real batch path)',
+      );
 
       await tmp.delete();
       await smallTmp.delete();
     });
 
-    testWidgets('B.4 — per-op prices at 12 MP (budget reconciliation)',
-        (tester) async {
+    testWidgets('B.4 — per-op prices at 12 MP (budget reconciliation)', (
+      tester,
+    ) async {
       // Prices each hot-path op on real pipeline data so the per-photo op mix
       // (printed by the benchmark) can be multiplied out and reconciled
       // against the measured ms/photo. Steady-state timings: the plugin's
@@ -442,11 +479,7 @@ void main() {
       const canvasW = 1080, canvasH = 1920;
       const srcId = 'b4_fixture';
 
-      Future<double> timeOp(
-        int n,
-        int warm,
-        Future<void> Function() op,
-      ) async {
+      Future<double> timeOp(int n, int warm, Future<void> Function() op) async {
         for (int i = 0; i < warm; i++) {
           await op();
         }
@@ -462,10 +495,7 @@ void main() {
 
       // 1. Source decode on the pool (prices prepareSourceMat).
       final decodeMs = await timeOp(20, 3, () async {
-        final dims = await StabUtils.prepareSourceMatAndGetDims(
-          bigJpeg,
-          srcId,
-        );
+        final dims = await StabUtils.prepareSourceMatAndGetDims(bigJpeg, srcId);
         if (dims == null) throw StateError('prepareSourceMat failed');
       });
 
@@ -559,23 +589,33 @@ void main() {
       await IsolatePool.instance.clearMatCache();
 
       debugPrint(
-          'B.4  op prices at 12 MP source / ${canvasW}x$canvasH canvas:');
+        'B.4  op prices at 12 MP source / ${canvasW}x$canvasH canvas:',
+      );
       debugPrint('B.4    srcDecode(pool):   ${decodeMs.toStringAsFixed(1)} ms');
       debugPrint('B.4    warp(cached src):  ${warpMs.toStringAsFixed(1)} ms');
-      debugPrint('B.4    detectFull(src, decode-cached): '
-          '${detectFullMs.toStringAsFixed(1)} ms');
-      debugPrint('B.4    detectRaw(canvas, faces=$rawDetectFaces): '
-          '${detectRawMs.toStringAsFixed(1)} ms');
+      debugPrint(
+        'B.4    detectFull(src, decode-cached): '
+        '${detectFullMs.toStringAsFixed(1)} ms',
+      );
+      debugPrint(
+        'B.4    detectRaw(canvas, faces=$rawDetectFaces): '
+        '${detectRawMs.toStringAsFixed(1)} ms',
+      );
       debugPrint('B.4    embed(cached):     ${embedMs.toStringAsFixed(1)} ms');
-      debugPrint('B.4    pngEncode L3:      ${png3Ms.toStringAsFixed(1)} ms '
-          '(${(png3Bytes / 1024).round()} KB)');
-      debugPrint('B.4    pngEncode L1:      ${png1Ms.toStringAsFixed(1)} ms '
-          '(${(png1Bytes / 1024).round()} KB) — pixel-identical, '
-          'byte-different; decision pending');
+      debugPrint(
+        'B.4    pngEncode L3:      ${png3Ms.toStringAsFixed(1)} ms '
+        '(${(png3Bytes / 1024).round()} KB)',
+      );
+      debugPrint(
+        'B.4    pngEncode L1:      ${png1Ms.toStringAsFixed(1)} ms '
+        '(${(png1Bytes / 1024).round()} KB) — pixel-identical, '
+        'byte-different; decision pending',
+      );
     });
 
-    testWidgets('B.5 — real-frame PNG encode price + L3 vs L1 pixel parity',
-        (tester) async {
+    testWidgets('B.5 — real-frame PNG encode price + L3 vs L1 pixel parity', (
+      tester,
+    ) async {
       // B.4 priced the encode on a synthetic full-content canvas. Real
       // stabilized frames are mostly black border (manifest scale ~0.22-0.27),
       // so this reproduces photo 1's exact transform from the benchmark
@@ -613,11 +653,7 @@ void main() {
       final data = real!['data'] as Uint8List;
       final matType = real['matType'] as int;
 
-      Future<double> timeOp(
-        int n,
-        int warm,
-        Future<void> Function() op,
-      ) async {
+      Future<double> timeOp(int n, int warm, Future<void> Function() op) async {
         for (int i = 0; i < warm; i++) {
           await op();
         }
@@ -660,20 +696,30 @@ void main() {
       await IsolatePool.instance.clearMatCache();
 
       debugPrint('B.5  real-frame encode (photo1 transform, scale 0.27):');
-      debugPrint('B.5    L3: ${l3Ms.toStringAsFixed(1)} ms '
-          '(${(png3!.length / 1024).round()} KB) — paid when the initial '
-          'pass wins');
-      debugPrint('B.5    L1: ${l1Ms.toStringAsFixed(1)} ms '
-          '(${(png1!.length / 1024).round()} KB) — paid when a refinement '
-          'pass wins');
-      debugPrint('B.5    pixel parity L3 vs L1: '
-          '${pixelIdentical ? "IDENTICAL" : "DIFFER (bug!)"}');
-      expect(pixelIdentical, isTrue,
-          reason: 'PNG compression level must not change decoded pixels');
+      debugPrint(
+        'B.5    L3: ${l3Ms.toStringAsFixed(1)} ms '
+        '(${(png3!.length / 1024).round()} KB) — paid when the initial '
+        'pass wins',
+      );
+      debugPrint(
+        'B.5    L1: ${l1Ms.toStringAsFixed(1)} ms '
+        '(${(png1!.length / 1024).round()} KB) — paid when a refinement '
+        'pass wins',
+      );
+      debugPrint(
+        'B.5    pixel parity L3 vs L1: '
+        '${pixelIdentical ? "IDENTICAL" : "DIFFER (bug!)"}',
+      );
+      expect(
+        pixelIdentical,
+        isTrue,
+        reason: 'PNG compression level must not change decoded pixels',
+      );
     });
 
-    testWidgets('B.7 — PNG compression curve (time + size, levels 0..9)',
-        (tester) async {
+    testWidgets('B.7 — PNG compression curve (time + size, levels 0..9)', (
+      tester,
+    ) async {
       // Prices the full zlib-level curve on real stabilized frames, so a
       // speed-vs-size setting can be grounded in numbers instead of a guess.
       // Fully in-process (cv.warpAffine + cv.imencode, no isolate pool), so
@@ -701,8 +747,11 @@ void main() {
           synthData[i + 2] = ((x >> 2) + (y >> 2)) & 0xFF; // R: coarse gradient
         }
       }
-      final synthSrc =
-          cv.Mat.create(rows: srcH, cols: srcW, type: cv.MatType.CV_8UC3);
+      final synthSrc = cv.Mat.create(
+        rows: srcH,
+        cols: srcW,
+        type: cv.MatType.CV_8UC3,
+      );
       synthSrc.data.setAll(0, synthData);
 
       // Real 12 MP fixture source, only when the assets are present (desktop).
@@ -712,8 +761,10 @@ void main() {
         final srcPath = await getSampleFacePathAsync(1);
         final small = await File(srcPath).readAsBytes();
         final srcSmall = cv.imdecode(small, cv.IMREAD_COLOR);
-        realSrc = cv.resize(srcSmall, (srcW, srcH),
-            interpolation: cv.INTER_CUBIC); // like PERF_LARGE
+        realSrc = cv.resize(srcSmall, (
+          srcW,
+          srcH,
+        ), interpolation: cv.INTER_CUBIC); // like PERF_LARGE
         srcSmall.dispose();
       }
 
@@ -722,10 +773,18 @@ void main() {
       // Reproduces the pool's opaque warp (isolate_pool stabilizeCVRaw) fully
       // in-process, so the frame content matches what the app actually saves.
       cv.Mat warpFrame(
-          cv.Mat s, double rot, double scale, double tx, double ty) {
+        cv.Mat s,
+        double rot,
+        double scale,
+        double tx,
+        double ty,
+      ) {
         final iw = s.cols, ih = s.rows;
-        final rotMat =
-            cv.getRotationMatrix2D(cv.Point2f(iw / 2.0, ih / 2.0), -rot, scale);
+        final rotMat = cv.getRotationMatrix2D(
+          cv.Point2f(iw / 2.0, ih / 2.0),
+          -rot,
+          scale,
+        );
         final offX = (canvasW - iw) / 2.0 + tx;
         final offY = (canvasH - ih) / 2.0 + ty;
         rotMat.set<double>(0, 2, rotMat.at<double>(0, 2) + offX);
@@ -750,12 +809,12 @@ void main() {
       final frames = <(String, cv.Mat)>[
         (
           'synthetic aligned scale0.27',
-          warpFrame(synthSrc, -2.370442, 0.268130, -26.4, -116.4)
+          warpFrame(synthSrc, -2.370442, 0.268130, -26.4, -116.4),
         ),
         if (realSrc != null) ...[
           (
             'real aligned scale0.27',
-            warpFrame(realSrc, -2.370442, 0.268130, -26.4, -116.4)
+            warpFrame(realSrc, -2.370442, 0.268130, -26.4, -116.4),
           ),
           ('real tight scale0.55', warpFrame(realSrc, 0.0, 0.55, 0.0, -40.0)),
         ],
@@ -763,13 +822,18 @@ void main() {
 
       const levels = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
-      debugPrint('B.7  PNG compression curve on ${Platform.operatingSystem} '
-          '(${canvasW}x$canvasH, in-process encode):');
+      debugPrint(
+        'B.7  PNG compression curve on ${Platform.operatingSystem} '
+        '(${canvasW}x$canvasH, in-process encode):',
+      );
 
       for (final (label, frame) in frames) {
         // Reference pixels (level 1) to assert losslessness across the curve.
-        final (okRef, refPng) = cv.imencode('.png', frame,
-            params: cv.VecI32.fromList([cv.IMWRITE_PNG_COMPRESSION, 1]));
+        final (okRef, refPng) = cv.imencode(
+          '.png',
+          frame,
+          params: cv.VecI32.fromList([cv.IMWRITE_PNG_COMPRESSION, 1]),
+        );
         if (!okRef) throw StateError('ref encode failed');
         final refDec = cv.imdecode(refPng, cv.IMREAD_UNCHANGED);
 
@@ -817,11 +881,16 @@ void main() {
           final vsL1Speed = (refMs == null || refMs == 0)
               ? '--'
               : '${(ms / refMs).toStringAsFixed(2)}x';
-          debugPrint('B.7    L$lvl: ${ms.toStringAsFixed(1)} ms '
-              '($vsL1Speed)  $kb KB ($vsL1Size vs L1)  '
-              '${lossless ? "lossless" : "PIXELS DIFFER!"}');
-          expect(lossless, isTrue,
-              reason: 'level $lvl must be pixel-identical to level 1');
+          debugPrint(
+            'B.7    L$lvl: ${ms.toStringAsFixed(1)} ms '
+            '($vsL1Speed)  $kb KB ($vsL1Size vs L1)  '
+            '${lossless ? "lossless" : "PIXELS DIFFER!"}',
+          );
+          expect(
+            lossless,
+            isTrue,
+            reason: 'level $lvl must be pixel-identical to level 1',
+          );
         }
         refDec.dispose();
         frame.dispose();

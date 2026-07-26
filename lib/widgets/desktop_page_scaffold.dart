@@ -167,7 +167,7 @@ class DesktopPageScaffold extends StatelessWidget {
             ],
             const Spacer(),
             // Trailing actions
-            if (actions != null) ...actions!,
+            ...?actions,
           ],
         ),
       ),
@@ -248,7 +248,7 @@ class DesktopPageScaffold extends StatelessWidget {
               icon: Icon(Icons.close, size: navIconSize),
               onPressed: onClose,
             ),
-          if (actions != null) ...actions!,
+          ...?actions,
         ],
         bottom: showBottomDivider
             ? PreferredSize(

@@ -135,16 +135,15 @@ class LinkedSourceUtils {
     String folderPath, {
     bool enabled = true,
     bool managedByApp = false,
-  }) =>
-      _saveBulkSettings(projectId.toString(), {
-        'linked_source_enabled': enabled.toString(),
-        'linked_source_mode': 'desktop_path',
-        'linked_source_display_path': folderPath,
-        'linked_source_root_path': folderPath,
-        'linked_source_tree_uri': '',
-        'linked_source_bookmark': '',
-        'linked_source_managed_by_app': managedByApp.toString(),
-      });
+  }) => _saveBulkSettings(projectId.toString(), {
+    'linked_source_enabled': enabled.toString(),
+    'linked_source_mode': 'desktop_path',
+    'linked_source_display_path': folderPath,
+    'linked_source_root_path': folderPath,
+    'linked_source_tree_uri': '',
+    'linked_source_bookmark': '',
+    'linked_source_managed_by_app': managedByApp.toString(),
+  });
 
   static Future<void> disableLinkedSource(int projectId) =>
       _saveBulkSettings(projectId.toString(), {

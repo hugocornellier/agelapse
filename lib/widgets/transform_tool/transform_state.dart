@@ -95,9 +95,9 @@ class TransformState {
 
   /// The center point of the image in canvas space (after translation)
   Offset get imageCenter => Offset(
-        canvasSize.width / 2 + translateX,
-        canvasSize.height / 2 + translateY,
-      );
+    canvasSize.width / 2 + translateX,
+    canvasSize.height / 2 + translateY,
+  );
 
   /// The effective size of the image after scaling (for visual rendering)
   Size get scaledImageSize =>
@@ -320,15 +320,15 @@ class TransformState {
 
   @override
   int get hashCode => Object.hash(
-        translateX,
-        translateY,
-        scale,
-        rotation,
-        pivot,
-        imageSize,
-        canvasSize,
-        baseScale,
-      );
+    translateX,
+    translateY,
+    scale,
+    rotation,
+    pivot,
+    imageSize,
+    canvasSize,
+    baseScale,
+  );
 
   @override
   String toString() {

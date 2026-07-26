@@ -89,35 +89,42 @@ void main() {
 
     test('out-of-range index returns null', () {
       expect(
-        _snap(DetectedFacesAvailability.available,
-                cache: _cache(2, selected: 5))
-            .selectedFaceIndex,
+        _snap(
+          DetectedFacesAvailability.available,
+          cache: _cache(2, selected: 5),
+        ).selectedFaceIndex,
         isNull,
       );
       expect(
-        _snap(DetectedFacesAvailability.available,
-                cache: _cache(2, selected: -1))
-            .selectedFaceIndex,
+        _snap(
+          DetectedFacesAvailability.available,
+          cache: _cache(2, selected: -1),
+        ).selectedFaceIndex,
         isNull,
       );
     });
 
     test('no cache returns null', () {
-      expect(_snap(DetectedFacesAvailability.notStabilized).selectedFaceIndex,
-          isNull);
+      expect(
+        _snap(DetectedFacesAvailability.notStabilized).selectedFaceIndex,
+        isNull,
+      );
     });
   });
 
   group('orientation / hasFaces / isAvailable', () {
     test('orientation reflects cache, null without cache', () {
       expect(
-        _snap(DetectedFacesAvailability.available,
-                cache: _cache(1, orientation: 'cw'))
-            .orientation,
+        _snap(
+          DetectedFacesAvailability.available,
+          cache: _cache(1, orientation: 'cw'),
+        ).orientation,
         'cw',
       );
       expect(
-          _snap(DetectedFacesAvailability.notStabilized).orientation, isNull);
+        _snap(DetectedFacesAvailability.notStabilized).orientation,
+        isNull,
+      );
     });
 
     test('hasFaces true only when count > 0', () {
@@ -126,14 +133,18 @@ void main() {
         isTrue,
       );
       expect(_snap(DetectedFacesAvailability.noFaces).hasFaces, isFalse);
-      expect(_snap(DetectedFacesAvailability.legacyCacheMissing).hasFaces,
-          isFalse);
+      expect(
+        _snap(DetectedFacesAvailability.legacyCacheMissing).hasFaces,
+        isFalse,
+      );
     });
 
     test('isAvailable true only for available', () {
       expect(
-        _snap(DetectedFacesAvailability.available, cache: _cache(1))
-            .isAvailable,
+        _snap(
+          DetectedFacesAvailability.available,
+          cache: _cache(1),
+        ).isAvailable,
         isTrue,
       );
       expect(_snap(DetectedFacesAvailability.noFaces).isAvailable, isFalse);

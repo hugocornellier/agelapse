@@ -176,7 +176,8 @@ class CustomFontManager {
       // TTF starts with: 00 01 00 00 or 'true' (74 72 75 65)
       // OTF starts with: 'OTTO' (4F 54 54 4F)
       // TTC starts with: 'ttcf' (74 74 63 66)
-      final isTTF = (bytes[0] == 0x00 &&
+      final isTTF =
+          (bytes[0] == 0x00 &&
               bytes[1] == 0x01 &&
               bytes[2] == 0x00 &&
               bytes[3] == 0x00) ||
@@ -184,11 +185,13 @@ class CustomFontManager {
               bytes[1] == 0x72 &&
               bytes[2] == 0x75 &&
               bytes[3] == 0x65);
-      final isOTF = bytes[0] == 0x4F &&
+      final isOTF =
+          bytes[0] == 0x4F &&
           bytes[1] == 0x54 &&
           bytes[2] == 0x54 &&
           bytes[3] == 0x4F;
-      final isTTC = bytes[0] == 0x74 &&
+      final isTTC =
+          bytes[0] == 0x74 &&
           bytes[1] == 0x74 &&
           bytes[2] == 0x63 &&
           bytes[3] == 0x66;
@@ -232,10 +235,13 @@ class CustomFontManager {
         .trim();
 
     // Capitalize first letter of each word
-    cleaned = cleaned.split(' ').map((word) {
-      if (word.isEmpty) return word;
-      return word[0].toUpperCase() + word.substring(1);
-    }).join(' ');
+    cleaned = cleaned
+        .split(' ')
+        .map((word) {
+          if (word.isEmpty) return word;
+          return word[0].toUpperCase() + word.substring(1);
+        })
+        .join(' ');
 
     // Limit length
     if (cleaned.length > 30) {

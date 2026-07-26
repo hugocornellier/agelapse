@@ -41,11 +41,10 @@ void main() {
       const dlls = ['libgcc_s_seh-1.dll', 'libwinpthread-1.dll'];
       for (final dll in dlls) {
         try {
-          final dllBytes = await rootBundle.load(
-            'assets/ffmpeg/windows/$dll',
-          );
-          await File(p.join(testBinDir.path, dll))
-              .writeAsBytes(dllBytes.buffer.asUint8List(), flush: true);
+          final dllBytes = await rootBundle.load('assets/ffmpeg/windows/$dll');
+          await File(
+            p.join(testBinDir.path, dll),
+          ).writeAsBytes(dllBytes.buffer.asUint8List(), flush: true);
         } catch (_) {
           // DLL not bundled; binary should be fully static.
         }
@@ -53,7 +52,8 @@ void main() {
 
       // Use minimal PATH: only Windows system dirs + our bundle dir.
       // This simulates a real user's machine with no dev tools.
-      final minimalPath = '${testBinDir.path};'
+      final minimalPath =
+          '${testBinDir.path};'
           r'C:\Windows\System32;C:\Windows';
 
       final result = await Process.run(
@@ -62,14 +62,21 @@ void main() {
         environment: {'PATH': minimalPath},
       );
 
-      expect(result.exitCode, equals(0),
-          reason: 'ffmpeg.exe must run on a stock Windows machine.\n'
-              'Exit code: ${result.exitCode}\n'
-              'stderr: ${result.stderr}');
+      expect(
+        result.exitCode,
+        equals(0),
+        reason:
+            'ffmpeg.exe must run on a stock Windows machine.\n'
+            'Exit code: ${result.exitCode}\n'
+            'stderr: ${result.stderr}',
+      );
 
       final stdout = result.stdout as String;
-      expect(stdout, contains('ffmpeg version'),
-          reason: 'ffmpeg -version should print version info');
+      expect(
+        stdout,
+        contains('ffmpeg version'),
+        reason: 'ffmpeg -version should print version info',
+      );
 
       // Verify drawtext filter is available
       final filterResult = await Process.run(
@@ -78,9 +85,13 @@ void main() {
         environment: {'PATH': minimalPath},
       );
       final filterOutput = filterResult.stdout as String;
-      expect(filterOutput, contains('drawtext'),
-          reason: 'ffmpeg must have drawtext filter compiled in.\n'
-              'Available filters: ${filterOutput.length > 500 ? filterOutput.substring(0, 500) : filterOutput}');
+      expect(
+        filterOutput,
+        contains('drawtext'),
+        reason:
+            'ffmpeg must have drawtext filter compiled in.\n'
+            'Available filters: ${filterOutput.length > 500 ? filterOutput.substring(0, 500) : filterOutput}',
+      );
 
       // Cleanup.
       await testBinDir.delete(recursive: true);
@@ -108,17 +119,20 @@ void main() {
       for (final dll in ['libgcc_s_seh-1.dll', 'libwinpthread-1.dll']) {
         try {
           final dllBytes = await rootBundle.load('assets/ffmpeg/windows/$dll');
-          await File(p.join(testDir.path, dll))
-              .writeAsBytes(dllBytes.buffer.asUint8List(), flush: true);
+          await File(
+            p.join(testDir.path, dll),
+          ).writeAsBytes(dllBytes.buffer.asUint8List(), flush: true);
         } catch (_) {}
       }
 
       // Extract font
-      final fontBytes =
-          await rootBundle.load('assets/fonts/Inter/Inter-Medium.ttf');
+      final fontBytes = await rootBundle.load(
+        'assets/fonts/Inter/Inter-Medium.ttf',
+      );
       final fontPath = p.join(testDir.path, 'test_font.ttf');
-      await File(fontPath)
-          .writeAsBytes(fontBytes.buffer.asUint8List(), flush: true);
+      await File(
+        fontPath,
+      ).writeAsBytes(fontBytes.buffer.asUint8List(), flush: true);
 
       // Create a test PNG frame using Dart (1x1 blue pixel)
       final framePath = p.join(testDir.path, 'frame.png');
@@ -138,7 +152,8 @@ void main() {
 
       // Use just the filename (relative path); working dir is set to font dir
       final escapedFontPath = p.basename(fontPath);
-      final filterComplex = '[0]drawtext='
+      final filterComplex =
+          '[0]drawtext='
           'fontfile=$escapedFontPath'
           ':text=Jan 15\\, 2024'
           ':fontsize=24'
@@ -148,33 +163,30 @@ void main() {
           '[dt0]';
 
       // Run FFmpeg with drawtext (working dir = font dir for Windows)
-      final result = await Process.run(
-          exePath,
-          [
-            '-y',
-            '-f',
-            'concat',
-            '-safe',
-            '0',
-            '-i',
-            listPath,
-            '-filter_complex',
-            filterComplex,
-            '-map',
-            '[dt0]',
-            '-vsync',
-            'cfr',
-            '-r',
-            '30',
-            '-pix_fmt',
-            'yuv420p',
-            '-c:v',
-            'libx264',
-            '-b:v',
-            '1000k',
-            outPath,
-          ],
-          workingDirectory: p.dirname(fontPath));
+      final result = await Process.run(exePath, [
+        '-y',
+        '-f',
+        'concat',
+        '-safe',
+        '0',
+        '-i',
+        listPath,
+        '-filter_complex',
+        filterComplex,
+        '-map',
+        '[dt0]',
+        '-vsync',
+        'cfr',
+        '-r',
+        '30',
+        '-pix_fmt',
+        'yuv420p',
+        '-c:v',
+        'libx264',
+        '-b:v',
+        '1000k',
+        outPath,
+      ], workingDirectory: p.dirname(fontPath));
 
       // Print full stderr for debugging
       if (result.exitCode != 0) {
@@ -190,9 +202,12 @@ void main() {
         print('Escaped font path: $escapedFontPath');
       }
 
-      expect(result.exitCode, 0,
-          reason:
-              'Drawtext filter failed.\nstderr: ${result.stderr}\nfilter: $filterComplex');
+      expect(
+        result.exitCode,
+        0,
+        reason:
+            'Drawtext filter failed.\nstderr: ${result.stderr}\nfilter: $filterComplex',
+      );
 
       // Cleanup
       await testDir.delete(recursive: true);
