@@ -537,12 +537,14 @@ jobs:
           flatpak install --user -y --noninteractive "$FLATPAK_FILE"
 
           flatpak info --user com.hugocornellier.agelapse
-          flatpak run --command=sh com.hugocornellier.agelapse -c \
-            'test -x /app/agelapse &&
-             test -x /app/bin/agelapse &&
-             test -d /app/data/flutter_assets &&
-             test -x /app/lib/ffmpeg/bin/ffmpeg &&
-             test -f /app/share/applications/com.hugocornellier.agelapse.desktop'
+          flatpak run --command=sh com.hugocornellier.agelapse -euxc \
+            'test -x /app/agelapse
+             test -x /app/bin/agelapse
+             test -d /app/data/flutter_assets
+             test -d /app/lib/ffmpeg
+             test -f /app/share/applications/com.hugocornellier.agelapse.desktop
+             command -v ffmpeg
+             ffmpeg -hide_banner -version'
 
           set +e
           timeout --signal=TERM --kill-after=10s 20s \
