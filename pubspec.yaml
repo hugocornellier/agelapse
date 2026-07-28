@@ -21,9 +21,9 @@ dependencies:
   device_info_plus: ^13.2.0
   downloadsfolder: ^2.0.0-pre.2
   exif_reader: ^4.1.0
-  cat_detection: ^1.4.0
+  cat_detection: ^2.0.0
   crypto: ^3.0.0
-  dog_detection: ^1.4.0
+  dog_detection: ^2.0.0
   face_detection_tflite: ^6.7.0
   ffi: ^2.1.0
   hand_detection: ^3.5.0
