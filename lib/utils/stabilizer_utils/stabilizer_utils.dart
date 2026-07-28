@@ -140,40 +140,48 @@ class StabUtils {
   // Cat Detection
   // ============================================================
 
-  static cat.CatDetectorIsolate? _catDetectorIsolate;
+  static cat.CatDetector? _catDetector;
   static final AsyncMutex _catDetectorMutex = AsyncMutex();
 
   static Future<void> _ensureCatDetector() async {
-    _catDetectorIsolate = await _ensureDetector<cat.CatDetectorIsolate>(
-      _catDetectorIsolate,
+    _catDetector = await _ensureDetector<cat.CatDetector>(
+      _catDetector,
       (d) => d.isReady,
-      () => cat.CatDetectorIsolate.spawn(mode: cat.CatDetectionMode.full),
+      () async {
+        final detector = cat.CatDetector(mode: cat.CatDetectionMode.full);
+        await detector.initialize();
+        return detector;
+      },
     );
   }
 
   static Future<void> disposeCatDetector() async {
-    await _catDetectorIsolate?.dispose();
-    _catDetectorIsolate = null;
+    await _catDetector?.dispose();
+    _catDetector = null;
   }
 
   // ============================================================
   // Dog Detection
   // ============================================================
 
-  static dog.DogDetectorIsolate? _dogDetectorIsolate;
+  static dog.DogDetector? _dogDetector;
   static final AsyncMutex _dogDetectorMutex = AsyncMutex();
 
   static Future<void> _ensureDogDetector() async {
-    _dogDetectorIsolate = await _ensureDetector<dog.DogDetectorIsolate>(
-      _dogDetectorIsolate,
+    _dogDetector = await _ensureDetector<dog.DogDetector>(
+      _dogDetector,
       (d) => d.isReady,
-      () => dog.DogDetectorIsolate.spawn(mode: dog.DogDetectionMode.full),
+      () async {
+        final detector = dog.DogDetector(mode: dog.DogDetectionMode.full);
+        await detector.initialize();
+        return detector;
+      },
     );
   }
 
   static Future<void> disposeDogDetector() async {
-    await _dogDetectorIsolate?.dispose();
-    _dogDetectorIsolate = null;
+    await _dogDetector?.dispose();
+    _dogDetector = null;
   }
 
   /// Validates PNG bytes by decoding and checking dimensions.
@@ -756,9 +764,9 @@ class StabUtils {
     bytes,
     _catDetectorMutex,
     _ensureCatDetector,
-    (b) => _catDetectorIsolate!.detectCats(b),
+    (b) => _catDetector!.detect(b),
     _convertCatFaces,
-    () => _catDetectorIsolate = null,
+    () => _catDetector = null,
     'cat',
     filterByFaceSize: filterByFaceSize,
     imageWidth: imageWidth,
@@ -795,9 +803,9 @@ class StabUtils {
     bytes,
     _dogDetectorMutex,
     _ensureDogDetector,
-    (b) => _dogDetectorIsolate!.detectDogs(b),
+    (b) => _dogDetector!.detect(b),
     _convertDogFaces,
-    () => _dogDetectorIsolate = null,
+    () => _dogDetector = null,
     'dog',
     filterByFaceSize: filterByFaceSize,
     imageWidth: imageWidth,
