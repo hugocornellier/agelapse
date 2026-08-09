@@ -5,10 +5,10 @@ packages:
     dependency: transitive
     description:
       name: animal_detection
-      sha256: d70893f0863a6ba5054374e03be1a7b93aa807a9b58f945dd57992cf5d8ca68f
+      sha256: "7d34f6064c8997ff0e126d1abba49d32fa1f21ebd5357844cef3697cca86e074"
       url: "https://pub.dev"
     source: hosted
-    version: "2.1.0"
+    version: "3.0.0"
   animated_bottom_navigation_bar:
     dependency: "direct main"
     description:
@@ -117,10 +117,10 @@ packages:
     dependency: "direct main"
     description:
       name: cat_detection
-      sha256: ebdf8982d6be694429b68c3b8149a990a79315eca743f2922e799a2ffab3a472
+      sha256: b7f4791ca8c66e993e691b327246f53c4979e0347cc8b584b76121af7745d1e0
       url: "https://pub.dev"
     source: hosted
-    version: "2.1.0"
+    version: "3.0.0"
   change_case:
     dependency: transitive
     description:
@@ -277,10 +277,10 @@ packages:
     dependency: "direct main"
     description:
       name: dog_detection
-      sha256: "670fe459bdbfa52182cc277cc06d6006bd55759bcbbb64f9cad8c7d1472f844d"
+      sha256: "1c204930e4a87492f28fde61062191e1c9004d42bfc1567dd0604df094b38a79"
       url: "https://pub.dev"
     source: hosted
-    version: "2.1.0"
+    version: "3.0.0"
   downloadsfolder:
     dependency: "direct main"
     description:
