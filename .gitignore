@@ -28,6 +28,7 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+/dist/
 
 app.*.symbols
 app.*.map.json
