@@ -1,0 +1,34 @@
+name: Prefetch native build artifacts
+description: >-
+  Restores, downloads with backoff, verifies, and installs the SQLite and
+  flutter_litert artifacts required by the selected platform.
+inputs:
+  target:
+    description: 'Target platform: android, ios, linux, macos, or windows'
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Restore verified native artifacts
+      id: native-artifact-cache
+      uses: actions/cache/restore@v5
+      with:
+        path: ${{ runner.temp }}/agelapse-native-artifacts
+        key: native-v1-${{ runner.os }}-${{ inputs.target }}-sqlite3-3.5.0-litert-gpu-v1
+
+    - name: Prefetch and install native artifacts
+      shell: bash
+      env:
+        NATIVE_ARTIFACT_TARGET: ${{ inputs.target }}
+        NATIVE_ARTIFACT_CACHE: ${{ runner.temp }}/agelapse-native-artifacts
+      working-directory: ${{ runner.temp }}
+      run: >-
+        dart "$GITHUB_WORKSPACE/tool/prefetch_native_artifacts.dart"
+        "$NATIVE_ARTIFACT_TARGET" "$NATIVE_ARTIFACT_CACHE" "$GITHUB_WORKSPACE"
+
+    - name: Save verified native artifacts
+      if: always() && steps.native-artifact-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v5
+      with:
+        path: ${{ runner.temp }}/agelapse-native-artifacts
+        key: ${{ steps.native-artifact-cache.outputs.cache-primary-key }}

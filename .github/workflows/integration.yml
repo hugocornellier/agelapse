@@ -27,13 +27,19 @@ jobs:
         with:
           channel: ${{ matrix.flutter-channel }}
           flutter-version: ${{ matrix.flutter-channel == 'stable' && '3.44.8' || '' }}
-          cache: true
-          cache-key: 'flutter-:os:-:channel:-:version:-:arch:-tests-unit-:hash:'
+          cache: ${{ matrix.flutter-channel == 'stable' }}
+          pub-cache: false
+          cache-key: 'flutter-:os:-:channel:-:version:-:arch:-:hash:'
 
       - name: Install dependencies
         # Beta pins framework packages independently of stable. Preserve the
         # committed lock exactly on stable; let beta resolve only SDK deltas.
         run: flutter pub get ${{ matrix.flutter-channel == 'stable' && '--enforce-lockfile' || '' }}
+
+      - name: Prefetch native artifacts
+        uses: ./.github/actions/prefetch-native-artifacts
+        with:
+          target: linux
 
       - name: Run unit tests with coverage
         run: flutter test --coverage
@@ -65,8 +71,9 @@ jobs:
         with:
           channel: ${{ matrix.flutter-channel }}
           flutter-version: ${{ matrix.flutter-channel == 'stable' && '3.44.8' || '' }}
-          cache: true
-          cache-key: 'flutter-:os:-:channel:-:version:-:arch:-tests-macos-${{ matrix.group }}-:hash:'
+          cache: ${{ matrix.flutter-channel == 'stable' }}
+          pub-cache: false
+          cache-key: 'flutter-:os:-:channel:-:version:-:arch:-:hash:'
 
       - name: Cache CocoaPods
         uses: actions/cache@v5
@@ -77,6 +84,11 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get ${{ matrix.flutter-channel == 'stable' && '--enforce-lockfile' || '' }}
+
+      - name: Prefetch native artifacts
+        uses: ./.github/actions/prefetch-native-artifacts
+        with:
+          target: macos
 
       - name: Install macOS pods
         working-directory: macos
@@ -116,8 +128,9 @@ jobs:
         with:
           channel: ${{ matrix.flutter-channel }}
           flutter-version: ${{ matrix.flutter-channel == 'stable' && '3.44.8' || '' }}
-          cache: true
-          cache-key: 'flutter-:os:-:channel:-:version:-:arch:-tests-ios-:hash:'
+          cache: ${{ matrix.flutter-channel == 'stable' }}
+          pub-cache: false
+          cache-key: 'flutter-:os:-:channel:-:version:-:arch:-:hash:'
 
       - name: Cache CocoaPods
         uses: actions/cache@v5
@@ -128,6 +141,11 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get ${{ matrix.flutter-channel == 'stable' && '--enforce-lockfile' || '' }}
+
+      - name: Prefetch native artifacts
+        uses: ./.github/actions/prefetch-native-artifacts
+        with:
+          target: ios
 
       - name: Install iOS pods
         working-directory: ios
@@ -199,6 +217,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     continue-on-error: ${{ matrix.flutter-channel == 'beta' }}
+    env:
+      ORG_GRADLE_PROJECT_agelapseCiX64: 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -226,8 +246,9 @@ jobs:
         with:
           channel: ${{ matrix.flutter-channel }}
           flutter-version: ${{ matrix.flutter-channel == 'stable' && '3.44.8' || '' }}
-          cache: true
-          cache-key: 'flutter-:os:-:channel:-:version:-:arch:-tests-android-:hash:'
+          cache: ${{ matrix.flutter-channel == 'stable' }}
+          pub-cache: false
+          cache-key: 'flutter-:os:-:channel:-:version:-:arch:-:hash:'
 
       - name: Cache Gradle
         uses: actions/cache@v5
@@ -240,6 +261,11 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get ${{ matrix.flutter-channel == 'stable' && '--enforce-lockfile' || '' }}
+
+      - name: Prefetch native artifacts
+        uses: ./.github/actions/prefetch-native-artifacts
+        with:
+          target: android
 
       - name: Prewarm Android build
         run: flutter build apk --debug
@@ -261,12 +287,14 @@ jobs:
           target: default
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -memory 2048
           disable-animations: true
-          script: |
-            flutter test integration_test/mobile_fast.dart -d emulator-5554 --reporter expanded 2>&1 | tee /tmp/test-fast.log
-            FAST_EXIT=$?
-            flutter test integration_test/mobile_video.dart -d emulator-5554 --reporter expanded 2>&1 | tee /tmp/test-video.log
-            VIDEO_EXIT=$?
-            if [ $FAST_EXIT -ne 0 ] || [ $VIDEO_EXIT -ne 0 ]; then exit 1; fi
+          script: bash tool/run_android_integration.sh
+
+      - name: Upload Android test logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs-android-${{ matrix.flutter-channel }}
+          path: build/test-results/android/
 
   integration-linux:
     name: Integration Linux ${{ matrix.group }} (${{ matrix.flutter-channel }})
@@ -290,11 +318,17 @@ jobs:
         with:
           channel: ${{ matrix.flutter-channel }}
           flutter-version: ${{ matrix.flutter-channel == 'stable' && '3.44.8' || '' }}
-          cache: true
-          cache-key: 'flutter-:os:-:channel:-:version:-:arch:-tests-linux-${{ matrix.group }}-:hash:'
+          cache: ${{ matrix.flutter-channel == 'stable' }}
+          pub-cache: false
+          cache-key: 'flutter-:os:-:channel:-:version:-:arch:-:hash:'
 
       - name: Install dependencies
         run: flutter pub get ${{ matrix.flutter-channel == 'stable' && '--enforce-lockfile' || '' }}
+
+      - name: Prefetch native artifacts
+        uses: ./.github/actions/prefetch-native-artifacts
+        with:
+          target: linux
 
       - name: Prefetch mimalloc tarball
         uses: ./.github/actions/prefetch-mimalloc
@@ -325,11 +359,17 @@ jobs:
         with:
           channel: ${{ matrix.flutter-channel }}
           flutter-version: ${{ matrix.flutter-channel == 'stable' && '3.44.8' || '' }}
-          cache: true
-          cache-key: 'flutter-:os:-:channel:-:version:-:arch:-tests-windows-${{ matrix.group }}-:hash:'
+          cache: ${{ matrix.flutter-channel == 'stable' }}
+          pub-cache: false
+          cache-key: 'flutter-:os:-:channel:-:version:-:arch:-:hash:'
 
       - name: Install dependencies
         run: flutter pub get ${{ matrix.flutter-channel == 'stable' && '--enforce-lockfile' || '' }}
+
+      - name: Prefetch native artifacts
+        uses: ./.github/actions/prefetch-native-artifacts
+        with:
+          target: windows
 
       - name: Prewarm Windows build
         run: flutter build windows --debug
