@@ -38,7 +38,7 @@ AgeLapse takes a raw photo, detects a set of landmarks on the person (eyes for f
 
 ## What's New / Changelog
 
-### v2.7.0 (June 2026)
+### v2.7.0 (August 2026)
 
 #### New Features
 - Recently Deleted

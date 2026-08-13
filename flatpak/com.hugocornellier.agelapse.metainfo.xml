@@ -56,10 +56,12 @@
   <content_rating type="oars-1.1" />
 
   <releases>
-    <release version="2.7.0-pre" date="2026-05-09">
+    <release version="2.7.0" date="2026-08-13">
       <description>
         <ul>
           <li>Recently deleted photos can be restored or permanently deleted.</li>
+          <li>Manual stabilization edits are saved and re-applied across re-stabilizations.</li>
+          <li>Faster stabilization and an inspection mode images-per-row control.</li>
         </ul>
       </description>
     </release>
