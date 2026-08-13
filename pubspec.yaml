@@ -2,7 +2,7 @@ name: agelapse
 description: A powerful tool for creating stabilized aging timelapses.
 publish_to: 'none'
 
-version: 2.7.0-prerelease-B+46
+version: 2.7.0+47
 
 environment:
   sdk: ">=3.12.0 <4.0.0"
