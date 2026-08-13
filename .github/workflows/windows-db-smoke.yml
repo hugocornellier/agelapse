@@ -15,6 +15,8 @@ on:
       - pubspec.yaml
       - pubspec.lock
       - integration_test/windows_db_smoke_test.dart
+      - tool/prefetch_native_artifacts.dart
+      - .github/actions/prefetch-native-artifacts/action.yml
       - .github/workflows/windows-db-smoke.yml
   push:
     branches: [main]
@@ -22,6 +24,8 @@ on:
       - pubspec.yaml
       - pubspec.lock
       - integration_test/windows_db_smoke_test.dart
+      - tool/prefetch_native_artifacts.dart
+      - .github/actions/prefetch-native-artifacts/action.yml
       - .github/workflows/windows-db-smoke.yml
 
 concurrency:
@@ -41,10 +45,16 @@ jobs:
           channel: stable
           flutter-version: 3.44.8
           cache: true
-          cache-key: 'flutter-:os:-:channel:-:version:-:arch:-windows-db-smoke-:hash:'
+          pub-cache: false
+          cache-key: 'flutter-:os:-:channel:-:version:-:arch:-:hash:'
 
       - name: Install dependencies
         run: flutter pub get --enforce-lockfile
+
+      - name: Prefetch native artifacts
+        uses: ./.github/actions/prefetch-native-artifacts
+        with:
+          target: windows
 
       - name: Assert sqlite3_flutter_libs is absent, sqlite3 present
         shell: bash

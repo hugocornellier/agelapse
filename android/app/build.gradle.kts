@@ -16,6 +16,14 @@ val keystoreProperties = Properties().apply {
     }
 }
 
+// Production APKs remain ARM-only. Android integration tests opt into x86_64
+// through ORG_GRADLE_PROJECT_agelapseCiX64 so they can run on the accelerated
+// GitHub-hosted emulator without changing release packaging.
+val includeCiX64 = providers.gradleProperty("agelapseCiX64").orNull == "true"
+val packagedAbis = mutableListOf("armeabi-v7a", "arm64-v8a").apply {
+    if (includeCiX64) add("x86_64")
+}
+
 android {
     namespace = "com.hugocornellier.agelapse"
     compileSdk = flutter.compileSdkVersion
@@ -28,17 +36,15 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         ndk {
-            abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+            abiFilters += packagedAbis
         }
     }
 
     packaging {
         jniLibs {
-            pickFirsts += setOf(
-                "**/armeabi-v7a/libc++_shared.so",
-                "**/arm64-v8a/libc++_shared.so",
-            )
-            excludes += setOf("**/x86/*.so", "**/x86_64/*.so")
+            pickFirsts += packagedAbis.map { "**/$it/libc++_shared.so" }
+            excludes += "**/x86/*.so"
+            if (!includeCiX64) excludes += "**/x86_64/*.so"
         }
     }
 
