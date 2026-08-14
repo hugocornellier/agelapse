@@ -186,6 +186,35 @@ jobs:
       - name: Build Linux release
         run: flutter build linux --release --build-name=${{ needs.prepare.outputs.version }} --build-number=${{ needs.prepare.outputs.build_number }}
 
+      # Plugin builds leave bundled libraries with either no RUNPATH at all or
+      # one baked to the CI checkout path. RUNPATH is not inherited by
+      # transitive dependencies, so libheif could not locate its sibling
+      # libde265 on a machine without those libraries installed system-wide,
+      # even though both ship inside the bundle. Point every bundled library at
+      # its own directory. This runs before deb, tarball, and Flatpak packaging
+      # so all three inherit the corrected libraries.
+      - name: Normalize bundled library RPATHs
+        run: |
+          sudo apt-get install -y patchelf
+
+          BUNDLE_LIB="build/linux/x64/release/bundle/lib"
+
+          while IFS= read -r -d '' LIBRARY; do
+            patchelf --set-rpath '$ORIGIN' "$LIBRARY" || {
+              echo "::error::patchelf failed on $LIBRARY"
+              exit 1
+            }
+          done < <(find "$BUNDLE_LIB" -type f -name '*.so*' -print0)
+
+          LEAKED=$(find "$BUNDLE_LIB" -type f -name '*.so*' \
+            -exec patchelf --print-rpath {} \; | grep -v '^\$ORIGIN$' || true)
+          if [ -n "$LEAKED" ]; then
+            echo "::error::Bundled libraries still reference paths outside the bundle:"
+            echo "$LEAKED"
+            exit 1
+          fi
+          echo "All bundled libraries resolve dependencies from their own directory."
+
       # --- .deb package ---
       - name: Install Fastforge
         run: dart pub global activate fastforge 0.6.6
@@ -437,7 +466,9 @@ jobs:
           while IFS= read -r -d '' LIBRARY; do
             if file "$LIBRARY" | grep -q 'ELF'; then
               echo "==> $LIBRARY" | tee -a "$RUNNER_TEMP/agelapse-deb-ldd.log"
-              LD_LIBRARY_PATH=/opt/agelapse/lib ldd "$LIBRARY" |
+              # Deliberately no LD_LIBRARY_PATH: the installed package has to
+              # resolve its own libraries the way it will on a user's machine.
+              ldd "$LIBRARY" |
                 tee -a "$RUNNER_TEMP/agelapse-deb-ldd.log"
             fi
           done < <(find /opt/agelapse -type f \
@@ -492,7 +523,9 @@ jobs:
           while IFS= read -r -d '' LIBRARY; do
             if file "$LIBRARY" | grep -q 'ELF'; then
               echo "==> $LIBRARY" | tee -a "$RUNNER_TEMP/agelapse-bundle-ldd.log"
-              LD_LIBRARY_PATH="$PWD/unpacked/bundle/lib" ldd "$LIBRARY" |
+              # Deliberately no LD_LIBRARY_PATH: the extracted bundle has to
+              # resolve its own libraries the way it will on a user's machine.
+              ldd "$LIBRARY" |
                 tee -a "$RUNNER_TEMP/agelapse-bundle-ldd.log"
             fi
           done < <(find unpacked/bundle -type f \
