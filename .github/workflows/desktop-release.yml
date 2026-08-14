@@ -186,34 +186,8 @@ jobs:
       - name: Build Linux release
         run: flutter build linux --release --build-name=${{ needs.prepare.outputs.version }} --build-number=${{ needs.prepare.outputs.build_number }}
 
-      # Plugin builds leave bundled libraries with either no RUNPATH at all or
-      # one baked to the CI checkout path. RUNPATH is not inherited by
-      # transitive dependencies, so libheif could not locate its sibling
-      # libde265 on a machine without those libraries installed system-wide,
-      # even though both ship inside the bundle. Point every bundled library at
-      # its own directory. This runs before deb, tarball, and Flatpak packaging
-      # so all three inherit the corrected libraries.
-      - name: Normalize bundled library RPATHs
-        run: |
-          sudo apt-get install -y patchelf
-
-          BUNDLE_LIB="build/linux/x64/release/bundle/lib"
-
-          while IFS= read -r -d '' LIBRARY; do
-            patchelf --set-rpath '$ORIGIN' "$LIBRARY" || {
-              echo "::error::patchelf failed on $LIBRARY"
-              exit 1
-            }
-          done < <(find "$BUNDLE_LIB" -type f -name '*.so*' -print0)
-
-          LEAKED=$(find "$BUNDLE_LIB" -type f -name '*.so*' \
-            -exec patchelf --print-rpath {} \; | grep -v '^\$ORIGIN$' || true)
-          if [ -n "$LEAKED" ]; then
-            echo "::error::Bundled libraries still reference paths outside the bundle:"
-            echo "$LEAKED"
-            exit 1
-          fi
-          echo "All bundled libraries resolve dependencies from their own directory."
+      - name: Install patchelf
+        run: sudo apt-get install -y patchelf
 
       # --- .deb package ---
       - name: Install Fastforge
@@ -227,6 +201,71 @@ jobs:
         run: |
           export PATH="$PATH:$HOME/.pub-cache/bin"
           fastforge package --platform linux --targets deb
+
+      # Bundled libraries carry either no RUNPATH at all or one baked to the CI
+      # checkout path, and RUNPATH is not inherited by transitive dependencies,
+      # so libheif cannot locate its sibling libde265 on a machine without those
+      # libraries installed system-wide even though both ship in the bundle.
+      #
+      # This must run *after* the .deb build: fastforge re-runs
+      # `flutter build linux` itself, which regenerates the bundle and discards
+      # any earlier patching. It normalizes the staged bundle, which the tarball
+      # and Flatpak below are both created from, and rewrites the .deb payload
+      # in place.
+      - name: Normalize bundled library RPATHs
+        run: |
+          normalize() {
+            LIB_DIR="$1"
+
+            while IFS= read -r -d '' LIBRARY; do
+              patchelf --set-rpath '$ORIGIN' "$LIBRARY" || {
+                echo "::error::patchelf failed on $LIBRARY"
+                exit 1
+              }
+            done < <(find "$LIB_DIR" -type f -name '*.so*' -print0)
+
+            LEAKED=$(find "$LIB_DIR" -type f -name '*.so*' \
+              -exec patchelf --print-rpath {} \; | grep -v '^\$ORIGIN$' || true)
+            if [ -n "$LEAKED" ]; then
+              echo "::error::Libraries in $LIB_DIR still reference paths outside the bundle:"
+              echo "$LEAKED"
+              exit 1
+            fi
+            echo "Normalized $LIB_DIR"
+          }
+
+          normalize build/linux/x64/release/bundle/lib
+
+          # Prove $ORIGIN actually expands, rather than trusting that setting it
+          # was enough. libde265 is installed system-wide on this runner, so if
+          # RUNPATH were not working this would silently resolve to /lib and the
+          # defect would reach the smoke jobs again.
+          RESOLVED=$(ldd build/linux/x64/release/bundle/lib/libheif.so.1 |
+            awk '/libde265/ {print $3}')
+          case "$RESOLVED" in
+            */bundle/lib/*)
+              echo "libheif resolves libde265 from the bundle: $RESOLVED"
+              ;;
+            *)
+              echo "::error::libheif resolved libde265 from '$RESOLVED' rather than the bundle."
+              exit 1
+              ;;
+          esac
+
+          DEB_FILE=$(find dist -name '*.deb' -type f | head -1)
+          sudo rm -rf deb-root
+          dpkg-deb -R "$DEB_FILE" deb-root
+          DEB_LIB=$(dirname "$(find deb-root -name 'libflutter_linux_gtk.so' -print -quit)")
+          normalize "$DEB_LIB"
+          # dpkg-deb records the ownership it finds on disk, and the unpacked
+          # tree belongs to the runner user. Restore root:root so the rebuilt
+          # package installs with the same ownership fastforge produced.
+          sudo chown -R root:root deb-root
+          sudo dpkg-deb -b deb-root "$DEB_FILE"
+          sudo chown "$(id -u):$(id -g)" "$DEB_FILE"
+          sudo rm -rf deb-root
+
+          dpkg-deb -c "$DEB_FILE" | head -5
 
       - name: Rename .deb
         run: |
