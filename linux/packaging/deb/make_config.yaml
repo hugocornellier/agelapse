@@ -23,6 +23,13 @@ dependencies:
   - libgstreamer-plugins-base1.0-0
   - libmpv2 | libmpv1
   - libturbojpeg | libturbojpeg0
+  # The Flutter Linux embedder dlopens libGLESv2.so.2 and libEGL.so.1 at
+  # startup and aborts if either is missing. Because they are dlopened rather
+  # than linked, they never appear in ldd output, so only launching the app
+  # catches their absence. They arrive transitively on developer machines via
+  # the -dev packages, which is why this went unnoticed.
+  - libgles2 | libgles2-mesa
+  - libegl1 | libegl1-mesa
 
 generic_name: "Timelapse Creator"
 categories:
