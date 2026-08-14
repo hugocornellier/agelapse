@@ -512,8 +512,16 @@ jobs:
             fi
           done < <(find /opt/agelapse -type f \
             \( -name agelapse -o -name '*.so' -o -name '*.so.*' \) -print0)
-          if grep -q 'not found' "$RUNNER_TEMP/agelapse-deb-ldd.log"; then
+          # libjvm.so is expected to be absent. It is needed only by
+          # libdartjni.so, which package:jni dlopens on demand for Android;
+          # nothing in the bundle links it, so it is never loaded on Linux.
+          # Its RUNPATH used to point at the CI runner's JDK, which resolved
+          # here and nowhere else.
+          UNRESOLVED=$(grep 'not found' "$RUNNER_TEMP/agelapse-deb-ldd.log" |
+            grep -v 'libjvm\.so' || true)
+          if [ -n "$UNRESOLVED" ]; then
             echo "::error::The installed Debian package has unresolved shared libraries."
+            echo "$UNRESOLVED"
             exit 1
           fi
 
@@ -569,8 +577,12 @@ jobs:
             fi
           done < <(find unpacked/bundle -type f \
             \( -name agelapse -o -name '*.so' -o -name '*.so.*' \) -print0)
-          if grep -q 'not found' "$RUNNER_TEMP/agelapse-bundle-ldd.log"; then
+          # See the Debian job for why an absent libjvm.so is expected.
+          UNRESOLVED=$(grep 'not found' "$RUNNER_TEMP/agelapse-bundle-ldd.log" |
+            grep -v 'libjvm\.so' || true)
+          if [ -n "$UNRESOLVED" ]; then
             echo "::error::The extracted Linux bundle has unresolved shared libraries."
+            echo "$UNRESOLVED"
             exit 1
           fi
 
