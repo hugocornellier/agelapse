@@ -46,7 +46,7 @@ void main() {
         try {
           final projectDir = await DirUtils.getProjectDirPath(testProjectId!);
           if (await Directory(projectDir).exists()) {
-            await Directory(projectDir).delete(recursive: true);
+            await deleteQuietly(Directory(projectDir));
           }
           await DB.instance.deleteProject(testProjectId!);
         } catch (_) {}
@@ -617,7 +617,7 @@ void main() {
           try {
             final dirB = await DirUtils.getProjectDirPath(projectBId);
             if (await Directory(dirB).exists()) {
-              await Directory(dirB).delete(recursive: true);
+              await deleteQuietly(Directory(dirB));
             }
             await DB.instance.deleteProject(projectBId);
           } catch (_) {}

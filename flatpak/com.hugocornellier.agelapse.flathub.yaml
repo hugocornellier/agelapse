@@ -142,11 +142,11 @@ modules:
       - install -Dm644 LICENSE /app/share/licenses/com.hugocornellier.agelapse/LICENSE
 
     sources:
-      # Pre-built Flutter bundle from GitHub release
-      # TODO: Update URL and sha256 after uploading to GitHub releases
+      # Pre-built Flutter bundle from GitHub release. The filename pattern is
+      # set by the Desktop Release workflow: agelapse-linux-<version>-x64-bundle.tar.gz
       - type: archive
-        url: https://github.com/hugocornellier/agelapse/releases/download/agelapse-v2.7.0-pre/agelapse-linux-v2.7.0-pre-bundle.tar.gz
-        sha256: 3ab4ca5c9ac2ba257a08b8f225052711b94d2a9c83bfdcc706bca37cc468a85f
+        url: https://github.com/hugocornellier/agelapse/releases/download/agelapse-v2.7.0/agelapse-linux-2.7.0-x64-bundle.tar.gz
+        sha256: 05adc26eda113db7e43890ae6643b47ce5e53a9a02e1022037ea39f5c3bc0649
         dest: bundle
 
       # Wrapper script
@@ -157,7 +157,7 @@ modules:
       # Desktop entry
       - type: file
         url: https://raw.githubusercontent.com/hugocornellier/agelapse/main/flatpak/com.hugocornellier.agelapse.desktop
-        sha256: ed7f6c93de9e8179f16f0f1b49611bb434c45907fb3fc4431d9ff5f5345a9e3e
+        sha256: 8879ce31a646e1c52c52ab68d3fec43c0882a58c359963241ff1aed5870dc738
 
       # Icons - fetched individually
       - type: file
@@ -181,7 +181,7 @@ modules:
       # App metadata
       - type: file
         url: https://raw.githubusercontent.com/hugocornellier/agelapse/main/flatpak/com.hugocornellier.agelapse.metainfo.xml
-        sha256: 0c49282366971344dd9ffdc2777d2505e3d30abdbe052c249c7c90cf8d8d1dc4
+        sha256: 3585b536723bd016a85a8236658b5a1ff3405b657e0d1d07defae6dda25163f8
 
       # License file
       - type: file

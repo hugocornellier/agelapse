@@ -88,7 +88,7 @@ void main() {
       try {
         final rawDir = await DirUtils.getRawPhotoDirPath(testProjectId!);
         final dir = Directory(rawDir);
-        if (await dir.exists()) await dir.delete(recursive: true);
+        await deleteQuietly(dir);
       } catch (_) {}
       try {
         await DB.instance.deleteProject(testProjectId!);
@@ -99,7 +99,7 @@ void main() {
     if (tempLinkedDir != null) {
       try {
         if (await tempLinkedDir!.exists()) {
-          await tempLinkedDir!.delete(recursive: true);
+          await deleteQuietly(tempLinkedDir!);
         }
       } catch (_) {}
       tempLinkedDir = null;

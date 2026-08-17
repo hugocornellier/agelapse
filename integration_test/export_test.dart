@@ -81,7 +81,7 @@ void main() {
           final exportsDir = await DirUtils.getExportsDirPath(testProjectId!);
           final dir = Directory(exportsDir);
           if (await dir.exists()) {
-            await dir.delete(recursive: true);
+            await deleteQuietly(dir);
           }
         } catch (_) {}
 
@@ -90,7 +90,7 @@ void main() {
           final rawDir = await DirUtils.getRawPhotoDirPath(testProjectId!);
           final dir = Directory(rawDir);
           if (await dir.exists()) {
-            await dir.delete(recursive: true);
+            await deleteQuietly(dir);
           }
         } catch (_) {}
 

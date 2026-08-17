@@ -13,6 +13,8 @@ import 'package:agelapse/utils/test_mode.dart' as test_config;
 import 'package:image/image.dart' as img;
 import 'package:path/path.dart' as p;
 
+import 'test_utils.dart';
+
 /// Widget-level tests for [RecentlyDeletedPage].
 ///
 /// Companion to the headless tests in `gallery_test.dart` (Tests D-J).
@@ -43,7 +45,7 @@ void main() {
         try {
           final projectDir = await DirUtils.getProjectDirPath(testProjectId!);
           if (await Directory(projectDir).exists()) {
-            await Directory(projectDir).delete(recursive: true);
+            await deleteQuietly(Directory(projectDir));
           }
           await DB.instance.deleteProject(testProjectId!);
         } catch (_) {}

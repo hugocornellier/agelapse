@@ -44,7 +44,7 @@ void main() {
         try {
           final projectDir = await DirUtils.getProjectDirPath(testProjectId!);
           if (await Directory(projectDir).exists()) {
-            await Directory(projectDir).delete(recursive: true);
+            await deleteQuietly(Directory(projectDir));
           }
           await DB.instance.deleteProject(testProjectId!);
         } catch (_) {}
@@ -93,7 +93,7 @@ void main() {
           );
         } finally {
           notifier.dispose();
-          await tempDir.delete(recursive: true);
+          await deleteQuietly(tempDir);
         }
 
         expect(
@@ -211,7 +211,7 @@ void main() {
         expect(storedDate.month, 3, reason: 'Month should be 3 (March)');
         expect(storedDate.day, 15, reason: 'Day should be 15');
       } finally {
-        await tempDir.delete(recursive: true);
+        await deleteQuietly(tempDir);
       }
     });
 
@@ -300,7 +300,7 @@ void main() {
             reason: 'Timestamp should be midnight of the file modified date',
           );
         } finally {
-          await tempDir.delete(recursive: true);
+          await deleteQuietly(tempDir);
         }
       },
     );
@@ -476,7 +476,7 @@ void main() {
           );
         } finally {
           notifier.dispose();
-          await tempDir.delete(recursive: true);
+          await deleteQuietly(tempDir);
         }
       },
     );
@@ -522,7 +522,7 @@ void main() {
           }
         } finally {
           notifier.dispose();
-          await tempDir.delete(recursive: true);
+          await deleteQuietly(tempDir);
         }
 
         // Allow all isolate-based processing to complete
@@ -645,7 +645,7 @@ void main() {
             reason: 'All 3 valid JPEGs should be imported; tiny entry filtered',
           );
         } finally {
-          await tempDir.delete(recursive: true);
+          await deleteQuietly(tempDir);
         }
       },
     );
@@ -748,7 +748,7 @@ void main() {
           try {
             final targetDir = await DirUtils.getProjectDirPath(targetProjectId);
             if (await Directory(targetDir).exists()) {
-              await Directory(targetDir).delete(recursive: true);
+              await deleteQuietly(Directory(targetDir));
             }
             await DB.instance.deleteProject(targetProjectId);
           } catch (_) {}
@@ -810,7 +810,7 @@ void main() {
           reason: 'No importable entries -> no photos, no error',
         );
       } finally {
-        await tempDir.delete(recursive: true);
+        await deleteQuietly(tempDir);
       }
     });
 
@@ -864,7 +864,7 @@ void main() {
           reason: 'Image under a UTF-8 entry name should import',
         );
       } finally {
-        await tempDir.delete(recursive: true);
+        await deleteQuietly(tempDir);
       }
     });
 
@@ -925,7 +925,7 @@ void main() {
         final photos = await DB.instance.getPhotosByProjectID(testProjectId!);
         expect(photos, isEmpty, reason: 'A corrupt ZIP should import nothing');
       } finally {
-        await tempDir.delete(recursive: true);
+        await deleteQuietly(tempDir);
       }
     });
   });

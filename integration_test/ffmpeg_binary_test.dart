@@ -8,6 +8,8 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:image/image.dart' as img;
 
+import 'test_utils.dart';
+
 /// Integration tests that verify bundled ffmpeg binaries can execute on a
 /// stock Windows machine (no dev tools in PATH).
 ///
@@ -27,7 +29,7 @@ void main() {
       final tempDir = await getTemporaryDirectory();
       final testBinDir = Directory(p.join(tempDir.path, 'ffmpeg_test'));
       if (await testBinDir.exists()) {
-        await testBinDir.delete(recursive: true);
+        await deleteQuietly(testBinDir);
       }
       await testBinDir.create(recursive: true);
 
@@ -94,7 +96,7 @@ void main() {
       );
 
       // Cleanup.
-      await testBinDir.delete(recursive: true);
+      await deleteQuietly(testBinDir);
     });
 
     testWidgets('drawtext filter works with bundled binary', (tester) async {
@@ -109,7 +111,7 @@ void main() {
       final tempDir = await getTemporaryDirectory();
       final testDir = Directory(p.join(tempDir.path, 'drawtext_test'));
       if (await testDir.exists()) {
-        await testDir.delete(recursive: true);
+        await deleteQuietly(testDir);
       }
       await testDir.create(recursive: true);
 
@@ -210,7 +212,7 @@ void main() {
       );
 
       // Cleanup
-      await testDir.delete(recursive: true);
+      await deleteQuietly(testDir);
     });
   });
 }

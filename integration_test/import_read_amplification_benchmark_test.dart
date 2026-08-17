@@ -8,6 +8,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'test_utils.dart';
+
 /// On-device version of test/utils/import_read_amplification_benchmark_test.dart
 /// for Finding #7 (the import pipeline reads each source file ~4x).
 ///
@@ -107,7 +109,7 @@ void main() {
 
   tearDown(() async {
     try {
-      await dir.delete(recursive: true);
+      await deleteQuietly(dir);
     } catch (_) {}
   });
 
