@@ -13,6 +13,8 @@ import 'package:agelapse/utils/dir_utils.dart';
 import 'package:agelapse/utils/test_mode.dart' as test_config;
 import 'package:path/path.dart' as p;
 
+import 'test_utils.dart';
+
 /// Multi-pass benchmark using Taylor Swift photo set.
 ///
 /// Uses a larger, more varied photo set to exercise multi-pass stabilization
@@ -89,7 +91,7 @@ void main() {
       try {
         final projectDir = await DirUtils.getProjectDirPath(projectId);
         if (await Directory(projectDir).exists()) {
-          await Directory(projectDir).delete(recursive: true);
+          await deleteQuietly(Directory(projectDir));
         }
         await DB.instance.deleteProject(projectId);
       } catch (_) {}

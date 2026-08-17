@@ -307,6 +307,29 @@ Future<void> preloadFixtures() async {
   }
 }
 
+/// Deletes [dir] recursively without ever failing the calling test.
+///
+/// Cleanup is best effort and must never decide a test's outcome. On Windows a
+/// process the test spawned, typically ffmpeg, can still hold a handle when the
+/// test body finishes, and deleting a directory with an open handle fails with
+/// errno 32 where POSIX would happily unlink it. That produced CI failures whose
+/// assertions had all passed, and inside a `finally` block it also masked the
+/// real result. Retry briefly to let handles close, then give up quietly; the
+/// operating system reclaims temporary directories regardless.
+Future<void> deleteQuietly(Directory dir) async {
+  for (var attempt = 0; attempt < 5; attempt++) {
+    try {
+      if (!await dir.exists()) return;
+      await dir.delete(recursive: true);
+      return;
+    } on FileSystemException {
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+  }
+  // ignore: avoid_print
+  print('cleanup: could not delete ${dir.path}; ignoring');
+}
+
 /// Cleans up extracted fixture files.
 /// Call this in tearDownAll() if needed.
 Future<void> cleanupFixtures() async {
@@ -315,9 +338,7 @@ Future<void> cleanupFixtures() async {
   final tempDir = await getTemporaryDirectory();
   final fixturesDir = Directory(p.join(tempDir.path, 'test_fixtures'));
 
-  if (await fixturesDir.exists()) {
-    await fixturesDir.delete(recursive: true);
-  }
+  await deleteQuietly(fixturesDir);
 
   _fixtureCache.clear();
 }

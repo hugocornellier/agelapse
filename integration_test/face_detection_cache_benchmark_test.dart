@@ -735,7 +735,7 @@ Future<void> _cleanupProject(int projectId) async {
   try {
     final projectDir = await DirUtils.getProjectDirPath(projectId);
     if (await Directory(projectDir).exists()) {
-      await Directory(projectDir).delete(recursive: true);
+      await deleteQuietly(Directory(projectDir));
     }
     await DB.instance.deleteProjectCascade(projectId);
   } catch (_) {}

@@ -376,7 +376,7 @@ void main() {
                     );
                   }
                 } finally {
-                  await tempDir.delete(recursive: true);
+                  await deleteQuietly(tempDir);
                 }
               } else {
                 // iOS: sips not available, skip import pipeline test
@@ -426,7 +426,7 @@ void main() {
                     );
                   }
                 } finally {
-                  await tempDir.delete(recursive: true);
+                  await deleteQuietly(tempDir);
                 }
               } else {
                 // iOS: sips not available, skip import pipeline test
@@ -477,7 +477,7 @@ void main() {
                   reason: 'AVIF/$day should produce a thumbnail',
                 );
               } finally {
-                await tempDir.delete(recursive: true);
+                await deleteQuietly(tempDir);
               }
             }
           },
@@ -655,7 +655,7 @@ void main() {
 
     tearDown(() async {
       if (await tempDir.exists()) {
-        await tempDir.delete(recursive: true);
+        await deleteQuietly(tempDir);
       }
     });
 
@@ -749,7 +749,7 @@ void main() {
 
     tearDown(() async {
       if (await tempDir.exists()) {
-        await tempDir.delete(recursive: true);
+        await deleteQuietly(tempDir);
       }
     });
 
