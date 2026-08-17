@@ -1,9 +1,14 @@
 name: Desktop Release
 
+# Dispatch only. A tag-push trigger cannot work with how releases are actually
+# cut: the flow builds a draft, attaches the hand-built macOS and Android
+# assets, and then publishes, and publishing is what creates the tag. So the tag
+# always arrives after the release exists, and the prepare job's own
+# "release already exists" guard fails the run, leaving a red X on the released
+# commit. Releasing by tag push was never viable anyway, since that path has no
+# draft input and would publish immediately without the two assets CI cannot
+# build.
 on:
-  push:
-    tags:
-      - 'agelapse-v*.*.*'
   workflow_dispatch:
     inputs:
       ref:
