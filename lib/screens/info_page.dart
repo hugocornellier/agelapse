@@ -7,7 +7,7 @@ import '../services/log_service.dart';
 import '../styles/styles.dart';
 
 // Apple bundle versions are numeric, so the pre-release channel is tracked here.
-const bool kIsPreReleaseBuild = true;
+const bool kIsPreReleaseBuild = false;
 
 String formatInfoVersionLabel(
   PackageInfo info, {
