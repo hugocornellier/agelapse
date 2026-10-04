@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
+import 'package:face_detection_tflite/face_detection_tflite_native.dart' as fdl;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -43,6 +45,16 @@ import 'test_utils.dart';
 ///
 /// An empty diff = byte-identical output (parity holds); compare the printed
 /// median ms/photo for the speed delta.
+///
+/// Engine comparison (same fixtures, settings, model, and rounds):
+///   flutter drive --driver=test_driver/integration_test.dart --target=integration_test/stabilization_benchmark_test.dart -d macos --profile --dart-define=PERF_BACKEND=interpreter --dart-define=PERF_LABEL=interpreter
+///   flutter drive --driver=test_driver/integration_test.dart --target=integration_test/stabilization_benchmark_test.dart -d macos --profile --dart-define=PERF_BACKEND=compiled_cpu --dart-define=PERF_LABEL=compiled_cpu
+///   flutter drive --driver=test_driver/integration_test.dart --target=integration_test/stabilization_benchmark_test.dart -d macos --profile --dart-define=PERF_BACKEND=compiled_gpu_cpu --dart-define=PERF_LABEL=compiled_gpu_cpu
+///
+/// CompiledModel uses fp32. GPU+CPU permits graph partitioning and the package's
+/// CPU retry on GPU compilation failure; iris stays on CPU in either CM mode.
+/// Cross-engine hashes may differ even when each engine is deterministic.
+/// A JSON sidecar retains every round's timings, transforms, and output hashes.
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   test_config.isTestMode = true;
@@ -52,6 +64,22 @@ void main() {
 
   /// Leading rounds discarded from the speed median (cold caches / JIT warm-up).
   const int warmupRounds = 1;
+
+  const backend = String.fromEnvironment(
+    'PERF_BACKEND',
+    defaultValue: 'interpreter',
+  );
+  const supportedBackends = {'interpreter', 'compiled_cpu', 'compiled_gpu_cpu'};
+  if (!supportedBackends.contains(backend)) {
+    throw ArgumentError.value(backend, 'PERF_BACKEND', '$supportedBackends');
+  }
+  final backendDescription = switch (backend) {
+    'interpreter' =>
+      'Interpreter / production auto delegate / '
+          '${Platform.numberOfProcessors < 4 ? Platform.numberOfProcessors : 4} threads',
+    'compiled_cpu' => 'CompiledModel / CPU / fp32 / runtime-default threads',
+    _ => 'CompiledModel / GPU+CPU request / fp32 / iris pinned to CPU',
+  };
 
   /// Label for the output parity manifest. Prefer a compile-time define
   /// (--dart-define=PERF_LABEL=...), which is reliably available on desktop
@@ -78,16 +106,33 @@ void main() {
     final List<String> fixturePaths = [];
 
     setUpAll(() async {
+      // Leave Interpreter creation on the exact production path. Only the
+      // engine/accelerator selection changes in the CompiledModel runs.
+      if (backend != 'interpreter') {
+        await StabUtils.setFaceDetectorFactoryForTesting(() async {
+          final detector = fdl.FaceDetector();
+          try {
+            await detector.initialize(
+              model: fdl.FaceDetectionModel.backCamera,
+              useCompiledModel: true,
+              accelerators: backend == 'compiled_cpu'
+                  ? const {fdl.Accelerator.cpu}
+                  : const {fdl.Accelerator.gpu, fdl.Accelerator.cpu},
+              precision: fdl.Precision.fp32,
+            );
+            return detector;
+          } catch (_) {
+            await detector.dispose();
+            rethrow;
+          }
+        });
+      }
+      debugPrint('  Inference backend: $backendDescription');
       initDatabase();
       await DB.instance.createTablesIfNotExist();
 
       // Pre-initialize the isolate pool once
       await IsolatePool.instance.initialize();
-    });
-
-    tearDownAll(() async {
-      await IsolatePool.instance.dispose();
-      await cleanupFixtures();
     });
 
     /// Creates a fresh project with raw face photos ready for stabilization.
@@ -181,6 +226,13 @@ void main() {
         await DB.instance.deleteProject(projectId);
       } catch (_) {}
     }
+
+    tearDownAll(() async {
+      await StabUtils.setFaceDetectorFactoryForTesting(null);
+      if (testProjectId != null) await cleanupProject(testProjectId!);
+      await IsolatePool.instance.dispose();
+      await cleanupFixtures();
+    });
 
     /// Runs one full stabilization round on all photos in a project.
     /// Returns per-photo maps including elapsed time and an output content hash.
@@ -289,17 +341,15 @@ void main() {
       await tester.pumpAndSettle(const Duration(seconds: 3));
 
       await preloadFixtures();
-      if (fixturesUnavailable) {
-        markTestSkipped('Test fixtures not available');
-        return;
-      }
+      expect(fixturesUnavailable, isFalse, reason: fixtureLoadError);
 
       for (final day in faceDays) {
         final path = await getSampleFacePathAsync(day);
-        if (!await File(path).exists()) {
-          markTestSkipped('Face fixture day$day.jpg not found');
-          return;
-        }
+        expect(
+          await File(path).exists(),
+          isTrue,
+          reason: 'Face fixture day$day.jpg not found',
+        );
         fixturePaths.add(path);
       }
 
@@ -310,10 +360,7 @@ void main() {
     // ── SLOW MODE benchmark ─────────────────────────────────────────────
 
     testWidgets('benchmark: slow mode ($rounds rounds)', (tester) async {
-      if (!fixturesReady) {
-        markTestSkipped('Fixtures not loaded');
-        return;
-      }
+      expect(fixturesReady, isTrue, reason: 'Fixtures not loaded');
 
       final allRoundResults = <List<Map<String, dynamic>>>[];
 
@@ -417,6 +464,32 @@ void main() {
         p.join(manifestDir.path, '$perfLabel.manifest'),
       );
       await manifestFile.writeAsString('${manifestLines.join('\n')}\n');
+      final reportFile = File(p.join(manifestDir.path, '$perfLabel.json'));
+      final report = {
+        'label': perfLabel,
+        'backend': backend,
+        'backendDescription': backendDescription,
+        'platform': Platform.operatingSystem,
+        'platformVersion': Platform.operatingSystemVersion,
+        'buildMode': kReleaseMode
+            ? 'release'
+            : (kProfileMode ? 'profile' : 'debug'),
+        'largeFixtures': perfLarge,
+        'faceModelVersion': StabUtils.faceModelVersion,
+        'rounds': rounds,
+        'warmupRounds': warmupRounds,
+        'measuredPhotos': totalPhotos,
+        'successfulPhotos': successCount,
+        'medianMs': medianMs,
+        'averageMs': grandAvgMs,
+        'p25Ms': p25Ms,
+        'p75Ms': p75Ms,
+        'nonDeterministicFixtures': nonDeterministic,
+        'results': allRoundResults,
+      };
+      await reportFile.writeAsString(
+        '${const JsonEncoder.withIndent('  ').convert(report)}\n',
+      );
 
       debugPrint('');
       debugPrint('═══════════════════════════════════════════════');
@@ -426,6 +499,7 @@ void main() {
       );
       debugPrint('═══════════════════════════════════════════════');
       debugPrint('  Rounds: $rounds (warm-up discarded: $warmupRounds)');
+      debugPrint('  Backend: $backendDescription');
       debugPrint('  Photos per round: ${faceDays.length}');
       debugPrint('  Measured stabilizations: $totalPhotos');
       debugPrint('  Successful: $successCount/$totalPhotos');
@@ -444,6 +518,7 @@ void main() {
         );
       }
       debugPrint('  Manifest: ${manifestFile.path}');
+      debugPrint('  JSON report: ${reportFile.path}');
       for (final line in manifestLines) {
         debugPrint('    $line');
       }
@@ -463,8 +538,19 @@ void main() {
       debugPrint('═══════════════════════════════════════════════');
       debugPrint('');
 
-      // At least some photos should succeed
-      expect(successCount, greaterThan(0));
+      // A fast partial failure is not a valid performance result.
+      expect(successCount, totalPhotos);
+      expect(
+        allRoundResults
+            .expand((round) => round)
+            .every(
+              (result) =>
+                  (result['outputHash'] as String).contains(':') &&
+                  result['embeddingHash'] != 'none',
+            ),
+        isTrue,
+        reason: 'Every fixture must produce a PNG and a stored face embedding.',
+      );
       // Output must be deterministic for hash-based parity to be meaningful.
       expect(
         nonDeterministic,

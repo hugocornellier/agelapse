@@ -10,7 +10,7 @@ import desktop_drop
 import device_info_plus
 import downloadsfolder
 import fast_thumbnail
-import file_picker
+import file_picker_darwin
 import file_selector_macos
 import flutter_avif_macos
 import flutter_local_notifications

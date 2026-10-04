@@ -51,7 +51,7 @@ Future<void> main(List<String> arguments) async {
     if (target == 'linux' || target == 'windows')
       ..._liteRtArtifacts(
         target,
-        _packageRoot(projectDirectory, 'flutter_litert', '3.8.0'),
+        _packageRoot(projectDirectory, 'flutter_litert', '3.9.1'),
       ),
   ];
 

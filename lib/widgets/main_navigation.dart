@@ -388,10 +388,10 @@ class MainNavigationState extends State<MainNavigation>
   }
 
   Future<void> processPickedFiles(
-    FilePickerResult? pickedFiles,
+    List<PlatformFile>? pickedFiles,
     Future<void> Function(dynamic file) processFileCallback,
   ) async {
-    if (pickedFiles == null) return;
+    if (pickedFiles == null || pickedFiles.isEmpty) return;
     setStateIfMounted(() {
       _isImporting = true;
     });
@@ -402,8 +402,9 @@ class MainNavigationState extends State<MainNavigation>
         .getAllPhotoPathsByProjectID(widget.projectId);
     final int photoCountBeforeImport = allPhotosBefore.length;
 
-    final List<File> files = pickedFiles.paths
-        .map((path) => File(path!))
+    final List<File> files = pickedFiles
+        .where((f) => f.path != null)
+        .map((f) => File(f.path!))
         .toList();
     for (File file in files) {
       await processFileCallback(file);

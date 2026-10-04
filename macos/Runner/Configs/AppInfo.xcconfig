@@ -7,7 +7,7 @@
 // The application's name. By default this is also the title of the Flutter window.
 PRODUCT_NAME = AgeLapse
 
-MACOSX_DEPLOYMENT_TARGET = 11.0
+MACOSX_DEPLOYMENT_TARGET = 12.0
 
 // The application's bundle identifier
 PRODUCT_BUNDLE_IDENTIFIER = com.example.agelapse

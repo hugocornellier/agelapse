@@ -84,7 +84,7 @@ class GalleryPage extends StatefulWidget {
   setRawAndStabPhotoStates;
   final void Function(String stabilizedImagePath) addStabilizedImagePath;
   final Future<void> Function(
-    FilePickerResult? pickedFiles,
+    List<PlatformFile>? pickedFiles,
     Future<void> Function(dynamic file) processFileCallback,
   )
   processPickedFiles;
@@ -1129,16 +1129,16 @@ class GalleryPageState extends State<GalleryPage>
 
   Future<void> _pickFiles() async {
     try {
-      FilePickerResult? pickedFiles;
+      List<PlatformFile> pickedFiles;
       try {
         pickedFiles = await FilePicker.pickFiles();
       } catch (e) {
         LogService.instance.log(e.toString());
         return;
       }
-      if (pickedFiles == null) return;
+      if (pickedFiles.isEmpty) return;
 
-      final filePaths = pickedFiles.files
+      final filePaths = pickedFiles
           .where((f) => f.path != null)
           .map((f) => f.path!)
           .toList();

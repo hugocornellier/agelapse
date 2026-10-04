@@ -1,5 +1,36 @@
 # dartcv
 
+## 2.3.1
+
+- fix: OpenCV module dependencies are now resolved through a transitive CMake closure, so indirectly enabled modules (e.g. `objdetect`, `ximgproc`) correctly pull in required dependencies (`calib3d` -> `features2d`/`flann`) regardless of option order.
+- new: Dart build/link hooks validate `include_modules`/`exclude_modules` conflicts and report all conflicting dependencies at once.
+- new: `deployment_target` hook option to override the Apple `DEPLOYMENT_TARGET` per platform (`ios` / `macos`), e.g. `ios: {deployment_target: "15.0"}`.
+- fix: the Apple deployment target is no longer hardcoded (`12.0` on iOS, `10.15` on macOS); it follows the target's code configuration (the deployment target of the Flutter/Xcode app) and `deployment_target` overrides it when a specific minimum is needed.
+
+## 2.3.0
+
+- new: memory-safety fixes:
+  - fix `VecVec6f` finalizer
+  - fix `strdup`/`calloc` memory leaks
+  - fix `Mat.fromMat(copy: true)` memory leak
+  - add null-guards in logging
+- new: idempotent `dispose()`/`freeNative()`, add `isDisposed` for all wrappers (P2 refactor, additive — no breaking API change)
+- new: native-assets tree-shaking: link hook writes `dartcv_keep.txt` from recorded uses (`@RecordUse`) + finalizer symbols; CMake `.def` / `--retain-symbols-file` restrict exports; keep-list only written on AOT builds; new `treeshake` hook option (Dart 3.13+)
+- new: `use_opencl` hook option to build OpenCV with OpenCL support, per-platform, default `false`, always disabled on `ios`
+- new: regenerate FFI bindings through the ffigen `FfiGenerator` API (`tool/ffigen.dart`) with `@RecordUse` + `record_use_mapping` output
+- bump `ffigen` to `21.0.0`
+- add dependencies: `meta`, `record_use`
+- new: add `CharucoBoard` / `CharucoDetector` bindings (contrib module)
+- fix(videoio): free native-allocated arrays in backend registry getters (memory leak); make `hasBackend` / `isBackendBuiltIn` exception-safe; skip unknown backend values in `getBackends`-family via `VideoCaptureAPIs.maybeFromValue`; always release probed cameras in `enumerateCameras`; support `16F` in `parseFrameFormat`
+- fix(videoio): writer tests write to per-test temp dirs (no shared-file race between parallel test files); silence OpenCV backend-probing warnings in videoio tests
+- new: add `skip_build` hook user-define to bypass the native build entirely, for CI unit-test runs that never call into dartcv4's native code
+
+## 2.2.2
+
+- new: add `LineSegmentDetector` support (imgproc module)
+- bump `native_toolchain_cmake` to `0.3.1`
+- bump `hooks` to `2.1.0`
+
 ## 2.2.1+4
 
 - fix: aruco module is not correctly built when changing include modules.

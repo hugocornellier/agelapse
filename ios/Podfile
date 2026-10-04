@@ -41,12 +41,9 @@ post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
   end
-
-  # Re-sign FFmpegKit vendored frameworks (bitcode stripping leaves them unsigned)
-  ffmpeg_pod_dir = File.join(installer.sandbox.root.to_s, '..', '.symlinks', 'plugins', 'ffmpeg_kit_flutter_new', 'ios', 'ffmpeg_kit_flutter_new', 'Frameworks')
-  if File.directory?(ffmpeg_pod_dir)
-    Dir.glob(File.join(ffmpeg_pod_dir, '*.xcframework', '*', '*.framework')).each do |fw|
-      system("codesign", "--force", "--sign", "-", fw)
-    end
-  end
+  # Do not touch the FFmpegKit frameworks here. .symlinks/plugins points at the
+  # tracked plugins/ffmpeg_kit_flutter_new checkout, so an in-place re-sign
+  # rewrites 16 committed binaries on every fresh pod install. The plugin is
+  # built through Swift Package Manager, its vendored frameworks are already
+  # ad-hoc signed and bitcode-free, and Xcode re-signs the embedded copies.
 end

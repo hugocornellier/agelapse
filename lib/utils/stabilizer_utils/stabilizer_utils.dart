@@ -11,7 +11,7 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:cat_detection/cat_detection.dart' as cat;
 import 'package:dog_detection/dog_detection.dart' as dog;
-import 'package:face_detection_tflite/face_detection_tflite.dart' as fdl;
+import 'package:face_detection_tflite/face_detection_tflite_native.dart' as fdl;
 import 'package:hand_detection/hand_detection.dart' as hand;
 import 'package:opencv_dart/opencv_dart.dart' as cv;
 import 'package:pose_detection/pose_detection.dart' as pose;
@@ -80,8 +80,23 @@ class FaceLike {
 
 class StabUtils {
   static fdl.FaceDetector? _faceDetector;
+  static Future<fdl.FaceDetector> Function()? _faceDetectorFactoryForTesting;
 
   static final AsyncMutex _faceDetectorMutex = AsyncMutex();
+
+  /// Overrides only detector creation, so integration benchmarks can compare
+  /// inference engines through the unchanged stabilization pipeline.
+  /// Passing null disposes the test detector and restores production defaults.
+  @visibleForTesting
+  static Future<void> setFaceDetectorFactoryForTesting(
+    Future<fdl.FaceDetector> Function()? factory,
+  ) async {
+    await _faceDetectorMutex.protect(() async {
+      await _faceDetector?.dispose();
+      _faceDetector = null;
+      _faceDetectorFactoryForTesting = factory;
+    });
+  }
 
   // ============================================================
   // Hot-path op counters (perf benchmark instrumentation)
@@ -129,6 +144,8 @@ class StabUtils {
       _faceDetector,
       (d) => d.isReady,
       () async {
+        final factory = _faceDetectorFactoryForTesting;
+        if (factory != null) return await factory();
         final detector = fdl.FaceDetector();
         await detector.initialize(model: fdl.FaceDetectionModel.backCamera);
         return detector;

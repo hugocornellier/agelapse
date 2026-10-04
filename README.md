@@ -38,6 +38,13 @@ AgeLapse takes a raw photo, detects a set of landmarks on the person (eyes for f
 
 ## What's New / Changelog
 
+### v2.8.0 (unreleased)
+
+#### Improvements
+- Detection engine update: face, pose, hand, cat and dog detection now share flutter_litert 3.9.0 (one runtime for every detector) with the animal_detection 4.1.0 species classifier behind cat and dog.
+  - Cat and dog stabilization only keeps detections the species classifier agrees are a cat or a dog. Other animals the body detector finds are skipped instead of being stabilized as if they were the pet.
+- Builds with Xcode 27 (iOS 15.5 and macOS 12 deployment targets) on Flutter 3.47.5.
+
 ### v2.7.0 (August 2026)
 
 #### New Features
