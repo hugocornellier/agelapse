@@ -9,5 +9,8 @@ import UIKit
     RawDecoderPlugin.register(
       with: engineBridge.pluginRegistry.registrar(forPlugin: "RawDecoderPlugin")!
     )
+    VideoDiagnosticsPlugin.register(
+      with: engineBridge.pluginRegistry.registrar(forPlugin: "VideoDiagnosticsPlugin")!
+    )
   }
 }

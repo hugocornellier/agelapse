@@ -1,9 +1,18 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:agelapse/services/ffmpeg_process_manager.dart';
 
 /// Unit tests for FFmpegProcessManager.
-/// Tests singleton behavior, process registration, and cleanup.
+///
+/// The process tests use `sleep`/`true` in place of ffmpeg: what matters is
+/// that cancelling waits for the process to actually exit, and that a run
+/// only ever removes itself from tracking.
 void main() {
+  final String? noPosixTools = Platform.isWindows
+      ? 'Uses POSIX sleep/true'
+      : null;
+
   group('FFmpegProcessManager Singleton', () {
     test('instance returns the same object', () {
       final instance1 = FFmpegProcessManager.instance;
@@ -30,38 +39,9 @@ void main() {
     });
 
     test('clear is idempotent', () {
-      // Should not throw when called multiple times
       FFmpegProcessManager.instance.clear();
       FFmpegProcessManager.instance.clear();
       FFmpegProcessManager.instance.clear();
-
-      expect(FFmpegProcessManager.instance.hasActiveProcess, isFalse);
-    });
-  });
-
-  group('FFmpegProcessManager Unregister', () {
-    setUp(() {
-      FFmpegProcessManager.instance.clear();
-    });
-
-    test('unregisterProcess works without active process', () {
-      // Should not throw
-      FFmpegProcessManager.instance.unregisterProcess();
-      expect(FFmpegProcessManager.instance.hasActiveProcess, isFalse);
-    });
-
-    test('unregisterSession works without active session', () {
-      // Should not throw
-      FFmpegProcessManager.instance.unregisterSession();
-      expect(FFmpegProcessManager.instance.hasActiveProcess, isFalse);
-    });
-
-    test('unregister methods are idempotent', () {
-      // Should not throw when called multiple times
-      FFmpegProcessManager.instance.unregisterProcess();
-      FFmpegProcessManager.instance.unregisterProcess();
-      FFmpegProcessManager.instance.unregisterSession();
-      FFmpegProcessManager.instance.unregisterSession();
 
       expect(FFmpegProcessManager.instance.hasActiveProcess, isFalse);
     });
@@ -78,68 +58,104 @@ void main() {
     });
 
     test('killActiveProcess is safe to call multiple times', () async {
-      // Should not throw when called repeatedly
       await FFmpegProcessManager.instance.killActiveProcess();
       await FFmpegProcessManager.instance.killActiveProcess();
       await FFmpegProcessManager.instance.killActiveProcess();
 
       expect(FFmpegProcessManager.instance.hasActiveProcess, isFalse);
-    });
-  });
-
-  group('FFmpegProcessManager State Transitions', () {
-    setUp(() {
-      FFmpegProcessManager.instance.clear();
-    });
-
-    test('state is consistent after clear and kill sequence', () async {
-      FFmpegProcessManager.instance.clear();
-      await FFmpegProcessManager.instance.killActiveProcess();
-      FFmpegProcessManager.instance.clear();
-
-      expect(FFmpegProcessManager.instance.hasActiveProcess, isFalse);
-    });
-
-    test('unregister after kill maintains clean state', () async {
-      await FFmpegProcessManager.instance.killActiveProcess();
-      FFmpegProcessManager.instance.unregisterProcess();
-      FFmpegProcessManager.instance.unregisterSession();
-
-      expect(FFmpegProcessManager.instance.hasActiveProcess, isFalse);
-    });
-  });
-
-  group('FFmpegProcessManager Concurrency', () {
-    setUp(() {
-      FFmpegProcessManager.instance.clear();
     });
 
     test('concurrent kills are safe', () async {
-      // Simulate concurrent kill attempts
-      final futures = [
+      final results = await Future.wait([
         FFmpegProcessManager.instance.killActiveProcess(),
         FFmpegProcessManager.instance.killActiveProcess(),
         FFmpegProcessManager.instance.killActiveProcess(),
-      ];
+      ]);
 
-      final results = await Future.wait(futures);
-
-      // All should complete without throwing
       expect(results.length, 3);
       expect(FFmpegProcessManager.instance.hasActiveProcess, isFalse);
     });
   });
 
-  group('FFmpegProcessManager Edge Cases', () {
-    test('works correctly after repeated clear/kill cycles', () async {
-      for (int i = 0; i < 10; i++) {
-        FFmpegProcessManager.instance.clear();
-        await FFmpegProcessManager.instance.killActiveProcess();
-        FFmpegProcessManager.instance.unregisterProcess();
-        FFmpegProcessManager.instance.unregisterSession();
-      }
-
-      expect(FFmpegProcessManager.instance.hasActiveProcess, isFalse);
+  group('FFmpegProcessManager Runs', () {
+    setUp(() {
+      FFmpegProcessManager.instance.clear();
     });
+
+    test(
+      'killActiveProcess returns only after the process has exited',
+      () async {
+        final run = await FFmpegProcessManager.instance.startProcess('sleep', [
+          '30',
+        ]);
+        expect(FFmpegProcessManager.instance.hasActiveProcess, isTrue);
+
+        final killed = await FFmpegProcessManager.instance.killActiveProcess();
+
+        expect(killed, isTrue);
+        expect(run.isFinished, isTrue);
+        expect(run.cancelRequested, isTrue);
+        expect(await run.exitCode, isNot(0));
+        expect(FFmpegProcessManager.instance.hasActiveProcess, isFalse);
+      },
+      skip: noPosixTools,
+    );
+
+    test(
+      'a cancel requested while the process is starting is applied',
+      () async {
+        // The run is registered before Process.start resolves.
+        final starting = FFmpegProcessManager.instance.startProcess('sleep', [
+          '30',
+        ]);
+
+        final killed = await FFmpegProcessManager.instance.killActiveProcess();
+        final run = await starting;
+
+        expect(killed, isTrue);
+        expect(run.isFinished, isTrue);
+        expect(run.cancelRequested, isTrue);
+        expect(await run.exitCode, isNot(0));
+        expect(FFmpegProcessManager.instance.hasActiveProcess, isFalse);
+      },
+      skip: noPosixTools,
+    );
+
+    test('a finishing run removes only itself', () async {
+      final first = await FFmpegProcessManager.instance.startProcess('sleep', [
+        '30',
+      ]);
+      final second = await FFmpegProcessManager.instance.startProcess('sleep', [
+        '30',
+      ]);
+
+      await first.cancel();
+
+      expect(first.isFinished, isTrue);
+      expect(second.isFinished, isFalse);
+      expect(FFmpegProcessManager.instance.hasActiveProcess, isTrue);
+
+      await FFmpegProcessManager.instance.killActiveProcess();
+      expect(second.isFinished, isTrue);
+      expect(FFmpegProcessManager.instance.hasActiveProcess, isFalse);
+    }, skip: noPosixTools);
+
+    test('a run that exits normally is not reported as cancelled', () async {
+      final run = await FFmpegProcessManager.instance.startProcess('true', []);
+
+      expect(await run.exitCode, 0);
+      expect(run.cancelRequested, isFalse);
+      expect(FFmpegProcessManager.instance.hasActiveProcess, isFalse);
+    }, skip: noPosixTools);
+
+    test('cancelling a finished run is harmless', () async {
+      final run = await FFmpegProcessManager.instance.startProcess('true', []);
+      await run.exitCode;
+
+      await run.cancel();
+
+      expect(await run.exitCode, 0);
+      expect(FFmpegProcessManager.instance.hasActiveProcess, isFalse);
+    }, skip: noPosixTools);
   });
 }

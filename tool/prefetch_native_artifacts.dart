@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-const _sqliteVersion = '3.5.0';
+const _sqliteVersion = '3.7.0';
 const _sqliteReleaseBase =
     'https://github.com/simolus3/sqlite3.dart/releases/download/'
     'sqlite3-$_sqliteVersion';
@@ -51,7 +51,7 @@ Future<void> main(List<String> arguments) async {
     if (target == 'linux' || target == 'windows')
       ..._liteRtArtifacts(
         target,
-        _packageRoot(projectDirectory, 'flutter_litert', '3.9.1'),
+        _packageRoot(projectDirectory, 'flutter_litert', '3.9.3'),
       ),
   ];
 
@@ -115,60 +115,60 @@ Iterable<_Artifact> _sqliteArtifacts(
     'android' => const [
       (
         'libsqlite3.arm.android.so',
-        '6c1b8dffc1ddefaf02e771711491410bc3ab1db858d3d23d2925e0b2cd691b93',
+        'a42fa9d0f5c006d30b000d4904bc497705191c5d7330b178618546004295bb49',
         'libsqlite3.so',
       ),
       (
         'libsqlite3.arm64.android.so',
-        'e99515af1d7119fb61843ae5e597344e7f258563de3a7e5a3869f627aab2887b',
+        '0c2d3bfc8c87abceb21ed72a4bb49964121c5fe1a8ef3848d83ba907d01b6161',
         'libsqlite3.so',
       ),
       (
         'libsqlite3.x64.android.so',
-        'e5a2d46ac5e11f471e1aaedfd364f54c7961a6900432d289ea3f5781bcaaf4cd',
+        '949965f0eba976f707ae364cdcb42c342b5f0626081f8d7f0378fb7b52848772',
         'libsqlite3.so',
       ),
     ],
     'ios' => const [
       (
         'libsqlite3.arm64.ios.dylib',
-        '14ddadc35d7e92e58e219a34dc4a9b66fd5b195c9e144dcfed06978a65dfaba9',
+        '1cd28d9f4f2be1d855945d44b68229d2fc7a6a0db4a3fd8e88d7d7f719cd3de0',
         'libsqlite3.dylib',
       ),
       (
         'libsqlite3.arm64.ios_sim.dylib',
-        '1ef1f54d5524f6c99ff74ae1244fb3d815f7a40c7c1cf7615a6321ba752fa8ff',
+        '1218e774869d673134b8d901dc6654bb1879f4a3682e9bdd4899e20599d21a1b',
         'libsqlite3.dylib',
       ),
       (
         'libsqlite3.x64.ios_sim.dylib',
-        '757f5d6e3892d04826aa531604f182f4489825039343952d60bb5eb506b09a80',
+        'c41f725b587170f6f899d97710e531af7ff2f49eb757d5246b5af0b8371ced9f',
         'libsqlite3.dylib',
       ),
     ],
     'linux' => const [
       (
         'libsqlite3.x64.linux.so',
-        '2219febf70a5ed39a39db1bc46e00d3df0b3bb881ad36a67e2e5a0cd91ebd3a5',
+        '0f947ebe629e8d9d02d7f408bef36e056bfc63ea47e02e0d45a7bae454f04ace',
         'libsqlite3.so',
       ),
     ],
     'macos' => const [
       (
         'libsqlite3.arm64.macos.dylib',
-        'f84bea51f2498dea33564d854def1252ec4551d34371545a505589b361efe487',
+        '649fdf22050829816ebec7dbeab5e7b974bd72487f84cbcf3529f3bd7b756430',
         'libsqlite3.dylib',
       ),
       (
         'libsqlite3.x64.macos.dylib',
-        'bd96fb2480c0f62b72dd5cb3b5c4acf61809cce7e07019fbe8346ba9972d75c1',
+        '5b95619427b111ad23725ec42b48f84e707712d367cf35180e65ff486c4a8ba8',
         'libsqlite3.dylib',
       ),
     ],
     'windows' => const [
       (
         'sqlite3.x64.windows.dll',
-        '858141a2826f53e8374cb07de2638e0f1ac944f49b897dd558feba5597e86d1c',
+        '98b4be674137b85ec111a7a29223e87aa41c3e964d61f73602471ddd7b9c56ce',
         'sqlite3.dll',
       ),
     ],

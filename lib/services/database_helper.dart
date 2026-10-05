@@ -465,17 +465,36 @@ class DB {
     columns: ['type'],
   );
 
+  /// Marks the project's video as needing a rebuild.
+  ///
+  /// Increments rather than setting 1, so a request made while a compile runs
+  /// changes the value and survives that compile's
+  /// [clearNewVideoNeededIfUnchanged]. Any non-zero value means "needed".
   Future<void> setNewVideoNeeded(int projectId) async {
     final db = await database;
-    await db.update(
-      projectTable,
-      {'newVideoNeeded': 1},
-      where: 'id = ?',
-      whereArgs: [projectId],
+    await db.rawUpdate(
+      'UPDATE $projectTable SET newVideoNeeded = newVideoNeeded + 1 '
+      'WHERE id = ?',
+      [projectId],
     );
   }
 
-  void setNewVideoNotNeeded(int projectId) async {
+  /// Clears the rebuild flag only if it still equals [valueAtCompileStart],
+  /// i.e. nobody requested another rebuild while the compile ran.
+  Future<void> clearNewVideoNeededIfUnchanged(
+    int projectId,
+    int valueAtCompileStart,
+  ) async {
+    final db = await database;
+    await db.update(
+      projectTable,
+      {'newVideoNeeded': 0},
+      where: 'id = ? AND newVideoNeeded = ?',
+      whereArgs: [projectId, valueAtCompileStart],
+    );
+  }
+
+  Future<void> setNewVideoNotNeeded(int projectId) async {
     final db = await database;
     await db.update(
       projectTable,
@@ -557,6 +576,8 @@ class DB {
     // Video codec and background
     'video_codec': 'h264',
     'video_background': 'TRANSPARENT',
+    // Global. See VideoCompileCoordinator.runStartupMaintenance.
+    'video_publish_version': '0',
     'blur_zoom': '3.0',
     'blur_strength': '1.0',
     // Camera timer
