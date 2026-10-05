@@ -19,10 +19,10 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/media_kit_video/ios"
 
 SPEC CHECKSUMS:
-  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
   flutter_avif_ios: 2553d2aafda56339cf924e943da89ad3f40af2dd
   media_kit_video: f3b0d035d89def15cfbbcf7dc2ae278f201e2f83
 
-PODFILE CHECKSUM: 9f0a1fedb94757721f309ef3496b66227f3b4551
+PODFILE CHECKSUM: ab19e32111a32910b678b93ffdb9e07e6cd50e30
 
 COCOAPODS: 1.16.2

@@ -19,6 +19,7 @@ import '../services/database_helper.dart';
 import '../services/menu_bar_service.dart';
 import '../services/theme_provider.dart';
 import '../services/log_service.dart';
+import '../services/video_compile_coordinator.dart';
 import '../widgets/main_navigation.dart';
 import '../theme/theme.dart';
 import '../services/database_import_ffi.dart';
@@ -129,6 +130,13 @@ Future<void> _main() async {
     FlutterNativeSplash.remove();
 
     debugPaintSizeEnabled = false;
+  }
+
+  // Before any compile can start: remove output of encodes that never
+  // finished, and once, mark existing videos for a rebuild (see
+  // VideoCompileCoordinator.runStartupMaintenance).
+  if (!test_config.isTestMode) {
+    await VideoCompileCoordinator.instance.runStartupMaintenance();
   }
 
   runApp(AgeLapse(homePage: await _getHomePage()));

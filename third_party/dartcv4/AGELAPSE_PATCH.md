@@ -1,8 +1,8 @@
 # AgeLapse patch
 
-This directory is a minimal vendoring of `dartcv4` 2.2.1+4 from pub.dev
+This directory is a minimal vendoring of `dartcv4` 2.3.1 from pub.dev
 (archive SHA-256
-`5764d13550055da3bb35ca28e6866b837579dfb4b594582b7a7753785ca5dfef`).
+`e78c39ea09decc04ee70be9684eb63c092e0cb006b37615d214a08b6e098d5a9`).
 Examples and upstream tests are omitted because this copy is used only as a
 dependency.
 

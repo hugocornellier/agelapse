@@ -14,6 +14,7 @@ import '../screens/project_page.dart';
 import '../screens/info_page.dart';
 import '../screens/camera_page/camera_page.dart';
 import '../services/database_helper.dart';
+import '../services/log_service.dart';
 import '../services/project_folder_sync_service.dart';
 import '../services/settings_cache.dart';
 import '../services/stabilization_service.dart';
@@ -22,6 +23,7 @@ import '../utils/project_utils.dart';
 import '../services/stabilization_state.dart';
 import '../services/stab_update_event.dart';
 import '../services/theme_provider.dart';
+import '../services/video_compile_coordinator.dart';
 import '../utils/gallery_utils.dart';
 import 'package:path/path.dart' as path;
 import '../styles/styles.dart';
@@ -79,6 +81,7 @@ class MainNavigationState extends State<MainNavigation>
   bool _photoTakenToday = false;
   bool _userRanOutOfSpace = false;
   bool _isSyncingProjectFolder = false;
+  bool _compileStoppedForBackground = false;
   bool _hasUnseenVideo = false;
 
   // Global drag-and-drop state (UI only; GlobalDropService is source of truth)
@@ -251,10 +254,34 @@ class MainNavigationState extends State<MainNavigation>
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused) {
       _clearDragState();
-    } else if (state == AppLifecycleState.resumed &&
-        _settingsCache?.linkedSourceEnabled == true) {
-      ProjectFolderSyncService.instance.scheduleDebouncedRescan();
     }
+    if (state == AppLifecycleState.paused) {
+      _stopCompileForBackground();
+    } else if (state == AppLifecycleState.resumed) {
+      if (_settingsCache?.linkedSourceEnabled == true) {
+        ProjectFolderSyncService.instance.scheduleDebouncedRescan();
+      }
+      if (_compileStoppedForBackground) {
+        _compileStoppedForBackground = false;
+        _startStabilization();
+      }
+    }
+  }
+
+  /// iOS invalidates VideoToolbox encoder sessions when the app goes to the
+  /// background, and an encode that carries on across that can come out
+  /// broken. Stop it (the current video is untouched) and rebuild on return.
+  /// Only on real backgrounding: photo pickers and dialogs make the app
+  /// inactive, not paused.
+  void _stopCompileForBackground() {
+    if (!Platform.isIOS || !VideoCompileCoordinator.instance.isBusy) return;
+    LogService.instance.log(
+      'MainNavigation: App backgrounded during a video compile; stopping it',
+    );
+    _compileStoppedForBackground = true;
+    unawaited(StabilizationService.instance.cancel());
+    // Also covers a manual compile, which runs outside the service.
+    unawaited(VideoCompileCoordinator.instance.cancelAll('app backgrounded'));
   }
 
   void _clearDragState() {
@@ -388,10 +415,10 @@ class MainNavigationState extends State<MainNavigation>
   }
 
   Future<void> processPickedFiles(
-    FilePickerResult? pickedFiles,
+    List<PlatformFile>? pickedFiles,
     Future<void> Function(dynamic file) processFileCallback,
   ) async {
-    if (pickedFiles == null) return;
+    if (pickedFiles == null || pickedFiles.isEmpty) return;
     setStateIfMounted(() {
       _isImporting = true;
     });
@@ -402,8 +429,9 @@ class MainNavigationState extends State<MainNavigation>
         .getAllPhotoPathsByProjectID(widget.projectId);
     final int photoCountBeforeImport = allPhotosBefore.length;
 
-    final List<File> files = pickedFiles.paths
-        .map((path) => File(path!))
+    final List<File> files = pickedFiles
+        .where((f) => f.path != null)
+        .map((f) => File(f.path!))
         .toList();
     for (File file in files) {
       await processFileCallback(file);

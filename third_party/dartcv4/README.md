@@ -25,6 +25,7 @@ OpenCV Bindings for Dart Language.
       - [Asynchronous](#asynchronous)
       - [Flutter](#flutter)
       - [Configure hooks options](#configure-hooks-options)
+    - [Choosing which OpenCV to build against](#choosing-which-opencv-to-build-against)
   - [TODO](#todo)
   - [Contributors](#contributors)
   - [Acknowledgement](#acknowledgement)
@@ -122,9 +123,9 @@ void main() async {
 
 #### Flutter
 
-see [example](https://github.com/rainyl/opencv_dart/tree/2.x/example/flutter)
+see [example](https://github.com/rainyl/opencv_dart/tree/main/packages/dartcv/example/flutter)
 
-~~More examples are on the way...~~ see [opencv_dart.examples](https://github.com/rainyl/opencv_dart.examples) and share yours
+~~More examples are on the way...~~ see [awesome-opencv_dart](https://github.com/rainyl/awesome-opencv_dart) and share yours
 
 #### Configure hooks options
 
@@ -135,17 +136,71 @@ hooks:
   user_defines:
     dartcv4:
       # debug: true
+      # treeshake: true # tree-shaking unused symbols, onyl works in AOT mode and Dart 3.13+.
       include_modules: # `core` is always included
         - imgcodecs
         - imgproc
         # ...
       exclude_modules:
-        - contrib
+        - videoio
         - dnn
         # ...
+      # whether to build OpenCV with OpenCL support, per platform
+      windows:
+        use_opencl: false
+      linux:
+        use_opencl: true
+      # which OpenCV to build against, see below
+      # opencv_version: "4.12.0"
+      # opencv_dir: /path/to/opencv/lib/cmake/opencv4
 ```
 
+### Choosing which OpenCV to build against
+
+By default dartcv builds the OpenCV version this package pins, which is the one
+its bindings are developed and tested against. Two options change that, for
+projects that need a specific OpenCV — usually because their results have to
+match another environment, such as a Python service processing the same images.
+
+> [!WARNING]
+> The pinned version is the only one dartcv is developed and tested against.
+> OpenCV changes its API between releases, so a different version may fail to
+> compile, fail to link, or build cleanly and then behave differently at
+> runtime. **Problems that come from a non-default OpenCV are not supported by
+> opencv_dart**: before reporting one, reproduce it with the pinned version,
+> and if it only happens with yours, it is yours to carry.
+>
+> Use these options when you have a reason to accept that — matching another
+> environment's results, or a platform SDK you do not control — and pin the
+> version you tested, rather than tracking whatever is newest.
+
+- `opencv_version`: build this upstream tag from source instead of the pinned
+  one, for example `"4.12.0"`. Must be 4.12 or newer; dartcv calls APIs that do
+  not exist before then, and the build stops with a message saying so.
+- `opencv_dir`: use an OpenCV that is already built, given as the directory
+  holding `OpenCVConfig.cmake`. Takes precedence over `opencv_version`, and can
+  also be set per platform, since a cross-compiled OpenCV lives somewhere
+  different for each target:
+
+```yaml
+hooks:
+  user_defines:
+    dartcv4:
+      include_modules:
+        - ximgproc
+      android:
+        opencv_dir: /path/to/OpenCV-android-sdk/sdk/native/jni
+      ios:
+        opencv_dir: /path/to/opencv-ios/device-arm64/lib/cmake/opencv4
+```
+
+Neither option changes anything for projects that do not set them.
+
 - `debug`: enable debug mode, default is `false`, if enabled, all messages will be printed to stderr.
+- `treeshake`: enable linker dead-code elimination, default is `false`. When enabled, the native library is compiled with function-level sections and the linker garbage-collects code that is not reachable from the exported symbols.
+- `use_opencl`: whether to build OpenCV with OpenCL support, default is `false` for all platforms. It can be configured per platform under a platform key (`windows`, `linux`, `macos`, `android`, `ios`). OpenCL is **always disabled on `ios`** since iOS does not support it. Enabling OpenCL may accelerate some operations (e.g. `dnn`), but it is disabled by default because the OpenCV OpenCL runtime can cause a racy hang-at-exit during process teardown; enable it only if you need the acceleration.
+- `deployment_target`: minimum Apple platform version, read from the `ios` / `macos` sub-map, e.g. `ios: {deployment_target: "15.0"}`. It overrides the deployment target dartcv would otherwise use, which comes from the target's code configuration (the deployment target of the Flutter/Xcode app). Quote values with trailing zeros (`"10.10"`): YAML parses an unquoted `10.10` as the number `10.1`.
+- `generator`: the CMake generator to use, per platform under a platform key (`windows`, `linux`, `macos`, `android`, `ios`), one of `Ninja`, `Unix Makefiles`, `Xcode`, `Visual Studio 16 2019`, `Visual Studio 17 2022`, `Visual Studio 18 2026`. Defaults are platform specific: `Unix Makefiles` on Linux, `Xcode` on macOS/iOS, `Ninja` on Android and CMake's own default on Windows.
 - valid modules:
   - `core`: always included
   - included by default:
@@ -170,7 +225,7 @@ hooks:
     - `ximgproc`
     - `xobjdetect`
 - Note: even a module is excluded, it's dart code is still available, but throws a symbol not found exception when called.
-- ~~`videoio` and `highgui` will introduce FFMPEG dynamic libraries (except for ios, ffmpeg is not supported on ios for now).~~ FFMPEG is no longer availabel with `dartcv >= 2.2.0`
+- ~~`videoio` and `highgui` will introduce FFMPEG dynamic libraries (except for ios, ffmpeg is not supported on ios for now).~~ FFMPEG is no longer available with `dartcv >= 2.2.0`
 
 ## TODO
 
@@ -234,6 +289,13 @@ hooks:
             </td>
 		</tr>
 		<tr>
+            <td align="center">
+                <a href="https://github.com/dupuchba">
+                    <img src="https://avatars.githubusercontent.com/u/911705?v=4" width="100;" alt="dupuchba"/>
+                    <br />
+                    <sub><b>Baptiste DUPUCH</b></sub>
+                </a>
+            </td>
             <td align="center">
                 <a href="https://github.com/Escaton615">
                     <img src="https://avatars.githubusercontent.com/u/6680284?v=4" width="100;" alt="Escaton615"/>

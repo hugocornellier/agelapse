@@ -13,6 +13,8 @@ import 'package:path/path.dart' as path;
 
 import '../models/video_codec.dart';
 import '../services/database_helper.dart';
+import '../services/video_compile_coordinator.dart';
+import '../services/video_diagnostics.dart';
 import '../styles/styles.dart';
 import '../utils/dir_utils.dart';
 import '../utils/export_naming_utils.dart';
@@ -99,6 +101,12 @@ class CreatePageState extends State<CreatePage>
   // Playback unsupported (codec not decodable on this platform)
   bool _playbackUnsupported = false;
 
+  // Playback diagnostics (see VideoDiagnostics)
+  final GlobalKey _videoPlayerKey = GlobalKey();
+  Timer? _frameCheckTimer;
+  bool _platformViewFallback = false;
+  bool _loggedPlaybackError = false;
+
   // Manual compile state (when auto-compile is disabled)
   bool _autoCompileEnabled = true;
   bool _manualCompileInProgress = false;
@@ -139,6 +147,9 @@ class CreatePageState extends State<CreatePage>
   }
 
   void _disposeVideoControllers() {
+    _frameCheckTimer?.cancel();
+    _frameCheckTimer = null;
+
     _chewieController?.dispose();
     _chewieController = null;
 
@@ -293,44 +304,48 @@ class CreatePageState extends State<CreatePage>
     final int totalFrames = photoCount ?? 0;
     VideoUtils.resetVideoStopwatch(totalFrames);
 
-    final result = await VideoUtils.createTimelapseFromProjectId(
-      widget.projectId,
-      (frame) {
-        final double percentUnrounded = totalFrames > 0
-            ? (frame / totalFrames * 100)
-            : 0;
-        final String percent = percentUnrounded.toStringAsFixed(1);
-        final String? eta = VideoUtils.calculateVideoEta(frame);
-        final String etaDisplay = eta ?? "Calculating ETA";
-        if (mounted) {
-          setState(() {
-            loadingText = "Compiling video...\n$percent% complete\n$etaDisplay";
-            _manualFrame = frame;
-            _manualEta = etaDisplay;
-          });
-        }
-      },
-    );
+    // Serialized with every other compile; it clears the "new video needed"
+    // flag itself when it publishes.
+    final outcome = await VideoUtils.compileVideo(widget.projectId, (frame) {
+      final double percentUnrounded = totalFrames > 0
+          ? (frame / totalFrames * 100)
+          : 0;
+      final String percent = percentUnrounded.toStringAsFixed(1);
+      final String? eta = VideoUtils.calculateVideoEta(frame);
+      final String etaDisplay = eta ?? "Calculating ETA";
+      if (mounted) {
+        setState(() {
+          loadingText = "Compiling video...\n$percent% complete\n$etaDisplay";
+          _manualFrame = frame;
+          _manualEta = etaDisplay;
+        });
+      }
+    }, reason: 'manual compile');
 
     VideoUtils.stopVideoStopwatch();
-
-    if (result) {
-      // Mark that video is no longer needed
-      DB.instance.setNewVideoNotNeeded(widget.projectId);
-    }
 
     if (!mounted) return;
     setState(() {
       _manualCompileInProgress = false;
     });
 
-    if (result) {
-      setupVideoPlayer();
-    } else {
-      setState(() {
-        loadingComplete = true;
-        loadingText = "Failed to compile video";
-      });
+    switch (outcome) {
+      case CompileOutcome.published:
+        setupVideoPlayer();
+      case CompileOutcome.cancelled:
+        // Superseded or stopped (e.g. a new photo arrived, or the app went to
+        // the background): back to the compile options.
+        await _checkVideoState();
+        if (!mounted) return;
+        setState(() {
+          loadingComplete = true;
+          loadingText = "";
+        });
+      case CompileOutcome.failed:
+        setState(() {
+          loadingComplete = true;
+          loadingText = "Failed to compile video";
+        });
     }
   }
 
@@ -399,6 +414,14 @@ class CreatePageState extends State<CreatePage>
 
     final info = await _loadVideoInfo();
     if (!mounted) return;
+    unawaited(
+      VideoDiagnostics.logVideoOpened(
+        projectId: widget.projectId,
+        file: info.videoFile,
+        codec: info.codec,
+        orientation: info.orientation,
+      ),
+    );
     final projectIdStr = widget.projectId.toString();
     final metadata = await Future.wait([
       SettingsUtil.loadVideoResolution(projectIdStr),
@@ -445,6 +468,7 @@ class CreatePageState extends State<CreatePage>
 
     // Don't hide nav bar; keep the standard page layout
     playVideo();
+    if (!_useMediaKit) _scheduleFrameCheck(info.videoFile);
 
     final bool hasViewedFirstVideo = await SettingsUtil.hasSeenFirstVideo(
       projectIdStr,
@@ -496,11 +520,18 @@ class CreatePageState extends State<CreatePage>
   }) async {
     // Build into a local so a dispose during initialize() can't strand a
     // half-initialized controller in the field or trigger a force-unwrap.
-    final controller = VideoPlayerController.file(videoFile);
+    final viewType = _platformViewFallback
+        ? VideoViewType.platformView
+        : VideoViewType.textureView;
+    final controller = VideoPlayerController.file(
+      videoFile,
+      viewType: viewType,
+    );
 
     try {
       await controller.initialize();
     } catch (e) {
+      VideoDiagnostics.logPlayerFailed(e);
       await controller.dispose();
       setStateIfMounted(() {
         loadingComplete = true;
@@ -514,6 +545,8 @@ class CreatePageState extends State<CreatePage>
       return false;
     }
 
+    VideoDiagnostics.logPlayerInitialized(controller.value, viewType: viewType);
+    _loggedPlaybackError = false;
     controller.setLooping(true);
     controller.setPlaybackSpeed(playbackSpeed);
     controller.addListener(_handleStandardVideoMetricsChanged);
@@ -529,6 +562,54 @@ class CreatePageState extends State<CreatePage>
       ),
     );
     return true;
+  }
+
+  /// iOS: a few seconds into playback, checks that frames decode and actually
+  /// reach the screen. A user reported a player that ran normally but showed
+  /// only black, with no error to catch.
+  void _scheduleFrameCheck(File videoFile) {
+    if (!Platform.isIOS || _platformViewFallback) return;
+    _frameCheckTimer?.cancel();
+    _frameCheckTimer = Timer(
+      const Duration(seconds: 3),
+      () => _runFrameCheck(videoFile),
+    );
+  }
+
+  Future<void> _runFrameCheck(File videoFile) async {
+    final controller = _videoPlayerController;
+    final box =
+        _videoPlayerKey.currentContext?.findRenderObject() as RenderBox?;
+    if (!mounted || controller == null || box == null || !box.hasSize) return;
+
+    final check = await VideoDiagnostics.checkFrames(
+      videoFile,
+      box.localToGlobal(Offset.zero) & box.size,
+    );
+    if (!mounted || check == null || controller != _videoPlayerController) {
+      return;
+    }
+    if (check.shouldFallBackToPlatformView) {
+      await _fallBackToPlatformView(videoFile);
+    }
+  }
+
+  /// Rebuilds the player as a platform view, which draws through AVPlayerLayer
+  /// instead of a Flutter texture. Kept for the rest of this page's life.
+  Future<void> _fallBackToPlatformView(File videoFile) async {
+    VideoDiagnostics.logFallbackToPlatformView();
+    _platformViewFallback = true;
+    final ready = await _setupStandardVideoPlayer(
+      videoFile,
+      fallbackAspectRatio: _configuredVideoAspectRatio,
+    );
+    if (!ready || !mounted) return;
+    playVideo();
+    // Snapshots can't see AVPlayerLayer content, so log its readiness instead.
+    _frameCheckTimer = Timer(
+      const Duration(seconds: 2),
+      VideoDiagnostics.logPlayerLayers,
+    );
   }
 
   void playVideo() {
@@ -563,6 +644,11 @@ class CreatePageState extends State<CreatePage>
   void _handleStandardVideoMetricsChanged() {
     final controller = _videoPlayerController;
     if (controller == null) return;
+
+    if (controller.value.hasError && !_loggedPlaybackError) {
+      _loggedPlaybackError = true;
+      VideoDiagnostics.logPlaybackError(controller.value.errorDescription);
+    }
 
     final size = controller.value.size;
     if (!_hasValidVideoSize(size)) {
@@ -1513,6 +1599,7 @@ class CreatePageState extends State<CreatePage>
 
   Widget _buildChewieVideoPlayer() {
     return AspectRatio(
+      key: _videoPlayerKey,
       aspectRatio: _chewieController!.aspectRatio ?? _getVideoAspectRatio(),
       child: Chewie(controller: _chewieController!),
     );
@@ -1643,6 +1730,18 @@ class CreatePageState extends State<CreatePage>
       }
 
       if (await dest.exists()) {
+        // Choosing the project's own video as the destination would delete
+        // it before copying.
+        if (await FileSystemEntity.identical(src.path, dest.path)) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Choose a location outside the project'),
+              ),
+            );
+          }
+          return;
+        }
         await dest.delete();
       }
       await src.copy(dest.path);

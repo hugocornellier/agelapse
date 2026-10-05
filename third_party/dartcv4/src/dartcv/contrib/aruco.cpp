@@ -274,6 +274,55 @@ bool cv_aruco_detectorParameters_get_detectInvertedMarker(ArucoDetectorParams se
     return self.ptr->detectInvertedMarker;
 }
 
+CvStatus* cv_aruco_refineParameters_create(ArucoRefineParams* rval) {
+    BEGIN_WRAP
+    rval->ptr = new cv::aruco::RefineParameters();
+    END_WRAP
+}
+
+CvStatus* cv_aruco_refineParameters_create_1(
+    float minRepDistance,
+    float errorCorrectionRate,
+    bool checkAllOrders,
+    ArucoRefineParams* rval
+) {
+    BEGIN_WRAP
+    rval->ptr = new cv::aruco::RefineParameters(
+        minRepDistance,
+        errorCorrectionRate,
+        checkAllOrders
+    );
+    END_WRAP
+}
+
+void cv_aruco_refineParameters_close(ArucoRefineParamsPtr self) {
+    CVD_FREE(self);
+}
+
+float cv_aruco_refineParameters_get_minRepDistance(ArucoRefineParams self) {
+    return self.ptr->minRepDistance;
+}
+
+void cv_aruco_refineParameters_set_minRepDistance(ArucoRefineParams self, float value) {
+    self.ptr->minRepDistance = value;
+}
+
+float cv_aruco_refineParameters_get_errorCorrectionRate(ArucoRefineParams self) {
+    return self.ptr->errorCorrectionRate;
+}
+
+void cv_aruco_refineParameters_set_errorCorrectionRate(ArucoRefineParams self, float value) {
+    self.ptr->errorCorrectionRate = value;
+}
+
+bool cv_aruco_refineParameters_get_checkAllOrders(ArucoRefineParams self) {
+    return self.ptr->checkAllOrders;
+}
+
+void cv_aruco_refineParameters_set_checkAllOrders(ArucoRefineParams self, bool value) {
+    self.ptr->checkAllOrders = value;
+}
+
 CvStatus* cv_aruco_Dictionary_create(ArucoDictionary* rval) {
     BEGIN_WRAP
     rval->ptr = new cv::aruco::Dictionary();
@@ -398,6 +447,399 @@ CvStatus* cv_aruco_generateImageMarker(
     BEGIN_WRAP
     cv::aruco::Dictionary dict = cv::aruco::getPredefinedDictionary(dictionaryId);
     cv::aruco::generateImageMarker(dict, id, sidePixels, *dst.ptr, borderBits);
+    if (callback != nullptr) {
+        callback();
+    }
+    END_WRAP
+}
+
+CvStatus* cv_aruco_charucoBoard_create(CharucoBoard* rval) {
+    BEGIN_WRAP
+    rval->ptr = new cv::aruco::CharucoBoard();
+    END_WRAP
+}
+
+CvStatus* cv_aruco_charucoBoard_create_1(
+    CvSize size,
+    float squareLength,
+    float markerLength,
+    ArucoDictionary dictionary,
+    CharucoBoard* rval
+) {
+    BEGIN_WRAP
+    rval->ptr = new cv::aruco::CharucoBoard(
+        cv::Size(size.width, size.height),
+        squareLength,
+        markerLength,
+        CVDEREF(dictionary)
+    );
+    END_WRAP
+}
+
+CvStatus* cv_aruco_charucoBoard_create_2(
+    CvSize size,
+    float squareLength,
+    float markerLength,
+    ArucoDictionary dictionary,
+    VecI32 ids,
+    CharucoBoard* rval
+) {
+    BEGIN_WRAP
+    rval->ptr = new cv::aruco::CharucoBoard(
+        cv::Size(size.width, size.height),
+        squareLength,
+        markerLength,
+        CVDEREF(dictionary),
+        CVDEREF(ids)
+    );
+    END_WRAP
+}
+
+void cv_aruco_charucoBoard_close(CharucoBoardPtr self) {
+    CVD_FREE(self);
+}
+
+bool cv_aruco_charucoBoard_checkCharucoCornersCollinear(CharucoBoard self, VecI32 charucoIds) {
+    return self.ptr->checkCharucoCornersCollinear(CVDEREF(charucoIds));
+}
+
+CvStatus* cv_aruco_charucoBoard_generateImage(
+    CharucoBoard self,
+    CvSize outSize,
+    Mat img,
+    int marginSize,
+    int borderBits,
+    CvCallback_0 callback
+) {
+    BEGIN_WRAP
+    self.ptr->generateImage(cv::Size(outSize.width, outSize.height), CVDEREF(img), marginSize, borderBits);
+    if (callback != nullptr) {
+        callback();
+    }
+    END_WRAP
+}
+
+CvStatus* cv_aruco_charucoBoard_getChessboardCorners(CharucoBoard self, VecPoint3f* rval) {
+    BEGIN_WRAP
+    rval->ptr = new std::vector<cv::Point3f>(self.ptr->getChessboardCorners());
+    END_WRAP
+}
+
+CvSize cv_aruco_charucoBoard_getChessboardSize(CharucoBoard self) {
+    cv::Size size = self.ptr->getChessboardSize();
+    return CvSize{size.width, size.height};
+}
+
+float cv_aruco_charucoBoard_getMarkerLength(CharucoBoard self) {
+    return self.ptr->getMarkerLength();
+}
+
+float cv_aruco_charucoBoard_getSquareLength(CharucoBoard self) {
+    return self.ptr->getSquareLength();
+}
+
+bool cv_aruco_charucoBoard_getLegacyPattern(CharucoBoard self) {
+    return self.ptr->getLegacyPattern();
+}
+
+void cv_aruco_charucoBoard_setLegacyPattern(CharucoBoard self, bool value) {
+    self.ptr->setLegacyPattern(value);
+}
+
+CvStatus* cv_aruco_charucoBoard_getIds(CharucoBoard self, VecI32* rval) {
+    BEGIN_WRAP
+    rval->ptr = new std::vector<int>(self.ptr->getIds());
+    END_WRAP
+}
+
+CvStatus* cv_aruco_charucoBoard_getObjPoints(CharucoBoard self, VecVecPoint3f* rval) {
+    BEGIN_WRAP
+    rval->ptr = new std::vector<std::vector<cv::Point3f>>(self.ptr->getObjPoints());
+    END_WRAP
+}
+
+CvStatus* cv_aruco_charucoBoard_matchImagePoints(
+    CharucoBoard self,
+    VecPoint2f detectedCharuco,
+    VecI32 detectedIds,
+    Mat objPoints,
+    Mat imgPoints,
+    CvCallback_0 callback
+) {
+    BEGIN_WRAP
+    self.ptr->matchImagePoints(CVDEREF(detectedCharuco), CVDEREF(detectedIds), CVDEREF(objPoints), CVDEREF(imgPoints));
+    if (callback != nullptr) {
+        callback();
+    }
+    END_WRAP
+}
+
+CvStatus* cv_aruco_charucoDetectorParameters_create(CharucoDetectorParams* rval) {
+    BEGIN_WRAP
+    rval->ptr = new cv::aruco::CharucoParameters();
+    END_WRAP
+}
+
+void cv_aruco_charucoDetectorParameters_close(CharucoDetectorParamsPtr self) {
+    CVD_FREE(self);
+}
+
+CvStatus* cv_aruco_charucoDetectorParameters_get_cameraMatrix(CharucoDetectorParams self, Mat* rval) {
+    BEGIN_WRAP
+    rval->ptr = new cv::Mat(self.ptr->cameraMatrix);
+    END_WRAP
+}
+
+CvStatus* cv_aruco_charucoDetectorParameters_set_cameraMatrix(CharucoDetectorParams self, Mat value) {
+    BEGIN_WRAP
+    self.ptr->cameraMatrix = CVDEREF(value);
+    END_WRAP
+}
+
+CvStatus* cv_aruco_charucoDetectorParameters_get_distCoeffs(CharucoDetectorParams self, Mat* rval) {
+    BEGIN_WRAP
+    rval->ptr = new cv::Mat(self.ptr->distCoeffs);
+    END_WRAP
+}
+
+CvStatus* cv_aruco_charucoDetectorParameters_set_distCoeffs(CharucoDetectorParams self, Mat value) {
+    BEGIN_WRAP
+    self.ptr->distCoeffs = CVDEREF(value);
+    END_WRAP
+}
+
+int cv_aruco_charucoDetectorParameters_get_minMarkers(CharucoDetectorParams self) {
+    return self.ptr->minMarkers;
+}
+
+void cv_aruco_charucoDetectorParameters_set_minMarkers(CharucoDetectorParams self, int value) {
+    self.ptr->minMarkers = value;
+}
+
+bool cv_aruco_charucoDetectorParameters_get_tryRefineMarkers(CharucoDetectorParams self) {
+    return self.ptr->tryRefineMarkers;
+}
+
+void cv_aruco_charucoDetectorParameters_set_tryRefineMarkers(CharucoDetectorParams self, bool value) {
+    self.ptr->tryRefineMarkers = value;
+}
+
+bool cv_aruco_charucoDetectorParameters_get_checkMarkers(CharucoDetectorParams self) {
+    return self.ptr->checkMarkers;
+}
+
+void cv_aruco_charucoDetectorParameters_set_checkMarkers(CharucoDetectorParams self, bool value) {
+    self.ptr->checkMarkers = value;
+}
+
+CvStatus* cv_aruco_charucoDetector_create_1(
+    CharucoBoard board,
+    CharucoDetector* rval
+) {
+    BEGIN_WRAP
+    rval->ptr = new cv::aruco::CharucoDetector(CVDEREF(board));
+    END_WRAP
+}
+
+CvStatus* cv_aruco_charucoDetector_create_2(
+    CharucoBoard board,
+    CharucoDetectorParams charucoParams,
+    CharucoDetector* rval
+) {
+    BEGIN_WRAP
+    rval->ptr = new cv::aruco::CharucoDetector(
+        CVDEREF(board),
+        CVDEREF(charucoParams)
+    );
+    END_WRAP
+}
+
+CvStatus* cv_aruco_charucoDetector_create_3(
+    CharucoBoard board,
+    CharucoDetectorParams charucoParams,
+    ArucoDetectorParams detectorParams,
+    CharucoDetector* rval
+) {
+    BEGIN_WRAP
+    rval->ptr = new cv::aruco::CharucoDetector(
+        CVDEREF(board),
+        CVDEREF(charucoParams),
+        CVDEREF(detectorParams)
+    );
+    END_WRAP
+}
+
+CvStatus* cv_aruco_charucoDetector_create_4(
+    CharucoBoard board,
+    CharucoDetectorParams charucoParams,
+    ArucoDetectorParams detectorParams,
+    ArucoRefineParams refineParams,
+    CharucoDetector* rval
+) {
+    BEGIN_WRAP
+    rval->ptr = new cv::aruco::CharucoDetector(
+        CVDEREF(board),
+        CVDEREF(charucoParams),
+        CVDEREF(detectorParams),
+        CVDEREF(refineParams)
+    );
+    END_WRAP
+}
+
+void cv_aruco_charucoDetector_close(CharucoDetectorPtr self) {
+    CVD_FREE(self);
+}
+
+CvStatus* cv_aruco_charucoDetector_detectBoard(
+    CharucoDetector self,
+    Mat image,
+    VecPoint2f* out_charucoCorners,
+    VecI32* out_charucoIds,
+    VecVecPoint2f* inout_markerCorners,
+    VecI32* inout_markerIds,
+    CvCallback_0 callback
+) {
+    BEGIN_WRAP
+    self.ptr->detectBoard(
+        CVDEREF(image),
+        CVDEREF_P(out_charucoCorners),
+        CVDEREF_P(out_charucoIds),
+        CVDEREF_P(inout_markerCorners),
+        CVDEREF_P(inout_markerIds)
+    );
+    if (callback != nullptr) {
+        callback();
+    }
+    END_WRAP
+}
+
+CvStatus* cv_aruco_charucoDetector_detectDiamonds(
+    CharucoDetector self,
+    Mat image,
+    VecVecPoint2f* out_diamondCorners,
+    VecVec4i* out_diamondIds,
+    VecVecPoint2f* inout_markerCorners,
+    VecI32* inout_markerIds,
+    CvCallback_0 callback
+) {
+    BEGIN_WRAP
+    self.ptr->detectDiamonds(
+        CVDEREF(image),
+        CVDEREF_P(out_diamondCorners),
+        CVDEREF_P(out_diamondIds),
+        CVDEREF_P(inout_markerCorners),
+        CVDEREF_P(inout_markerIds)
+    );
+    if (callback != nullptr) {
+        callback();
+    }
+    END_WRAP
+}
+
+CvStatus* cv_aruco_charucoDetector_getBoard(CharucoDetector self, CharucoBoard* rval) {
+    BEGIN_WRAP
+    rval->ptr = new cv::aruco::CharucoBoard(self.ptr->getBoard());
+    END_WRAP
+}
+
+void cv_aruco_charucoDetector_setBoard(CharucoDetector self, CharucoBoard board) {
+    self.ptr->setBoard(CVDEREF(board));
+}
+
+CvStatus* cv_aruco_charucoDetector_getCharucoParameters(
+    CharucoDetector self,
+    CharucoDetectorParams* rval
+) {
+    BEGIN_WRAP
+    rval->ptr = new cv::aruco::CharucoParameters(self.ptr->getCharucoParameters());
+    END_WRAP
+}
+
+void cv_aruco_charucoDetector_setCharucoParameters(
+    CharucoDetector self,
+    CharucoDetectorParams params
+) {
+    self.ptr->setCharucoParameters(CVDEREF(params));
+}
+
+CvStatus* cv_aruco_charucoDetector_getDetectorParameters(
+    CharucoDetector self,
+    ArucoDetectorParams* rval
+) {
+    BEGIN_WRAP
+    rval->ptr = new cv::aruco::DetectorParameters(self.ptr->getDetectorParameters());
+    END_WRAP
+}
+
+void cv_aruco_charucoDetector_setDetectorParameters(
+    CharucoDetector self,
+    ArucoDetectorParams params
+) {
+    self.ptr->setDetectorParameters(CVDEREF(params));
+}
+
+CvStatus* cv_aruco_charucoDetector_getRefineParameters(
+    CharucoDetector self,
+    ArucoRefineParams* rval
+) {
+    BEGIN_WRAP
+    rval->ptr = new cv::aruco::RefineParameters(self.ptr->getRefineParameters());
+    END_WRAP
+}
+
+void cv_aruco_charucoDetector_setRefineParameters(
+    CharucoDetector self,
+    ArucoRefineParams params
+) {
+    self.ptr->setRefineParameters(CVDEREF(params));
+}
+
+CvStatus* cv_aruco_drawDetectedCornersCharuco(
+    Mat image,
+    VecPoint2f charucoCorners,
+    VecI32 charucoIds,
+    Scalar cornerColor,
+    CvCallback_0 callback
+) {
+    BEGIN_WRAP
+    cv::Scalar _cornerColor =
+        cv::Scalar(cornerColor.val1, cornerColor.val2, cornerColor.val3, cornerColor.val4);
+    cv::aruco::drawDetectedCornersCharuco(
+        CVDEREF(image),
+        CVDEREF(charucoCorners),
+        CVDEREF(charucoIds),
+        _cornerColor
+    );
+    if (callback != nullptr) {
+        callback();
+    }
+    END_WRAP
+}
+
+CvStatus* cv_aruco_estimatePoseCharucoBoard(
+    VecPoint2f charucoCorners,
+    VecI32 charucoIds,
+    CharucoBoard board,
+    Mat cameraMatrix,
+    Mat distCoeffs,
+    Mat rvec,
+    Mat tvec,
+    bool useExtrinsicGuess,
+    bool* rval,
+    CvCallback_0 callback
+) {
+    BEGIN_WRAP
+    auto boardPtr = cv::makePtr<cv::aruco::CharucoBoard>(CVDEREF(board));
+    *rval = cv::aruco::estimatePoseCharucoBoard(
+        CVDEREF(charucoCorners),
+        CVDEREF(charucoIds),
+        boardPtr,
+        CVDEREF(cameraMatrix),
+        CVDEREF(distCoeffs),
+        CVDEREF(rvec),
+        CVDEREF(tvec),
+        useExtrinsicGuess
+    );
     if (callback != nullptr) {
         callback();
     }

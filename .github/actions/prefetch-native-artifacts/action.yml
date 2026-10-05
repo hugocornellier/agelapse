@@ -11,10 +11,10 @@ runs:
   steps:
     - name: Restore verified native artifacts
       id: native-artifact-cache
-      uses: actions/cache/restore@v5
+      uses: actions/cache/restore@v6
       with:
         path: ${{ runner.temp }}/agelapse-native-artifacts
-        key: native-v1-${{ runner.os }}-${{ inputs.target }}-sqlite3-3.5.0-litert-gpu-v1
+        key: native-v1-${{ runner.os }}-${{ inputs.target }}-sqlite3-3.7.0-litert-gpu-v1
 
     - name: Prefetch and install native artifacts
       shell: bash
@@ -28,7 +28,7 @@ runs:
 
     - name: Save verified native artifacts
       if: always() && steps.native-artifact-cache.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v5
+      uses: actions/cache/save@v6
       with:
         path: ${{ runner.temp }}/agelapse-native-artifacts
         key: ${{ steps.native-artifact-cache.outputs.cache-primary-key }}

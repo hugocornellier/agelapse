@@ -1,16 +1,14 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart' as kit;
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import '../models/video_background.dart';
 import '../models/video_codec.dart';
 import '../services/ffmpeg_process_manager.dart';
 import '../services/log_service.dart';
-import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit_config.dart' as kitcfg;
-import 'package:ffmpeg_kit_flutter_new/ffmpeg_session.dart' as kitsession;
+import '../services/video_compile_coordinator.dart';
 import 'package:ffmpeg_kit_flutter_new/log.dart' as kitlog;
-import 'package:ffmpeg_kit_flutter_new/return_code.dart' as kitrc;
 
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path/path.dart' as path;
@@ -40,6 +38,99 @@ class DateStampOverlayInfo {
     this.tempDir,
     required this.outputMapLabel,
   });
+}
+
+/// What an FFmpeg encode reported, used to decide whether its output can be
+/// published.
+@visibleForTesting
+class EncodeResult {
+  const EncodeResult({
+    required this.exitCode,
+    required this.cancelled,
+    this.expectedFrames = 0,
+    this.lastFrame = 0,
+    this.suspectLine,
+  });
+
+  final int exitCode;
+  final bool cancelled;
+
+  /// Output frames the encode should produce; 0 if unknown.
+  final int expectedFrames;
+
+  /// Highest frame number FFmpeg reported; 0 if it reported none.
+  final int lastFrame;
+
+  /// First log line showing the output can't be trusted despite exit code 0.
+  final String? suspectLine;
+
+  /// Why [output] must not be published, or null if it can be.
+  Future<String?> problemWith(File output) async {
+    if (exitCode != 0) return 'FFmpeg exited with $exitCode';
+    if (suspectLine != null) return 'FFmpeg reported: $suspectLine';
+    if (!await output.exists() || await output.length() == 0) {
+      return 'no output file';
+    }
+    // The last progress line can trail the end slightly, and very short
+    // encodes may not report a count at all.
+    if (expectedFrames >= 30 &&
+        lastFrame > 0 &&
+        lastFrame < expectedFrames * 0.9) {
+      return 'encoded $lastFrame of $expectedFrames frames';
+    }
+    return null;
+  }
+}
+
+/// Watches an encode's FFmpeg output for the frame count and for messages
+/// that make the output untrustworthy even when FFmpeg exits with 0.
+class _EncodeMonitor {
+  _EncodeMonitor({required int inputFrames, required int inputFps})
+    : expectedFrames = inputFps > 0
+          ? inputFrames * VideoUtils.outputFps(inputFps) ~/ inputFps
+          : 0;
+
+  final int expectedFrames;
+  int lastFrame = 0;
+  String? suspectLine;
+
+  static final RegExp _frame = RegExp(r'frame=\s*(\d+)');
+
+  static const List<String> _suspectMessages = [
+    // iOS invalidated the VideoToolbox session mid-encode (the app went to
+    // the background) and FFmpeg restarted it; timestamps after a restart
+    // have been seen going backwards.
+    'VT session restarted',
+    'Non-monotonous DTS',
+    'Non-monotonic DTS',
+    // A frame disappeared while the concat demuxer was reading it.
+    'Impossible to open',
+  ];
+
+  void onLine(String line) {
+    final match = _frame.firstMatch(line);
+    if (match != null) {
+      final frame = int.tryParse(match.group(1)!);
+      if (frame != null && frame > lastFrame) lastFrame = frame;
+    }
+    if (suspectLine == null) {
+      for (final message in _suspectMessages) {
+        if (line.contains(message)) {
+          suspectLine = line.trim();
+          break;
+        }
+      }
+    }
+  }
+
+  EncodeResult result({required int exitCode, required bool cancelled}) =>
+      EncodeResult(
+        exitCode: exitCode,
+        cancelled: cancelled,
+        expectedFrames: expectedFrames,
+        lastFrame: lastFrame,
+        suspectLine: suspectLine,
+      );
 }
 
 /// Result of building an FFmpeg filter chain for video compilation.
@@ -814,16 +905,29 @@ class VideoUtils {
     return false;
   }
 
-  static Future<bool> createTimelapse(
-    int projectId,
+  /// Encodes [job]'s project into a private file next to the video, then
+  /// publishes it over the video only if the encode finished cleanly and the
+  /// job is still wanted. Until then the previous video is untouched.
+  ///
+  /// Runs inside [VideoCompileCoordinator]; use [compileVideo] or
+  /// [createTimelapseFromProjectId] instead of calling this directly.
+  ///
+  /// [newVideoNeededAtStart] is the project's rebuild flag, read before any
+  /// of the compile's inputs were loaded. It is cleared after publishing only
+  /// if unchanged, so a request made during the compile survives it.
+  static Future<CompileOutcome> createTimelapse(
+    CompileJob job,
     framerate,
     totalPhotoCount,
     Function(int currentFrame)? setCurrentFrame, {
+    required int newVideoNeededAtStart,
     String? orientation,
   }) async {
+    final int projectId = job.projectId;
+    String? privateOutputPath;
     try {
       LogService.instance.log(
-        "[VIDEO] createTimelapse called: projectId: $projectId, framerate: $framerate, totalPhotoCount: $totalPhotoCount",
+        "[VIDEO] createTimelapse called: projectId: $projectId, framerate: $framerate, totalPhotoCount: $totalPhotoCount, job: ${job.id}",
       );
       LogService.instance.log(
         "[VIDEO] Platform: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}",
@@ -878,9 +982,13 @@ class VideoUtils {
         projectOrientation,
         codec: effectiveCodec,
       );
+      // FFmpeg writes here; the result is moved over videoOutputPath only
+      // once it is complete (see _finishEncode).
+      privateOutputPath = privateOutputPathFor(videoOutputPath, job.id);
       LogService.instance.log("[VIDEO] orientation: $projectOrientation");
       LogService.instance.log("[VIDEO] stabilizedDirPath: $stabilizedDirPath");
       LogService.instance.log("[VIDEO] videoOutputPath: $videoOutputPath");
+      LogService.instance.log("[VIDEO] encoding to: $privateOutputPath");
 
       // Check available disk space (fire-and-forget: informational only)
       try {
@@ -932,22 +1040,17 @@ class VideoUtils {
 
       await DirUtils.createDirectoryIfNotExists(videoOutputPath);
 
-      // Clean up old video files with different extensions (e.g. .mp4 when switching to .mov)
-      // This prevents stale files from being found by other code paths.
-      final videoDir = path.dirname(videoOutputPath);
-      final currentExt = path.extension(videoOutputPath);
-      for (final ext in ['.mp4', '.mov', '.webm']) {
-        if (ext != currentExt) {
-          final oldPath = path.join(videoDir, 'agelapse$ext');
-          final oldFile = File(oldPath);
-          if (await oldFile.exists()) {
-            LogService.instance.log(
-              "[VIDEO] Removing old video file: $oldPath",
-            );
-            await oldFile.delete();
-          }
+      // Record the video this compile replaces, so a playback problem reported
+      // later can be matched to the file that was on disk before.
+      try {
+        final existing = File(videoOutputPath);
+        if (await existing.exists()) {
+          final stat = await existing.stat();
+          LogService.instance.log(
+            "[VIDEO] Replacing existing video: ${stat.size} bytes, modified ${stat.modified.toIso8601String()}",
+          );
         }
-      }
+      } catch (_) {}
 
       final Directory dir = Directory(
         path.join(stabilizedDirPath, projectOrientation),
@@ -959,7 +1062,7 @@ class VideoUtils {
         LogService.instance.log(
           "[VIDEO] ERROR: Stabilized directory does not exist: ${dir.path}",
         );
-        return false;
+        return CompileOutcome.failed;
       }
 
       final bool framerateIsDefault = await SettingsUtil.loadFramerateIsDefault(
@@ -992,7 +1095,7 @@ class VideoUtils {
             LogService.instance.log(
               "[VIDEO] ERROR: Could not get frame dimensions",
             );
-            return false;
+            return CompileOutcome.failed;
           }
           final (videoWidth, videoHeight) = (frameInfo.width, frameInfo.height);
 
@@ -1041,11 +1144,18 @@ class VideoUtils {
             }
           }
 
-          final bool ok = await _encodeDesktop(
+          // Captured before encoding so the video record describes what was
+          // actually encoded, even if settings change meanwhile.
+          final String resolution = await SettingsUtil.loadVideoResolution(
+            projectId.toString(),
+          );
+
+          final encode = await _encodeDesktop(
+            job: job,
             ffmpegExe: ffmpegExe,
             isMacOS: Platform.isMacOS,
             framesDir: framesDir,
-            outputPath: videoOutputPath,
+            outputPath: privateOutputPath,
             fps: framerate,
             projectId: projectId,
             orientation: projectOrientation,
@@ -1066,29 +1176,30 @@ class VideoUtils {
           );
 
           await _cleanupDateStampTemp(dateStampOverlay);
-          LogService.instance.log("[VIDEO] _encodeDesktop returned: $ok");
-          if (ok) {
-            final String resolution = await SettingsUtil.loadVideoResolution(
-              projectId.toString(),
-            );
-            await DB.instance.addVideo(
+          LogService.instance.log(
+            "[VIDEO] _encodeDesktop exited with ${encode.exitCode}",
+          );
+          return await _finishEncode(
+            job: job,
+            encode: encode,
+            privatePath: privateOutputPath,
+            publishPath: videoOutputPath,
+            newVideoNeededAtStart: newVideoNeededAtStart,
+            addRecord: () => DB.instance.addVideo(
               projectId,
               resolution,
               wmSettings.enabled.toString(),
               wmSettings.pos,
               totalPhotoCount,
               framerate,
-            );
-            LogService.instance.log("[VIDEO] Video record added to database");
-          }
-
-          return ok;
+            ),
+          );
         } catch (e, stackTrace) {
           LogService.instance.log(
             "[VIDEO] ERROR in $platformName encoding: $e",
           );
           LogService.instance.log("[VIDEO] Stack trace: $stackTrace");
-          return false;
+          return CompileOutcome.failed;
         }
       }
 
@@ -1102,7 +1213,7 @@ class VideoUtils {
         LogService.instance.log(
           "[VIDEO] ERROR: Could not get frame dimensions",
         );
-        return false;
+        return CompileOutcome.failed;
       }
       final (videoWidth, videoHeight) = dimensions;
       LogService.instance.log(
@@ -1283,7 +1394,7 @@ class VideoUtils {
           "${videoHasAlpha ? '' : '-g 240 '}$movFlags $codecTag "
           "-color_primaries bt709 -color_trc bt709 -colorspace bt709 "
           "-pix_fmt $pixFmt "
-          "\"$videoOutputPath\"";
+          "\"$privateOutputPath\"";
 
       LogService.instance.log('[VIDEO] DEBUG full command=$ffmpegCommand');
       LogService.instance.log(
@@ -1291,7 +1402,6 @@ class VideoUtils {
         "filter_complex=${filterResult.filterComplex?.length ?? 0} chars",
       );
 
-      bool success = false;
       try {
         LogService.instance.log(
           "[VIDEO] Using mobile (FFmpegKit) encoding path",
@@ -1301,25 +1411,10 @@ class VideoUtils {
         _logLineCount = 0;
         _lastProgressUpdate = DateTime.now();
 
-        kitcfg.FFmpegKitConfig.enableLogCallback((kitlog.Log log) {
-          final String output = log.getMessage();
-          // Always parse for progress (internally throttled)
-          parseFFmpegOutput(output, framerate, setCurrentFrame);
-          // Throttle logging to reduce UI thread load
-          _logLineCount++;
-          // Log every line for the first 20 lines (catch early native crashes),
-          // then every 5th line after that.
-          final bool shouldLog =
-              _logLineCount <= 20 || _logLineCount % _logEveryNthLine == 0;
-          if (shouldLog) {
-            LogService.instance.log("[FFMPEG] $output");
-            // Flush early lines so we know FFmpeg started, then periodically
-            // so crash logs survive. Fire-and-forget (callback is sync).
-            if (_logLineCount <= 20 || _logLineCount % 50 == 0) {
-              LogService.instance.flush();
-            }
-          }
-        });
+        final monitor = _EncodeMonitor(
+          inputFrames: await _countConcatFrames(listPath),
+          inputFps: framerate,
+        );
 
         // Verify date stamp PNGs still exist on disk before FFmpeg reads them.
         // Android can evict temp/cache files at any time.
@@ -1343,61 +1438,270 @@ class VideoUtils {
           "[VIDEO] Executing ffmpeg command: $ffmpegCommand",
         );
         await LogService.instance.flush();
-        final kitsession.FFmpegSession session = await kit.FFmpegKit.execute(
+
+        // This session's logs only: progress from another session must never
+        // reach this compile's callback.
+        final run = FFmpegProcessManager.instance.startSession(
           ffmpegCommand,
+          onLog: (kitlog.Log log) {
+            final String output = log.getMessage();
+            monitor.onLine(output);
+            // Always parse for progress (internally throttled)
+            parseFFmpegOutput(output, framerate, setCurrentFrame);
+            // Throttle logging to reduce UI thread load
+            _logLineCount++;
+            // Log every line for the first 20 lines (catch early native crashes),
+            // then every 5th line after that. Warnings and errors always.
+            final bool shouldLog =
+                _logLineCount <= 20 ||
+                _logLineCount % _logEveryNthLine == 0 ||
+                log.getLevel() <= _avLogWarning;
+            if (shouldLog) {
+              LogService.instance.log("[FFMPEG] $output");
+              // Flush early lines so we know FFmpeg started, then periodically
+              // so crash logs survive. Fire-and-forget (callback is sync).
+              if (_logLineCount <= 20 || _logLineCount % 50 == 0) {
+                LogService.instance.flush();
+              }
+            }
+          },
         );
-        FFmpegProcessManager.instance.registerSession(session);
+        void cancelRun() => unawaited(run.cancel());
+        job.token.addListener(cancelRun);
+        final int exitCode;
+        try {
+          exitCode = await run.exitCode;
+        } finally {
+          job.token.removeListener(cancelRun);
+        }
+        LogService.instance.log("[VIDEO] FFmpegKit return code: $exitCode");
 
-        final returnCode = await session.getReturnCode();
-        FFmpegProcessManager.instance.unregisterSession();
-        LogService.instance.log(
-          "[VIDEO] FFmpegKit return code: ${returnCode?.getValue()}",
-        );
+        await _cleanupDateStampTemp(dateStampOverlay);
+        await _deleteQuietly(listPath);
 
-        if (kitrc.ReturnCode.isSuccess(returnCode)) {
-          final String resolution = await SettingsUtil.loadVideoResolution(
-            projectId.toString(),
-          );
-          await DB.instance.addVideo(
+        return await _finishEncode(
+          job: job,
+          encode: monitor.result(
+            exitCode: exitCode,
+            cancelled: run.cancelRequested,
+          ),
+          privatePath: privateOutputPath,
+          publishPath: videoOutputPath,
+          newVideoNeededAtStart: newVideoNeededAtStart,
+          addRecord: () => DB.instance.addVideo(
             projectId,
             resolution,
             wmSettingsMobile.enabled.toString(),
             wmSettingsMobile.pos,
             totalPhotoCount,
             framerate,
-          );
-          LogService.instance.log(
-            "[VIDEO] Video compilation successful, record added to database",
-          );
-          success = true;
-        } else {
-          final logs = await session.getAllLogsAsString();
-          LogService.instance.log("[VIDEO] FFmpegKit failed. Full logs: $logs");
-        }
+          ),
+        );
       } catch (e, stackTrace) {
         LogService.instance.log("[VIDEO] ERROR in video compilation: $e");
         LogService.instance.log("[VIDEO] Stack trace: $stackTrace");
+        await _cleanupDateStampTemp(dateStampOverlay);
+        await _deleteQuietly(listPath);
+        return CompileOutcome.failed;
       }
-
-      await _cleanupDateStampTemp(dateStampOverlay);
-      LogService.instance.log("[VIDEO] Date stamp temp cleanup complete");
-
-      return success;
     } catch (e, stackTrace) {
       LogService.instance.log("[VIDEO] ERROR in createTimelapse: $e");
       LogService.instance.log("[VIDEO] Stack trace: $stackTrace");
-      return false;
+      return CompileOutcome.failed;
+    } finally {
+      // Anything not published (cancelled, failed, rejected) is discarded.
+      // After a publish the private file has already been renamed away.
+      if (privateOutputPath != null) await _deleteQuietly(privateOutputPath);
     }
   }
 
+  /// FFmpeg's AV_LOG_WARNING level; lower values are more severe.
+  static const int _avLogWarning = 24;
+
+  static const String _privateOutputPrefix = '.agelapse-job';
+
+  /// Where job [jobId] encodes before its result is published over
+  /// [videoOutputPath]. Same folder, so publishing is a same-volume rename.
+  static String privateOutputPathFor(String videoOutputPath, int jobId) =>
+      path.join(
+        path.dirname(videoOutputPath),
+        '$_privateOutputPrefix$jobId${path.extension(videoOutputPath)}',
+      );
+
+  /// Decides what to do with a finished encode: discard it (cancelled or
+  /// failed) or publish it over the project's video and record it.
+  static Future<CompileOutcome> _finishEncode({
+    required CompileJob job,
+    required EncodeResult encode,
+    required String privatePath,
+    required String publishPath,
+    required int newVideoNeededAtStart,
+    required Future<void> Function() addRecord,
+  }) async {
+    if (encode.cancelled || job.isCancelled) {
+      LogService.instance.log(
+        "[VIDEO] Job ${job.id} was cancelled; discarding its output",
+      );
+      return CompileOutcome.cancelled;
+    }
+    final String? problem = await encode.problemWith(File(privatePath));
+    if (problem != null) {
+      LogService.instance.log(
+        "[VIDEO] Job ${job.id} rejected ($problem); keeping the previous video",
+      );
+      return CompileOutcome.failed;
+    }
+    if (!await _publishVideo(job, privatePath, publishPath)) {
+      return job.isCancelled ? CompileOutcome.cancelled : CompileOutcome.failed;
+    }
+    await addRecord();
+    if (newVideoNeededAtStart != 0) {
+      await DB.instance.clearNewVideoNeededIfUnchanged(
+        job.projectId,
+        newVideoNeededAtStart,
+      );
+    }
+    LogService.instance.log(
+      "[VIDEO] Job ${job.id} published $publishPath, record added to database",
+    );
+    return CompileOutcome.published;
+  }
+
+  /// Moves a checked encode over the project's video. Returns false, leaving
+  /// the previous video in place, if the job was cancelled, the project was
+  /// deleted, or the move fails.
+  static Future<bool> _publishVideo(
+    CompileJob job,
+    String privatePath,
+    String publishPath,
+  ) async {
+    if (job.isCancelled) return false;
+    if (await DB.instance.getProjectNameById(job.projectId) == null) {
+      LogService.instance.log(
+        "[VIDEO] Project ${job.projectId} no longer exists; not publishing job ${job.id}",
+      );
+      return false;
+    }
+    // A rename replaces the old file in one step. On Windows it can fail
+    // while a player still holds the old file, so retry briefly.
+    const retryDelays = [
+      Duration(milliseconds: 200),
+      Duration(milliseconds: 500),
+      Duration(seconds: 1),
+    ];
+    for (var attempt = 0; ; attempt++) {
+      if (job.isCancelled) return false;
+      try {
+        await File(privatePath).rename(publishPath);
+        break;
+      } on FileSystemException catch (e) {
+        if (attempt >= retryDelays.length) {
+          LogService.instance.log(
+            "[VIDEO] Could not publish job ${job.id}: $e; keeping the previous video",
+          );
+          return false;
+        }
+        await Future.delayed(retryDelays[attempt]);
+      }
+    }
+    // Only now that the new video is in place: remove the project's video in
+    // other containers (e.g. the .mp4 after switching to ProRes .mov).
+    final videoDir = path.dirname(publishPath);
+    final currentExt = path.extension(publishPath);
+    for (final ext in ['.mp4', '.mov', '.webm']) {
+      if (ext == currentExt) continue;
+      final oldFile = File(path.join(videoDir, 'agelapse$ext'));
+      if (await oldFile.exists()) {
+        LogService.instance.log(
+          "[VIDEO] Removing old video file: ${oldFile.path}",
+        );
+        await _deleteQuietly(oldFile.path);
+      }
+    }
+    return true;
+  }
+
+  /// Deletes encode output left behind by compiles that never finished (the
+  /// app was killed or suspended mid-encode). Only call while no compile is
+  /// running.
+  static Future<void> deleteAbandonedOutputs(int projectId) async {
+    final videosDir = Directory(
+      path.join(await DirUtils.getProjectDirPath(projectId), 'videos'),
+    );
+    if (!await videosDir.exists()) return;
+    await for (final entity in videosDir.list(recursive: true)) {
+      if (entity is File &&
+          path.basename(entity.path).startsWith(_privateOutputPrefix)) {
+        LogService.instance.log(
+          "[VIDEO] Deleting abandoned encode output: ${entity.path}",
+        );
+        await _deleteQuietly(entity.path);
+      }
+    }
+  }
+
+  static Future<int> _countConcatFrames(String listPath) async {
+    try {
+      final lines = await File(listPath).readAsLines();
+      return lines.where((line) => line.startsWith('file ')).length;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  static Future<void> _deleteQuietly(String filePath) async {
+    try {
+      final file = File(filePath);
+      if (await file.exists()) await file.delete();
+    } catch (e) {
+      LogService.instance.log("[VIDEO] Could not delete $filePath: $e");
+    }
+  }
+
+  /// Compiles [projectId]'s video and returns true if a new video was
+  /// published. Serialized with every other compile; see [compileVideo].
   static Future<bool> createTimelapseFromProjectId(
     int projectId,
     Function(int currentFrame)? setCurrentFrame,
   ) async {
-    LogService.instance.log(
-      "[VIDEO] createTimelapseFromProjectId called: projectId: $projectId",
+    final outcome = await compileVideo(
+      projectId,
+      setCurrentFrame,
+      reason: 'createTimelapseFromProjectId',
     );
+    return outcome == CompileOutcome.published;
+  }
+
+  /// Compiles [projectId]'s video through [VideoCompileCoordinator]: any
+  /// running compile is cancelled and awaited first, and the result only
+  /// replaces the current video if it finishes cleanly.
+  static Future<CompileOutcome> compileVideo(
+    int projectId,
+    Function(int currentFrame)? setCurrentFrame, {
+    required String reason,
+  }) {
+    LogService.instance.log(
+      "[VIDEO] compileVideo called: projectId: $projectId, reason: $reason",
+    );
+    return VideoCompileCoordinator.instance.compile(
+      projectId,
+      onProgress: setCurrentFrame == null
+          ? null
+          : (frame) => setCurrentFrame(frame),
+      reason: reason,
+    );
+  }
+
+  /// Runs one compile for [VideoCompileCoordinator].
+  static Future<CompileOutcome> compileForJob(
+    CompileJob job,
+    void Function(int frame)? setCurrentFrame,
+  ) async {
+    final int projectId = job.projectId;
     try {
+      // First, so a rebuild request made while inputs load isn't cleared.
+      final int newVideoNeededAtStart =
+          await DB.instance.getNewVideoNeeded(projectId) ?? 0;
       String projectOrientation = await SettingsUtil.loadProjectOrientation(
         projectId.toString(),
       );
@@ -1408,7 +1712,7 @@ class VideoUtils {
       );
       if (stabilizedPhotos.isEmpty) {
         LogService.instance.log("[VIDEO] No stabilized photos found, aborting");
-        return false;
+        return CompileOutcome.failed;
       }
 
       final int framerate = await SettingsUtil.loadFramerate(
@@ -1416,19 +1720,19 @@ class VideoUtils {
       );
       LogService.instance.log("[VIDEO] Loaded framerate: $framerate");
 
+      if (job.isCancelled) return CompileOutcome.cancelled;
       return await createTimelapse(
-        projectId,
+        job,
         framerate,
         stabilizedPhotos.length,
         setCurrentFrame,
+        newVideoNeededAtStart: newVideoNeededAtStart,
         orientation: projectOrientation,
       );
     } catch (e, stackTrace) {
-      LogService.instance.log(
-        "[VIDEO] ERROR in createTimelapseFromProjectId: $e",
-      );
+      LogService.instance.log("[VIDEO] ERROR in compileForJob: $e");
       LogService.instance.log("[VIDEO] Stack trace: $stackTrace");
-      return false;
+      return CompileOutcome.failed;
     }
   }
 
@@ -1875,7 +2179,8 @@ class VideoUtils {
     return ('main', '4.1');
   }
 
-  static Future<bool> _encodeDesktop({
+  static Future<EncodeResult> _encodeDesktop({
+    required CompileJob job,
     required String ffmpegExe,
     required bool isMacOS,
     required String framesDir,
@@ -2097,9 +2402,16 @@ class VideoUtils {
     LogService.instance.log("[VIDEO] ffmpeg arguments: ${args.join(' ')}");
     LogService.instance.log("[VIDEO] Starting ffmpeg process...");
 
+    final monitor = _EncodeMonitor(
+      inputFrames: await _countConcatFrames(listPath),
+      inputFps: fps,
+    );
     try {
-      final proc = await Process.start(ffmpegExe, args, runInShell: false);
-      FFmpegProcessManager.instance.registerProcess(proc);
+      final run = await FFmpegProcessManager.instance.startProcess(
+        ffmpegExe,
+        args,
+      );
+      final proc = run.process!;
       LogService.instance.log(
         "[VIDEO] ffmpeg process started with PID: ${proc.pid}",
       );
@@ -2115,6 +2427,7 @@ class VideoUtils {
           .transform(const LineSplitter())
           .listen((line) {
             if (onLog != null) onLog(line);
+            monitor.onLine(line);
             final m = RegExp(r'frame=\s*(\d+)').firstMatch(line);
             if (m != null && onProgress != null) {
               final videoFrame = int.tryParse(m.group(1)!);
@@ -2126,16 +2439,15 @@ class VideoUtils {
             }
           });
 
-      final code = await proc.exitCode;
-      FFmpegProcessManager.instance.unregisterProcess();
-      LogService.instance.log("[VIDEO] ffmpeg process exited with code: $code");
-
+      void cancelRun() => unawaited(run.cancel());
+      job.token.addListener(cancelRun);
+      final int code;
       try {
-        await File(listPath).delete();
-        LogService.instance.log("[VIDEO] Cleaned up concat list file");
-      } catch (e) {
-        LogService.instance.log("[VIDEO] Failed to clean up concat list: $e");
+        code = await run.exitCode;
+      } finally {
+        job.token.removeListener(cancelRun);
       }
+      LogService.instance.log("[VIDEO] ffmpeg process exited with code: $code");
 
       // Check if output file was created
       final outputFile = File(outputPath);
@@ -2150,11 +2462,14 @@ class VideoUtils {
         );
       }
 
-      return code == 0;
+      return monitor.result(exitCode: code, cancelled: run.cancelRequested);
     } catch (e, stackTrace) {
       LogService.instance.log("[VIDEO] ERROR starting ffmpeg process: $e");
       LogService.instance.log("[VIDEO] Stack trace: $stackTrace");
-      return false;
+      return monitor.result(exitCode: -1, cancelled: job.isCancelled);
+    } finally {
+      await _deleteQuietly(listPath);
+      LogService.instance.log("[VIDEO] Cleaned up concat list file");
     }
   }
 }

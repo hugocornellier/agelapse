@@ -36,11 +36,22 @@ option(DARTCV_WITH_XIMGPROC "Include ximgproc module" OFF)
 option(DARTCV_WITH_XOBJDETECT "Include xobjdetect module" OFF)
 
 option(DARTCV_ENABLE_INSTALL "Enable install" OFF)
-option(DARTCV_ENABLE_TEST "Enable tests" OFF)
 option(DARTCV_BUILD_OPENCV_FROM_SOURCE "Build opencv from source" ON)
 option(DARTCV_DISABLE_DOWNLOAD_OPENCV "Disable download opencv" OFF)
 
 option(BUILD_WITH_STATIC_CRT "Build with static CRT" ON)
+
+# ---------------------------------------------------------------------------
+# Tree shaking / dead-code elimination
+# ---------------------------------------------------------------------------
+# DARTCV_TREESHAKE: enable function-level sections + linker garbage collection
+# so that native code not reachable from the exported symbols is stripped.
+# DARTCV_KEEP_FILE: optional path to a symbol keep-list (one C symbol per line).
+# When provided, only those symbols are exported (and everything unreachable
+# from them is garbage-collected). This is normally produced by hook/link.dart
+# from the recorded `@ffi.Native` usages during AOT builds.
+option(DARTCV_TREESHAKE "Enable linker dead-code elimination for dartcv" OFF)
+set(DARTCV_KEEP_FILE "" CACHE PATH "Path to a keep-list of exported dartcv symbols")
 
 get_filename_component(PROJ_DIR ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
 
@@ -56,7 +67,14 @@ macro(_find_version _version_var _version_file _regex_find _regex_replace)
 endmacro()
 
 _find_version(PROJECT_VERSION "${PROJ_DIR}/pubspec.yaml" "^version: (.+)*$" "version: (.+)*$")
-_find_version(OPENCV_VERSION "${PROJ_DIR}/pubspec.yaml" "^opencv_version: (.+)*$" "opencv_version: (.+)*$")
+
+# The pubspec records the OpenCV this package is developed against, and is the
+# default. A caller that asked for a different one — -DOPENCV_VERSION, or
+# `opencv_version` in a project's hooks — has already set it, so reading the
+# pubspec here would silently discard that choice.
+if(NOT OPENCV_VERSION)
+  _find_version(OPENCV_VERSION "${PROJ_DIR}/pubspec.yaml" "^opencv_version: (.+)*$" "opencv_version: (.+)*$")
+endif()
 
 # Set OpenCV version
 if(NOT OPENCV_VERSION)
@@ -66,6 +84,10 @@ endif()
 if(NOT DARTCV_OPENCV_VERSION)
   set(DARTCV_OPENCV_VERSION "4.12.0.0")
 endif()
+
+# Oldest OpenCV whose headers provide every API dartcv calls. Verified by
+# building dartcv against 4.8.1, 4.10.0, 4.11.0 and 4.12.0.
+set(DARTCV_MIN_OPENCV_VERSION "4.12")
 
 message(STATUS "dartcv Version: ${PROJECT_VERSION}")
 message(STATUS "OpenCV Version: ${OPENCV_VERSION}")
@@ -100,6 +122,15 @@ include(FetchContent)
 
 # Build from source
 if(DARTCV_BUILD_OPENCV_FROM_SOURCE)
+  # Same floor as the pre-built and bring-your-own paths: building an older
+  # OpenCV from source succeeds and then fails to compile dartcv against it.
+  if(OPENCV_VERSION VERSION_LESS DARTCV_MIN_OPENCV_VERSION)
+    message(FATAL_ERROR
+      "dartcv requires OpenCV ${DARTCV_MIN_OPENCV_VERSION} or newer, "
+      "but was asked to build ${OPENCV_VERSION} from source."
+    )
+  endif()
+
   include(cmake/opencv_options.cmake)
 
   if(DARTCV_WITH_ARUCO
@@ -221,8 +252,4 @@ if(DARTCV_ENABLE_INSTALL)
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
     COMPONENT ffmpeg_libs
   )
-endif()
-
-if(DARTCV_ENABLE_TEST)
-  add_subdirectory(test)
 endif()

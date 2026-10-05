@@ -8,7 +8,6 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'cancellation_token.dart';
 import 'database_helper.dart';
 import 'face_stabilizer.dart';
-import 'ffmpeg_process_manager.dart';
 import 'isolate_manager.dart';
 import 'isolate_pool.dart';
 import 'log_service.dart';
@@ -17,6 +16,7 @@ import 'stabilization_benchmark.dart';
 import 'stabilization_progress.dart';
 import 'stabilization_settings.dart';
 import 'stabilization_state.dart';
+import 'video_compile_coordinator.dart';
 import '../models/video_background.dart';
 import '../models/video_codec.dart';
 import '../utils/dir_utils.dart';
@@ -72,6 +72,22 @@ class StabilizationService {
   /// newer run's fields.
   int _currentGen = 0;
 
+  /// The latest run, so a new run or [cancelAndWait] can wait for it to end.
+  Completer<bool>? _activeRun;
+
+  /// How long to wait for a cancelled run or encode to stop before moving
+  /// on. Encodes never overlap regardless: [VideoCompileCoordinator] only
+  /// starts one after the previous FFmpeg has exited.
+  static const Duration _stopTimeout = Duration(seconds: 30);
+
+  bool _isCurrent(int gen) => gen == _currentGen;
+
+  /// Emits [progress] only while [gen] is the current run, so a superseded
+  /// run can't overwrite the state of the run that replaced it.
+  void _emitIfCurrent(int gen, StabilizationProgress progress) {
+    if (_isCurrent(gen)) _emitProgress(progress);
+  }
+
   // Progress tracking
   int _currentPhoto = 0;
   int _totalPhotos = 0;
@@ -103,111 +119,144 @@ class StabilizationService {
 
   /// Start stabilization for a project.
   ///
-  /// If a stabilization is already running, it will be cancelled first.
-  /// Returns true if stabilization completed successfully.
+  /// If a stabilization is already running, it is cancelled and awaited
+  /// first, including its video encode. Returns true if stabilization
+  /// completed successfully.
   Future<bool> startStabilization(
     int projectId, {
     VoidCallback? onUserRanOutOfSpace,
   }) async {
-    // Cancel any existing operation first
-    if (_state != StabilizationState.idle &&
-        _state != StabilizationState.completed &&
-        _state != StabilizationState.cancelled &&
-        _state != StabilizationState.error) {
-      await cancelAndWait();
-    }
-
-    // Capture our generation before touching any shared field. A prior run's
-    // [_cleanup] that is still parked on an async await must compare against
-    // this before nulling shared state.
+    // Claim the newest generation before any await: of several concurrent
+    // callers, only the last one goes on to run. A prior run's [_cleanup]
+    // that is still parked on an async await compares against this before
+    // touching shared state.
     final myGen = ++_currentGen;
+    final previousRun = _activeRun;
+    final run = Completer<bool>();
+    _activeRun = run;
+    try {
+      // Stop a previous run that is still going, including its encode, and
+      // wait for it to end before touching shared state. (A finished run is
+      // left alone, so e.g. a manual compile isn't cancelled by an idle
+      // check.)
+      if (previousRun != null && !previousRun.isCompleted) {
+        await _stopRun(previousRun.future, 'new run for project $projectId');
+      }
+      if (!_isCurrent(myGen)) {
+        run.complete(false);
+        return false;
+      }
+      final result = await _runStabilization(
+        myGen,
+        projectId,
+        onUserRanOutOfSpace,
+      );
+      run.complete(result);
+      return result;
+    } catch (_) {
+      if (!run.isCompleted) run.complete(false);
+      rethrow;
+    }
+  }
 
+  Future<bool> _runStabilization(
+    int myGen,
+    int projectId,
+    VoidCallback? onUserRanOutOfSpace,
+  ) async {
     userRanOutOfSpaceCallback = onUserRanOutOfSpace;
     _currentProjectId = projectId;
     _currentToken = CancellationToken();
     _resetCounters();
+    FaceStabilizer? stabilizer;
 
-    final unstabilizedPhotos = await StabUtils.getUnstabilizedPhotos(projectId);
-    _totalPhotos = unstabilizedPhotos.length;
-
-    if (_totalPhotos == 0) {
-      LogService.instance.log(
-        'StabilizationService: No photos to stabilize, checking video',
+    try {
+      final unstabilizedPhotos = await StabUtils.getUnstabilizedPhotos(
+        projectId,
       );
+      _totalPhotos = unstabilizedPhotos.length;
 
-      // Check auto-compile setting BEFORE emitting any progress UI
-      final autoCompileEnabled = await SettingsUtil.loadAutoCompileVideo(
-        projectId.toString(),
-      );
-
-      final needsVideo = await _checkIfVideoNeeded(projectId);
-
-      // If video needed but auto-compile disabled, set flag and exit cleanly
-      if (needsVideo && !autoCompileEnabled) {
+      if (_totalPhotos == 0) {
         LogService.instance.log(
-          'StabilizationService: Video needed but auto-compile disabled, setting flag only',
+          'StabilizationService: No photos to stabilize, checking video',
         );
-        await DB.instance.setNewVideoNeeded(projectId);
-        _emitProgress(StabilizationProgress.completed(projectId: projectId));
-        _state = StabilizationState.completed;
-        await _cleanup(myGen);
-        return true;
-      }
 
-      if (needsVideo) {
-        // Get frame count for progress indicator
-        final orientation = await SettingsUtil.loadProjectOrientation(
+        // Check auto-compile setting BEFORE emitting any progress UI
+        final autoCompileEnabled = await SettingsUtil.loadAutoCompileVideo(
           projectId.toString(),
         );
-        final stabPhotoCount = await DB.instance
-            .getStabilizedPhotoCountByProjectID(projectId, orientation);
 
-        LogService.instance.log(
-          'StabilizationService: Video needed, emitting compilingVideo state with $stabPhotoCount frames',
-        );
-        _state = StabilizationState.compilingVideo;
-        // Emit initial progress so UI shows "Compiling video..." immediately
-        _emitProgress(
-          StabilizationProgress.compilingVideo(
-            currentFrame: 0,
-            totalFrames: stabPhotoCount,
-            progressPercent: 0.0,
-            projectId: projectId,
-          ),
-        );
-        final videoResult = await _tryCreateVideo(projectId);
-        if (!videoResult.succeeded) {
-          _emitProgress(
-            StabilizationProgress.error(
-              'Video compilation failed: ${videoResult.errorMessage}',
+        final needsVideo = await _checkIfVideoNeeded(projectId);
+
+        // If video needed but auto-compile disabled, set flag and exit cleanly
+        if (needsVideo && !autoCompileEnabled) {
+          LogService.instance.log(
+            'StabilizationService: Video needed but auto-compile disabled, setting flag only',
+          );
+          await DB.instance.setNewVideoNeeded(projectId);
+          _emitIfCurrent(
+            myGen,
+            StabilizationProgress.completed(projectId: projectId),
+          );
+          return true;
+        }
+
+        if (needsVideo) {
+          // Get frame count for progress indicator
+          final orientation = await SettingsUtil.loadProjectOrientation(
+            projectId.toString(),
+          );
+          final stabPhotoCount = await DB.instance
+              .getStabilizedPhotoCountByProjectID(projectId, orientation);
+
+          LogService.instance.log(
+            'StabilizationService: Video needed, emitting compilingVideo state with $stabPhotoCount frames',
+          );
+          // Emit initial progress so UI shows "Compiling video..." immediately
+          _emitIfCurrent(
+            myGen,
+            StabilizationProgress.compilingVideo(
+              currentFrame: 0,
+              totalFrames: stabPhotoCount,
+              progressPercent: 0.0,
               projectId: projectId,
             ),
           );
-          _state = StabilizationState.error;
-          await _cleanup(myGen);
-          return false;
+          final videoResult = await _tryCreateVideo(myGen, projectId);
+          if (!videoResult.succeeded) {
+            _emitIfCurrent(
+              myGen,
+              StabilizationProgress.error(
+                'Video compilation failed: ${videoResult.errorMessage}',
+                projectId: projectId,
+              ),
+            );
+            return false;
+          }
+          _emitIfCurrent(
+            myGen,
+            StabilizationProgress.completed(projectId: projectId),
+          );
         }
-        _emitProgress(StabilizationProgress.completed(projectId: projectId));
-        _state = StabilizationState.completed;
-        await _cleanup(myGen);
+        return true;
       }
-      return true;
-    }
 
-    // Only emit preparing state if there's actual work to do
-    _emitProgress(StabilizationProgress.preparing(projectId: projectId));
-    _state = StabilizationState.preparing;
+      // Only emit preparing state if there's actual work to do
+      _emitIfCurrent(
+        myGen,
+        StabilizationProgress.preparing(projectId: projectId),
+      );
 
-    try {
       await WakelockPlus.enable();
 
       await IsolatePool.instance.initialize();
       _currentSettings = await StabilizationSettings.load(projectId);
-      _currentStabilizer = FaceStabilizer(
+      stabilizer = FaceStabilizer(
         projectId,
         _handleUserRanOutOfSpace,
         settings: _currentSettings,
       );
+      _currentStabilizer = stabilizer;
 
       final allPhotos = await DB.instance.getPhotosByProjectID(projectId);
       _stabilizedAtStart = await DB.instance.getStabilizedPhotoCountByProjectID(
@@ -215,8 +264,8 @@ class StabilizationService {
         _currentSettings!.projectOrientation,
       );
 
-      _state = StabilizationState.stabilizing;
-      _emitProgress(
+      _emitIfCurrent(
+        myGen,
         StabilizationProgress.stabilizing(
           currentPhoto: 0,
           totalPhotos: _totalPhotos,
@@ -263,40 +312,44 @@ class StabilizationService {
 
       // Final check for re-stabilization if settings changed
       _currentToken?.throwIfCancelled();
-      await _finalCheck(_currentStabilizer!, projectId);
+      await _finalCheck(stabilizer, projectId);
 
       // Create video
       _currentToken?.throwIfCancelled();
-      final videoResult = await _tryCreateVideo(projectId);
+      final videoResult = await _tryCreateVideo(myGen, projectId);
 
       if (!videoResult.succeeded) {
-        _emitProgress(
+        _emitIfCurrent(
+          myGen,
           StabilizationProgress.error(
             'Video compilation failed: ${videoResult.errorMessage}',
             projectId: projectId,
           ),
         );
-        _state = StabilizationState.error;
         return false;
       }
 
-      _emitProgress(StabilizationProgress.completed(projectId: projectId));
-      _state = StabilizationState.completed;
+      _emitIfCurrent(
+        myGen,
+        StabilizationProgress.completed(projectId: projectId),
+      );
       return true;
     } on CancelledException {
       LogService.instance.log('StabilizationService: Cancelled');
-      _emitProgress(StabilizationProgress.cancelled(projectId: projectId));
-      _state = StabilizationState.cancelled;
+      _emitIfCurrent(
+        myGen,
+        StabilizationProgress.cancelled(projectId: projectId),
+      );
       return false;
     } catch (e) {
       LogService.instance.log('StabilizationService: Error: $e');
-      _emitProgress(
+      _emitIfCurrent(
+        myGen,
         StabilizationProgress.error(e.toString(), projectId: projectId),
       );
-      _state = StabilizationState.error;
       return false;
     } finally {
-      await _cleanup(myGen);
+      await _cleanup(myGen, stabilizer);
     }
   }
 
@@ -337,23 +390,27 @@ class StabilizationService {
     // Kill everything forcefully (instant cancellation)
     IsolateManager.instance.killAll();
     IsolatePool.instance.killAll();
-    await FFmpegProcessManager.instance.killActiveProcess();
+    // The coordinator cancels the running compile, whose token stops its
+    // FFmpeg run. Not awaited here; cancelAndWait waits for it.
+    unawaited(
+      VideoCompileCoordinator.instance.cancelAll('stabilization cancelled'),
+    );
 
-    LogService.instance.log('StabilizationService: All processes killed');
+    LogService.instance.log(
+      'StabilizationService: Cancellation requested for all work',
+    );
   }
 
-  /// Cancel and wait for the operation to fully stop.
+  /// Cancel and wait for the operation to fully stop, including any video
+  /// encode (also a manual compile started outside the service).
   ///
   /// Use this when you need to ensure the operation has completely stopped
-  /// before starting a new one (e.g., when restarting after settings change).
+  /// before starting a new one or changing files it reads (e.g., when
+  /// restarting after a settings change, or deleting a project).
   Future<void> cancelAndWait() async {
+    final run = _activeRun?.future;
     await cancel();
-
-    // Wait for state to reach a terminal state (max 2 seconds)
-    final stopwatch = Stopwatch()..start();
-    while (!_state.isFinished && stopwatch.elapsedMilliseconds < 2000) {
-      await Future.delayed(const Duration(milliseconds: 50));
-    }
+    await _waitForStop(run, 'stabilization cancelled');
 
     // Force to cancelled state if still not finished
     if (!_state.isFinished) {
@@ -362,6 +419,37 @@ class StabilizationService {
         StabilizationProgress.cancelled(projectId: _currentProjectId),
       );
     }
+  }
+
+  /// Cancels [run] and waits for it to end, before a new run starts.
+  Future<void> _stopRun(Future<bool> run, String reason) async {
+    await cancel();
+    await _waitForStop(run, reason);
+  }
+
+  /// Waits for the running encode and for [run] to finish, up to
+  /// [_stopTimeout] each, so the UI can't be blocked forever.
+  Future<void> _waitForStop(Future<bool>? run, String reason) async {
+    await VideoCompileCoordinator.instance
+        .cancelAll(reason)
+        .timeout(
+          _stopTimeout,
+          onTimeout: () => LogService.instance.log(
+            'StabilizationService: Video encode still stopping after '
+            '${_stopTimeout.inSeconds}s',
+          ),
+        );
+    if (run == null) return;
+    await run.timeout(
+      _stopTimeout,
+      onTimeout: () {
+        LogService.instance.log(
+          'StabilizationService: Previous run still stopping after '
+          '${_stopTimeout.inSeconds}s',
+        );
+        return false;
+      },
+    );
   }
 
   /// Restart stabilization (cancel current and start fresh).
@@ -764,7 +852,8 @@ class StabilizationService {
       newestVideo,
     );
     final newVideoNeededRaw = await DB.instance.getNewVideoNeeded(projectId);
-    final newVideoNeeded = newVideoNeededRaw == 1;
+    // A counter (see DB.setNewVideoNeeded): any non-zero value means needed.
+    final newVideoNeeded = (newVideoNeededRaw ?? 0) != 0;
 
     return _VideoConfig(
       newestVideo: newestVideo,
@@ -806,8 +895,11 @@ class StabilizationService {
     }
   }
 
-  Future<_VideoCompileResult> _tryCreateVideo(int projectId) async {
+  Future<_VideoCompileResult> _tryCreateVideo(int gen, int projectId) async {
     try {
+      // A superseded run must never start a compile: it would cancel the
+      // current run's.
+      if (!_isCurrent(gen)) throw const CancelledException();
       _currentToken?.throwIfCancelled();
 
       // Check if auto-compile is enabled
@@ -845,8 +937,8 @@ class StabilizationService {
       }
 
       if (shouldCompile) {
-        _state = StabilizationState.compilingVideo;
-        _emitProgress(
+        _emitIfCurrent(
+          gen,
           StabilizationProgress.compilingVideo(
             currentFrame: 0,
             totalFrames: cfg.stabPhotoCount,
@@ -856,43 +948,46 @@ class StabilizationService {
         );
 
         _currentToken?.throwIfCancelled();
+        if (!_isCurrent(gen)) throw const CancelledException();
 
         // Start ETA tracking for video compilation
         VideoUtils.resetVideoStopwatch(cfg.stabPhotoCount);
 
-        final result = await VideoUtils.createTimelapseFromProjectId(
-          projectId,
-          (currentFrame) {
-            final pct = cfg.stabPhotoCount > 0
-                ? (currentFrame * 100.0 / cfg.stabPhotoCount)
-                : 0.0;
-            final eta = VideoUtils.calculateVideoEta(currentFrame);
-            _emitProgress(
-              StabilizationProgress.compilingVideo(
-                currentFrame: currentFrame,
-                totalFrames: cfg.stabPhotoCount,
-                progressPercent: pct,
-                eta: eta,
-                projectId: projectId,
-              ),
-            );
-          },
-        );
+        final outcome = await VideoUtils.compileVideo(projectId, (
+          currentFrame,
+        ) {
+          if (!_isCurrent(gen)) return;
+          final pct = cfg.stabPhotoCount > 0
+              ? (currentFrame * 100.0 / cfg.stabPhotoCount)
+              : 0.0;
+          final eta = VideoUtils.calculateVideoEta(currentFrame);
+          _emitProgress(
+            StabilizationProgress.compilingVideo(
+              currentFrame: currentFrame,
+              totalFrames: cfg.stabPhotoCount,
+              progressPercent: pct,
+              eta: eta,
+              projectId: projectId,
+            ),
+          );
+        }, reason: 'stabilization run for project $projectId');
 
         // Stop ETA tracking
         VideoUtils.stopVideoStopwatch();
 
-        if (!result) {
-          return _VideoCompileResult.failed('VideoUtils returned false');
-        }
-
-        if (cfg.newVideoNeeded) {
-          DB.instance.setNewVideoNotNeeded(projectId);
-        }
-
         LogService.instance.log(
-          'StabilizationService: Video creation result: $result',
+          'StabilizationService: Video creation result: ${outcome.name}',
         );
+        // The compile clears the "new video needed" flag itself when it
+        // publishes (only if nothing requested another rebuild meanwhile).
+        switch (outcome) {
+          case CompileOutcome.published:
+            break;
+          case CompileOutcome.cancelled:
+            throw const CancelledException('Video compile was cancelled');
+          case CompileOutcome.failed:
+            return _VideoCompileResult.failed('the video could not be encoded');
+        }
       }
 
       return _VideoCompileResult.success();
@@ -939,8 +1034,9 @@ class StabilizationService {
   /// resume after async awaits: if a newer run has taken over, we bail out
   /// instead of clobbering its fresh [_currentStabilizer] / [_currentToken] /
   /// [_currentSettings], or emitting a stale [StabilizationProgress.idle].
-  Future<void> _cleanup(int myGen) async {
-    await _currentStabilizer?.dispose();
+  Future<void> _cleanup(int myGen, FaceStabilizer? stabilizer) async {
+    // This run's own stabilizer; never a newer run's.
+    await stabilizer?.dispose();
     if (myGen != _currentGen) return;
     _currentStabilizer = null;
     _currentToken = null;

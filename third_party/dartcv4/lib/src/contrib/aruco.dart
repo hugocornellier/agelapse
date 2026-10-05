@@ -13,8 +13,8 @@ import '../core/mat.dart';
 import '../core/point.dart';
 import '../core/scalar.dart';
 import '../core/vec.dart';
-import '../g/contrib.g.dart' as cvg;
 import '../g/contrib.g.dart' as ccontrib;
+import '../g/contrib.g.dart' as cvg;
 import 'aruco_dict.dart';
 
 class ArucoDetector extends CvStruct<cvg.ArucoDetector> {
@@ -44,7 +44,8 @@ class ArucoDetector extends CvStruct<cvg.ArucoDetector> {
     ccontrib.addresses.cv_aruco_arucoDetector_close,
   );
 
-  void dispose() {
+  @override
+  void freeNative() {
     finalizer.detach(this);
     ccontrib.cv_aruco_arucoDetector_close(ptr);
   }
@@ -125,7 +126,8 @@ class ArucoDetectorParameters extends CvStruct<cvg.ArucoDetectorParams> {
     ccontrib.addresses.cv_aruco_detectorParameters_close,
   );
 
-  void dispose() {
+  @override
+  void freeNative() {
     finalizer.detach(this);
     ccontrib.cv_aruco_detectorParameters_close(ptr);
   }

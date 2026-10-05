@@ -40,6 +40,90 @@ files:
         name: cv_aruco_arucoDetector_create_1
       c:@F@cv_aruco_arucoDetector_detectMarkers:
         name: cv_aruco_arucoDetector_detectMarkers
+      c:@F@cv_aruco_charucoBoard_checkCharucoCornersCollinear:
+        name: cv_aruco_charucoBoard_checkCharucoCornersCollinear
+      c:@F@cv_aruco_charucoBoard_close:
+        name: cv_aruco_charucoBoard_close
+      c:@F@cv_aruco_charucoBoard_create:
+        name: cv_aruco_charucoBoard_create
+      c:@F@cv_aruco_charucoBoard_create_1:
+        name: cv_aruco_charucoBoard_create_1
+      c:@F@cv_aruco_charucoBoard_create_2:
+        name: cv_aruco_charucoBoard_create_2
+      c:@F@cv_aruco_charucoBoard_generateImage:
+        name: cv_aruco_charucoBoard_generateImage
+      c:@F@cv_aruco_charucoBoard_getChessboardCorners:
+        name: cv_aruco_charucoBoard_getChessboardCorners
+      c:@F@cv_aruco_charucoBoard_getChessboardSize:
+        name: cv_aruco_charucoBoard_getChessboardSize
+      c:@F@cv_aruco_charucoBoard_getIds:
+        name: cv_aruco_charucoBoard_getIds
+      c:@F@cv_aruco_charucoBoard_getLegacyPattern:
+        name: cv_aruco_charucoBoard_getLegacyPattern
+      c:@F@cv_aruco_charucoBoard_getMarkerLength:
+        name: cv_aruco_charucoBoard_getMarkerLength
+      c:@F@cv_aruco_charucoBoard_getObjPoints:
+        name: cv_aruco_charucoBoard_getObjPoints
+      c:@F@cv_aruco_charucoBoard_getSquareLength:
+        name: cv_aruco_charucoBoard_getSquareLength
+      c:@F@cv_aruco_charucoBoard_matchImagePoints:
+        name: cv_aruco_charucoBoard_matchImagePoints
+      c:@F@cv_aruco_charucoBoard_setLegacyPattern:
+        name: cv_aruco_charucoBoard_setLegacyPattern
+      c:@F@cv_aruco_charucoDetectorParameters_close:
+        name: cv_aruco_charucoDetectorParameters_close
+      c:@F@cv_aruco_charucoDetectorParameters_create:
+        name: cv_aruco_charucoDetectorParameters_create
+      c:@F@cv_aruco_charucoDetectorParameters_get_cameraMatrix:
+        name: cv_aruco_charucoDetectorParameters_get_cameraMatrix
+      c:@F@cv_aruco_charucoDetectorParameters_get_checkMarkers:
+        name: cv_aruco_charucoDetectorParameters_get_checkMarkers
+      c:@F@cv_aruco_charucoDetectorParameters_get_distCoeffs:
+        name: cv_aruco_charucoDetectorParameters_get_distCoeffs
+      c:@F@cv_aruco_charucoDetectorParameters_get_minMarkers:
+        name: cv_aruco_charucoDetectorParameters_get_minMarkers
+      c:@F@cv_aruco_charucoDetectorParameters_get_tryRefineMarkers:
+        name: cv_aruco_charucoDetectorParameters_get_tryRefineMarkers
+      c:@F@cv_aruco_charucoDetectorParameters_set_cameraMatrix:
+        name: cv_aruco_charucoDetectorParameters_set_cameraMatrix
+      c:@F@cv_aruco_charucoDetectorParameters_set_checkMarkers:
+        name: cv_aruco_charucoDetectorParameters_set_checkMarkers
+      c:@F@cv_aruco_charucoDetectorParameters_set_distCoeffs:
+        name: cv_aruco_charucoDetectorParameters_set_distCoeffs
+      c:@F@cv_aruco_charucoDetectorParameters_set_minMarkers:
+        name: cv_aruco_charucoDetectorParameters_set_minMarkers
+      c:@F@cv_aruco_charucoDetectorParameters_set_tryRefineMarkers:
+        name: cv_aruco_charucoDetectorParameters_set_tryRefineMarkers
+      c:@F@cv_aruco_charucoDetector_close:
+        name: cv_aruco_charucoDetector_close
+      c:@F@cv_aruco_charucoDetector_create_1:
+        name: cv_aruco_charucoDetector_create_1
+      c:@F@cv_aruco_charucoDetector_create_2:
+        name: cv_aruco_charucoDetector_create_2
+      c:@F@cv_aruco_charucoDetector_create_3:
+        name: cv_aruco_charucoDetector_create_3
+      c:@F@cv_aruco_charucoDetector_create_4:
+        name: cv_aruco_charucoDetector_create_4
+      c:@F@cv_aruco_charucoDetector_detectBoard:
+        name: cv_aruco_charucoDetector_detectBoard
+      c:@F@cv_aruco_charucoDetector_detectDiamonds:
+        name: cv_aruco_charucoDetector_detectDiamonds
+      c:@F@cv_aruco_charucoDetector_getBoard:
+        name: cv_aruco_charucoDetector_getBoard
+      c:@F@cv_aruco_charucoDetector_getCharucoParameters:
+        name: cv_aruco_charucoDetector_getCharucoParameters
+      c:@F@cv_aruco_charucoDetector_getDetectorParameters:
+        name: cv_aruco_charucoDetector_getDetectorParameters
+      c:@F@cv_aruco_charucoDetector_getRefineParameters:
+        name: cv_aruco_charucoDetector_getRefineParameters
+      c:@F@cv_aruco_charucoDetector_setBoard:
+        name: cv_aruco_charucoDetector_setBoard
+      c:@F@cv_aruco_charucoDetector_setCharucoParameters:
+        name: cv_aruco_charucoDetector_setCharucoParameters
+      c:@F@cv_aruco_charucoDetector_setDetectorParameters:
+        name: cv_aruco_charucoDetector_setDetectorParameters
+      c:@F@cv_aruco_charucoDetector_setRefineParameters:
+        name: cv_aruco_charucoDetector_setRefineParameters
       c:@F@cv_aruco_detectorParameters_close:
         name: cv_aruco_detectorParameters_close
       c:@F@cv_aruco_detectorParameters_create:
@@ -160,12 +244,34 @@ files:
         name: cv_aruco_detectorParameters_set_perspectiveRemovePixelPerCell
       c:@F@cv_aruco_detectorParameters_set_polygonalApproxAccuracyRate:
         name: cv_aruco_detectorParameters_set_polygonalApproxAccuracyRate
+      c:@F@cv_aruco_drawDetectedCornersCharuco:
+        name: cv_aruco_drawDetectedCornersCharuco
       c:@F@cv_aruco_drawDetectedMarkers:
         name: cv_aruco_drawDetectedMarkers
+      c:@F@cv_aruco_estimatePoseCharucoBoard:
+        name: cv_aruco_estimatePoseCharucoBoard
       c:@F@cv_aruco_generateImageMarker:
         name: cv_aruco_generateImageMarker
       c:@F@cv_aruco_getPredefinedDictionary:
         name: cv_aruco_getPredefinedDictionary
+      c:@F@cv_aruco_refineParameters_close:
+        name: cv_aruco_refineParameters_close
+      c:@F@cv_aruco_refineParameters_create:
+        name: cv_aruco_refineParameters_create
+      c:@F@cv_aruco_refineParameters_create_1:
+        name: cv_aruco_refineParameters_create_1
+      c:@F@cv_aruco_refineParameters_get_checkAllOrders:
+        name: cv_aruco_refineParameters_get_checkAllOrders
+      c:@F@cv_aruco_refineParameters_get_errorCorrectionRate:
+        name: cv_aruco_refineParameters_get_errorCorrectionRate
+      c:@F@cv_aruco_refineParameters_get_minRepDistance:
+        name: cv_aruco_refineParameters_get_minRepDistance
+      c:@F@cv_aruco_refineParameters_set_checkAllOrders:
+        name: cv_aruco_refineParameters_set_checkAllOrders
+      c:@F@cv_aruco_refineParameters_set_errorCorrectionRate:
+        name: cv_aruco_refineParameters_set_errorCorrectionRate
+      c:@F@cv_aruco_refineParameters_set_minRepDistance:
+        name: cv_aruco_refineParameters_set_minRepDistance
       c:@F@cv_freetype_FreeType2_close:
         name: cv_freetype_FreeType2_close
       c:@F@cv_freetype_FreeType2_create:
@@ -432,10 +538,18 @@ files:
         name: ArucoDetectorParams
       c:@S@ArucoDictionary:
         name: ArucoDictionary
+      c:@S@ArucoRefineParams:
+        name: ArucoRefineParams
       c:@S@BlockMeanHash:
         name: BlockMeanHash
       c:@S@Box:
         name: Box
+      c:@S@CharucoBoard:
+        name: CharucoBoard
+      c:@S@CharucoDetector:
+        name: CharucoDetector
+      c:@S@CharucoDetectorParams:
+        name: CharucoDetectorParams
       c:@S@EdgeBoxes:
         name: EdgeBoxes
       c:@S@EdgeDrawing:
@@ -470,6 +584,14 @@ files:
         name: ArucoDetectorPtr
       c:aruco.h@T@ArucoDictionaryPtr:
         name: ArucoDictionaryPtr
+      c:aruco.h@T@ArucoRefineParamsPtr:
+        name: ArucoRefineParamsPtr
+      c:aruco.h@T@CharucoBoardPtr:
+        name: CharucoBoardPtr
+      c:aruco.h@T@CharucoDetectorParamsPtr:
+        name: CharucoDetectorParamsPtr
+      c:aruco.h@T@CharucoDetectorPtr:
+        name: CharucoDetectorPtr
       c:freetype.h@T@FreeType2Ptr:
         name: FreeType2Ptr
       c:img_hash.h@T@BlockMeanHashPtr:
@@ -502,16 +624,24 @@ files:
         name: VecI32
       c:types.h@T@VecMat:
         name: VecMat
+      c:types.h@T@VecPoint2f:
+        name: VecPoint2f
+      c:types.h@T@VecPoint3f:
+        name: VecPoint3f
       c:types.h@T@VecPoint3i:
         name: VecPoint3i
       c:types.h@T@VecRect:
         name: VecRect
+      c:types.h@T@VecVec4i:
+        name: VecVec4i
       c:types.h@T@VecVecChar:
         name: VecVecChar
       c:types.h@T@VecVecPoint:
         name: VecVecPoint
       c:types.h@T@VecVecPoint2f:
         name: VecVecPoint2f
+      c:types.h@T@VecVecPoint3f:
+        name: VecVecPoint3f
       c:wechat_qrcode.h@T@WeChatQRCodePtr:
         name: WeChatQRCodePtr
       c:ximgproc.h@T@EdgeBoxesPtr:
