@@ -47,6 +47,10 @@ AgeLapse takes a raw photo, detects a set of landmarks on the person (eyes for f
 
 #### Bug Fixes
 - Daily reminders stopped working after the first launch: changing the reminder time or turning reminders back on silently failed in every launch after the one that created the project, and reminders never worked at all on devices reporting a legacy time zone name such as `Asia/Calcutta`. Reminders are now checked and rescheduled on every launch (so a reminder that was lost comes back after updating, without touching settings), turning reminders on restores them for every project, the Notifications settings show when the next reminder is due or why none can be shown, and a device that refuses exact alarms gets an inexact reminder instead of none.
+- Fix date stamps showing the previous photo's date on some frames (at the default 14 FPS, 8 photos out of every 20 were affected).
+- Fix photos being repeated or skipped in videos compiled above 25 FPS, and uneven pacing below 10 FPS. Every photo now gets the same number of frames and the video is exactly photos / FPS long.
+- Fix the automatic framerate locking itself in after the first compile (often at 3 FPS from a two-photo project) instead of adjusting as photos are added.
+- The Framerate setting's help text now says what the setting does: photos shown per second, so higher is faster and shorter, not smoother and larger.
 
 ### v2.7.0 (August 2026)
 

@@ -79,6 +79,11 @@ class SettingsSheet extends StatefulWidget {
     required this.recompileVideoCallback,
   });
 
+  /// Tallest the mobile sheet gets, as a fraction of the screen height. The
+  /// settings list is several screens long, so in practice the sheet is this
+  /// tall, and its SnackBar host matches it.
+  static const double mobileHeightFactor = 0.85;
+
   @override
   SettingsSheetState createState() => SettingsSheetState();
 }
@@ -1304,7 +1309,9 @@ class SettingsSheetState extends State<SettingsSheet> {
     final sections = _visibleSections;
     return Container(
       constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.85,
+        maxHeight:
+            MediaQuery.of(context).size.height *
+            SettingsSheet.mobileHeightFactor,
       ),
       decoration: BoxDecoration(
         color: AppColors.settingsBackground,
@@ -3635,7 +3642,7 @@ class SettingsSheetState extends State<SettingsSheet> {
       showDivider: true,
       showInfo: true,
       infoContent:
-          'Frames per second in output video. Higher = smoother playback, larger file size.',
+          'Photos shown per second, so this sets the speed of the video. Higher = faster, shorter video.',
       onChanged: (newValue) async {
         await _saveProjectSetting('framerate', newValue.toString());
         widget.stabCallback();

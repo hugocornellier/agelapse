@@ -15,6 +15,7 @@ import 'video_codec_test.dart' as video_codec_tests;
 import 'video_playback_test.dart' as video_playback_tests;
 import 'settings_pipeline_test.dart' as settings_pipeline_tests;
 import 'e2e_pipeline_test.dart' as e2e_pipeline_tests;
+import 'video_frame_timing_test.dart' as video_frame_timing_tests;
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -25,4 +26,5 @@ void main() {
   video_playback_tests.main();
   settings_pipeline_tests.main();
   e2e_pipeline_tests.main();
+  video_frame_timing_tests.main();
 }

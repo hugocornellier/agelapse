@@ -156,11 +156,50 @@ class VideoUtils {
   // in QuickTime, and hardware decoder quirks in some browsers.
   static const int _minOutputFps = 10;
 
-  /// Calculates the output fps for video encoding.
-  /// Returns max(inputFps, _minOutputFps) to avoid player compatibility issues
-  /// while not duplicating frames unnecessarily.
-  static int outputFps(int inputFps) =>
-      inputFps > _minOutputFps ? inputFps : _minOutputFps;
+  /// Calculates the output fps for video encoding from [inputFps], the
+  /// photos-per-second setting.
+  ///
+  /// At or above [_minOutputFps] every photo is one frame, so the output rate
+  /// is the setting itself. Below it each photo is repeated to reach the
+  /// floor, and the output rate is the smallest multiple of [inputFps] that
+  /// is at least [_minOutputFps], so every photo gets the same whole number
+  /// of frames: 3 photos/s becomes 12 fps with 4 frames per photo, not 10 fps
+  /// with a 3-3-4 pattern.
+  static int outputFps(int inputFps) {
+    if (inputFps <= 0) return _minOutputFps;
+    if (inputFps >= _minOutputFps) return inputFps;
+    final int framesPerPhoto = (_minOutputFps + inputFps - 1) ~/ inputFps;
+    return inputFps * framesPerPhoto;
+  }
+
+  /// Formats [seconds] for an FFmpeg `enable` expression, truncated (not
+  /// rounded) to microseconds. Frame timestamps are exact multiples of 1/fps;
+  /// rounding a boundary up past the frame it belongs to (2/3 s would become
+  /// "0.666667") pushes that frame into the previous window.
+  @visibleForTesting
+  static String formatFilterSeconds(double seconds) =>
+      ((seconds * 1e6).floor() / 1e6).toStringAsFixed(6);
+
+  /// `enable` expression selecting the frames of photos [startFrame] through
+  /// [endFrame] (inclusive) at [fps] photos per second.
+  ///
+  /// Each boundary sits half a microsecond before the exact photo start, so a
+  /// frame whose timestamp comes out one rounding error below k/fps (FFmpeg
+  /// computes it as pts * (1/fps) in doubles; 49 * (1/49) is 0.999...) still
+  /// lands in its own window. The previous photo's frames are a full 1/fps
+  /// earlier, so they never reach it.
+  @visibleForTesting
+  static String dateStampEnableExpr({
+    required int startFrame,
+    required int endFrame,
+    required int fps,
+  }) {
+    const double margin = 0.5e-6;
+    final double startSec = startFrame == 0 ? 0 : startFrame / fps - margin;
+    final String start = formatFilterSeconds(startSec);
+    final String end = formatFilterSeconds((endFrame + 1) / fps - margin);
+    return 'gte(t\\,$start)*lt(t\\,$end)';
+  }
 
   /// Calculates Gaussian blur sigma based on video height and optional
   /// [strength] multiplier.  Produces ~20 at 1080p, ~40 at 4K with the
@@ -585,10 +624,11 @@ class VideoUtils {
 
     for (int i = 0; i < dateRanges.length; i++) {
       final range = dateRanges[i];
-      final double startTime = range.startFrame / fps;
-      final double endTime = (range.endFrame + 1) / fps;
-      final enableExpr =
-          "gte(t\\,${startTime.toStringAsFixed(6)})*lt(t\\,${endTime.toStringAsFixed(6)})";
+      final enableExpr = dateStampEnableExpr(
+        startFrame: range.startFrame,
+        endFrame: range.endFrame,
+        fps: fps,
+      );
 
       // Escape the date text for FFmpeg filter option parsing.
       // Colons, single quotes, backslashes, and semicolons must be escaped.
@@ -1070,11 +1110,9 @@ class VideoUtils {
       );
       if (framerateIsDefault) {
         framerate = await getOptimalFramerateFromStabPhotoCount(projectId);
-        await DB.instance.setSettingByTitle(
-          'framerate',
-          framerate.toString(),
-          projectId.toString(),
-        );
+        // Stored for the settings UI and change detection, without marking
+        // it user-chosen: the next compile must be free to pick again.
+        await DB.instance.setAutoFramerate(framerate, projectId.toString());
         LogService.instance.log("[VIDEO] Using optimal framerate: $framerate");
       }
 
@@ -1370,8 +1408,13 @@ class VideoUtils {
       // For all videos: always include a format filter when no filter_complex
       // is present; FFmpeg 6's concat demuxer can hit "Error reinitializing
       // filters" without one when frame metadata varies between segments.
+      // It goes through -filter_complex rather than -vf: on FFmpeg 6.1 the
+      // simple-graph path gives the first photo one frame too few below 10
+      // photos/s (199 frames for 20 photos at 1 fps), the complex-graph path
+      // gives it the full count.
       if (filterArgs.isEmpty) {
-        filterArgs = '-vf "format=$pixFmt"';
+        filterArgs = '-filter_complex "[0:v]format=$pixFmt[v]"';
+        mapArg = '-map "[v]"';
       }
 
       // Build the color source input (before concat) when needed
@@ -1381,14 +1424,20 @@ class VideoUtils {
           ? '-f lavfi -i "color=c=${videoBg.solidColorHex!.replaceFirst('#', '0x')}:s=${videoWidth}x$videoHeight:r=$outFps" '
           : '';
 
+      // Input -r stamps each photo at an exact multiple of 1/framerate.
+      // Without it the concat demuxer rounds the list's durations to the PNG
+      // stream's 1/25 s clock, which repeats or drops photos above 25 fps,
+      // makes the pacing uneven below 10, and lands frames in the wrong
+      // date-stamp window. -fps_mode is the current spelling of -vsync,
+      // which FFmpeg 9 no longer accepts.
       String ffmpegCommand =
           "-y "
           "$colorSourceInput"
-          "-f concat -safe 0 "
+          "-r $framerate -f concat -safe 0 "
           "-i \"$listPath\" "
           "$dateStampInputs"
           "$watermarkInput "
-          "-vsync cfr -r $outFps "
+          "-fps_mode cfr -r $outFps "
           "$filterArgs $mapArg "
           "-c:v $vCodec $rateControl "
           "${videoHasAlpha ? '' : '-g 240 '}$movFlags $codecTag "
@@ -2142,9 +2191,10 @@ class VideoUtils {
       'ffconcat_${DateTime.now().millisecondsSinceEpoch}.txt',
     );
     final f = File(tmpPath);
-    // Use 6 decimal places (microsecond precision) to match FFmpeg's internal
-    // timebase and avoid floating-point drift that can cause -vsync cfr to
-    // drop or duplicate frames at high fps.
+    // The durations record the intended pacing and keep the list usable on
+    // its own. The encode passes input -r, which regenerates the timestamps
+    // at exact multiples of 1/fps; the concat demuxer alone rounds these
+    // durations to the PNG stream's 1/25 s clock.
     final String perFrame = (1.0 / fps).toStringAsFixed(6);
     LogService.instance.log("[VIDEO] Frame duration: ${perFrame}s (fps: $fps)");
 
@@ -2269,8 +2319,10 @@ class VideoUtils {
       ]);
     }
 
-    // Add video frames input (input 0 normally, input 1 with color overlay)
-    args.addAll(['-f', 'concat', '-safe', '0', '-i', listPath]);
+    // Add video frames input (input 0 normally, input 1 with color overlay).
+    // Input -r stamps each photo at an exact multiple of 1/fps; see the
+    // mobile command in createTimelapse for why that matters.
+    args.addAll(['-r', '$fps', '-f', 'concat', '-safe', '0', '-i', listPath]);
 
     // Add date stamp PNG inputs
     if (dateStampOverlay != null) {
@@ -2317,23 +2369,28 @@ class VideoUtils {
       args.addAll(['-map', filterResult.mapLabel!]);
     }
 
-    // For alpha output without filter_complex, add format filter
-    if (videoHasAlpha && !filterResult.hasFilter && !needsColorOverlay) {
-      args.addAll(['-vf', 'format=${codec.pixelFormat}']);
-    }
-
-    LogService.instance.log(
-      "[VIDEO] Using ${codec.displayName} encoder: ${codec.encoder}",
-    );
-
     // Detect high-bit-depth source frames for 10-bit output
     final bool highBitDepth =
         knownHighBitDepth ?? await _hasHighBitDepthFrames(framesDir);
 
     // Video encoding settings based on codec model
     final pixFmt = codec.pixelFormatForSource(highBitDepth: highBitDepth);
+
+    // Without any overlay, still run the frames through a format filter, and
+    // through -filter_complex rather than -vf: on FFmpeg 6.1 (the Linux
+    // distro builds) the simple-graph path gives the first photo one frame
+    // too few below 10 photos/s. Same format as the output, so nothing is
+    // converted twice.
+    if (!filterResult.hasFilter) {
+      args.addAll(['-filter_complex', '[0:v]format=$pixFmt[v]', '-map', '[v]']);
+    }
+
+    LogService.instance.log(
+      "[VIDEO] Using ${codec.displayName} encoder: ${codec.encoder}",
+    );
+
     final int outFps = outputFps(fps);
-    args.addAll(['-vsync', 'cfr', '-r', '$outFps', '-pix_fmt', pixFmt]);
+    args.addAll(['-fps_mode', 'cfr', '-r', '$outFps', '-pix_fmt', pixFmt]);
 
     // Color space metadata for correct rendering in all players
     args.addAll([

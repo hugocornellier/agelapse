@@ -523,14 +523,14 @@ void main() {
         // Reset throttle for second call
         VideoUtils.resetProgressThrottle();
 
-        // Test with framerate 6 (outputFps=10, 10/6 ratio)
+        // Test with framerate 6 (outputFps=12, two frames per photo)
         VideoUtils.parseFFmpegOutput(
           'frame=  60 fps=30',
           6,
           (frame) => capturedFrame = frame,
         );
-        // currFrame = (60 * 6) ~/ max(6,10) = 360 ~/ 10 = 36
-        expect(capturedFrame, 36);
+        // currFrame = (60 * 6) ~/ 12 = 30 photos encoded
+        expect(capturedFrame, 30);
       });
     });
 
@@ -739,4 +739,100 @@ void main() {
       });
     });
   });
+
+  group('outputFps', () {
+    test('keeps the setting from 10 photos/s up', () {
+      for (final fps in [10, 11, 14, 24, 25, 30, 60, 120]) {
+        expect(VideoUtils.outputFps(fps), fps);
+      }
+    });
+
+    test(
+      'below 10 picks the smallest multiple of the setting at or above 10',
+      () {
+        expect(VideoUtils.outputFps(1), 10);
+        expect(VideoUtils.outputFps(2), 10);
+        expect(VideoUtils.outputFps(3), 12);
+        expect(VideoUtils.outputFps(4), 12);
+        expect(VideoUtils.outputFps(5), 10);
+        expect(VideoUtils.outputFps(6), 12);
+        expect(VideoUtils.outputFps(7), 14);
+        expect(VideoUtils.outputFps(8), 16);
+        expect(VideoUtils.outputFps(9), 18);
+      },
+    );
+
+    test('gives every photo a whole number of frames, never below 10 fps', () {
+      for (int fps = 1; fps <= 120; fps++) {
+        final out = VideoUtils.outputFps(fps);
+        expect(out % fps, 0, reason: '$fps photos/s -> $out fps');
+        expect(out, greaterThanOrEqualTo(10), reason: '$fps photos/s');
+      }
+    });
+
+    test('falls back to the floor for a non-positive setting', () {
+      expect(VideoUtils.outputFps(0), 10);
+      expect(VideoUtils.outputFps(-5), 10);
+    });
+  });
+
+  group('date stamp enable windows', () {
+    test('truncates boundaries to microseconds instead of rounding', () {
+      expect(VideoUtils.formatFilterSeconds(2 / 3), '0.666666');
+      expect(VideoUtils.formatFilterSeconds(0.5), '0.500000');
+      expect(VideoUtils.formatFilterSeconds(3 / 14), '0.214285');
+    });
+
+    test('builds the gte/lt expression with escaped commas', () {
+      expect(
+        VideoUtils.dateStampEnableExpr(startFrame: 0, endFrame: 0, fps: 14),
+        r'gte(t\,0.000000)*lt(t\,0.071428)',
+      );
+      expect(
+        VideoUtils.dateStampEnableExpr(startFrame: 3, endFrame: 5, fps: 3),
+        r'gte(t\,0.999999)*lt(t\,1.999999)',
+      );
+    });
+
+    test("every photo's frame falls in its own window and no other", () {
+      // t is what FFmpeg computes for a frame with pts k in time base 1/fps.
+      for (int fps = 1; fps <= 120; fps++) {
+        for (int k = 0; k < 240; k++) {
+          for (final t in [k * (1.0 / fps), k / fps]) {
+            final own = _window(fps, k);
+            expect(
+              t >= own.$1 && t < own.$2,
+              isTrue,
+              reason: 'fps=$fps k=$k t=$t own window $own',
+            );
+            if (k > 0) {
+              expect(
+                t < _window(fps, k - 1).$2,
+                isFalse,
+                reason: 'fps=$fps k=$k t=$t still in previous window',
+              );
+            }
+            expect(
+              t >= _window(fps, k + 1).$1,
+              isFalse,
+              reason: 'fps=$fps k=$k t=$t already in next window',
+            );
+          }
+        }
+      }
+    });
+  });
+}
+
+/// The numeric bounds of the enable window for photo [k] at [fps].
+(double, double) _window(int fps, int k) {
+  final expr = VideoUtils.dateStampEnableExpr(
+    startFrame: k,
+    endFrame: k,
+    fps: fps,
+  );
+  final m = RegExp(
+    r'gte\(t\\,([0-9.]+)\)\*lt\(t\\,([0-9.]+)\)',
+  ).firstMatch(expr)!;
+  return (double.parse(m.group(1)!), double.parse(m.group(2)!));
 }
