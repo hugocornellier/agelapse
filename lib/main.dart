@@ -2,7 +2,6 @@ import 'package:video_player_media_kit/video_player_media_kit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -19,6 +18,7 @@ import '../services/database_helper.dart';
 import '../services/menu_bar_service.dart';
 import '../services/theme_provider.dart';
 import '../services/log_service.dart';
+import '../services/reminder_scheduler.dart';
 import '../services/video_compile_coordinator.dart';
 import '../widgets/main_navigation.dart';
 import '../theme/theme.dart';
@@ -140,47 +140,24 @@ Future<void> _main() async {
   }
 
   runApp(AgeLapse(homePage: await _getHomePage()));
+
+  // Daily reminders are mobile-only and never on the launch path: after the
+  // first frame, the scheduler initializes itself, then makes the OS match
+  // the database (every project's reminder when enabled, none otherwise).
+  widgetsBinding.addPostFrameCallback((_) {
+    ReminderScheduler.instance.start();
+    unawaited(ReminderScheduler.instance.reconcile());
+  });
 }
 
 Future<void> _initializeApp() async {
-  final futures = <Future>[DB.instance.createTablesIfNotExist()];
-
-  // Skip notification initialization in test mode to avoid permission prompts
-  if (!test_config.isTestMode) {
-    futures.add(initializeNotifications());
-  }
-
-  await Future.wait(futures);
+  await DB.instance.createTablesIfNotExist();
 
   // Purge expired Recently Deleted photos in the background, never block UI.
   unawaited(ProjectUtils.purgeExpiredDeletedImages());
 
   // Initialize custom fonts after database is ready
   await CustomFontManager.instance.initialize();
-}
-
-Future<void> initializeNotifications() async {
-  FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-      FlutterLocalNotificationsPlugin();
-
-  const AndroidInitializationSettings initializationSettingsAndroid =
-      AndroidInitializationSettings('@mipmap/ic_launcher');
-  final DarwinInitializationSettings initializationSettingsDarwin =
-      DarwinInitializationSettings();
-  final InitializationSettings initializationSettings = InitializationSettings(
-    android: initializationSettingsAndroid,
-    iOS: initializationSettingsDarwin,
-  );
-
-  await flutterLocalNotificationsPlugin.initialize(
-    settings: initializationSettings,
-    onDidReceiveNotificationResponse:
-        (NotificationResponse notificationResponse) async {
-          if (notificationResponse.payload != null) {
-            // In the future, need to handle notification tapped logic here
-          }
-        },
-  );
 }
 
 Future<Widget> _getHomePage() async {

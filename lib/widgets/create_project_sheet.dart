@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../services/database_helper.dart';
 import '../services/log_service.dart';
+import '../models/reminder_time.dart';
+import '../services/reminder_scheduler.dart';
 import '../styles/styles.dart';
-import '../utils/notification_util.dart';
 import '../utils/platform_utils.dart';
 import '../utils/test_mode.dart' as test_config;
 import '../utils/window_utils.dart';
@@ -274,26 +275,20 @@ class CreateProjectSheetState extends State<CreateProjectSheet> {
       LogService.instance.log("Error while setting new default project: $e");
     }
 
-    // Skip notification setup in test mode to avoid permission prompts
-    if (!test_config.isTestMode) {
-      try {
-        DateTime fivePMLocalTime = NotificationUtil.getFivePMLocalTime();
-        final dailyNotificationTime = fivePMLocalTime.millisecondsSinceEpoch
-            .toString();
-
-        await DB.instance.setSettingByTitle(
-          'daily_notification_time',
-          dailyNotificationTime,
-          projectId.toString(),
-        );
-        await NotificationUtil.initializeNotifications();
-        await NotificationUtil.scheduleDailyNotification(
-          projectId,
-          dailyNotificationTime,
-        );
-      } catch (e) {
-        LogService.instance.log("Error while setting up notifications: $e");
-      }
+    // The default time is a plain project setting and is saved everywhere.
+    // The reminder itself is mobile-only and a no-op in test mode; the
+    // scheduler decides, and this is the one place that may prompt for
+    // notification permission.
+    try {
+      await DB.instance.setSettingByTitle(
+        'daily_notification_time',
+        ReminderTime.defaultTime.encode(),
+        projectId.toString(),
+      );
+      await ReminderScheduler.instance.ensurePermissions(request: true);
+      await ReminderScheduler.instance.scheduleProject(projectId);
+    } catch (e) {
+      LogService.instance.log("Error while setting up notifications: $e");
     }
 
     // Transition window to default state after completing welcome flow
