@@ -12,6 +12,7 @@ import '../utils/dir_utils.dart';
 import '../utils/platform_utils.dart';
 import '../widgets/project_select_sheet.dart';
 import '../widgets/settings_sheet.dart';
+import 'sheet_snack_bar_host.dart';
 import '../services/settings_cache.dart';
 import 'progress_widget.dart';
 
@@ -254,13 +255,21 @@ class CustomAppBarState extends State<CustomAppBar> {
           reverseDuration: Duration(milliseconds: 150),
         ),
         builder: (context) {
-          return SettingsSheet(
-            projectId: projectId,
-            stabCallback: stabCallback,
-            cancelStabCallback: cancelStabCallback,
-            refreshSettings: refreshSettingsIn,
-            clearRawAndStabPhotos: clearRawAndStabPhotos,
-            recompileVideoCallback: recompileVideoCallback,
+          // Without its own host, a SnackBar from the sheet (a blocked
+          // reminder's "Open settings", a failed setting) lands on the page
+          // underneath, hidden by the sheet.
+          return SheetSnackBarHost(
+            height:
+                MediaQuery.sizeOf(context).height *
+                SettingsSheet.mobileHeightFactor,
+            child: SettingsSheet(
+              projectId: projectId,
+              stabCallback: stabCallback,
+              cancelStabCallback: cancelStabCallback,
+              refreshSettings: refreshSettingsIn,
+              clearRawAndStabPhotos: clearRawAndStabPhotos,
+              recompileVideoCallback: recompileVideoCallback,
+            ),
           );
         },
       );

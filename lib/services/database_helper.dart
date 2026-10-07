@@ -659,14 +659,28 @@ class DB {
     String value, [
     String? projectId = globalSettingFlag,
   ]) async {
-    final db = await database;
-
     if (title == 'framerate') {
       await setSettingByTitle('framerate_is_default', 'false', projectId);
     }
+    return _writeSetting(title, value, projectId!);
+  }
+
+  /// Stores the framerate the automatic mode picked for [projectId] without
+  /// marking it user-chosen, so the next compile can pick again as the photo
+  /// count grows. [setSettingByTitle] clears `framerate_is_default` on every
+  /// framerate write, which is right only for the settings UI.
+  Future<int> setAutoFramerate(int framerate, String projectId) =>
+      _writeSetting('framerate', framerate.toString(), projectId);
+
+  Future<int> _writeSetting(
+    String title,
+    String value,
+    String projectId,
+  ) async {
+    final db = await database;
 
     // Ensure setting exists before updating (creates with default if missing)
-    await getSettingByTitle(title, projectId!);
+    await getSettingByTitle(title, projectId);
 
     return await db.update(
       settingTable,
