@@ -10,11 +10,11 @@ import 'dart:ui' as ui;
 import '../services/database_helper.dart';
 import '../services/face_stabilizer.dart';
 import '../services/log_service.dart';
+import '../services/reminder_scheduler.dart';
 import '../services/stabilization_service.dart';
 import '../services/thumbnail_service.dart';
 import 'dir_utils.dart';
 import 'linked_source_utils.dart';
-import 'notification_util.dart';
 import 'capture_timezone.dart';
 import 'utils.dart';
 
@@ -72,7 +72,7 @@ class ProjectUtils {
     // 4. Delete all database records (Photos, Videos, Settings, Project) atomically
     final bool dbSuccess = await DB.instance.deleteProjectCascade(projectId);
     if (dbSuccess) {
-      await NotificationUtil.cancelNotification(projectId);
+      await ReminderScheduler.instance.cancelProject(projectId);
     }
 
     // 5. Delete project directory and all files (now safe; stabilization stopped)

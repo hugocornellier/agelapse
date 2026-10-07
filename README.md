@@ -45,6 +45,9 @@ AgeLapse takes a raw photo, detects a set of landmarks on the person (eyes for f
   - Cat and dog stabilization only keeps detections the species classifier agrees are a cat or a dog. Other animals the body detector finds are skipped instead of being stabilized as if they were the pet.
 - Builds with Xcode 27 (iOS 15.5 and macOS 12 deployment targets) on Flutter 3.47.5.
 
+#### Bug Fixes
+- Daily reminders stopped working after the first launch: changing the reminder time or turning reminders back on silently failed in every launch after the one that created the project, and reminders never worked at all on devices reporting a legacy time zone name such as `Asia/Calcutta`. Reminders are now checked and rescheduled on every launch (so a reminder that was lost comes back after updating, without touching settings), turning reminders on restores them for every project, the Notifications settings show when the next reminder is due or why none can be shown, and a device that refuses exact alarms gets an inexact reminder instead of none.
+
 ### v2.7.0 (August 2026)
 
 #### New Features

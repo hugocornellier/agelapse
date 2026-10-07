@@ -11,7 +11,6 @@ import 'database_import_ffi.dart';
 import 'package:path/path.dart';
 
 import '../utils/dir_utils.dart';
-import '../utils/notification_util.dart';
 import '../utils/settings_utils.dart';
 import '../utils/test_mode.dart' as test_config;
 import 'log_service.dart';
@@ -636,13 +635,7 @@ class DB {
   ]) async {
     final Map<String, dynamic>? settingData;
     settingData = await getSettingByTitle(title, projectId!);
-    var settingValue = settingData?['value'];
-
-    if (title == 'daily_notification_time' && settingValue == "not_set") {
-      return getNotifDefault();
-    }
-
-    return settingValue;
+    return settingData?['value'];
   }
 
   /// Looks up a photo by id from the active-only view. Returns `null` when the
@@ -659,11 +652,6 @@ class DB {
       limit: 1,
     );
     return results.isNotEmpty ? results.first : null;
-  }
-
-  String getNotifDefault() {
-    final DateTime fivePM = NotificationUtil.getFivePMLocalTime();
-    return fivePM.millisecondsSinceEpoch.toString();
   }
 
   Future<int> setSettingByTitle(

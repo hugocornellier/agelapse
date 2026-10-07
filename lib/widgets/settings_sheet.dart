@@ -2,22 +2,24 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:opencv_dart/opencv_dart.dart' as cv;
+import 'package:permission_handler/permission_handler.dart'
+    show openAppSettings;
 import 'package:provider/provider.dart';
 import '../screens/set_eye_position_page.dart';
 import '../services/custom_font_manager.dart';
 import '../services/database_helper.dart';
 import '../services/log_service.dart';
+import '../services/reminder_scheduler.dart';
 import '../services/theme_provider.dart';
 import '../services/thumbnail_service.dart';
 import '../styles/styles.dart';
+import '../models/reminder_time.dart';
 import '../models/video_background.dart';
 import '../models/video_codec.dart';
 import '../utils/dir_utils.dart';
-import '../utils/notification_util.dart';
 import '../utils/linked_source_utils.dart';
 import '../utils/platform_utils.dart';
 import '../utils/settings_utils.dart';
@@ -112,6 +114,7 @@ class SettingsSheetState extends State<SettingsSheet> {
   TimeOfDay _selectedTime = const TimeOfDay(hour: 17, minute: 0);
   bool notificationsEnabled = false;
   String dailyNotificationTime = "not set";
+  ReminderStatus? _reminderStatus;
   String projectOrientation = "Portrait";
   int? framerate;
   bool enableWatermark = false;
@@ -204,13 +207,6 @@ class SettingsSheetState extends State<SettingsSheet> {
   String? _exportCustomFormatError;
   bool _isGalleryCustomFormat = false;
   bool _isExportCustomFormat = false;
-
-  // Lazy initialization to avoid blocking widget creation
-  FlutterLocalNotificationsPlugin? _flutterLocalNotificationsPlugin;
-  FlutterLocalNotificationsPlugin get _notificationPlugin {
-    _flutterLocalNotificationsPlugin ??= FlutterLocalNotificationsPlugin();
-    return _flutterLocalNotificationsPlugin!;
-  }
 
   @override
   void initState() {
@@ -312,15 +308,13 @@ class SettingsSheetState extends State<SettingsSheet> {
       dailyNotificationTime = results[3] as String;
       _gridModeIndex = results[4] as int;
 
-      if (dailyNotificationTime == "not set") {
-        _selectedTime = const TimeOfDay(hour: 17, minute: 0);
-      } else {
-        final int timestamp = int.parse(dailyNotificationTime);
-        final DateTime dateTime = DateTime.fromMillisecondsSinceEpoch(
-          timestamp,
-        );
-        _selectedTime = TimeOfDay.fromDateTime(dateTime);
-      }
+      final reminderTime = ReminderTime.parse(dailyNotificationTime);
+      _selectedTime = TimeOfDay(
+        hour: reminderTime.hour,
+        minute: reminderTime.minute,
+      );
+      // Platform calls; the section renders without the line until it lands.
+      unawaited(_refreshReminderStatus());
 
       return {
         'enableGrid': results[0] as bool,
@@ -1051,17 +1045,7 @@ class SettingsSheetState extends State<SettingsSheet> {
     );
     if (picked != null && picked != _selectedTime) {
       setState(() => _selectedTime = picked);
-
-      final now = DateTime.now();
-      final selectedDateTime = DateTime(
-        now.year,
-        now.month,
-        now.day,
-        picked.hour,
-        picked.minute,
-      );
-      final selectedDateTimestamp = selectedDateTime.millisecondsSinceEpoch;
-      dailyNotificationTime = selectedDateTimestamp.toString();
+      dailyNotificationTime = ReminderTime(picked.hour, picked.minute).encode();
 
       await _saveProjectSetting(
         'daily_notification_time',
@@ -1072,10 +1056,67 @@ class SettingsSheetState extends State<SettingsSheet> {
     }
   }
 
+  /// Schedules this project's reminder and tells the user when the platform
+  /// refused. The scheduler never throws anything else.
   Future<void> _scheduleDailyNotification() async {
-    NotificationUtil.scheduleDailyNotification(
-      widget.projectId,
-      dailyNotificationTime,
+    try {
+      await ReminderScheduler.instance.scheduleProject(widget.projectId);
+    } on ReminderException catch (e) {
+      LogService.instance.log('Reminder schedule failed: ${e.message}');
+      _showReminderSnackBar(e.message);
+    }
+    await _refreshReminderStatus();
+  }
+
+  Future<void> _refreshReminderStatus() async {
+    final status = await ReminderScheduler.instance.status();
+    setStateIfMounted(() => _reminderStatus = status);
+  }
+
+  static const String _notificationsBlockedMessage =
+      'Notifications are turned off for AgeLapse in system settings, so '
+      'reminders cannot be shown.';
+
+  /// One line under the reminder time: when the next reminder is due, or why
+  /// none will arrive. Null when there is nothing useful to say yet.
+  String? _reminderStatusText(BuildContext context) {
+    final status = _reminderStatus;
+    if (!notificationsEnabled ||
+        status == null ||
+        identical(status, ReminderStatus.inactive)) {
+      return null;
+    }
+    if (!status.permission.notificationsAllowed) {
+      return _notificationsBlockedMessage;
+    }
+    if (!status.pendingProjectIds.contains(widget.projectId)) {
+      return 'No reminder is scheduled for this project. Pick a time to '
+          'schedule one.';
+    }
+    final now = TimeOfDay.now();
+    final laterToday =
+        _selectedTime.hour > now.hour ||
+        (_selectedTime.hour == now.hour && _selectedTime.minute > now.minute);
+    final timing = status.permission.exactAlarms
+        ? ''
+        : ' Exact timing is unavailable on this device, so it may arrive a '
+              'few minutes late.';
+    return 'Next reminder: ${laterToday ? 'today' : 'tomorrow'} at '
+        '${_selectedTime.format(context)}.$timing';
+  }
+
+  void _showReminderSnackBar(String message, {bool openSettings = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        action: openSettings
+            ? SnackBarAction(
+                label: 'Open settings',
+                onPressed: () => unawaited(openAppSettings()),
+              )
+            : null,
+      ),
     );
   }
 
@@ -2038,10 +2079,21 @@ class SettingsSheetState extends State<SettingsSheet> {
             });
             await _saveGlobalSetting('enable_notifications', value.toString());
             if (value) {
-              _scheduleDailyNotification();
+              // The toggle is global, so every project's reminder comes
+              // back, not only this one's.
+              final permission = await ReminderScheduler.instance
+                  .ensurePermissions(request: true);
+              await ReminderScheduler.instance.reconcile();
+              if (!permission.notificationsAllowed) {
+                _showReminderSnackBar(
+                  _notificationsBlockedMessage,
+                  openSettings: true,
+                );
+              }
             } else {
-              _notificationPlugin.cancelAll();
+              await ReminderScheduler.instance.cancelAll();
             }
+            await _refreshReminderStatus();
           },
         ),
         SettingListTile(
@@ -2077,6 +2129,20 @@ class SettingsSheetState extends State<SettingsSheet> {
           infoContent: '',
           showInfo: false,
         ),
+        if (_reminderStatusText(context) case final text?)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                text,
+                style: TextStyle(
+                  fontSize: AppTypography.sm,
+                  color: AppColors.settingsTextSecondary,
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }
