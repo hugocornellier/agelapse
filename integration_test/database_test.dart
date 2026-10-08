@@ -6,6 +6,7 @@ import 'package:agelapse/main.dart' as app;
 import 'package:agelapse/services/database_helper.dart';
 import 'package:agelapse/services/database_import_ffi.dart';
 import 'package:agelapse/models/setting_model.dart';
+import 'package:agelapse/utils/project_utils.dart';
 import 'package:agelapse/utils/test_mode.dart' as test_config;
 
 /// Integration tests for DatabaseHelper (DB class).
@@ -612,6 +613,145 @@ void main() {
         );
         expect(stored, isNotNull);
         expect(stored!.length, 768);
+      });
+
+      testWidgets('getActivePhotoTimesBetween compares timestamps as numbers', (
+        tester,
+      ) async {
+        app.main();
+        await tester.pumpAndSettle(const Duration(seconds: 2));
+
+        final projectId = await DB.instance.addProject('Range', 'face', 1);
+        for (final ts in ['999', '1000', '2000', '3000', '9000']) {
+          await DB.instance.addPhoto(
+            ts,
+            projectId,
+            'jpg',
+            1,
+            'p.jpg',
+            'portrait',
+          );
+        }
+        await DB.instance.softDeletePhoto(3000, projectId);
+
+        // As text, '999' sorts after '3000' and would be missed.
+        final rows = await DB.instance.getActivePhotoTimesBetween(
+          projectId,
+          500,
+          3000,
+        );
+        expect(
+          rows.map((r) => r['timestamp']),
+          unorderedEquals(['999', '1000', '2000']),
+        );
+        expect(
+          rows.first.keys,
+          unorderedEquals(['timestamp', 'captureOffsetMinutes']),
+        );
+      });
+
+      testWidgets('photosChanged emits for every change to active photos', (
+        tester,
+      ) async {
+        app.main();
+        await tester.pumpAndSettle(const Duration(seconds: 2));
+
+        final projectId = await DB.instance.addProject('Changes', 'face', 1);
+        final events = <int>[];
+        final sub = DB.instance.photosChanged.listen(events.add);
+        addTearDown(sub.cancel);
+
+        Future<void> add() => DB.instance.addPhoto(
+          '1000',
+          projectId,
+          'jpg',
+          1,
+          'p.jpg',
+          'portrait',
+        );
+        await add();
+        await add(); // A duplicate changes nothing.
+        await DB.instance.updatePhotoTimestamp('1000', '2000', projectId);
+        await DB.instance.softDeletePhoto(2000, projectId);
+        await DB.instance.restorePhotoFromTrash(2000, projectId);
+        await DB.instance.deletePhoto(2000, projectId);
+        await tester.pump();
+
+        expect(events, List.filled(5, projectId));
+      });
+
+      testWidgets('photoWasTakenToday counts only today\'s active photos', (
+        tester,
+      ) async {
+        app.main();
+        await tester.pumpAndSettle(const Duration(seconds: 2));
+
+        final projectId = await DB.instance.addProject('Today', 'face', 1);
+        final now = DateTime(2026, 10, 8, 12);
+        final yesterday = now
+            .subtract(const Duration(days: 1))
+            .millisecondsSinceEpoch;
+        final today = now.millisecondsSinceEpoch;
+        Future<void> add(int ts) => DB.instance.addPhoto(
+          '$ts',
+          projectId,
+          'jpg',
+          1,
+          'p.jpg',
+          'portrait',
+        );
+
+        await add(yesterday);
+        expect(
+          await ProjectUtils.photoWasTakenToday(projectId, now: now),
+          isFalse,
+        );
+
+        await add(today);
+        expect(
+          await ProjectUtils.photoWasTakenToday(projectId, now: now),
+          isTrue,
+        );
+
+        await DB.instance.softDeletePhoto(today, projectId);
+        expect(
+          await ProjectUtils.photoWasTakenToday(projectId, now: now),
+          isFalse,
+        );
+      });
+
+      testWidgets('photoWasTakenToday goes by each photo\'s capture date', (
+        tester,
+      ) async {
+        app.main();
+        await tester.pumpAndSettle(const Duration(seconds: 2));
+
+        final now = DateTime(2026, 10, 8, 12);
+        Future<bool> takenToday(DateTime utc, int offsetMinutes) async {
+          final ts = '${utc.millisecondsSinceEpoch}';
+          final projectId = await DB.instance.addProject('Offset', 'face', 1);
+          await DB.instance.addPhoto(
+            ts,
+            projectId,
+            'jpg',
+            1,
+            'p.jpg',
+            'portrait',
+          );
+          await DB.instance.setCaptureOffsetMinutesByTimestamp(
+            ts,
+            projectId,
+            offsetMinutes,
+          );
+          return ProjectUtils.photoWasTakenToday(projectId, now: now);
+        }
+
+        // 00:30 on the 8th in UTC+14, and 11:30 on the 8th in UTC-12: the
+        // two ends of the window around the day.
+        expect(await takenToday(DateTime.utc(2026, 10, 7, 10, 30), 840), true);
+        expect(await takenToday(DateTime.utc(2026, 10, 8, 23, 30), -720), true);
+        // 23:30 on the 7th in UTC+14.
+        expect(await takenToday(DateTime.utc(2026, 10, 7, 9, 30), 840), false);
       });
     });
 

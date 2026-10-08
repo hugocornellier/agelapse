@@ -40,6 +40,9 @@ AgeLapse takes a raw photo, detects a set of landmarks on the person (eyes for f
 
 ### v2.8.0 (unreleased)
 
+#### New Features
+- Daily reminders now skip days you've already taken your photo. Once a photo dated today is in, taken in the app or imported, today's reminder is skipped and the next one comes tomorrow. Deleting that photo before the reminder time brings today's reminder back.
+
 #### Improvements
 - Detection engine update: face, pose, hand, cat and dog detection now share flutter_litert 3.9.0 (one runtime for every detector) with the animal_detection 4.1.0 species classifier behind cat and dog.
   - Cat and dog stabilization only keeps detections the species classifier agrees are a cat or a dog. Other animals the body detector finds are skipped instead of being stabilized as if they were the pet.
@@ -47,6 +50,7 @@ AgeLapse takes a raw photo, detects a set of landmarks on the person (eyes for f
 
 #### Bug Fixes
 - Daily reminders stopped working after the first launch: changing the reminder time or turning reminders back on silently failed in every launch after the one that created the project, and reminders never worked at all on devices reporting a legacy time zone name such as `Asia/Calcutta`. Reminders are now checked and rescheduled on every launch (so a reminder that was lost comes back after updating, without touching settings), turning reminders on restores them for every project, the Notifications settings show when the next reminder is due or why none can be shown, and a device that refuses exact alarms gets an inexact reminder instead of none.
+- Fix reminders on iOS being dropped when they arrived while AgeLapse was open. They now show like any other notification.
 - Fix date stamps showing the previous photo's date on some frames (at the default 14 FPS, 8 photos out of every 20 were affected).
 - Fix photos being repeated or skipped in videos compiled above 25 FPS, and uneven pacing below 10 FPS. Every photo now gets the same number of frames and the video is exactly photos / FPS long.
 - Fix the automatic framerate locking itself in after the first compile (often at 3 FPS from a two-photo project) instead of adjusting as photos are added.

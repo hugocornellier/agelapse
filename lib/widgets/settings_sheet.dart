@@ -1098,6 +1098,7 @@ class SettingsSheetState extends State<SettingsSheet> {
       return 'No reminder is scheduled for this project. Pick a time to '
           'schedule one.';
     }
+    final skipped = status.todaySkippedProjectIds.contains(widget.projectId);
     final now = TimeOfDay.now();
     final laterToday =
         _selectedTime.hour > now.hour ||
@@ -1106,8 +1107,9 @@ class SettingsSheetState extends State<SettingsSheet> {
         ? ''
         : ' Exact timing is unavailable on this device, so it may arrive a '
               'few minutes late.';
-    return 'Next reminder: ${laterToday ? 'today' : 'tomorrow'} at '
-        '${_selectedTime.format(context)}.$timing';
+    return 'Next reminder: ${laterToday && !skipped ? 'today' : 'tomorrow'} '
+        'at ${_selectedTime.format(context)}.'
+        '${skipped ? " Today's photo is already taken." : ''}$timing';
   }
 
   void _showReminderSnackBar(String message, {bool openSettings = false}) {

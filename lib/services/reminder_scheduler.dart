@@ -10,6 +10,7 @@ import 'package:timezone/timezone.dart' as tz;
 
 import '../models/reminder_time.dart';
 import '../utils/platform_utils.dart';
+import '../utils/project_utils.dart';
 import '../utils/test_mode.dart' as test_config;
 import 'database_helper.dart';
 import 'log_service.dart';
@@ -51,12 +52,17 @@ class ReminderStatus {
   const ReminderStatus({
     required this.permission,
     required this.pendingProjectIds,
+    this.todaySkippedProjectIds = const [],
   });
 
   final ReminderPermissionState permission;
 
   /// Project ids with a reminder registered with the OS right now.
   final List<int> pendingProjectIds;
+
+  /// Project ids whose next reminder is tomorrow because today's photo is
+  /// already in.
+  final List<int> todaySkippedProjectIds;
 
   static const ReminderStatus inactive = ReminderStatus(
     permission: ReminderPermissionState.granted,
@@ -71,6 +77,17 @@ class ReminderProject {
   final String name;
 }
 
+/// What a project's reminder should be right now, from
+/// [ReminderScheduler._plan].
+typedef _ReminderPlan = ({
+  ReminderTime time,
+  tz.Location location,
+  tz.TZDateTime now,
+  bool skipToday,
+  int days,
+  String key,
+});
+
 /// The platform calls the scheduler makes, behind an interface so the
 /// scheduling decisions can be unit tested without a device.
 abstract class ReminderBackend {
@@ -80,6 +97,9 @@ abstract class ReminderBackend {
   Future<bool> requestNotificationsPermission();
   Future<bool> canScheduleExact();
   Future<bool> requestExactAlarmsPermission();
+
+  /// Schedules a notification at [at], and every day after it at the same
+  /// wall-clock time when [repeatDaily] is set.
   Future<void> schedule({
     required int id,
     required String title,
@@ -87,6 +107,7 @@ abstract class ReminderBackend {
     required String payload,
     required tz.TZDateTime at,
     required bool exact,
+    required bool repeatDaily,
   });
   Future<void> cancel(int id);
   Future<void> cancelAll();
@@ -98,15 +119,30 @@ abstract class ReminderStore {
   Future<bool> notificationsEnabled();
   Future<List<ReminderProject>> projects();
   Future<ReminderTime> timeFor(int projectId);
+
+  /// Whether [projectId] has an active photo taken on [now]'s local date.
+  Future<bool> photoTakenToday(int projectId, DateTime now);
+
+  /// Project ids whose photos changed, possibly once per photo.
+  Stream<int> get photoChanges;
 }
 
 /// The single owner of daily reminder notifications.
 ///
-/// Every reminder is a repeating platform notification (one per project, the
-/// project id is the notification id) that fires at the project's
-/// [ReminderTime] in the device's zone. Both platforms compute each next
-/// fire themselves from the zone name and the wall-clock time, so nothing
-/// here has to run for a reminder to repeat.
+/// A project's reminder fires at its [ReminderTime] in the device's zone. On
+/// most days that is one repeating platform notification whose id is the
+/// project id. Both platforms compute each next fire themselves from the
+/// zone name and the wall-clock time, so nothing here has to run for a
+/// reminder to repeat.
+///
+/// Once today's photo is in and today's reminder has not fired yet (#40),
+/// the project gets one-off notifications instead, one a day for the next
+/// [skipWindowDays] days starting tomorrow ([oneOffId]). A repeat cannot
+/// start on a later day (iOS fires it at the next matching time), so
+/// skipping a day takes one-offs. Every photo change, launch and return to
+/// the foreground decides again, which brings back the repeat on a day
+/// without a photo. The one-offs only run out if the app stays closed for
+/// that whole window after a photo day.
 ///
 /// What this class guarantees, and what #36 lacked:
 /// - Initialization is self-owned ([start]) and never on the launch path.
@@ -134,24 +170,103 @@ class ReminderScheduler {
     required this._backend,
     required this._store,
     bool? active,
-  }) : _activeOverride = active;
+    DateTime Function()? clock,
+  }) : _activeOverride = active,
+       _clock = clock ?? DateTime.now;
 
   static final ReminderScheduler instance = ReminderScheduler._();
+
+  /// The most days of one-off reminders a project gets while today is
+  /// skipped.
+  static const int maxSkipWindowDays = 14;
+
+  /// iOS keeps only the 64 soonest pending notifications per app, shared by
+  /// every project.
+  static const int _pendingLimit = 64;
+
+  static const int _oneOffIdBase = 1000000;
+  static const int _oneOffIdStride = 16;
 
   final ReminderBackend _backend;
   final ReminderStore _store;
   final bool? _activeOverride;
+  final DateTime Function() _clock;
 
   Future<void>? _ready;
   Future<void> _queue = Future<void>.value();
+  StreamSubscription<int>? _photoChanges;
+
+  /// Projects with a photo-change run waiting in the queue.
+  final Set<int> _photoRunsQueued = {};
+
+  /// Per project, what the last schedule that went through decided, so a
+  /// photo change that decides the same (most of an import) makes no
+  /// platform calls.
+  final Map<int, String> _applied = {};
 
   bool get _active => _activeOverride ?? (isMobile && !test_config.isTestMode);
 
-  /// Kicks off initialization in the background. Idempotent, never throws.
-  /// Other methods wait for it themselves, so calling this is optional; it
+  /// Kicks off initialization in the background and starts following photo
+  /// changes. Idempotent, never throws. Other methods wait for
+  /// initialization themselves, so calling this is optional for them; it
   /// only moves the work earlier.
   void start() {
     unawaited(_ensureReady());
+    if (!_active) return;
+    _photoChanges ??= _store.photoChanges.listen(_onPhotosChanged);
+  }
+
+  /// Days of one-offs per skipping project, so that every project skipping
+  /// at once still fits under iOS's limit.
+  @visibleForTesting
+  static int skipWindowDays(int projectCount) =>
+      (_pendingLimit ~/ (projectCount < 1 ? 1 : projectCount)).clamp(
+        1,
+        maxSkipWindowDays,
+      );
+
+  /// The id of [projectId]'s one-off reminder [day] days after the day it
+  /// was scheduled (1 is tomorrow). Always above every project id, which the
+  /// daily repeat has used as its id since the first release.
+  @visibleForTesting
+  static int oneOffId(int projectId, int day) =>
+      _oneOffIdBase + projectId * _oneOffIdStride + day;
+
+  /// The project a pending notification id belongs to.
+  @visibleForTesting
+  static int ownerOf(int id) =>
+      _isOneOff(id) ? (id - _oneOffIdBase) ~/ _oneOffIdStride : id;
+
+  static bool _isOneOff(int id) => id >= _oneOffIdBase;
+
+  /// Today's photo decides whether today's reminder fires, so a photo change
+  /// reschedules its project at once, through the same queue as everything
+  /// else: [status], and so the settings sheet, always see it. A change
+  /// that arrives while the project's run is still waiting rides along with
+  /// it, since the run reads the photos when it starts.
+  void _onPhotosChanged(int projectId) {
+    if (!_photoRunsQueued.add(projectId)) return;
+    unawaited(
+      _serialized(() {
+        _photoRunsQueued.remove(projectId);
+        return _rescheduleAfterPhotoChange(projectId);
+      }),
+    );
+  }
+
+  Future<void> _rescheduleAfterPhotoChange(int projectId) async {
+    try {
+      await _ensureReady();
+      if (!await _store.notificationsEnabled()) return;
+      final projects = await _store.projects();
+      final project = projects.where((p) => p.id == projectId).firstOrNull;
+      if (project == null) return;
+      final plan = await _plan(project, projects.length);
+      if (_applied[projectId] == plan.key) return;
+      await _apply(project, plan, await _pendingOrNull());
+    } catch (e) {
+      _log('photo change: project $projectId not rescheduled: $e');
+    }
   }
 
   Future<void> _ensureReady() => _ready ??= _init();
@@ -193,6 +308,7 @@ class ReminderScheduler {
         final enabled = await _store.notificationsEnabled();
         final projects = await _store.projects();
         if (!enabled) {
+          _applied.clear();
           await _backend.cancelAll();
           _log(
             'reconcile: reminders are off, cancelled all '
@@ -201,10 +317,15 @@ class ReminderScheduler {
           return;
         }
 
+        final before = await _pendingOrNull();
         var scheduled = 0;
         for (final project in projects) {
           try {
-            await _scheduleNow(project);
+            await _scheduleNow(
+              project,
+              projectCount: projects.length,
+              pending: before,
+            );
             scheduled++;
           } catch (e) {
             _log('reconcile: project ${project.id} failed: $e');
@@ -215,7 +336,7 @@ class ReminderScheduler {
         var pending = <int>[];
         try {
           pending = await _backend.pendingIds();
-          for (final id in pending.where((id) => !ids.contains(id))) {
+          for (final id in pending.where((id) => !ids.contains(ownerOf(id)))) {
             await _backend.cancel(id);
             _log('reconcile: cancelled reminder $id, no such project');
           }
@@ -245,7 +366,11 @@ class ReminderScheduler {
           _log('schedule: project $projectId not found');
           return;
         }
-        await _scheduleNow(project);
+        await _scheduleNow(
+          project,
+          projectCount: projects.length,
+          pending: await _pendingOrNull(),
+        );
       } on ReminderException {
         rethrow;
       } catch (e) {
@@ -257,13 +382,16 @@ class ReminderScheduler {
   Future<void> cancelProject(int projectId) async {
     if (!_active) return;
     await _ensureReady();
-    return _serialized(() => _cancelQuietly(projectId));
+    return _serialized(
+      () async => _cancelQuietly(projectId, pending: await _pendingOrNull()),
+    );
   }
 
   Future<void> cancelAll() async {
     if (!_active) return;
     await _ensureReady();
     return _serialized(() async {
+      _applied.clear();
       try {
         await _backend.cancelAll();
         _log('cancelled all reminders');
@@ -320,19 +448,79 @@ class ReminderScheduler {
     } catch (e) {
       _log('pending lookup failed: $e');
     }
-    return ReminderStatus(permission: permission, pendingProjectIds: pending);
+    final owners = <int>{};
+    final repeating = <int>{};
+    for (final id in pending) {
+      owners.add(ownerOf(id));
+      if (!_isOneOff(id)) repeating.add(id);
+    }
+    return ReminderStatus(
+      permission: permission,
+      pendingProjectIds: owners.toList(),
+      todaySkippedProjectIds: [
+        for (final id in owners)
+          if (!repeating.contains(id)) id,
+      ],
+    );
   }
 
-  Future<void> _scheduleNow(ReminderProject project) async {
+  /// Schedules [project]'s reminder as [_plan] decides, or cancels it when
+  /// notifications are off. [pending] is the OS's pending ids, or null when
+  /// unknown.
+  Future<void> _scheduleNow(
+    ReminderProject project, {
+    required int projectCount,
+    required Set<int>? pending,
+  }) async {
     if (!await _store.notificationsEnabled()) {
-      await _cancelQuietly(project.id);
+      await _cancelQuietly(project.id, pending: pending);
       _log('schedule: reminders are off, cancelled project ${project.id}');
       return;
     }
+    await _apply(project, await _plan(project, projectCount), pending);
+  }
 
+  /// Whether [project] skips today: today's photo is in and today's
+  /// reminder has not fired yet. [_ReminderPlan.key] sums up everything the
+  /// decision depends on, so an unchanged one can be recognized.
+  Future<_ReminderPlan> _plan(ReminderProject project, int projectCount) async {
     final time = await _store.timeFor(project.id);
     final location = await _resolveLocation();
-    final at = nextOccurrence(time, location, tz.TZDateTime.now(location));
+    final clockNow = _clock();
+    final now = tz.TZDateTime.from(clockNow, location);
+    final todayAt = tz.TZDateTime(
+      location,
+      now.year,
+      now.month,
+      now.day,
+      time.hour,
+      time.minute,
+    );
+    final skipToday =
+        !todayAt.isBefore(now) && await _photoTakenToday(project.id, clockNow);
+    final days = skipToday ? skipWindowDays(projectCount) : 0;
+    return (
+      time: time,
+      location: location,
+      now: now,
+      skipToday: skipToday,
+      days: days,
+      key:
+          '${now.year}-${now.month}-${now.day} ${time.encode()} '
+          '${location.name} skip=$skipToday days=$days',
+    );
+  }
+
+  /// Schedules the daily repeat, or the one-offs from tomorrow when [plan]
+  /// skips today, and cancels whichever of the two is no longer needed.
+  Future<void> _apply(
+    ReminderProject project,
+    _ReminderPlan plan,
+    Set<int>? pending,
+  ) async {
+    // Forgotten until this run succeeds, so a failure is redone next time.
+    _applied.remove(project.id);
+    final (:time, :location, :now, :skipToday, :days, :key) = plan;
 
     var exact = true;
     try {
@@ -341,8 +529,72 @@ class ReminderScheduler {
       _log('exact alarm check failed, assuming exact: $e');
     }
 
+    if (!skipToday) {
+      final at = nextOccurrence(time, location, now);
+      exact = await _scheduleOne(
+        project,
+        project.id,
+        at,
+        exact: exact,
+        repeatDaily: true,
+      );
+      _log(
+        'scheduled project ${project.id} at ${at.toIso8601String()} '
+        'zone=${at.location.name} mode=${exact ? 'exact' : 'inexact'}',
+      );
+      await _cancelOneOffs(project.id, fromDay: 1, pending: pending);
+      _applied[project.id] = key;
+      return;
+    }
+
+    for (var day = 1; day <= days; day++) {
+      // Through the constructor, like [nextOccurrence], so every day keeps
+      // the wall-clock time across a DST change.
+      final at = tz.TZDateTime(
+        location,
+        now.year,
+        now.month,
+        now.day + day,
+        time.hour,
+        time.minute,
+      );
+      exact = await _scheduleOne(
+        project,
+        oneOffId(project.id, day),
+        at,
+        exact: exact,
+        repeatDaily: false,
+      );
+    }
+    // The repeat goes only once the one-offs are in, so a failure above
+    // leaves today's reminder rather than none.
     try {
-      await _schedule(project, at, exact: exact);
+      await _backend.cancel(project.id);
+    } catch (e) {
+      _log('cancel failed for project ${project.id}: $e');
+    }
+    await _cancelOneOffs(project.id, fromDay: days + 1, pending: pending);
+    _log(
+      'scheduled project ${project.id} daily from tomorrow for $days days at '
+      '${time.encode()}, skipping today (photo taken) zone=${location.name} '
+      'mode=${exact ? 'exact' : 'inexact'}',
+    );
+    _applied[project.id] = key;
+  }
+
+  /// Schedules one notification, retrying inexact once when the platform
+  /// refuses exact alarms. Returns whether it went in exact, so the rest of
+  /// a run of one-offs does not ask again.
+  Future<bool> _scheduleOne(
+    ReminderProject project,
+    int id,
+    tz.TZDateTime at, {
+    required bool exact,
+    required bool repeatDaily,
+  }) async {
+    try {
+      await _schedule(project, id, at, exact: exact, repeatDaily: repeatDaily);
+      return exact;
     } on PlatformException catch (e) {
       if (exact && e.code == 'exact_alarms_not_permitted') {
         _log(
@@ -350,19 +602,25 @@ class ReminderScheduler {
           'retrying inexact',
         );
         try {
-          await _schedule(project, at, exact: false);
+          await _schedule(
+            project,
+            id,
+            at,
+            exact: false,
+            repeatDaily: repeatDaily,
+          );
+          return false;
         } catch (e2) {
           throw ReminderException(
             'Could not schedule the reminder: $e2',
             code: e2 is PlatformException ? e2.code : null,
           );
         }
-      } else {
-        throw ReminderException(
-          'Could not schedule the reminder: ${e.message ?? e.code}',
-          code: e.code,
-        );
       }
+      throw ReminderException(
+        'Could not schedule the reminder: ${e.message ?? e.code}',
+        code: e.code,
+      );
     } catch (e) {
       throw ReminderException('Could not schedule the reminder: $e');
     }
@@ -370,41 +628,84 @@ class ReminderScheduler {
 
   Future<void> _schedule(
     ReminderProject project,
+    int id,
     tz.TZDateTime at, {
     required bool exact,
-  }) async {
-    await _backend.schedule(
-      id: project.id,
-      title: 'AgeLapse: ${project.name}',
-      body: "${project.name}: Don't forget to take your photo!",
-      payload: 'project:${project.id}',
-      at: at,
-      exact: exact,
-    );
-    _log(
-      'scheduled project ${project.id} at ${at.toIso8601String()} '
-      'zone=${at.location.name} mode=${exact ? 'exact' : 'inexact'}',
-    );
+    required bool repeatDaily,
+  }) => _backend.schedule(
+    id: id,
+    title: 'AgeLapse: ${project.name}',
+    body: "${project.name}: Don't forget to take your photo!",
+    payload: 'project:${project.id}',
+    at: at,
+    exact: exact,
+    repeatDaily: repeatDaily,
+  );
+
+  /// A photo check that fails counts as no photo, so the project keeps
+  /// today's reminder rather than losing it.
+  Future<bool> _photoTakenToday(int projectId, DateTime now) async {
+    try {
+      return await _store.photoTakenToday(projectId, now);
+    } catch (e) {
+      _log('photo check failed for project $projectId, not skipping: $e');
+      return false;
+    }
   }
 
-  Future<void> _cancelQuietly(int projectId) async {
+  /// The pending notification ids, or null when the platform cannot say.
+  Future<Set<int>?> _pendingOrNull() async {
+    try {
+      return (await _backend.pendingIds()).toSet();
+    } catch (e) {
+      _log('pending lookup failed: $e');
+      return null;
+    }
+  }
+
+  Future<void> _cancelQuietly(
+    int projectId, {
+    required Set<int>? pending,
+  }) async {
+    _applied.remove(projectId);
     try {
       await _backend.cancel(projectId);
       _log('cancelled reminder for project $projectId');
     } catch (e) {
       _log('cancel failed for project $projectId: $e');
     }
+    await _cancelOneOffs(projectId, fromDay: 1, pending: pending);
+  }
+
+  /// Cancels [projectId]'s one-offs from [fromDay] on: the pending ones when
+  /// [pending] is known, every possible one otherwise.
+  Future<void> _cancelOneOffs(
+    int projectId, {
+    required int fromDay,
+    required Set<int>? pending,
+  }) async {
+    for (var day = fromDay; day <= maxSkipWindowDays; day++) {
+      final id = oneOffId(projectId, day);
+      if (pending != null && !pending.contains(id)) continue;
+      try {
+        await _backend.cancel(id);
+      } catch (e) {
+        _log('cancel failed for reminder $id: $e');
+      }
+    }
   }
 
   /// The device's zone as a [tz.Location], resolved fresh each time so a
   /// timezone change while the app runs is picked up.
   ///
-  /// The plugin only sends the platform the location's *name* and the
-  /// wall-clock fields; the platform then computes every fire time with its
-  /// own zone database. So when the bundled Dart database does not know the
-  /// id (it ships without legacy aliases such as `Asia/Calcutta`, which
-  /// Android still reports), a fixed-offset location carrying the same name
-  /// schedules correctly, because the id came from that same platform.
+  /// Android computes every fire time from the wall-clock fields and the
+  /// location's *name* with its own zone database. iOS takes the instant,
+  /// and for the daily repeat keeps only its hour and minute in that zone.
+  /// So when the bundled Dart database does not know the id, a fixed-offset
+  /// location carrying the same name still schedules the repeat correctly on
+  /// both, because the id came from that same platform. Only an iOS one-off
+  /// days ahead, across a DST change, can land an hour off until the next
+  /// reconcile.
   Future<tz.Location> _resolveLocation() async {
     String? id;
     try {
@@ -503,7 +804,19 @@ class _DbReminderStore implements ReminderStore {
       projectId.toString(),
     ),
   );
+
+  @override
+  Future<bool> photoTakenToday(int projectId, DateTime now) =>
+      ProjectUtils.photoWasTakenToday(projectId, now: now);
+
+  @override
+  Stream<int> get photoChanges => DB.instance.photosChanged;
 }
+
+/// The app's real notification backend, for device tests that run the
+/// scheduler against the OS (integration_test/reminder_device_test.dart).
+@visibleForTesting
+ReminderBackend platformReminderBackend() => _PluginReminderBackend();
 
 class _PluginReminderBackend implements ReminderBackend {
   final FlutterLocalNotificationsPlugin _plugin =
@@ -602,6 +915,7 @@ class _PluginReminderBackend implements ReminderBackend {
     required String payload,
     required tz.TZDateTime at,
     required bool exact,
+    required bool repeatDaily,
   }) => _plugin.zonedSchedule(
     id: id,
     title: title,
@@ -621,7 +935,7 @@ class _PluginReminderBackend implements ReminderBackend {
     androidScheduleMode: exact
         ? AndroidScheduleMode.exactAllowWhileIdle
         : AndroidScheduleMode.inexactAllowWhileIdle,
-    matchDateTimeComponents: DateTimeComponents.time,
+    matchDateTimeComponents: repeatDaily ? DateTimeComponents.time : null,
   );
 
   @override

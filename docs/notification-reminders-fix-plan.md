@@ -289,6 +289,22 @@ iPhone):
    moved to 17:00 in the new zone.
 9. iOS: steps 2, 3, 4 and 8 using a 2-minute-ahead time; confirm the first
    permission prompt now appears at project creation.
+10. #40, both platforms: with the reminder a few minutes ahead and no photo
+    today, take a photo. Reopen Settings: "Next reminder: tomorrow ... Today's
+    photo is already taken", and nothing arrives at the time. Android:
+    `dumpsys alarm` shows one alarm per day from tomorrow and no repeating
+    one.
+11. Trash that photo before the reminder time: Settings says today again and
+    the reminder arrives.
+12. Take a photo after today's reminder has fired: the daily repeat stays
+    (Android: one repeating alarm).
+
+Steps 3, 4 and 12, the #40 skip and restore, the legacy and a regular zone
+id, and delivery with the app open run on a device in
+`integration_test/reminder_device_test.dart`, against the real notification
+system (CI's Android emulator runs it too). Delivery with the app open needs
+the `UNUserNotificationCenter` delegate set in `AppDelegate.swift`; without it
+iOS drops the notification.
 
 ### 2.7 Release
 
@@ -303,14 +319,48 @@ iPhone):
 
 ### 2.8 Out of scope, but the design leaves room
 
-- #40 (skip the reminder when today's photo exists): `reconcile()` is the one
-  place that decides what gets scheduled; swapping the repeating trigger for
-  one-shot reminders over the next 14 days, cancelled by `addPhoto`, is a
-  change inside the scheduler only.
+- #40 (skip the reminder when today's photo exists): done in 2.8.0, see 2.9.
 - Tapping a reminder could open that project's camera tab
   (`onDidReceiveNotificationResponse` payload = project id).
 - `USE_EXACT_ALARM` is fine for a sideloaded app; it would be rejected on
   Google Play for a non-alarm app. Note it if Play distribution ever comes up.
+
+### 2.9 #40: skip today's reminder once the photo is in
+
+- When a project has a photo dated today and today's reminder has not fired
+  yet, its daily repeat is swapped for one-off reminders, one a day starting
+  tomorrow. A repeat cannot start on a later day (iOS fires it at the next
+  matching time), so skipping a day needs one-offs on both platforms.
+  One-off ids start at 1,000,000, 16 per project
+  (`ReminderScheduler.oneOffId`), so they never collide with the repeat's id,
+  which is the project id.
+- The choice is made again on every photo change (`DB.photosChanged`:
+  add, date change, trash, restore, delete), on launch, and on return from
+  the background (`main_navigation.dart`). A day without a photo, or a check
+  after the reminder time, brings the daily repeat back, so the one-offs
+  only run out if the app stays closed for the whole window after a photo
+  day.
+- A photo change is applied at once, in the scheduler's queue, so the
+  settings sheet (which reads through the same queue) never shows a stale
+  line. Changes that arrive while a project's run is still waiting ride
+  along with it, and a run whose decision matches the last one applied
+  makes no platform calls, so an import costs one small query per run.
+- The window is 14 days, cut to fit iOS's 64 pending notifications if every
+  project skips at once (12 days with 5 projects, 6 with 10).
+- "Taken today" is `ProjectUtils.photoWasTakenToday`: an active photo whose
+  capture-local date is today, as on the project page. It now reads only the
+  photos within 15 hours of the day (capture offsets run from UTC-12 to
+  UTC+14) instead of every photo in the project.
+- Each one-off is built through the `TZDateTime` constructor from that
+  day's wall-clock fields, so a DST change inside the window keeps 17:00 at
+  17:00. Android schedules from those fields plus the zone name. iOS
+  schedules from the instant (`scheduledDateTimeISO8601`, plugin 22.3.1), so
+  with the fixed-offset fallback location from 1.2 (a zone id missing from
+  the bundled database, which is rare) a DST change inside the window would
+  move iOS one-offs by an hour until the app is next opened. That is the trap
+  noted in 3.5, narrowed to that case.
+- If the photo check fails, the project keeps its daily repeat: a reminder
+  on a day with a photo is better than none on a day without one.
 
 ## Part 3: Critical analysis of the plan
 
