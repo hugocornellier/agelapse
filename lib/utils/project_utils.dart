@@ -828,9 +828,21 @@ class ProjectUtils {
     }
   }
 
-  static Future<bool> photoWasTakenToday(int projectId) async {
-    final photos = await DB.instance.getPhotosByProjectID(projectId);
-    return photoWasTakenTodayForPhotos(photos);
+  /// Whether [projectId] has an active photo whose capture-local date is
+  /// [now]'s local date. Reads only the photos near that date, since the
+  /// reminder scheduler asks for every project on each launch and photo
+  /// change: capture offsets run from UTC-12 to UTC+14, so 15 hours either
+  /// side of the day holds every photo that can match.
+  static Future<bool> photoWasTakenToday(int projectId, {DateTime? now}) async {
+    final today = now ?? DateTime.now();
+    final midnight = DateTime.utc(today.year, today.month, today.day);
+    const margin = Duration(hours: 15);
+    final photos = await DB.instance.getActivePhotoTimesBetween(
+      projectId,
+      midnight.subtract(margin).millisecondsSinceEpoch,
+      midnight.add(const Duration(days: 1) + margin).millisecondsSinceEpoch,
+    );
+    return photoWasTakenTodayForPhotos(photos, now: today);
   }
 
   static int _parsePhotoTimestamp(Map<String, dynamic> photo) =>

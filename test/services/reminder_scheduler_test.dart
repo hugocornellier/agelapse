@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:agelapse/models/reminder_time.dart';
 import 'package:agelapse/services/reminder_scheduler.dart';
@@ -14,12 +15,17 @@ class FakeStore implements ReminderStore {
     this.enabled = true,
     List<ReminderProject>? projects,
     Map<int, ReminderTime>? times,
+    Set<int>? photoToday,
   }) : projectList = projects ?? const [],
-       timeMap = times ?? const {};
+       timeMap = times ?? const {},
+       photoTodayIds = photoToday ?? {};
 
   bool enabled;
   List<ReminderProject> projectList;
   Map<int, ReminderTime> timeMap;
+  Set<int> photoTodayIds;
+  Object? photoCheckError;
+  final StreamController<int> changes = StreamController<int>.broadcast();
 
   @override
   Future<bool> notificationsEnabled() async => enabled;
@@ -30,6 +36,15 @@ class FakeStore implements ReminderStore {
   @override
   Future<ReminderTime> timeFor(int projectId) async =>
       timeMap[projectId] ?? ReminderTime.defaultTime;
+
+  @override
+  Future<bool> photoTakenToday(int projectId, DateTime now) async {
+    if (photoCheckError case final error?) throw error;
+    return photoTodayIds.contains(projectId);
+  }
+
+  @override
+  Stream<int> get photoChanges => changes.stream;
 }
 
 /// A backend that answers like a healthy Android 13+ device unless a test
@@ -50,6 +65,7 @@ MockBackend healthyBackend({String zoneId = 'America/Halifax'}) {
       payload: any(named: 'payload'),
       at: any(named: 'at'),
       exact: any(named: 'exact'),
+      repeatDaily: any(named: 'repeatDaily'),
     ),
   ).thenAnswer((_) async {});
   when(() => backend.cancel(any())).thenAnswer((_) async {});
@@ -62,10 +78,12 @@ ReminderScheduler schedulerWith(
   MockBackend backend,
   ReminderStore store, {
   bool active = true,
+  DateTime Function()? clock,
 }) => ReminderScheduler.forTesting(
   backend: backend,
   store: store,
   active: active,
+  clock: clock,
 );
 
 void verifyNeverScheduled(MockBackend backend) => verifyNever(
@@ -76,14 +94,14 @@ void verifyNeverScheduled(MockBackend backend) => verifyNever(
     payload: any(named: 'payload'),
     at: any(named: 'at'),
     exact: any(named: 'exact'),
+    repeatDaily: any(named: 'repeatDaily'),
   ),
 );
 
 /// Captures every schedule() call as (id, at, exact). Fails when there were
 /// none; use [verifyNeverScheduled] for that.
-List<({int id, tz.TZDateTime at, bool exact})> captureSchedules(
-  MockBackend backend,
-) {
+List<({int id, tz.TZDateTime at, bool exact, bool repeatDaily})>
+captureSchedules(MockBackend backend) {
   final captured = verify(
     () => backend.schedule(
       id: captureAny(named: 'id'),
@@ -92,14 +110,16 @@ List<({int id, tz.TZDateTime at, bool exact})> captureSchedules(
       payload: captureAny(named: 'payload'),
       at: captureAny(named: 'at'),
       exact: captureAny(named: 'exact'),
+      repeatDaily: captureAny(named: 'repeatDaily'),
     ),
   ).captured;
-  final calls = <({int id, tz.TZDateTime at, bool exact})>[];
-  for (var i = 0; i < captured.length; i += 6) {
+  final calls = <({int id, tz.TZDateTime at, bool exact, bool repeatDaily})>[];
+  for (var i = 0; i < captured.length; i += 7) {
     calls.add((
       id: captured[i] as int,
       at: captured[i + 4] as tz.TZDateTime,
       exact: captured[i + 5] as bool,
+      repeatDaily: captured[i + 6] as bool,
     ));
   }
   return calls;
@@ -168,6 +188,7 @@ void main() {
           payload: any(named: 'payload'),
           at: any(named: 'at'),
           exact: any(named: 'exact'),
+          repeatDaily: any(named: 'repeatDaily'),
         ),
       ).thenThrow(PlatformException(code: 'boom'));
       final store = FakeStore(projects: projects);
@@ -248,6 +269,7 @@ void main() {
           payload: any(named: 'payload'),
           at: any(named: 'at'),
           exact: any(named: 'exact'),
+          repeatDaily: any(named: 'repeatDaily'),
         ),
       ).thenAnswer((invocation) async {
         attempts++;
@@ -272,6 +294,7 @@ void main() {
           payload: any(named: 'payload'),
           at: any(named: 'at'),
           exact: any(named: 'exact'),
+          repeatDaily: any(named: 'repeatDaily'),
         ),
       ).thenThrow(PlatformException(code: 'error', message: 'no alarms'));
       final store = FakeStore(projects: projects);
@@ -308,6 +331,7 @@ void main() {
           payload: any(named: 'payload'),
           at: any(named: 'at'),
           exact: any(named: 'exact'),
+          repeatDaily: any(named: 'repeatDaily'),
         ),
       ).thenThrow(PlatformException(code: 'error'));
 
@@ -441,6 +465,7 @@ void main() {
           payload: any(named: 'payload'),
           at: any(named: 'at'),
           exact: any(named: 'exact'),
+          repeatDaily: any(named: 'repeatDaily'),
         ),
       ).thenAnswer((_) async => order.add('schedule'));
       final scheduler = schedulerWith(
@@ -470,6 +495,365 @@ void main() {
       await scheduler.cancelAll();
       await scheduler.scheduleProject(1);
       expect(captureSchedules(backend).single.id, 1);
+    });
+  });
+
+  group('skipping today once the photo is in (#40)', () {
+    late tz.Location halifax;
+    final one = projects.take(1).toList();
+
+    setUpAll(() {
+      tzdata.initializeTimeZones();
+      halifax = tz.getLocation('America/Halifax');
+    });
+
+    DateTime Function() clockAt(int month, int day, int hour) =>
+        () => tz.TZDateTime(halifax, 2026, month, day, hour);
+
+    test('schedules one-offs from tomorrow and drops the repeat', () async {
+      final backend = healthyBackend();
+      final store = FakeStore(projects: one, photoToday: {1});
+      await schedulerWith(
+        backend,
+        store,
+        clock: clockAt(10, 8, 10),
+      ).scheduleProject(1);
+
+      final calls = captureSchedules(backend);
+      expect(calls.map((c) => c.id), [
+        for (var day = 1; day <= 14; day++) ReminderScheduler.oneOffId(1, day),
+      ]);
+      expect(calls.every((c) => !c.repeatDaily && c.exact), isTrue);
+      expect(calls.first.at, tz.TZDateTime(halifax, 2026, 10, 9, 17));
+      expect(calls.last.at, tz.TZDateTime(halifax, 2026, 10, 22, 17));
+      verify(() => backend.cancel(1)).called(1);
+    });
+
+    test('keeps the repeat when today\'s reminder already fired', () async {
+      final backend = healthyBackend();
+      final store = FakeStore(projects: one, photoToday: {1});
+      await schedulerWith(
+        backend,
+        store,
+        clock: clockAt(10, 8, 18),
+      ).scheduleProject(1);
+
+      final call = captureSchedules(backend).single;
+      expect(call.id, 1);
+      expect(call.repeatDaily, isTrue);
+      expect(call.at, tz.TZDateTime(halifax, 2026, 10, 9, 17));
+      verifyNever(() => backend.cancel(any()));
+    });
+
+    test('goes back to the repeat on a day without a photo', () async {
+      final backend = healthyBackend();
+      final leftover = [
+        ReminderScheduler.oneOffId(1, 1),
+        ReminderScheduler.oneOffId(1, 2),
+      ];
+      when(backend.pendingIds).thenAnswer((_) async => leftover);
+      await schedulerWith(
+        backend,
+        FakeStore(projects: one),
+        clock: clockAt(10, 9, 10),
+      ).scheduleProject(1);
+
+      final call = captureSchedules(backend).single;
+      expect(call.id, 1);
+      expect(call.repeatDaily, isTrue);
+      expect(call.at, tz.TZDateTime(halifax, 2026, 10, 9, 17));
+      for (final id in leftover) {
+        verify(() => backend.cancel(id)).called(1);
+      }
+      verifyNever(() => backend.cancel(1));
+    });
+
+    test('keeps the wall-clock time across a DST change', () async {
+      final backend = healthyBackend();
+      final store = FakeStore(projects: one, photoToday: {1});
+      // Halifax leaves daylight time on Sunday, November 1, 2026.
+      await schedulerWith(
+        backend,
+        store,
+        clock: clockAt(10, 30, 10),
+      ).scheduleProject(1);
+
+      final calls = captureSchedules(backend);
+      for (var i = 0; i < calls.length; i++) {
+        expect(calls[i].at, tz.TZDateTime(halifax, 2026, 10, 31 + i, 17));
+      }
+      expect(calls.first.at.timeZoneOffset, const Duration(hours: -3));
+      expect(calls.last.at.timeZoneOffset, const Duration(hours: -4));
+    });
+
+    test('fits every project under the 64-notification limit', () async {
+      final backend = healthyBackend();
+      final ten = [
+        for (var id = 1; id <= 10; id++) ReminderProject(id, 'P$id'),
+      ];
+      final store = FakeStore(
+        projects: ten,
+        photoToday: {for (final p in ten) p.id},
+      );
+      await schedulerWith(
+        backend,
+        store,
+        clock: clockAt(10, 8, 10),
+      ).reconcile();
+
+      final calls = captureSchedules(backend);
+      expect(calls, hasLength(60));
+      expect(
+        calls.map((c) => ReminderScheduler.ownerOf(c.id)).toSet(),
+        hasLength(10),
+      );
+    });
+
+    test('cancels one-offs past a window that shrank', () async {
+      final backend = healthyBackend();
+      final beyond = [
+        ReminderScheduler.oneOffId(1, 13),
+        ReminderScheduler.oneOffId(1, 14),
+      ];
+      when(backend.pendingIds).thenAnswer((_) async => beyond);
+      final five = [
+        for (var id = 1; id <= 5; id++) ReminderProject(id, 'P$id'),
+      ];
+      await schedulerWith(
+        backend,
+        FakeStore(projects: five, photoToday: {1}),
+        clock: clockAt(10, 8, 10),
+      ).scheduleProject(1);
+
+      expect(captureSchedules(backend), hasLength(12));
+      for (final id in beyond) {
+        verify(() => backend.cancel(id)).called(1);
+      }
+    });
+
+    test('reconcile cancels the one-offs of a deleted project only', () async {
+      final backend = healthyBackend();
+      final kept = ReminderScheduler.oneOffId(1, 1);
+      final orphan = ReminderScheduler.oneOffId(7, 1);
+      when(backend.pendingIds).thenAnswer((_) async => [kept, orphan]);
+      await schedulerWith(
+        backend,
+        FakeStore(projects: one, photoToday: {1}),
+        clock: clockAt(10, 8, 10),
+      ).reconcile();
+
+      verify(() => backend.cancel(orphan)).called(1);
+      verifyNever(() => backend.cancel(kept));
+    });
+
+    test('cancelProject removes the repeat and its pending one-offs', () async {
+      final backend = healthyBackend();
+      final mine = ReminderScheduler.oneOffId(1, 3);
+      final other = ReminderScheduler.oneOffId(2, 1);
+      when(backend.pendingIds).thenAnswer((_) async => [1, mine, other]);
+      await schedulerWith(
+        backend,
+        FakeStore(projects: projects),
+      ).cancelProject(1);
+
+      verify(() => backend.cancel(1)).called(1);
+      verify(() => backend.cancel(mine)).called(1);
+      verifyNever(() => backend.cancel(other));
+    });
+
+    test('cancels every possible one-off when pending is unknown', () async {
+      final backend = healthyBackend();
+      when(backend.pendingIds).thenThrow(StateError('channel closed'));
+      await schedulerWith(
+        backend,
+        FakeStore(projects: projects),
+      ).cancelProject(1);
+
+      verify(() => backend.cancel(1)).called(1);
+      for (var day = 1; day <= ReminderScheduler.maxSkipWindowDays; day++) {
+        verify(
+          () => backend.cancel(ReminderScheduler.oneOffId(1, day)),
+        ).called(1);
+      }
+    });
+
+    test('keeps the repeat when the photo check fails', () async {
+      final backend = healthyBackend();
+      final store = FakeStore(projects: one, photoToday: {1})
+        ..photoCheckError = StateError('db closed');
+      await schedulerWith(
+        backend,
+        store,
+        clock: clockAt(10, 8, 10),
+      ).scheduleProject(1);
+
+      final call = captureSchedules(backend).single;
+      expect(call.id, 1);
+      expect(call.repeatDaily, isTrue);
+    });
+
+    test('stops asking for exact after the first refusal', () async {
+      final backend = healthyBackend();
+      when(
+        () => backend.schedule(
+          id: any(named: 'id'),
+          title: any(named: 'title'),
+          body: any(named: 'body'),
+          payload: any(named: 'payload'),
+          at: any(named: 'at'),
+          exact: any(named: 'exact'),
+          repeatDaily: any(named: 'repeatDaily'),
+        ),
+      ).thenAnswer((invocation) async {
+        if (invocation.namedArguments[#exact] == true) {
+          throw PlatformException(code: 'exact_alarms_not_permitted');
+        }
+      });
+      await schedulerWith(
+        backend,
+        FakeStore(projects: one, photoToday: {1}),
+        clock: clockAt(10, 8, 10),
+      ).scheduleProject(1);
+
+      final calls = captureSchedules(backend);
+      expect(calls, hasLength(15));
+      expect(calls.first.exact, isTrue);
+      expect(calls.skip(1).every((c) => !c.exact), isTrue);
+    });
+
+    test('status reports the projects that skip today', () async {
+      final backend = healthyBackend();
+      when(backend.pendingIds).thenAnswer(
+        (_) async => [
+          1,
+          ReminderScheduler.oneOffId(2, 1),
+          ReminderScheduler.oneOffId(2, 2),
+          3,
+        ],
+      );
+      final status = await schedulerWith(
+        backend,
+        FakeStore(projects: projects),
+      ).status();
+
+      expect(status.pendingProjectIds, [1, 2, 3]);
+      expect(status.todaySkippedProjectIds, [2]);
+    });
+
+    test('reschedules at once when a photo changes', () async {
+      final backend = healthyBackend();
+      final store = FakeStore(projects: one, photoToday: {1});
+      final scheduler = schedulerWith(backend, store, clock: clockAt(10, 8, 10))
+        ..start();
+
+      store.changes.add(1);
+      // No waiting: status queues behind the change, like the settings sheet.
+      await scheduler.status();
+      expect(captureSchedules(backend), hasLength(14));
+    });
+
+    test('folds a burst of changes into one run', () async {
+      final backend = healthyBackend();
+      final store = FakeStore(projects: one, photoToday: {1});
+      final scheduler = schedulerWith(backend, store, clock: clockAt(10, 8, 10))
+        ..start();
+
+      store.changes
+        ..add(1)
+        ..add(1)
+        ..add(1);
+      await scheduler.status();
+      expect(captureSchedules(backend), hasLength(14));
+    });
+
+    test('makes no platform calls when a change decides the same', () async {
+      final backend = healthyBackend();
+      final store = FakeStore(projects: one, photoToday: {1});
+      final scheduler = schedulerWith(backend, store, clock: clockAt(10, 8, 10))
+        ..start();
+
+      store.changes.add(1);
+      await scheduler.status();
+      clearInteractions(backend);
+
+      store.changes.add(1);
+      await scheduler.status();
+      verifyNeverScheduled(backend);
+      verifyNever(() => backend.cancel(any()));
+    });
+
+    test('brings the repeat back as soon as today\'s photo goes', () async {
+      final backend = healthyBackend();
+      final store = FakeStore(projects: one, photoToday: {1});
+      final scheduler = schedulerWith(backend, store, clock: clockAt(10, 8, 10))
+        ..start();
+
+      store.changes.add(1);
+      await scheduler.status();
+      clearInteractions(backend);
+
+      store.photoTodayIds.clear();
+      store.changes.add(1);
+      await scheduler.status();
+      final call = captureSchedules(backend).single;
+      expect(call.id, 1);
+      expect(call.repeatDaily, isTrue);
+      expect(call.at, tz.TZDateTime(halifax, 2026, 10, 8, 17));
+    });
+
+    test('applies a change in full again after cancelAll', () async {
+      final backend = healthyBackend();
+      final store = FakeStore(projects: one, photoToday: {1});
+      final scheduler = schedulerWith(backend, store, clock: clockAt(10, 8, 10))
+        ..start();
+
+      store.changes.add(1);
+      await scheduler.status();
+      await scheduler.cancelAll();
+      clearInteractions(backend);
+
+      store.changes.add(1);
+      await scheduler.status();
+      expect(captureSchedules(backend), hasLength(14));
+    });
+
+    test('ignores photo changes while reminders are off', () async {
+      final backend = healthyBackend();
+      final store = FakeStore(enabled: false, projects: one, photoToday: {1});
+      final scheduler = schedulerWith(backend, store)..start();
+
+      store.changes.add(1);
+      await scheduler.status();
+      verifyNeverScheduled(backend);
+      verifyNever(() => backend.cancel(any()));
+    });
+
+    test('does not follow photo changes when inactive', () {
+      final store = FakeStore(projects: one);
+      schedulerWith(healthyBackend(), store, active: false).start();
+      expect(store.changes.hasListener, isFalse);
+    });
+
+    test('sizes the window to the project count', () {
+      expect(ReminderScheduler.skipWindowDays(1), 14);
+      expect(ReminderScheduler.skipWindowDays(4), 14);
+      expect(ReminderScheduler.skipWindowDays(5), 12);
+      expect(ReminderScheduler.skipWindowDays(10), 6);
+      expect(ReminderScheduler.skipWindowDays(64), 1);
+      expect(ReminderScheduler.skipWindowDays(200), 1);
+    });
+
+    test('gives one-offs ids that map back and never collide', () {
+      final seen = <int>{};
+      for (var project = 1; project <= 50; project++) {
+        expect(seen.add(project), isTrue);
+        expect(ReminderScheduler.ownerOf(project), project);
+        for (var day = 1; day <= ReminderScheduler.maxSkipWindowDays; day++) {
+          final id = ReminderScheduler.oneOffId(project, day);
+          expect(ReminderScheduler.ownerOf(id), project);
+          expect(seen.add(id), isTrue);
+        }
+      }
     });
   });
 
@@ -566,4 +950,11 @@ class _ThrowingStore implements ReminderStore {
 
   @override
   Future<ReminderTime> timeFor(int projectId) async => throw StateError('db');
+
+  @override
+  Future<bool> photoTakenToday(int projectId, DateTime now) async =>
+      throw StateError('db');
+
+  @override
+  Stream<int> get photoChanges => const Stream.empty();
 }

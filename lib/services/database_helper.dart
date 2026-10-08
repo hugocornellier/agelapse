@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
@@ -62,6 +63,14 @@ class DB {
   /// Default retention window for soft-deleted photos before permanent
   /// purge (mirrors iOS Photos "Recently Deleted").
   static const int recentlyDeletedRetentionDays = 30;
+
+  final StreamController<int> _photosChanged =
+      StreamController<int>.broadcast();
+
+  /// Emits a project id after that project's active photos change: one is
+  /// added, deleted, trashed, restored or moved to another date. An import
+  /// emits once per photo, so listeners should debounce.
+  Stream<int> get photosChanged => _photosChanged.stream;
 
   DB._internal();
 
@@ -719,7 +728,7 @@ class DB {
     String? fingerprint,
   }) async {
     final db = await database;
-    return db.transaction((txn) async {
+    final inserted = await db.transaction((txn) async {
       final existing = await txn.query(
         photoTable,
         columns: ['timestamp'],
@@ -748,6 +757,8 @@ class DB {
       });
       return true;
     });
+    if (inserted) _photosChanged.add(projectID);
+    return inserted;
   }
 
   /// Looks up an *active* photo in [projectId] whose stored `fingerprint`
@@ -917,6 +928,7 @@ class DB {
       );
     });
 
+    _photosChanged.add(projectId);
     return newId;
   }
 
@@ -991,6 +1003,7 @@ class DB {
     );
     if (rows > 0) {
       await _clampRevealWatermarksAfterPhotoRemoval(projectId);
+      _photosChanged.add(projectId);
     }
     return rows;
   }
@@ -1097,6 +1110,7 @@ class DB {
     });
     if (rows > 0) {
       await _clampRevealWatermarksAfterPhotoRemoval(projectId);
+      _photosChanged.add(projectId);
     }
     return rows;
   }
@@ -1131,6 +1145,7 @@ class DB {
         );
       }
     });
+    if (rows > 0) _photosChanged.add(projectId);
     return rows;
   }
 
@@ -1705,6 +1720,23 @@ class DB {
       photoActiveView,
       where: 'projectID = ?',
       whereArgs: [projectID],
+    );
+  }
+
+  /// `timestamp` and `captureOffsetMinutes` of [projectId]'s active photos
+  /// with a timestamp from [fromMs] to [toMs] inclusive, for checks about a
+  /// single day that should not load every column of every photo.
+  Future<List<Map<String, dynamic>>> getActivePhotoTimesBetween(
+    int projectId,
+    int fromMs,
+    int toMs,
+  ) async {
+    final db = await database;
+    return db.query(
+      photoActiveView,
+      columns: ['timestamp', 'captureOffsetMinutes'],
+      where: 'projectID = ? AND CAST(timestamp AS INTEGER) BETWEEN ? AND ?',
+      whereArgs: [projectId, fromMs, toMs],
     );
   }
 
