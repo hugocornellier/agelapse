@@ -17,6 +17,7 @@ import 'settings_pipeline_test.dart' as settings_pipeline_tests;
 import 'ffmpeg_binary_test.dart' as ffmpeg_binary_tests;
 import 'e2e_pipeline_test.dart' as e2e_pipeline_tests;
 import 'video_frame_timing_test.dart' as video_frame_timing_tests;
+import 'crash_loop_guard_test.dart' as crash_loop_guard_tests;
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -29,4 +30,5 @@ void main() {
   settings_pipeline_tests.main();
   e2e_pipeline_tests.main();
   video_frame_timing_tests.main();
+  crash_loop_guard_tests.main();
 }

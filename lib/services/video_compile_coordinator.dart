@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import '../utils/video_utils.dart';
 import 'cancellation_token.dart';
+import 'crash_loop_guard.dart';
 import 'database_helper.dart';
 import 'log_service.dart';
 
@@ -105,7 +106,12 @@ class VideoCompileCoordinator {
       LogService.instance.log(
         '[COMPILE] Job ${job.id} started: project $projectId, reason: $reason',
       );
-      final outcome = await runJob(job, onProgress);
+      // Noted while it runs, so a compile that kills the app can't restart
+      // on every launch (see CrashLoopGuard).
+      final outcome = await CrashLoopGuard.instance.runCompile(
+        projectId,
+        () => runJob(job, onProgress),
+      );
       LogService.instance.log(
         '[COMPILE] Job ${job.id} finished: ${outcome.name}',
       );

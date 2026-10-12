@@ -12,6 +12,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:path/path.dart' as path;
 
 import '../models/video_codec.dart';
+import '../services/crash_loop_guard.dart';
 import '../services/database_helper.dart';
 import '../services/video_compile_coordinator.dart';
 import '../services/video_diagnostics.dart';
@@ -109,6 +110,9 @@ class CreatePageState extends State<CreatePage>
 
   // Manual compile state (when auto-compile is disabled)
   bool _autoCompileEnabled = true;
+  // Auto-compile is on in Settings, but CrashLoopGuard paused it because the
+  // app kept closing during this project's compiles.
+  bool _autoCompilePaused = false;
   bool _manualCompileInProgress = false;
   int _manualFrame = 0;
   String _manualEta = '';
@@ -213,10 +217,14 @@ class CreatePageState extends State<CreatePage>
         return;
       }
 
-      // Load auto-compile setting
-      _autoCompileEnabled = await SettingsUtil.loadAutoCompileVideo(
+      // Load auto-compile setting, and whether CrashLoopGuard paused it
+      final autoCompileSetting = await SettingsUtil.loadAutoCompileVideo(
         widget.projectId.toString(),
       );
+      _autoCompilePaused =
+          autoCompileSetting &&
+          await CrashLoopGuard.instance.isAutoCompilePaused(widget.projectId);
+      _autoCompileEnabled = autoCompileSetting && !_autoCompilePaused;
 
       // Cache photo count before polling loop; it won't change during compilation
       photoCount = await getStabilizedPhotoCount();
@@ -1054,10 +1062,15 @@ class CreatePageState extends State<CreatePage>
       ),
       const SizedBox(height: 16),
       Text(
-        'Auto-compile is disabled in Settings',
+        _autoCompilePaused
+            ? 'Auto-compile is paused because the app closed while compiling'
+            : 'Auto-compile is disabled in Settings',
+        textAlign: TextAlign.center,
         style: TextStyle(
           fontSize: AppTypography.sm,
-          color: AppColors.settingsTextSecondary.withValues(alpha: 0.7),
+          color: _autoCompilePaused
+              ? AppColors.settingsTextSecondary
+              : AppColors.settingsTextSecondary.withValues(alpha: 0.7),
         ),
       ),
     ]);

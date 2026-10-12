@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'cancellation_token.dart';
+import 'crash_loop_guard.dart';
 import 'database_helper.dart';
 import 'face_stabilizer.dart';
 import 'isolate_manager.dart';
@@ -171,6 +172,9 @@ class StabilizationService {
     FaceStabilizer? stabilizer;
 
     try {
+      // Normally already done at launch. It must come before the query below,
+      // because it marks photos the app kept dying on as failed.
+      await CrashLoopGuard.instance.start();
       final unstabilizedPhotos = await StabUtils.getUnstabilizedPhotos(
         projectId,
       );
@@ -181,10 +185,8 @@ class StabilizationService {
           'StabilizationService: No photos to stabilize, checking video',
         );
 
-        // Check auto-compile setting BEFORE emitting any progress UI
-        final autoCompileEnabled = await SettingsUtil.loadAutoCompileVideo(
-          projectId.toString(),
-        );
+        // Check auto-compile BEFORE emitting any progress UI
+        final autoCompileEnabled = await _autoCompileAllowed(projectId);
 
         final needsVideo = await _checkIfVideoNeeded(projectId);
 
@@ -480,11 +482,16 @@ class StabilizationService {
             fileExtension: photo['fileExtension'],
           );
 
-      final result = await stabilizer.stabilize(
-        rawPhotoPath,
-        token,
-        _handleUserRanOutOfSpace,
-        knownFingerprint: photo['fingerprint'] as String?,
+      final result = await CrashLoopGuard.instance.runPhoto(
+        _currentProjectId!,
+        timestamp,
+        () => stabilizer.stabilize(
+          rawPhotoPath,
+          token,
+          _handleUserRanOutOfSpace,
+          knownFingerprint: photo['fingerprint'] as String?,
+        ),
+        settled: (result) => !result.cancelled,
       );
 
       // Increment stabAttempts only on a non-cancelled returned failure.
@@ -627,7 +634,23 @@ class StabilizationService {
         nextIndex++;
 
         final photo = photos[i];
-        final hit = await _tryFastPathForPhoto(photo);
+        final timestamp = photo['timestamp']?.toString();
+        // A photo the app has died on goes to the serial path, so it runs
+        // alone and a second death can only be its own.
+        if (await CrashLoopGuard.instance.mustStabilizeAlone(
+          projectId,
+          timestamp,
+        )) {
+          missedByIndex[i] = photo;
+          continue;
+        }
+        final hit = await CrashLoopGuard.instance.runPhoto(
+          projectId,
+          timestamp,
+          () => _tryFastPathForPhoto(photo),
+          // A miss is left to the serial path, which settles it.
+          settled: (hit) => hit != null && hit.success,
+        );
         if (hit != null && hit.success) {
           _recordPhotoSuccess(hit);
           _advanceProgress(photo, stopwatch, progressState, projectId, gate);
@@ -795,11 +818,16 @@ class StabilizationService {
     try {
       final rawPhotoPath =
           '${await DirUtils.getRawPhotoDirPath(projectId)}/${photo['timestamp']}${photo['fileExtension']}';
-      final result = await stabilizer.stabilize(
-        rawPhotoPath,
-        _currentToken,
-        _handleUserRanOutOfSpace,
-        knownFingerprint: photo['fingerprint'] as String?,
+      final result = await CrashLoopGuard.instance.runPhoto(
+        projectId,
+        photo['timestamp']?.toString(),
+        () => stabilizer.stabilize(
+          rawPhotoPath,
+          _currentToken,
+          _handleUserRanOutOfSpace,
+          knownFingerprint: photo['fingerprint'] as String?,
+        ),
+        settled: (result) => !result.cancelled,
       );
 
       if (result.success) {
@@ -895,6 +923,24 @@ class StabilizationService {
     }
   }
 
+  /// Whether a needed video may be compiled without the user asking: the
+  /// Auto-compile video setting is on, and [CrashLoopGuard] hasn't paused it
+  /// because the app kept closing during this project's compiles. When it
+  /// is paused, the video page offers Compile Video and says why.
+  Future<bool> _autoCompileAllowed(int projectId) async {
+    if (!await SettingsUtil.loadAutoCompileVideo(projectId.toString())) {
+      return false;
+    }
+    if (await CrashLoopGuard.instance.isAutoCompilePaused(projectId)) {
+      LogService.instance.log(
+        'StabilizationService: auto-compile is paused for project $projectId '
+        '(the app closed during its last compiles)',
+      );
+      return false;
+    }
+    return true;
+  }
+
   Future<_VideoCompileResult> _tryCreateVideo(int gen, int projectId) async {
     try {
       // A superseded run must never start a compile: it would cancel the
@@ -903,9 +949,7 @@ class StabilizationService {
       _currentToken?.throwIfCancelled();
 
       // Check if auto-compile is enabled
-      final autoCompileEnabled = await SettingsUtil.loadAutoCompileVideo(
-        projectId.toString(),
-      );
+      final autoCompileEnabled = await _autoCompileAllowed(projectId);
 
       final cfg = await _loadVideoConfig(projectId);
 
