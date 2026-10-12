@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:agelapse/services/crash_loop_guard.dart';
 import 'package:agelapse/services/video_compile_coordinator.dart';
 import 'package:agelapse/utils/video_utils.dart';
 
@@ -105,6 +107,70 @@ void main() {
     expect(coordinator.isBusy, isFalse);
     expect(coordinator.activeProjectId, isNull);
   });
+
+  group('crash guard', () {
+    final original = CrashLoopGuard.instance;
+    late _MemoryStore store;
+
+    setUp(() {
+      store = _MemoryStore();
+      CrashLoopGuard.instance = CrashLoopGuard.forTesting(
+        store: store,
+        markPhotoFailed: (_, _) async {},
+        appVersion: () async => '2.8.0+48',
+        active: true,
+        guardCompiles: true,
+      );
+    });
+
+    tearDown(() {
+      CrashLoopGuard.instance = original;
+    });
+
+    test('a running job is noted, and the note goes when it ends', () async {
+      final job = coordinator.compile(7, reason: 'job');
+      await _until(() => runner.started.contains(7));
+      expect(store.unfinishedCompiles(7), 1);
+
+      runner.finish(7, CompileOutcome.failed);
+      expect(await job, CompileOutcome.failed);
+      expect(store.unfinishedCompiles(7), 0);
+    });
+
+    test('a job dropped before it starts is never noted', () async {
+      final first = coordinator.compile(1, reason: 'first');
+      await _until(() => runner.started.contains(1));
+      final dropped = coordinator.compile(2, reason: 'dropped');
+      final last = coordinator.compile(3, reason: 'last');
+      await _until(() => runner.started.contains(3));
+
+      expect(store.unfinishedCompiles(2), 0);
+      runner.finish(3, CompileOutcome.published);
+      expect(await first, CompileOutcome.cancelled);
+      expect(await dropped, CompileOutcome.cancelled);
+      expect(await last, CompileOutcome.published);
+      expect(store.unfinishedCompiles(2), 0);
+    });
+  });
+}
+
+/// Stands in for the crash guard's notes file.
+class _MemoryStore implements CrashGuardStore {
+  String? contents;
+
+  int unfinishedCompiles(int projectId) {
+    if (contents == null) return 0;
+    final projects = (jsonDecode(contents!) as Map)['projects'] as Map;
+    return (projects['$projectId']?['compilesUnfinished'] as int?) ?? 0;
+  }
+
+  @override
+  Future<String?> read() async => contents;
+
+  @override
+  Future<void> write(String value) async {
+    contents = value;
+  }
 }
 
 /// Stands in for VideoUtils.compileForJob. A job runs until the test

@@ -11,6 +11,7 @@ import 'package:window_manager/window_manager.dart';
 import 'dart:async';
 import 'dart:io' show Platform;
 
+import '../services/crash_loop_guard.dart';
 import '../services/custom_font_manager.dart';
 import '../services/settings_cache.dart';
 import '../screens/projects_page.dart';
@@ -132,10 +133,12 @@ Future<void> _main() async {
     debugPaintSizeEnabled = false;
   }
 
-  // Before any compile can start: remove output of encodes that never
-  // finished, and once, mark existing videos for a rebuild (see
+  // Before any stabilization or compile can start: act on work the app died
+  // during last time (see CrashLoopGuard), remove output of encodes that
+  // never finished, and once, mark existing videos for a rebuild (see
   // VideoCompileCoordinator.runStartupMaintenance).
   if (!test_config.isTestMode) {
+    await CrashLoopGuard.instance.start();
     await VideoCompileCoordinator.instance.runStartupMaintenance();
   }
 

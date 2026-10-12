@@ -55,6 +55,7 @@ AgeLapse takes a raw photo, detects a set of landmarks on the person (eyes for f
 - Fix photos being repeated or skipped in videos compiled above 25 FPS, and uneven pacing below 10 FPS. Every photo now gets the same number of frames and the video is exactly photos / FPS long.
 - Fix the automatic framerate locking itself in after the first compile (often at 3 FPS from a two-photo project) instead of adjusting as photos are added.
 - The Framerate setting's help text now says what the setting does: photos shown per second, so higher is faster and shorter, not smoother and larger.
+- Fix the app crashing on every launch when a photo or a video compile crashed it. AgeLapse resumes unfinished stabilization and compiles on launch, so a crash used to repeat each time it was opened. Now, if the app closes twice while stabilizing the same photo, that photo is marked as failed (manual stabilization still works) and the rest carry on. If it closes during two compiles in a row, auto-compile pauses for that project until a compile finishes or the app is updated, and the video page explains why and still offers Compile Video.
 
 ### v2.7.0 (August 2026)
 
