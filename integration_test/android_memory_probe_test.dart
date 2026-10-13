@@ -1,7 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer' as developer;
-import 'dart:ffi' as ffi;
 import 'dart:io';
 
 import 'package:agelapse/services/database_helper.dart';
@@ -16,14 +14,12 @@ import 'package:agelapse/utils/stabilizer_utils/stabilizer_utils.dart';
 import 'package:agelapse/utils/test_mode.dart' as test_config;
 import 'package:archive/archive_io.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/painting.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:vm_service/vm_service.dart' as vms;
-import 'package:vm_service/vm_service_io.dart' as vms_io;
+
+import 'memory_probe_utils.dart';
 
 /// Runs the stabilization pipeline layer by layer on a run of distinct
 /// photos, and logs the process memory after each layer as an
@@ -97,7 +93,7 @@ void main() {
     await tmp.create(recursive: true);
     final List<File> photos = await _extractPhotos(zip, tmp, rounds + 1);
     await IsolatePool.instance.initialize();
-    final vm = await _VmProbe.connect();
+    final vm = await VmProbe.connect();
 
     final clock = Stopwatch()..start();
     // [gc] collects every isolate first, [purge] hands malloc's free pages
@@ -111,11 +107,11 @@ void main() {
     }) async {
       if (gc && vm != null) await vm.collect();
       final dart = vm != null ? await vm.measure() : const {};
-      if (purge) _purgeMalloc();
+      if (purge) purgeMalloc();
       // print, not debugPrint: debugPrint throttles and can drop lines.
       // ignore: avoid_print
       print(
-        'AGELAPSE_PROBE ${jsonEncode({'stage': stage, 'done': done, 'gc': gc && vm != null, 'purge': purge, 'elapsedS': clock.elapsed.inSeconds, ..._memory(), ..._malloc(), ...dart, ..._ops(), ...extra})}',
+        'AGELAPSE_PROBE ${jsonEncode({'stage': stage, 'done': done, 'gc': gc && vm != null, 'purge': purge, 'elapsedS': clock.elapsed.inSeconds, ...processMemory(), ...mallocStats(), ...dart, ..._ops(), ...extra})}',
       );
     }
 
@@ -381,98 +377,6 @@ Future<List<File>> _extractPhotos(File zip, Directory dir, int count) async {
   }
 }
 
-/// Garbage collects every isolate and reads the Dart heap and the external
-/// memory the Dart GC tracks, through the app's own VM service.
-class _VmProbe {
-  _VmProbe._(this._service) {
-    _service.onGCEvent.listen((event) {
-      final json = event.json ?? const <String, dynamic>{};
-      final key = '${json['gcType'] ?? 'gc'}:${json['reason'] ?? 'unknown'}';
-      _gcEvents[key] = (_gcEvents[key] ?? 0) + 1;
-    });
-  }
-
-  final vms.VmService _service;
-
-  /// Collections the VM has run on its own since the probe connected, by the
-  /// VM's type and reason for each.
-  final Map<String, int> _gcEvents = {};
-
-  static Future<_VmProbe?> connect() async {
-    try {
-      final info = await developer.Service.getInfo();
-      final http = info.serverUri;
-      if (http == null) return null;
-      final ws = http.replace(scheme: 'ws', path: '${http.path}ws');
-      final probe = _VmProbe._(await vms_io.vmServiceConnectUri(ws.toString()));
-      await probe._service.streamListen(vms.EventStreams.kGC);
-      return probe;
-    } catch (e) {
-      // ignore: avoid_print
-      print('AGELAPSE_PROBE no VM service: $e');
-      return null;
-    }
-  }
-
-  Future<void> collect() async {
-    try {
-      final vm = await _service.getVM();
-      for (final isolate in vm.isolates ?? const <vms.IsolateRef>[]) {
-        final id = isolate.id;
-        if (id == null) continue;
-        try {
-          await _service.callMethod('_collectAllGarbage', isolateId: id);
-        } catch (_) {}
-      }
-    } catch (_) {}
-  }
-
-  Future<Map<String, Object?>> measure() async {
-    try {
-      final vm = await _service.getVM();
-      final isolates = vm.isolates ?? const <vms.IsolateRef>[];
-      var heap = 0;
-      var external = 0;
-      final groups = vm.isolateGroups ?? const <vms.IsolateGroupRef>[];
-      for (final group in groups) {
-        final id = group.id;
-        if (id == null) continue;
-        final usage = await _service.getIsolateGroupMemoryUsage(id);
-        heap += usage.heapUsage ?? 0;
-        external += usage.externalUsage ?? 0;
-      }
-      return {
-        'isolates': isolates.length,
-        'dartHeapMb': heap ~/ (1024 * 1024),
-        'dartExternalMb': external ~/ (1024 * 1024),
-        'gcEvents': Map<String, int>.of(_gcEvents),
-      };
-    } catch (e) {
-      return {'vmError': e.toString()};
-    }
-  }
-}
-
-/// The app's memory: RSS split into anonymous, file-backed and shared pages,
-/// and the Flutter image cache (expected to stay empty here).
-Map<String, Object?> _memory() {
-  final cache = PaintingBinding.instance.imageCache;
-  return {
-    'rssMb': ProcessInfo.currentRss ~/ (1024 * 1024),
-    'maxRssMb': ProcessInfo.maxRss ~/ (1024 * 1024),
-    'deviceAvailableMb': _procMb('/proc/meminfo', 'MemAvailable:'),
-    'rssAnonMb': _procMb('/proc/self/status', 'RssAnon:'),
-    'rssFileMb': _procMb('/proc/self/status', 'RssFile:'),
-    'imageCacheMb': cache.currentSizeBytes ~/ (1024 * 1024),
-    'liveImages': cache.liveImageCount,
-    // The VM mode the framework has asked for; in latency mode the Dart GC
-    // puts off collecting for external (native) allocations.
-    'perfMode': SchedulerBinding.instance
-        .debugGetRequestedPerformanceMode()
-        ?.name,
-  };
-}
-
 /// How many of each pipeline operation have run so far.
 Map<String, Object?> _ops() => {
   'detectFull': StabUtils.opDetectFull,
@@ -482,73 +386,3 @@ Map<String, Object?> _ops() => {
   'pngEncodes': StabUtils.opPngEncodes,
   'sourceDecodes': StabUtils.opSourceDecodes,
 };
-
-/// A kB value from a /proc file, in MB, or null where there is no such file.
-int? _procMb(String file, String key) {
-  try {
-    final line = File(
-      file,
-    ).readAsLinesSync().firstWhere((line) => line.startsWith(key));
-    return int.parse(line.split(RegExp(r'\s+'))[1]) ~/ 1024;
-  } catch (_) {
-    return null;
-  }
-}
-
-/// Bionic's `struct mallinfo`: every field is a size_t.
-final class _MallInfo extends ffi.Struct {
-  @ffi.Size()
-  external int arena;
-  @ffi.Size()
-  external int ordblks;
-  @ffi.Size()
-  external int smblks;
-  @ffi.Size()
-  external int hblks;
-  @ffi.Size()
-  external int hblkhd;
-  @ffi.Size()
-  external int usmblks;
-  @ffi.Size()
-  external int fsmblks;
-  @ffi.Size()
-  external int uordblks;
-  @ffi.Size()
-  external int fordblks;
-  @ffi.Size()
-  external int keepcost;
-}
-
-/// The C heap as malloc sees it: bytes handed out and bytes free but still
-/// mapped. Android only (glibc's mallinfo has int fields and is deprecated).
-Map<String, Object?> _malloc() {
-  if (!Platform.isAndroid) return const {};
-  try {
-    final mallinfo = ffi.DynamicLibrary.process()
-        .lookupFunction<_MallInfo Function(), _MallInfo Function()>('mallinfo');
-    final info = mallinfo();
-    return {
-      'mallocUsedMb': info.uordblks ~/ (1024 * 1024),
-      'mallocFreeMb': info.fordblks ~/ (1024 * 1024),
-      'mallocArenaMb': info.arena ~/ (1024 * 1024),
-      'mallocMmapMb': info.hblkhd ~/ (1024 * 1024),
-    };
-  } catch (_) {
-    return const {};
-  }
-}
-
-/// Asks the allocator to return freed pages to the OS, so RSS reflects what
-/// is in use rather than what malloc is keeping around. Android only.
-void _purgeMalloc() {
-  if (!Platform.isAndroid) return;
-  try {
-    const mPurge = -101; // bionic's M_PURGE
-    final mallopt = ffi.DynamicLibrary.process()
-        .lookupFunction<
-          ffi.Int32 Function(ffi.Int32, ffi.Int32),
-          int Function(int, int)
-        >('mallopt');
-    mallopt(mPurge, 0);
-  } catch (_) {}
-}

@@ -11,12 +11,12 @@ import 'package:agelapse/utils/gallery_utils.dart';
 import 'package:agelapse/utils/settings_utils.dart';
 import 'package:agelapse/utils/test_mode.dart' as test_config;
 import 'package:flutter/foundation.dart';
-import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import 'memory_probe_utils.dart';
 import 'test_utils.dart';
 
 /// A large zip import on a real phone, the way #15 hit it: one zip of
@@ -79,11 +79,18 @@ void main() {
     }
 
     final clock = Stopwatch()..start();
-    void report(String phase, [Map<String, Object?> extra = const {}]) {
+    // Debug builds only; null leaves the Dart heap, external and GC figures
+    // out of the report.
+    final vm = await VmProbe.connect();
+    Future<void> report(
+      String phase, [
+      Map<String, Object?> extra = const {},
+    ]) async {
+      final dart = vm != null ? await vm.measure() : const <String, Object?>{};
       // print, not debugPrint: debugPrint throttles and can drop lines.
       // ignore: avoid_print
       print(
-        'AGELAPSE_BULK ${jsonEncode({'phase': phase, 'elapsedS': clock.elapsed.inSeconds, ..._memory(), ...extra})}',
+        'AGELAPSE_BULK ${jsonEncode({'phase': phase, 'elapsedS': clock.elapsed.inSeconds, ...processMemory(), ...mallocStats(), ...dart, ...extra})}',
       );
     }
 
@@ -101,7 +108,7 @@ void main() {
         '$projectId',
       );
     }
-    report('start', {
+    await report('start', {
       'zipMb': (await zip.length()) ~/ 1000000,
       'budgetMinutes': budgetMinutes,
       'dateStamps': dateStamps,
@@ -119,7 +126,7 @@ void main() {
       setProgressInMain: (progress) {
         if (progress ~/ 10 != lastProgress ~/ 10) {
           lastProgress = progress;
-          report('importing', {'percent': progress, 'inZip': inZip});
+          unawaited(report('importing', {'percent': progress, 'inZip': inZip}));
         }
       },
       increaseSuccessfulImportCount: () {},
@@ -128,7 +135,7 @@ void main() {
     notifier.dispose();
     // Checked at the end, so a short import still gets stabilized.
     final total = (await DB.instance.getPhotosByProjectID(projectId)).length;
-    report('imported', {'inZip': inZip, 'imported': total});
+    await report('imported', {'inZip': inZip, 'imported': total});
 
     await DB.instance.setSettingByTitle('default_project', '$projectId');
     if (headless) {
@@ -159,7 +166,7 @@ void main() {
           .length;
       hasVideo = await DB.instance.getNewestVideoByProjectId(projectId) != null;
       final state = StabilizationService.instance.state;
-      report('running', {
+      await report('running', {
         'stabilized': stabilized,
         'failed': failed,
         'total': total,
@@ -172,7 +179,7 @@ void main() {
       }
     }
 
-    report('summary', {
+    await report('summary', {
       'done': done,
       'stabilized': stabilized,
       'failed': failed,
@@ -188,36 +195,4 @@ void main() {
       expect(done, isTrue, reason: 'all photos and a video within budget');
     }
   }, timeout: const Timeout(Duration(minutes: budgetMinutes + 4)));
-}
-
-/// The app's memory, and how much the device has left.
-///
-/// On Linux-based systems (Android), the RSS is split into anonymous (heaps
-/// and native buffers), file-backed (code, mapped files) and shared pages.
-/// The Flutter image cache figures show what the UI holds in decoded images.
-Map<String, Object?> _memory() {
-  final cache = PaintingBinding.instance.imageCache;
-  return {
-    'rssMb': ProcessInfo.currentRss ~/ (1024 * 1024),
-    'maxRssMb': ProcessInfo.maxRss ~/ (1024 * 1024),
-    'deviceAvailableMb': _procMb('/proc/meminfo', 'MemAvailable:'),
-    'rssAnonMb': _procMb('/proc/self/status', 'RssAnon:'),
-    'rssFileMb': _procMb('/proc/self/status', 'RssFile:'),
-    'rssShmemMb': _procMb('/proc/self/status', 'RssShmem:'),
-    'imageCacheMb': cache.currentSizeBytes ~/ (1024 * 1024),
-    'imageCacheCount': cache.currentSize,
-    'liveImages': cache.liveImageCount,
-  };
-}
-
-/// A kB value from a /proc file, in MB, or null where there is no such file.
-int? _procMb(String file, String key) {
-  try {
-    final line = File(
-      file,
-    ).readAsLinesSync().firstWhere((line) => line.startsWith(key));
-    return int.parse(line.split(RegExp(r'\s+'))[1]) ~/ 1024;
-  } catch (_) {
-    return null;
-  }
 }
