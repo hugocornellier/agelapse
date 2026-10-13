@@ -76,7 +76,7 @@ def main():
                     help="library to load with RTLD_GLOBAL, in order; repeatable")
     ap.add_argument("--heic", required=True, help="HEIC file to decode")
     ap.add_argument("--init", action="store_true",
-                    help="call heif_init() before decoding, as the fixed plugin does")
+                    help="call heif_init() before decoding, as heic_native 1.1.1 does")
     ap.add_argument("--expect", required=True, choices=["ok", "decode-fail", "load-fail"])
     ap.add_argument("--expect-libheif-under",
                     help="directory the loaded libheif.so.1 must live under")

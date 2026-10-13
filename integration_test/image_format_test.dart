@@ -52,6 +52,14 @@ final _opencvDirectFormats = {
   if (!Platform.isMacOS && !Platform.isIOS) ...['tiff', 'jp2'],
 };
 
+/// Whether a failed HEIC conversion may be skipped rather than failed.
+///
+/// heic_native bundles libheif on Linux and Android and uses the system decoder
+/// on Apple platforms, so a conversion failure there is a real defect (#41 went
+/// unnoticed because every platform skipped). Only Windows depends on the HEVC
+/// Video Extensions, which CI runners do not have.
+final bool _heicCodecOptional = Platform.isWindows;
+
 /// Integration tests for image format support.
 ///
 /// Tests that every supported image format:
@@ -301,12 +309,16 @@ void main() {
                   filePath,
                   preserveMetadata: false,
                 );
-              } catch (_) {
-                // HEIC codec may not be available (e.g. Windows CI without HEIC Video Extensions)
+              } catch (e) {
+                if (!_heicCodecOptional) {
+                  fail(
+                    'HEIC/$day failed to convert on a platform that bundles the decoder: $e',
+                  );
+                }
+                // Windows CI has no HEVC Video Extensions, skip
               }
 
               if (preDecoded == null) {
-                // heic2png conversion failed on this platform, skip
                 return;
               }
 
@@ -681,7 +693,12 @@ void main() {
         bool success;
         try {
           success = await HeicNative.convert(heicPath, pngPath);
-        } catch (_) {
+        } catch (e) {
+          if (!_heicCodecOptional) {
+            fail(
+              'HEIC $day failed to convert on a platform that bundles the decoder: $e',
+            );
+          }
           markTestSkipped('HEIC codec not available on this platform');
           return;
         }
@@ -715,7 +732,12 @@ void main() {
         Uint8List? pngBytes;
         try {
           pngBytes = await HeicNative.convertToBytes(heicPath);
-        } catch (_) {
+        } catch (e) {
+          if (!_heicCodecOptional) {
+            fail(
+              'HEIC $day failed to convert on a platform that bundles the decoder: $e',
+            );
+          }
           markTestSkipped('HEIC codec not available on this platform');
           return;
         }
