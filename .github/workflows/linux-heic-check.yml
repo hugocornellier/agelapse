@@ -1,0 +1,178 @@
+name: Linux HEIC decode check
+
+# Reproduces issue #41 (HEIC photos not loading on the Linux build) and proves
+# the heic_native fix, without a GUI:
+#
+#   packaged-deb       downloads the released 2.6.0 and 2.7.0 .deb packages,
+#                      extracts them on Debian 13 (the reporter's distro) with
+#                      and without a system libheif installed, and decodes a
+#                      HEIC through the packaged plugin's own libheif
+#                      resolution (tool/linux-heic-check/heic_decode_check.py).
+#   plugin-from-source builds the heic_native example app from a given ref and
+#                      runs its integration tests, once as built and once forced
+#                      onto the runner's system libheif, whose decoders are
+#                      external plugins that only heif_init() loads.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ci/linux-heic-repro]
+
+concurrency:
+  group: linux-heic-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  packaged-deb:
+    name: Packaged ${{ matrix.version }} on Debian 13, ${{ matrix.system }}
+    runs-on: ubuntu-latest
+    container: debian:trixie
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ["2.6.0", "2.7.0"]
+        system: [no-system-libheif, system-libheif, system-libheif-with-decoder-plugin]
+    steps:
+      - name: Install base packages
+        run: |
+          apt-get update -y
+          apt-get install -y --no-install-recommends \
+            ca-certificates curl git python3 binutils libgtk-3-0t64
+
+      - uses: actions/checkout@v7
+
+      - name: Install system libheif (${{ matrix.system }})
+        run: |
+          case "${{ matrix.system }}" in
+            no-system-libheif) ;;
+            system-libheif)
+              apt-get install -y --no-install-recommends libheif1 ;;
+            system-libheif-with-decoder-plugin)
+              apt-get install -y --no-install-recommends libheif1 libheif-plugin-libde265 ;;
+          esac
+          echo "== libheif and libde265 packages on this system:"
+          dpkg -l | grep -E 'heif|de265' || echo "(none)"
+          if [ -e /usr/lib/x86_64-linux-gnu/libheif.so.1 ]; then
+            echo "== system libheif built-in HEVC decoder symbol count (0 means decoders are plugins):"
+            strings /usr/lib/x86_64-linux-gnu/libheif.so.1 | grep -c get_decoder_plugin_libde265 || true
+            echo "== system libheif plugin directory:"
+            ls -la /usr/lib/x86_64-linux-gnu/libheif/plugins 2>/dev/null || echo "(no plugin directory)"
+          fi
+
+      - name: Download and extract the released .deb
+        run: |
+          URL="https://github.com/hugocornellier/agelapse/releases/download/agelapse-v${{ matrix.version }}/agelapse-linux-${{ matrix.version }}-x64.deb"
+          curl -fsSL -o agelapse.deb "$URL"
+          dpkg-deb -x agelapse.deb deb-root
+          PLUGIN=$(find deb-root -name libheic_native_plugin.so -print -quit)
+          if [ -z "$PLUGIN" ]; then
+            echo "::error::libheic_native_plugin.so not found in the ${{ matrix.version }} package"
+            exit 1
+          fi
+          LIB=$(dirname "$PLUGIN")
+          echo "LIB=$LIB" >> "$GITHUB_ENV"
+          echo "plugin directory: $LIB"
+          for f in libheic_native_plugin.so libheif.so.1 libde265.so.0; do
+            echo "== $f dynamic section:"
+            readelf -d "$LIB/$f" | grep -E 'RUNPATH|RPATH|NEEDED' || echo "(missing)"
+          done
+          echo "== ldd libheic_native_plugin.so, no LD_LIBRARY_PATH, as the app resolves it:"
+          ldd "$LIB/libheic_native_plugin.so" || true
+
+      - name: Decode a HEIC through the packaged plugin
+        run: |
+          CHECK="python3 tool/linux-heic-check/heic_decode_check.py \
+            --lib $LIB/libflutter_linux_gtk.so \
+            --lib $LIB/libheic_native_plugin.so \
+            --heic assets/test_fixtures/sample-heic.HEIC"
+          case "${{ matrix.version }}/${{ matrix.system }}" in
+            2.6.0/no-system-libheif)
+              echo "2.6.0 shipped without a usable RUNPATH, so without a system libheif the plugin cannot load at all."
+              $CHECK --expect load-fail ;;
+            2.6.0/system-libheif)
+              echo "2.6.0 picks up the system libheif, which has no built-in decoder."
+              $CHECK --expect decode-fail ;;
+            2.6.0/system-libheif-with-decoder-plugin)
+              echo "--- as shipped: the system libheif has a decoder plugin, but the plugin never called heif_init()"
+              $CHECK --expect decode-fail
+              echo "--- same libraries, with heif_init() as the fixed plugin does"
+              $CHECK --expect ok --init ;;
+            2.7.0/*)
+              echo "2.7.0 resolves the bundled libheif through RUNPATH=\$ORIGIN regardless of the system."
+              $CHECK --expect ok --expect-libheif-under "$PWD/$LIB" ;;
+          esac
+
+  plugin-from-source:
+    name: heic_native ${{ matrix.ref }} on a system libheif with plugin decoders
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - ref: main
+            expect: fail
+          - ref: fix/linux-heif-init
+            expect: pass
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: hugocornellier/heic_native
+          ref: ${{ matrix.ref }}
+          path: heic_native
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev xvfb binutils \
+            libheif1 libheif-plugin-libde265
+          echo "== libheif and libde265 packages on this runner:"
+          dpkg -l | grep -E 'heif|de265' || echo "(none)"
+          echo "== system libheif built-in HEVC decoder symbol count (0 means decoders are plugins):"
+          strings /usr/lib/x86_64-linux-gnu/libheif.so.1 | grep -c get_decoder_plugin_libde265 || true
+          ls -la /usr/lib/x86_64-linux-gnu/libheif/plugins 2>/dev/null || echo "(no plugin directory)"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.5
+          cache: true
+
+      - name: Build the example app
+        working-directory: heic_native/example
+        run: |
+          flutter pub get
+          flutter build linux --debug
+
+      - name: Show which libheif the built plugin resolves
+        working-directory: heic_native/example
+        run: |
+          PLUGIN=build/linux/x64/debug/bundle/lib/libheic_native_plugin.so
+          readelf -d "$PLUGIN" | grep -E 'RUNPATH|RPATH' || true
+          echo "== as built:"
+          ldd "$PLUGIN" | grep -E 'heif|de265'
+          echo "== forced onto the system libheif with LD_LIBRARY_PATH:"
+          LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu ldd "$PLUGIN" | grep -E 'heif|de265'
+
+      - name: Integration tests as built (bundled libheif)
+        working-directory: heic_native/example
+        run: xvfb-run -a flutter test integration_test -d linux --reporter expanded
+
+      - name: Integration tests forced onto the system libheif (expect ${{ matrix.expect }})
+        working-directory: heic_native/example
+        run: |
+          set +e
+          LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu \
+            xvfb-run -a flutter test integration_test -d linux --reporter expanded
+          STATUS=$?
+          set -e
+          case "${{ matrix.expect }}/$STATUS" in
+            pass/0) echo "passed on the system libheif, as expected with heif_init()" ;;
+            fail/0) echo "::error::expected the tests to fail without heif_init(), but they passed"; exit 1 ;;
+            pass/*) echo "::error::expected the tests to pass with heif_init(), but they failed (exit $STATUS)"; exit 1 ;;
+            fail/*) echo "failed on the system libheif (exit $STATUS), as expected without heif_init()" ;;
+          esac
