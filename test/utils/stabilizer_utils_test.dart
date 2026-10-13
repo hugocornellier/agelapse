@@ -5,6 +5,25 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:agelapse/utils/stabilizer_utils/stabilizer_utils.dart';
+import 'package:face_detection_tflite/face_detection_tflite_native.dart' as fdl;
+
+/// A face detector whose every call fails, standing in for one whose native
+/// state has gone bad. Only readiness and disposal are implemented.
+class _BrokenFaceDetector implements fdl.FaceDetector {
+  int disposeCalls = 0;
+
+  @override
+  bool get isReady => disposeCalls == 0;
+
+  @override
+  Future<void> dispose() async {
+    disposeCalls++;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw StateError('broken detector: ${invocation.memberName}');
+}
 
 void main() {
   group('FaceLike', () {
@@ -405,6 +424,48 @@ void main() {
         expect(restored[100], closeTo(1.0, 0.0001));
       });
 
+      test('bytesToEmbedding reads only the view, not its whole buffer', () {
+        // sqflite can return a BLOB as a view into a larger buffer. The
+        // embedding is 3 floats, but the buffer holds 17 extra bytes before
+        // it and 20 after (a 4-byte aligned start).
+        final embedding = Float32List.fromList([1.5, -2.0, 3.25]);
+        final buffer = Uint8List(20 + embedding.lengthInBytes + 20);
+        buffer.setAll(20, embedding.buffer.asUint8List());
+        final view = Uint8List.sublistView(
+          buffer,
+          20,
+          20 + embedding.lengthInBytes,
+        );
+
+        final restored = StabUtils.bytesToEmbedding(view);
+
+        expect(restored.length, 3);
+        expect(restored, [1.5, -2.0, 3.25]);
+      });
+
+      test('bytesToEmbedding handles a view that is not 4-byte aligned', () {
+        final embedding = Float32List.fromList([4.0, 5.0]);
+        final buffer = Uint8List(3 + embedding.lengthInBytes + 5);
+        buffer.setAll(3, embedding.buffer.asUint8List());
+        final view = Uint8List.sublistView(
+          buffer,
+          3,
+          3 + embedding.lengthInBytes,
+        );
+
+        expect(StabUtils.bytesToEmbedding(view), [4.0, 5.0]);
+      });
+
+      test('embeddingToBytes writes only the view, not its whole buffer', () {
+        final backing = Float32List.fromList([9.0, 1.0, 2.0, 3.0, 9.0]);
+        final view = Float32List.sublistView(backing, 1, 4);
+
+        final bytes = StabUtils.embeddingToBytes(view);
+
+        expect(bytes.length, 12);
+        expect(StabUtils.bytesToEmbedding(bytes), [1.0, 2.0, 3.0]);
+      });
+
       test('preserves negative values', () {
         final original = Float32List.fromList([-1.0, -0.5, 0.0, 0.5, 1.0]);
         final bytes = StabUtils.embeddingToBytes(original);
@@ -592,5 +653,50 @@ void main() {
         throwsArgumentError,
       );
     });
+  });
+
+  group('StabUtils face detector recovery', () {
+    late List<_BrokenFaceDetector> spawned;
+
+    setUp(() async {
+      spawned = [];
+      await StabUtils.setFaceDetectorFactoryForTesting(() async {
+        final detector = _BrokenFaceDetector();
+        spawned.add(detector);
+        return detector;
+      });
+    });
+
+    tearDown(() async {
+      await StabUtils.setFaceDetectorFactoryForTesting(null);
+    });
+
+    // Each failed call used to drop the detector without disposing it, so
+    // its isolate and TFLite interpreters leaked (about 150 MB each on
+    // Android) while a replacement was started: the #15 bulk-import crash.
+    test(
+      'a failing detector is disposed before a replacement starts',
+      () async {
+        final bytes = Uint8List(16);
+
+        expect(await StabUtils.getFaceEmbeddingFromBytes(bytes), isNull);
+        expect(spawned, hasLength(1));
+        expect(spawned.single.disposeCalls, 1);
+
+        expect(await StabUtils.getFacesFromBytes(bytes), isEmpty);
+        expect(
+          await StabUtils.getFacesFromRawMatBytes(bytes, 4, 4, 16),
+          isNull,
+        );
+        expect(
+          await StabUtils.pickFaceIndexByEmbedding(Float32List(192), bytes),
+          0,
+        );
+        expect(spawned, hasLength(4));
+        for (final detector in spawned) {
+          expect(detector.disposeCalls, 1);
+        }
+      },
+    );
   });
 }

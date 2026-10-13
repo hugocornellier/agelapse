@@ -94,6 +94,9 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.4
   mocktail: ^1.0.5
   image: ^4.10.1
+  # integration_test/android_memory_probe_test.dart talks to the app's own VM
+  # service to garbage collect and read Dart memory figures.
+  vm_service: ^15.3.0
 
 # dartcv4 builds OpenCV from a CMake hook and only honours these user-defines
 # from the root package (a dependency cannot supply them). Xcode 27 rejects
