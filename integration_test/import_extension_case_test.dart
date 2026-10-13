@@ -7,6 +7,7 @@ import 'package:integration_test/integration_test.dart';
 import 'package:agelapse/main.dart' as app;
 import 'package:agelapse/services/database_helper.dart';
 import 'package:agelapse/services/database_import_ffi.dart';
+import 'package:agelapse/services/raw_photo_extension_repair.dart';
 import 'package:agelapse/utils/dir_utils.dart';
 import 'package:agelapse/utils/format_decode_utils.dart';
 import 'package:agelapse/utils/gallery_utils.dart';
@@ -160,6 +161,105 @@ void main() {
         },
       );
     }
+
+    testWidgets(
+      'a raw file an older version saved with an upper-case extension is '
+      'renamed at startup and queued for stabilization',
+      (tester) async {
+        app.main();
+        await tester.pump(const Duration(seconds: 2));
+
+        if (fixturesUnavailable) {
+          markTestSkipped('Test fixtures not available: $fixtureLoadError');
+          return;
+        }
+
+        testProjectId = await DB.instance.addProject(
+          'Extension case repair',
+          'face',
+          DateTime.now().millisecondsSinceEpoch,
+        );
+
+        final fixturePath = await getFormatSamplePathAsync('heic', 'day1');
+        if (!await File(fixturePath).exists()) {
+          markTestSkipped('heic/day1 sample not found');
+          return;
+        }
+
+        final tempDir = await Directory.systemTemp.createTemp('ext_case_');
+        final pickedPath = p.join(tempDir.path, 'day1.heic');
+        await File(fixturePath).copy(pickedPath);
+        final notifier = ValueNotifier<String>('');
+        bool imported = false;
+        try {
+          imported = await GalleryUtils.importXFile(
+            XFile(pickedPath),
+            testProjectId!,
+            notifier,
+          );
+        } finally {
+          notifier.dispose();
+          await deleteQuietly(tempDir);
+        }
+        expect(imported, isTrue);
+        await tester.pump(const Duration(seconds: 3));
+
+        final photos = await DB.instance.getPhotosByProjectID(testProjectId!);
+        expect(photos, hasLength(1));
+        final timestamp = photos.single['timestamp'] as String;
+        final rawPath = await DirUtils.getRawPhotoPathFromTimestampAndProjectId(
+          timestamp,
+          testProjectId!,
+        );
+        expect(File(rawPath).existsSync(), isTrue);
+
+        // Leave the file as 2.6.0 and 2.7.0 did for IMG_0001.HEIC, and mark
+        // the photo the way five failed stabilization passes would have.
+        final legacyPath = p.setExtension(rawPath, '.HEIC');
+        await File(rawPath).rename(legacyPath);
+        final caseSensitive = !File(rawPath).existsSync();
+        for (var i = 0; i < 5; i++) {
+          await DB.instance.setPhotoStabFailed(timestamp, testProjectId!);
+        }
+
+        final renamed = await RawPhotoExtensionRepair.repairProject(
+          testProjectId!,
+        );
+
+        expect(renamed, caseSensitive ? 1 : 0);
+        expect(
+          File(rawPath).existsSync(),
+          isTrue,
+          reason: 'after the repair the database path must resolve again',
+        );
+        final rawDir = Directory(
+          await DirUtils.getRawPhotoDirPath(testProjectId!),
+        );
+        expect(rawDir.listSync(), hasLength(1));
+        if (caseSensitive) {
+          expect(
+            p.basename(rawDir.listSync().single.path),
+            p.basename(rawPath),
+          );
+          final repaired = await DB.instance.getPhotosByProjectID(
+            testProjectId!,
+          );
+          expect(
+            repaired.single['stabFailed'],
+            0,
+            reason: 'a renamed photo is queued for stabilization again',
+          );
+          expect(repaired.single['stabAttempts'] ?? 0, 0);
+        }
+
+        if (!Platform.isWindows) {
+          final cvBytes = await FormatDecodeUtils.loadCvCompatibleBytes(
+            rawPath,
+          );
+          expect(cvBytes, isNotNull);
+        }
+      },
+    );
   });
 }
 
