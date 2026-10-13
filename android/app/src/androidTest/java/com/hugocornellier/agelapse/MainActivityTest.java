@@ -28,6 +28,7 @@ import org.junit.runner.RunWith;
 @RunWith(FlutterTestRunner.class)
 public final class MainActivityTest {
   private static final String TAG = "AgeLapseTest";
+  private static final String MEM_TAG = "AGELAPSE_MEM";
   private static final String PUSHED_FIXTURE = "/sdcard/agelapse_bulk_import.zip";
   private static final String STAGED_FIXTURE = "agelapse_bulk_import.zip";
 
@@ -37,8 +38,69 @@ public final class MainActivityTest {
         @Override
         protected void beforeActivityLaunched() {
           stagePushedFixture();
+          startMemorySampler();
         }
       };
+
+  /**
+   * Logs the app's memory breakdown every 20 seconds, as {@code dumpsys
+   * meminfo} reports it, under the tag {@link #MEM_TAG}. The Dart test logs
+   * the process RSS; this splits it into native heap, Dalvik heap, graphics
+   * and the rest, so a run that grows shows which kind of memory grew.
+   */
+  private static void startMemorySampler() {
+    Thread sampler =
+        new Thread(
+            () -> {
+              UiAutomation shell =
+                  InstrumentationRegistry.getInstrumentation().getUiAutomation();
+              String target = InstrumentationRegistry.getInstrumentation().getTargetContext()
+                  .getPackageName();
+              while (true) {
+                try {
+                  Thread.sleep(20_000);
+                } catch (InterruptedException e) {
+                  return;
+                }
+                try (InputStream in =
+                    new ParcelFileDescriptor.AutoCloseInputStream(
+                        shell.executeShellCommand("dumpsys meminfo -s " + target))) {
+                  String report = new String(readAll(in), "UTF-8");
+                  StringBuilder summary = new StringBuilder();
+                  for (String line : report.split("\n")) {
+                    String t = line.trim();
+                    if (t.startsWith("Native Heap:")
+                        || t.startsWith("Dalvik Heap:")
+                        || t.startsWith("Graphics:")
+                        || t.startsWith("Code:")
+                        || t.startsWith("Stack:")
+                        || t.startsWith("Private Other:")
+                        || t.startsWith("System:")
+                        || t.startsWith("TOTAL PSS:")
+                        || t.startsWith("TOTAL RSS:")) {
+                      summary.append(t.replaceAll("\\s+", " ")).append(" | ");
+                    }
+                  }
+                  Log.i(MEM_TAG, summary.toString());
+                } catch (IOException e) {
+                  Log.w(TAG, "meminfo failed: " + e);
+                }
+              }
+            },
+            "agelapse-mem-sampler");
+    sampler.setDaemon(true);
+    sampler.start();
+  }
+
+  private static byte[] readAll(InputStream in) throws IOException {
+    java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+    byte[] buffer = new byte[1 << 14];
+    int read;
+    while ((read = in.read(buffer)) != -1) {
+      out.write(buffer, 0, read);
+    }
+    return out.toByteArray();
+  }
 
   private static void stagePushedFixture() {
     Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();

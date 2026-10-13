@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -10,6 +11,7 @@ import 'package:agelapse/utils/gallery_utils.dart';
 import 'package:agelapse/utils/settings_utils.dart';
 import 'package:agelapse/utils/test_mode.dart' as test_config;
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:path/path.dart' as p;
@@ -42,6 +44,11 @@ import 'test_utils.dart';
 ///   behind an earlier Android 16 compile crash (#33).
 /// - BULK_EXPECT_VIDEO (default false): fail unless every photo is done and
 ///   a video was compiled within the budget.
+/// - BULK_ZIP_PATH (default empty): read the zip from this path instead of the
+///   app's files folder, for running the same test on a desktop.
+/// - BULK_HEADLESS (default false): don't start the app's UI; drive the
+///   stabilization service directly. Comparing a headless run with a normal
+///   one tells UI memory (thumbnails, image cache) from pipeline memory.
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   test_config.isTestMode = true;
@@ -52,15 +59,19 @@ void main() {
   );
   const dateStamps = bool.fromEnvironment('BULK_DATE_STAMPS');
   const expectVideo = bool.fromEnvironment('BULK_EXPECT_VIDEO');
+  const zipPath = String.fromEnvironment('BULK_ZIP_PATH');
+  const headless = bool.fromEnvironment('BULK_HEADLESS');
 
   testWidgets('a large zip imports, stabilizes and compiles without crashing', (
     tester,
   ) async {
     final zip = File(
-      p.join(
-        (await getApplicationSupportDirectory()).path,
-        'agelapse_bulk_import.zip',
-      ),
+      zipPath.isNotEmpty
+          ? zipPath
+          : p.join(
+              (await getApplicationSupportDirectory()).path,
+              'agelapse_bulk_import.zip',
+            ),
     );
     if (!await zip.exists()) {
       markTestSkipped('No zip at ${zip.path} (see tool/testlab/README.md)');
@@ -119,10 +130,15 @@ void main() {
     final total = (await DB.instance.getPhotosByProjectID(projectId)).length;
     report('imported', {'inZip': inZip, 'imported': total});
 
-    // Open the project like a user: the app stabilizes and compiles it.
     await DB.instance.setSettingByTitle('default_project', '$projectId');
-    app.main();
-    await pumpUntilAppReady(tester);
+    if (headless) {
+      // The service alone; it brings up its own isolate pool.
+      unawaited(StabilizationService.instance.startStabilization(projectId));
+    } else {
+      // Open the project like a user: the app stabilizes and compiles it.
+      app.main();
+      await pumpUntilAppReady(tester);
+    }
 
     final orientation = await SettingsUtil.loadProjectOrientation('$projectId');
     final budget = Duration(minutes: budgetMinutes);
@@ -175,17 +191,33 @@ void main() {
 }
 
 /// The app's memory, and how much the device has left.
+///
+/// On Linux-based systems (Android), the RSS is split into anonymous (heaps
+/// and native buffers), file-backed (code, mapped files) and shared pages.
+/// The Flutter image cache figures show what the UI holds in decoded images.
 Map<String, Object?> _memory() {
-  int? availableMb;
-  try {
-    final line = File(
-      '/proc/meminfo',
-    ).readAsLinesSync().firstWhere((line) => line.startsWith('MemAvailable:'));
-    availableMb = int.parse(line.split(RegExp(r'\s+'))[1]) ~/ 1024;
-  } catch (_) {}
+  final cache = PaintingBinding.instance.imageCache;
   return {
     'rssMb': ProcessInfo.currentRss ~/ (1024 * 1024),
     'maxRssMb': ProcessInfo.maxRss ~/ (1024 * 1024),
-    'deviceAvailableMb': availableMb,
+    'deviceAvailableMb': _procMb('/proc/meminfo', 'MemAvailable:'),
+    'rssAnonMb': _procMb('/proc/self/status', 'RssAnon:'),
+    'rssFileMb': _procMb('/proc/self/status', 'RssFile:'),
+    'rssShmemMb': _procMb('/proc/self/status', 'RssShmem:'),
+    'imageCacheMb': cache.currentSizeBytes ~/ (1024 * 1024),
+    'imageCacheCount': cache.currentSize,
+    'liveImages': cache.liveImageCount,
   };
+}
+
+/// A kB value from a /proc file, in MB, or null where there is no such file.
+int? _procMb(String file, String key) {
+  try {
+    final line = File(
+      file,
+    ).readAsLinesSync().firstWhere((line) => line.startsWith(key));
+    return int.parse(line.split(RegExp(r'\s+'))[1]) ~/ 1024;
+  } catch (_) {
+    return null;
+  }
 }
