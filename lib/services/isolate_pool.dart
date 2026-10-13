@@ -150,9 +150,13 @@ class IsolatePool {
             cachedSrcMat: cachedSrcMat,
             cachedSrcId: cachedSrcId,
             onCacheUpdate: (mat, id) {
-              // Dispose old cache before updating
-              if (cachedSrcMat != null && cachedSrcId != id) {
-                cachedSrcMat!.dispose();
+              // Dispose the old cache before replacing it. The same id can
+              // arrive again with a fresh Mat (an orientation retry decodes
+              // the same photo again), and skipping the dispose then leaked
+              // a full-size source Mat per retry.
+              final old = cachedSrcMat;
+              if (old != null && !identical(old, mat)) {
+                old.dispose();
               }
               cachedSrcMat = mat;
               cachedSrcId = id;
