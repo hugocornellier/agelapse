@@ -405,6 +405,48 @@ void main() {
         expect(restored[100], closeTo(1.0, 0.0001));
       });
 
+      test('bytesToEmbedding reads only the view, not its whole buffer', () {
+        // sqflite can return a BLOB as a view into a larger buffer. The
+        // embedding is 3 floats, but the buffer holds 17 extra bytes before
+        // it and 20 after (a 4-byte aligned start).
+        final embedding = Float32List.fromList([1.5, -2.0, 3.25]);
+        final buffer = Uint8List(20 + embedding.lengthInBytes + 20);
+        buffer.setAll(20, embedding.buffer.asUint8List());
+        final view = Uint8List.sublistView(
+          buffer,
+          20,
+          20 + embedding.lengthInBytes,
+        );
+
+        final restored = StabUtils.bytesToEmbedding(view);
+
+        expect(restored.length, 3);
+        expect(restored, [1.5, -2.0, 3.25]);
+      });
+
+      test('bytesToEmbedding handles a view that is not 4-byte aligned', () {
+        final embedding = Float32List.fromList([4.0, 5.0]);
+        final buffer = Uint8List(3 + embedding.lengthInBytes + 5);
+        buffer.setAll(3, embedding.buffer.asUint8List());
+        final view = Uint8List.sublistView(
+          buffer,
+          3,
+          3 + embedding.lengthInBytes,
+        );
+
+        expect(StabUtils.bytesToEmbedding(view), [4.0, 5.0]);
+      });
+
+      test('embeddingToBytes writes only the view, not its whole buffer', () {
+        final backing = Float32List.fromList([9.0, 1.0, 2.0, 3.0, 9.0]);
+        final view = Float32List.sublistView(backing, 1, 4);
+
+        final bytes = StabUtils.embeddingToBytes(view);
+
+        expect(bytes.length, 12);
+        expect(StabUtils.bytesToEmbedding(bytes), [1.0, 2.0, 3.0]);
+      });
+
       test('preserves negative values', () {
         final original = Float32List.fromList([-1.0, -0.5, 0.0, 0.5, 1.0]);
         final bytes = StabUtils.embeddingToBytes(original);

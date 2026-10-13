@@ -583,12 +583,27 @@ class StabUtils {
 
   /// Converts a Float32List embedding to Uint8List for database storage.
   static Uint8List embeddingToBytes(Float32List embedding) {
-    return embedding.buffer.asUint8List();
+    // The explicit offset and length matter: a typed list is often a view
+    // into a larger buffer, and viewing the whole buffer would return bytes
+    // that aren't part of the embedding.
+    return embedding.buffer.asUint8List(
+      embedding.offsetInBytes,
+      embedding.lengthInBytes,
+    );
   }
 
   /// Converts a Uint8List from database back to Float32List embedding.
   static Float32List bytesToEmbedding(Uint8List bytes) {
-    return bytes.buffer.asFloat32List();
+    // sqflite can hand back a BLOB as a view into a larger buffer. Viewing the
+    // whole buffer produced embeddings with extra values ("Embedding
+    // dimensions must match: 209 vs 192"), so face matching by embedding
+    // silently failed on Android.
+    final floatCount = bytes.lengthInBytes ~/ 4;
+    if (bytes.offsetInBytes % 4 != 0) {
+      // A float view needs a 4-byte aligned start; copy to a fresh buffer.
+      bytes = Uint8List.fromList(bytes);
+    }
+    return bytes.buffer.asFloat32List(bytes.offsetInBytes, floatCount);
   }
 
   static String get faceModelVersion => fdl.FaceDetector.modelVersion;
