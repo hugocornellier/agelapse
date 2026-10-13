@@ -67,9 +67,12 @@ class CameraUtils {
     int projectId,
   ) async {
     final String rawPhotoDirPath = await DirUtils.getRawPhotoDirPath(projectId);
+    // Lower-case, like the extension recorded in the database: every later
+    // lookup rebuilds the path from that record, and on a case-sensitive file
+    // system (Linux, Android, iOS) `<ts>.HEIC` is not `<ts>.heic` (#41).
     final String imagePath = path.join(
       rawPhotoDirPath,
-      "$timestamp${path.extension(image.path)}",
+      "$timestamp${path.extension(image.path).toLowerCase()}",
     );
     await DirUtils.createDirectoryIfNotExists(imagePath);
     await image.saveTo(imagePath);

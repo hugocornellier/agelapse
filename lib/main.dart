@@ -19,6 +19,7 @@ import '../services/database_helper.dart';
 import '../services/menu_bar_service.dart';
 import '../services/theme_provider.dart';
 import '../services/log_service.dart';
+import '../services/raw_photo_extension_repair.dart';
 import '../services/reminder_scheduler.dart';
 import '../services/video_compile_coordinator.dart';
 import '../widgets/main_navigation.dart';
@@ -133,11 +134,13 @@ Future<void> _main() async {
     debugPaintSizeEnabled = false;
   }
 
-  // Before any stabilization or compile can start: act on work the app died
-  // during last time (see CrashLoopGuard), remove output of encodes that
-  // never finished, and once, mark existing videos for a rebuild (see
-  // VideoCompileCoordinator.runStartupMaintenance).
+  // Before any stabilization or compile can start: rename raw photos older
+  // versions saved with an upper-case extension (see RawPhotoExtensionRepair),
+  // act on work the app died during last time (see CrashLoopGuard), remove
+  // output of encodes that never finished, and once, mark existing videos for
+  // a rebuild (see VideoCompileCoordinator.runStartupMaintenance).
   if (!test_config.isTestMode) {
+    await RawPhotoExtensionRepair.repairAllProjects();
     await CrashLoopGuard.instance.start();
     await VideoCompileCoordinator.instance.runStartupMaintenance();
   }

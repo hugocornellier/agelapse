@@ -666,6 +666,78 @@ jobs:
           fi
           echo "Flatpak install, packaged startup, and removal checks passed."
 
+  smoke-linux-heic:
+    name: Smoke Linux HEIC decode, ${{ matrix.label }}
+    needs: [prepare, build-linux]
+    runs-on: ubuntu-latest
+    container: debian:trixie
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - system: none
+            label: clean Debian 13
+          - system: libheif-with-plugin
+            label: Debian 13 with a system libheif
+    steps:
+      - name: Install base packages
+        run: |
+          apt-get update -y
+          apt-get install -y --no-install-recommends \
+            ca-certificates git python3 binutils libgtk-3-0t64
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.ref }}
+          persist-credentials: false
+
+      # Debian builds libheif with its decoders as separate plugin packages.
+      # The 2.6.0 package ended up on this system libheif because its bundled
+      # libraries carried no usable RUNPATH (fixed in 2.7.0); the bundle has
+      # to win whether or not a system libheif is installed.
+      - name: Install a system libheif with plugin decoders
+        if: matrix.system == 'libheif-with-plugin'
+        run: apt-get install -y --no-install-recommends libheif1 libheif-plugin-libde265
+
+      - name: Download Debian package
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-deb
+          path: package
+
+      - name: Decode a HEIC through the packaged plugin
+        run: |
+          # The .deb is extracted rather than installed so this needs none of
+          # the package's runtime dependencies beyond GTK. The plugin's
+          # libheif.so.1 is still resolved by the dynamic loader exactly as the
+          # installed app resolves it (LD_LIBRARY_PATH, RUNPATH, then the
+          # system), and it has to come from the bundle whether or not a system
+          # libheif is installed. The decode itself is the check the Linux
+          # integration job cannot make: that job runs a debug build whose
+          # libraries resolve from the checkout path.
+          DEB_FILE=$(find package -maxdepth 1 -type f -name '*.deb' -print -quit)
+          if [ -z "$DEB_FILE" ]; then
+            echo "::error::The linux-deb artifact does not contain a .deb package."
+            exit 1
+          fi
+          dpkg-deb -x "$DEB_FILE" deb-root
+          PLUGIN=$(find deb-root -name libheic_native_plugin.so -print -quit)
+          if [ -z "$PLUGIN" ]; then
+            echo "::error::libheic_native_plugin.so is missing from the package."
+            exit 1
+          fi
+          LIB=$(dirname "$PLUGIN")
+          echo "== ldd libheic_native_plugin.so, no LD_LIBRARY_PATH:"
+          ldd "$LIB/libheic_native_plugin.so" | grep -E 'heif|de265|not found' || true
+          python3 tool/linux-heic-check/heic_decode_check.py \
+            --lib "$LIB/libflutter_linux_gtk.so" \
+            --lib "$LIB/libheic_native_plugin.so" \
+            --heic assets/test_fixtures/sample-heic.HEIC \
+            --expect ok --expect-libheif-under "$PWD/$LIB"
+
   publish-release:
     name: Publish GitHub Release
     needs:
@@ -674,6 +746,7 @@ jobs:
       - build-linux
       - smoke-windows-installer
       - smoke-linux-packages
+      - smoke-linux-heic
     runs-on: ubuntu-latest
     permissions:
       contents: write
