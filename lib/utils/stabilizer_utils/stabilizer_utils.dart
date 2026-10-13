@@ -92,10 +92,28 @@ class StabUtils {
     Future<fdl.FaceDetector> Function()? factory,
   ) async {
     await _faceDetectorMutex.protect(() async {
-      await _faceDetector?.dispose();
-      _faceDetector = null;
+      await _discardFaceDetector();
       _faceDetectorFactoryForTesting = factory;
     });
+  }
+
+  /// Shuts the face detector down and forgets it, so [_ensureFDLite] starts a
+  /// fresh one on the next call. Call with [_faceDetectorMutex] held.
+  ///
+  /// Every catch block that gives up on the detector goes through here. A
+  /// detector that is only dropped is never collected: its worker isolate,
+  /// the TFLite interpreters and the decoded source image it caches stay
+  /// alive, about 150 MB each on Android. Before this, one such leak per
+  /// failed call was enough to get a 500 photo import killed for memory.
+  static Future<void> _discardFaceDetector() async {
+    final detector = _faceDetector;
+    _faceDetector = null;
+    if (detector == null) return;
+    try {
+      await detector.dispose();
+    } catch (e) {
+      LogService.instance.log("Error disposing face detector: $e");
+    }
   }
 
   // ============================================================
@@ -378,7 +396,7 @@ class StabUtils {
         );
         // Force reinit of face detector on next call; handles stale native state
         // after hot restart or other isolate lifecycle issues
-        _faceDetector = null;
+        await _discardFaceDetector();
         return (<FaceLike>[], <fdl.Face>[]);
       }
     });
@@ -446,7 +464,7 @@ class StabUtils {
         return filtered.isNotEmpty ? filtered : faces;
       } catch (e) {
         LogService.instance.log("Error caught while fetching faces: $e");
-        _faceDetector = null; // Force reinit on next call
+        await _discardFaceDetector(); // Fresh one on the next call
         return [];
       }
     });
@@ -482,7 +500,7 @@ class StabUtils {
         return embedding;
       } catch (e) {
         LogService.instance.log("Error extracting face embedding: $e");
-        _faceDetector = null; // Force reinit on next call
+        await _discardFaceDetector(); // Fresh one on the next call
         return null;
       }
     });
@@ -504,7 +522,7 @@ class StabUtils {
         return await _faceDetector!.getFaceEmbedding(face, bytes);
       } catch (e) {
         LogService.instance.log("Error extracting face embedding: $e");
-        _faceDetector = null; // Force reinit on next call
+        await _discardFaceDetector(); // Fresh one on the next call
         return null;
       }
     });
@@ -575,7 +593,7 @@ class StabUtils {
         return bestIndex;
       } catch (e) {
         LogService.instance.log("Error in embedding-based face selection: $e");
-        _faceDetector = null; // Force reinit on next call
+        await _discardFaceDetector(); // Fresh one on the next call
         return 0; // Fallback to first face
       }
     });
@@ -1743,7 +1761,7 @@ class StabUtils {
         LogService.instance.log(
           "Error caught while fetching faces from raw mat bytes: $e",
         );
-        _faceDetector = null;
+        await _discardFaceDetector();
         return null;
       }
     });

@@ -5,6 +5,25 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:agelapse/utils/stabilizer_utils/stabilizer_utils.dart';
+import 'package:face_detection_tflite/face_detection_tflite_native.dart' as fdl;
+
+/// A face detector whose every call fails, standing in for one whose native
+/// state has gone bad. Only readiness and disposal are implemented.
+class _BrokenFaceDetector implements fdl.FaceDetector {
+  int disposeCalls = 0;
+
+  @override
+  bool get isReady => disposeCalls == 0;
+
+  @override
+  Future<void> dispose() async {
+    disposeCalls++;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw StateError('broken detector: ${invocation.memberName}');
+}
 
 void main() {
   group('FaceLike', () {
@@ -634,5 +653,50 @@ void main() {
         throwsArgumentError,
       );
     });
+  });
+
+  group('StabUtils face detector recovery', () {
+    late List<_BrokenFaceDetector> spawned;
+
+    setUp(() async {
+      spawned = [];
+      await StabUtils.setFaceDetectorFactoryForTesting(() async {
+        final detector = _BrokenFaceDetector();
+        spawned.add(detector);
+        return detector;
+      });
+    });
+
+    tearDown(() async {
+      await StabUtils.setFaceDetectorFactoryForTesting(null);
+    });
+
+    // Each failed call used to drop the detector without disposing it, so
+    // its isolate and TFLite interpreters leaked (about 150 MB each on
+    // Android) while a replacement was started: the #15 bulk-import crash.
+    test(
+      'a failing detector is disposed before a replacement starts',
+      () async {
+        final bytes = Uint8List(16);
+
+        expect(await StabUtils.getFaceEmbeddingFromBytes(bytes), isNull);
+        expect(spawned, hasLength(1));
+        expect(spawned.single.disposeCalls, 1);
+
+        expect(await StabUtils.getFacesFromBytes(bytes), isEmpty);
+        expect(
+          await StabUtils.getFacesFromRawMatBytes(bytes, 4, 4, 16),
+          isNull,
+        );
+        expect(
+          await StabUtils.pickFaceIndexByEmbedding(Float32List(192), bytes),
+          0,
+        );
+        expect(spawned, hasLength(4));
+        for (final detector in spawned) {
+          expect(detector.disposeCalls, 1);
+        }
+      },
+    );
   });
 }
