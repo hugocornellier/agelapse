@@ -70,14 +70,18 @@ class GalleryPhotoOperations {
     await DirUtils.deleteFileIfExists(stabThumbPath);
 
     try {
-      final fingerprint = await StabUtils.computeRawPhotoFingerprint(
-        rawPhotoPath,
+      final fingerprint = await StabUtils.resolvePhotoFingerprint(
+        timestamp: timestamp,
+        projectId: projectId,
+        rawPhotoPath: rawPhotoPath,
       );
-      await DB.instance.clearTransformCacheForFingerprint(
-        projectId,
-        fingerprint,
-        scope: null,
-      );
+      if (fingerprint != null) {
+        await DB.instance.clearTransformCacheForFingerprint(
+          projectId,
+          fingerprint,
+          scope: null,
+        );
+      }
     } catch (e) {
       LogService.instance.log(
         '[transform-cache] $timestamp: retry clear failed: $e',

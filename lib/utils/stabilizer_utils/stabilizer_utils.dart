@@ -661,6 +661,56 @@ class StabUtils {
   static Future<String> computeRawPhotoFingerprint(String filePath) =>
       PhotoFingerprint.compute(filePath);
 
+  /// The fingerprint every cache key for a photo is built from (face
+  /// detection cache, transform cache, a hand-picked face): the value stored
+  /// on the photo row when there is one, which is what the stabilization
+  /// service passes along and what the faces dialog reads; otherwise the raw
+  /// file's hash, backfilled onto the row so every later lookup uses the same
+  /// value. Hashing the file where a stored value exists would key a write
+  /// under one fingerprint and the next lookup under another; that is how a
+  /// hand-picked face was lost on re-stabilization (#35).
+  ///
+  /// Returns null only when the row has no fingerprint and the file cannot
+  /// be hashed.
+  static Future<String?> resolvePhotoFingerprint({
+    required String timestamp,
+    required int projectId,
+    required String rawPhotoPath,
+  }) async {
+    try {
+      final stored = await DB.instance.getPhotoFingerprint(
+        timestamp,
+        projectId,
+      );
+      if (stored != null && stored.isNotEmpty) return stored;
+    } catch (e) {
+      LogService.instance.log(
+        '[cache] $timestamp: stored fingerprint read error: $e',
+      );
+    }
+    final String fingerprint;
+    try {
+      fingerprint = await PhotoFingerprint.compute(rawPhotoPath);
+    } catch (e) {
+      LogService.instance.log('[cache] $timestamp: fingerprint error: $e');
+      return null;
+    }
+    // Best-effort: the next run should take the fast path, but never fail
+    // the caller on this.
+    try {
+      await DB.instance.backfillPhotoFingerprint(
+        timestamp,
+        projectId,
+        fingerprint,
+      );
+    } catch (e) {
+      LogService.instance.log(
+        '[cache] $timestamp: fingerprint backfill error: $e',
+      );
+    }
+    return fingerprint;
+  }
+
   // ============================================================
   // Cat/Dog Face Detection → FaceLike conversion
   // ============================================================

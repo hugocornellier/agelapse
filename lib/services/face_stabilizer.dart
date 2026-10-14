@@ -533,11 +533,12 @@ class FaceStabilizer {
 
     String? fingerprint = knownFingerprint;
     if (fingerprint == null || fingerprint.isEmpty) {
-      try {
-        fingerprint = await StabUtils.computeRawPhotoFingerprint(rawPhotoPath);
-      } catch (_) {
-        return null;
-      }
+      fingerprint = await StabUtils.resolvePhotoFingerprint(
+        timestamp: timestamp,
+        projectId: projectId,
+        rawPhotoPath: rawPhotoPath,
+      );
+      if (fingerprint == null) return null;
     }
 
     // Don't pre-decode here: on a miss, the bytes get discarded and phase 2
@@ -600,36 +601,20 @@ class FaceStabilizer {
     final bool cacheEnabled =
         faceDetectionCacheEnabled && targetBoundingBox == null;
 
+    // One fingerprint keys everything written or read for this photo: the
+    // face cache, the transform cache and a hand-picked face. The service
+    // passes the stored value as knownFingerprint; callers without it (the
+    // "stabilize on a different face" page) resolve the same stored value
+    // here, so a pick lands in the row the next full run looks up (#35).
     String? fingerprint;
-    if (cacheEnabled) {
-      // Prefer the caller-supplied fingerprint (already stored on the photo
-      // row) to skip re-streaming the source file through SHA-256.
-      if (knownFingerprint != null && knownFingerprint.isNotEmpty) {
-        fingerprint = knownFingerprint;
-      } else {
-        try {
-          fingerprint = await StabUtils.computeRawPhotoFingerprint(
-            originalPath,
-          );
-        } catch (e) {
-          LogService.instance.log('[cache] $timestamp: fingerprint error: $e');
-        }
-        if (fingerprint != null) {
-          // Opportunistically backfill the photos row so the next run takes
-          // the fast path. Best-effort, never fail stabilization on this.
-          try {
-            await DB.instance.backfillPhotoFingerprint(
-              timestamp,
-              projectId,
-              fingerprint,
+    if (cacheEnabled || targetBoundingBox != null) {
+      fingerprint = (knownFingerprint != null && knownFingerprint.isNotEmpty)
+          ? knownFingerprint
+          : await StabUtils.resolvePhotoFingerprint(
+              timestamp: timestamp,
+              projectId: projectId,
+              rawPhotoPath: originalPath,
             );
-          } catch (e) {
-            LogService.instance.log(
-              '[cache] $timestamp: fingerprint backfill error: $e',
-            );
-          }
-        }
-      }
     }
 
     try {
@@ -668,18 +653,18 @@ class FaceStabilizer {
         targetBoundingBox: targetBoundingBox,
       );
       if (result1.success) {
-        if (targetBoundingBox != null) {
-          final manualFingerprint = await _clearTransformCacheForFingerprint(
+        if (targetBoundingBox != null && fingerprint != null) {
+          final cleared = await _clearTransformCacheForFingerprint(
             timestamp: timestamp,
-            originalPath: originalPath,
+            fingerprint: fingerprint,
             reason: 'target-face save',
           );
-          if (manualFingerprint != null) {
+          if (cleared) {
             // Persist the selected face index to the detection cache so that
             // re-stabilization at any resolution always picks the correct face.
             // No transform cache entry here; the algorithm should re-run fresh
             // at the actual canvas size rather than scaling a stored transform.
-            await _writeFacesToCache(timestamp, manualFingerprint, 'original');
+            await _writeFacesToCache(timestamp, fingerprint, 'original');
           }
         }
         if (cacheEnabled && fingerprint != null) {
@@ -713,10 +698,10 @@ class FaceStabilizer {
         );
         if (r != null) {
           if (r.cancelled) return r;
-          if (r.success && targetBoundingBox != null) {
+          if (r.success && targetBoundingBox != null && fingerprint != null) {
             await _clearTransformCacheForFingerprint(
               timestamp: timestamp,
-              originalPath: originalPath,
+              fingerprint: fingerprint,
               reason: 'target-face save',
             );
           }
@@ -1236,9 +1221,17 @@ class FaceStabilizer {
   }) async {
     if (!_supportsTransformCache) return;
     try {
-      final fingerprint = await StabUtils.computeRawPhotoFingerprint(
-        rawPhotoPath,
+      final fingerprint = await StabUtils.resolvePhotoFingerprint(
+        timestamp: timestamp,
+        projectId: projectId,
+        rawPhotoPath: rawPhotoPath,
       );
+      if (fingerprint == null) {
+        LogService.instance.log(
+          '[transform-cache] $timestamp: manual save skipped, no fingerprint',
+        );
+        return;
+      }
       final cacheKey = _buildManualTransformCacheKey(fingerprint: fingerprint);
       final now = DateTime.now().millisecondsSinceEpoch;
       // Write the manual entry first. If this throws, nothing has been cleared
@@ -1297,15 +1290,14 @@ class FaceStabilizer {
     }
   }
 
-  Future<String?> _clearTransformCacheForFingerprint({
+  /// Clears every transform cache entry for [fingerprint]. Returns whether
+  /// the clear went through.
+  Future<bool> _clearTransformCacheForFingerprint({
     required String timestamp,
-    required String originalPath,
+    required String fingerprint,
     required String reason,
   }) async {
     try {
-      final fingerprint = await StabUtils.computeRawPhotoFingerprint(
-        originalPath,
-      );
       // Clear all scopes (auto + manual) so a prior manual-slider override
       // cannot shadow a new face selection via stab-on-diff-face.
       await DB.instance.clearTransformCacheForFingerprint(
@@ -1317,12 +1309,12 @@ class FaceStabilizer {
         '[transform-cache] $timestamp: cleared all transform cache entries '
         'after $reason',
       );
-      return fingerprint;
+      return true;
     } catch (e) {
       LogService.instance.log(
         '[transform-cache] $timestamp: clear after $reason failed: $e',
       );
-      return null;
+      return false;
     }
   }
 
@@ -2719,6 +2711,7 @@ class FaceStabilizer {
           userRanOutOfSpaceCallback,
           cvBytes: cvBytes,
           preloadedFaces: preloadedFaces,
+          preselectedFaceIndex: preselectedFaceIndex,
         );
       } else if (projectType == "pregnancy") {
         final Uint8List? bytes =
@@ -2810,8 +2803,10 @@ class FaceStabilizer {
     return _calculateEyeMetrics(eyes);
   }
 
-  /// Cat/dog stabilization: like face but without embedding-based multi-face matching.
-  /// Uses centermost animal selection when multiple are detected.
+  /// Cat/dog stabilization: like face but without embedding-based multi-face
+  /// matching. A subject the user picked ("Stabilize on Other Faces") is
+  /// stored with the cached detections and honored here on every later run,
+  /// as for faces; otherwise the centermost animal is used and recorded.
   Future<(double?, double?)> _calculateRotationAngleAndScaleAnimal(
     String rawPhotoPath,
     int imgWidth,
@@ -2820,6 +2815,7 @@ class FaceStabilizer {
     userRanOutOfSpaceCallback, {
     Uint8List? cvBytes,
     List<FaceLike>? preloadedFaces,
+    int? preselectedFaceIndex,
   }) async {
     return _calculateRotationAngleAndScaleEye(
       rawPhotoPath,
@@ -2830,11 +2826,31 @@ class FaceStabilizer {
       cvBytes: cvBytes,
       preloadedFaces: preloadedFaces,
       selectEyes: (facesToUse, eyes) async {
-        // No embedding support for cat/dog: always use centermost
+        if (_isValidSelectedFaceIndex(
+          preselectedFaceIndex,
+          facesToUse.length,
+        )) {
+          final selectedEyes = _eyesForFaceIndex(eyes, preselectedFaceIndex!);
+          if (selectedEyes != null) {
+            _currentSelectedFaceIndex = preselectedFaceIndex;
+            LogService.instance.log(
+              "Using cached selected $projectType at index "
+              "$preselectedFaceIndex",
+            );
+            return selectedEyes;
+          }
+        }
+        // No embedding support for cat/dog: use the centermost subject and
+        // remember which one so the cache row records the choice.
         LogService.instance.log(
           "Multiple ${projectType}s detected, using centermost",
         );
-        return getCentermostEyesAsync(eyes, facesToUse, imgWidth, imgHeight);
+        return _selectCentermostEyesAndRememberIndex(
+          eyes,
+          facesToUse,
+          imgWidth,
+          imgHeight,
+        );
       },
     );
   }

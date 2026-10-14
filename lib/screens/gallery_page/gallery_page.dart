@@ -2460,14 +2460,18 @@ class GalleryPageState extends State<GalleryPage>
     }
 
     try {
-      final fingerprint = await StabUtils.computeRawPhotoFingerprint(
-        rawPhotoPath,
+      final fingerprint = await StabUtils.resolvePhotoFingerprint(
+        timestamp: timestamp,
+        projectId: widget.projectId,
+        rawPhotoPath: rawPhotoPath,
       );
-      await DB.instance.clearTransformCacheForFingerprint(
-        widget.projectId,
-        fingerprint,
-        scope: null,
-      );
+      if (fingerprint != null) {
+        await DB.instance.clearTransformCacheForFingerprint(
+          widget.projectId,
+          fingerprint,
+          scope: null,
+        );
+      }
     } catch (e) {
       LogService.instance.log(
         '[transform-cache] $timestamp: retry clear failed: $e',
