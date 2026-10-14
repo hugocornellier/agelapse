@@ -402,10 +402,12 @@ Future<void> _runScenario(
   final steps = scenario.change == _Change.eyeOffsetsTwice ? 2 : 1;
   // The algorithm's scale for the picked subject, and for the subject the
   // automatic pass chose, carried through each change.
-  var pickedScale = manualScale;
+  // With a slider edit saved, the stored scale is the edit's, carried over.
+  var pickedScale = sliderScale ?? manualScale;
   var otherScale = autoScale;
   for (var step = 0; step < steps; step++) {
     final refScaleBefore = await readScale(refTs);
+    final settingsBefore = settings;
 
     switch (scenario.change) {
       case _Change.eyeOffsets:
@@ -486,7 +488,9 @@ Future<void> _runScenario(
           '$when, the photo should be scaled for the picked '
           '${scenario.subject} (#35). $detail',
     );
-    if (expectedOther != null) {
+    // With a slider edit the exact check below is the stronger one, and a
+    // 1.37x edit can land near the other subject's size by coincidence.
+    if (expectedOther != null && sliderScale == null) {
       expect(
         (afterScale - expectedPicked).abs(),
         lessThan((afterScale - expectedOther).abs()),
@@ -505,19 +509,32 @@ Future<void> _runScenario(
     pickedScale = afterScale;
     otherScale = expectedOther;
     if (sliderScale != null) {
-      // Documented 2.7.0 behavior: a saved slider edit is keyed by the eye
-      // offsets (TransformCacheKey.buildManualReuseHash), so an eye position
-      // change drops it and the algorithm runs fresh on the picked face. The
-      // release notes say edits are "only recomputed from scratch when a
-      // change would invalidate them (aspect ratio, eye offsets, or project
-      // orientation)".
+      // A saved slider edit is re-projected onto the new settings
+      // (ManualTransformReprojection) with no detection involved: its scale
+      // follows the goal eye spacing (eye offset X times canvas width)
+      // exactly. 2.7.0 keyed the edit by the eye offsets and dropped it here.
+      final widthBefore = StabUtils.getOutputDimensions(
+        settingsBefore.resolution,
+        settingsBefore.aspectRatio,
+        settingsBefore.projectOrientation,
+      )!.$1;
+      final widthAfter = StabUtils.getOutputDimensions(
+        settings.resolution,
+        settings.aspectRatio,
+        settings.projectOrientation,
+      )!.$1;
+      final expectedSlider =
+          sliderScale *
+          (settings.eyeOffsetX * widthAfter) /
+          (settingsBefore.eyeOffsetX * widthBefore);
       expect(
-        (afterScale - sliderScale).abs() / sliderScale,
-        greaterThan(0.05),
+        afterScale,
+        closeTo(expectedSlider, 1e-6 * expectedSlider),
         reason:
-            'the slider edit should not be re-applied after an eye '
-            'position change: slider $sliderScale, now $afterScale',
+            '$when, the slider edit should be carried over: slider '
+            '$sliderScale, expected $expectedSlider, now $afterScale',
       );
+      sliderScale = expectedSlider;
     }
   }
 }

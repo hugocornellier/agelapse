@@ -15,6 +15,11 @@ class TransformCacheEntry {
   final int? sourceHeight;
   final int canvasWidth;
   final int canvasHeight;
+
+  /// Eye offsets the transform was computed under. Set on every row written
+  /// since manual re-projection exists; null on rows older than that.
+  final double? eyeOffsetX;
+  final double? eyeOffsetY;
   final double translateX;
   final double translateY;
   final double rotationDegrees;
@@ -49,6 +54,8 @@ class TransformCacheEntry {
     this.sourceHeight,
     required this.canvasWidth,
     required this.canvasHeight,
+    this.eyeOffsetX,
+    this.eyeOffsetY,
     required this.translateX,
     required this.translateY,
     required this.rotationDegrees,
@@ -85,6 +92,8 @@ class TransformCacheEntry {
       'sourceHeight': sourceHeight,
       'canvasWidth': canvasWidth,
       'canvasHeight': canvasHeight,
+      'eyeOffsetX': eyeOffsetX,
+      'eyeOffsetY': eyeOffsetY,
       'translateX': translateX,
       'translateY': translateY,
       'rotationDegrees': rotationDegrees,
@@ -122,6 +131,8 @@ class TransformCacheEntry {
       sourceHeight: map['sourceHeight'] as int?,
       canvasWidth: map['canvasWidth'] as int,
       canvasHeight: map['canvasHeight'] as int,
+      eyeOffsetX: (map['eyeOffsetX'] as num?)?.toDouble(),
+      eyeOffsetY: (map['eyeOffsetY'] as num?)?.toDouble(),
       translateX: (map['translateX'] as num).toDouble(),
       translateY: (map['translateY'] as num).toDouble(),
       rotationDegrees: (map['rotationDegrees'] as num).toDouble(),
@@ -158,6 +169,8 @@ class TransformCacheEntry {
     int? sourceHeight,
     int? canvasWidth,
     int? canvasHeight,
+    double? eyeOffsetX,
+    double? eyeOffsetY,
     double? translateX,
     double? translateY,
     double? rotationDegrees,
@@ -193,6 +206,8 @@ class TransformCacheEntry {
       sourceHeight: sourceHeight ?? this.sourceHeight,
       canvasWidth: canvasWidth ?? this.canvasWidth,
       canvasHeight: canvasHeight ?? this.canvasHeight,
+      eyeOffsetX: eyeOffsetX ?? this.eyeOffsetX,
+      eyeOffsetY: eyeOffsetY ?? this.eyeOffsetY,
       translateX: translateX ?? this.translateX,
       translateY: translateY ?? this.translateY,
       rotationDegrees: rotationDegrees ?? this.rotationDegrees,

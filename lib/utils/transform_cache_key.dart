@@ -14,6 +14,10 @@ class TransformCacheKey {
   static const String transformAlgorithmVersion =
       'face_stabilizer_transform_v1';
 
+  /// Bumps the manual reuse hash whenever the way a saved manual transform is
+  /// carried across settings (ManualTransformReprojection) changes meaning.
+  static const String manualReprojectionVersion = 'eye_goal_reprojection_v1';
+
   static String buildCacheKey({
     required int projectId,
     required String fingerprint,
@@ -60,10 +64,24 @@ class TransformCacheKey {
     });
   }
 
-  /// Hash of the four settings that must match for a manual transform to be
-  /// reusable across resolution changes: aspect ratio, eye offsets, and
-  /// orientation. If any of these differ the cache key changes → miss.
-  static String buildManualReuseHash({
+  /// Hash of what a manual transform still depends on once eye position,
+  /// aspect ratio and resolution changes are carried over by
+  /// ManualTransformReprojection: the project orientation. A key built with
+  /// it is the same under every other setting, so one manual row serves a
+  /// photo in a given orientation whatever the eye position or canvas.
+  static String buildManualReuseHash({required String projectOrientation}) {
+    return _sha256OfCanonicalJson({
+      'schemaVersion': schemaVersion,
+      'projectOrientation': projectOrientation,
+      'reprojection': manualReprojectionVersion,
+    });
+  }
+
+  /// The hash manual rows were keyed by before re-projection existed (2.7.0
+  /// and 2.8.0): aspect ratio, eye offsets and orientation. Such a row is
+  /// still found while those settings are what it was saved with, and is
+  /// re-keyed under [buildManualReuseHash] on its first hit.
+  static String buildLegacyManualReuseHash({
     required String aspectRatio,
     required double eyeOffsetX,
     required double eyeOffsetY,

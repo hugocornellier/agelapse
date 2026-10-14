@@ -47,6 +47,50 @@ void main() {
     });
   });
 
+  group('TransformCacheKey manual reuse hash', () {
+    test('depends on the orientation only', () {
+      final base = TransformCacheKey.buildManualReuseHash(
+        projectOrientation: 'portrait',
+      );
+
+      expect(
+        TransformCacheKey.buildManualReuseHash(projectOrientation: 'portrait'),
+        base,
+      );
+      expect(
+        TransformCacheKey.buildManualReuseHash(projectOrientation: 'landscape'),
+        isNot(base),
+      );
+    });
+
+    test('the legacy hash still encodes aspect ratio and eye offsets', () {
+      String legacy({
+        String aspectRatio = '16:9',
+        double eyeOffsetX = 0.16,
+        double eyeOffsetY = 0.38,
+        String projectOrientation = 'portrait',
+      }) {
+        return TransformCacheKey.buildLegacyManualReuseHash(
+          aspectRatio: aspectRatio,
+          eyeOffsetX: eyeOffsetX,
+          eyeOffsetY: eyeOffsetY,
+          projectOrientation: projectOrientation,
+        );
+      }
+
+      final base = legacy();
+      expect(legacy(), base);
+      expect(legacy(aspectRatio: '4:3'), isNot(base));
+      expect(legacy(eyeOffsetX: 0.2), isNot(base));
+      expect(legacy(eyeOffsetY: 0.42), isNot(base));
+      expect(legacy(projectOrientation: 'landscape'), isNot(base));
+      expect(
+        TransformCacheKey.buildManualReuseHash(projectOrientation: 'portrait'),
+        isNot(base),
+      );
+    });
+  });
+
   group('TransformCacheKey cache key', () {
     test('same identity payload produces same key', () {
       final a = _cacheKey();

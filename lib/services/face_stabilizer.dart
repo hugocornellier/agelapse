@@ -18,6 +18,7 @@ import '../utils/dir_utils.dart';
 import '../utils/format_decode_utils.dart';
 import '../utils/settings_utils.dart';
 import '../utils/stabilizer_utils/stabilizer_utils.dart';
+import '../utils/manual_transform_reprojection.dart';
 import '../utils/transform_cache_key.dart';
 import '../models/transform_cache_entry.dart';
 import 'database_helper.dart';
@@ -818,12 +819,28 @@ class FaceStabilizer {
 
     // Manual override takes precedence; survives settings changes.
     TransformCacheEntry? hit;
+    bool legacyManualHit = false;
     final manualCacheKey = _buildManualTransformCacheKey(
       fingerprint: fingerprint,
     );
     final manualHit = await DB.instance.getTransformCache(manualCacheKey);
+    final legacyManual = manualHit == null
+        ? await DB.instance.getTransformCache(
+            _buildManualTransformCacheKey(
+              fingerprint: fingerprint,
+              legacy: true,
+            ),
+          )
+        : null;
     if (manualHit != null && _isValidTransformCacheHit(manualHit)) {
       hit = manualHit;
+    } else if (legacyManual != null &&
+        _isValidTransformCacheHit(legacyManual)) {
+      // A row written before re-projection existed. Its key encodes the eye
+      // offsets and aspect ratio, so it is only found while those are still
+      // what it was saved with.
+      hit = legacyManual;
+      legacyManualHit = true;
     } else {
       final settingsHash = _buildTransformSettingsHash();
       final autoCacheKey = _buildTransformCacheKey(
@@ -842,36 +859,49 @@ class FaceStabilizer {
     }
 
     try {
-      // For manual entries stored at a different canvas size, scale the
-      // pixel-space values, but only when both dimensions changed by the same
-      // factor (pure resolution change). Custom resolutions can change width
-      // and height independently, which would corrupt the transform.
-      final double canvasScale;
-      if (hit.scope == TransformCacheKey.manualScope &&
-          (hit.canvasWidth != canvasWidth ||
-              hit.canvasHeight != canvasHeight)) {
-        final double wScale = canvasWidth / hit.canvasWidth;
-        final double hScale = canvasHeight / hit.canvasHeight;
-        const double tolerance = 0.001;
-        canvasScale = (wScale - hScale).abs() < tolerance ? wScale : double.nan;
-      } else {
-        canvasScale = 1.0;
-      }
-      if (canvasScale.isNaN) {
-        // Non-proportional canvas change (e.g. custom resolution with different
-        // aspect ratio). The stored transform cannot be rescaled safely.
-        transformCacheMisses++;
-        LogService.instance.log(
-          '[transform-cache] $timestamp: manual HIT rejected, '
-          'non-proportional canvas change '
-          '(${hit.canvasWidth}x${hit.canvasHeight} → '
-          '${canvasWidth}x$canvasHeight)',
+      final double renderTx;
+      final double renderTy;
+      final double renderRot;
+      final double renderSf;
+      if (hit.scope == TransformCacheKey.manualScope) {
+        // A manual row is re-projected from the eye offsets and canvas it was
+        // saved under onto the current ones. A legacy row carries no eye
+        // offsets; its key only matched because the current ones are what it
+        // was saved with. Under unchanged settings this is the saved edit.
+        final reprojected = ManualTransformReprojection.reproject(
+          rotationDegrees: hit.rotationDegrees,
+          scaleFactor: hit.scaleFactor,
+          translateX: hit.translateX,
+          translateY: hit.translateY,
+          savedCanvasWidth: hit.canvasWidth,
+          savedCanvasHeight: hit.canvasHeight,
+          savedEyeOffsetX: hit.eyeOffsetX ?? eyeOffsetX,
+          savedEyeOffsetY: hit.eyeOffsetY ?? eyeOffsetY,
+          canvasWidth: canvasWidth,
+          canvasHeight: canvasHeight,
+          eyeOffsetX: eyeOffsetX,
+          eyeOffsetY: eyeOffsetY,
         );
-        return null;
+        if (reprojected == null) {
+          transformCacheMisses++;
+          LogService.instance.log(
+            '[transform-cache] $timestamp: manual HIT rejected, cannot '
+            're-project from ${hit.canvasWidth}x${hit.canvasHeight} '
+            'offsets (${hit.eyeOffsetX}, ${hit.eyeOffsetY}) to '
+            '${canvasWidth}x$canvasHeight offsets ($eyeOffsetX, $eyeOffsetY)',
+          );
+          return null;
+        }
+        renderTx = reprojected.translateX;
+        renderTy = reprojected.translateY;
+        renderRot = reprojected.rotationDegrees;
+        renderSf = reprojected.scaleFactor;
+      } else {
+        renderTx = hit.translateX;
+        renderTy = hit.translateY;
+        renderRot = hit.rotationDegrees;
+        renderSf = hit.scaleFactor;
       }
-      final double renderTx = hit.translateX * canvasScale;
-      final double renderTy = hit.translateY * canvasScale;
-      final double renderSf = hit.scaleFactor * canvasScale;
 
       token?.throwIfCancelled();
       final baseBytes =
@@ -899,7 +929,7 @@ class FaceStabilizer {
       final imageBytesStabilized =
           await StabUtils.generateStabilizedImageBytesCVAsync(
             orientedBytes,
-            hit.rotationDegrees,
+            renderRot,
             renderSf,
             renderTx,
             renderTy,
@@ -929,12 +959,16 @@ class FaceStabilizer {
         hit.finalScore ?? 0.0,
         translateX: renderTx,
         translateY: renderTy,
-        rotationDegrees: hit.rotationDegrees,
+        rotationDegrees: renderRot,
         scaleFactor: renderSf,
       );
       if (!success) {
         transformCacheRenderFailures++;
         return StabilizationResult(success: false);
+      }
+
+      if (legacyManualHit) {
+        await _rekeyLegacyManualRow(hit, timestamp: timestamp);
       }
 
       unawaited(
@@ -945,9 +979,19 @@ class FaceStabilizer {
       );
 
       transformCacheHits++;
+      final bool reprojected =
+          hit.scope == TransformCacheKey.manualScope &&
+          (hit.canvasWidth != canvasWidth ||
+              hit.canvasHeight != canvasHeight ||
+              (hit.eyeOffsetX ?? eyeOffsetX) != eyeOffsetX ||
+              (hit.eyeOffsetY ?? eyeOffsetY) != eyeOffsetY);
+      final String detail = reprojected
+          ? 're-projected manual transform: tx=$renderTx ty=$renderTy '
+                'rot=$renderRot sc=$renderSf'
+          : 'rendered final transform';
       LogService.instance.log(
         '[transform-cache] $timestamp: HIT scope=${hit.scope} '
-        'orientation=${hit.sourceOrientation} (rendered final transform)',
+        'orientation=${hit.sourceOrientation} ($detail)',
       );
 
       return StabilizationResult(
@@ -962,7 +1006,7 @@ class FaceStabilizer {
         goalEyeDistance: hit.goalEyeDistance,
         translateX: renderTx,
         translateY: renderTy,
-        rotationDegrees: hit.rotationDegrees,
+        rotationDegrees: renderRot,
         scaleFactor: renderSf,
       );
     } on CancelledException {
@@ -971,6 +1015,38 @@ class FaceStabilizer {
       transformCacheRenderFailures++;
       LogService.instance.log('[transform-cache] $timestamp: render error: $e');
       return null;
+    }
+  }
+
+  /// Writes a manual row found under its 2.7.0/2.8.0 key again under the
+  /// current key, with the eye offsets it was saved with (the current ones,
+  /// since the legacy key encodes them), so the next settings change finds
+  /// it and re-projects it. Best effort: the legacy row stays and keeps
+  /// working under unchanged settings if this fails.
+  Future<void> _rekeyLegacyManualRow(
+    TransformCacheEntry hit, {
+    required String timestamp,
+  }) async {
+    try {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      await DB.instance.writeTransformCache(
+        hit.copyWith(
+          cacheKey: _buildManualTransformCacheKey(fingerprint: hit.fingerprint),
+          settingsHash: _buildManualReuseHash(),
+          eyeOffsetX: eyeOffsetX,
+          eyeOffsetY: eyeOffsetY,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      LogService.instance.log(
+        '[transform-cache] $timestamp: re-keyed legacy manual row '
+        'under the re-projection key',
+      );
+    } catch (e) {
+      LogService.instance.log(
+        '[transform-cache] $timestamp: re-keying legacy manual row failed: $e',
+      );
     }
   }
 
@@ -987,10 +1063,9 @@ class FaceStabilizer {
         return false;
       }
     }
-    // Manual entries: canvas dims may differ when only resolution changed.
-    // The reuse hash (baked into the cache key) already validated aspect ratio,
-    // eye offsets, and orientation; so a proportional rescale at render time
-    // is safe. No canvas-dim check here.
+    // Manual entries: canvas dims and eye offsets may differ from the current
+    // ones; the render path re-projects them (ManualTransformReprojection).
+    // No canvas-dim check here.
 
     if (hit.projectId != projectId) return false;
     if (hit.projectType != projectType) return false;
@@ -1082,27 +1157,38 @@ class FaceStabilizer {
     );
   }
 
-  // Manual entries key on the 4 reuse-invariants (aspect ratio, eye offsets,
-  // orientation) instead of the full settings hash. This makes the key stable
-  // across pure resolution changes while still invalidating when the user
-  // changes any of those four settings.
-  String _buildManualTransformCacheKey({required String fingerprint}) {
+  // Manual entries key on the project orientation only, not the full
+  // settings hash: a change of eye position, aspect ratio or resolution does
+  // not invalidate them, it re-projects them (ManualTransformReprojection) at
+  // render time. [legacy] builds the key rows carried from 2.7.0 and 2.8.0
+  // were written under, which also encoded the aspect ratio and eye offsets.
+  String _buildManualTransformCacheKey({
+    required String fingerprint,
+    bool legacy = false,
+  }) {
     return TransformCacheKey.buildCacheKey(
       projectId: projectId,
       fingerprint: fingerprint,
       projectType: projectType,
       modelVersion: StabUtils.detectorModelVersionForProjectType(projectType),
-      settingsHash: _buildManualReuseHash(),
+      settingsHash: legacy
+          ? _buildLegacyManualReuseHash()
+          : _buildManualReuseHash(),
       scope: TransformCacheKey.manualScope,
     );
   }
 
   String _buildManualReuseHash() => TransformCacheKey.buildManualReuseHash(
-    aspectRatio: aspectRatio,
-    eyeOffsetX: eyeOffsetX,
-    eyeOffsetY: eyeOffsetY,
     projectOrientation: projectOrientation!,
   );
+
+  String _buildLegacyManualReuseHash() =>
+      TransformCacheKey.buildLegacyManualReuseHash(
+        aspectRatio: aspectRatio,
+        eyeOffsetX: eyeOffsetX,
+        eyeOffsetY: eyeOffsetY,
+        projectOrientation: projectOrientation!,
+      );
 
   bool _hasFiniteTransform(StabilizationResult result) {
     final values = [
@@ -1178,6 +1264,8 @@ class FaceStabilizer {
           faceCount: faceCount,
           canvasWidth: canvasWidth,
           canvasHeight: canvasHeight,
+          eyeOffsetX: eyeOffsetX,
+          eyeOffsetY: eyeOffsetY,
           translateX: result.translateX!,
           translateY: result.translateY!,
           rotationDegrees: result.rotationDegrees!,
@@ -1254,6 +1342,8 @@ class FaceStabilizer {
           faceCount: null,
           canvasWidth: canvasWidth,
           canvasHeight: canvasHeight,
+          eyeOffsetX: eyeOffsetX,
+          eyeOffsetY: eyeOffsetY,
           translateX: translateX,
           translateY: translateY,
           rotationDegrees: rotationDegrees,

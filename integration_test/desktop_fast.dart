@@ -28,6 +28,7 @@ import 'linked_source_sync_test.dart' as linked_source_sync_tests;
 import 'import_test.dart' as import_tests;
 import 'import_extension_case_test.dart' as import_extension_case_tests;
 import 'manual_face_pick_test.dart' as manual_face_pick_tests;
+import 'manual_edit_reprojection_test.dart' as manual_edit_reprojection_tests;
 import 'gallery_test.dart' as gallery_tests;
 
 void main() {
@@ -49,6 +50,7 @@ void main() {
   import_tests.main();
   import_extension_case_tests.main();
   manual_face_pick_tests.main();
+  manual_edit_reprojection_tests.main();
   gallery_tests.main();
   // image_format_test runs last: libheif DLL teardown can crash the process
   // on Windows, so all other tests must complete first.
