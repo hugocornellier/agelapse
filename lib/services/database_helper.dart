@@ -803,6 +803,21 @@ class DB {
     );
   }
 
+  /// The fingerprint stored on a photo row, or null when the row has none
+  /// (or does not exist).
+  Future<String?> getPhotoFingerprint(String timestamp, int projectId) async {
+    final db = await database;
+    final rows = await db.query(
+      photoTable,
+      columns: ['fingerprint'],
+      where: _photoWhereClause,
+      whereArgs: [timestamp, projectId],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return rows.first['fingerprint'] as String?;
+  }
+
   Future<void> _ensurePhotoTransformColumns() async {
     final db = await database;
     final cols = await db.rawQuery('PRAGMA table_info($photoTable)');
