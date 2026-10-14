@@ -249,7 +249,7 @@ class StabilizationService {
         StabilizationProgress.preparing(projectId: projectId),
       );
 
-      await WakelockPlus.enable();
+      await _setWakelock(true);
 
       await IsolatePool.instance.initialize();
       _currentSettings = await StabilizationSettings.load(projectId);
@@ -1071,6 +1071,26 @@ class StabilizationService {
     _benchmark.reset();
   }
 
+  /// Holds or releases the screen wake lock for a run. Best effort: on Linux
+  /// the plugin asks xdg-desktop-portal over D-Bus, and a desktop without the
+  /// portal (a bare window manager, or CI under xvfb) answers with a D-Bus
+  /// error. Not keeping the screen awake must not fail the stabilization, so
+  /// the error is logged and the run goes on.
+  Future<void> _setWakelock(bool enabled) async {
+    try {
+      if (enabled) {
+        await WakelockPlus.enable();
+      } else {
+        await WakelockPlus.disable();
+      }
+    } catch (e) {
+      LogService.instance.log(
+        'StabilizationService: wake lock ${enabled ? 'enable' : 'disable'} '
+        'failed, continuing without it: $e',
+      );
+    }
+  }
+
   /// Release resources held by the run identified by [myGen].
   ///
   /// Each call captures its run's generation at [startStabilization] entry
@@ -1085,7 +1105,7 @@ class StabilizationService {
     _currentStabilizer = null;
     _currentToken = null;
     _currentSettings = null;
-    await WakelockPlus.disable();
+    await _setWakelock(false);
     if (myGen != _currentGen) return;
 
     // Reset to idle after a short delay to allow UI to update
