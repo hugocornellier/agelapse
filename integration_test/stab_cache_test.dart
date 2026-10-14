@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:agelapse/main.dart' as app;
 import 'package:agelapse/models/transform_cache_entry.dart';
 import 'package:agelapse/services/database_helper.dart';
 import 'package:agelapse/services/database_import_ffi.dart';
@@ -52,8 +51,7 @@ void main() {
     testWidgets(
       'writeFaceDetectionCache with 2 faces returns both with correct coordinates',
       (tester) async {
-        app.main();
-        await tester.pump(const Duration(seconds: 2));
+        await launchApp(tester);
 
         const ts = '1000000001';
         const fingerprint = '12345:abcdef1234567890abcdef1234567890';
@@ -121,8 +119,7 @@ void main() {
     testWidgets(
       'writeNoFacesSentinel returns orientation=no_faces and empty faces',
       (tester) async {
-        app.main();
-        await tester.pump(const Duration(seconds: 2));
+        await launchApp(tester);
 
         const ts = '1000000002';
         const fingerprint = '99999:ffffffffffffffffffffffffffffffff';
@@ -151,8 +148,7 @@ void main() {
     testWidgets('getFaceDetectionCache returns null on wrong modelVersion', (
       tester,
     ) async {
-      app.main();
-      await tester.pump(const Duration(seconds: 2));
+      await launchApp(tester);
 
       const ts = '1000000003';
       const fingerprint = '11111:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
@@ -189,8 +185,7 @@ void main() {
     testWidgets('getFaceDetectionCache returns null on wrong fingerprint', (
       tester,
     ) async {
-      app.main();
-      await tester.pump(const Duration(seconds: 2));
+      await launchApp(tester);
 
       const ts = '1000000004';
       const fingerprint = '22222:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
@@ -228,8 +223,7 @@ void main() {
     testWidgets(
       'clearFaceDetectionCacheForProject deletes all rows for that project only',
       (tester) async {
-        app.main();
-        await tester.pump(const Duration(seconds: 2));
+        await launchApp(tester);
 
         const fp = '33333:cccccccccccccccccccccccccccccccc';
         const mv = 'v1';
@@ -329,8 +323,7 @@ void main() {
     testWidgets(
       'second write for same (timestamp, projectId) replaces first (idempotent)',
       (tester) async {
-        app.main();
-        await tester.pump(const Duration(seconds: 2));
+        await launchApp(tester);
 
         const ts = '3000000001';
         const fp = '44444:dddddddddddddddddddddddddddddddd';
@@ -420,8 +413,7 @@ void main() {
     testWidgets('writeTransformCache inserts and reads an entry', (
       tester,
     ) async {
-      app.main();
-      await tester.pump(const Duration(seconds: 2));
+      await launchApp(tester);
 
       final entry = _makeTransformEntry(projectId!);
 
@@ -445,8 +437,7 @@ void main() {
     testWidgets(
       'writeTransformCache upserts by cacheKey and preserves id/createdAt',
       (tester) async {
-        app.main();
-        await tester.pump(const Duration(seconds: 2));
+        await launchApp(tester);
 
         final entry = _makeTransformEntry(projectId!);
         await DB.instance.writeTransformCache(entry);
@@ -477,8 +468,7 @@ void main() {
     testWidgets(
       'clearTransformCacheForFingerprint respects scope and settings',
       (tester) async {
-        app.main();
-        await tester.pump(const Duration(seconds: 2));
+        await launchApp(tester);
 
         final autoA = _makeTransformEntry(
           projectId!,
@@ -526,8 +516,7 @@ void main() {
     testWidgets('deleteProjectCascade removes transform cache rows', (
       tester,
     ) async {
-      app.main();
-      await tester.pump(const Duration(seconds: 2));
+      await launchApp(tester);
 
       final entry = _makeTransformEntry(projectId!);
       await DB.instance.writeTransformCache(entry);
@@ -541,8 +530,7 @@ void main() {
     testWidgets('multi-face transform cache entry is stored for diagnostics', (
       tester,
     ) async {
-      app.main();
-      await tester.pump(const Duration(seconds: 2));
+      await launchApp(tester);
 
       final entry = _makeTransformEntry(projectId!, faceCount: 2);
       await DB.instance.writeTransformCache(entry);
@@ -682,8 +670,7 @@ void main() {
     testWidgets(
       'bit-for-bit restab equivalence: cache=off vs cache=on produce identical stab values',
       (tester) async {
-        app.main();
-        await tester.pump(const Duration(seconds: 3));
+        await launchApp(tester);
 
         await preloadFixtures();
         if (fixturesUnavailable) {
@@ -841,8 +828,7 @@ void main() {
     testWidgets(
       'multi-face transform cache entry is ignored and falls through',
       (tester) async {
-        app.main();
-        await tester.pump(const Duration(seconds: 3));
+        await launchApp(tester);
 
         projectId = await createFaceProject();
 
@@ -931,8 +917,7 @@ void main() {
     testWidgets(
       'no-face sentinel: solid-color frame writes sentinel, re-stab hits it',
       (tester) async {
-        app.main();
-        await tester.pump(const Duration(seconds: 3));
+        await launchApp(tester);
 
         projectId = await createFaceProject();
 

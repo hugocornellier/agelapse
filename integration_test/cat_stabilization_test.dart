@@ -2,7 +2,6 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:agelapse/main.dart' as app;
 import 'package:agelapse/utils/stabilizer_utils/stabilizer_utils.dart';
 import 'package:agelapse/utils/test_mode.dart' as test_config;
 
@@ -21,8 +20,7 @@ void main() {
 
   /// Helper to initialize app and load fixtures (must be called after app.main())
   Future<bool> initAppAndFixtures(WidgetTester tester) async {
-    app.main();
-    await tester.pump(const Duration(seconds: 3));
+    await launchApp(tester);
 
     // Load fixtures after app is initialized (required for rootBundle on mobile)
     if (!fixturesLoaded) {

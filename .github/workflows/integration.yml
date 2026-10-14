@@ -285,7 +285,7 @@ jobs:
           api-level: 29
           arch: x86_64
           target: default
-          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -memory 2048
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -memory 4096
           disable-animations: true
           script: bash tool/run_android_integration.sh
 

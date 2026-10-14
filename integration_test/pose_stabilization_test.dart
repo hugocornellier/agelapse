@@ -2,7 +2,6 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:agelapse/main.dart' as app;
 import 'package:agelapse/utils/stabilizer_utils/stabilizer_utils.dart';
 import 'package:agelapse/utils/test_mode.dart' as test_config;
 import 'package:pose_detection/pose_detection.dart';
@@ -24,8 +23,7 @@ void main() {
   });
 
   Future<bool> initAppAndFixtures(WidgetTester tester) async {
-    app.main();
-    await tester.pump(const Duration(seconds: 3));
+    await launchApp(tester);
 
     if (!fixturesLoaded) {
       await preloadFixtures();

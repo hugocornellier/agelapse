@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:agelapse/main.dart' as app;
 import 'package:agelapse/models/video_codec.dart';
 import 'package:agelapse/services/database_helper.dart';
 import 'package:agelapse/services/database_import_ffi.dart';
@@ -58,8 +57,7 @@ void main() {
     required int fps,
     bool dateStamp = false,
   }) async {
-    app.main();
-    await pumpUntilAppReady(tester);
+    await launchApp(tester);
     final id = await DB.instance.addProject(
       'Frame timing $fps fps',
       'face',

@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:agelapse/main.dart' as app;
 import 'package:agelapse/models/video_codec.dart';
 import 'package:agelapse/services/crash_loop_guard.dart';
 import 'package:agelapse/services/database_helper.dart';
@@ -79,8 +78,7 @@ void main() {
     required int photoCount,
     required bool stabilized,
   }) async {
-    app.main();
-    await pumpUntilAppReady(tester);
+    await launchApp(tester);
     final id = await DB.instance.addProject(
       'Crash guard',
       'face',

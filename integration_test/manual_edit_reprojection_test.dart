@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:math' as math;
 
-import 'package:agelapse/main.dart' as app;
 import 'package:agelapse/models/transform_cache_entry.dart';
 import 'package:agelapse/services/database_helper.dart';
 import 'package:agelapse/services/database_import_ffi.dart';
@@ -86,8 +85,7 @@ void main() {
       'an edit is re-projected across eye position, aspect ratio and custom '
       'canvas changes, and returns exactly when the settings do',
       (tester) async {
-        app.main();
-        await pumpUntilAppReady(tester);
+        await launchApp(tester);
         if (fixturesUnavailable) {
           markTestSkipped('Test fixtures not available: $fixtureLoadError');
           return;
@@ -186,8 +184,7 @@ void main() {
 
     testWidgets('an edit saved by 2.7.0 or 2.8.0 is still found, re-keyed, and '
         'carried across the next eye position change', (tester) async {
-      app.main();
-      await pumpUntilAppReady(tester);
+      await launchApp(tester);
       if (fixturesUnavailable) {
         markTestSkipped('Test fixtures not available: $fixtureLoadError');
         return;

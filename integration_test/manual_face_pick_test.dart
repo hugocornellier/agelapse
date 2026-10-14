@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:math' as math;
 
-import 'package:agelapse/main.dart' as app;
 import 'package:agelapse/models/face_detection_cache_result.dart';
 import 'package:agelapse/services/database_helper.dart';
 import 'package:agelapse/services/database_import_ffi.dart';
@@ -184,11 +183,7 @@ void _registerScenarios(List<_Scenario> scenarios) {
       '${scenario.name}: the picked ${scenario.subject} is still used after '
       '${scenario.change.label}',
       (tester) async {
-        app.main();
-        // A fixed pump is not enough on cold CI runners (see test_utils):
-        // the app's startup work was still running when the service was
-        // asked to stabilize, and the run failed.
-        await pumpUntilAppReady(tester);
+        await launchApp(tester);
 
         if (fixturesUnavailable) {
           markTestSkipped('Test fixtures not available: $fixtureLoadError');

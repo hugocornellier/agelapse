@@ -5,7 +5,6 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:agelapse/main.dart' as app;
 import 'package:agelapse/services/database_helper.dart';
 import 'package:agelapse/services/database_import_ffi.dart';
 import 'package:agelapse/utils/dir_utils.dart';
@@ -61,8 +60,7 @@ void main() {
     testWidgets(
       'Test A: JPEG with EXIF extracts Tier-1 date and produces raw + thumbnail + DB record',
       (tester) async {
-        app.main();
-        await tester.pump(const Duration(seconds: 2));
+        await launchApp(tester);
 
         if (fixturesUnavailable) {
           markTestSkipped('Test fixtures not available: $fixtureLoadError');
@@ -154,8 +152,7 @@ void main() {
     testWidgets('Test B: BMP named 2024-03-15 uses filename date (Tier 2)', (
       tester,
     ) async {
-      app.main();
-      await tester.pump(const Duration(seconds: 2));
+      await launchApp(tester);
 
       if (fixturesUnavailable) {
         markTestSkipped('Test fixtures not available: $fixtureLoadError');
@@ -220,8 +217,7 @@ void main() {
     testWidgets(
       'Test C: BMP with no date cue falls back to file modified date (Tier 3)',
       (tester) async {
-        app.main();
-        await tester.pump(const Duration(seconds: 2));
+        await launchApp(tester);
 
         if (fixturesUnavailable) {
           markTestSkipped('Test fixtures not available: $fixtureLoadError');
@@ -310,8 +306,7 @@ void main() {
     testWidgets(
       'Test D: duplicate detection rejects exact duplicate and accepts different-size same-timestamp',
       (tester) async {
-        app.main();
-        await tester.pump(const Duration(seconds: 2));
+        await launchApp(tester);
 
         if (fixturesUnavailable) {
           markTestSkipped('Test fixtures not available: $fixtureLoadError');
@@ -486,8 +481,7 @@ void main() {
     testWidgets(
       'Test E: imports JPG, PNG, WebP, BMP and produces records + files for each',
       (tester) async {
-        app.main();
-        await tester.pump(const Duration(seconds: 2));
+        await launchApp(tester);
 
         if (fixturesUnavailable) {
           markTestSkipped('Test fixtures not available: $fixtureLoadError');
@@ -573,8 +567,7 @@ void main() {
     testWidgets(
       'Test F: ZIP containing 3 JPEGs imports all entries (all platforms)',
       (tester) async {
-        app.main();
-        await tester.pump(const Duration(seconds: 2));
+        await launchApp(tester);
 
         if (fixturesUnavailable) {
           markTestSkipped('Test fixtures not available: $fixtureLoadError');
@@ -655,8 +648,7 @@ void main() {
     testWidgets(
       'Test G: exported ZIP re-imports into a fresh project (round-trip)',
       (tester) async {
-        app.main();
-        await tester.pump(const Duration(seconds: 2));
+        await launchApp(tester);
 
         if (fixturesUnavailable) {
           markTestSkipped('Test fixtures not available: $fixtureLoadError');
@@ -761,8 +753,7 @@ void main() {
     testWidgets('Test H: ZIP with only filtered entries imports zero photos', (
       tester,
     ) async {
-      app.main();
-      await tester.pump(const Duration(seconds: 2));
+      await launchApp(tester);
 
       final ts = DateTime.now().millisecondsSinceEpoch;
       testProjectId = await DB.instance.addProject('Import Test H', 'face', ts);
@@ -819,8 +810,7 @@ void main() {
     testWidgets('Test I: ZIP with UTF-8 entry names imports correctly', (
       tester,
     ) async {
-      app.main();
-      await tester.pump(const Duration(seconds: 2));
+      await launchApp(tester);
 
       if (fixturesUnavailable) {
         markTestSkipped('Test fixtures not available: $fixtureLoadError');
@@ -873,8 +863,7 @@ void main() {
     testWidgets('Test J: truncated ZIP imports zero photos without crashing', (
       tester,
     ) async {
-      app.main();
-      await tester.pump(const Duration(seconds: 2));
+      await launchApp(tester);
 
       if (fixturesUnavailable) {
         markTestSkipped('Test fixtures not available: $fixtureLoadError');

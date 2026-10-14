@@ -4,7 +4,6 @@ import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:agelapse/main.dart' as app;
 import 'package:agelapse/models/video_codec.dart';
 import 'package:agelapse/screens/create_page.dart';
 import 'package:agelapse/services/database_helper.dart';
@@ -59,8 +58,7 @@ void main() {
   /// page for it, then returns the page's [PLAYER] log lines once the frame
   /// check (and any fallback) has run.
   Future<String> playOnCreatePage(WidgetTester tester) async {
-    app.main();
-    await pumpUntilAppReady(tester);
+    await launchApp(tester);
 
     final id = await DB.instance.addProject(
       'Video render test',
