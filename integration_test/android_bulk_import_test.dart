@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:agelapse/main.dart' as app;
 import 'package:agelapse/services/database_helper.dart';
 import 'package:agelapse/services/database_import_ffi.dart';
 import 'package:agelapse/services/stabilization_service.dart';
@@ -143,8 +142,7 @@ void main() {
       unawaited(StabilizationService.instance.startStabilization(projectId));
     } else {
       // Open the project like a user: the app stabilizes and compiles it.
-      app.main();
-      await pumpUntilAppReady(tester);
+      await launchApp(tester);
     }
 
     final orientation = await SettingsUtil.loadProjectOrientation('$projectId');

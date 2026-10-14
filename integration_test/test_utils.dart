@@ -4,6 +4,17 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:agelapse/main.dart' as app;
+
+/// Launches the app and waits until it is ready, as every integration test
+/// should. Launching on a fixed timer instead (`tester.pump(const
+/// Duration(seconds: 2))`) has been a source of flaky failures on cold CI
+/// runners, see [pumpUntilAppReady] below. A unit test
+/// (test/integration_test_launch_guard_test.dart) keeps suites on this helper.
+Future<void> launchApp(WidgetTester tester) async {
+  app.main();
+  await pumpUntilAppReady(tester);
+}
 
 /// Waits for the app to be fully ready after [app.main()] is called.
 ///

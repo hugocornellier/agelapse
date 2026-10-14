@@ -215,6 +215,8 @@ class DB {
           "sourceHeight INTEGER, "
           "canvasWidth INTEGER NOT NULL, "
           "canvasHeight INTEGER NOT NULL, "
+          "eyeOffsetX REAL, "
+          "eyeOffsetY REAL, "
           "translateX REAL NOT NULL, "
           "translateY REAL NOT NULL, "
           "rotationDegrees REAL NOT NULL, "
@@ -242,6 +244,7 @@ class DB {
 
     await _ensurePhotoTransformColumns();
     await _ensureFaceDetectionCacheColumns();
+    await _ensureTransformCacheColumns();
     await _dropLegacyTransformCacheHitCount();
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_photos_project_ts ON $photoTable(projectID, timestamp);',
@@ -803,6 +806,21 @@ class DB {
     );
   }
 
+  /// The fingerprint stored on a photo row, or null when the row has none
+  /// (or does not exist).
+  Future<String?> getPhotoFingerprint(String timestamp, int projectId) async {
+    final db = await database;
+    final rows = await db.query(
+      photoTable,
+      columns: ['fingerprint'],
+      where: _photoWhereClause,
+      whereArgs: [timestamp, projectId],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return rows.first['fingerprint'] as String?;
+  }
+
   Future<void> _ensurePhotoTransformColumns() async {
     final db = await database;
     final cols = await db.rawQuery('PRAGMA table_info($photoTable)');
@@ -853,6 +871,22 @@ class DB {
       await db.execute(
         'ALTER TABLE $faceDetectionCacheTable ADD COLUMN selectedFaceIndex INTEGER;',
       );
+    }
+  }
+
+  /// Adds the eye offset columns a manual transform is re-projected from
+  /// (ManualTransformReprojection) to databases created before they existed.
+  Future<void> _ensureTransformCacheColumns() async {
+    final db = await database;
+    final cols = await db.rawQuery('PRAGMA table_info($transformCacheTable)');
+    bool has(String name) => cols.any((c) => c['name'] == name);
+
+    for (final column in const ['eyeOffsetX', 'eyeOffsetY']) {
+      if (!has(column)) {
+        await db.execute(
+          'ALTER TABLE $transformCacheTable ADD COLUMN $column REAL;',
+        );
+      }
     }
   }
 

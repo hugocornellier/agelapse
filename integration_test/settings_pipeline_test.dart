@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:agelapse/main.dart' as app;
 import 'package:agelapse/models/video_codec.dart';
 import 'package:agelapse/models/video_background.dart';
 import 'package:agelapse/services/database_helper.dart';
@@ -112,8 +111,7 @@ void main() {
     testWidgets(
       'Test A: codec written to DB is read and used during compilation',
       (tester) async {
-        app.main();
-        await tester.pump(const Duration(seconds: 2));
+        await launchApp(tester);
 
         final ts = DateTime.now().millisecondsSinceEpoch;
         testProjectId = await DB.instance.addProject(
@@ -172,8 +170,7 @@ void main() {
     testWidgets(
       'Test B: framerate setting is read from DB during compilation',
       (tester) async {
-        app.main();
-        await tester.pump(const Duration(seconds: 2));
+        await launchApp(tester);
 
         final ts = DateTime.now().millisecondsSinceEpoch;
         testProjectId = await DB.instance.addProject(
@@ -256,8 +253,7 @@ void main() {
     testWidgets('Test C: video_resolution setting is used during compilation', (
       tester,
     ) async {
-      app.main();
-      await tester.pump(const Duration(seconds: 2));
+      await launchApp(tester);
 
       final ts = DateTime.now().millisecondsSinceEpoch;
       testProjectId = await DB.instance.addProject(
@@ -341,8 +337,7 @@ void main() {
     testWidgets(
       'Test D: changing one project\'s settings does not affect another',
       (tester) async {
-        app.main();
-        await tester.pump(const Duration(seconds: 2));
+        await launchApp(tester);
 
         final ts = DateTime.now().millisecondsSinceEpoch;
         testProjectId = await DB.instance.addProject(
@@ -468,8 +463,7 @@ void main() {
     testWidgets(
       'Test E: solid background setting produces valid H.264 output',
       (tester) async {
-        app.main();
-        await tester.pump(const Duration(seconds: 2));
+        await launchApp(tester);
 
         final ts = DateTime.now().millisecondsSinceEpoch;
         testProjectId = await DB.instance.addProject(
@@ -542,8 +536,7 @@ void main() {
           return;
         }
 
-        app.main();
-        await tester.pump(const Duration(seconds: 2));
+        await launchApp(tester);
 
         final ts = DateTime.now().millisecondsSinceEpoch;
         testProjectId = await DB.instance.addProject(

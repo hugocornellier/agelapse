@@ -4,7 +4,6 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:agelapse/main.dart' as app;
 import 'package:agelapse/services/database_helper.dart';
 import 'package:agelapse/services/database_import_ffi.dart';
 import 'package:agelapse/services/raw_photo_extension_repair.dart';
@@ -68,8 +67,7 @@ void main() {
       testWidgets(
         '${sample.pickedName} is saved where every later lookup expects it',
         (tester) async {
-          app.main();
-          await tester.pump(const Duration(seconds: 2));
+          await launchApp(tester);
 
           if (fixturesUnavailable) {
             markTestSkipped('Test fixtures not available: $fixtureLoadError');
@@ -166,8 +164,7 @@ void main() {
       'a raw file an older version saved with an upper-case extension is '
       'renamed at startup and queued for stabilization',
       (tester) async {
-        app.main();
-        await tester.pump(const Duration(seconds: 2));
+        await launchApp(tester);
 
         if (fixturesUnavailable) {
           markTestSkipped('Test fixtures not available: $fixtureLoadError');

@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:agelapse/main.dart' as app;
 import 'package:agelapse/services/database_helper.dart';
 import 'package:agelapse/services/database_import_ffi.dart';
 import 'package:agelapse/utils/dir_utils.dart';
@@ -132,8 +131,7 @@ void main() {
       // Create 3 photos for this project
       await createTestPhotos(testProjectId!, 3);
 
-      app.main();
-      await pumpUntilAppReady(tester);
+      await launchApp(tester);
 
       // Navigate to gallery tab (collections icon)
       final galleryIcon = find.byIcon(Icons.collections);
@@ -176,8 +174,7 @@ void main() {
 
       await createTestPhotos(testProjectId!, 3);
 
-      app.main();
-      await pumpUntilAppReady(tester);
+      await launchApp(tester);
 
       // Navigate to gallery tab
       final galleryIcon = find.byIcon(Icons.collections);
@@ -256,8 +253,7 @@ void main() {
 
       await createTestPhotos(testProjectId!, 5);
 
-      app.main();
-      await pumpUntilAppReady(tester);
+      await launchApp(tester);
 
       final galleryIcon = find.byIcon(Icons.collections);
       if (galleryIcon.evaluate().isEmpty) return;
@@ -301,8 +297,7 @@ void main() {
 
     testWidgets('Test D: deleteImage soft-deletes; restoreImage recovers; '
         'permanentlyDeleteImage removes row and files', (tester) async {
-      app.main();
-      await pumpUntilAppReady(tester);
+      await launchApp(tester);
 
       final ts = DateTime.now().millisecondsSinceEpoch;
       testProjectId = await DB.instance.addProject(
@@ -481,8 +476,7 @@ void main() {
     testWidgets(
       'Test E: bulk soft-delete then permanent delete leaves no files or DB records',
       (tester) async {
-        app.main();
-        await pumpUntilAppReady(tester);
+        await launchApp(tester);
 
         final ts = DateTime.now().millisecondsSinceEpoch;
         testProjectId = await DB.instance.addProject(
@@ -597,8 +591,7 @@ void main() {
     testWidgets(
       'Test F: soft-deleting a photo from project A does not affect project B',
       (tester) async {
-        app.main();
-        await pumpUntilAppReady(tester);
+        await launchApp(tester);
 
         final ts = DateTime.now().millisecondsSinceEpoch;
         testProjectId = await DB.instance.addProject(
@@ -685,8 +678,7 @@ void main() {
     testWidgets(
       'Test G: purgeExpiredDeletedImages removes photos older than retention window',
       (tester) async {
-        app.main();
-        await pumpUntilAppReady(tester);
+        await launchApp(tester);
 
         final ts = DateTime.now().millisecondsSinceEpoch;
         testProjectId = await DB.instance.addProject(
@@ -767,8 +759,7 @@ void main() {
     testWidgets(
       'Test H: soft-deleting the guide photo resets the guide setting to "not set"',
       (tester) async {
-        app.main();
-        await pumpUntilAppReady(tester);
+        await launchApp(tester);
 
         final ts = DateTime.now().millisecondsSinceEpoch;
         testProjectId = await DB.instance.addProject(
@@ -853,8 +844,7 @@ void main() {
     testWidgets(
       'Test I: soft-delete writes linked-source tombstone; restore removes it',
       (tester) async {
-        app.main();
-        await pumpUntilAppReady(tester);
+        await launchApp(tester);
 
         final ts = DateTime.now().millisecondsSinceEpoch;
         testProjectId = await DB.instance.addProject(
@@ -933,8 +923,7 @@ void main() {
       'Test J: findPhotoByFingerprint returns null when only match is '
       'soft-deleted, so picker re-import is not blocked',
       (tester) async {
-        app.main();
-        await pumpUntilAppReady(tester);
+        await launchApp(tester);
 
         final ts = DateTime.now().millisecondsSinceEpoch;
         testProjectId = await DB.instance.addProject(

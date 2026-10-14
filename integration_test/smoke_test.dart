@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:agelapse/main.dart' as app;
 import 'package:agelapse/services/database_helper.dart';
 import 'package:agelapse/services/database_import_ffi.dart';
 import 'package:agelapse/utils/test_mode.dart' as test_config;
@@ -39,8 +38,7 @@ void main() {
         await _clearTestData();
 
         // Launch the app
-        app.main();
-        await pumpUntilAppReady(tester);
+        await launchApp(tester);
 
         // Verify app launched; should show some kind of app structure
         // On mobile, the app may take longer to initialize
@@ -68,8 +66,7 @@ void main() {
         // Clear data for fresh state
         await _clearTestData();
 
-        app.main();
-        await pumpUntilAppReady(tester);
+        await launchApp(tester);
 
         // Step 1: On fresh install, tap "CREATE PROJECT" or "CREATE FIRST PROJECT"
         final createProjectButton = find.text('CREATE PROJECT');
@@ -100,8 +97,7 @@ void main() {
         // Clear data for fresh state
         await _clearTestData();
 
-        app.main();
-        await pumpUntilAppReady(tester);
+        await launchApp(tester);
 
         // Navigate through the fresh install flow
         // Step 1: CREATE PROJECT / CREATE FIRST PROJECT
@@ -149,8 +145,7 @@ void main() {
         // Create a project and set as default
         await _ensureProjectExists(setAsDefault: true);
 
-        app.main();
-        await pumpUntilAppReady(tester);
+        await launchApp(tester);
 
         // With a default project, should go directly to main navigation
         // Look for any of the bottom navigation icons
@@ -200,8 +195,7 @@ void main() {
       testWidgets('can navigate between all tabs', (tester) async {
         await _ensureProjectExists(setAsDefault: true);
 
-        app.main();
-        await pumpUntilAppReady(tester);
+        await launchApp(tester);
 
         // Test tapping each tab icon that exists
         final tabIcons = [
@@ -246,8 +240,7 @@ void main() {
       testWidgets('gallery page renders without crash', (tester) async {
         await _ensureProjectExists(setAsDefault: true);
 
-        app.main();
-        await pumpUntilAppReady(tester);
+        await launchApp(tester);
 
         // Navigate to gallery tab
         final galleryIcon = find.byIcon(Icons.collections);
@@ -273,8 +266,7 @@ void main() {
       testWidgets('project page renders without crash', (tester) async {
         await _ensureProjectExists(setAsDefault: true);
 
-        app.main();
-        await pumpUntilAppReady(tester);
+        await launchApp(tester);
         await pumpFor(tester, const Duration(seconds: 2));
 
         // Navigate to home/project tab
@@ -301,8 +293,7 @@ void main() {
       testWidgets('info page renders without crash', (tester) async {
         await _ensureProjectExists(setAsDefault: true);
 
-        app.main();
-        await pumpUntilAppReady(tester);
+        await launchApp(tester);
         await pumpFor(tester, const Duration(seconds: 2));
 
         // Navigate to info tab
