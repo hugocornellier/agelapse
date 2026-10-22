@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:intl/intl.dart';
 import 'package:agelapse/utils/export_naming_utils.dart';
 
 void main() {
@@ -126,6 +128,21 @@ void main() {
     });
 
     group('formatTimestamp', () {
+      test('keeps ASCII export timestamps under an Arabic locale', () async {
+        await initializeDateFormatting('ar');
+        final dt = DateTime(2026, 1, 5, 9, 5, 3);
+
+        final result = Intl.withLocale(
+          'ar',
+          () => ExportNamingUtils.generateVideoFilename(
+            projectName: 'Test',
+            timestamp: dt,
+          ),
+        );
+
+        expect(result, 'Test_AgeLapse_2026-01-05_090503.mp4');
+      });
+
       test('formats timestamp correctly', () {
         final dt = DateTime(2026, 1, 24, 14, 30, 52);
         expect(ExportNamingUtils.formatTimestamp(dt), '2026-01-24_143052');
