@@ -129,11 +129,11 @@ void main() {
 
     group('formatTimestamp', () {
       test('keeps ASCII export timestamps under an Arabic locale', () async {
-        await initializeDateFormatting('ar');
+        await initializeDateFormatting('ar_EG');
         final dt = DateTime(2026, 1, 5, 9, 5, 3);
 
         final result = Intl.withLocale(
-          'ar',
+          'ar_EG',
           () => ExportNamingUtils.generateVideoFilename(
             projectName: 'Test',
             timestamp: dt,
