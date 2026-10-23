@@ -97,6 +97,7 @@ class ExportNamingUtils {
   /// Formats timestamp for filename inclusion.
   /// Format: YYYY-MM-DD_HHmmss
   static String formatTimestamp(DateTime dt) {
-    return DateFormat('yyyy-MM-dd_HHmmss').format(dt);
+    // Export filenames use a stable ASCII format regardless of the UI locale.
+    return DateFormat('yyyy-MM-dd_HHmmss', 'en_US').format(dt);
   }
 }
