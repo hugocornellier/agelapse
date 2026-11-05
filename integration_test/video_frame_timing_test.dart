@@ -159,16 +159,17 @@ void main() {
           'frame duration should be exactly 1/$outFps s '
           '(delta $delta, timescale ${timing.timescale})',
     );
-    // The bundled Windows FFmpeg (8.0.1 with libx264) declares the track one
-    // frame longer than its samples at 3 photos/s: 80 samples of 1024 at a
-    // timescale of 12288, but an mdhd duration of 82944. The samples are
-    // exact, and the declared length is exact on Linux (FFmpeg 6.1.1), macOS,
-    // iOS and Android, and with FFmpeg 9.0.1 and libx264, so only Windows
-    // gets one frame of slack until the cause in that build is found.
+    // FFmpeg 8.0.1 with libx264 declares the track one frame longer than its
+    // samples at 3 photos/s: 80 samples of 1024 at a timescale of 12288, but an
+    // mdhd duration of 82944. Both the bundled Windows build and Ubuntu 26.04's
+    // system FFmpeg do this. The samples are exact, and the declared length is
+    // exact with FFmpeg 6.1.1 on Ubuntu 24.04, on macOS, iOS and Android, and
+    // with FFmpeg 9.0.1 and libx264, so only Windows and Linux get one frame of
+    // slack.
     final int samplesLength = timing.sampleCount * delta;
     expect(
       timing.duration,
-      Platform.isWindows
+      Platform.isWindows || Platform.isLinux
           ? anyOf(samplesLength, samplesLength + delta)
           : samplesLength,
       reason:
