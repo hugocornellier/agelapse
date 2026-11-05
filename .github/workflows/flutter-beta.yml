@@ -1,0 +1,39 @@
+name: Flutter beta
+
+# Checks attach to a commit, and a scheduled run's commit is main's head, so
+# running beta from main would mark main with a failure whenever beta breaks.
+# Beta runs on a throwaway commit on top of main instead, on a branch only this
+# workflow writes to. CI and Tests pick the beta channel on that branch.
+on:
+  schedule:
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: flutter-beta
+
+permissions:
+  actions: write
+  contents: write
+
+jobs:
+  start-beta-runs:
+    name: Start beta runs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Point the beta branch at a new commit on top of this one
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit --allow-empty -m "ci: Flutter beta run for ${GITHUB_SHA::8}"
+          git push --force origin HEAD:refs/heads/ci/flutter-beta
+
+      - name: Start the beta runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run build.yml --ref ci/flutter-beta
+          gh workflow run integration.yml --ref ci/flutter-beta
