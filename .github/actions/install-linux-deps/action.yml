@@ -1,0 +1,29 @@
+name: Install Linux dependencies
+description: >-
+  Installs apt packages with a time limit on every attempt. apt only moves to
+  its next mirror on errors, so a mirror that stalls would otherwise hold the
+  job until it times out. Retries leave out the runner's default Azure mirror.
+inputs:
+  packages:
+    description: 'Space-separated apt packages to install'
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Install apt packages
+      shell: bash
+      env:
+        PACKAGES: ${{ inputs.packages }}
+      run: |
+        for attempt in 1 2 3; do
+          if sudo timeout 180 apt-get update -y &&
+            sudo timeout 360 apt-get install -y $PACKAGES; then
+            exit 0
+          fi
+          echo "::warning::apt attempt $attempt failed or stalled, retrying without the Azure mirror"
+          sudo sed -i '/azure\.archive\.ubuntu\.com/d' /etc/apt/apt-mirrors.txt || true
+          sudo timeout 120 dpkg --configure -a || true
+          sleep 15
+        done
+        echo "::error::Could not install apt packages after 3 attempts"
+        exit 1

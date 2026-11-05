@@ -256,9 +256,14 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Install Linux dependencies
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y ninja-build libgtk-3-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libmpv-dev libheif-dev libpng-dev libturbojpeg0-dev xvfb
+        timeout-minutes: 30
+        uses: ./.github/actions/install-linux-deps
+        with:
+          packages: >-
+            ninja-build libgtk-3-dev
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+            libmpv-dev libheif-dev libpng-dev libturbojpeg0-dev
+            xvfb
 
       - uses: subosito/flutter-action@v2
         with:
