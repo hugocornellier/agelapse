@@ -13,7 +13,7 @@ concurrency:
 jobs:
   unit-tests:
     name: Unit Tests (${{ matrix.flutter-channel }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     continue-on-error: ${{ matrix.flutter-channel == 'beta' }}
     strategy:
@@ -214,7 +214,7 @@ jobs:
 
   integration-android:
     name: Integration Android (${{ matrix.flutter-channel }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     continue-on-error: ${{ matrix.flutter-channel == 'beta' }}
     env:
@@ -298,7 +298,7 @@ jobs:
 
   integration-linux:
     name: Integration Linux ${{ matrix.group }} (${{ matrix.flutter-channel }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     continue-on-error: ${{ matrix.flutter-channel == 'beta' }}
     strategy:

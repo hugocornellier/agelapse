@@ -30,7 +30,7 @@ on:
 jobs:
   prepare:
     name: Prepare Release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       version: ${{ steps.version.outputs.version }}
       build_number: ${{ steps.version.outputs.build_number }}
@@ -143,7 +143,7 @@ jobs:
   build-linux:
     name: Build Linux Packages
     needs: prepare
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     permissions:
       contents: read
@@ -450,7 +450,7 @@ jobs:
   smoke-linux-packages:
     name: Smoke Linux ${{ matrix.label }}
     needs: [prepare, build-linux]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:
       contents: read
@@ -669,7 +669,7 @@ jobs:
   smoke-linux-heic:
     name: Smoke Linux HEIC decode, ${{ matrix.label }}
     needs: [prepare, build-linux]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container: debian:trixie
     timeout-minutes: 20
     permissions:
@@ -747,7 +747,7 @@ jobs:
       - smoke-windows-installer
       - smoke-linux-packages
       - smoke-linux-heic
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:

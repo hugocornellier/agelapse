@@ -39,7 +39,7 @@ jobs:
   quick-checks:
     name: Format, Analyze & Unit Tests
     if: github.event_name != 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
@@ -186,7 +186,7 @@ jobs:
   integration-android:
     name: Integration Android
     if: github.event_name == 'workflow_dispatch' && inputs.platform == 'android'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
       - name: Free disk space
@@ -250,7 +250,7 @@ jobs:
   integration-linux:
     name: Integration Linux
     if: github.event_name == 'workflow_dispatch' && inputs.platform == 'linux'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
