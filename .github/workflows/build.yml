@@ -5,6 +5,8 @@ on:
     branches: [main]
   push:
     branches: [main]
+  # Started on ci/flutter-beta by flutter-beta.yml. See the note there.
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -15,11 +17,10 @@ jobs:
     name: Format & Analyze (${{ matrix.flutter-channel }})
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    continue-on-error: ${{ matrix.flutter-channel == 'beta' }}
     strategy:
       fail-fast: false
       matrix:
-        flutter-channel: [stable, beta]
+        flutter-channel: ${{ fromJSON(github.ref == 'refs/heads/ci/flutter-beta' && '["beta"]' || '["stable"]') }}
     steps:
       - uses: actions/checkout@v7
 
@@ -46,11 +47,10 @@ jobs:
     name: Build Android (${{ matrix.flutter-channel }})
     runs-on: ubuntu-24.04
     timeout-minutes: 75
-    continue-on-error: ${{ matrix.flutter-channel == 'beta' }}
     strategy:
       fail-fast: false
       matrix:
-        flutter-channel: [stable, beta]
+        flutter-channel: ${{ fromJSON(github.ref == 'refs/heads/ci/flutter-beta' && '["beta"]' || '["stable"]') }}
     steps:
       - name: Free disk space
         uses: jlumbroso/free-disk-space@v1.3.1
@@ -125,11 +125,10 @@ jobs:
     name: Build iOS (${{ matrix.flutter-channel }})
     runs-on: macos-15
     timeout-minutes: 90
-    continue-on-error: ${{ matrix.flutter-channel == 'beta' }}
     strategy:
       fail-fast: false
       matrix:
-        flutter-channel: [stable, beta]
+        flutter-channel: ${{ fromJSON(github.ref == 'refs/heads/ci/flutter-beta' && '["beta"]' || '["stable"]') }}
     steps:
       - uses: actions/checkout@v7
 
@@ -186,11 +185,10 @@ jobs:
     name: Build macOS (${{ matrix.flutter-channel }})
     runs-on: macos-15
     timeout-minutes: 90
-    continue-on-error: ${{ matrix.flutter-channel == 'beta' }}
     strategy:
       fail-fast: false
       matrix:
-        flutter-channel: [stable, beta]
+        flutter-channel: ${{ fromJSON(github.ref == 'refs/heads/ci/flutter-beta' && '["beta"]' || '["stable"]') }}
     steps:
       - uses: actions/checkout@v7
 
@@ -248,11 +246,10 @@ jobs:
     name: Build Linux (${{ matrix.flutter-channel }})
     runs-on: ubuntu-24.04
     timeout-minutes: 90
-    continue-on-error: ${{ matrix.flutter-channel == 'beta' }}
     strategy:
       fail-fast: false
       matrix:
-        flutter-channel: [stable, beta]
+        flutter-channel: ${{ fromJSON(github.ref == 'refs/heads/ci/flutter-beta' && '["beta"]' || '["stable"]') }}
     steps:
       - uses: actions/checkout@v7
 
@@ -312,11 +309,10 @@ jobs:
     name: Build Windows (${{ matrix.flutter-channel }})
     runs-on: windows-latest
     timeout-minutes: 75
-    continue-on-error: ${{ matrix.flutter-channel == 'beta' }}
     strategy:
       fail-fast: false
       matrix:
-        flutter-channel: [stable, beta]
+        flutter-channel: ${{ fromJSON(github.ref == 'refs/heads/ci/flutter-beta' && '["beta"]' || '["stable"]') }}
     steps:
       - uses: actions/checkout@v7
 
