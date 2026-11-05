@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../styles/styles.dart';
 import '../widgets/desktop_page_scaffold.dart';
 import '../widgets/onboarding_action_button.dart';

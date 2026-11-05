@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:agelapse/main.dart' as app;
 import 'package:agelapse/utils/test_mode.dart' as test_config;

@@ -1,5 +1,5 @@
 import 'package:video_player_media_kit/video_player_media_kit.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
@@ -261,11 +261,16 @@ class AgeLapse extends StatelessWidget {
             // Update system UI overlay based on current theme
             _updateSystemUiOverlay(themeProvider.isLightMode);
 
+            // Chewie, the assets picker, the window frame and others still
+            // read the theme and localizations of package:flutter/material.dart.
+            // ignore: deprecated_member_use
+            final bridged = MaterialUiCompatibilityBridge(child: child!);
+
             if ((Platform.isLinux || Platform.isWindows) &&
                 !test_config.isTestMode) {
-              return VirtualWindowFrameInit()(context, child);
+              return VirtualWindowFrameInit()(context, bridged);
             }
-            return child!;
+            return bridged;
           },
           home: homePage,
           debugShowCheckedModeBanner: false,

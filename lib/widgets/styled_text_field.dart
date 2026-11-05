@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../styles/styles.dart';
 
 /// A styled text field with a rounded container and app-consistent decorations.

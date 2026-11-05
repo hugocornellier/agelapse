@@ -72,6 +72,8 @@ dependencies:
   wakelock_plus: ^1.8.0
   wechat_assets_picker: ^10.1.3
   window_manager: ^0.5.2
+  material_ui: ^1.10.0
+  cupertino_ui: ^1.1.6
 
 dependency_overrides:
   # dartcv4 otherwise discovers host Jasper on macOS and can embed an
@@ -81,6 +83,13 @@ dependency_overrides:
     path: third_party/dartcv4
   flutter_avif_android:
     path: plugins/flutter_avif_android
+  # Vendored only to build against material_ui. Their widgets throw under the
+  # app's material_ui Scaffolds and dialogs until upstream migrates.
+  # See third_party/<package>/AGELAPSE_PATCH.md.
+  animated_bottom_navigation_bar:
+    path: third_party/animated_bottom_navigation_bar
+  flutter_colorpicker:
+    path: third_party/flutter_colorpicker
 
 dev_dependencies:
   flutter_test:
@@ -97,6 +106,7 @@ dev_dependencies:
   # integration_test/android_memory_probe_test.dart talks to the app's own VM
   # service to garbage collect and read Dart memory figures.
   vm_service: ^15.3.0
+  video_player_platform_interface: ^6.9.0
 
 # dartcv4 builds OpenCV from a CMake hook and only honours these user-defines
 # from the root package (a dependency cannot supply them). Xcode 27 rejects

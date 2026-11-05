@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../models/detected_faces_snapshot.dart';
 import '../services/face_thumbnail_service.dart';

@@ -1,5 +1,5 @@
 import 'dart:math' as math;
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../../styles/styles.dart';
 
 /// Overlay widget that displays a countdown number during camera timer countdown
