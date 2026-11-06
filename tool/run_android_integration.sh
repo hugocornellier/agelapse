@@ -136,8 +136,10 @@ run_suite() {
 # builds in this step, seen 2026-11-06: flutter test's install failed with
 # INSTALL_FAILED_UPDATE_INCOMPATIBLE, flutter then uninstalled the app and the
 # grant was lost. Cause not established. Builds in this step matched each other,
-# so the first attempt installs one of those too.
-flutter build apk --debug
+# so the first attempt installs one of those too. The prewarm and flutter test
+# builds also differ in target, so this one uses a test target as flutter test
+# does, which also stops Gradle reusing the prewarm APK as up to date.
+flutter build apk --debug --target integration_test/mobile_fast.dart
 
 run_suite mobile_fast
 run_suite mobile_video
