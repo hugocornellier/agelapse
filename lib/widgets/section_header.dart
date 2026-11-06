@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../styles/styles.dart';
 
 /// An icon + uppercase title row used to label settings/info sections.

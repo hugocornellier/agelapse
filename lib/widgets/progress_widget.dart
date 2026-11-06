@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../widgets/in_progress_widget.dart';
 
 class ProgressWidget extends StatelessWidget {

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../styles/styles.dart';
 
 /// A centered overlay that appears when files are dragged over the app window.

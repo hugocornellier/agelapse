@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Theme-independent colors for photo overlays, camera guides, and exports.
 /// These remain constant regardless of app theme to ensure visibility

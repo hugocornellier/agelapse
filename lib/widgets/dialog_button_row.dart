@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../styles/styles.dart';
 
 /// A cancel + action button row used in bottom-sheet dialogs.

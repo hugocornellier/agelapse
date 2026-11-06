@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:agelapse/models/face_detection_cache_result.dart';
 import 'package:agelapse/models/transform_cache_entry.dart';

@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:path/path.dart' as path;
 
 import '../utils/gallery_utils.dart';

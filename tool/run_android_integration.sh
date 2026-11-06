@@ -48,9 +48,10 @@ APP_ID=com.hugocornellier.agelapse
 # Android 13+ turns notifications off until POST_NOTIFICATIONS is granted and
 # nobody answers a prompt here, so reminder_device_test.dart would skip. flutter
 # test installs with `adb install -t -r`, which keeps runtime grants, and
-# uninstalls when it ends, so every attempt installs the job's prewarmed APK and
-# grants on that, before the app can start. Not install -g: that also grants
-# camera and storage. A failure here only warns; run_suite fails on the skips.
+# uninstalls when it ends, so every attempt installs the latest APK built in this
+# step and grants on that, before the app can start. Not install -g: that also
+# grants camera and storage. A failure here only warns; run_suite fails on the
+# skips.
 grant_notifications() {
   timeout 300 adb -s emulator-5554 install -t -r build/app/outputs/flutter-apk/app-debug.apk &&
     timeout 30 adb -s emulator-5554 shell pm grant "$APP_ID" android.permission.POST_NOTIFICATIONS
@@ -130,6 +131,15 @@ run_suite() {
     echo "::error::Reminder tests skipped in $suite: POST_NOTIFICATIONS was not granted."
   fi
 }
+
+# On AGP 9 the APK from the workflow's prewarm step was signed differently from
+# builds in this step, seen 2026-11-06: flutter test's install failed with
+# INSTALL_FAILED_UPDATE_INCOMPATIBLE, flutter then uninstalled the app and the
+# grant was lost. Cause not established. Builds in this step matched each other,
+# so the first attempt installs one of those too. The prewarm and flutter test
+# builds also differ in target, so this one uses a test target as flutter test
+# does, which also stops Gradle reusing the prewarm APK as up to date.
+flutter build apk --debug --target integration_test/mobile_fast.dart
 
 run_suite mobile_fast
 run_suite mobile_video

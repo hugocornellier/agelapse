@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Gives a modal bottom sheet its own place to show SnackBars.
 ///

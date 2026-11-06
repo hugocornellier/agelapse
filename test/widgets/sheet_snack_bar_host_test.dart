@@ -1,5 +1,5 @@
 import 'package:agelapse/widgets/sheet_snack_bar_host.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Stands in for the settings sheet: a panel with a button that shows a

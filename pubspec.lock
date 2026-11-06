@@ -20,10 +20,9 @@ packages:
   animated_bottom_navigation_bar:
     dependency: "direct main"
     description:
-      name: animated_bottom_navigation_bar
-      sha256: "7ad064b98536d9a38366d3f39907a82da35c695ed79b9ed27ccd16444f5c3184"
-      url: "https://pub.dev"
-    source: hosted
+      path: "third_party/animated_bottom_navigation_bar"
+      relative: true
+    source: path
     version: "1.4.1"
   ansicolor:
     dependency: transitive
@@ -233,6 +232,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.9"
+  cupertino_ui:
+    dependency: "direct main"
+    description:
+      name: cupertino_ui
+      sha256: "369e39a1c5c030a6212589c3da1809920b1c2cfade7b02aade7695bfa4b88c3a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.6"
   dartcv4:
     dependency: "direct overridden"
     description:
@@ -590,10 +597,9 @@ packages:
   flutter_colorpicker:
     dependency: "direct main"
     description:
-      name: flutter_colorpicker
-      sha256: "969de5f6f9e2a570ac660fb7b501551451ea2a1ab9e2097e89475f60e07816ea"
-      url: "https://pub.dev"
-    source: hosted
+      path: "third_party/flutter_colorpicker"
+      relative: true
+    source: path
     version: "1.1.0"
   flutter_driver:
     dependency: transitive
@@ -913,6 +919,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.13.0"
+  material_ui:
+    dependency: "direct main"
+    description:
+      name: material_ui
+      sha256: a30f5d0625b6b83770f53ca3f7aafd6fd9d147cb3853f54a70668541046fe5d6
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.10.0"
   media_kit:
     dependency: "direct main"
     description:
@@ -1695,7 +1709,7 @@ packages:
     source: hosted
     version: "2.0.0"
   video_player_platform_interface:
-    dependency: transitive
+    dependency: "direct dev"
     description:
       name: video_player_platform_interface
       sha256: "92c0fbabe20c788e71fd10d26cea998d0d253282e65d145aed0818731cf593ce"

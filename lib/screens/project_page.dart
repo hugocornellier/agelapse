@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../services/settings_cache.dart';
 import '../services/stab_update_event.dart';
 import '../styles/styles.dart';
