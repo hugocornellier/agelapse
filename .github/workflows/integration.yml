@@ -276,11 +276,13 @@ jobs:
 
       # Aggregator files run all tests in a single build+launch, avoiding
       # the per-file Gradle rebuild overhead (~40s × 17 files saved).
+      # API 34, not 29: launch hangs hit 8 of 110 jobs on 29 and 0 of 43 on 34.
+      # Promising, not proof, so the script keeps its watchdog and retry.
       - name: Run integration tests on Android emulator
         id: android-tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29
+          api-level: 34
           arch: x86_64
           target: default
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -memory 4096
