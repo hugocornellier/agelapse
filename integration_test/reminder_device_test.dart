@@ -78,6 +78,7 @@ void main() {
 
   bool skipUnlessAllowed() {
     if (allowed) return false;
+    // tool/run_android_integration.sh fails the Android job on this text.
     markTestSkipped('Notifications are not allowed on this device.');
     return true;
   }
