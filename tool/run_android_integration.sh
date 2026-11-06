@@ -25,7 +25,7 @@ trap stop_background EXIT
 # job timeout. Both suites together take about 30 minutes on the emulator.
 SUITE_TIMEOUT="${SUITE_TIMEOUT:-40m}"
 
-# An audit counted such hangs in 8 of 110 jobs before PR #72: after the install
+# An audit counted such hangs in 8 of 110 jobs on API 29: after the install
 # line, zero Dart output. A thread dump of one shows Flutter's raster thread
 # blocked waiting on the emulator's graphics host during
 # eglCreateWindowSurface. A healthy suite prints its first test line 3.7 s
@@ -43,10 +43,24 @@ test_started() {
     grep -v -e ': loading ' -e ': Some tests failed' > /dev/null
 }
 
+APP_ID=com.hugocornellier.agelapse
+
+# Android 13+ turns notifications off until POST_NOTIFICATIONS is granted and
+# nobody answers a prompt here, so reminder_device_test.dart would skip. flutter
+# test installs with `adb install -t -r`, which keeps runtime grants, and
+# uninstalls when it ends, so every attempt installs the job's prewarmed APK and
+# grants on that, before the app can start. Not install -g: that also grants
+# camera and storage. A failure here only warns; run_suite fails on the skips.
+grant_notifications() {
+  timeout 300 adb -s emulator-5554 install -t -r build/app/outputs/flutter-apk/app-debug.apk &&
+    timeout 30 adb -s emulator-5554 shell pm grant "$APP_ID" android.permission.POST_NOTIFICATIONS
+}
+
 # Sets rc. Output goes to a file, not a pipe into tee, so a stray child holding
 # the pipe cannot block us.
 run_attempt() {
   local suite="$1" log="$2" installed_at="" killed=0
+  grant_notifications || echo "::warning::Could not grant POST_NOTIFICATIONS before $suite."
   : > "$log"
   timeout --foreground -k 60 "$SUITE_TIMEOUT" \
     flutter test "integration_test/${suite}.dart" \
@@ -91,7 +105,7 @@ run_suite() {
   run_attempt "$suite" "$log"
   if launch_failed "$log"; then
     echo "::warning::Android integration suite $suite started no test within ${START_LIMIT_SECONDS}s of installing, or failed before any test ran. Retrying once in the same emulator."
-    timeout 30 adb -s emulator-5554 shell am force-stop com.hugocornellier.agelapse || true
+    timeout 30 adb -s emulator-5554 shell am force-stop "$APP_ID" || true
     mv "$log" "$RESULTS_DIR/${suite}.attempt1.log"
     # Tells the workflow to keep this run's logcat even when the job ends green.
     : > "$RESULTS_DIR/launch-retried"
@@ -108,6 +122,12 @@ run_suite() {
   else
     status=1
     echo "::error::Android integration suite failed: $suite"
+  fi
+  # A skip counts as a pass in flutter test, so the reminder tests could stop
+  # running with the job still green. The text is skipUnlessAllowed()'s.
+  if grep -aq 'Notifications are not allowed on this device' "$log"; then
+    status=1
+    echo "::error::Reminder tests skipped in $suite: POST_NOTIFICATIONS was not granted."
   fi
 }
 
