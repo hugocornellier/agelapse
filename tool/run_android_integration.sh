@@ -25,19 +25,22 @@ trap stop_background EXIT
 # job timeout. Both suites together take about 30 minutes on the emulator.
 SUITE_TIMEOUT="${SUITE_TIMEOUT:-40m}"
 
-# That hang has hit six times since August, 40 to 90 minutes each: after the
-# install line, zero Dart output, with the app alive, its VM service listening
-# and no crash in logcat. A healthy suite prints its first test line 3.7 s
+# An audit counted such hangs in 8 of 110 jobs before PR #72: after the install
+# line, zero Dart output. A thread dump of one shows Flutter's raster thread
+# blocked waiting on the emulator's graphics host during
+# eglCreateWindowSurface. A healthy suite prints its first test line 3.7 s
 # after the install. Suites themselves run 15+ minutes, so only startup gets
-# this short limit. firebase/flutterfire retries the same hang in the same
-# booted emulator and recovered 12 of 12.
+# this short limit. firebase/flutterfire retries a similar hang in the same
+# booted emulator and recovered 12 of 12; here the retry has not been shown to
+# recover a real hang.
 START_LIMIT_SECONDS="${START_LIMIT_SECONDS:-300}"
 
-# "00:00 +0: loading ..." comes before the install, so it does not count. Not
-# grep -q at the end: it can SIGPIPE the first grep, which pipefail reads as no
-# match.
+# "loading ..." lines name no test, and a launch that dies ends on "00:00 +0 -1:
+# Some tests failed." with no test behind it, so neither counts. Not grep -q at
+# the end: it can SIGPIPE the first grep, which pipefail reads as no match.
 test_started() {
-  grep -aE '[0-9]+:[0-9]{2} \+[0-9]+' "$1" | grep -v ': loading ' > /dev/null
+  grep -aE '[0-9]+:[0-9]{2} \+[0-9]+' "$1" |
+    grep -v -e ': loading ' -e ': Some tests failed' > /dev/null
 }
 
 # Sets rc. Output goes to a file, not a pipe into tee, so a stray child holding
@@ -72,9 +75,11 @@ run_attempt() {
 }
 
 # Installed, then no test ever started: killed by the watchdog, or flutter gave
-# up by itself (flutterfire also saw "Error connecting to the service protocol"
-# fail this way). Test failures, an app death mid-suite and build failures are
-# real results and must never match this.
+# up by itself, as when the app dies right after install ("Connection closed
+# before test suite loaded"; a launch can SIGSEGV on the raster thread within
+# seconds). flutterfire also saw "Error connecting to the service protocol" fail
+# this way. Test failures, an app death mid-suite and build failures are real
+# results and must never match this.
 launch_failed() {
   [ "$rc" -ne 0 ] && grep -aq 'Installing build' "$1" && ! test_started "$1"
 }
